@@ -1,0 +1,60 @@
+# Final report: continuation cycle 11, fresh review
+
+**Status: CONTINUE.** Not ready for owner review. This report does not authorize publication, merge or deployment. No push, deploy, tenant action, script execution or external write was made.
+
+## Identity
+| Item | Value |
+|---|---|
+| Reviewed HEAD | `19ea218003eff6f5db9a58e315198dbe4e5814dd` (branch preview-continuation) |
+| Cycle 11 commits | c7a0163 (docs: cycle 10 ledger with the placeholders filled, plus review 10); 19ea218 (test: `quotedNameLiterals.test.ts`; cycle 11 ledger). `git diff 0989d8a HEAD --stat` outside docs: only invocation.ts (f6e6794) and that test |
+| Dirty tree at review start | clean (`git status --porcelain` empty) |
+| Dirty source/test entries | none |
+| Reviewer edits | this report and REVIEW-STATUS.json only; nothing committed |
+| Logs | `../logs/r11/`, outside the clone: `targeted.txt`, `acceptance.txt` + `acceptance/`, `nv/nonvacuity{,-2,-3}.txt` |
+
+## Checks (exact code state: HEAD 19ea218; source identical to f6e6794, only the test changed)
+| Check | Command / state | Result |
+|---|---|---|
+| Test edit read | `git show HEAD -- src` | additive: the read-back loop gains `'\0'`, ESC+`[31m`, `'\r'`, U+001F, U+007F. Nothing removed; no `.skip`, `.only` or todo. ESC, U+001F and U+007F are **raw bytes** in the source (`cat -A`: `^[[31m`, `^_`, `^?`), not escapes. They are valid, but hard to read (R11-1) |
+| Targeted (reviewer) | `node --test --test-isolation=none` quotedNameLiterals, boundNameLineBreaks | exit 0, **5/5 pass** |
+| Non-vacuity of the NEW cases (reviewer) | In `../c10-nv-1390c3f`, where invocation.ts equals `git show 1390c3f:` by `cmp` (pre-L9-2), the HEAD test was copied with line 80 reduced to the five new cases only (written as escapes); the copy was deleted afterwards | exit 1, **1/1 fail at `U+0`** (`nonvacuity-3.txt`). The new cases fail on their own against the pre-fix code, which answers the fixer's open point. `nonvacuity.txt` is void (an awk pattern missed, so it failed at the old U+9 case). `nonvacuity-2.txt` is void (a raw CR broke the file's syntax) |
+| Acceptance (reviewer rerun) | `node docs/preview-continuation/acceptance/run-acceptance.mjs . ../logs/r11/acceptance` | exit 0, **28 PASS · 0 FAIL · 0 HARNESS_ERROR** |
+| Full suite / tsc / build / matrix | not rerun: no source change since f6e6794 | cycle 10 at f6e6794: full suite **2760 · 2758 pass · 0 fail · 2 skipped**, exit code not captured; tsc 0; build 0; matrix 0 diff. The fixer's cycle 11 tsc on the test edit gave empty output (`../logs/c11/tsc-1.txt`, 0 bytes) |
+| Walk | fixer's `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs`, from 13:59:52 on dist from f6e6794 (`../logs/c11/walk-1.txt`) | **completed** 14:03:52, `walk exit 0`, "show-ready on this walk (no P0)": **0 P0, 495 P1, 50 P2** (report `docs/reports/walk-f6e6794.md`, gitignored). Reviewer diff against `walk-0989d8a.md` with digits stripped: 8 lines, only the two build-id lines (`../logs/r11/walk-diff.txt`). The dist was built at f6e6794; source is unchanged at HEAD |
+| C01 / held export | not rerun: target-selection code unchanged since the cycle 9 0-diff runs | unchanged |
+| Scope | `git diff f6e6794 HEAD --stat` | docs and one test only. No package, lockfile, scripts, page-contract, content.json, registry or LIBRARY change; the feedback mailto was untouched |
+
+## Queue verdicts (review 10 queue)
+1. **Commit the cycle 10 ledger and review 10: DONE** (c7a0163). The placeholders were replaced with the real results: full suite 2760/2758/0/2 skipped, exit not captured; walk did not complete.
+2. **A completed walk at the committed state: **DONE, verified by the reviewer** (0 P0, 495 P1, 50 P2; only the build-id lines differ from 0989d8a).**
+3. **register-info-protected step 4 (medium): REMAINS**, not started.
+4. **Board/export Ready vs blocked (medium): REMAINS**, not started (7 lane lines; 9 exports reading "Ready · Create" above "not ready to run").
+5. **session-lifetime reportOnly/readyToEnforce (low-medium): REMAINS.**
+6. **Low items: REMAIN.** pim authContext/strength and the grant+session floor test; the report-only correction under an emergency wait; the guests adjust run mode; the leftovers. L9-1 and L9-3 are NOT REPRODUCED (unchanged).
+7. **Review 10 optional missing test (NUL/ESC/lone CR): ADDED and verified non-vacuous** (above).
+
+## New observations
+- **R11-1 (low, test readability):** quotedNameLiterals.test.ts:80 holds raw ESC, U+001F and U+007F bytes inside string literals. Node accepts them, and the targeted run passes. They are invisible in editors and in diffs, and one raw CR in the same spot would be a SyntaxError (reviewer attempt 2 showed this). Prefer `'\u001b[31m'`, `'\u001f'`, `'\u007f'`. This is not a defect.
+- No code change this cycle, so no new code defect.
+
+## Missing tests
+- The export's "Ready · Create" state line beside a "not ready to run" note.
+- A preview held only on an unconfirmed prerequisite, in the export.
+- The report-only Ready-but-blocked watches' action line; the guests adjust run mode; the guests pair end to end.
+
+## Scope and feature preservation
+Tabs, channels, enabled-policy state, baseline restrictions, the Connect beta notice with feedback@getiamai.com, page contracts and walk rules are all untouched this cycle. There was one additive test edit, with no suppression.
+
+## Genuine owner choices
+None. Every remaining item is routine under RUN-CONTEXT.
+
+## Queue for the next fixer (in order)
+1. Commit this review after inspection, and record the completed f6e6794 walk (0 P0, 495 P1, 50 P2) in RESULTS.
+2. **register-info-protected step 4 (medium):** follow BLOCKED's cycle 8 binding plan (location and grant words from stepPortal lines; drop `policy.target.mode` from requiredBindings and readiness.model). Regenerate registry/LIBRARY; pin the Entra tab against the export's portal lines on curated demo-week2, small and mid.
+3. **Board/export Ready vs blocked (medium):** settle the 7 lane lines and the 9 "Ready · Create" exports within the existing lane/nextSafeAction readings; add the missing export tests above.
+4. **session-lifetime reportOnly/readyToEnforce (low-medium).**
+5. **Low:** pim gaps; the emergency-wait report-only correction; the guests adjust run mode; R11-1 escapes; leftovers.
+6. **After any source change:** full suite (capture the exit code), tsc, build, matrix, 5.1/7 AST parses where scripts or bindings change, acceptance 28/28, and a completed walk.
+
+## Working tree after review
+` M docs/preview-continuation/FINAL-REPORT.md`, ` M docs/preview-continuation/REVIEW-STATUS.json` (this review). Nothing committed; HEAD unchanged. Gitignored walk outputs may be written by the fixer's background walk. Outside the clone: `../logs/r11/`. The reviewer ran no build and started no walk.

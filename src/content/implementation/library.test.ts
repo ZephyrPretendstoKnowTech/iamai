@@ -127,17 +127,21 @@ test('a policy IAMAI would create projects the package’s Entra, PowerShell, JS
 })
 
 test('a required value IAMAI does not hold withholds only the channel that names it; a package with nothing for the state leaves the step its own channels', () => {
-  // The registration package words its portal steps by a mode the resolved target
-  // does not settle (MFA outside trusted locations is neither of its two modes), so
-  // IAMAI binds no mode: the portal steps are withheld, and the PowerShell rendered
-  // from the pinned target still projects, and so does its JSON create request.
-  const held = project(at(SMALL, 's-goal-register-info-protected'))
-  assert.equal(held.state, 'missing')
+  // The registration package words its portal grant from the resolved target's own
+  // portal lines (`policy.target.grantWords`; it once asked for a mode IAMAI never
+  // binds). Without that one value the portal steps are withheld, and the PowerShell
+  // rendered from the pinned target still projects, and so does its JSON create request.
+  const opened = project(at(SMALL, 's-goal-register-info-protected'))
+  assert.equal(opened.state, 'missing')
+  assert.equal(opened.projection.hold, null)
+  assert.ok(opened.projection.channels.some((c) => c.channel === 'entra'), 'the premise: with the grant words bound the portal steps are drawn')
+  const { ['policy.target.grantWords']: _grant, ...withoutGrant } = opened.bindings as Record<string, unknown>
+  const held = { pkg: opened.pkg, projection: projectSafely(opened.pkg, 'missing', withoutGrant, NO_RUNTIME) }
   assert.equal(held.projection.hold, null)
   assert.equal(held.projection.channels.some((c) => c.channel === 'entra'), false)
   assert.ok(held.projection.channels.some((c) => c.channel === 'powershell'), 'the PowerShell rendered from the pinned target was withheld with the portal steps')
   assert.ok(held.projection.channels.some((c) => c.channel === 'json'), 'the JSON create, sent as the request the package declares, was withheld with the portal steps')
-  assert.deepEqual(held.projection.degraded?.map((d) => [d.channel, d.missingBindings, d.invalid.length]), [['entra', ['policy.target.mode'], 0]])
+  assert.deepEqual(held.projection.degraded?.map((d) => [d.channel, d.missingBindings, d.invalid.length]), [['entra', ['policy.target.grantWords'], 0]])
   assert.equal(packageDrawsImplementation(held.pkg, held.projection), true, 'a held package gave the step back channels it holds')
   const none = projectSafely(held.pkg, 'missing', {}, NO_RUNTIME)
   assert.deepEqual(none.channels, [], 'a projection with none of its values offered something')

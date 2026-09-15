@@ -68,7 +68,8 @@ test('every row lands in exactly one lane, delivered work is Completed and skipp
       if (v.lane === 'Completed') assert.equal(s.status, 'done', `${f.name}/${s.id}: Completed holds a step the plan has not finished`)
       if (v.lane === 'Ready') assert.notEqual(v.substatus, null, `${f.name}/${s.id}: Ready without a substatus`)
       if (v.lane === 'Up Next' && v.fromEngine) assert.ok(v.reason && !v.reason.abnormal, `${f.name}/${s.id}: Up Next behind an abnormal blocker`)
-      if (v.lane === 'On Hold' && v.fromEngine) assert.ok(v.reason?.abnormal, `${f.name}/${s.id}: On Hold with no abnormal blocker`)
+      // On Hold needs no abnormal blocker (owner's status contract): a deeper prerequisite or an evidence wait qualifies, but it always names one.
+      if (v.lane === 'On Hold' && v.fromEngine) assert.ok(v.reason !== null, `${f.name}/${s.id}: On Hold with no reason`)
       rows += 1
     }
     // The orders inside a lane are 0..n-1 with no gaps, engine rows first.

@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Observing",
+  "lane": "On Hold",
+  "substatus": null,
   "reason": "after: Create or Correct Emergency Access Accounts",
   "fact": "Report-only",
-  "badge": "Ready · Observing",
-  "bar": "Continue observation",
+  "badge": "On Hold · Observing",
+  "bar": "Observing",
   "rail": "—",
   "headings": [
     "Why",
@@ -22,7 +22,7 @@
       "state": "Not established"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],

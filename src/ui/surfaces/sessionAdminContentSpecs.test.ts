@@ -25,6 +25,11 @@ const channel = (stepId: string, ids: string[]): string => ids.map((id) => packa
 type ContentStepWords = { id: string; why: string; doneEnd?: string; doneWhen?: string[]; decision?: { help?: string; options?: string[] } }
 const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as ContentStepWords[]).find((s) => s.id === id)!
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+// Cycle 6 (review 5 queue 1): a correction's Save item and AI Info also carry the line naming
+// the exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
+const REMOVED = "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]"
+// Editorial batch C (SHARED-COPY-AND-RULES.md, correction preserving state).
+const KEEP_STATE = "Keep the policy's current state. If it is On, the changed rule can affect access after you save."
 
 /** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts). */
 function bodiesOf(f: Fixture): Map<string, StepBody> {
@@ -44,30 +49,36 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 
 test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered procedure naming the policy, and AI Info explains the session limit', () => {
   const SESSION = 's-goal-admin-session'
-  assert.equal(stepWords('admin-session').why, 'A stolen admin session stays useful as long as it lasts. A short session limits the damage: an attacker who steals the token has minutes, not hours.')
+  // Editorial batch C: the register Why.
+  assert.equal(stepWords('admin-session').why, 'Shorter admin browser sessions reduce how long a signed-in browser can remain useful without another authentication check. Test the experience so normal admin work remains practical.')
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   assert.ok(packageOf(SESSION).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(SESSION, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  // Editorial batch C (channel correction): the correction sets the pinned target's conditions and session controls, not only the exclusions group.
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
-        ["Verify the session controls match the baseline: Sign-in frequency enabled, set to the baseline's interval. Persistent browser session: set to Never persistent."],
+        ['Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    // Cycle 3 (review 2): and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
-  assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID/)
+  assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID|the baseline's interval/)
   const ai = packageOf(SESSION).blocks['ai.correct'].text
-  assert.match(ai, /^This policy shortens how long an admin's session stays valid\. After the sign-in frequency interval, the admin is prompted to re-authenticate\.$/m)
-  assert.match(ai, /^This protects against token theft: even if an attacker steals an admin's session token, it expires quickly\. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have\.$/m)
-  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts are not affected by the session limit\.$/m)
-  assert.match(ai, /^The persistent browser session control ensures admin sessions are not remembered across browser closures\.$/m)
-  // Done when is unchanged.
+  // Editorial batch C (factual fix): sign-in frequency is not a hard lifetime for every token, and nothing promises the attacker lacks a passkey.
+  assert.match(ai, /^Policy \{\{policy\.current\.id\}\} for \*\*Shorten Admin Sessions\*\* differs from the intended target: \{\{policy\.current\.semanticMismatches\}\}\. The next action is to correct those settings on the same policy\.$/m)
+  assert.match(ai, /^The intended target applies to the resolved admin roles, all resources and Browser client apps\. It sets Sign-in frequency to 4 hours and Persistent browser session to Never persistent, with no grant control\. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session\.$/m)
+  assert.match(ai, /^The exclusions group in the target keeps emergency access accounts out of this policy\.$/m)
+  assert.ok(ai.includes(KEEP_STATE))
+  assert.doesNotMatch(ai, /expires quickly|a passkey the attacker doesn't have/)
+  // The held end state is unchanged.
   assert.equal(stepWords('admin-session').doneEnd, "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.")
 })
 
@@ -94,17 +105,17 @@ test('s-goal-admin-portals-protected: the conflict says there is nothing to do, 
 test('s-goal-token-protection: Why says what token protection is, AI Info explains the attack and the Windows limit, and Done when names the target', () => {
   const TOKEN = 's-goal-token-protection'
   const words = stepWords('token-protection')
-  assert.equal(words.why, "Token protection binds a session token to the device it was issued on. If someone steals the token and tries to use it on a different machine, it's rejected.")
+  // Editorial batch C: the register Why.
+  assert.equal(words.why, 'Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.')
   assert.equal(words.doneEnd, "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.")
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   const ai = packageOf(TOKEN).blocks['ai.correct'].text
-  assert.match(ai, /^Token protection binds each sign-in token to the device it was created on\. If an attacker steals the token \(from memory, from a browser export, or from disk\) and tries to replay it on their own machine, Entra rejects it because the device doesn't match\.$/m)
-  assert.match(ai, /^This is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token\.$/m)
-  assert.match(ai, /^Current limitation: token protection only works on Windows devices running supported apps\. Non-Windows devices \(Mac, iOS, Android\) and some web apps don't support it yet\. This doesn't mean those devices are unprotected — other policies \(MFA, device compliance\) still apply\. It means the token binding doesn't fire there\.$/m)
-  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts are not affected\.$/m)
-  assert.doesNotMatch(ai, /semantic mismatch|canonical|Stable policy ID/)
-  // Entra is unchanged: the target's Browser client apps contradict the pinned
-  // baseline, and the package composes Entra per mismatch (BLOCKED.md).
+  // Editorial batch C (factual fix): supported session tokens on the pinned resources and platform only, never every token, and no claim that the correction only adds the exclusions group.
+  assert.match(ai, /^Token protection makes supported sign-in session tokens harder to reuse on another device\. In this policy it applies only to Exchange Online, SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop and Windows 365, for Windows mobile apps and desktop clients, with Microsoft Entra joined Cloud PCs excluded by the device filter\. It does not cover browser sessions, other platforms, or every token\.$/m)
+  assert.match(ai, /^Keep the intended resources, Windows platform, client-app scope, CloudPC filter and resolved exclusions\. The JSON and PowerShell outputs use Microsoft Graph beta because `secureSignInSession` is not exposed in the v1\.0 session-controls schema\.$/m)
+  assert.ok(ai.includes(KEEP_STATE))
+  assert.doesNotMatch(ai, /semantic mismatch|canonical|Stable policy ID|bypasses MFA entirely|adds the exclusions group/)
+  // Entra's create still selects client apps as the pinned baseline does, and the package composes Entra per mismatch (BLOCKED.md).
   assert.match(packageOf(TOKEN).blocks['entra.create'].text, /select only \*\*Mobile apps and desktop clients\*\*\. Leave Browser unselected\./)
   assert.match(packageOf(TOKEN).blocks['entra.correct.lifecycle.report-only'].text, /Report-only/)
 })
@@ -116,18 +127,21 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
-        ['In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.'],
-        ['If the policy is currently On (Enforced), switch it to Report-only before making changes.'],
-        ['Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.'],
-        ['Under Users → Include, confirm "All users" is selected.'],
-        ['Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.'],
-        ['Under Grant, confirm "Block access" is selected.'],
+        // Editorial batch C: the policy is opened by its id, and each step makes the setting so rather than only confirming it.
+        ['In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.'],
+        // Cycle 2 (C02): the correction no longer moves an enforced block to Report-only; it keeps the state and says what saving does.
+        [KEEP_STATE],
+        ['Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.'],
+        ['Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.'],
+        ['Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Create or Correct Exclusions Group step.'],
+        ['Under Grant, make sure "Block access" is selected.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Leave the policy in Report-only.'], ['Click Save, then rescan in IAMAI.']] },
+    { kind: 'list', ordered: true, start: 7, items: [['Leave **Enable policy** as it is and click Save.', REMOVED], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /stable tenant ID|resolved policy|canonical|conditions object/)
-  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.\n")
+  // Editorial batch C: AI Info covers every correction module the block serves, not only the conditions.
+  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "Policy {{policy.current.id}} for **Block Legacy Authentication** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy. The intended target blocks Exchange ActiveSync clients and Other clients for all users except the resolved exclusions, across all resources, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\n" + REMOVED + '\n')
   const words = stepWords('block-legacy-auth')
   assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
   // The shared readiness sentence and the stored answers stay (BLOCKED.md).
@@ -139,27 +153,29 @@ test('s-prereq-trusted-location: the milestone says what to add, Entra is plain 
   const TRUSTED = 's-prereq-trusted-location'
   const content = readFileSync('docs/design/content.json', 'utf8')
   const words = stepWords(TRUSTED)
-  assert.equal(words.decision?.help, 'Add your office and VPN IP addresses.')
-  assert.deepEqual(words.doneWhen, ['A trusted named location exists in Entra whose IP ranges cover the sign-in sources seen since {from}.'])
+  // Editorial batch C: only ranges the network owner approved; an observed address is not trusted, and the ranges are a human check.
+  assert.equal(words.decision?.help, 'Use only public IP ranges the network owner approved. An observed address is not automatically trusted.')
+  assert.deepEqual(words.doneWhen, ['A trusted IP named location exists in the tenant.', 'Verify after the change: its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them.'])
   assert.ok(content.includes('"clearNote": "No blockers. Ready to proceed."'), 'the Clear readiness line is not the plain one')
   const entra = packageOf(TRUSTED).blocks['entra.create'].text
   assert.deepEqual(authoredParts(entra), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.'],
-        ['Name: {{location.target.displayName}} (or a name that describes your location).'],
-        ['Add your office\'s public IP address(es). These are the IPs your internet traffic comes from — your ISP assigns them. If you\'re not sure, search "what is my IP" from a computer in the office.'],
-        ['If you have a VPN, add its exit IP addresses too.'],
+        ['Name: {{location.target.displayName}}.'],
+        ['Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges.'],
+        ['Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.'],
         ['Check "Mark as trusted location."'],
         ['Create.'],
-        ['Rescan in IAMAI.'],
+        ['Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.'],
       ],
     },
   ])
-  assert.doesNotMatch(entra, /CIDR|supplied by IAMAI|downstream policies/)
+  assert.doesNotMatch(entra, /CIDR|supplied by IAMAI|downstream policies|or a name that describes your location/)
   const ai = packageOf(TRUSTED).blocks['ai.create'].text
-  assert.match(ai, /^A trusted location tells Entra "sign-ins from these IP addresses are coming from our office\." Several policies in the baseline use this: some relax their requirements inside the trusted network \(like the managed-device policy, which only requires a managed device outside the office\)\.$/m)
-  assert.match(ai, /^If you have one office, add its public IP address\. If you have multiple offices or a VPN, add all of them\. The location should cover every IP address your people normally sign in from at work\.$/m)
-  assert.match(ai, /^Don't add home IP addresses — those change and aren't controlled by the organization\. The point of a trusted location is that the network itself is something you manage\.$/m)
+  assert.match(ai, /^A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls\. Some baseline policies apply differently inside a trusted network\.$/m)
+  assert.match(ai, /^Add only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved\. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too\.$/m)
+  assert.match(ai, /^Don't add home IP addresses\. They change, and the organization does not control them\.$/m)
   assert.match(ai, /^If nobody works from an office \(fully remote, no VPN\), you can mark this step as "Doesn't apply here\."$/m)
+  assert.doesNotMatch(ai, /should cover every IP address your people normally sign in from/)
 })

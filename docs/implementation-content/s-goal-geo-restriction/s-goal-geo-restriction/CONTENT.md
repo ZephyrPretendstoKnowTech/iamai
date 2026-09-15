@@ -1,38 +1,45 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the canonical grant and session controls exactly as described in STEP.md.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): include **Any network or location** and exclude the approved countries named location. Do not use IDs from another tenant, and do not widen or narrow the population. The location list applies to everyone the policy covers.
+4. Grant: **Block access**. Leave session controls unconfigured.
+5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): include **Any network or location** and exclude the approved countries named location. The location list applies to everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set Grant to **Block access**, as the intended target specifies, and remove any other grant control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Remove all session controls; the intended target for this policy has none.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.
+Save. Reopen the same policy ID, compare its settings with the intended target, and rescan. The policy keeps the state it had.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus the step-specific evidence described in STEP.md. Do not treat a quiet dashboard as proof. Check VPN/proxy/mobile egress and saved travel/partner decisions during observation.
+Keep the policy in Report-only while you review the evidence listed for this step. Review the sign-ins the policy would block, including VPN, proxy and mobile-network routes, and check saved travel and partner decisions. Country is worked out from the sign-in's network address, not the person's physical location. No would-be blocks in the available records does not prove there are no legitimate sign-ins from other countries.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, its settings match the intended target, and any approved travel is in the approved countries named location.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: a sign-in from an approved country still works, and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -59,9 +66,10 @@ Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, e
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -90,8 +98,6 @@ if($Mode -eq 'Create'){
  $created=IG POST "$G/identity/conditionalAccess/policies" $body; $PolicyId=[string]$created.id; Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -111,63 +117,65 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Block Sign-ins From Countries Not Allowed** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions. Check VPN/proxy/mobile egress and saved travel/partner decisions during observation.
+IAMAI did not find **Block Sign-ins From Countries Not Allowed** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from any location except the approved countries named location, for all users except the resolved exclusions. Country is inferred from the sign-in's IP address, so VPN, proxy and mobile-network routes can place a legitimate sign-in in another country. Travel is handled by a dated change to the approved countries list, not by excluding a person.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Block Sign-ins From Countries Not Allowed**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.
+IAMAI found policy {{policy.current.id}} for **Block Sign-ins From Countries Not Allowed**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID, not to create a replacement. The intended target blocks sign-ins from any location except the approved countries named location, for all users except the resolved exclusions. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Block Sign-ins From Countries Not Allowed** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use the exact readiness conditions in STEP.md and do not recommend enforcement merely because no failures appeared.
+**Block Sign-ins From Countries Not Allowed** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Would-be blocks can include legitimate travel, VPN exits and mobile networks that appear in another country. No would-be blocks in the available records does not prove there are no legitimate sign-ins from other countries.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Block Sign-ins From Countries Not Allowed** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+**Block Sign-ins From Countries Not Allowed** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, would-be blocks from the observation period have been reviewed, approved travel is in the approved countries list, and emergency access remains available. Once On, sign-ins from outside the approved countries are blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Block Sign-ins From Countries Not Allowed** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+**Block Sign-ins From Countries Not Allowed** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Block Sign-ins From Countries Not Allowed** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+IAMAI marks **Block Sign-ins From Countries Not Allowed** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Country sign-in restrictions entering validation
+Subject: Action needed: Block Sign-ins From Countries Not Allowed
 
 Hi,
 
-We are validating sign-in restrictions for {{tenant.displayName}} so access from countries outside the approved operating set will be blocked. If you travel for work, notify IT before the trip so the approved-country record can be updated for the trip dates.
+Please notify IT before working from a country not already approved. Include your dates and any VPN you expect to use so we can check access before departure.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Country sign-in restrictions ready to enforce
+Subject: Action needed: Block Sign-ins From Countries Not Allowed
 
 Hi,
 
-Country-based sign-in restrictions for {{tenant.displayName}} are ready to enforce after Report-only review. Work travel must be arranged before departure; unexpected blocks should be reported to IT rather than solved with a permanent user exclusion.
+Please notify IT before working from a country not already approved. Include your dates and any VPN you expect to use so we can check access before departure.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the owner-approved allowed-countries location exists, canonical exclusions/partner treatment are resolved, and every legitimate Report-only block is explained by an approved operating country or dated travel record.
+Review sign-ins outside the approved list, including VPN and mobile-network locations, before enforcement. Ready only when the approved countries named location exists, the intended exclusions and any partner decision are resolved, and each legitimate sign-in the policy would block has been addressed, for example by an approved country or a dated travel change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-For an unexpected block, inspect the sign-in IP/country and VPN/proxy/mobile egress first. If travel is legitimate, update the canonical allowed-countries location for the approved trip dates; never add a named-user policy exclusion.
+For an unexpected block, inspect the sign-in's IP address, the country it resolved to, and any VPN, proxy or mobile-network route first. Country-by-IP does not prove where the person is. If the travel is legitimate, update the approved countries named location for the approved trip dates and remove the change when the trip ends; it does not expire on its own. Never add a named-user policy exclusion.
 @@IAMAI-END

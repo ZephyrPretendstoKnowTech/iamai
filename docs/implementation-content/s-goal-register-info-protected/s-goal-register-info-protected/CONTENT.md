@@ -1,39 +1,43 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this canonical scope: **Target resources > User actions > Register security information**. Apply the exact IAMAI-resolved Users/exclusions and Location mode. `blockOutsideTrusted` means Any location with All trusted locations excluded; the no-trusted-network fallback uses the resolved MFA target instead.
-4. Grant/access control: Use **{{policy.target.mode}}** exactly as resolved by IAMAI and match the canonical grant. Do not improvise a third mode.
-5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.
-6. Set **Enable policy: Report-only** and create it.
+3. Configure this intended scope: **Target resources > User actions > Register security information**. Apply the IAMAI-resolved users and exclusions, and set Conditions only as IAMAI resolved them.
+   Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]
+4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.
+5. Leave session controls unconfigured; the intended target has none.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
 7. Re-open the created policy, compare it with the IAMAI target, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: **Target resources > User actions > Register security information**, the IAMAI-resolved users and exclusions, and the location rule below. Correct this policy rather than creating a replacement.
+Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Replace the complete Grant controls with the intended grant IAMAI resolved, and clear any other control. Do not keep a different control because it already exists; this step follows the resolved baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Under **Session**, clear every control; the intended target has none. Session behavior belongs to separate baseline steps.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same resolved policy to **{{policy.target.displayName}}**. Display name is never update identity; the stable tenant policy ID remains authoritative.
+Rename the same policy to **{{policy.target.displayName}}**. The display name does not identify the policy for updates; IAMAI uses the same policy ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.
+Re-open the same policy by its ID, verify the corrected fields against the intended target, and rescan IAMAI. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Verify after the change: a controlled test account can register a method through the intended route; reading the settings back does not show how registration behaves.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
+Keep the policy in **Report-only** while you review the evidence listed for this step. Check its settings by reading the policy back by the same policy ID; that confirms the configuration, not the registration experience. Report-only results may not show sign-in method registration attempts, so validate the actual registration steps with a controlled test account before enforcement. With a trusted-network block, test registration through the allowed route; with the MFA fallback, test that users can satisfy MFA or use the approved recovery process. Include Windows Hello for Business and macOS Platform SSO registration where the tenant uses them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only**, the conditions/grant/session controls are canonical, and the step-specific evidence is clear. Change **Enable policy** to **On**, test the expected sign-in path plus emergency access, then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the controlled registration test is done. Change **Enable policy** to **On** and save. Verify after the change: a test account can register a method through the intended route, the approved recovery process still works, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -60,9 +64,10 @@ Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only*
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -103,14 +108,6 @@ if($Mode -eq 'Create'){
  Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}
-}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}
-}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -136,61 +133,69 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Protect Sign-in Method Registration** implementation for {{tenant.displayName}}. Confirm the canonical target is complete, tenant-resolved, Report-only first, and contains no invented exclusions or source-tenant IDs.
+State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. It does not enforce until it is enabled.
+
+Where the tenant has a trusted network, the baseline blocks registration outside trusted locations. Where no trusted network applies, the fallback requires MFA for registration instead of blocking it. Report-only results may not show registration attempts, so the registration workflow needs a controlled test.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Protect Sign-in Method Registration**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
+State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Protect Sign-in Method Registration**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess the Report-only evidence for **Protect Sign-in Method Registration** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.
+State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}.
+
+Report-only results may not show registration attempts: treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow, and say which of the two the available evidence supports.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform a final pre-enforcement review for **Protect Sign-in Method Registration** in {{tenant.displayName}}. Confirm the stable tenant policy is still Report-only, canonical, and safe to enable; do not redesign the baseline.
+State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and a controlled registration test should have used the intended route. From July 6, 2026, Microsoft also applies this user action during Windows Hello for Business and macOS Platform SSO credential registration; include those workflows where the tenant uses them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Protect Sign-in Method Registration** is not actionable yet using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent a bypass, new exclusion, or source resolution.
+State: **Protect Sign-in Method Registration** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain that **Protect Sign-in Method Registration** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
+State: **Protect Sign-in Method Registration** needs Microsoft Entra Conditional Access licensing that this scan did not confirm. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Sign-in method registration policy entering validation
+Subject: Planned change: Protect Sign-in Method Registration
 
 Hi,
 
-We are validating a policy that protects how sign-in methods are registered in {{tenant.displayName}}. Depending on the tenant's resolved trusted-network design, method registration may require the trusted network or an MFA bootstrap path. We will validate the actual registration workflows in Report-only before enforcement.
+We are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Sign-in method registration protection enforcement
+Subject: Planned change: Protect Sign-in Method Registration
 
 Hi,
 
-The sign-in method registration protection for {{tenant.displayName}} is ready to enforce after Report-only validation. If a legitimate registration is blocked, contact IT rather than adding a user exclusion.
+We are preparing a change to how sign-in methods are registered. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when IAMAI has resolved `{{policy.target.mode}}`, canonical exclusions and any trusted location are valid, report-only registration evidence is understood, and affected Windows Hello for Business/macOS Platform SSO registration workflows have been considered after the July 6, 2026 platform change.
+Check the resolved location rule and grant. Verify settings separately from a controlled registration test. Include affected Windows Hello for Business and macOS Platform SSO registration workflows, which this user action covers from July 6, 2026.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

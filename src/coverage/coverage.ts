@@ -8,7 +8,7 @@ import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
-import { satisfiesFloor } from './strength.ts'
+import { grantExceedsFloor, satisfiesFloor } from './strength.ts'
 import { resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
@@ -448,6 +448,22 @@ function evaluateGoal(
     } else if (c.state === 'enabledForReportingButNotEnforced') {
       contribution = 'reportOnly'
       for (const id of strongPop) reportOnly.add(id)
+      // A report-only policy asking less than the floor still stands for the goal:
+      // its grant is the finding, so the step corrects that policy's grant and
+      // keeps it in report-only rather than creating a second policy beside it
+      // (gap 4). Its people are not counted as report-only coverage — that would
+      // make the correction also switch it on with an untested grant.
+      if (!meetsFloor && pop.size > 0) {
+        const sessionOnly = floor.grant === undefined && floor.session !== undefined
+        reasons.push({
+          kind: sessionOnly ? 'session-weaker' : 'weaker-control',
+          userIds: [...pop],
+          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, describeFloor(floor)) : REASON.weakerControl(c.name, describeFloor(floor)),
+          ...(meetsCatalogueFloor ? { belowBaseline: true } : {}),
+          current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
+          floor: describeFloor(floor),
+        })
+      }
     } else if (meetsFloor) {
       contribution = 'strong'
       for (const id of strongPop) enforced.add(id)
@@ -474,8 +490,21 @@ function evaluateGoal(
     }
     // A policy that targets all users is a broad match for a narrower goal (its
     // own scope belongs to mfa-all-users), so it is not this goal's own coverage.
-    const ownScope = impl.expectedWho.kind === 'all' || !c.who.all
-    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope })
+    // The converse holds for an all-users goal: a policy assigned only to
+    // directory roles or only to guests is the admin or guest goal's policy, and
+    // correcting it to All users would take it from that goal (C01). And a policy
+    // carrying no control of the kind the goal asks for — a session-only policy
+    // for a grant goal — is another goal's policy whatever its assignment.
+    // Nor is a policy for part of the people whose grant asks more than the floor
+    // (a stronger authentication strength, another control under AND): correcting
+    // it to All users puts that requirement on everyone and takes it from the
+    // people it was written for, as an admins group's phishing-resistant policy
+    // (C01). What it asks, not its name or its place in the scan, decides.
+    const ownScope =
+      (impl.expectedWho.kind === 'all'
+        ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null && !(floor.grant !== undefined && grantExceedsFloor(c.grant, floor.grant)))
+        : !c.who.all) && carriesFloorControl(c, floor)
+    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only
     // that: Microsoft asks no exclusion of a report-only policy, and Foundation A
@@ -622,6 +651,8 @@ function evaluateGoal(
     enforced.size > 0 ||
     reportOnly.size > 0 ||
     weak.size > 0 ||
+    // A report-only policy of the goal's below its floor (gap 4): partly in place, and the policy to correct.
+    reasons.some((r) => (r.kind === 'weaker-control' || r.kind === 'session-weaker') && r.userIds.length > 0) ||
     (contributions.some((c) => c.contribution === 'strong') && (vacuous || reasons.some((r) => r.kind === 'excluded' && !r.expected && r.userIds.length > 0)))
   )
     status = 'partial'
@@ -672,6 +703,45 @@ function evaluateGoal(
 
   const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
   return { ...base, status, statement }
+}
+
+/**
+ * The one candidate `fits` admits (C01, review R1-F2): the only one, or among
+ * several the only one reaching furthest — the goal's whole population, else an
+ * All users assignment. Where several reach only part of the population (named
+ * groups, users or roles), nothing tells them apart and correcting one would
+ * change who it applies to, so they are `'ambiguous'`: an admins group's policy
+ * and a staff group's policy are both "assigned to a group", and taking the
+ * first listed rewrote the admins policy to All users. Several that already
+ * reach as far as the goal asks keep the first listed: correcting any of them
+ * changes nobody's scope (a remaining order dependence, BLOCKED S1 21:50 gap 2).
+ */
+export function ownCandidate<T extends CandidateContribution>(candidates: readonly T[], fits: (c: T) => boolean): T | 'ambiguous' | null {
+  const hits = candidates.filter(fits)
+  if (hits.length <= 1) return hits[0] ?? null
+  const reach = (c: T): number => (c.reachesWhole === true ? 2 : c.assignedToAll === true ? 1 : 0)
+  const furthest = Math.max(...hits.map(reach))
+  const top = hits.filter((c) => reach(c) === furthest)
+  return top.length === 1 || furthest > 0 ? top[0] : 'ambiguous'
+}
+
+/**
+ * The policy carries the kind of control the goal's floor names, at any strength:
+ * a grant goal's policy has a grant that is not a block, a block goal's a block,
+ * a session goal's some session control. Whether it is strong enough is the
+ * contribution's question, not this one.
+ */
+function carriesFloorControl(f: PolicyFacts, floor: Parameters<typeof satisfiesFloor>[2]): boolean {
+  const g = f.grant
+  const isBlock = g !== null && [...g.controls].some((x) => /^block$/i.test(x))
+  const hasGrant = g !== null && (g.controls.size > 0 || g.strengthId != null || g.strength != null)
+  if (floor.grant === 'block' && !isBlock) return false
+  if (floor.grant && floor.grant !== 'block' && (!hasGrant || isBlock)) return false
+  if (floor.session) {
+    const s = f.session
+    if (!(s.signInFrequencyHours !== null || s.signInFrequencyEveryTime || s.persistentBrowser !== null || s.appEnforced || s.secureSignInSession || s.cloudAppSecurity !== null)) return false
+  }
+  return true
 }
 
 function evaluateStructural(

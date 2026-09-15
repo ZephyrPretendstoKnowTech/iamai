@@ -77,7 +77,7 @@ test('nothing but lifecycle.ts assigns a status', () => {
   // reason — the three below are not steps at all.
   const allowed: Record<string, { n: number; why: string }> = {
     'src/roadmap/lifecycle.ts': { n: 1, why: 'projectStatus in setState: the one writer' },
-    'src/graph/collect/http.ts': { n: 2, why: 'the HTTP error classes carry the response status' },
+    'src/graph/collect/http.ts': { n: 3, why: 'the HTTP error classes carry the response status' },
     'src/graph/spikes/authMethods.ts': { n: 1, why: 'a dev spike recording a response status' },
     'src/graph/spikes/reportsCheck.ts': { n: 1, why: 'a dev spike recording a response status' },
     'src/graph/spikes/spike1Extended.ts': { n: 3, why: 'a dev spike recording a response status' },

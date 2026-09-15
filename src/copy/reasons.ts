@@ -52,7 +52,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; unsettled: string; sourceMapping: string; pairUnmatched: string; noOperation: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; emergency: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -77,6 +77,8 @@ export const BLOCKED_REASON = {
   /** The baseline's own references a person has not mapped yet (roadmap/sourceMappings.ts): the policy holds until Plan settings → Baseline mappings answers it. */
   sourceMapping: BLOCKED.sourceMapping,
   pairUnmatched: BLOCKED.pairUnmatched,
+  /** Several tenant policies the goal could correct that nothing tells apart (coverage.ts ownCandidate): the step will not guess. */
+  targetAmbiguous: BLOCKED.targetAmbiguous,
   noOperation: BLOCKED.noOperation,
   /** A deployed policy that is not what the plan asked for in a part IAMAI does not write (roadmap/operations.ts `manual-correction`): a person corrects it. */
   manualCorrection: BLOCKED.manualCorrection,
@@ -84,6 +86,13 @@ export const BLOCKED_REASON = {
   unverifiedExclusion: (group: string): string => fillText(BLOCKED.unverifiedExclusion, { group }),
   /** The authentication methods policy this scan could not read (roadmap/passkeySettings.ts): the passkey settings cannot be compared until it can. */
   methodsPolicyUnread: BLOCKED.methodsPolicyUnread,
+  /** Passkey settings IAMAI cannot change without overwriting something (roadmap/passkeySettings.ts): a profile-based policy, a block list that blocks Authenticator, or a partial read. */
+  passkeyProfiles: BLOCKED.passkeyProfiles,
+  passkeyBlockConflict: BLOCKED.passkeyBlockConflict,
+  passkeyPartialRead: BLOCKED.passkeyPartialRead,
+  /** The sync workflow's calling identity is not established as supported for workload Conditional Access (roadmap/workloadIdentity.ts), or is known not to be. */
+  workloadIdentityUnknown: BLOCKED.workloadIdentityUnknown,
+  workloadIdentityUnsupported: BLOCKED.workloadIdentityUnsupported,
   emergency: BLOCKED.emergency,
 }
 

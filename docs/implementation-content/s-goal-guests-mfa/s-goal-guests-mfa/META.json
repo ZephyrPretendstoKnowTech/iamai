@@ -63,12 +63,20 @@
     "policies.guests.mixed.target.displayName",
     "policies.guests.strong.target.users",
     "policies.guests.mixed.target.users",
+    "policies.guests.strong.target.conditions",
+    "policies.guests.strong.target.grantControls",
+    "policies.guests.strong.target.sessionControls",
+    "policies.guests.mixed.target.conditions",
+    "policies.guests.mixed.target.grantControls",
+    "policies.guests.mixed.target.sessionControls",
     "authStrength.target.id",
     "policies.guests.strong.current.id",
     "policies.guests.mixed.current.id",
     "policies.guests.semanticMismatches"
   ],
   "optionalBindings": [
+    "policies.guests.strong.current.removedExclusions",
+    "policies.guests.mixed.current.removedExclusions",
     "tenant.displayName",
     "guests.affected.count",
     "policies.guests.strong.current.displayName",
@@ -78,6 +86,7 @@
     "policyPair.current.states",
     "evidence.reportOnly",
     "partnerTrust.resolvedPatches",
+    "policies.guests.targets.json",
     "dependencies.blockers",
     "signature"
   ],
@@ -87,7 +96,7 @@
         "entra.create-pair"
       ],
       "json": [
-        "json.target-pair"
+        "json.create-pair"
       ],
       "powershell": [
         {
@@ -114,7 +123,7 @@
             "sessionControls"
           ],
           "entra": "entra.correct-pair",
-          "json": "json.target-pair",
+          "json": "json.correct-pair",
           "powershell": [
             {
               "block": "powershell.run",

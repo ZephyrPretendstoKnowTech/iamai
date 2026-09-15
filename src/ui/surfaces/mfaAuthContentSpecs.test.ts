@@ -28,6 +28,12 @@ const PACKAGE_SRC = readFileSync('src/ui/surfaces/stepPackage.ts', 'utf8')
 const GUESTS = 's-goal-guests-mfa'
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
 const MFA_ALL = 's-goal-mfa-all-users'
+// Cycle 6 (review 5 queue 1): a correction's Save item also carries the line naming the
+// exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
+const REMOVED = "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]"
+const REMOVED_MEMBER = (role: string): string => `This change removes {{policies.guests.${role}.current.removedExclusions}} from the exclusions of {{policies.guests.${role}.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]`
+// Editorial batch C (SHARED-COPY-AND-RULES.md, correction preserving state): the one sentence a correction says about a policy that is On.
+const KEEP_STATE = "Keep the policy's current state. If it is On, the changed rule can affect access after you save."
 
 /** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts). */
 function bodiesOf(f: Fixture): Map<string, StepBody> {
@@ -71,24 +77,30 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   // Entra: the three blocks a conditions correction draws.
   assert.ok(packageOf(MFA_ALL).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(MFA_ALL, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group and aligns the conditions with the baseline.' })
+  // Editorial batch C: the open block precedes every module, so it says only that the correction changes what IAMAI found different.
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
       kind: 'list', ordered: true, start: 3, items: [
-        ['Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).'],
-        ['Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).'],
-        ['Grant: Grant access → Require multifactor authentication.'],
+        ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.'],
+        ['Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // A conditions correction writes no grant (S3, C02): the grant is its own module, drawn only when the grant differs.
+    // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
+    // Editorial batch C: the human check after the rescan is labelled as one.
+    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`, REMOVED], ['Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
-  assert.match(ai, /^This is the foundational MFA policy: every user must present a second factor \(MFA\) at sign-in\. It's the single most impactful control in the baseline\.$/m)
-  assert.match(ai, /^The policy is already enforced on your tenant\. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt\.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow\.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally\.$/m)
-  assert.match(ai, /^After this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method\. Until that's done, the 33% threshold tile tracks progress\.$/m)
+  // Editorial batch C (channel correction): the built-in grant, the Intune Enrollment exclusion, no promise of a prompt at every sign-in.
+  assert.match(ai, /^This policy requires multifactor authentication for the users it covers\. It uses the built-in Require multifactor authentication grant, not an authentication strength\./m)
+  assert.match(ai, /^— Target resources: All resources, excluding Microsoft Intune Enrollment\. A separate step sets the requirement for Intune enrollment\.$/m)
+  assert.match(ai, /^An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in\. Whether each person has a usable method is shown on MFA Readiness; the MFA Registration Campaign step helps people register one\.$/m)
+  assert.ok(ai.includes(KEEP_STATE))
+  assert.doesNotMatch(ai, /single most impactful|unconditionally|already enforced|\d+% threshold/)
 })
 
 test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names both tiers with numbered corrections for each', () => {
@@ -103,35 +115,49 @@ test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names 
   assert.match(PACKAGE_SRC, /out\[`\$\{prefix\}\.current\.displayName`\] = row\.displayName/)
   for (const role of ['strong', 'mixed']) assert.ok(packageOf(GUESTS).meta.optionalBindings?.includes(`policies.guests.${role}.current.displayName`), `${role}: the member name is not a declared binding`)
   const entra = packageOf(GUESTS).blocks['entra.correct-pair'].text
-  assert.match(entra, /^This step manages two Conditional Access policies that work together:$/m)
-  assert.match(entra, /^\*\*Policy 1: \{\{policies\.guests\.strong\.current\.displayName\}\} \(strong tier\)\*\*\nFor trusted partners — requires the authentication strength "Modern MFA \+ TAP\."$/m)
-  assert.match(entra, /^\*\*Policy 2: \{\{policies\.guests\.mixed\.current\.displayName\}\} \(mixed tier\)\*\*\nFor all other guests — requires standard MFA \(any second factor\)\.$/m)
+  // Editorial batch C (channel correction): two policies over different external-user types, not trusted partners
+  // versus everyone else, and each member corrected to its whole resolved target, not only its exclusions.
+  assert.match(entra, /^This step manages two separate Conditional Access policies\. The policies cover different external-user types\. Apply each policy's resolved users and exclusions; the split is not simply trusted partners versus everyone else\.$/m)
+  assert.match(entra, /^\*\*Policy 1: \{\{policies\.guests\.strong\.current\.displayName\}\}\*\* requires the authentication strength in the resolved target\.$/m)
+  assert.match(entra, /^\*\*Policy 2: \{\{policies\.guests\.mixed\.current\.displayName\}\}\*\* requires built-in multifactor authentication\.$/m)
+  const USERS = "Users → Include → Guest or external users: select exactly the external-user types and external Microsoft Entra organizations in this policy's resolved target. Users → Exclude: match the resolved target's excluded guest types, users, groups and roles, including the exclusions group. Remove any exclusion the target does not list."
+  // Review 3 queue 5: each save says what it does to a guest policy that is On.
+  const SAVE = 'Save. Leave **Enable policy** as it is: if the policy is On, the changed rule can affect access after you save.'
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
-        ['Open the strong-tier policy (find it by ID in Plan settings).'],
-        ['Users → Exclude → Groups: add the exclusions group.'],
-        ['Verify: the Grant requires the authentication strength "Modern MFA + TAP."'],
-        ['Save.'],
-        ['Open the mixed-tier policy (find it by ID in Plan settings).'],
-        ['Users → Exclude → Groups: add the exclusions group.'],
-        ['Verify: the Grant requires "Require multifactor authentication."'],
-        ['Save.'],
+        ['Open {{policies.guests.strong.current.displayName}} (find it by ID in Plan settings).'],
+        ['Name: set it to **{{policies.guests.strong.target.displayName}}**.'],
+        [USERS],
+        ['Target resources: All resources. Client apps: All. Remove any other condition.'],
+        ['Grant: **Grant access → Require authentication strength**, and select the authentication strength in the resolved target. Remove any other grant control.'],
+        ['Session: remove any session control the resolved target does not include.'],
+        [SAVE, REMOVED_MEMBER('strong')],
+        ['Open {{policies.guests.mixed.current.displayName}} (find it by ID in Plan settings).'],
+        ['Name: set it to **{{policies.guests.mixed.target.displayName}}**.'],
+        [USERS],
+        ['Target resources: All resources. Client apps: All. Remove any other condition.'],
+        ['Grant: **Grant access → Require multifactor authentication**. Remove any authentication strength or other grant control.'],
+        ['Session: remove any session control the resolved target does not include.'],
+        [SAVE, REMOVED_MEMBER('mixed')],
         ['Rescan in IAMAI.'],
       ],
     },
   ])
-  assert.match(entra, /^Do not merge these two policies into one\. They serve different guest populations with different MFA requirements\.$/m)
-  assert.doesNotMatch(entra, /tenant-resolved users objects|two-member split/)
-  // AI Info is unchanged (BLOCKED.md), and still the channel that binds the pair's mismatches.
+  assert.match(entra, /^Do not merge these two policies into one\. Each covers different external-user types with a different MFA requirement\.$/m)
+  assert.doesNotMatch(entra, /tenant-resolved users objects|two-member split|Modern MFA \+ TAP|For trusted partners/)
+  // A partly deployed pair keeps its Entra correction: the walkthrough needs neither member's id (guestsPairInvocation.test.ts).
+  assert.doesNotMatch(entra, /\{\{policies\.guests\.(strong|mixed)\.current\.id\}\}/)
+  // AI Info is still the channel that binds the pair's mismatches.
   assert.match(packageOf(GUESTS).blocks['ai.correct'].text, /\{\{policies\.guests\.semanticMismatches\}\}/)
 })
 
 test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says what it measures, the unknown handoff asks which admins, Entra is one numbered procedure, and AI Info explains the strength', () => {
   const ADMINS = 's-goal-admins-phishing-resistant'
   const steps = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as { id: string; why: string }[]
-  assert.equal(steps.find((s) => s.id === 'admins-phishing-resistant')?.why, "Phone codes and push approvals can be phished — an attacker builds a convincing sign-in page and the admin hands over the code. A passkey can't be used on the wrong site, so phishing doesn't work.")
+  // Editorial batch C: the register Why.
+  assert.equal(steps.find((s) => s.id === 'admins-phishing-resistant')?.why, 'Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.')
   // The threshold tile's collapsed value on the demo admin step.
   const demo = bodiesOf(fixture('demo')).get(ADMINS)
   assert.ok(demo, 'the demo plan has the admin step')
@@ -146,25 +172,30 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   // Entra: the three blocks a conditions correction draws.
   assert.ok(packageOf(ADMINS).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(ADMINS, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group and aligns the admin roles with the baseline.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
       kind: 'list', ordered: true, start: 3, items: [
-        ['Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).'],
-        ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Target resources: All resources.'],
-        ['Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).'],
+        ['Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.'],
+        ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.'],
+        ['Target resources: All resources. Client apps: All. Remove any other condition.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Save. Do not change the policy state.'], ['Rescan in IAMAI.']] },
+    // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.
+    // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`, REMOVED], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text
-  assert.match(ai, /^This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in\.$/m)
-  assert.match(ai, /^Unlike the "MFA for Everyone" policy which accepts any MFA method \(including phone call\), this policy uses the authentication strength "Modern MFA \+ TAP" which only accepts phishing-resistant methods and Temporary Access Pass\.$/m)
-  assert.match(ai, /^The 0% threshold means none of your admins currently have a qualifying method registered\. The MFA Registration Campaign step handles getting them registered\. This policy enforces the requirement; the campaign helps people meet it\.$/m)
-  assert.match(ai, /^The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles\.$/m)
+  // Editorial batch C: the accepted set is named, Temporary Access Pass included, and no prompt at every sign-in is promised.
+  assert.match(ai, /^This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength\. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass\./m)
+  assert.match(ai, /the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass\. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass\.$/m)
+  // No fixed claim about the tenant's registrations: nothing binds one (C07).
+  assert.doesNotMatch(ai, /0% threshold|none of your admins|every time they sign in/)
+  assert.match(ai, /Whether admins have an accepted method registered is shown on MFA Readiness, and the MFA Registration Campaign step helps them register one\./)
+  assert.match(ai, /^The correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name\.$/m)
+  assert.ok(ai.includes(KEEP_STATE))
 })
 
 test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra is one numbered procedure naming the policy, and AI Info explains the attack', () => {
@@ -173,23 +204,28 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
   assert.ok(packageOf(AUTH).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(AUTH, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  // Editorial batch C (channel correction): the correction sets the whole intended target, not only the exclusions group.
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction sets its users, exclusions, target resources and conditions to the intended target on the same policy.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).'],
-        ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Verify: Target resources = All resources, Conditions = Client apps: Authentication flows: Authentication transfer, Grant = Block access.'],
+        ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    // Cycle 3 (review 2): and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 5, items: [[`Save. ${KEEP_STATE}`, REMOVED], ['Rescan in IAMAI to confirm the correction. Verify after the change: affected users can sign in directly on the destination device where the app supports it.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
+  // Authentication flows is its own condition, not a Client apps setting.
+  assert.doesNotMatch(entra, /Client apps: Authentication flows/)
   const ai = packageOf(AUTH).blocks['ai.correct'].text
-  assert.match(ai, /^This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating\.$/m)
-  assert.match(ai, /^Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device\. Blocking the flow stops this attack entirely\.$/m)
-  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency\.$/m)
+  assert.match(ai, /^This policy blocks authentication transfer: the flow that moves a signed-in state from one device to another, for example by scanning a QR code shown in a desktop app, without a new sign-in on the second device\. It blocks this flow only; it does not block every QR-code sign-in or other forms of token theft\.$/m)
+  assert.match(ai, /^Accounts excluded from this policy are not blocked by it\. That does not guarantee them access through other policies\.$/m)
+  assert.doesNotMatch(ai, /stops this attack entirely|can still use authentication transfer/)
 })
 
 test('s-goal-block-device-code: the device code tile says what to confirm, the dropdown keeps its stored answers, and Entra is one numbered procedure naming the policy', () => {
@@ -207,21 +243,26 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
   assert.ok(packageOf(DEVICE).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(DEVICE, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  // Editorial batch C (channel correction): the correction sets the intended conditions, and Authentication flows is not inside Client apps.
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Verify all other settings match the baseline: Target resources = All resources, Conditions = Client apps: Authentication flows: Device code, Grant = Block access.'],
+        ['Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    // Cycle 3 (review 2): and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
-  // PowerShell, JSON and AI Info are unchanged (BLOCKED.md).
-  assert.match(packageOf(DEVICE).blocks['powershell.run'].text, /^param\(/)
+  assert.doesNotMatch(entra, /Client apps: Authentication flows/)
+  // PowerShell and JSON are unchanged (BLOCKED.md), apart from the cycle 6 line naming
+  // removed exclusions, which heads the script and is omitted when nothing is removed.
+  assert.match(packageOf(DEVICE).blocks['powershell.run'].text, /^# This change removes \{\{policy\.current\.removedExclusions\}\}[^\n]*\[omit this line when unavailable\]\nparam\(/)
   assert.doesNotMatch(packageOf(DEVICE).blocks['json.correct-conditions'].text, /\/\//)
   assert.match(packageOf(DEVICE).blocks['ai.correct'].text, /\{\{policy\.current\.semanticMismatches\}\}/)
 })

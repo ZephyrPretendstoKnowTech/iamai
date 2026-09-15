@@ -18,6 +18,7 @@
 // history and its own gates, and the step's single lifecycle is derived from all
 // of them conservatively — never taken from whichever member came first.
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
+import { ownCandidate } from '../coverage/coverage.ts'
 import { list } from '../copy/statements.ts'
 import { holdOf, isHeld } from './holds.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
@@ -99,8 +100,15 @@ const daysBetween = (from: string, to: string): number => Math.max(0, Math.floor
  * moves; the status word follows from it (lifecycle.ts), so a stage and a word
  * cannot disagree. Returns nothing: a refused move leaves the step alone.
  */
+import { WORKLOAD_IDENTITY_BLOCKER } from './workloadIdentity.ts'
+
 function advance(step: Step, to: Partial<StepState>, note: string, at: string): void {
   if (step.state.setAside) return
+  // A workload step whose sync identity is not established as supported is never
+  // completed by a policy that looks like its target (roadmap/workloadIdentity.ts):
+  // the policy is observed and kept as it is, and the step stays on its hold. What
+  // the scan saw of the policy's lifecycle still records.
+  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER)) return
   const from = step.status
   if (!advanceState(step, to)) return
   // A step generated already at this status (coverage saw it enforced) still
@@ -291,11 +299,32 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // 4. the goal's coverage fingerprint, for a step with one member
   if (sole && !out[0].policy && !out[0].ambiguous) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
-    const candidate =
-      result?.candidates.find((c) => c.contribution === 'strong') ??
-      result?.candidates.find((c) => c.contribution === 'reportOnly') ??
-      result?.candidates.find((c) => c.contribution === 'weak') ??
-      null
+    // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
+    // policies in. Another goal's policy stands for this step only where the
+    // classifier counted it towards delivering the goal — an all-users policy
+    // that delivers the guests goal — never a narrower one that cannot (C01).
+    const delivering = new Set(result?.satisfaction?.policyIds ?? [])
+    const find = (fits: (c: { policyId: string; ownScope: boolean }) => boolean) =>
+      result?.candidates.find((c) => fits(c) && c.contribution === 'strong') ??
+      result?.candidates.find((c) => fits(c) && c.contribution === 'reportOnly') ??
+      result?.candidates.find((c) => fits(c) && c.contribution === 'weak')
+    // Among several of its own in one tier, the one generate.ts would correct
+    // (coverage.ts ownCandidate), else the one the classifier found sufficient by
+    // itself; otherwise none, and no scan order decides it (review R1-F2).
+    let tied = false
+    const own = (() => {
+      for (const tier of ['strong', 'reportOnly', 'weak'] as const) {
+        const hit = ownCandidate(result?.candidates ?? [], (c) => c.ownScope && c.contribution === tier)
+        if (hit !== 'ambiguous') {
+          if (hit) return hit
+          continue
+        }
+        tied = true
+        return result?.candidates.find((c) => c.ownScope && c.contribution === tier && c.policyId === result.satisfaction?.sufficientId) ?? null
+      }
+      return null
+    })()
+    const candidate = own ?? (tied ? null : find((c) => delivering.has(c.policyId))) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
   }

@@ -14,22 +14,24 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the IAMAI-resolved custom authentication strength by stable object identity: **{{strength.current.displayName}}** (`{{strength.current.id}}`). Review current Conditional Access usage before changing the shared object.
+Open the custom authentication strength IAMAI resolved: **{{strength.current.displayName}}** (`{{strength.current.id}}`). Review its Conditional Access usage first. This strength is shared: a change applies to every policy that uses it as soon as you save, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.metadata","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Correct the display name to **{{strength.target.displayName}}** only when IAMAI reports the metadata mismatch. Preserve allowed combinations.
+Change the display name to **{{strength.target.displayName}}** only when IAMAI reports a name difference. Leave the allowed combinations unchanged.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.combinations","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected.
-2. Edit allowed methods to exactly the pinned five: Windows Hello for Business; Passkeys (FIDO2); CBA multifactor; TAP one-time; TAP multi-use.
+1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.
+2. Edit allowed methods to exactly the baseline's five: Windows Hello for Business; Passkeys (FIDO2); CBA multifactor; TAP one-time; TAP multi-use.
 3. Do not add any other method.
 4. Save and re-read the same strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
-Verify the same tenant-local strength is custom, named **{{strength.target.displayName}}**, and allows exactly the pinned five combinations. Review its Conditional Access usage and rescan IAMAI.
+Verify that the same strength (same object ID) is a custom strength named **{{strength.target.displayName}}** and allows exactly the baseline's five combinations. Rescan IAMAI.
+
+Verify after the change: review each Conditional Access policy that uses this strength and confirm the people it covers can still satisfy one of the five combinations.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template"}
@@ -74,53 +76,54 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-An authentication strength is a named set of methods that a Conditional Access policy can require. Instead of just "require MFA" (which accepts any second factor including phone call), this strength says "require one of these five specific methods."
+An authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts only five combinations:
+— Windows Hello for Business: a biometric or PIN bound to the device
+— Passkeys (FIDO2): a security key or a passkey in Microsoft Authenticator
+— Certificate-based authentication (multifactor): a smart card or certificate
+— Temporary Access Pass (one-time use)
+— Temporary Access Pass (multi-use)
 
-The five methods are all phishing-resistant or temporary:
-— Windows Hello for Business: biometric or PIN bound to the device
-— Passkeys (FIDO2): a hardware key or Authenticator passkey
-— Certificate-based authentication: a smart card or certificate
-— Temporary Access Pass: a one-time code for bootstrapping (so a user with no method can sign in once to register)
+The first three are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because both Temporary Access Pass options are accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.
 
-Phone call, SMS, and the Authenticator push notification are deliberately excluded. They're not phishing-resistant.
+Phone call, text message and Authenticator push notifications are not accepted.
 
-Multiple policies in the plan will reference this strength by name. Create it once; they all share it.
+Several baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review only these detected strength mismatches: {{strength.current.semanticMismatches}}. Consider current usage {{strength.current.usage}} before recommending a shared-object change.
+A custom authentication strength exists but differs from the intended one. Differences IAMAI detected: {{strength.current.semanticMismatches}}. Policies that use it: {{strength.current.usage}}. The intended strength allows Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. A change to this shared strength applies to every policy that uses it as soon as it is saved, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify the resolved strength semantics and dependent usage. Do not broaden the allowed methods.
+This step is waiting to confirm the authentication strength. The intended result is one custom strength in this tenant that allows exactly Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. Any additional method would apply to every policy that uses this strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why this prerequisite is blocked without inventing a strength or tenant object: {{dependencies.blockers}}.
+This prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Resolve them before creating or changing an authentication strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.source-conflict","channel":"aiInfo","states":["sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the source/resolution conflict. Do not choose among ambiguous tenant strengths or mutate a built-in strength.
+IAMAI found a conflict about which authentication strength this step should use: the source descriptions disagree, or more than one tenant strength could be the intended one. None of the candidates counts as selected until the conflict is resolved. Built-in authentication strengths cannot be edited; a correction applies only to a custom strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admin-change","channel":"email","states":["partial"],"format":"markdown","kind":"template"}
-Subject: Authentication strength change review
+Subject: Action needed: Create the Baseline's Authentication Strength
 
-We are correcting the shared authentication strength used by Conditional Access. The change can affect every policy that references this object, so we are reviewing current usage first and will change only the pinned allowed methods.
+Please review the policies using this authentication strength before we change its accepted methods. The target includes Temporary Access Pass as well as phishing-resistant methods.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"target","label":"Target strength","result":{{json:strength.target.displayName}},"line":"Pinned baseline: WHfB, FIDO2, multifactor certificate, TAP one-time, TAP multi-use."},{"id":"usage","label":"Current usage","result":{{json:strength.current.usage}},"line":"A shared strength change can affect every referencing Conditional Access policy."}],"whyIamaiSaysThis":"Downstream policies need one tenant-local custom strength with the pinned combinations; the source tenant GUID is not portable."}
+{"tiles":[{"id":"target","label":"Target strength","result":{{json:strength.target.displayName}},"line":"Baseline: Windows Hello for Business, Passkeys (FIDO2), multifactor certificate, TAP one-time, TAP multi-use."},{"id":"usage","label":"Current usage","result":{{json:strength.current.usage}},"line":"Check the five allowed combinations and every policy already using this strength before changing it."}],"whyIamaiSaysThis":"The policies that require this strength need one custom strength in this tenant with the baseline's combinations; the source tenant's object ID cannot be reused."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","verificationRequired"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"built-in-selected","classification":"documented","symptom":"The resolved object is a built-in authentication strength.","check":"Read policyType on the resolved strength.","fix":"Do not modify it; resolve or create a tenant-local custom strength instead.","then":"Rescan IAMAI.","sources":["ms-strength-update"]},{"id":"dependent-policies","classification":"documented","symptom":"Changing combinations reports Conditional Access references.","check":"Review the usage result and every returned policy reference.","fix":"Change only the pinned combinations in a controlled window; use previousCombinations for rollback if required.","then":"Re-read the strength and dependent policies.","sources":["ms-strength-combos","ms-strength-usage"]},{"id":"duplicate-strength","classification":"derived","symptom":"More than one custom strength appears equivalent.","check":"Compare stable IDs and exact allowed combinations.","fix":"Do not create or mutate until IAMAI/owner resolves the canonical object.","then":"Rescan after resolution.","sources":["ms-strength-create"]}]}
+{"scenarios":[{"id":"built-in-selected","classification":"documented","symptom":"The resolved object is a built-in authentication strength.","check":"Read policyType on the resolved strength.","fix":"Do not modify it; resolve or create a tenant-local custom strength instead.","then":"Rescan IAMAI.","sources":["ms-strength-update"]},{"id":"dependent-policies","classification":"documented","symptom":"Changing combinations reports Conditional Access references.","check":"Review the usage result and every returned policy reference.","fix":"Change only the baseline combinations in a controlled window; use previousCombinations for rollback if required.","then":"Re-read the strength and dependent policies.","sources":["ms-strength-combos","ms-strength-usage"]},{"id":"duplicate-strength","classification":"derived","symptom":"More than one custom strength appears equivalent.","check":"Compare object IDs and exact allowed combinations.","fix":"Do not create or change a strength until the intended object is resolved.","then":"Rescan after resolution.","sources":["ms-strength-create"]}]}
 @@IAMAI-END

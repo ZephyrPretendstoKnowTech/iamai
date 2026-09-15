@@ -12,11 +12,14 @@
 // "never silently satisfy"); an unlisted condition is unresolved and its edge
 // participates.
 //
-// Evidence is never a hold (§7). An evidence gate — the observation predicate, a
-// readiness threshold, an `evidence` or `time/evidence-window` edge — gates `enforce`
-// only: a started policy behind an open one reads Ready · Observing with the gate as
-// its reason, and an unstarted policy's create never waits on it. Every kind of hold
-// the legacy roadmap/holds.ts knew has a counterpart here (A1a).
+// An evidence gate — the observation predicate, a readiness threshold, an `evidence` or
+// `time/evidence-window` edge — gates `enforce` only, and an unstarted policy's create
+// never waits on it. The owner's status contract supersedes "evidence is never a hold":
+// a started policy behind an open gate waits On Hold with the gate as its reason, and
+// reads Ready · Observing (the review) only where the gate says what was collected can
+// be reviewed. Ready means the next action can be performed now; Up Next means every
+// unfinished prerequisite is Ready and finishing it leaves nothing more to wait for.
+// Every kind of hold the legacy roadmap/holds.ts knew has a counterpart here (A1a).
 
 import type { Action, DependencyData, Edge, Milestone, StepIndexEntry } from './parseDependencyDoc.ts'
 
@@ -53,6 +56,8 @@ export type EvidenceGate = {
   minDays: number | null
   /** The gate's own words — a threshold, the records' state — or null. */
   reason: string | null
+  /** Open, but what was collected can be reviewed now (the window closed over records that were read). */
+  reviewable?: boolean
 }
 
 export type StepObservation = {
@@ -107,8 +112,8 @@ export type BlockerKind =
   | 'decision' | 'fact' | 'missingObject' | 'step' | 'suspendedPrerequisite' | 'unsupported'
   | 'evidence'
 
-/** The kinds a prerequisite tile or an On Hold heading can carry: every kind but the evidence gate. */
-export type HoldBlockerKind = Exclude<BlockerKind, 'evidence'>
+/** The kinds a prerequisite tile or an On Hold heading can carry: an open evidence gate heads a report-only wait. */
+export type HoldBlockerKind = BlockerKind
 /** A blocker that is a prerequisite, as the board and the Readiness tiles read it. */
 export type HoldBlocker = Blocker & { kind: HoldBlockerKind }
 
@@ -334,7 +339,8 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
     }
     const pre = derive(ctx, e.prerequisite)
     if (pre.lane === 'Deferred') out.push(blocker('suspendedPrerequisite', e.prerequisite, e, true))
-    else if (pre.lane === 'On Hold') out.push(blocker('step', e.prerequisite, e, true))
+    // A prerequisite held by something abnormal passes it on; one only waiting (evidence, a deeper step) is a healthy wait.
+    else if (pre.lane === 'On Hold') out.push(blocker('step', e.prerequisite, e, pre.reason?.abnormal !== false))
     else out.push(blocker('step', e.prerequisite, e, false, pre.substatus ? SUBSTATUS_ORDINAL[pre.substatus] : UP_NEXT_ORDINAL))
   }
   return out
@@ -419,24 +425,27 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
       .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
-  // An enforced policy that drifted is corrected next (RUN-CONTEXT-B decision 6): it is
-  // already On, and a baseline reference nobody has mapped yet does not hold bringing
-  // the rest of it back to the target. Every other abnormal blocker — a contradictory
-  // baseline, a tenant fact the scan could not read, a missing object — still holds it.
-  if (kind === 'policy' && started && obs.enforced === true && nextAction === 'correct'
-    && abnormal.every((b) => b.kind === 'sourceMapping')) {
-    return result('Ready', { substatus: 'Correct', nextAction, started, blockers: unresolved.filter((b) => !b.abnormal).sort(nearest), gates, layers })
-  }
+  // Every abnormal blocker holds the next action, an enforced policy's correction included
+  // (owner's status contract): a baseline reference nobody has mapped leaves the
+  // correction unbuildable, so it is not Ready.
   if (abnormal.length) {
     const healthy = unresolved.filter((b) => !b.abnormal).sort(nearest)
     return result('On Hold', { nextAction, started, reason: abnormal[0]!, blockers: [...abnormal, ...healthy], gates, layers })
   }
 
   const healthy = unresolved.sort(nearest)
-  // 4–5. Started and progressing normally. Evidence gates matter once the object is as pinned:
-  // a correction comes first, and enforcement waits for every gate to close (§7).
+  // Behind healthy prerequisites (owner's status contract): Up Next only where finishing
+  // each one's own next action makes this action available with nothing more to wait
+  // for; a prerequisite that is not Ready, or one that still has a wait after its next
+  // action, holds.
+  const deeper = healthy.filter((b) => !finishesNow(ctx, b))
+  const queued = (): LaneResult => deeper.length === 0
+    ? result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, gates, layers })
+    : result('On Hold', { nextAction, started, reason: deeper[0]!, blockers: healthy, gates, layers })
+
+  // 4–5. Started. A correction comes first; enforcement waits for every gate to close (§7).
   if (started) {
-    if (nextAction === 'correct') return result('Ready', { substatus: 'Correct', nextAction, started, blockers: healthy, gates, layers })
+    if (nextAction === 'correct') return healthy.length === 0 ? result('Ready', { substatus: 'Correct', nextAction, started, gates, layers }) : queued()
     const open = gates.filter((g) => !g.satisfied)
     // A conditional input nobody saved (U28) waits on a person's answer, not on
     // evidence (B10 P0-12, RUN-CONTEXT-B decisions 6 and 17). A policy already On
@@ -448,18 +457,47 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
     if (unsaved.length > 0 && (obs.enforced === true || (healthy.length === 0 && onlyInputs))) {
       return result('Ready', { substatus: 'Decision', nextAction, started, reason: open[0] ? evidenceBlocker(open[0]) : null, blockers: healthy, gates, layers })
     }
-    if (nextAction === 'enforce' && healthy.length === 0 && open.length === 0) {
-      return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })
+    // A report-only policy (owner's status contract): while its evidence is still being
+    // collected it waits On Hold; once what was collected can be reviewed, the review is
+    // Ready (`Observing`); elapsed time alone never makes it Ready to enforce.
+    if (kind === 'policy') {
+      const waiting = open.length > 0 ? open : obs.evidenceSatisfied ? [] : [OBSERVATION]
+      const review = waiting.find((g) => g.reviewable === true)
+      if (review) return result('Ready', { substatus: 'Observing', nextAction, started, reason: evidenceBlocker(review), blockers: healthy, gates, layers })
+      if (waiting.length > 0) return result('On Hold', { nextAction, started, reason: evidenceBlocker(waiting[0]!), blockers: healthy, gates, layers })
     }
-    const reason = open[0] ? evidenceBlocker(open[0]) : healthy[0] ?? null
-    return result('Ready', { substatus: 'Observing', nextAction, started, reason, blockers: healthy, gates, layers })
+    if (healthy.length > 0) return queued()
+    if (nextAction === 'enforce') return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })
+    // An object whose work is started and still short of its target (emergency access hardening):
+    // bringing it to the target is available now. `Observing` is a report-only policy's review.
+    return result('Ready', { substatus: 'Correct', nextAction, started, gates, layers })
   }
   // 6. Not started, next safe action executable now.
   if (healthy.length === 0) {
     return result('Ready', { substatus: kind === 'decision' ? 'Decision' : 'Create', nextAction, started, gates, layers })
   }
-  // 7. Not started, chain healthy: queued behind its nearest unresolved prerequisite.
-  return result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, gates, layers })
+  // 7. Not started: queued behind prerequisites that finish now, else held behind a deeper one.
+  return queued()
+}
+
+/** A report-only policy whose evidence nobody has stated a gate for is still collecting it. */
+const OBSERVATION: EvidenceGate = { id: 'evidence:observation', satisfied: false, minDays: null, reason: null }
+
+/** Whether finishing a healthy prerequisite's own next action satisfies what the step needs from it, with no wait after. */
+function finishesNow(ctx: Ctx, b: Blocker): boolean {
+  // An actionable decision: making it resolves the edge.
+  if (b.kind !== 'step') return true
+  const pre = derive(ctx, b.id)
+  if (pre.lane !== 'Ready') return false
+  if (kindOf(ctx, b.id) !== 'policy') return true
+  const early = b.milestone === 'created' || b.milestone === 'minimum-satisfied'
+  switch (pre.substatus) {
+    case 'Ready to enforce': return true
+    case 'Create': return early
+    // A policy already On is complete once corrected or answered; one in report-only still observes after.
+    case 'Correct': case 'Decision': return early || observation(ctx, b.id).enforced === true
+    default: return false
+  }
 }
 
 export function deriveLane(step: string, graph: Graph, tenantState: TenantState, ownerState: OwnerState = {}): LaneResult {

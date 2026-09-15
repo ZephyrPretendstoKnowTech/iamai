@@ -39,7 +39,9 @@ import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { oneLine } from '../../content/implementation/project.ts'
 import type { StepVarContext } from './stepVars.ts'
+import type { SelectedPolicyBody } from './stepPackage.ts'
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
@@ -87,7 +89,8 @@ const BUILT_IN_STRENGTH_NAMES = new Map<string, string>(builtinStrengths.strengt
 /** The names a step's lines need, from its variable context. */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
   return {
-    nameOf: ctx.nameOf,
+    // A name is one line of an instruction, as in the package tabs (project.ts oneLine).
+    nameOf: (id) => oneLine(ctx.nameOf(id)),
     policyName: String(ex.policyName ?? fallbackTitle),
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
     strengthNameFor: (id) => strengthNameOf(id, ctx),
@@ -104,7 +107,7 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const exclusionsGroupId: string | null = used.exclusionsGroupId?.toLowerCase() ?? null
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = names.nameOf
-  const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? p.displayName : names.policyName
+  const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? oneLine(p.displayName) : names.policyName
   // The strength the operation's own body names. A body that names one and
   // carries no friendly name for it — a confirmed mapping to a tenant object the
   // scan has no row for — falls back to the generic phrase, never to the
@@ -273,8 +276,28 @@ export function strengthForGoal(goalId: string): string | null {
  * The one place the lines are made, so the screen, the print and the exports all
  * get the same answer.
  */
-export function stepPortalLines(step: Step, names: PortalNames): string[] | null {
+export function stepPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null = null): string[] | null {
   if (!implementationOffered(step)) return null
+  return resolvedPortalLines(step, names, selected)
+}
+
+/**
+ * The same lines for the policies the step resolved, whether or not it offers them
+ * today: what the plan proposes, for a briefing about a held step. Never handed over
+ * as instructions — `stepPortalLines` is the one door to those.
+ */
+export function plannedPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null = null): string[] | null {
+  return resolvedPortalLines(step, names, selected)
+}
+
+/**
+ * The lines, each policy read from the body its package selects where the package
+ * hands one over (stepPackage.ts selectedPolicyBodiesOf), else from the resolved
+ * operation. The operation still decides the mode, the exclusions it removes and the
+ * plan tag; the selected body decides the settings, so these lines never instruct a
+ * setting the step's JSON does not send.
+ */
+function resolvedPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null): string[] | null {
   const resolution = step.action.resolution
   const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null
@@ -283,21 +306,46 @@ export function stepPortalLines(step: Step, names: PortalNames): string[] | null
   // tenant's policy, a create names the one the plan proposes.
   const openNameOf = (one: (typeof mapped)[number]): string => {
     const whole = (one.target ?? one.body) as Record<string, unknown>
-    return typeof whole.displayName === 'string' && whole.displayName ? whole.displayName : names.policyName
+    return typeof whole.displayName === 'string' && whole.displayName ? oneLine(whole.displayName) : names.policyName
   }
   const linesOf = (one: (typeof mapped)[number], body: Record<string, unknown>): string[] => {
     const p = asPolicy(body)
     const ctx = contextFor(p, names, resolution!.tenant, openNameOf(one))
     // An update lists the fields its own body carries and says the rest is left
     // alone; a create describes the whole policy it writes.
-    return one.mode === 'update'
-      ? portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx, { mode: 'change', only: sectionsOf(body) })
-      : portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
+    if (one.mode !== 'update') return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
+    const lines = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx, { mode: 'change', only: sectionsOf(body) })
+    // The exclusions the tenant's policy has that the sections this update sends
+    // whole no longer carry: named beside the change, above the line that says the
+    // rest is left alone, because "Users → Include: All users" alone never says a
+    // guest or application exclusion goes (review 3 queue 3).
+    const removed = one.removes ? [...(one.removes.guestsOrExternalUsers ? [shared.changeRemovesGuests as string] : []), ...one.removes.ids.map((id) => names.nameOf(id))] : []
+    if (removed.length === 0) return lines
+    const line = (shared.changeRemoves as string).replace('{removed}', removed.join(', '))
+    const at = ctx.changeUntouched ? lines.lastIndexOf(ctx.changeUntouched) : -1
+    return at >= 0 ? [...lines.slice(0, at), line, ...lines.slice(at)] : [...lines, line]
+  }
+  // The body the step's package selects for this policy: the only one where the
+  // step resolves one policy and the package sends one, else the one naming the same
+  // tenant policy or the same proposed name. A create keeps the operation's plan tag.
+  const selectedFor = (one: (typeof mapped)[number]): Record<string, unknown> | null => {
+    if (!selected || selected.length === 0) return null
+    const policyId = one.mode === 'update' && typeof one.policyId === 'string' ? one.policyId.toLowerCase() : null
+    const chosen =
+      mapped.length === 1 && selected.length === 1
+        ? selected[0]
+        : selected.find((s) => (policyId !== null && s.policyId?.toLowerCase() === policyId) || (typeof s.body.displayName === 'string' && oneLine(s.body.displayName) === openNameOf(one)))
+    if (!chosen) return null
+    const tag = (one.body as { description?: unknown }).description
+    return one.mode !== 'update' && chosen.body.description === undefined && typeof tag === 'string' ? { ...chosen.body, description: tag } : chosen.body
   }
   // A policy an answer changed carries the baseline's own version with it
   // (roadmap/generate.ts), so every line the answer moved is shown beside what
   // the baseline said. The answer is not applied here; it is already in the body.
-  const annotated = (one: (typeof mapped)[number]): string[] => (one.baseline ? besideBaseline(linesOf(one, one.body), linesOf(one, one.baseline)) : linesOf(one, one.body))
+  const annotated = (one: (typeof mapped)[number]): string[] => {
+    const body = selectedFor(one) ?? one.body
+    return one.baseline ? besideBaseline(linesOf(one, body), linesOf(one, one.baseline)) : linesOf(one, body)
+  }
   const nameOfBlock = (one: (typeof mapped)[number]): string => openNameOf(one)
   if (mapped.length >= 2) {
     // Two policies, two blocks, in the baseline's order, each named by its own body.

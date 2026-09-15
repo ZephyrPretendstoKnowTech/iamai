@@ -100,6 +100,14 @@ type PolicyOperationBase = {
    * Read for comparison only; no channel submits it.
    */
   intent?: Record<string, unknown>
+  /**
+   * On an update, the exclusions the tenant's policy has today that the sections
+   * this body writes no longer carry: its guest or external user exclusion, and
+   * the groups, users, roles and applications it excludes. The body replaces the
+   * whole section, so these are removed when it is saved; the channels say so
+   * beside the change. Read for explanation only; no channel submits it.
+   */
+  removes?: { guestsOrExternalUsers: boolean; ids: string[] }
 }
 
 /**
@@ -200,6 +208,12 @@ export type Action = {
    * so it will not guess. The step says so and waits for a person to sort it out.
    */
   unmatchedPair?: boolean
+  /**
+   * With `unmatchedPair`: the step is one policy, and the tenant has several the
+   * goal could correct that nothing about them tells apart (coverage.ts
+   * ownCandidate). The same hold, said for one policy rather than a pair.
+   */
+  ambiguousTarget?: boolean
   /**
    * The emergency access accounts this step's *final* policies do not put out of
    * scope (Foundation A, roadmap/generate.ts emergencyExposureOf). `reached` is

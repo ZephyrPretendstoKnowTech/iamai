@@ -31,11 +31,23 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
-import { implementationOffered, unavailableReason } from './operations.ts'
+import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
+import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const MILESTONE = engine.milestone
+
+/**
+ * True when every wait the step names is on an emergency-access foundation
+ * (roadmap/blockerSteps.ts GATING_SUBJECTS), the waits that gate a policy's
+ * enforcement and nothing before it. Read at call time: blockerSteps.ts imports
+ * this module.
+ */
+function waitsOnlyOnEmergencyGate(step: Step): boolean {
+  const gate = new Set(GATING_SUBJECTS.map(blockerStepId))
+  return step.blockers.length > 0 && step.blockers.every((b) => b.kind === 'step' && gate.has(b.stepId))
+}
 
 /** The Conditional Access lifecycle. `null` on a step that deploys no policy: a prerequisite is not a stage of one. */
 export type Lifecycle = 'not-deployed' | 'report-only' | 'ready-to-enforce' | 'enforced'
@@ -325,6 +337,18 @@ export function nextMilestone(step: Step): Milestone {
     const label = gate ? fillText(MILESTONE.prepareHeld, { measure: gate.measure, threshold: gate.threshold }) : MILESTONE.prepareHeldOther
     return { kind: 'deploy', label, at: null, gatedBy: step.blockedReason }
   }
+  // Not held, not deployed, and waiting only on the emergency-access foundations:
+  // those gate turning a policy on, never its report-only creation (A3 B3; §18.3),
+  // and the lanes already read it Ready · Create (ui/surfaces/planLanes.ts observe).
+  // A wait on a step is sequencing, not a hold (Step 4), so the branch above never
+  // saw it, and "Clear what this step is waiting on" sat over the create it hands over.
+  if (hold === null && s.condition === 'blocked' && s.lifecycle === 'not-deployed' && implementationOffered(step) && waitsOnlyOnEmergencyGate(step)) {
+    const scheduled = step.scheduled ? scheduleOf(step) : null
+    if (scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
+      return { kind: 'deploy', label: fillText(MILESTONE.prepareScheduledGated, { date: absoluteDate(scheduled.at) }), at: scheduled.at, gatedBy: step.blockedReason }
+    }
+    return { kind: 'deploy', label: MILESTONE.prepareGated, at: null, gatedBy: step.blockedReason }
+  }
   if (hold !== null) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }
   if (s.lifecycle === 'report-only') {
@@ -348,6 +372,10 @@ export function nextMilestone(step: Step): Milestone {
   if (step.kind === 'verify' || step.kind === 'check') return { kind: 'verify', label: MILESTONE.verify, at: null, gatedBy: null }
   if (s.lifecycle === null) return { kind: 'deploy', label: MILESTONE.prepare, at: null, gatedBy: null }
   // The day the plan schedules it (roadmap/stepSchedule.ts): the report-only
-  // creation, or the change to the tenant's policy — the day its row reads.
-  return { kind: 'deploy', label: MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
+  // creation, or the change to the tenant's policy — the day its row reads. A
+  // change to a policy the tenant already has is not a create: "Create the policy
+  // in report-only." above the steps that open and correct it was two instructions.
+  const ops = operationsOf(step)
+  const correcting = ops.length > 0 && ops.every((o) => o.mode === 'update')
+  return { kind: 'deploy', label: correcting ? MILESTONE.correct : MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }

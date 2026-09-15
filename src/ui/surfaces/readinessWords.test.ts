@@ -79,7 +79,8 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   const devices = bodiesOf(fixture('demo')).get('s-prereq-device-plan')!
   const decision = devices.readiness.tiles.find((t) => t.key === 'decision')!
   assert.equal(decision.value, 'Decision')
-  assert.equal(decision.note, 'Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one.')
+  // Editorial batch C: the help also says the inventory informs the choice and does not make it.
+  assert.equal(decision.note, 'Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one. Current inventory informs the choice; it does not make it for you.')
   const f = oneGroup()
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')
@@ -122,7 +123,7 @@ test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI I
   for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'AI Info'], id)
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
   assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
-  assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/)
+  assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)
 })
 
 test('P1-6: a policy waiting on an exclusions group the scan found asks to confirm it, once', () => {

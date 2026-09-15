@@ -72,10 +72,13 @@ test('R2: the readiness bar draws no filler sub-text', () => {
   assert.match(fn, /readinessLeadOf\(contract\)[\s\S]*if \(text === null\) return null/, 'the bar lead does not read the filler rule')
 })
 
-test('R3: a prerequisite tile reads In progress, Completed or Waiting, never Ready', () => {
+// Cycle 1 (FINDINGS 5): "In progress" said an actionable prerequisite nobody had
+// started was under way. IAMAI cannot tell whether anyone started it, so the
+// Ready lane reads "To do", which claims nothing about starting.
+test('R3: a prerequisite tile reads To do, Completed or Waiting, never Ready or In progress', () => {
   const readings = new Map((['Ready', 'Up Next', 'On Hold', 'Completed'] as const).map((lane) => [lane, { lane }])) as unknown as Parameters<typeof prerequisiteLabelFor>[0]
   const label = prerequisiteLabelFor(readings)
-  assert.equal(label('Ready'), 'Prerequisite · In progress')
+  assert.equal(label('Ready'), 'Prerequisite · To do')
   assert.equal(label('Completed'), 'Prerequisite · Completed')
   assert.equal(label('Up Next'), 'Prerequisite · Waiting')
   assert.equal(label('On Hold'), 'Prerequisite · Waiting')
@@ -84,7 +87,7 @@ test('R3: a prerequisite tile reads In progress, Completed or Waiting, never Rea
   let prerequisites = 0
   for (const { where, s } of snapshots()) {
     for (const t of s.tiles.filter((t) => t.label.startsWith('Prerequisite · '))) {
-      assert.match(t.label, /^Prerequisite · (In progress|Completed|Waiting|Deferred)$/, `${where}: a prerequisite tile reads "${t.label}"`)
+      assert.match(t.label, /^Prerequisite · (To do|Completed|Waiting|Deferred)$/, `${where}: a prerequisite tile reads "${t.label}"`)
       prerequisites += 1
     }
   }
@@ -197,7 +200,9 @@ test('D1: the Managed Device Done when names no shared-device exception', () => 
 
 test('D2: every step draws every implementation channel; one without content says so and offers nothing to copy', () => {
   const unavailable = fillText(CONTRACT.implementation.channelUnavailable, { address: 'feedback@getiamai.com' })
-  assert.equal(unavailable, 'Content could not be loaded — report this at feedback@getiamai.com')
+  // Editorial batch C: a channel with nothing for this action says so neutrally, and never sends a customer to the product's feedback address.
+  assert.equal(unavailable, 'This channel is not available for the current action. Review the other guidance and the requirements shown on this step.')
+  assert.doesNotMatch(unavailable, /feedback@|could not be loaded/)
   let steps = 0
   let missing = 0
   for (const name of ['demo', 'mid'] as const) {

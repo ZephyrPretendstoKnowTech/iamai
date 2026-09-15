@@ -1,24 +1,24 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name it **{{policy.target.displayName}}**.
-3. Users: include only the owner-confirmed shared-device accounts represented by IAMAI's stable IDs.
-4. Preserve the canonical emergency-access exclusion group: {{policy.target.excludeGroups}}.
+3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.
+4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.
 5. Target resources: **All resources**.
-6. Locations: Include **Any location**; Exclude the canonical trusted-network location with stable ID `{{policy.target.trustedLocationId}}`.
+6. Locations: Include **Any location**; Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.
 7. Grant: **Block access**.
-8. Enable policy: **Report-only**. Create it, then rescan before any enforcement.
+8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact resolved shared-device policy by its stable identity. Correct only the mismatch(es) IAMAI identified.
+Open the shared-device policy by the same policy ID IAMAI shows. Correct only the differences IAMAI identified.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.population","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set the included population to the owner-confirmed shared-device accounts only. Preserve the canonical emergency-access exclusion.
+Set Users → Include to the owner-confirmed shared-device accounts only. Keep the emergency access exclusions group excluded.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.apps","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Target resources to **All resources**. Leave the remaining canonical conditions unchanged.
+Set Target resources to **All resources**. Leave the other intended conditions unchanged.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.location","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -34,19 +34,23 @@ Return the dedicated policy to **Report-only** while material corrections are be
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.people-exclusions","channel":"entra","states":["missing","partial"],"format":"markdown","kind":"template"}
-For each person-interactive policy IAMAI identifies, open that exact policy by stable ID and apply only IAMAI's complete resolved Users/conditions patch so these confirmed shared-device accounts are excluded without losing other exclusions.
+This is a separate change from the dedicated policy. For each person-interactive policy IAMAI lists, open that policy by its ID and apply IAMAI's resolved users and conditions, so the confirmed shared-device accounts are excluded and the policy's other exclusions stay in place. Keep each policy's current state. If it is On, the changed rule can affect access after you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save, re-open the same stable object(s), verify the intended scope, then rescan IAMAI.
+Save, re-open the same policies by ID, verify the intended scope, then rescan IAMAI. Verify after the change: a real shared device still signs in from the approved network.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Review sign-in and Report-only results for each shared-device account from its normal device/network. Confirm person-interactive policies no longer interrupt the resource account. Keep this policy Report-only until normal operating behavior is represented.
+Keep the policy in Report-only while you review the evidence listed for this step. Review sign-in and report-only results for each shared-device account from its normal device and network, and confirm the person-interactive policies no longer prompt the resource account. Continue until the records cover the devices' normal activity.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open the exact dedicated policy by stable ID, re-confirm the trusted-network location still represents the device egress, change **Enable policy** from Report-only to **On**, save, test a real shared device, and rescan IAMAI.
+Open the dedicated policy by the same policy ID and re-confirm that the trusted-network location still matches the public IP addresses the devices use. Change **Enable policy** from Report-only to **On** and save. Verify after the change: a real shared device signs in from the approved network. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -73,7 +77,8 @@ Open the exact dedicated policy by stable ID, re-confirm the trusted-network loc
 {"kind":"iamaiResolvedConditionalAccessPatchSet","policies":{{json:peoplePolicies.resolvedPatches}},"rule":"Each item must carry the stable policy id and a complete IAMAI-resolved desired conditions object; do not reconstruct exclusions from display names."}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"IncludeUsers":{"binding":"policy.target.includeUsers","modes":["Create","CorrectConditions"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"TrustedLocationId":{"binding":"policy.target.trustedLocationId","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -TrustedLocationReconfirmed and -ReportOnlyEvidenceReviewed, and this package declares no prerequisite IAMAI can check to pass them.","PeopleExclusions":"PeopleExclusions reads the resolved people-policy patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
  [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','ReportOnly','PeopleExclusions','Verify','Enforce')][string]$Mode,
  [string]$PolicyId,
@@ -107,55 +112,63 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed shared-device accounts for {{tenant.displayName}}: {{shared.confirmedAccounts}}. Distinguish actual resource accounts from people and require owner confirmation before any exclusions.
+State: the owner needs to confirm which accounts belong to shared devices in {{tenant.displayName}}. Proposed accounts: {{shared.confirmedAccounts}}. An account name alone does not show that it is a room or shared-device account rather than a person; each account and its normal network need owner confirmation before any policy excludes it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the dedicated shared-device policy for {{tenant.displayName}}. Confirm it is scoped only to confirmed resource accounts and the canonical trusted-network ID, starts Report-only, and does not add user-interactive MFA.
+State: the dedicated shared-device policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.
+
+The PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review only these detected semantic mismatches: {{policy.current.semanticMismatches}}. Preserve stable IDs and existing canonical exclusions.
+State: the dedicated shared-device policy exists, but these settings differ from the intended target: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID, and keeps the exclusions group excluded. Excluding the accounts from person-interactive policies is a separate change on each of those policies.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review shared-device sign-in evidence {{shared.deviceEvidence}} and identify any user-interactive policy still interrupting the device. Do not recommend broader exclusions.
+State: the dedicated shared-device policy is in Report-only. Shared-device sign-in evidence: {{shared.deviceEvidence}}. Look for any person-interactive policy that still prompts a shared device, and for sign-ins from outside the trusted network. A prompt is fixed by excluding only the confirmed account from that policy, not by widening exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess whether report-only evidence supports enabling the exact shared-device policy. Require re-confirmation of the trusted-network egress before On.
+State: the dedicated shared-device policy is in Report-only and the next action is to enable it. Before setting it to On, the trusted-network location must be re-confirmed against the public IP addresses the devices use, and the report-only evidence should cover normal device activity. After enabling, test a real shared device.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the blocker without inventing implementation: {{dependencies.blockers}}.
+State: this step cannot proceed yet. Known blockers: {{dependencies.blockers}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
-Subject: Confirm shared-device accounts before Conditional Access changes
+Subject: Action needed: Give Shared Devices Their Own Policy
 
-Please confirm which listed accounts are assigned to Teams Rooms, panels, shared phones, or other userless devices. IAMAI will not exempt an account from person policies from its name alone.
+Please confirm the listed room or shared-device accounts and their normal network. Tell IT about remote or unusual use before the change.
+
+Accounts: {{shared.confirmedAccounts}} [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
-Subject: Shared-device Conditional Access change
+Subject: Planned change: Give Shared Devices Their Own Policy
 
-We are enabling the dedicated shared-device Conditional Access policy after report-only validation. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.
+We plan to turn on the dedicated shared-device Conditional Access policy after its report-only review. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["needsDecision","missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"accounts","label":"Confirmed shared devices","result":"{{shared.confirmedAccounts}}","line":"Only owner-confirmed resource accounts are in scope."},{"id":"location","label":"Trusted network","result":"{{policy.target.trustedLocationId}}","line":"The dedicated block policy depends on this stable named-location ID."},{"id":"evidence","label":"Device evidence","result":"{{shared.deviceEvidence}}","line":"Validate normal sign-in and absence of person-interactive prompts before enforcement."}],"whyIamaiSaysThis":"Shared-device resource accounts need a dedicated path; broad MFA/registration prompts can block userless devices."}
+{"tiles":[{"id":"accounts","label":"Confirmed shared devices","result":"{{shared.confirmedAccounts}}","line":"Confirm the resource accounts, their approved network and the policies that would ask them for a person-specific action."},{"id":"location","label":"Trusted network","result":"{{policy.target.trustedLocationId}}","line":"The dedicated block policy depends on this named location ID."},{"id":"evidence","label":"Device evidence","result":"{{shared.deviceEvidence}}","line":"Review normal sign-ins and check that no person-interactive policy prompts these accounts before enforcement."}],"whyIamaiSaysThis":"Room systems and other shared devices can stop working when a policy expects a person to answer a prompt."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"interactive-mfa-prompt","classification":"documented","symptom":"A Teams Room or shared device is prompted for user-interactive MFA or registration.","check":"Identify which Conditional Access policy applied to the resource account.","fix":"Exclude only the confirmed resource account from that person-interactive policy using its stable identity; keep the dedicated shared-device policy.","then":"Retest and rescan.","sources":["ms-teams-ca"]},{"id":"trusted-location-miss","classification":"derived","symptom":"A known room device is blocked after the dedicated policy is enabled.","check":"Compare its current public egress IP to the canonical trusted named location.","fix":"Correct the trusted-network object if the owner-approved egress changed; otherwise return this policy to Report-only while diagnosing.","then":"Retest from the device.","sources":["ms-teams-ca"]},{"id":"scope-too-broad","classification":"derived","symptom":"A normal user is affected by the shared-device policy.","check":"Read back includeUsers and compare with owner-confirmed resource-account IDs.","fix":"Correct the included population on the same stable policy.","then":"Rescan IAMAI.","sources":["ms-ca-update"]}]}
+{"scenarios":[{"id":"interactive-mfa-prompt","classification":"documented","symptom":"A Teams Room or shared device is prompted for user-interactive MFA or registration.","check":"Identify which Conditional Access policy applied to the resource account.","fix":"Exclude only the confirmed resource account from that person-interactive policy using its object ID; keep the dedicated shared-device policy.","then":"Retest and rescan.","sources":["ms-teams-ca"]},{"id":"trusted-location-miss","classification":"derived","symptom":"A known room device is blocked after the dedicated policy is enabled.","check":"Compare its current public IP address to the intended trusted named location.","fix":"Correct the trusted-network object if the owner-approved egress changed; otherwise return this policy to Report-only while diagnosing.","then":"Retest from the device.","sources":["ms-teams-ca"]},{"id":"scope-too-broad","classification":"derived","symptom":"A normal user is affected by the shared-device policy.","check":"Read back includeUsers and compare with owner-confirmed resource-account IDs.","fix":"Correct the included population on the same policy ID.","then":"Rescan IAMAI.","sources":["ms-ca-update"]}]}
 @@IAMAI-END

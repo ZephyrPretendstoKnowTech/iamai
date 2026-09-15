@@ -112,7 +112,7 @@
     "fallbackLabel": "Device policies"
   },
   "milestone": {
-    "actionText": "Decide phones and computers"
+    "actionText": "Save the phone and computer choices."
   },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-prereq-device-plan/",

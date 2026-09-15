@@ -1,46 +1,49 @@
 @@IAMAI-BEGIN {"id":"entra.intune-prerequisite","channel":"entra","states":["configurePrerequisite"],"format":"markdown","kind":"template"}
 1. In **Microsoft Intune admin center > Apps > Protection**, inspect the tenant's existing App Protection policies.
-2. Verify/create the source-required policy coverage separately for **iOS/iPadOS** and **Android**. Preserve IAMAI's intended Microsoft-app/user assignment; require the source-described PIN and block save-as to unmanaged locations.
-3. Do not invent tenant group IDs or silently broaden the APP baseline.
-4. Record the real resulting APP state in `{{intune.appProtection.prerequisiteState}}`, then rescan IAMAI.
-5. Do not proceed to CA enforcement until IAMAI classifies this prerequisite as satisfied.
+2. Verify, or create, the App Protection policy for **iOS/iPadOS** and separately for **Android**. Keep IAMAI's intended app and user assignments; require a PIN and block Save As to unmanaged locations, as the baseline describes.
+3. Use this tenant's own groups, and do not widen the baseline's App Protection settings.
+4. Rescan IAMAI. Prerequisite state IAMAI reports: `{{intune.appProtection.prerequisiteState}}`.
+5. Enforce the Conditional Access policy only after IAMAI shows this prerequisite as satisfied. Conditional Access requires app protection; it does not create these Intune policies.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the canonical grant and session controls exactly as described in STEP.md.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+3. Users → Include: All users. Exclude: the IAMAI-resolved exclusions. Do not copy IDs from another tenant or widen or narrow the population.
+4. Target resources: All resources. Conditions → Device platforms → Include: Android and iOS.
+5. Grant → Grant access → **Require app protection policy**, with no other control. Leave session controls as the target sets them; the baseline sets none.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+7. Re-open the policy, compare its users, resources, platforms, grant and session settings with IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, with the IAMAI-resolved exclusions. Target resources: All resources. Device platforms → Include: Android and iOS. Correct this policy rather than creating a replacement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Under **Grant**, select **Require app protection policy** and clear any other control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set **Session** to the intended target and clear any control it does not include; the baseline sets no session controls.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. The display name does not identify the policy for updates; IAMAI uses the same policy ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.
+Re-open the same policy by its ID, compare the corrected settings with IAMAI's intended target, and rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Verify after the change: a test user can open work data in a supported app on iOS/iPadOS and on Android.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus the step-specific evidence described in STEP.md. Do not treat a quiet dashboard as proof. Confirm the Intune APP prerequisite independently. Do not interpret Report-only failure for the app-protection grant as automatic proof that the enabled flow will fail.
+Keep the policy in **Report-only** while you review the evidence listed for this step. Review report-only results for iOS/iPadOS and Android sign-ins, and verify separately that the Intune App Protection policies apply to the intended users. A report-only failure for the app protection grant is not by itself proof that the enabled policy will block that sign-in. Test supported apps, and any required broker app setup, with a controlled account before enforcement. A quiet report is not proof.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still Report-only, its settings match the intended target, and IAMAI shows the Intune App Protection prerequisite as satisfied. Change **Enable policy** to **On** and save. Verify after the change: a test user can open work data in the supported apps on iOS/iPadOS and Android, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -67,9 +70,10 @@ Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, e
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}},"withheldModes":{"Enforce":"Enforce runs only with -ReadinessApproved, and this package declares no prerequisite IAMAI can check to pass it."}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId,
  [switch]$ReadinessApproved
@@ -99,8 +103,6 @@ if($Mode -eq 'Create'){
  $created=IG POST "$G/identity/conditionalAccess/policies" $body; $PolicyId=[string]$created.id; Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -121,69 +123,79 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Require App Protection on Phones** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions. Confirm the Intune APP prerequisite independently. Do not interpret Report-only failure for the app-protection grant as automatic proof that the enabled flow will fail.
+State: **Require App Protection on Phones** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the IAMAI-resolved exclusions, All resources, device platforms Android and iOS, and Grant: Require app protection policy. It does not block anything until it is enabled.
+
+Conditional Access requires app protection; it does not create the Intune App Protection policies, which must exist and be assigned for both platforms. A report-only failure for this grant is not by itself proof that the enabled policy will block the sign-in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Require App Protection on Phones**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.
+State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Require App Protection on Phones**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID. Conditional Access requires app protection; the Intune App Protection policies are configured separately.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Require App Protection on Phones** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use the exact readiness conditions in STEP.md and do not recommend enforcement merely because no failures appeared.
+State: **Require App Protection on Phones** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
+
+A report-only failure for the app protection grant is not by itself proof that the enabled policy will block the sign-in, and few or no failures do not show that every supported app works. Supported apps and any required broker setup need a controlled test on both platforms.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Require App Protection on Phones** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+State: **Require App Protection on Phones** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, the Intune App Protection prerequisite should be satisfied, and the report-only evidence should have been reviewed. After enabling, test the supported apps on iOS/iPadOS and Android, and emergency access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Require App Protection on Phones** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+State: **Require App Protection on Phones** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Require App Protection on Phones** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+State: **Require App Protection on Phones** needs licensing that this scan did not confirm for {{tenant.displayName}}. A product bundle name alone does not confirm the service plans this step needs. No implementation is offered until licensing is resolved; the licensing gap does not change the baseline goal.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Protected mobile apps entering validation
+Subject: Planned change: Require App Protection on Phones
 
 Hi,
 
-We are validating protected mobile-app access for {{tenant.displayName}}. Company mail and files on phones will need to open in apps covered by the organization’s Intune App Protection policies. Native or unsupported apps may need to be replaced with the supported Microsoft app.
+We are preparing to require approved protected apps for work data on phones and tablets. IT will confirm which apps to use and help if a supported app is blocked.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Protected mobile apps ready to enforce
+Subject: Planned change: Require App Protection on Phones
 
 Hi,
 
-Mobile app protection for {{tenant.displayName}} is ready to enforce after Intune and Report-only validation. Use the supported protected Microsoft apps for company data on Android and iPhone/iPad. Contact IT if a supported app is unexpectedly blocked.
+We are preparing to require approved protected apps for work data on phones and tablets. IT will confirm which apps to use and help if a supported app is blocked.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the real iOS/iPadOS and Android Intune APP prerequisite is satisfied, the CA policy uses `compliantApplication` on Android+iOS with canonical scope, supported mobile-app/broker workflows have been tested, and Report-only evidence is reviewed.
+Check iOS/iPadOS and Android assignments, licensing and actual supported-app behavior before enforcement. The Conditional Access grant is `compliantApplication` on Android and iOS with the intended scope.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-If a supported mobile app is blocked, first check APP assignment, app support, Entra device registration/broker state, and platform. If a native/unsupported app is blocked, move the user to the supported protected app rather than adding a CA bypass.
+If a supported mobile app is blocked, first check the App Protection policy assignment, app support, Entra device registration/broker state, and platform. If a native/unsupported app is blocked, move the user to the supported protected app rather than adding a Conditional Access exclusion.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisite","channel":"aiInfo","states":["configurePrerequisite"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the Intune App Protection prerequisite for **Require App Protection on Phones** in {{tenant.displayName}}. Current prerequisite state: {{intune.appProtection.prerequisiteState}}. Confirm iOS/iPadOS and Android policy coverage matches the pinned source-described behavior without inventing policy IDs, assignments, or extra settings.
+State: **Require App Protection on Phones** in {{tenant.displayName}} is waiting on its Intune App Protection prerequisite. Current prerequisite state: {{intune.appProtection.prerequisiteState}}.
+
+The iOS/iPadOS and Android App Protection policies must cover the intended apps and users, require a PIN and block Save As to unmanaged locations, as the baseline describes. Conditional Access requires app protection; it does not create these Intune policies.
 @@IAMAI-END

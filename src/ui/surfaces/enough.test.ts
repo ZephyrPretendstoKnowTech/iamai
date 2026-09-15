@@ -33,7 +33,8 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   assert.equal(step.readiness.family, 'admin')
   assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))
   const camp = stepById['s-verify-mfa'] as unknown as { doneWhen: string[]; whatToDo: { steps: string[] } }
-  assert.ok(camp.doneWhen.some((l) => l === 'Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'))
+  // Editorial batch C: the admin gate is its own line; the campaign settings check is a human check.
+  assert.ok(camp.doneWhen.some((l) => l === 'Every admin is Ready for phishing-resistant MFA.'))
   assert.ok(camp.whatToDo.steps.some((l) => l.includes('Admins: a passkey or a hardware security key; either is phishing-resistant.')))
   const op = stepById['s-ladder-operator-passkey'] as unknown as { whatToDo: { steps: string[] } }
   assert.ok(op.whatToDo.steps[0].includes('or a hardware security key'), 'step 12 says or')
@@ -53,7 +54,8 @@ test('the campaign email fills the MFA enforcement day and the window; firstEnfo
   assert.ok(typeof ex.enrolWindowDays === 'number' && ex.enrolWindowDays >= 1, `the window is the plan's (${String(ex.enrolWindowDays)})`)
   const cs = stepById['s-verify-mfa'] as unknown as { comms: { body: string }; who: { timeline: string } }
   assert.deepEqual(missingVars(cs.comms.body, ex), [], 'the email fills every variable')
-  assert.match(fillText(cs.comms.body, ex), /over the next \d+ days/)
+  assert.match(fillText(cs.comms.body, ex), /[Oo]ver the next \d+ days/)
+  assert.ok(fillText(cs.comms.body, ex).includes(String(ex.mfaEnforceLong)), 'the email states the MFA day it fills')
   assert.deepEqual(missingVars(cs.who.timeline, ex), [], 'the timeline fills {mfaEnforce}')
 })
 

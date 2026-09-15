@@ -118,6 +118,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // review page's example plan dates its enforcement, so it renders the dated body.
   '.steps[16].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
+  '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
   // A4 (2026-09-12): the row reasons for a correction only a person can make and
   // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
@@ -216,6 +217,28 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The service-accounts block's none line (E9); the example has service accounts.
   '.steps[43].who.none',
   '.pages.plan.blocked.sourceMapping',
+  // The passkey settings holds (roadmap/passkeySettings.ts, owner approval 2026-09-14):
+  // a profile-based policy, a block list that blocks Authenticator, a partial read.
+  // The example's methods policy is a complete read with key restrictions off.
+  // The configuration gate's human check (editorial batch C): the example's steps are
+  // evaluated from sign-in records, so no step renders the configuration gate.
+  '.shared.policyDoneWhenConfiguration[1]',
+  // The device-code and authentication-transfer usage lines (editorial batch C): the
+  // example lists nobody. They only read as rendered before because a fragment matched
+  // the old none line, which now says the records are not proof of no use.
+  '.steps[23].who.evidence[0]',
+  '.steps[24].who.evidence[0]',
+  '.pages.plan.blocked.passkeyBlockConflict',
+  '.pages.plan.blocked.passkeyPartialRead',
+  '.pages.plan.blocked.passkeyProfiles',
+  // The workload step's hold (roadmap/workloadIdentity.ts): the example tenant plans no
+  // workload step, and a step that is planned holds on the unknown identity.
+  '.pages.plan.blocked.workloadIdentityUnknown',
+  '.pages.plan.blocked.workloadIdentityUnsupported',
+  // The line an update draws when it takes a tenant exclusion off the policy (review 3
+  // queue 3, stepPortal.ts): the example corrects no policy that has one.
+  '.shared.changeRemoves',
+  '.shared.changeRemovesGuests',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
@@ -230,7 +253,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // footer's shared device line is the Not licensed group's (derive/notLicensed.ts):
 // read by the product, never by the review page. steps[].doneEnd is a held
 // policy's own end state, read by stepContract.ts in place of the shared one (B8).
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.doneEnd$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
+// steps[].aiFocus is the step's own request to the assistant, read by AI Info's
+// briefing (aiGrounding.ts) and never by the review page.
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

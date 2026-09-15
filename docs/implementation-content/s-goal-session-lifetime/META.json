@@ -72,14 +72,22 @@
   },
   "requiredBindings": [
     "policies.session.browser.target.displayName",
-    "policies.session.unmanaged.target.displayName",
     "policy.target.excludeGroups",
     "policy.target.excludeUsers",
     "policies.session.browser.current.id",
     "policies.session.unmanaged.current.id",
     "policies.session.semanticMismatches"
   ],
+  "resolvedEmptyBindings": [
+    "policy.target.excludeUsers"
+  ],
   "optionalBindings": [
+    "policy.target.excludeUsersSummary",
+    "policies.session.browser.current.removedExclusions",
+    "policies.session.browser.current.displayName",
+    "policies.session.unmanaged.current.removedExclusions",
+    "policies.session.unmanaged.current.displayName",
+    "policies.session.unmanaged.target.displayName",
     "tenant.displayName",
     "people.affected.count",
     "evidence.unmanagedBrowser",
@@ -95,7 +103,6 @@
     "missing": {
       "requires": [
         "policies.session.browser.target.displayName",
-        "policies.session.unmanaged.target.displayName",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -103,13 +110,12 @@
         "entra.create-set"
       ],
       "json": [
-        "json.browser.create",
-        "json.unmanaged.create"
+        "json.browser.create"
       ],
       "powershell": [
         {
           "block": "powershell.run",
-          "mode": "Create"
+          "mode": "CreateBrowser"
         }
       ],
       "aiInfo": [
@@ -219,31 +225,6 @@
             }
           ]
         },
-        "browser.lifecycle": {
-          "member": "browser",
-          "select": {
-            "equals": [
-              "policies.session.browser.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policies.session.browser.current.id"
-          ],
-          "entra": [
-            "entra.correct.browser.lifecycle"
-          ],
-          "json": [
-            "json.browser.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnlyBrowser"
-            }
-          ]
-        },
         "unmanaged.missing": {
           "member": "unmanaged",
           "select": {
@@ -334,31 +315,6 @@
               "mode": "CorrectUnmanagedGrant"
             }
           ]
-        },
-        "unmanaged.lifecycle": {
-          "member": "unmanaged",
-          "select": {
-            "equals": [
-              "policies.session.unmanaged.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policies.session.unmanaged.current.id"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.lifecycle"
-          ],
-          "json": [
-            "json.unmanaged.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnlyUnmanaged"
-            }
-          ]
         }
       },
       "sharedAfter": {
@@ -374,7 +330,6 @@
     "reportOnly": {
       "requires": [
         "policies.session.browser.current.id",
-        "policies.session.unmanaged.current.id",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -385,7 +340,7 @@
       "powershell": [
         {
           "block": "powershell.run",
-          "mode": "Verify"
+          "mode": "VerifyBrowser"
         }
       ],
       "aiInfo": [
@@ -396,7 +351,6 @@
     "readyToEnforce": {
       "requires": [
         "policies.session.browser.current.id",
-        "policies.session.unmanaged.current.id",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -404,8 +358,7 @@
         "entra.enforce"
       ],
       "json": [
-        "json.browser.enforce",
-        "json.unmanaged.enforce"
+        "json.browser.enforce"
       ],
       "powershell": [
         {
@@ -467,7 +420,7 @@
   "email": {
     "block": "email.users.pre-enforcement",
     "recommendation": "recommended",
-    "audience": "all-users-and-unmanaged-device-users",
+    "audience": "all-users",
     "applicableStates": [
       "readyToEnforce"
     ],

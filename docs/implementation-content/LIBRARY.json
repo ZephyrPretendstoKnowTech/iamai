@@ -232,7 +232,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
@@ -275,7 +275,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 8,
+      "optionalBindings": 10,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -318,14 +318,14 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "microsoft-template-floor",
       "review": "current"
@@ -361,7 +361,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -404,7 +404,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 10,
+      "optionalBindings": 12,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -447,7 +447,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
@@ -490,14 +490,14 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -531,9 +531,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 6,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 15,
       "packageSpecificMicrosoftSources": 15,
       "sharedPrimitivesReused": 3,
@@ -575,7 +575,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
@@ -595,7 +595,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 21,
+      "contentBlocks": 22,
       "outputs": {
         "entra": true,
         "json": true,
@@ -618,8 +618,8 @@
         "notLicensed"
       ],
       "correctionModules": 1,
-      "requiredBindings": 8,
-      "optionalBindings": 11,
+      "requiredBindings": 14,
+      "optionalBindings": 14,
       "verifiedSourceCount": 8,
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
@@ -661,9 +661,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 4,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 8,
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
@@ -705,7 +705,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 4,
-      "optionalBindings": 8,
+      "optionalBindings": 10,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -749,14 +749,14 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 7,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 9,
       "packageSpecificMicrosoftSources": 9,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "microsoft-template-floor",
       "review": "current"
@@ -793,9 +793,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 8,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 6,
@@ -837,7 +837,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 12,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -880,7 +880,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 7,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -922,15 +922,15 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 6,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 8,
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 2,
-      "strictValidationErrors": 12,
+      "strictValidationErrors": 13,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -964,9 +964,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 10,
-      "requiredBindings": 7,
-      "optionalBindings": 10,
+      "correctionModules": 8,
+      "requiredBindings": 6,
+      "optionalBindings": 16,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
@@ -1006,9 +1006,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
-      "requiredBindings": 6,
-      "optionalBindings": 8,
+      "correctionModules": 6,
+      "requiredBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 9,
       "packageSpecificMicrosoftSources": 9,
       "sharedPrimitivesReused": 0,
@@ -1048,9 +1048,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 4,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -1090,9 +1090,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 10,
+      "correctionModules": 9,
       "requiredBindings": 4,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 3,
@@ -1177,9 +1177,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 6,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 10,
       "packageSpecificMicrosoftSources": 10,
       "sharedPrimitivesReused": 0,
@@ -1220,15 +1220,15 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 4,
-      "optionalBindings": 9,
+      "optionalBindings": 10,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 2,
-      "strictValidationErrors": 12,
+      "strictValidationErrors": 13,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -1264,9 +1264,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 8,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 4,
@@ -1539,14 +1539,14 @@
       ],
       "correctionModules": 0,
       "requiredBindings": 3,
-      "optionalBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 11,
+      "strictValidationErrors": 13,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -1785,7 +1785,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 10,
+      "strictValidationErrors": 9,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -1858,16 +1858,16 @@
         "inPlace",
         "blocked"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 6,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting-policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -2231,7 +2231,6 @@
       "binding": "authStrength.target.displayName",
       "requiredBy": [
         "s-goal-device-registration-mfa",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "optionalBy": [
@@ -2240,7 +2239,6 @@
       "packages": [
         "s-goal-device-registration-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "type": "string",
@@ -2256,7 +2254,6 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "optionalBy": [],
@@ -2265,7 +2262,6 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "type": "string",
@@ -4225,6 +4221,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "passkey.review.detail",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "passkey.target.allowedAaguids",
       "requiredBy": [],
       "optionalBy": [
@@ -4250,6 +4258,18 @@
     },
     {
       "binding": "passkey.target.profileSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.target.summary",
       "requiredBy": [],
       "optionalBy": [
         "s-prereq-passkey-settings"
@@ -4371,7 +4391,55 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policies.guests.mixed.current.removedExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.mixed.target.conditions",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.guests.mixed.target.displayName",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.mixed.target.grantControls",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.mixed.target.sessionControls",
       "requiredBy": [
         "s-goal-guests-mfa"
       ],
@@ -4431,7 +4499,55 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policies.guests.strong.current.removedExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.target.conditions",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.guests.strong.target.displayName",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.target.grantControls",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.target.sessionControls",
       "requiredBy": [
         "s-goal-guests-mfa"
       ],
@@ -4455,6 +4571,30 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policies.guests.targets.json",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.session.browser.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.browser.current.id",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4468,6 +4608,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.browser.current.removedExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "policies.session.browser.current.state",
@@ -4527,6 +4679,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.session.unmanaged.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.unmanaged.current.id",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4540,6 +4704,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.unmanaged.current.removedExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "policies.session.unmanaged.current.state",
@@ -4570,10 +4746,10 @@
     },
     {
       "binding": "policies.session.unmanaged.target.displayName",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-session-lifetime"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-session-lifetime"
       ],
@@ -4809,6 +4985,62 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.current.removedExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "policy.current.semanticMismatches",
@@ -5097,6 +5329,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policy.target.excludeUsersSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policy.target.grantControls",
       "requiredBy": [
         "s-goal-admin-session",
@@ -5108,7 +5352,8 @@
         "s-goal-geo-restriction",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
-        "s-goal-require-managed-device"
+        "s-goal-require-managed-device",
+        "s-goal-sign-in-risk"
       ],
       "optionalBy": [],
       "packages": [
@@ -5121,7 +5366,34 @@
         "s-goal-geo-restriction",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
-        "s-goal-require-managed-device"
+        "s-goal-require-managed-device",
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.grantJson",
+      "requiredBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.grantWords",
+      "requiredBy": [
+        "s-goal-register-info-protected",
+        "s-goal-sign-in-risk"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-register-info-protected",
+        "s-goal-sign-in-risk"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -5151,11 +5423,45 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "policy.target.mode",
-      "requiredBy": [
+      "binding": "policy.target.json",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.locationWords",
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-register-info-protected"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-register-info-protected"
       ],
@@ -5861,6 +6167,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "workload.identity.detail",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     }
   ],
   "issues": [
@@ -6148,15 +6466,15 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 961,
-    "uniqueBindings": 268,
-    "bindingsRequiredByAtLeastOneProjection": 95,
-    "bindingsOptionalInAtLeastOnePackage": 177,
+    "contentBlocks": 962,
+    "uniqueBindings": 289,
+    "bindingsRequiredByAtLeastOneProjection": 101,
+    "bindingsOptionalInAtLeastOnePackage": 192,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 223,
+    "bindingDefinitionsPendingHolisticReview": 244,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 223,
+    "knownIAMAIInputUnreviewed": 244,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

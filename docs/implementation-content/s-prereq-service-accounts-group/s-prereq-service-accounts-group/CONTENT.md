@@ -3,28 +3,28 @@
 2. Group type: **Security**.
 3. Membership type: **Assigned**.
 4. Name: **{{group.target.displayName}}**.
-5. Add exactly the owner-confirmed service-account users supplied by IAMAI.
-6. Create the group and rescan IAMAI before downstream policy work.
+5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Do not add service principals or managed identities; this group is for user accounts.
+6. Create the group and rescan IAMAI before changing the policies that use it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact canonical service-accounts group by stable ID **{{group.current.id}}**. Correct only the mismatch IAMAI reports.
+Open the service-accounts group IAMAI resolved, ID **{{group.current.id}}**. Correct only the difference IAMAI reports.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.add","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Add only the owner-confirmed service-account user IAMAI identifies as missing. Verify stable user ID before saving.
+Add only the confirmed service-account user IAMAI identifies as missing. Check the user's object ID before saving.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.remove","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove only the direct member IAMAI explicitly identifies as outside the owner-confirmed service-account set. Do not delete or disable the user.
+Remove only the direct member IAMAI identifies as outside the confirmed service-account set. Do not delete or disable the user. Once removed, the account is no longer excluded by the policies that exclude this group.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.type","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-The selected canonical object is not an assigned, non-mail-enabled security group. Do not silently convert or replace it. Return to canonical identity resolution, create/select the correct group, then rescan before downstream policies reference it.
+The selected group is not an assigned, non-mail-enabled security group. Do not convert or replace it without review. Resolve which group is intended, create or select an assigned security group, then rescan before any policy references it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
-Verify the stable group is an assigned, non-mail-enabled security group and its direct user members exactly match the owner-confirmed set. Then rescan IAMAI.
+Verify that the same group (same ID) is an assigned, non-mail-enabled security group and its direct members are exactly the confirmed service-account users, with no service principals or managed identities. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["groupMissing"],"format":"json-template","kind":"template"}
@@ -91,51 +91,51 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review these candidate service accounts for {{tenant.displayName}}: {{service.candidates}}. Do not classify by name alone. Separate human-interactive evidence from unattended workload evidence and identify the application owner confirmation still required.
+Candidate service accounts for {{tenant.displayName}}: {{service.candidates}}. These are candidates only: a name or sign-in pattern does not confirm that an account runs an unattended job. Each needs its application owner to confirm the workload it supports and that no person signs in with it. This group is for user-based service accounts; service principals and managed identities are separate identities and do not belong in it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-applicable","channel":"aiInfo","states":["notApplicable"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-The owner has confirmed there are no user-based service accounts requiring this canonical group. Confirm IAMAI should not create an empty exception group merely for symmetry.
+The owner recorded that no user-based service accounts need this group. No empty exception group is planned.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review creation of one assigned security group named {{group.target.displayName}} with only owner-confirmed user-based service accounts. Require a rescan for stable identity before downstream policies consume it.
+The service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Compare current direct members {{group.current.members}} with confirmed service accounts {{service.confirmedAccounts}}. Add/remove only resolved membership references; never delete or disable the underlying users.
+The group exists but differs from the intended settings. Current direct members: {{group.current.members}}. Confirmed service accounts: {{service.confirmedAccounts}}. A correction adds or removes group membership only; it does not delete or disable any user. A removed member is no longer excluded by the policies that exclude this group.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify exact stable group identity and direct user membership. Note any password/ROPC accounts that should later migrate to managed identity or service principal: {{service.migrationNotes}}.
+This step is waiting to confirm that the same group holds exactly the confirmed service-account users as direct members. Notes on password-based (ROPC) accounts that could later move to a managed identity or service principal: {{service.migrationNotes}}. Those moves are later work, not part of this step.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why service-account membership cannot safely proceed: {{dependencies.blockers}}. Candidate detection is not owner confirmation.
+This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. A candidate account is not a confirmed member until its owner confirms it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.owners.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"application-owners"}
-Subject: Confirm service accounts before Conditional Access changes
+Subject: Action needed: Create or Correct Service Accounts Group
 
-IAMAI found accounts that may be used by unattended applications or services. Please confirm which of these are genuinely non-human accounts and what workload each one runs. Accounts will not be placed into the service-account exception group from naming or sign-in patterns alone. Where possible, note whether the workload can move to a managed identity or service principal.
+Please confirm which listed accounts run unattended jobs, the workload each supports, and its owner. Flag any account also used by a person.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.review","channel":"readiness","states":["needsDecision"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"candidates","label":"Candidates","result":"{{service.candidates}}","line":"Candidate detection is not membership authority."},{"id":"decision","label":"Confirmed service accounts","result":"not saved","line":"Application/workload owners must confirm non-human use before exclusion membership."}],"whyIamaiSaysThis":"Service-account exceptions are too powerful to derive from account names or sign-in patterns."}
+{"tiles":[{"id":"candidates","label":"Candidates","result":"{{service.candidates}}","line":"A candidate is not a confirmed member."},{"id":"decision","label":"Confirmed service accounts","result":"not saved","line":"Confirm each account's workload and owner before adding it. This group is for user-based service accounts."}],"whyIamaiSaysThis":"Service-account exceptions are too powerful to derive from account names or sign-in patterns."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["groupMissing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"decision","label":"Confirmed service accounts","result":"{{service.confirmedAccounts}}","line":"Owner confirmation defines membership."},{"id":"identity","label":"Canonical group","result":"{{group.current.id}}","line":"Downstream policies must reference one stable group."},{"id":"members","label":"Current members","result":"{{group.current.members}}","line":"Direct membership must equal the confirmed set."}],"whyIamaiSaysThis":"Service-account exclusions are high-value bypasses, so candidate heuristics never become membership automatically."}
+{"tiles":[{"id":"decision","label":"Confirmed service accounts","result":"{{service.confirmedAccounts}}","line":"Owner confirmation defines membership."},{"id":"identity","label":"Service accounts group","result":"{{group.current.id}}","line":"Policies that exclude service accounts must reference this one group."},{"id":"members","label":"Current members","result":"{{group.current.members}}","line":"Direct membership must equal the confirmed set."}],"whyIamaiSaysThis":"Members of this group are excluded from some policies, so a candidate becomes a member only after its owner confirms it."}
 @@IAMAI-END
 
 

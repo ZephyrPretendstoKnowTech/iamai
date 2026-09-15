@@ -66,6 +66,8 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
+    "policy.target.json",
     "tenant.displayName",
     "policy.current.state",
     "evidence.reportOnly",
@@ -111,10 +113,6 @@
           "powershell": [
             {
               "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
-            {
-              "block": "powershell.run",
               "mode": "CorrectConditions"
             }
           ]
@@ -129,10 +127,6 @@
           "powershell": [
             {
               "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
-            {
-              "block": "powershell.run",
               "mode": "CorrectGrant"
             }
           ]
@@ -145,10 +139,6 @@
           "entra": "entra.correct-session",
           "json": "json.correct-session",
           "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
             {
               "block": "powershell.run",
               "mode": "CorrectSession"
