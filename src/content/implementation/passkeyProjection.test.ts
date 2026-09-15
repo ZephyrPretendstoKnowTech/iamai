@@ -13,31 +13,46 @@ import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
 import { projectImplementation } from './project.ts'
-import { PASSKEY_TARGET, passkeyBindings } from '../../roadmap/passkeySettings.ts'
+import { passkeyBindings, resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
+import type { Fido2Configuration } from '../../roadmap/passkeySettings.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const PASSKEY = PACKAGES['s-prereq-passkey-settings']
 const FIDO2 = 'https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2'
+const HARDWARE = 'cb69481e-8ff7-4039-93ec-0a2729a154a8'
 
-test('passkey settings: Entra, JSON and AI Info project; the JSON is the FIDO2 request with the pinned restriction, and nothing else', () => {
-  const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(null))
+/** A scan whose methods policy carries exactly this Fido2 entry. */
+const scanOf = (fido2: Fido2Configuration): TenantSnapshot => ({ config: { authMethodsPolicy: { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [fido2] }] } } }) as unknown as TenantSnapshot
+
+test('passkey settings: Entra, JSON and AI Info project the resolved change; the JSON is the FIDO2 request keeping the tenant\'s allowed model, and nothing else', () => {
+  const tenant: Fido2Configuration = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }
+  const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(scanOf(tenant)))
   assert.equal(p.hold, null, JSON.stringify(p.hold))
   assert.deepEqual(p.channels.map((c) => c.channel).sort(), ['aiInfo', 'entra', 'json'])
   const json = p.channels.find((c) => c.channel === 'json')!
   assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: FIDO2 }])
   const body = JSON.parse(json.text)
-  assert.deepEqual(body, PASSKEY_TARGET)
+  const resolved = resolvePasskeyTarget(tenant)
+  assert.ok(resolved.kind === 'target')
+  assert.deepEqual(body, resolved.target)
   assert.equal(body['@odata.type'], '#microsoft.graph.fido2AuthenticationMethodConfiguration')
-  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: ['90a3ccdf-635c-4729-a248-9b709135078f', 'de1e552d-db1d-4423-a619-566b625cdc84'] })
+  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, '90a3ccdf-635c-4729-a248-9b709135078f', 'de1e552d-db1d-4423-a619-566b625cdc84'] })
   // No Authenticator or TAP body is made up, and no channel is withheld for lacking one.
   assert.doesNotMatch(json.text, /microsoftAuthenticator|temporaryAccessPass|lifetimeInMinutes/)
   assert.equal(p.degraded, undefined, JSON.stringify(p.degraded))
   const entra = p.channels.find((c) => c.channel === 'entra')!.text
-  assert.match(entra, /can no longer be used to sign in/)
+  assert.match(entra, /removing an allowed model stops that model's existing keys from signing in/)
+  assert.ok(entra.includes(HARDWARE), 'the retained model is named')
   // A settings step draws no JSON tab (stepBody.ts: machine channels are Conditional Access policy steps'), so Entra names none.
   assert.doesNotMatch(entra, /JSON tab/)
   assert.doesNotMatch(entra, /lifetime (of|to) \d|\d+ (minutes|hours|days)/)
-  assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /stops working for sign-in once these settings are saved/)
+  assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /A key restriction applies at sign-in as well as registration/)
+})
+
+test('passkey settings: with no readable configuration no request body is built at all', () => {
+  const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(null))
+  assert.equal(p.channels.some((c) => c.channel === 'json'), false, JSON.stringify(p.channels.map((c) => c.channel)))
 })
 
 test('passkey settings: the script that writes all three methods is not offered while two of them have no target; Verify is', () => {

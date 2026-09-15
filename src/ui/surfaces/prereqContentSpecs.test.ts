@@ -103,24 +103,26 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).'],
-        ['Set Enable to Yes. Target: All users.'],
-        // Cycle 2 (C05): the restriction is kept, and the step says what it does to keys already registered (Microsoft Learn, how-to-enable-passkey-fido2).
-        ['Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow. Once saved, a key already registered with any other AAGUID can no longer be used to sign in.'],
-        ['Add the Microsoft Authenticator AAGUIDs:', '— iOS: 90a3ccdf-635c-4729-a248-9b709135078f', '— Android: de1e552d-db1d-4423-a619-566b625cdc84'],
-        ['Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.'],
-        ['Save.'],
+        // Owner approval 2026-09-14: the change is resolved from the tenant's own configuration, and a change made since the scan is not overwritten.
+        ['Compare the page with the settings IAMAI read. If anything differs, stop and rescan before saving.'],
+        // Existing allowed models, groups and exclusions are kept, and the step says what removing a model does to keys already registered (Microsoft Learn, how-to-enable-passkey-fido2).
+        ["Apply the resolved change. Keep every existing allowed model, target group and exclusion: removing an allowed model stops that model's existing keys from signing in."],
+        ['Enforcing attestation applies to new registrations only. A passkey already registered without attestation can still sign in, but an authenticator that cannot provide attestation cannot register afterwards.'],
+        ['Save, reopen the page to confirm the saved settings, then rescan.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Open Microsoft Authenticator in the same Authentication methods list.'], ['Set Enable to Yes. Target: All users.'], ['Save.']] },
-    { kind: 'list', ordered: true, start: 10, items: [['Open Temporary Access Pass in the same list.'], ['Set Enable to Yes. Target: All users. Set a lifetime and one-time-use policy that fits your organization.'], ['Save.']] },
+    { kind: 'list', ordered: true, start: 6, items: [['Open Microsoft Authenticator in the same Authentication methods list.'], ['Set Enable to Yes. Target: All users, keeping any existing exclusions.'], ['Save.']] },
+    // IAMAI holds no Temporary Access Pass target (the withheld Apply mode says so), so the walkthrough keeps the tenant's own values rather than offering an arbitrary one.
+    { kind: 'list', ordered: true, start: 9, items: [['Open Temporary Access Pass in the same list.'], ["Set Enable to Yes for the people who may need a pass to register their first passkey. IAMAI holds no Temporary Access Pass target, so keep the tenant's current lifetime and one-time-use settings unless your security team has approved different values."], ['Save.']] },
   ])
-  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then configure the supporting methods:'))
-  assert.doesNotMatch(entra, /profileOptInApproved|resolved target|\{\{/)
+  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then check the supporting methods:'))
+  // The resolved change is bound, never typed: the walkthrough names no model of its own, and its only values are the passkey reading, change and review.
+  assert.deepEqual([...new Set([...entra.matchAll(/\{\{([^}]+)\}\}/g)].map((m) => m[1]))].sort(), ['passkey.current.summary', 'passkey.review.detail', 'passkey.target.summary'])
+  assert.doesNotMatch(entra, /profileOptInApproved|90a3ccdf|de1e552d/)
   const ai = b['ai.apply'].text
-  assert.match(ai, /^Passkey \(FIDO2\) is the phishing-resistant sign-in method this baseline targets\. These settings control which passkey providers are accepted tenant-wide\.$/m)
-  assert.match(ai, /^The two AAGUIDs above are the Microsoft Authenticator app on iOS and Android\. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys\.$/m)
-  assert.match(ai, /^Temporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with\.$/m)
-  assert.match(ai, /^After saving these settings, the MFA Registration Campaign step guides each person through registering their passkey\.$/m)
+  assert.match(ai, /^Enable Microsoft Authenticator passkeys while preserving the tenant's existing approved hardware-key access and profile assignments\. Review any conflicting restrictions before saving\. A registered key is not automatically approved, and configuration checks do not replace an emergency sign-in test\.$/m)
+  assert.match(ai, /Existing allowed models are retained configuration, not proof that every registered key was approved\./)
+  assert.match(ai, /Do not suggest converting an unrestricted policy into an allow list, opting in to passkey profiles, or enabling synced passkeys\.$/m)
 })
 
 test('s-prereq-auth-strength: Why explains a strength, the action says what to do, Entra lists the five methods inside step 4, AI Info explains them, and Done when says methods', () => {

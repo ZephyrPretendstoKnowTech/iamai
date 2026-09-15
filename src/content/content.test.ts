@@ -217,6 +217,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The service-accounts block's none line (E9); the example has service accounts.
   '.steps[43].who.none',
   '.pages.plan.blocked.sourceMapping',
+  // The passkey settings holds (roadmap/passkeySettings.ts, owner approval 2026-09-14):
+  // a profile-based policy, a block list that blocks Authenticator, a partial read.
+  // The example's methods policy is a complete read with key restrictions off.
+  '.pages.plan.blocked.passkeyBlockConflict',
+  '.pages.plan.blocked.passkeyPartialRead',
+  '.pages.plan.blocked.passkeyProfiles',
   // The line an update draws when it takes a tenant exclusion off the policy (review 3
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',
