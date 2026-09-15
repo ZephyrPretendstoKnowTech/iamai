@@ -20,6 +20,7 @@ export type ValidationInputs = {
   viability?: MfaViability[]
   /** The recorded emergency access drills (plan checkpoints, cleanupDone.ts). */
   drillDates?: string[]
+  drillRecords?: import('../roadmap/cleanupDone.ts').CleanupCheckpoint[]
 }
 
 /** The signed-in operator, from the /me section the scan already reads (derive/operator.ts, the one reader of it). */
@@ -48,6 +49,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     viability: i.viability ?? [],
     answers,
     drillDates: i.drillDates ?? [],
+    drillRecords: i.drillRecords ?? [],
   }
 }
 

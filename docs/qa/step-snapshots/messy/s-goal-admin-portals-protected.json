@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next · After Create or Correct Exclusions Group",
   "bar": "After Create or Correct Exclusions Group",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -30,8 +30,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

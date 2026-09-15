@@ -39,6 +39,7 @@
 // (notDeployedImplement, reportOnlyObserve, reportOnlyReview, readyToEnforce,
 // inPlacePreserve, needsDecision, baselineConflict via holes/foundations);
 // Foundation A/B/C themselves (roadmap/foundation*.test.ts).
+import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -228,7 +229,7 @@ function paired(f: Fixture): Variant[] {
 /** The first step of a plan put aside by the operator, which is how a step leaves the lifecycle. */
 function setAside(f: Fixture): Variant[] {
   const first = runFixture(f)
-  const target = first.steps.find((s) => s.status !== 'done' && s.status !== 'skipped')
+  const target = first.steps.find((s) => !isEmergencyAccess(s) && s.id !== 's-confirm-workloads' && !s.id.startsWith('s-review-baseline-') && s.status !== 'done' && s.status !== 'skipped')
   if (!target) return []
   return planOf(`${f.name}+set-aside`, { ...f, mapping: { ...f.mapping, notApplicable: { [target.id]: 'This tenant does not do this.' } } })
 }
@@ -352,6 +353,10 @@ const CASES: Record<string, (v: Variant) => boolean> = {
 // 2026) made the rail the Next milestone on every step: there is no step left that
 // draws one and no step that does not, so it no longer tells two shapes apart.
 const INVENTORY: string[] = [
+  'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-ladder-break-glass-accounts
+  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-confirm-workloads
+  'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
+
   'ladder · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-security-defaults
   'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-legacy-auth-inventory
   'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-check-dormant-accounts
@@ -360,6 +365,7 @@ const INVENTORY: string[] = [
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // small/s-prereq-break-glass
   'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
+  'object · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
   'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-trusted-location
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
@@ -375,6 +381,7 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-guests-mfa (policyIdentity.test.ts)
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
+  'blocker · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
   'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // large/s-prereq-device-plan
   'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device (A4: held on a readiness gate, still observing)
   'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth (A4: the demo's Ready · Observing row)
@@ -686,7 +693,7 @@ test('§6a Portal, JSON and PowerShell are one authority chain the presentation 
   // (`implementation.offered`, which is roadmap/operations.ts's
   // `implementationOffered`). A surface that decided a channel for itself is
   // how the screen came to instruct a change the artifacts refused to describe.
-  assert.ok(step.includes('const channels = deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []'), "the step no longer gates its channels on the contract's one answer")
+  assert.ok(step.includes("const channels = step.workflowChoices ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []"), "the step no longer gates its channels on the contract's one answer")
   assert.ok(step.includes("if (machineOffered) out.push('ps', 'json')"), 'the machine channels are offered without Foundation A')
   assert.equal(/implementationOffered|jsonOffered/.test(sections.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the frame components ask Foundation A themselves')
   // And the bodies themselves are never composed here: the JSON is stepJson's

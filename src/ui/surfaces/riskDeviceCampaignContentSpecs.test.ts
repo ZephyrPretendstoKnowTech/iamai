@@ -152,7 +152,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   const b = bodyOf('demo', DEVICE)
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '27% of devices compliant')
   for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
-  assert.equal(b.rail.metric, '—')
+  assert.equal(b.rail.metric, 'Not scheduled')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
@@ -255,5 +255,5 @@ test('s-verify-mfa: Why is two sentences, the special-care tile is short, the in
   ].join('\n\n'))
   // Editorial batch C: the admin gate stands alone, and the campaign's settings are a human check.
   assert.ok(b.contract.doneWhen.includes('Every admin is Ready for phishing-resistant MFA.'), b.contract.doneWhen.join(' | '))
-  assert.ok(b.contract.doneWhen.includes("Verify after the change: the registration campaign's settings match what your organization approved."), b.contract.doneWhen.join(' | '))
+  assert.ok(b.contract.doneWhen.includes("The registration campaign's settings match what your organization approved."), b.contract.doneWhen.join(' | '))
 })

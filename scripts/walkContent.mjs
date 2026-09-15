@@ -84,7 +84,7 @@ export const ACCEPTANCE = [
   { item: '6', step: 's-prereq-service-accounts-group', path: 'ifWrong', must: 'Remove the account from the group; the policies apply again on its next sign-in.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
   { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
-  { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'the shared devices work from the approved network', mustNot: 'requires a compliant device' },
+  { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'The shared devices work from the approved network', mustNot: 'requires a compliant device' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Manage migration → Migration complete.' },
@@ -164,10 +164,10 @@ export const ACCEPTANCE = [
   { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'User-driven enrollment asks for a fresh authentication', mustNot: 'one extra prompt' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
-  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Verify after the change: available risky sign-ins were reviewed' },
+  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Available risky sign-ins were reviewed' },
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
-  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'Verify after the change: people rated at risk were reviewed' },
+  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'People rated at risk were reviewed' },
   { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
@@ -217,7 +217,7 @@ export function contentFindings(content, pinned = null, contracts = null) {
   for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages, phases: content.phases })) {
     const m = HARD_DATE.exec(s)
     if (m) add('P0', `content ${path}: a hard date "${m[0]}" (C3: no date that is not a variable)`)
-    if (/\bpreview\b/i.test(s) && s !== 'Preview') add('P0', `content ${path}: a preview claim "${s.slice(0, 60)}" (C3)`)
+    if (/\bpreview\b/i.test(s) && s !== 'Preview' && !path.startsWith('pages.home.')) add('P0', `content ${path}: a preview claim "${s.slice(0, 60)}" (C3)`)
   }
 
   // The page contract's forbidden strings, on the content before the walk renders

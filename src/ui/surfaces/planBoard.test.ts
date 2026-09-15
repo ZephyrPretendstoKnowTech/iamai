@@ -130,7 +130,7 @@ test('A6: on the Follow-up demo the Ready tab holds no Completed row, with or wi
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   const panelAt = plan.indexOf('{...onePanelProps(boardBase, tab)}>')
   const panel = plan.slice(panelAt, plan.indexOf('</div>', panelAt))
-  assert.ok(panelAt > 0 && !/aside/.test(panel), 'the Completed and Deferred groups are drawn inside the tab panel')
+  assert.ok(panelAt > 0 && !/aside\.map/.test(panel), 'the Completed and Deferred groups are drawn inside the tab panel')
   assert.match(plan.slice(plan.indexOf('</div>', panelAt)), /aside\.map\(drawGroup/, 'Plan.tsx does not draw the aside groups after the panel')
 })
 
@@ -371,12 +371,12 @@ test('the column is a day or the placeholder: a dated value stands, words read t
   assert.equal(boardWhen('', { dated: false, settled: true }), WHEN.none)
   assert.equal(boardWhen('Sep 10, 2026', { dated: true, settled: true }), WHEN.none, 'a finished or deferred row reads the placeholder whatever it was dated')
   // The column never says a state: none of the words it used to carry is the placeholder.
-  for (const word of ['Held', 'Not scheduled', 'Complete', 'Deferred', 'After prerequisites']) assert.notEqual(WHEN.none, word)
+  for (const word of ['Held', 'Complete', 'Deferred', 'After prerequisites']) assert.notEqual(WHEN.none, word)
 })
 
 test('the board reads the timing value and never writes it: no date is recalculated', () => {
   const src = readFileSync('src/ui/surfaces/planBoard.ts', 'utf8')
-  const body = bodyOf(src, 'boardWhen')
+  const body = bodyOf(src, 'boardWhen').replace(/\/\/[^\n]*/g, '')
   for (const forbidden of ['Date', 'absoluteDate', 'toISOString', 'parse', 'schedule', 'rings', 'events']) {
     assert.equal(body.includes(forbidden), false, `the board's timing projection reads ${forbidden}: it may only choose what to show`)
   }

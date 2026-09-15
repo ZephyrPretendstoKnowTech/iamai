@@ -199,7 +199,7 @@ test("the hero is the pack's: eyebrow, display line, lead, two actions, meta row
   // The meta row: three claims, each one the trust section names in full below.
   const meta = hero.match(/<p class="meta">[\s\S]*?<\/p>/)?.[0] ?? ''
   assert.deepEqual(textPieces(meta), H.heroMeta as string[])
-  assert.equal((H.heroMeta as string[]).length, 3)
+  assert.equal((H.heroMeta as string[]).length, 2)
   for (const claim of H.heroMeta as string[]) assert.ok(claim.length < 32, `"${claim}" is a meta claim, not a sentence`)
   assert.ok(RETIRED_OPENER.length >= 5, 'the retired opener is listed')
   for (const s of RETIRED_OPENER) {
@@ -297,11 +297,11 @@ test('What it does is the three rows, with the side rail beside them', () => {
   assert.equal(WORK.length, 3)
   assert.deepEqual(
     WORK.map((b) => b.verb),
-    ['Reads', 'Compares', 'Plans'],
+    ['Check', 'Understand', 'Prepare'],
     'the loop is read, compare, plan; Writes retired with the v2 direction',
   )
   assert.match(WORK[0].text, /policies|people|sign-in/, 'the first beat says what it reads')
-  assert.match(WORK[2].text, /step|plan/i, 'the last beat says the output is an ordered plan')
+  assert.match(WORK[2].text, /prerequisites.*instructions.*test/i, 'the last beat explains how to prepare a change')
   // It plans; it never applies. Nothing here may say the product changes a tenant.
   const said = WORK.map((b) => `${b.verb} ${b.text}`).join(' ')
   assert.doesNotMatch(said, /\b(applies|applying|apply|remediates|enforces|deploys|rolls out|fixes) (it|them|the|your|a) /i, said)
@@ -312,7 +312,7 @@ test('What it does is the three rows, with the side rail beside them', () => {
 test('the side rail explains the baseline and attributes it without claiming an endorsement', () => {
   const side = segment(html, 'aside', 'side')
   const said = [H.baselineName, H.baseline, H.baselineGoal, H.baselineNote].join(' ') as string
-  assert.match(H.baseline as string, /^A baseline is /, 'the term is explained before it is used')
+  assert.match(H.baseline as string, /Conditional Access policies/, 'the baseline is explained in concrete terms')
   for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) {
     assert.ok(said.includes(fact), `the rail names ${fact}`)
     assert.ok(side.includes(esc(fact)), `the rail shows ${fact}`)
@@ -345,9 +345,9 @@ test('the trust row names read-only, browser-local handling and the public sourc
   assert.ok(html.includes(trustRow(TRUST)), 'the section renders through trustRow')
   assert.equal(TRUST.length, 3, "the pack's row is three claims")
   const said = TRUST.map((t) => `${t.title} ${t.body}`).join(' ')
-  assert.match(said, /no permission that can create, change or delete|read-only/i, 'read-only, in terms of the permission set')
+  assert.match(said, /does not change your tenant|read-only/i, 'read-only, in terms of the permission set')
   assert.match(said, /browser/, 'where the tenant data is')
-  assert.match(said, /no IAMAI server|no server/i, 'and where it is not')
+  assert.match(said, /does not upload your scan to its own server/i, 'and where it is not')
   assert.ok(
     TRUST.some((t) => t.href === REPO),
     'the source claim links to the repository',
@@ -363,15 +363,10 @@ test('the trust row names read-only, browser-local handling and the public sourc
 
 // The three claims the hero shows are the three the trust section explains: one
 // set of public claims, said short at the top and in full below.
-test('the hero meta row and the trust row are the same three claims', () => {
-  const meta = (H.heroMeta as string[]).map((s) => s.toLowerCase())
-  assert.ok(meta.some((m) => m.includes('read-only')), 'read-only')
-  assert.ok(meta.some((m) => m.includes('browser')), 'browser')
-  assert.ok(meta.some((m) => m.includes('source')), 'public source')
-  // A claim the trust section does not carry may not appear as a meta chip.
-  for (const claim of H.heroMeta as string[]) {
-    assert.doesNotMatch(claim, /free|no (sign|account)|encrypted|private|secure|certified/i, `"${claim}" is a claim the trust section does not carry`)
-  }
+test('the hero names the preview and makes the operator responsibility clear', () => {
+  assert.deepEqual(H.heroMeta, ['Free public preview', 'You review and make the changes'])
+  assert.match(TRUST.map((t) => `${t.title} ${t.body}`).join(' '), /you decide which changes to make and carry them out yourself/)
+  assert.doesNotMatch(JSON.stringify(H.heroMeta), /guarantee|certified|automatically/i)
 })
 
 test('About is the paragraph the pack draws, with no invented identity', () => {
@@ -382,7 +377,7 @@ test('About is the paragraph the pack draws, with no invented identity', () => {
   // Provenance, not marketing: no invented scale, customers or credentials, and
   // no attribution the owner did not write.
   assert.doesNotMatch(H.about as string, /\b\d+[,\d]*\+? (customers|tenants|users|companies|organisations|organizations)\b|trusted by|award.winning|certified/i, H.about as string)
-  assert.match(H.about as string, /^Built by Lachlan Robinette\./, "the About attribution is the owner's own")
+  assert.match(H.about as string, /^I’m Lachlan Robinette\./, "the About attribution is the owner's own")
 })
 
 // The dropped opt-in: there is no endpoint or workflow behind an email

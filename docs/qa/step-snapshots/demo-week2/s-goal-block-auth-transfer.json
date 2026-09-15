@@ -5,7 +5,7 @@
   "fact": "Report-only",
   "badge": "On Hold · Baseline references an unmapped group",
   "bar": "Baseline references an unmapped group",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -29,5 +29,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "Not scheduled"
 }

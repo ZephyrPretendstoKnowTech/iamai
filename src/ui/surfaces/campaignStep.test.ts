@@ -38,7 +38,7 @@ function campaignBody() {
 test('P0-9: the campaign offers Entra (the registration campaign setup) and AI Info (the in-person walkthrough)', () => {
   const b = campaignBody()
   // Every channel is a tab (content review D2); Entra and AI Info are the ones with content.
-  assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+  assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'AI Info', 'Email'])
   assert.deepEqual(channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'AI Info'])
   const entra = b.artifacts.find((a) => a.id === 'portal')!.text()
   // Editorial batch C: the method is the one the campaign's JSON targets (microsoftAuthenticator), and the snooze is the organization's value.

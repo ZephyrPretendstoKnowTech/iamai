@@ -1,3 +1,4 @@
+import { schedulingWords, structuralWords } from '../content/content.ts'
 // Step 4: one reading of held and scheduling truth (roadmap/holds.ts), and every
 // surface that dates a step reads it — the Plan row's When, the group the row sits
 // in, the opened step's Dates line and Next, the plan's finish and length, the
@@ -334,7 +335,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   const p = planOf(curatedFixture('demo'))
   const held = stepOf(p, 's-goal-service-accounts-trusted-network')
   assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
-  assert.equal(boardWhenOf(held), WHEN.none, 'the board shows no day: the lane label says what it waits on (A1b)')
+  assert.equal(boardWhenOf(held), 'After prerequisites', 'the board shows no day: the lane label says what it waits on (A1b)')
   assert.ok(undatedRows(p.r.steps, planPhases(p.r.schedule)).some((s) => s.id === held.id), 'under Waiting on something else')
   nothingIsDated(p, held)
   assert.ok((rowReason(held) ?? '').length > 0, 'and says what it waits on')
@@ -344,8 +345,8 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   for (const q of plans()) {
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
-      assert.ok(board === WHEN.none || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
-      if (waiting(s)) assert.equal(board, WHEN.none, `${q.f.name}/${s.id}: a step the schedule cannot date reads a day`)
+      assert.ok(['Not scheduled', 'After prerequisites', 'After review'].includes(board) || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
+      if (waiting(s)) assert.doesNotMatch(board, /\d{4}/, `${q.f.name}/${s.id}: a step the schedule cannot date reads a day`)
       else if (!rowWhenWraps(s) && rowWhen(s) !== '' && rowWhen(s) !== 'now') assert.match(board, YEAR, `${q.f.name}/${s.id}: a dated row reads the placeholder`)
     }
   }
@@ -419,7 +420,7 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   assert.equal(phased({ ...g }).has(b.id), false, 'and sits in no numbered phase')
   assert.equal(b.blockedReason, BLOCKED_REASON.after(a.plainTitle || a.title), 'its reason names the held step it waits on')
   // The board's column is a day or the placeholder (A1b): the step it waits on is the lane label's (planBoard.ts laneTailOf).
-  assert.equal(boardWhenOf(b), WHEN.none)
+  assert.equal(boardWhenOf(b), 'After prerequisites')
   // And the mark is the hold's, not a record of it: clear A and B is sequenced again.
   a.blockers.pop()
   a.state = { ...a.state, condition: 'healthy' }

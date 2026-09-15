@@ -29,7 +29,7 @@ function tenant(edit: (f: Tenant, a: string, b: string) => void): { f: Tenant; a
 
 function run(f: Tenant, over: Partial<RoadmapInput> = {}) {
   // A recorded drill on the day the first account signed in (cleanupDone.ts isRecordedDrill).
-  const r = runFixture(f, { cleanupRecord: { done: {}, drills: [DRILL] }, ...over })
+  const r = runFixture(f, { cleanupRecord: { done: {}, drills: [DRILL], records: [{ at: f.snapshot.asOf, cleanup: 'drill', date: DRILL, accountIds: f.mapping.breakGlassUserIds, timeZone: 'UTC' }] }, ...over })
   const step = r.steps.find((s) => s.id === EMERGENCY)!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   return { r, step, ctx, c: stepContract(step, ctx) }

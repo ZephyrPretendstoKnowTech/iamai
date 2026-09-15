@@ -46,7 +46,7 @@ import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 import type { CleanupKind } from '../../roadmap/cleanup.ts'
-import { cleanupRecord, withCleanupDone } from '../../roadmap/cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, cleanupBasis } from '../../roadmap/cleanupDone.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -67,6 +67,7 @@ export type PlanComputed = {
 }
 
 export type PlanData = {
+  recordForExport: PlanDecisions | null
   ready: boolean
   computed: PlanComputed | null
   mapping: MappingState | null
@@ -119,7 +120,7 @@ export type PlanData = {
   /** The plan's checkpoints as saved (the scan checkpoints a save writes, and each Cleanup row's Done); they travel in the plan file. */
   checkpoints: unknown[]
   /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
-  markCleanupDone: (kind: CleanupKind, date: string) => void
+  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[]) => void
   /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
@@ -184,7 +185,8 @@ export function usePlanData(
       setMapping(m)
       // Read the record once for its decisions, in whatever shape it was written;
       // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
-      setSaved(decisionsOf(p as never, planId))
+      const loadedRecord = decisionsOf(p as never, planId)
+      setSaved({ ...loadedRecord, planCreatedAt: loadedRecord.planCreatedAt ?? new Date().toISOString() })
       setMappingFor(snapshot)
       setLoaded(true)
     })
@@ -309,7 +311,9 @@ export function usePlanData(
       changeFreeze: freeze,
       goalMap: baseline.goalMap,
       // What the checkpoints record about Cleanup (E3): each row's Done, and the drill dates.
+      manualConfirmations: saved?.confirmations ?? {},
       cleanupRecord: cleanupRecord(saved?.checkpoints ?? []),
+      reviewNow: new Date().toISOString(),
       // The operator's deferral of the emergency-access hardening, where one is recorded (validation/emergencyTiers.ts).
       hardeningDeferral: saved?.confirmations?.[BREAK_GLASS_STEP_ID]?.[HARDENING_DEFERRAL_ID] ?? null,
     })
@@ -371,6 +375,7 @@ export function usePlanData(
 
   const bump = (): void => setVersion((v) => v + 1)
   return {
+    recordForExport: saved ? { ...saved, observations: observationsOf(computed?.steps ?? [], saved.observations ?? null) } : null,
     ready: loaded && groupsLoaded,
     computed,
     // The mapping the plan derives from: the stored record with every step
@@ -446,10 +451,14 @@ export function usePlanData(
       bump()
     },
     checkpoints: saved?.checkpoints ?? [],
-    markCleanupDone: (kind, date) => {
+    markCleanupDone: (kind, date, accountIds = []) => {
+      const phase = computed?.schedule.cleanup
+      const row = phase?.rows.find((r) => r.kind === kind)
+      if (!row) return
+      const basis = cleanupBasis(kind, row.lists, kind === 'drill' || kind === 'alerting' ? phase?.accountIds ?? [] : [])
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
-        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString()) }
+        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { basis, accountIds, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
       })
       bump()
     },

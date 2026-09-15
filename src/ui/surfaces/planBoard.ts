@@ -1,3 +1,4 @@
+import { schedulingWords } from '../../content/content.ts'
 // The Plan board's organisation: one row set, three lanes over it.
 //
 // The board is read by LANE (S3, the actionability playbook): Ready is the
@@ -46,6 +47,7 @@ const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' 
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
  *  `Observing` on Ready is the review of what report-only collected; the wait while it collects is On Hold · Observing. */
 export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
+  Review: LANE_WORDS.substatus.review,
   Create: LANE_WORDS.substatus.create,
   Correct: LANE_WORDS.substatus.correct,
   Decision: LANE_WORDS.substatus.needsDecision,
@@ -334,16 +336,23 @@ const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
  * The board infers nothing about holds from a step's lane or the group it sits in.
  */
 export function boardWhenOf(step: Step, waveStart: string | null = null): string {
+  if (step.status === 'skipped') return schedulingWords.deferred
+  if (step.status === 'done') {
+    const at = step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at
+    return at ? dayLabel(at) : schedulingWords.done
+  }
   const when = rowWhen(step, waveStart)
   const words = when === '' || rowWhenWraps(step) || when === WHEN_WORDS.now || when === WHEN_WORDS.readyNow || when.startsWith(READY_ON_PREFIX)
   const scheduled = step.scheduled ? scheduleOf(step) : null
   // The generic `now` reads the step's own scheduled day, which is the phase's first day for preparation work.
   const day = scheduled?.at ?? (when === WHEN_WORDS.now ? waveStart : null)
-  return boardWhen(when, {
-    settled: step.status === 'done' || step.status === 'skipped',
+  const result = boardWhen(when, {
+    settled: false,
     dated: !words,
     day: day ? dayLabel(day) : null,
   })
+  if (result === WHEN.none || result === '—' || result === '–') return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
+  return step.manualReview || step.workflowChoices ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
 /** The reason under a row (rowWhen.ts rowReason). The When cell never names a step, so nothing here is said twice. */

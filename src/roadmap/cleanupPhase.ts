@@ -11,7 +11,9 @@
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import { cleanupRows } from './cleanup.ts'
 import type { CleanupRow } from './cleanup.ts'
-import type { CleanupDone } from './cleanupDone.ts'
+import { cleanupBasis, validCompletionDate, latestRecoveryTest } from './cleanupDone.ts'
+import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
+import type { CleanupCheckpoint, CleanupDone } from './cleanupDone.ts'
 import { addWorkingDays } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import type { OrganisationReport } from '../coverage/types.ts'
@@ -45,6 +47,8 @@ export type CleanupPhaseInput = {
    */
   superseded?: string[]
   /** Each row's recorded completion (cleanupDone.ts). */
+  records?: CleanupCheckpoint[]
+  now?: string
   done?: CleanupDone
   /** Deferred emergency-access hardening, worded (roadmap/generate.ts). */
   hardening?: string[]
@@ -96,7 +100,16 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   const dated: CleanupPhase['rows'] = []
   for (const [i, r] of rows.entries()) {
     if (i > 0) day = addWorkingDays(day, 1, ctx)
-    dated.push({ ...r, day, done: input.done?.[r.kind] ?? null })
+    const accounts = r.kind === 'drill' || r.kind === 'alerting' ? input.emergencyAccountIds : []
+    const basis = cleanupBasis(r.kind, r.lists, accounts)
+    const now = input.now ?? new Date().toISOString()
+    const records = input.records ?? []
+    const record = records.filter((c) => c.cleanup === r.kind && c.basis === basis && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a, b) => a.at.localeCompare(b.at)).at(-1)
+    // Each current account needs its own recent recovery test. They may be tested on different days.
+    const tests = accounts.map((id) => latestRecoveryTest(id, records, now))
+    const tested = accounts.length > 0 && tests.every((date) => date !== null && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86_400_000)
+    const done = r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record?.date ?? null
+    dated.push({ ...r, day, done })
   }
   return { start: dated[0].day, end: dated[dated.length - 1].day, rows: dated, accountIds: input.emergencyAccountIds, convention }
 }

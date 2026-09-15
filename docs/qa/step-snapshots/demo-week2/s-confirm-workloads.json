@@ -1,0 +1,25 @@
+{
+  "lane": "Ready",
+  "substatus": "Decision",
+  "reason": "after: Confirm the services you use",
+  "fact": null,
+  "badge": "Ready · Decision",
+  "bar": "Needs a decision",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Decision",
+      "state": "Decision"
+    }
+  ],
+  "channels": [
+    "AI Info"
+  ],
+  "when": "Est. Aug 31, 2026"
+}

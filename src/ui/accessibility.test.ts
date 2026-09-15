@@ -424,7 +424,7 @@ test("the Plan step's implementation channels are one tab set over one panel, an
   assert.match(contentStep, /<button type="button" className="icon-btn" aria-label=\{W\.expand\}/)
   // Availability is read from ONE authority: the machine channels exist only
   // where Foundation A offers an implementation, through the contract.
-  assert.match(contentStep, /const channels = deployNow \? channelsFor\(hasPortal, contract\.implementation\.offered\) : \[\]/)
+  assert.match(contentStep, /const channels = step\.workflowChoices \? \[\x27ai\x27 as Channel\] : deployNow \? channelsFor\(hasPortal, contract\.implementation\.offered\) : \[\]/)
   assert.doesNotMatch(contentStep, /jsonOffered\(/, 'the surface re-reads the implementation gate instead of the contract it was handed')
 })
 

@@ -74,8 +74,8 @@ test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px'
 test('U3: the milestone sub-line is the package’s actionText or nothing, never generated', () => {
   const lane = { lane: 'Up Next', substatus: null, label: 'Up Next · After Create or Correct Exclusions Group', tone: 'wait' }
   const undated = { milestone: { at: null, label: 'Make the object this step names', kind: 'resolve', gatedBy: 'after: Create or Correct Exclusions Group' }, state: { lane }, schedule: null, scheduledOn: null } as unknown as StepContract
-  assert.deepEqual(railOf(undated), { metric: '—', sub: '' })
-  assert.deepEqual(railOf(undated, 'Create and verify two emergency accounts'), { metric: '—', sub: 'Create and verify two emergency accounts' })
+  assert.deepEqual(railOf(undated), { metric: 'Not scheduled', sub: '' })
+  assert.deepEqual(railOf(undated, 'Create and verify two emergency accounts'), { metric: 'Not scheduled', sub: 'Create and verify two emergency accounts' })
   const dated = { ...undated, schedule: { transition: 'createReportOnly', class: 'scheduled', at: '2026-09-22T00:00:00.000Z' } } as unknown as StepContract
   assert.deepEqual(railOf(dated), { metric: absoluteDate('2026-09-22T00:00:00.000Z'), sub: '' }, 'a dated milestone still writes its transition words')
   assert.match(STEP_BODY, /railOf\(contract, pkg\?\.meta\.milestone\?\.actionText \?\? null\)/, 'the action column does not read the package’s milestone.actionText')

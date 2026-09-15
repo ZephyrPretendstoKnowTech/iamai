@@ -476,7 +476,7 @@ test('no generated attribution or tagline came in with the design work', () => {
   assert.equal(mentions.length, 1, 'a second attribution was added')
   assert.match(mentions[0], /Conditional Access policies, built by Jon Hope, a Microsoft MVP\.$/, 'the baseline author sentence changed')
   const home = JSON.parse(content).pages.home as { about: string; baseline: string; brand: string }
-  assert.match(home.about, /^Built by Lachlan Robinette\./)
+  assert.match(home.about, /^I’m Lachlan Robinette\./)
   assert.ok(!home.brand.includes('Jon Hope'), 'the wordmark carries an attribution')
 })
 

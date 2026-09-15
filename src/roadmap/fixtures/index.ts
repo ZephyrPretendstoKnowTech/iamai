@@ -18,7 +18,7 @@ import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
-import { withCleanupDone } from '../cleanupDone.ts'
+import { withCleanupDone, cleanupBasis } from '../cleanupDone.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 
@@ -751,7 +751,7 @@ export function buildFixture(spec: Spec): Fixture {
     // recorded that sign-in as the drill on the Cleanup row, so the step is In
     // place and the drill row reads done.
     const drillAt = users.find((u) => u.id === bgIds[0])?.lastSuccessfulSignIn ?? null
-    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW)
+    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
   }
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }

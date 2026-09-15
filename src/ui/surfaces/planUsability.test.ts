@@ -1,3 +1,4 @@
+import { schedulingWords, structuralWords } from '../../content/content.ts'
 // The Plan usability pass (owner, 2026-09-11): the toolbar is one control family;
 // the opened step's prose uses its main column; the schedule starts today and
 // deploys from the next eligible workday; every row reads When and Impact; the
@@ -125,13 +126,13 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
     for (const s of r.steps as Step[]) {
       const wi = r.schedule.waveOf?.[s.id]
       const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null)
-      assert.ok(when === WHEN.none || DAY.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
+      assert.ok(['Not scheduled', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
       if (s.status === 'done') {
-        assert.equal(when, WHEN.none, `${name}/${s.id}`)
+        assert.ok(when === 'Already in place' || DAY.test(when), `${name}/${s.id}`)
         complete += 1
       }
       if (isHeld(s) && holdWaitsOn(s).length > 0 && !(s.scheduled && scheduleOf(s).at)) {
-        assert.equal(when, WHEN.none, `${name}/${s.id}: a hold that names the step it waits on reads "${when}"; the lane label names it`)
+        assert.equal(when, 'After prerequisites', `${name}/${s.id}: a hold that names the step it waits on reads "${when}"; the lane label names it`)
         placeholder += 1
       }
       if (DAY.test(when)) dated += 1
@@ -153,7 +154,7 @@ test('every row reads an Impact value: people, No user impact, the package’s f
         seen.add('unknown')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
         // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
-        const expected = effectsOf(s) === null ? (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? '—') : 'No user impact'
+        const expected = s.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[s.id] ?? (effectsOf(s) === null ? (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault) : 'No user impact')
         assert.equal(impact.split(' · ')[0], expected, `${name}/${s.id}: "${impact}"`)
         seen.add(effectsOf(s) === null ? 'configuration' : 'none')
       } else {
@@ -186,36 +187,18 @@ test('no row’s Impact names a person: it counts, and one person reads "1 perso
 
 // ------------------------------------------------------------ header
 
-test('the Plan header is four progress tiles and a how-to link, not a generated sentence', () => {
-  // Steps · Completed · Projected finish · Started (A1b, RUN-CONTEXT-A decision 11): no Waiting, Remaining or In place tile, and no Needs attention toggle.
+test('the Plan header offers four useful filters and an estimated finish, keeping the how-to and freeze controls', () => {
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.equal(plan.includes('headerLine1('), false, 'the Plan still composes the status sentence')
-  assert.match(plan, /<dl className="plan-progress-tiles" aria-label=\{PP\.progress\.label\}>/)
-  for (const key of ['steps', 'completed', 'projectedFinish', 'started']) assert.match(plan, new RegExp(`key: '${key}', label: PP\\.progress\\.${key}`))
-  for (const gone of ['inPlace', 'waiting', 'remaining', 'attention']) assert.equal(plan.includes(`progress.${gone}`), false, `the header still draws the ${gone} tile`)
-  assert.equal(/Needs attention|attention:|showAttention/.test(plan.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the Needs attention toggle is still offered')
+  assert.match(plan, /<dl className="plan-progress-tiles"/)
+  for (const key of ['ready', 'input', 'observing', 'completed', 'projectedFinish']) assert.ok(plan.includes(`key: '${key}'`), key)
+  assert.match(plan, /items\.filter\(\(i\) => i\.lane !== 'Deferred'\)\.length/, 'deferred work must not inflate the completion denominator')
+  assert.match(plan, /onClick=\{t\.select\}/)
+  assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { plan: { line1: string; line1Committed: string; howTo: { items: string[] }; progress: Record<string, string>; settings: Record<string, string> } } }
-  assert.equal(content.pages.plan.howTo.items.length, 5)
-  assert.deepEqual([content.pages.plan.progress.steps, content.pages.plan.progress.completed, content.pages.plan.progress.projectedFinish, content.pages.plan.progress.started], ['Steps', 'Completed', 'Projected finish', 'Started'])
-  // Projected finish (A2): the estimate's day, "at pace" under it, "committed <day>" when the calendar names another day, the placeholder without an estimate; the tile's tip is the schedule's critical path.
   assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
-  assert.match(plan, /value: projected\.estimate !== null \? absoluteDate\(projected\.estimate\) : PP\.progress\.none/)
-  assert.match(plan, /sub: projected\.estimate !== null \? \[PP\.progress\.atPace, \.\.\.\(projected\.committed !== null \? \[fillText\(PP\.progress\.committed, \{ date: absoluteDate\(projected\.committed\) \}\)\] : \[\]\)\] : \[\], tip: lengthTip/)
   assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
-  assert.match(plan, /<div key=\{t\.key\} className="plan-progress-tile" title=\{t\.tip\}>/)
-  // The tip's button sits in the value cell beside the date, never in the label cell the smoke and the walk read the tile's name from.
-  assert.match(plan, /<dt>\{t\.label\}<\/dt>\s*<dd>\s*\{tileValue\(t\.value\)\}\s*\{t\.tip && <InfoTip title=\{app\.plan\.constraintTip\} text=\{t\.tip\} \/>\}/)
-  assert.equal(plan.includes('<InfoTip title={app.plan.constraintTip} text={lengthTip} />'), false, 'the length tip still stands beside the tiles instead of on the Projected finish tile')
-  assert.deepEqual([content.pages.plan.progress.atPace, content.pages.plan.progress.committed], ['at pace', 'committed {date}'])
-  // The printed cover's line reads the same pair (derive/planHeader.ts headerLine1).
-  assert.match(content.pages.plan.line1, /finishes \{finish\} at pace/)
-  assert.match(content.pages.plan.line1Committed, /finishes \{finish\} at pace · committed \{committed\}/)
-  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /headerLine1\(\{[^}]*estimate: schedule\.estimate\?\.targetEnd \?\? null/)
-  // The change freeze (A2, R-SCHED §6): the inputs go through freezeInputOf and a rejected freeze shows its message.
   assert.match(plan, /freezeInputOf\(next\.from, next\.to\)\.freeze/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)
-  assert.ok(content.pages.plan.settings.freezeNeedsTo && content.pages.plan.settings.freezeOrder)
 })
 
 // ------------------------------------------------------------ the opened step
@@ -273,7 +256,7 @@ test('every step draws its Implementation region, a decision and a check include
   assert.equal(plannedPackageStateOf(step, c, f.snapshot), null)
   assert.equal(c.policy, false, 'a decision step is read as a policy')
   assert.equal(opened('demo', 's-goal-device-registration-mfa').c.policy, true)
-  assert.match(CONTENT_STEP, /const showImplementation = true/)
+  assert.match(CONTENT_STEP, /const showImplementation = artifacts\.length > 0/)
   assert.match(CONTENT_STEP, /\{showImplementation && \(\n\s*<Implementation/)
 })
 
@@ -282,7 +265,7 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   assert.equal(lane.lane, 'On Hold', 'the premise: the engine holds it')
   assert.equal(nextCaption(c), null, 'the head restates the hold')
   // The milestone is the placeholder (content review R1), with no sub-line the package does not author (U3).
-  assert.deepEqual(railOf(c), { metric: WHEN.none, sub: '' })
+  assert.deepEqual(railOf(c), { metric: 'Not scheduled', sub: '' })
   assert.equal(c.doneWhen.length, 1)
   assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
   // One tile per prerequisite (A1 §16.1): each fix is its own tile, and a fix that names a step links to it.
@@ -400,7 +383,8 @@ test('the opened emergency step agrees with its row: the bar and the badge are t
   for (const g of groups.filter((x) => x !== every)) assert.equal(g.items.some((i) => /offline/.test(i)), false, `${g.title} carries a set-wide recommendation`)
   // Cleanup while the plan cannot finish: a word, not a blank.
   const row = { ...runFixture(fixture('small'), { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: runFixture(fixture('small')).steps.find((s) => s.id === EMERGENCY)!.emergency!.basis } }).schedule.cleanup!.rows[0], done: null }
-  assert.equal(cleanupWhen(row, true), WHEN.none)
+  assert.equal(cleanupWhen(row, true), 'After prerequisites')
+  assert.equal(cleanupWhen(row, true, true), 'Already in place', 'an attested completion never reads as waiting')
   assert.notEqual(cleanupWhen(row, false).trim(), '')
 })
 

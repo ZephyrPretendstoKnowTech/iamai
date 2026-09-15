@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next · After Create or Correct Service Accounts Group",
   "bar": "After Create or Correct Service Accounts Group",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -33,5 +33,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

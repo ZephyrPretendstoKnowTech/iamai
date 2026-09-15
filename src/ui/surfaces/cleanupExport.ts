@@ -6,7 +6,7 @@
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
-import { app, cleanup as cleanupContent, pages } from '../../content/content.ts'
+import { app, cleanup as cleanupContent, pages, schedulingWords } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
@@ -34,9 +34,9 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
  * Cleanup follows the last enforcement, and a day after work that is held is a
  * date nothing has made true.
  */
-export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false): string {
+export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false): string {
   // Never blank (owner, 2026-09-11): an undated row reads the When column's placeholder (A1b: a day, or the placeholder).
-  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done) }) : undated ? (pages.plan as unknown as { when: { none: string } }).when.none : absoluteDate(row.day)
+  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done.slice(0, 10)) }) : completed ? schedulingWords.done : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */

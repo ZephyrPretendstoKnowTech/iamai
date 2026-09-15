@@ -50,7 +50,7 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
   }
   for (const [facet, spec] of Object.entries(FACET_APPS) as [Facet, NonNullable<(typeof FACET_APPS)[Facet]>][]) {
     const seen = seenInUsage(snapshot, spec.ids, spec.namePattern)
-    auto(facet, seen, seen ? 'sign-in activity observed' : `no sign-in activity for ${app.inventory.workloadNames[facet] ?? facet}`)
+    auto(facet, true, seen ? 'sign-in activity observed' : `no sign-in activity for ${app.inventory.workloadNames[facet] ?? facet}`)
   }
   auto(
     'intune',

@@ -9,11 +9,11 @@
 // Pure: no DOM, no network.
 import type { CleanupKind } from './cleanup.ts'
 
-export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string }
+export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string }
 /** The latest recorded completion per row, as an ISO instant. */
 export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
-export type CleanupRecord = { done: CleanupDone; drills: string[] }
+export type CleanupRecord = { done: CleanupDone; drills: string[]; records?: CleanupCheckpoint[] }
 
 const KINDS: ReadonlySet<string> = new Set<CleanupKind>(['alerting', 'drill', 'hardening', 'naming', 'consolidation', 'notAssessed'])
 
@@ -28,8 +28,9 @@ export function cleanupDateToIso(date: string): string {
 }
 
 /** The checkpoints with one more completion recorded. */
-export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string): unknown[] {
-  const entry: CleanupCheckpoint = { at, cleanup: kind, date: cleanupDateToIso(date) }
+export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string, details: Pick<CleanupCheckpoint, 'basis' | 'accountIds' | 'timeZone'> = {}): unknown[] {
+  if (!validCompletionDate(date, at, details.timeZone)) return [...checkpoints]
+  const entry: CleanupCheckpoint = { at, cleanup: kind, date: cleanupDateToIso(date), ...details }
   return [...checkpoints, entry]
 }
 
@@ -53,17 +54,42 @@ export function drillDates(checkpoints: readonly unknown[]): string[] {
 }
 
 export function cleanupRecord(checkpoints: readonly unknown[]): CleanupRecord {
-  return { done: cleanupDoneDates(checkpoints), drills: drillDates(checkpoints) }
+  return { done: cleanupDoneDates(checkpoints), drills: drillDates(checkpoints), records: checkpoints.filter(isCleanupCheckpoint) }
 }
 
-/** A sign-in within this many hours of a drill day's noon is that drill: a day recorded by its date, whatever zone the sign-in landed in. */
-const DRILL_WINDOW_MS = 24 * 3_600_000
+function calendarDay(iso: string, timeZone: string): string {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)) }
+  catch { return '' }
+}
 
-/** True when the sign-in fell on a recorded drill's day. */
-export function isRecordedDrill(signInIso: string, drills: readonly string[]): boolean {
-  const at = Date.parse(signInIso)
-  if (drills.length === 0 || Number.isNaN(at)) return false
-  return drills.some((d) => Math.abs(at - Date.parse(d)) <= DRILL_WINDOW_MS)
+/** Calendar validation also rejects impossible dates and future completions. */
+export function validCompletionDate(date: string, now: string, timeZone = 'UTC'): boolean {
+  const day = date.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false
+  const parsed = new Date(`${day}T00:00:00Z`)
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === day && day <= calendarDay(now, timeZone)
+}
+
+export function cleanupBasis(kind: CleanupKind, lists: Record<string, string[]>, accountIds: string[] = []): string {
+  return JSON.stringify([kind, Object.entries(lists).sort(([a], [b]) => a.localeCompare(b)).map(([key, values]) => [key, [...values].sort()]), accountIds.map((id) => id.toLowerCase()).sort()])
+}
+
+/** A legacy date alone is history, not proof about a particular account. */
+export function isRecordedDrill(signInIso: string, _legacyDates: readonly string[], accountId?: string, records: readonly CleanupCheckpoint[] = []): boolean {
+  if (!accountId || Number.isNaN(Date.parse(signInIso))) return false
+  return records.some((r) => {
+    if (!validCompletionDate(r.date, r.at, r.timeZone)) return false
+    if (r.cleanup !== 'drill' || !r.accountIds?.some((id) => id.toLowerCase() === accountId.toLowerCase())) return false
+    try {
+      const date = new Intl.DateTimeFormat('en-CA', { timeZone: r.timeZone ?? 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(signInIso))
+      return date === r.date.slice(0, 10)
+    } catch { return false }
+  })
+}
+
+export function latestRecoveryTest(accountId: string, records: readonly CleanupCheckpoint[], now: string): string | null {
+  const dates = records.filter((r) => r.cleanup === 'drill' && r.accountIds?.some((id) => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).map((r) => r.date).sort()
+  return dates.at(-1) ?? null
 }
 
 /**

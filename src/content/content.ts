@@ -127,3 +127,8 @@ export type EngineWords = {
   }
 }
 export const engine = shared.engine as unknown as EngineWords
+
+export const workflowWords = contentJson.pages.app.plan.workflows
+
+export const structuralWords = contentJson.pages.app.plan
+export const schedulingWords = contentJson.pages.plan.when

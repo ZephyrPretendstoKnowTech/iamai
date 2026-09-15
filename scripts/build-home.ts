@@ -217,8 +217,8 @@ export function renderHomeHtml(): string {
     <!-- The Threshold app icon (task 029). One master, src/brand/logo/iamai-threshold-master.svg,
          derived by scripts/gen-brand.mjs into public/brand/ and published at the site root by
          scripts/assemble-site.mjs. What was here before was a placeholder drawn inline. -->
-    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
-    <link rel="alternate icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg?v=threshold-20260915" />
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png?v=threshold-20260915" />
     <!-- The planner's tokens (home/theme.css, written by scripts/build-home.ts), then this page's few rules. -->
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/home.css" />
