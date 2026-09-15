@@ -1,10 +1,10 @@
 {
   "lane": "Ready",
-  "substatus": "Create",
+  "substatus": "Review",
   "reason": null,
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
+  "badge": "Ready · Review",
+  "bar": "Complete the review below",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -20,5 +20,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Est. Aug 31, 2026"
 }

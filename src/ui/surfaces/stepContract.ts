@@ -33,7 +33,7 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, pages, stepById } from '../../content/content.ts'
+import { app, engine, pages, shared, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -681,7 +681,7 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     // listing "until phones and computers are decided" under Fix before
     // continuing restated the question the step is asking (owner, 2026-09-11).
     if (b.kind === 'decision') continue
-    if (typeof b.binding === 'string' && b.binding.length > 0) out.push({ key: `${b.kind}:${b.label}`, text: b.binding })
+    if (typeof b.binding === 'string' && b.binding.length > 0) out.push({ key: `${b.kind}:${b.label}`, text: b.kind === 'readiness' && b.label === 'session-loop' ? shared.sessionLoopReview as string : b.binding })
   }
   // One line per fact: two blockers naming the same prerequisite are one fix. The
   // checks are exempt — two accounts failing the same rule are two facts, and the
@@ -713,6 +713,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
+  if (step.state.lifecycle === 'report-only' && step.blockers.some(b => b.kind === 'readiness' && b.label === 'session-loop')) return { kind: 'resolve', text: shared.sessionLoopHold as string }
   // A deployed policy held for review overrules the step's own words for its
   // work, which describe the rollout it is no longer simply having: "Leave it in
   // report-only until Sep 3" is true of the window and silent about the change
@@ -753,12 +754,15 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
-  if (step.state.satisfied && step.state.condition !== 'needs-decision') return [fillText(CONTRACT.doneSatisfied, { tenant })]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
   const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
+  if (step.state.satisfied && step.state.condition !== 'needs-decision') {
+    if (cs?.kind === 'policy' && !step.manualReview) return [fillText(CONTRACT.doneSatisfied, { tenant })]
+    return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
+  }
   if (step.state.condition === 'needs-decision') return cs?.kind !== 'policy' && own.length > 0 ? own : [CONTRACT.doneDecision]
   if (reason !== null) {
     // A held policy still finishes where every policy finishes: what clears the
@@ -1182,6 +1186,8 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   const t = R().tiles
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
   if (s.setAside) return null
+  if (step.manualReview?.confirmedAt) return { key: 'review', label: CONTRACT.foundLabel.observation, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
+  if (s.satisfied && (step.workflowChoices || step.id === 's-prereq-device-plan')) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
@@ -1241,7 +1247,7 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 function peopleTile(c: StepContract): ReadinessTile | null {
   if (c.who === null) return null
   const t = R().tiles
-  const peopleNote = (t as unknown as { peopleNote: string }).peopleNote
+  const peopleNote = c.policy ? t.peopleNote : (t as unknown as { peopleStepNote: string }).peopleStepNote
   return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: peopleNote } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
 }
 
@@ -1271,6 +1277,7 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
     if (kind === 'step' || kind === 'missing') {
       const id = rest.join(':')
       const title = stepById[id]?.title ?? id
+      if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: t.mapping, tone: 'warn', value: title, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
       return { key: f.key, label: prerequisiteLabel(id) ?? t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
     }
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
@@ -1460,6 +1467,8 @@ const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Review: 'manualRevi
 export function railOf(c: StepContract, actionText: string | null = null): { metric: string; sub: string } {
   const m = c.milestone
   const l = c.state.lane
+  // A completed step has no next action, even if its package defines a milestone.
+  if (l?.lane === 'Completed') return { metric: l.label, sub: '' }
   const sub = actionText ?? ''
   // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
   // result the row's When and its phase read.

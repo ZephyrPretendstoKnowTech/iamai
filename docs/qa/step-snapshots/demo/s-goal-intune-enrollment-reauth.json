@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when 1 MFA grant on this policy exist (now 0)",
+  "reason": "after: Review MFA before enabling Every time",
   "fact": null,
   "badge": "On Hold · After Create or Correct Exclusions Group",
   "bar": "After Create or Correct Exclusions Group",
@@ -19,7 +19,7 @@
     },
     {
       "label": "Prerequisites",
-      "state": "when 1 MFA grant on this policy exist (now 0)"
+      "state": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue."
     },
     {
       "label": "Prerequisite · Waiting",

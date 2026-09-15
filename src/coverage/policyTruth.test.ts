@@ -229,8 +229,9 @@ test('no usable exclusions group: the step is partly in place, held on the exclu
   const token = run.steps.find((s) => s.id === 's-goal-token-protection')
   assert.ok(token && held.includes(token), 'token protection is among the held steps')
   assert.equal(token.state.lifecycle, 'report-only', 'it goes on being watched, and is not ready to turn on')
-  // No group the tenant has — the stored one included — reaches any step.
-  const text = JSON.stringify(run.steps)
+  // No unconfirmed group reaches a step's instructions or action. A manual
+  // review's internal rescan fingerprint may retain observed configuration.
+  const text = JSON.stringify(run.steps.map(({ manualReview: _review, ...step }) => step))
   for (const [id] of f.groups) assert.equal(text.includes(id), false, `group ${id} named in the plan`)
 })
 

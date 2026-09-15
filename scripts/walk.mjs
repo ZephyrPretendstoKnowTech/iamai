@@ -1400,7 +1400,7 @@ async function walkFixture(fx) {
             }
           }
           if (/Decide How Devices Are Managed/.test(title)) {
-            if (!/phones are out of/i.test(bodyText)) add('P0', `${slabel}: the step does not say the decision is open (phones out until decided)`)
+            if (!/Needs a decision/i.test(bodyText) || !/Choose a policy for phones and for computers/i.test(bodyText)) add('P0', `${slabel}: the step does not explain that both device choices still need an answer`)
             if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
             if (week2) {
               // Decide here: phones protected by their apps, computers hybrid-joined.
@@ -1409,7 +1409,7 @@ async function walkFixture(fx) {
               // `Options` with `select`), so the answer is chosen in the select that
               // offers it, not clicked as a label.
               const a = await chooseOption('Protect company apps only')
-              const b = await chooseOption('Hybrid join is sufficient')
+              const b = await chooseOption('Hybrid-joined Windows computers')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
               // Saved, the step is Completed and joins the board's Completed group;

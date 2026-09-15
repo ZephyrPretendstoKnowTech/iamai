@@ -7,7 +7,7 @@
 // its models and gains the Authenticator models; an unrestricted policy stays
 // unrestricted; a block list stays unless it blocks Authenticator, which is reviewed;
 // groups and exclusions are kept; a profile-based policy or a partial read is never
-// written from here. The step is Ready · Create while the configuration differs from
+// written from here. The step is Ready · Correct while the configuration differs from
 // that target, Completed when it matches, and On Hold on a methods policy the scan
 // could not read or a target that cannot be built. The verification campaign waits on it.
 import { test } from 'node:test'
@@ -121,10 +121,10 @@ test('A5.2 the tenant reading against its resolved target: disabled is Missing, 
   assert.equal(passkeyReadingOf(null).state, 'unread')
 })
 
-test('A5.3 on the demo the step reads Ready · Create, the campaign waits on it, and the bound target is the one resolved from the tenant', () => {
+test('A5.3 on the demo the step reads Ready · Correct, the campaign waits on it, and the bound target is the one resolved from the tenant', () => {
   const demo = fixture('demo')
   const { r, label } = plan(demo)
-  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Create')
+  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Correct')
   assert.equal(label(CAMPAIGN), 'Up Next · After Configure Passkey Authentication')
   const { state, bindings } = packageOf(demo, r)
   // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
@@ -139,10 +139,10 @@ test('A5.3 on the demo the step reads Ready · Create, the campaign waits on it,
   assert.match(String(bindings['passkey.target.summary']), /Keep key restrictions off/)
 })
 
-test('A5.4 the method off is Missing and still Ready · Create; the campaign still waits', () => {
+test('A5.4 the method off is Missing and still Ready · Correct; the campaign still waits', () => {
   const f = withFido2(fixture('demo'), legacy({ state: 'disabled' }))
   const { r, label } = plan(f)
-  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Create')
+  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Correct')
   assert.equal(packageOf(f, r).state, 'missing')
   assert.match(label(CAMPAIGN) ?? '', /^Up Next · After Configure Passkey Authentication/)
 })

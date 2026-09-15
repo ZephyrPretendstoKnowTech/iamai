@@ -275,7 +275,7 @@ test('the contract asks for nothing: the action is to keep the policy, and the c
   assert.equal(c.implementation.hold, null)
   assert.equal(c.fix.length, 0, 'nothing to fix before continuing')
   assert.equal(c.doneWhen.length, 1)
-  assert.match(c.doneWhen[0], /already satisfied/i)
+  assert.match(c.doneWhen[0], /assessed configuration in place/i)
 })
 
 // ---- 5 and 6: no operation, and no channel that would make or change a policy ----

@@ -41,7 +41,11 @@ for (const patches of [undefined, PATCHES]) {
     assert.equal(json.requests[0].method, 'POST')
     assert.equal((JSON.parse(json.text) as { displayName: string }).displayName, 'Sample shared devices')
     assert.equal(p.degraded?.some((d) => d.channel === 'json') ?? false, false, JSON.stringify(p.degraded))
-    assert.ok(p.channels.find((c) => c.channel === 'entra')?.blocks.includes('entra.people-exclusions'))
+    const entra = p.channels.find((c) => c.channel === 'entra')
+    assert.ok(entra)
+    assert.ok(entra.blocks.includes('entra.manual-review'))
+    assert.match(entra.text, /Review the other policies that apply to these accounts/)
+    assert.match(entra.text, /do not place shared devices in the emergency-access exclusions group/)
   })
 }
 

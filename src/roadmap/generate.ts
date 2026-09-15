@@ -56,7 +56,7 @@ import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
-import { engine, stepById } from '../content/content.ts'
+import { engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -1068,7 +1068,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess && sharedDevices.length > 0) {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
-    step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Allow', 'Shared devices'], collapsed: 'Allow shared devices' }, naming).name, fromBaseline: null }
+    step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
     steps.push(step)
   }
@@ -2233,7 +2233,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             const floor = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]?.floor
             return floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined
           })()
-    if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
+    if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.after(shared.sessionLoopHold as string))
   }
 
   // ---- Ordering: phase, then risk score ----

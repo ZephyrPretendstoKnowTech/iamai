@@ -118,7 +118,7 @@ State: the owner needs to confirm which accounts belong to shared devices in {{t
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-State: the dedicated shared-device policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.
+IAMAI has not automatically assessed a dedicated shared-device policy in {{tenant.displayName}}. Inspect existing policies first. If a new dedicated policy is needed, create it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.
 
 The PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.
 @@IAMAI-END
@@ -171,4 +171,18 @@ We plan to turn on the dedicated shared-device Conditional Access policy after i
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
 {"scenarios":[{"id":"interactive-mfa-prompt","classification":"documented","symptom":"A Teams Room or shared device is prompted for user-interactive MFA or registration.","check":"Identify which Conditional Access policy applied to the resource account.","fix":"Exclude only the confirmed resource account from that person-interactive policy using its object ID; keep the dedicated shared-device policy.","then":"Retest and rescan.","sources":["ms-teams-ca"]},{"id":"trusted-location-miss","classification":"derived","symptom":"A known room device is blocked after the dedicated policy is enabled.","check":"Compare its current public IP address to the intended trusted named location.","fix":"Correct the trusted-network object if the owner-approved egress changed; otherwise return this policy to Report-only while diagnosing.","then":"Retest from the device.","sources":["ms-teams-ca"]},{"id":"scope-too-broad","classification":"derived","symptom":"A normal user is affected by the shared-device policy.","check":"Read back includeUsers and compare with owner-confirmed resource-account IDs.","fix":"Correct the included population on the same policy ID.","then":"Rescan IAMAI.","sources":["ms-ca-update"]}]}
+@@IAMAI-END
+
+@@IAMAI-BEGIN {"id":"entra.manual-review","channel":"entra","states":["missing","blocked"],"format":"markdown","kind":"referenceOnly"}
+Review and test a dedicated access policy for the shared-device accounts listed on this step. IAMAI does not automatically match or verify this supporting policy.
+
+Proposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]
+Shared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]
+
+1. Confirm each account belongs to a room system or shared device and identify its owner. Do not assume every account without interactive sign-ins is a shared device.
+2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.
+3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.
+4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.
+5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.
+6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.
 @@IAMAI-END

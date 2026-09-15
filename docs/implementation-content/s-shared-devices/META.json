@@ -62,8 +62,7 @@
     },
     "missing": {
       "entra": [
-        "entra.create",
-        "entra.people-exclusions"
+        "entra.manual-review"
       ],
       "json": [
         "json.create"
@@ -219,7 +218,9 @@
       "email": []
     },
     "blocked": {
-      "entra": [],
+      "entra": [
+        "entra.manual-review"
+      ],
       "json": [],
       "powershell": [],
       "aiInfo": [

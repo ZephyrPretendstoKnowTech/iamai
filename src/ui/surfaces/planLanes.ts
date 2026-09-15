@@ -1,4 +1,5 @@
 import { WORKFLOW_STEP } from '../../roadmap/workflows.ts'
+import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // The Plan's lanes: the actionability engine (src/actionability) read over the
 // plan as this scan left it (S3).
 //
@@ -142,6 +143,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       const on: Action = policy && GATE.has(b.stepId) ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
+    else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
     else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding })
     // A tenant fact this scan could not read — a group a policy names whose
     // members nobody could list — holds the step; it is not a gate the policy
@@ -392,6 +394,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   for (const step of steps) {
     const reading = out.get(step.id)
+    // Authentication-method configuration already exists in Entra, even when
+    // disabled. This action changes its settings rather than creating an object.
+    if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
     // Account checks ask for a review, not creation of a policy or object.
     if (reading?.lane === 'Ready' && (step.manualReview || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
   }

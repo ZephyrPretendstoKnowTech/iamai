@@ -51,7 +51,7 @@
     "policyDoneWhenEnforced": [
       "Until a later scan finds the policy enabled, it is ready to enforce, not enforced."
     ],
-    "policyIfWrong": "Set the policy back to report-only, or delete it; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
+    "policyIfWrong": "If the change blocks legitimate access, return the affected policy to Report-only and investigate before enabling it again. If normal administrator sign-in is blocked, use your tested emergency access account.",
     "enforceIfWrong": "Set the policy back to report-only; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
@@ -391,7 +391,9 @@
       "eligible": "Targeting and the global model restriction allow at least one registered key. This does not prove recovery works; perform and record a controlled sign-in test."
     },
     "csvNotice": "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
-    "planPromptTitle": "Explain this plan"
+    "planPromptTitle": "Explain this plan",
+    "sessionLoopReview": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue.",
+    "sessionLoopHold": "Review MFA before enabling Every time"
   },
   "phases": {
     "first": "Preparation",
@@ -1385,7 +1387,7 @@
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
-          "doneSatisfied": "Already satisfied: {tenant} has this, and the step is to keep it that way.",
+          "doneSatisfied": "The scan found the assessed configuration in place.",
           "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
@@ -1492,7 +1494,8 @@
               "peopleNote": "This is the population IAMAI resolved for this policy. It is not a prediction that every account will be prompted.",
               "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
               "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
-              "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed."
+              "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed.",
+              "peopleStepNote": "These are the accounts this step asks you to review. Check the listed evidence before deciding what each account needs."
             },
             "bar": {
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
@@ -1836,7 +1839,8 @@
             "cancel": "Cancel",
             "confirmedOn": "Confirmed {date}."
           },
-          "doneHeldEnd": "The policy is enforced in {tenant}."
+          "doneHeldEnd": "The policy is enforced in {tenant}.",
+          "fixCompletedReference": "{step} is complete, but this policy still has an unresolved reference. Confirm its tenant object under Baseline mappings, then rescan."
         },
         "mfaReadinessHold": "{n} people are not yet confirmed ready for this sign-in requirement. Review whether they need setup, recent proof, or a successful evidence read.",
         "mfaReadinessHoldUnknown": {
@@ -1978,7 +1982,8 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
-          "s-check-separate-admin-accounts": "Administrator accounts"
+          "s-check-separate-admin-accounts": "Administrator accounts",
+          "s-shared-devices": "Shared-device accounts"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -2812,8 +2817,7 @@
       },
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The shared devices work from the approved network, and the person-policy exclusions IAMAI lists are in place."
+        "The shared devices work from the approved network, and you have tested that the intended access restrictions work. Their accounts have only the reviewed policy exceptions they need. Record the completed review below; IAMAI does not automatically verify this supporting policy."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -3298,7 +3302,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed now carry the Service provider exclusion in their Implementation instructions, beside the baseline's version; create them as shown.",
+          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed carry your chosen Service provider exclusion in their Implementation instructions. Follow each policy step's current action; do not recreate a policy that is already in place.",
           "Delegated administration (GDAP) and ordinary guest (B2B) access are separate paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
         ]
       },

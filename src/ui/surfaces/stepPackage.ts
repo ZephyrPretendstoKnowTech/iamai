@@ -614,6 +614,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   if (step.kind === 'prerequisite') {
     put('location.target.displayName', step.naming?.proposed)
     put('strength.target.displayName', step.naming?.proposed)
+    if (step.id === 's-prereq-service-accounts-group') put('group.target.displayName', step.naming?.proposed)
   }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)

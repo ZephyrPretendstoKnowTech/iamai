@@ -153,7 +153,7 @@ test('deferred hardening is delivered work: Completed on every surface, never Al
   const readiness = readinessOf(bg, c)
   assert.equal(readiness.bar.key, 'completed')
   assert.equal(readiness.bar.main, CONTRACT.lifecycle['in-place'])
-  assert.equal(railOf(c).metric, 'Not scheduled')
+  assert.equal(railOf(c).metric, 'Completed')
   const slots = [...readiness.tiles, ...readiness.satisfied].filter((t) => t.key.startsWith('slot:'))
   assert.ok(slots.some((t) => t.value === CONTRACT.hardening.tiles.deferred), 'no account slot says the hardening is deferred to Cleanup')
   assert.deepEqual(c.doneWhen, [CONTRACT.hardening.doneDeferred], 'Done when claims full resilience')

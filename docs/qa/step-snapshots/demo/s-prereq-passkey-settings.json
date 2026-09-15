@@ -1,10 +1,10 @@
 {
   "lane": "Ready",
-  "substatus": "Create",
+  "substatus": "Correct",
   "reason": null,
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",

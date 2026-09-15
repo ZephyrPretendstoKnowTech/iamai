@@ -114,7 +114,14 @@
       "aiInfo": [
         "ai.blocked"
       ],
-      "email": []
+      "email": [
+        "email.decision"
+      ]
+    },
+    "missing": {
+      "email": [
+        "email.decision"
+      ]
     }
   },
   "supportBlocks": {
