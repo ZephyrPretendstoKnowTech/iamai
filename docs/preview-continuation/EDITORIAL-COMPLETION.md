@@ -35,6 +35,8 @@ The offline walk preceded the final High-Risk and passkey wording follow-ups. Th
 
 The final passkey completion sentence was corrected to say existing target groups, matching the preservation resolver. No passkey operation changed in that wording follow-up.
 
+The live release check also caught the old All users instruction in the AI briefing's fallback What remains facts. That sentence now preserves the resolved target groups too. The cross-channel regression uses a group-scoped tenant and checks the entire rendered briefing; it fails on the old fallback. The resolved payload and primary Entra instructions were already correct. This follow-up changes wording and its regression test only.
+
 ## Remaining warnings and V1.1 work
 
 - Most browser P1s are controls absent from the checker's allow list or long sentences, not confirmed product failures. The two Exclusions Group empty-list warnings were inspected in the actual page: both have the confirming instructions in the next paragraph and are false positives.

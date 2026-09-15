@@ -2776,7 +2776,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: All users, keeping the existing groups and exclusions.",
+          "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: keep the existing target groups and exclusions shown in the resolved configuration.",
           "Allow self-service set up: Yes. Enforce attestation: Yes; it applies to new registrations only.",
           "Keep the tenant's key restriction setting. With an allow list, keep every model already on it and add Microsoft Authenticator: Android {aaguidAndroid}; iOS {aaguidIos}. Without key restrictions, leave them off. With a block list, check that it does not block those identifiers.",
           "A registered key is not automatically an approved model: add a hardware key model only when your organization approves it. Removing a model stops its keys from signing in.",
