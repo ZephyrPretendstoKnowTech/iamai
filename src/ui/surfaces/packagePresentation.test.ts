@@ -51,7 +51,7 @@ test('the Admin Portal source conflict shows its review, its source date, the co
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
   // Every channel is a tab (content review D2), so the review note stands over the tabs whether or not any has content.
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
-  assert.match(src, /data-empty=\{empty\.key\}>[\s\S]*?\{notes\.length > 0 && \(\n\s*<div className="impl-planning" data-review="true">/, 'the review note is drawn only beside artifacts')
+  assert.match(src, /data-empty=\{empty\.key\}>[\s\S]*?\{\(notes\.length > 0 \|\| \(preview\?\.lines\.length \?\? 0\) > 0\) && \(\n\s*<div className="impl-planning" data-review="true">/, 'the review note is drawn only beside artifacts')
   assert.match(src, /reviewedPackageFor\(step\)/, 'a set-aside package lost its source line')
 })
 

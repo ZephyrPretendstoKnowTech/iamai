@@ -93,3 +93,8 @@ test('U4: no Planned work banner stands over the channels', () => {
   // The one `.impl-planning` left is the re-pin review's note.
   for (const m of CONTENT_STEP.matchAll(/<div className="impl-planning"[^>]*>/g)) assert.match(m[0], /data-review="true"/, `a banner other than the review note: ${m[0]}`)
 })
+
+test('the full-width decision layout is exclusive to services', () => {
+  assert.doesNotMatch(CSS, /:has\([^)]*\.decision-form/, 'ordinary decision forms must retain their desktop sidebar')
+  assert.match(CSS, /\.step-body\.has-rail:has\(\.workflow-choices\)/)
+})

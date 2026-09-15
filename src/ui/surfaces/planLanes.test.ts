@@ -135,6 +135,13 @@ test('a step the plan cannot act on is never Ready: pending mappings, conflicts 
       if (!v || !v.fromEngine || s.status === 'done' || s.status === 'skipped') continue
       const reason = s.kind === 'create' || s.kind === 'adjust' ? unavailableReason(s) : null
       const pending = (s.action.missing ?? []).some((m) => m.decision || m.unreadable)
+      if (s.goalId === 'guests-mfa' && reason === 'unmatched-pair') {
+        assert.equal(v.lane, 'Ready')
+        assert.equal(v.substatus, 'Review')
+        assert.equal(unavailableReason(s), 'unmatched-pair', 'reviewing does not release a write')
+        checked += 1
+        continue
+      }
       if (pending || s.state.condition === 'baseline-conflict' || reason === 'unmatched-pair' || reason === 'no-operation') {
         // Except an enforced policy held only by a reference nobody has mapped: it is
         // corrected next, Ready · Correct (B1, RUN-CONTEXT-B decision 6). A conflict or

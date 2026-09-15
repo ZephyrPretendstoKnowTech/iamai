@@ -56,7 +56,7 @@ import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
-import { engine, shared, stepById } from '../content/content.ts'
+import { app, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -1592,7 +1592,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
         const ambiguous = matched.every((p) => p === null) || new Set(ids).size !== ids.length
         if (ambiguous) {
-          action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true }
+          action = { kind: 'adjust', summary: [], json: null, portalSteps: members.map(m => fillText(app.plan.pairReviewExpected, { name: String(m.displayName) })), missing: [], unmatchedPair: true }
         } else {
           const withTargets = members.map((m, i) => {
             const p = matched[i]

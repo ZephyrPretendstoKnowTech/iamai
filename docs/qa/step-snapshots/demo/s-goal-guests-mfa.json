@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Review",
   "reason": "until both policies of the pair can be matched",
   "fact": null,
-  "badge": "On Hold · Not supported",
-  "bar": "Not supported",
+  "badge": "Ready · Review",
+  "bar": "Complete the review below",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -28,10 +28,6 @@
     {
       "label": "Prerequisite · To do",
       "state": "Create or Correct Emergency Access Accounts"
-    },
-    {
-      "label": "Not supported",
-      "state": "Not supported"
     }
   ],
   "channels": [

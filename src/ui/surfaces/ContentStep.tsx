@@ -524,7 +524,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
-  /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are not offered to copy. No banner draws it (U4). */
+  /** Unresolved values remain visible without preventing copying the guidance. */
   preview: { lines: string[] } | null
   /** Why the package's own guidance is set aside (a re-pin review), where it is. */
   notes: string[]
@@ -568,11 +568,8 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
       <pre className={`${cls} mono`}>{active.text()}</pre>
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
-  const copyable = active !== null && active.unavailable !== true && (preview === null || active.id === 'ai' || active.id === 'email')
-  // A planning preview is not executable: Copy stays where it is, disabled, and
-  // says why in the preview's own lines (stepBody.ts previewNote), inline and in
-  // the viewer (RUN-CONTEXT-B decision 4, U18). aria-disabled keeps the reason
-  // reachable by hover and by keyboard, which a disabled button is not.
+  const copyable = active !== null && active.unavailable !== true
+  // Copying guidance is available even when the planned operation needs review.
   const copyReason = copyable ? W.copy : active?.unavailable ? active.text() : (preview?.lines.join(' ') ?? W.copy)
   const copyControl = (
     <button
@@ -601,9 +598,9 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
         </div>
       )}
         <>
-          {notes.length > 0 && (
+          {(notes.length > 0 || (preview?.lines.length ?? 0) > 0) && (
             <div className="impl-planning" data-review="true">
-              {notes.map((line, i) => (
+              {[...notes, ...(preview?.lines ?? [])].map((line, i) => (
                 <span key={i}>{line}</span>
               ))}
             </div>
@@ -857,7 +854,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
             the picker takes it as its group label, the radios as their
             radiogroup's, so a decision is heard as a question with answers. */}
         {/* The action column's heading (content review R6): the input's own label, bold, over the first input. */}
-        <h5 className="dlabel action-heading" id={`${base}-decision`}>{d.label}</h5>
+        <h5 className="dlabel action-heading" id={`${base}-decision`}>{d.heading ?? d.label}</h5>
         {/* A pre-filled match says what it is and what Save does (content review S2). */}
         {matchedNote !== null && <p className="reason">{matchedNote}</p>}
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}

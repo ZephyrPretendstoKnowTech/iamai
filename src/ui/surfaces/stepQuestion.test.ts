@@ -41,7 +41,8 @@ test('the countries step shows the travellers question on the demo, and its answ
 
   // The value option's answer: the option's words with the picked codes, read back as those codes.
   const value = answerText(q.options[2], ['FR', 'ES'])
-  assert.equal(value, 'Regularly: add: FR, ES')
+  assert.equal(value, 'Countries used regularly: FR, ES')
+  assert.deepEqual(answerParts('Regularly: add: FR, ES', q.options), { option: q.options[2], picked: ['FR', 'ES'] }, 'saved travel choices survive the wording update')
   const valued = applyStepDecisions(mapping, { [step.id]: { answers: { [q.label]: value }, at } })
   assert.equal(valued.questionAnswers?.[key], value)
   assert.deepEqual(answerParts(valued.questionAnswers?.[key], q.options), { option: q.options[2], picked: ['FR', 'ES'] })

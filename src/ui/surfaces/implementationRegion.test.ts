@@ -66,11 +66,13 @@ test('P0-1: an enforced policy held by the unanswered exclusions question draws 
   assert.equal(CONTENT.includes('Nothing to submit'), false)
 })
 
-test('P0-3: Copy is drawn on a planning preview, not offered, with the values still to resolve as its reason', () => {
+test('P0-3: Copy is offered for available planning guidance with unresolved values visible', () => {
   const group = bodiesOf(noExclusionsAnswer(fixture('mid'))).get('s-prereq-exclusion-group')
   assert.ok(group?.previewNote, 'the exclusions group is a planning preview')
   assert.ok(group.previewNote.lines.some((l) => /^Values still to resolve: /.test(l)), group.previewNote.lines.join(' | '))
-  // One control, inline and in the viewer: always drawn, disabled on a preview, titled with the preview's lines.
+  // Copy is restricted only when the artifact itself is unavailable.
+  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true\s*\n/)
+  assert.ok(CONTENT_STEP.includes('...notes, ...(preview?.lines ?? [])'), 'unresolved values are visible beside the output')
   assert.match(CONTENT_STEP, /const copyReason = copyable \? W\.copy : active\?\.unavailable \? active\.text\(\) : \(preview\?\.lines\.join\(' '\) \?\? W\.copy\)/)
   assert.match(CONTENT_STEP, /title=\{copyReason\}/)
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)

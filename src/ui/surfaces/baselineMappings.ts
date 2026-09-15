@@ -3,7 +3,7 @@
 // plan's open policies (roadmap/sourceMappings.ts), in the words the answer is
 // asked with. Each row states the reference, the policies that name it, the part
 // it plays (include / exclude / both) and where its answer stands. No row is a
-// "Group N": a reference is named by its kind and its own short identifier.
+// "Group N": a reference is named by its kind and an affected policy; its ID remains in details.
 //
 // Pure: no DOM.
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -48,7 +48,7 @@ export type SourceMappingRow = {
   id: string
   kind: SourceReference['kind']
   answer: SourceReference['answer']
-  /** `Group 62d67e66` / `Named location 1267ac22`: the kind and the reference's own short id (§18.1), never a running number. */
+  /** The reference kind and an affected policy, never an unexplained identifier. */
   label: string
   /** Unmapped / Mapped / Left out. */
   status: string
@@ -74,14 +74,15 @@ export function mappingRowOf(r: SourceReference, ctx: { snapshot: TenantSnapshot
   const role = r.role ?? null
   const suffix = role === 'include' ? 'Include' : role === 'both' ? 'Both' : 'Exclude'
   const mapped = ctx.mapping.records?.[r.id.toLowerCase()]?.resolvedId ?? null
+  const policies = (r.stepIds ?? []).map((id) => contentStepFor({ id, goalId: id.replace(/^s-goal-/, '') })?.title ?? id)
   const answer = r.answer === 'omitted' ? (options[0] ?? null) : r.answer === 'mapped' && mapped ? answerTextFor(options[1] ?? '', [ctx.nameOf(mapped)]) : null
   return {
     id: r.id,
     kind: r.kind,
     answer: r.answer,
-    label: fillText(r.kind === 'group' ? w.groupLabel : w.locationLabel, { id: shortId(r.id) }),
+    label: fillText(r.kind === 'group' ? w.groupLabel : w.locationLabel, { id: shortId(r.id), policy: policies[0] ?? shortId(r.id) }),
     status: w.status[r.answer],
-    policies: (r.stepIds ?? []).map((id) => contentStepFor({ id, goalId: id.replace(/^s-goal-/, '') })?.title ?? id),
+    policies,
     role,
     roleWord: role !== null ? w.role[role] : null,
     roleLine: role !== null && r.baselinePolicies !== undefined && r.baselineTotal !== undefined ? fillText(w[`role${suffix}`], { n: r.baselinePolicies, total: r.baselineTotal }) : null,

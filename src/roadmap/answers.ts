@@ -92,6 +92,7 @@ const RENAMED_OPTIONS: Readonly<Record<string, string>> = {
 
 /** A stored answer in the content's current words. */
 export function currentAnswerText(answer: string): string {
+  if (answer.startsWith('Regularly: add: ')) return answer.replace('Regularly: add: ', 'Countries used regularly: ')
   const mail = /^Yes: add: (.*); the service-accounts group carries them$/.exec(answer)
   if (mail) return `Temporary exception accounts: ${mail[1]}`
   return RENAMED_OPTIONS[answer] ?? answer

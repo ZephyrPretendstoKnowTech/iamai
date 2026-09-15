@@ -234,8 +234,8 @@ test('a blocked policy with authored implementation shows its planning preview w
   for (const ch of preview.channels) assert.equal(/\{\{|\{policy\.|\[omit /.test(ch.text), false, `${ch.channel}: raw binding syntax reached the preview`)
   assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
   // The copy control — inline and in the expanded viewer — is not offered on a preview.
-  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true && \(preview === null \|\| active\.id === 'ai' \|\| active\.id === 'email'\)/)
-  // Copy stays drawn on a preview, not offered, with the preview's reason (decision 4, U18).
+  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true/)
+  // Available preview guidance stays copyable; unresolved values remain visible.
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
   assert.match(CONTENT_STEP, /if \(copyable\) copy\('implementation'/)
   // Resolved: the same package, the same state's blocks, executable and no longer a preview.
