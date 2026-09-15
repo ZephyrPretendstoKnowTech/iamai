@@ -284,6 +284,7 @@ const EXTRAS = STEP_EXTRAS
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf } from './passkeySettings.ts'
+import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -2022,6 +2023,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
             : null,
     })
+
+    // The workload step restricts the identity that performs synchronization, and
+    // nothing the scan reads establishes that identity or that workload Conditional
+    // Access supports it (roadmap/workloadIdentity.ts): a sync role holder, a licence
+    // and a provisioning object do not. Unless support is established the step holds
+    // on that fact and is never completed by a policy that looks like its target; an
+    // existing policy is kept unchanged while the identity is confirmed.
+    if (goal.id === SYNC_WORKLOAD_GOAL_ID) {
+      const s = steps[steps.length - 1]
+      const identity = syncIdentitySupportOf(snapshot)
+      if (identity.support !== 'supported') {
+        s.blockers = [...s.blockers, { kind: 'evidence', label: WORKLOAD_IDENTITY_BLOCKER, binding: identity.support === 'unsupported' ? BLOCKED_REASON.workloadIdentityUnsupported : BLOCKED_REASON.workloadIdentityUnknown, unverified: true }]
+        setState(s, { ...(s.state.satisfied ? { satisfied: false, inPlace: false } : {}), condition: conditionFor(s.blockers) })
+      }
+    }
   }
 
   // The baseline's own references only a person can answer (resolvePolicy.ts

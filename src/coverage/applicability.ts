@@ -57,16 +57,19 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
     snapshot.capabilities.intune.enabled,
     snapshot.capabilities.intune.enabled ? 'Intune licence present' : 'no Intune licence',
   )
-  // The workload goal restricts the directory-sync account to its address: where
-  // nobody holds the Directory Synchronization Accounts role there is no sync
-  // account to restrict, and the goal does not apply — never a licence row (B7).
+  // The workload goal is planned only where someone holds the Directory
+  // Synchronization Accounts role — never a licence row (B7). That role is a signal
+  // to review, not proof of Cloud Sync or of a supported calling identity, and its
+  // absence is not proof that no sync identity exists: the reason says what was
+  // found and no more, and a planned workload step holds until the identity's support
+  // is established (roadmap/workloadIdentity.ts).
   const syncAccount = Object.values(snapshot.roles?.active ?? {}).some((roles) => roles.some((r) => r.toLowerCase() === DIR_SYNC_ROLE))
   const workloadLicensed = snapshot.capabilities.workloadIdPremium.enabled
   auto(
     'workload',
     syncAccount && workloadLicensed,
     !syncAccount
-      ? 'no directory synchronization account'
+      ? 'no directory synchronization account found; sync identity support not assessed'
       : workloadLicensed
         ? 'Workload Identities Premium present'
         : 'no Workload Identities Premium licence',

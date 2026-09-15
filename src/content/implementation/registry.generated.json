@@ -17944,7 +17944,8 @@
           "evidence.cloudSyncActivity",
           "evidence.syncAddresses",
           "dependencies.blockers",
-          "location.current.semanticMismatches"
+          "location.current.semanticMismatches",
+          "workload.identity.detail"
         ],
         "projection": {
           "notApplicable": {
@@ -18352,7 +18353,7 @@
           "memberStableId": null,
           "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
-          "workloadScope": "one IAMAI-resolved Entra Cloud Sync provisioning service principal",
+          "workloadScope": "one Entra Cloud Sync calling identity, confirmed as a supported workload identity (a single-tenant service principal the tenant owns); IAMAI does not establish this from a sync role, a licence or a provisioning object",
           "resourceScope": "All",
           "locationScope": {
             "include": [
@@ -18404,7 +18405,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "The approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the exact Entra Cloud Sync provisioning service principal that IAMAI resolved. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Conditions > Locations**, include **Any location** and exclude the IAMAI-resolved sync-server named location.\n7. Under **Grant**, select **Block access**.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
+          "text": "{{workload.identity.detail}} [omit this line when unavailable]\n\nIdentify the application that requests tokens for this sync workflow and its service principal. Check its ownership and sign-in audience against Microsoft's supported workload identity types. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.\n\nThe approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Conditions > Locations**, include **Any location** and exclude the IAMAI-resolved sync-server named location.\n7. Under **Grant**, select **Block access**.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -18725,7 +18726,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement only the missing named-location prerequisite for this IAMAI step.\n\nGOAL\nCreate the approved Cloud Sync server IP named location, then stop for an IAMAI rescan.\n\nTENANT CONTEXT\nLocation name: {{location.syncServer.displayName}}\nApproved IP ranges: {{location.syncServer.ipRanges}}\n\nDO NOT CHANGE\nDo not create the workload policy yet, broaden the range, or invent a trusted-location flag. The policy needs the new location's stable tenant ID after rescan.\n\nYOUR ROLE\nReturn only the smallest safe named-location creation action and verification.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{workload.identity.detail}} [omit this line when unavailable]\n\nROLE\nHelp implement only the missing named-location prerequisite for this IAMAI step.\n\nGOAL\nCreate the approved Cloud Sync server IP named location, then stop for an IAMAI rescan.\n\nTENANT CONTEXT\nLocation name: {{location.syncServer.displayName}}\nApproved IP ranges: {{location.syncServer.ipRanges}}\n\nDO NOT CHANGE\nDo not create the workload policy yet, broaden the range, or invent a trusted-location flag. The policy needs the new location's stable tenant ID after rescan.\n\nNEXT STEP\nExplain the named-location creation and how to verify it, and why the workload policy waits for the rescan.\n"
         },
         "ai.create": {
           "meta": {
@@ -18737,7 +18738,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp create the Cloud Sync workload Conditional Access policy after IAMAI has resolved the prerequisite named location.\n\nGOAL\nBlock the resolved Cloud Sync provisioning service principal outside the approved sync-server location, starting in Report-only.\n\nTENANT CONTEXT\nPolicy name: {{policy.target.displayName}}\nCloud Sync service principal Object ID: {{workload.cloudSync.servicePrincipalId}}\nApproved named-location ID: {{location.syncServer.id}}\n\nMICROSOFT RULES\nTarget the service principal directly as a workload identity. Use the Enterprise applications Object ID, target All resources, include Any location, exclude the approved location, and Block access. Workload ID Premium is required to create/modify this policy.\n\nDO NOT CHANGE\nDo not target all service principals, a group containing the service principal, a managed identity, or the App registrations Object ID.\n\nYOUR ROLE\nReturn only the Create-in-Report-only action and read-back verification.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{workload.identity.detail}} [omit this line when unavailable]\n\nPROPOSED POLICY\nBlock the confirmed sync identity outside the approved sync-server location, starting in Report-only.\nPolicy name: {{policy.target.displayName}}\nService principal Object ID: {{workload.cloudSync.servicePrincipalId}}\nApproved named-location ID: {{location.syncServer.id}}\n\nMICROSOFT RULES\nWorkload Conditional Access applies to single-tenant service principals the tenant owns; Microsoft applications, multitenant applications and managed identities are outside its scope. Target the service principal directly by its Enterprise applications Object ID, target All resources, include Any location, exclude the approved location, and Block access. Workload ID Premium is required to create or modify this policy.\n\nDO NOT CHANGE\nDo not target all service principals, a group containing the service principal, a managed identity, the App registrations Object ID, or a directory-sync user account. Keep an existing policy unchanged while support is being confirmed.\n"
         },
         "ai.correct": {
           "meta": {
@@ -18749,7 +18750,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync workload policy.\n\nCURRENT STATE\nPolicy ID: {{policy.current.id}}\nPolicy mismatches: {{policy.current.semanticMismatches}}\n\nTARGET STATE\nApproved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; the policy's current state kept.\n\nDO NOT CHANGE\nDo not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, each correction applies to the sync service principal's token requests as soon as it is saved. Confirm the sync server's current egress address is in the approved location first.\n\nYOUR ROLE\nApply only the supplied mismatch modules to the same stable objects and stop for IAMAI rescan.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{workload.identity.detail}} [omit this line when unavailable]\n\nROLE\nHelp correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync workload policy.\n\nCURRENT STATE\nPolicy ID: {{policy.current.id}}\nPolicy mismatches: {{policy.current.semanticMismatches}}\n\nTARGET STATE\nApproved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; the policy's current state kept.\n\nDO NOT CHANGE\nDo not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, each correction applies to the sync service principal's token requests as soon as it is saved. Confirm the sync server's current egress address is in the approved location first.\n\nNEXT STEP\nExplain each listed correction on the same objects, what it changes, and the rescan that confirms it.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -18761,7 +18762,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp decide whether this Cloud Sync workload policy is ready to enforce. Do not repeat creation steps.\n\nEVIDENCE IAMAI HAS\nCloud Sync activity: {{evidence.cloudSyncActivity}}\nObserved sync addresses: {{evidence.syncAddresses}}\n\nMICROSOFT RULES\nReview **Service principal sign-ins** and the policy's Report-only result. The service principal must be directly targeted. Enforcement outside the excluded named location blocks token requests.\n\nKNOWN UNKNOWNS\nA previously observed public IP does not prove the server's egress address is stable or still current.\n\nYOUR ROLE\nIdentify the remaining evidence needed to confirm the approved address represents normal Cloud Sync operation.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{workload.identity.detail}} [omit this line when unavailable]\n\nROLE\nHelp decide whether this Cloud Sync workload policy is ready to enforce. Do not repeat creation steps.\n\nEVIDENCE IAMAI HAS\nCloud Sync activity: {{evidence.cloudSyncActivity}}\nObserved sync addresses: {{evidence.syncAddresses}}\n\nMICROSOFT RULES\nReview **Service principal sign-ins** and the policy's Report-only result. The service principal must be directly targeted. Enforcement outside the excluded named location blocks token requests.\n\nKNOWN UNKNOWNS\nA previously observed public IP does not prove the server's egress address is stable or still current.\n\nNEXT STEP\nIdentify the remaining evidence needed to confirm that the sync identity is supported and that the approved address represents its normal token requests.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -18773,7 +18774,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp perform only the final enforcement transition for the already-correct Cloud Sync workload policy.\n\nCURRENT STATE\nIAMAI has classified the step Ready to enforce.\n\nIMPLEMENTATION\nConfirm the current server egress is still inside the approved named location, change the existing workload policy from Report-only to On, and verify a fresh Cloud Sync operation succeeds.\n\nROLLBACK / SAFE RECOVERY\nIf synchronization fails, return the same policy to Report-only first. Check current egress versus the same named location before changing any range.\n\nYOUR ROLE\nKeep the action limited to enforcement, operational verification, and safe rollback.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{workload.identity.detail}} [omit this line when unavailable]\n\nROLE\nHelp perform only the final enforcement transition for the already-correct Cloud Sync workload policy.\n\nCURRENT STATE\nIAMAI has classified the step Ready to enforce.\n\nIMPLEMENTATION\nConfirm the current server egress is still inside the approved named location, change the existing workload policy from Report-only to On, and verify a fresh Cloud Sync operation succeeds.\n\nROLLBACK / SAFE RECOVERY\nIf synchronization fails, return the same policy to Report-only first. Check current egress versus the same named location before changing any range.\n\nNEXT STEP\nKeep the change to enforcement, the operational checks and the rollback above. Creating or enabling the policy alone does not establish protection.\n"
         },
         "email.admins.pre-enforcement": {
           "meta": {
@@ -18789,7 +18790,7 @@
             "recommendation": "optional",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Cloud Sync Conditional Access enforcement\n\nWe are moving the Cloud Sync workload Conditional Access policy from Report-only to On. After the change, the Cloud Sync provisioning service principal will be blocked when it requests tokens from outside the approved sync-server public IP location.\n\nPlease avoid changing the Cloud Sync server's public egress path during the rollout window. If synchronization stops, capture the time and current public egress address and return the policy to Report-only before changing the named location.\n"
+          "text": "Subject: Cloud Sync Conditional Access enforcement\n\nWe plan to move the sync workload Conditional Access policy from Report-only to On. It applies to the sync identity we confirmed as supported; after the change, that identity's token requests from outside the approved public IP location are blocked.\n\nPlease avoid changing the Cloud Sync server's public egress path during the rollout window. If synchronization stops, capture the time and current public egress address and return the policy to Report-only before changing the named location.\n"
         },
         "readiness.model": {
           "meta": {

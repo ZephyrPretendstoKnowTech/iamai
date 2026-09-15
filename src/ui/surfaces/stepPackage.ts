@@ -43,6 +43,7 @@ import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
+import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
@@ -636,6 +637,14 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot, ctx.nameOf))) out[key] = value
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
   if (step.id === PASSKEY_SETTINGS_STEP_ID) for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
+  // Why the workload restriction is not counted as protection: the sync identity's
+  // support is unknown, or known to be outside workload Conditional Access
+  // (roadmap/workloadIdentity.ts). Nothing is bound once support is established.
+  if (step.goalId === SYNC_WORKLOAD_GOAL_ID) {
+    const identity = syncIdentitySupportOf(ctx.snapshot)
+    const words = (CONTRACT.implementation as unknown as { workloadIdentity: { unknown: string; unsupported: string } }).workloadIdentity
+    put('workload.identity.detail', identity.support === 'unsupported' ? words.unsupported : identity.support === 'unknown' ? words.unknown : undefined)
+  }
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
   const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
   put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
