@@ -479,7 +479,7 @@ try {
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
   // The header's progress tiles replaced the generated status sentence (owner, 2026-09-11).
-  const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
+  const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => [...(t.querySelector('dt')?.childNodes ?? [])].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
   const planProgress = await progressOf()
   // Approved structural update: actionable counts, completed fraction, and an honest finish estimate.
   check('Plan: the header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(planProgress), planProgress)
@@ -529,7 +529,7 @@ try {
   check('Plan: the three lanes are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false')
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
-  check('Plan: every row carries a Lane · substatus label', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready|Up Next|On Hold) · \S/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready|Up Next|On Hold) · \S/.test(l)).slice(0, 3)))
+  check('Plan: Ready names its action and waiting lanes use concise labels', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)).slice(0, 3)))
   // The focus controls are toggles over the same rows, and their counts come
   // from the board rather than from a constant.
   check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
@@ -599,7 +599,7 @@ try {
   // a way back to the step.
   await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
   const handoff = await evaluate(`(() => { const a = document.querySelector('main.page a[href^="#/readiness/step/"]'); if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
-  check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /cannot meet its sign-in requirement/.test(handoff.text), handoff && handoff.text)
+  check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff && handoff.text)
   if (handoff) {
     const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
     await send('Page.navigate', { url: `${BASE}${handoff.href}` })
@@ -1037,7 +1037,7 @@ try {
   // The load saves the record, then the mappings, and the plan regenerates on
   // each (ui/actions.ts tenantTurn): the rows are read once the header's counts
   // are back to what they were, not on the first render after the first save.
-  await waitFor(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ') === ${JSON.stringify(progressBefore)}`, 8000)
+  await waitFor(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => [...(t.querySelector('dt')?.childNodes ?? [])].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ') === ${JSON.stringify(progressBefore)}`, 8000)
   await sleep(500)
   const recordAfter = await planRecord()
   await showLane(LANES[0])

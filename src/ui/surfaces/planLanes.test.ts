@@ -16,6 +16,21 @@ import { planStateOf } from './planState.ts'
 
 const RUNS: (() => Fixture)[] = [() => fixture('demo'), () => fixture('demo-week2'), () => fixture('small'), () => fixture('mid'), () => fixture('messy'), () => fixture('midflight'), () => curatedFixture('getiamai'), ...allCuratedFixtures().map((f) => () => f)]
 
+test('available account checks say Review while policy creation keeps Create', () => {
+  const { steps } = runFixture(curatedFixture('demo'))
+  const readings = laneReadings(steps)
+  let checks = 0
+  for (const step of steps) {
+    const reading = readings.get(step.id)
+    if (reading?.lane === 'Ready' && step.kind === 'check' && step.state.condition !== 'needs-decision') {
+      assert.equal(reading.substatus, 'Review', step.id)
+      checks += 1
+    }
+  }
+  assert.ok(checks > 0)
+  assert.ok(steps.some(s => s.kind === 'create' && readings.get(s.id)?.substatus === 'Create'))
+})
+
 const lanesOf = (readings: Map<string, LaneReading>): Record<string, string> => Object.fromEntries([...readings].map(([id, r]) => [id, `${r.lane}${r.substatus ? ` · ${r.substatus}` : ''}${r.reason ? ` · ${r.reason.kind}:${r.reason.id}` : ''}`]).sort())
 
 test('the lane adapter reads no phase, wave or date: the schedule is a secondary projection', () => {

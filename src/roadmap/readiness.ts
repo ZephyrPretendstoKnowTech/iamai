@@ -122,10 +122,9 @@ export function readinessFor(
   }
   if (family === 'device') {
     // A device counts when its platform is in the decision's scope and it is
-    // managed the way the decision accepts: compliant, or hybrid-joined where
-    // the answer says hybrid-joined is enough.
+    // compliant as the baseline grant requires. Hybrid join alone is not compliance.
     const inScope = (d: TenantSnapshot['devices'][number]): boolean => (isPhoneOs(d.operatingSystem) ? scope.phones : scope.computers)
-    const managed = (d: TenantSnapshot['devices'][number]): boolean => d.isCompliant === true || (scope.hybridCounts && !isPhoneOs(d.operatingSystem) && d.trustType === 'ServerAd')
+    const managed = (d: TenantSnapshot['devices'][number]): boolean => d.isCompliant === true
     const owners = new Set(snapshot.devices.filter((d) => inScope(d) && managed(d)).flatMap((d) => d.ownerIds))
     const activeIds = new Set(active.map((v) => v.userId))
     const members = activeIds.size

@@ -44,7 +44,7 @@ import { shows } from './derive/mfaReadiness.ts'
 import { READINESS_STATES } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
 import { factsOf, notReady, stepFacts } from './derive/facts.ts'
-import { actionOf, methodsCell, proofLines, readinessWord, roleWord } from './ui/surfaces/readinessCells.ts'
+import { actionOf, methodsCell, proofLines, proofLabel, readinessWord, roleWord } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
 import { cleanupComplete } from './roadmap/cleanupDone.ts'
@@ -371,11 +371,11 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
     assert.equal(table.rows.length, c.readiness.rows.length, `${c.label}: the CSV has a different number of rows from the page`)
     c.readiness.rows.forEach((r, i) => {
       const row = table.rows[i]
-      assert.equal(row[1], roleWord(r), `${c.label}: the exported role is not the rendered role`)
-      assert.equal(row[2], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
-      assert.equal(row[3], proofLines(r).map((l) => l.text).join('; '), `${c.label}: the exported proof is not the rendered proof`)
-      assert.equal(row[4], readinessWord(r), `${c.label}: the exported readiness is not the rendered readiness`)
-      assert.equal(row[5], actionOf(r)?.text ?? '', `${c.label}: the exported action is not the rendered action`)
+      assert.equal(row[2], roleWord(r), `${c.label}: the exported role is not the rendered role`)
+      assert.equal(row[3], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
+      assert.equal(row[4], proofLines(r).map(proofLabel).join('; '), `${c.label}: the exported proof is not the rendered proof`)
+      assert.equal(row[5], readinessWord(r), `${c.label}: the exported readiness is not the rendered readiness`)
+      assert.equal(row[6], actionOf(r)?.text ?? '', `${c.label}: the exported action is not the rendered action`)
     })
     // A Plan step's handoff names the people the same scoring named, and never a
     // set of its own: the ids are always rows on this page.

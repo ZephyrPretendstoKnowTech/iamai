@@ -10,7 +10,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyC
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { SPECIAL_CARE_STEP_ID, answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
+import { SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -158,7 +158,11 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     // A strict toggle is on only while a Save carries it: a decision saved without
     // it — unticked, or hidden because the option it follows was not chosen
     // (B10 P0-8, S-DD-1) — clears the stored answer.
-    if (labels.strict && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
+    const sameAnswer = (old: string | undefined, value: string | undefined): boolean => typeof old === 'string' && typeof value === 'string' && currentAnswerText(old) === currentAnswerText(value)
+    const preserveRestriction = stepId === QUESTION_STEP.devices && labels.decision && labels.question
+      && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.decision)], d.option)
+      && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.question)], d.answers?.[labels.question])
+    if (labels.strict && !preserveRestriction && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
     if (stepId === 's-confirm-workloads') {
       next.workflowConfirmedAt = d.at
       next.workflowAnswers = { ...(next.workflowAnswers ?? {}) }

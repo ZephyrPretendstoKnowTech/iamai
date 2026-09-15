@@ -39,7 +39,7 @@ import { app, pages } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { actionOf, detailOf, footerParts, methodsCell, passkeyStripParts, proofLines, readinessWord, recommendedWord, roleWord, searchText, showWord, stateTitle } from './readinessCells.ts'
+import { actionOf, detailOf, footerParts, methodsCell, passkeyStripParts, proofLabel, proofLines, readinessWord, recommendedWord, roleWord, searchText, showWord, stateTitle } from './readinessCells.ts'
 import type { ProofMark } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -226,7 +226,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
       key: 'proof',
       header: T.columns[3],
       minWidth: '11rem',
-      csv: (r) => proofLines(r).map((l) => l.text).join('; '),
+      csv: (r) => proofLines(r).map(proofLabel).join('; '),
       render: (r) => (
         <ul className="proof-lines">
           {proofLines(r).map((l, i) => (
@@ -234,7 +234,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
               <span className={`proof-mark proof-mark-${l.mark}`} aria-hidden="true">
                 {MARK[l.mark]}
               </span>
-              <span>{l.text}</span>
+              <span>{proofLabel(l)}</span>
             </li>
           ))}
         </ul>

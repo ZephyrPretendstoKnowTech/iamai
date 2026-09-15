@@ -1646,7 +1646,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nThis policy already exists. Correct only the settings below, which IAMAI found different from the baseline.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -1706,7 +1706,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n7. Rescan in IAMAI.\n"
+          "text": "6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n7. Rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -5611,7 +5611,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
+          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\nLeave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -5624,7 +5624,7 @@
             "kind": "template",
             "moduleRole": "sharedBefore"
           },
-          "text": "# Correct this policy\n\nOpen the exact Conditional Access policy IAMAI identified. Use its policy ID; do not find the policy to update by display name.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\n# Correct this policy\n\nOpen the exact Conditional Access policy IAMAI identified. Use its policy ID; do not find the policy to update by display name.\n"
         },
         "entra.correct.users.include-all": {
           "meta": {
@@ -5715,7 +5715,7 @@
             "kind": "template",
             "moduleRole": "sharedAfter"
           },
-          "text": "# Save and verify\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save. Save, then rescan IAMAI.\n\nDone when IAMAI reads the same policy ID and the selected difference(s) are cleared.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "# Save and verify\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save. Save, then rescan IAMAI.\n\nDone when IAMAI reads the same policy ID and the selected difference(s) are cleared.\n"
         },
         "entra.observe": {
           "meta": {
@@ -7588,7 +7588,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing Conditional Access policy IAMAI resolved, using its policy ID. The display name is context only; do not use it to find the policy to update.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing Conditional Access policy IAMAI resolved, using its policy ID. The display name is context only; do not use it to find the policy to update.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -7672,7 +7672,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected corrections, read back the same policy ID, then rescan IAMAI. Do not change fields where IAMAI found no difference.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save only the selected corrections, read back the same policy ID, then rescan IAMAI. Do not change fields where IAMAI found no difference.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8229,7 +8229,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nThis policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -8289,7 +8289,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n7. Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.\n"
+          "text": "6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n7. Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.\n"
         },
         "entra.observe": {
           "meta": {
@@ -9753,7 +9753,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the authentication context or Conditional Access policy IAMAI identified for this difference. For a policy correction, confirm the policy ID before saving and keep its current state.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the authentication context or Conditional Access policy IAMAI identified for this difference. For a policy correction, confirm the policy ID before saving and keep its current state.\n"
         },
         "entra.correct.context": {
           "meta": {
@@ -9849,7 +9849,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected correction(s), read back the same policy ID, and rescan IAMAI. Leave PIM role settings unchanged until the policy matches the intended settings and is On.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save only the selected correction(s), read back the same policy ID, and rescan IAMAI. Leave PIM role settings unchanged until the policy matches the intended settings and is On.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -11929,7 +11929,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with ID `{{policy.current.id}}`. Correct only the settings listed below.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing policy with ID `{{policy.current.id}}`. Correct only the settings listed below.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -12025,7 +12025,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the corrections, reopen the same policy by its ID to check the saved settings, and rescan in IAMAI. Do not create a duplicate policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the corrections, reopen the same policy by its ID to check the saved settings, and rescan in IAMAI. Do not create a duplicate policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -13770,7 +13770,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with ID {{policy.current.id}}. Find it by this policy ID, not by display name alone.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing policy with ID {{policy.current.id}}. Find it by this policy ID, not by display name alone.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -13866,7 +13866,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the correction, reopen the policy by the same policy ID to check the saved settings, and rescan in IAMAI.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the correction, reopen the policy by the same policy ID to check the saved settings, and rescan in IAMAI.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -14526,7 +14526,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with ID {{policy.current.id}}. Find it by this policy ID, not by display name alone.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing policy with ID {{policy.current.id}}. Find it by this policy ID, not by display name alone.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -14622,7 +14622,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the correction, reopen the policy by the same policy ID to check the saved settings, and rescan in IAMAI.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the correction, reopen the policy by the same policy ID to check the saved settings, and rescan in IAMAI.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -15378,7 +15378,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing Conditional Access policy **{{policy.current.displayName}}** by its policy ID. Do not create a replacement.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing Conditional Access policy **{{policy.current.displayName}}** by its policy ID. Do not create a replacement.\n"
         },
         "entra.correct.users.include-all": {
           "meta": {
@@ -15510,7 +15510,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected difference(s).\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected difference(s).\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -16735,7 +16735,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: **High** only.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: **High** only.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -16747,7 +16747,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with policy ID {{policy.current.id}}. Do not find the policy to update by display name alone.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing policy with policy ID {{policy.current.id}}. Do not find the policy to update by display name alone.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -16843,7 +16843,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the selected correction, read the same policy ID back, and rescan IAMAI. Do not combine unrelated fixes.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the selected correction, read the same policy ID back, and rescan IAMAI. Do not combine unrelated fixes.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -17535,7 +17535,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.\n4. Target resources: **All resources**.\n5. Conditions → User risk: **Medium** only.\n6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions.\n7. Grant: **Grant access** → Require multifactor authentication **and** Require password change → **Require all selected controls**.\n8. Session: not configured.\n9. Enable policy: **Report-only**.\n10. Create, read back, and rescan IAMAI.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.\n4. Target resources: **All resources**.\n5. Conditions → User risk: **Medium** only.\n6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions.\n7. Grant: **Grant access** → Require multifactor authentication **and** Require password change → **Require all selected controls**.\n8. Session: not configured.\n9. Enable policy: **Report-only**.\n10. Create, read back, and rescan IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -17547,7 +17547,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with policy ID `{{policy.current.id}}`. Correct only the differences IAMAI selected.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the existing policy with policy ID `{{policy.current.id}}`. Correct only the differences IAMAI selected.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -17643,7 +17643,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save once after the selected corrections, read back the same policy ID, and rescan IAMAI. Do not create a duplicate policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save once after the selected corrections, read back the same policy ID, and rescan IAMAI. Do not create a duplicate policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -18421,7 +18421,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the IAMAI-resolved named location and/or workload Conditional Access policy by their stable tenant IDs. Do not create replacements.\n"
+          "text": "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n\nOpen the IAMAI-resolved named location and/or workload Conditional Access policy by their stable tenant IDs. Do not create replacements.\n"
         },
         "entra.correct.ensure-report-only": {
           "meta": {
@@ -18541,7 +18541,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the same object(s), read them back, and rescan IAMAI. Do not enforce until the named location and workload policy both match the canonical target and service-principal sign-in evidence is ready.\n\nKeep the policy's current state: if it is On, the correction applies to the sync service principal's token requests as soon as you save. A request from outside the approved named location is then blocked, so confirm the sync server's current egress address is in that location first.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Save the same object(s), read them back, and rescan IAMAI. Do not enforce until the named location and workload policy both match the canonical target and service-principal sign-in evidence is ready.\n\nKeep the policy's current state: if it is On, the correction applies to the sync service principal's token requests as soon as you save. A request from outside the approved named location is then blocked, so confirm the sync server's current egress address is in that location first.\n"
         },
         "entra.observe": {
           "meta": {
@@ -19883,7 +19883,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Register an approved phishing-resistant method for this account. Microsoft recommends a dedicated passkey (FIDO2) security key, or certificate-based authentication where PKI already exists. The method must not depend on an employee's personal phone or the normal administrator sign-in path.\n"
+          "text": "Before registering a new passkey, open Configure Passkey Authentication. Confirm that this account is included, is not in an excluded group, and that the hardware model is allowed by its applicable policy or profile. Keep existing working recovery credentials. Attestation affects new registration; model restrictions can affect existing sign-ins. Certificate-based recovery does not require FIDO2 configuration.\n\nRegister an approved phishing-resistant method for this account. Microsoft recommends a dedicated passkey (FIDO2) security key, or certificate-based authentication where PKI already exists. The method must not depend on an employee's personal phone or the normal administrator sign-in path.\n"
         },
         "entra.correct.custody": {
           "meta": {
@@ -20167,7 +20167,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{tenant.displayName}} has not yet saved how phones and computers should access company data. Device evidence: {{device.evidence.summary}}. Phones: {{device.phones.summary}}. Computers: {{device.computers.summary}}. Intune context: {{device.intune.summary}}. Downstream steps that use this choice: {{dependencies.downstreamSteps}}.\n\nThe phone options are Intune enrollment, app protection without enrollment, or no company data on phones. The computer options are Intune enrollment, Microsoft Entra hybrid join, or no management requirement. The evidence informs the choice but does not make it, and there is no default.\n\nNEXT STEP: Explain what each option means for the people and devices in this evidence, and how it changes the downstream device-policy scope.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\n{{tenant.displayName}} has not yet saved how phones and computers should access company data. Device evidence: {{device.evidence.summary}} Phones: {{device.phones.summary}} Computers: {{device.computers.summary}} Intune context: {{device.intune.summary}} Downstream steps that use this choice: {{dependencies.downstreamSteps}}.\n\nThe phone options are Intune enrollment, app protection without enrollment, or no company data on phones. The computer options are Intune enrollment, Microsoft Entra hybrid join, or no management requirement. The evidence informs the choice but does not make it, and there is no default.\n\nNEXT STEP: Explain what each option means for the people and devices in this evidence, and how it changes the downstream device-policy scope.\n"
         },
         "ai.decision-recorded": {
           "meta": {

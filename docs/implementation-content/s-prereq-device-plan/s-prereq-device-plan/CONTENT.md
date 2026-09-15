@@ -1,7 +1,7 @@
 @@IAMAI-BEGIN {"id":"ai.decision-context","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-{{tenant.displayName}} has not yet saved how phones and computers should access company data. Device evidence: {{device.evidence.summary}}. Phones: {{device.phones.summary}}. Computers: {{device.computers.summary}}. Intune context: {{device.intune.summary}}. Downstream steps that use this choice: {{dependencies.downstreamSteps}}.
+{{tenant.displayName}} has not yet saved how phones and computers should access company data. Device evidence: {{device.evidence.summary}} Phones: {{device.phones.summary}} Computers: {{device.computers.summary}} Intune context: {{device.intune.summary}} Downstream steps that use this choice: {{dependencies.downstreamSteps}}.
 
 The phone options are Intune enrollment, app protection without enrollment, or no company data on phones. The computer options are Intune enrollment, Microsoft Entra hybrid join, or no management requirement. The evidence informs the choice but does not make it, and there is no default.
 

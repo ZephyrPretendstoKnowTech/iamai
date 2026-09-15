@@ -503,7 +503,7 @@ test('the one Plan row says it is a control and whether the step under it is ope
   assert.equal(row.includes('plan-row-reason'), false, 'the row draws a reason line under its title again')
   // The state zone is the lane label over the one tenant fact (A1b); When is a day or the placeholder.
   assert.match(row, /<span className="when">\{when\}<\/span>/)
-  assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/)
+  assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{compactLane\(lane\)\}<\/span>/)
   assert.match(row, /\{chip && <Status tone=\{tone\}>\{chip\}<\/Status>\}/)
   assert.equal(row.includes('next-mark'), false, 'the row draws a next pill again (RUN-CONTEXT-B decision 10)')
 })
@@ -577,7 +577,7 @@ test('a readiness state is a word beside its dot, and a proof mark is a glyph be
   assert.match(readiness, /<span className=\{`status status-\$\{STATUS_TONE\[r\.state\]\}`\}>\{stateTitle\(r\.state\)\}<\/span>/)
   // The mark is decoration over a line of words, so it is hidden from assistive technology.
   assert.match(readiness, /<span className=\{`proof-mark proof-mark-\$\{l\.mark\}`\} aria-hidden="true">/)
-  assert.match(readiness, /<span>\{l\.text\}<\/span>/, 'the proof line carries its words beside the mark')
+  assert.match(readiness, /<span>\{proofLabel\(l\)\}<\/span>/, 'the proof line carries its words beside the mark')
   // Nothing to do is the em rule, a mark and not a word: a screen reader hears the cell as empty, which is the fact.
   assert.match(readiness, /<span className="no-action" aria-hidden="true">&mdash;<\/span>/)
 })
@@ -612,7 +612,7 @@ test('ordinary content cannot widen the page, and ordinary prose is not broken t
   assert.match(rule(css, '.export-grid') ?? '', /grid-template-columns: 1fr;/)
   assert.doesNotMatch(rule(css, '.export-grid') ?? '', /minmax\(\s*\d/, 'a fixed track minimum is a phone-width overflow')
   // Control rows wrap; nothing that holds several controls is nowrap.
-  for (const sel of ['.plan-start label.rows', '.plan-settings label.rows', '.datatable-footer', '.surface .toolbar', '.surface .actions', '.export-card .actions', '.picker-chips']) {
+  for (const sel of ['.plan-start label.rows', '.plan-settings .rows', '.datatable-footer', '.surface .toolbar', '.surface .actions', '.export-card .actions', '.picker-chips']) {
     assert.match(rule(css, sel) ?? '', /flex-wrap:\s*wrap/, `${sel} does not wrap`)
   }
   assert.match(rule(homeCss, '.actions') ?? '', /flex-wrap:\s*wrap/, 'the home page CTAs stack')

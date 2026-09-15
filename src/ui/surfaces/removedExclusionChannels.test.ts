@@ -59,9 +59,9 @@ test('a correction dropping the guest exclusion names it in the Entra procedure,
   const line = said('guest or external users')
   assert.ok(exported.includes(line), 'the export line these tabs now match')
   const entra = tab('portal')
-  assert.ok(entra.includes(`   ${line}`), entra)
-  // Under the Save item, before the rescan that ends the procedure.
-  assert.ok(entra.indexOf(line) > entra.search(/^\d+\. Save\b/m) && entra.indexOf(line) < entra.search(/^\d+\. Rescan/m), entra)
+  assert.ok(entra.includes(line), entra)
+  // The consequence appears before the operator starts changing the policy.
+  assert.ok(entra.indexOf(line) < entra.search(/^\d+\. Go to\b/m), entra)
   assert.ok(tab('ai').includes(line), tab('ai'))
   const ps = tab('ps')
   assert.ok(ps.includes(`# This change removes guest or external users from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved.`), ps.slice(0, 400))

@@ -9,6 +9,7 @@
 // not, and whose work the baseline is. The permissions and reads stay generated
 // from GRAPH_SCOPES and COLLECTOR_REGISTRY — there is no second, hand-written
 // list of what IAMAI can see.
+import { useEffect, useRef } from 'react'
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
 import type { CollectorSpec } from '../../graph/collect/registry.ts'
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
@@ -41,6 +42,24 @@ const READS = app.how
 const SEVERITY_CHIP: Record<RuleSeverity, ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral' }
 
 export function How() {
+  const packageHeading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    const revealPackage = () => {
+      const heading = packageHeading.current
+      if (window.location.hash !== '#/how#package' || !heading) return
+      // A second hash is an app section link, not a native document anchor.
+      const headerHeight = document.querySelector('header.app')?.getBoundingClientRect().height ?? 0
+      heading.style.scrollMarginTop = `${headerHeight + 16}px`
+      heading.scrollIntoView({ block: 'start' })
+      heading.focus({ preventScroll: true })
+    }
+    const frame = requestAnimationFrame(revealPackage)
+    window.addEventListener('hashchange', revealPackage)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('hashchange', revealPackage)
+    }
+  }, [])
   const permissions = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
   const lanes: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
   const subjects = [...new Set(REGISTRY.map((r) => r.subject))] as RuleSubject[]
@@ -61,8 +80,8 @@ export function How() {
           // takes the width the name needs, and the panel scrolls if the screen
           // cannot give it.
           { key: 'scope', header: PERMISSIONS.columns.permission, render: (r) => <code className="permission-name">{r.scope}</code> },
-          { key: 'reads', header: PERMISSIONS.columns.reads, render: (r) => r.reads },
-          { key: 'without', header: PERMISSIONS.columns.without, render: (r) => r.without },
+          { key: 'reads', header: PERMISSIONS.columns.reads, minWidth: '16rem', render: (r) => r.reads },
+          { key: 'without', header: PERMISSIONS.columns.without, minWidth: '16rem', render: (r) => r.without },
         ]}
       />
 
@@ -75,7 +94,7 @@ export function How() {
             rows={COLLECTOR_REGISTRY.filter((s) => s.lane === lane)}
             rowKey={(s) => s.name}
             columns={[
-              { key: 'name', header: READS.columns.data, render: (s) => s.name },
+              { key: 'name', header: READS.columns.data, minWidth: '9rem', render: (s) => s.name },
               // A Graph path DOES break — it is long enough that refusing to
               // would push a six-column table past any screen — but not into
               // slivers: the floor keeps a short path on one or two lines and
@@ -83,8 +102,8 @@ export function How() {
               { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => <code>{s.endpoint}</code> },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
-              { key: 'gate', header: READS.columns.gate, render: (s) => s.gate },
-              { key: 'purpose', header: READS.columns.why, render: (s) => s.purpose },
+              { key: 'gate', header: READS.columns.gate, minWidth: '12rem', render: (s) => s.gate },
+              { key: 'purpose', header: READS.columns.why, minWidth: '18rem', render: (s) => s.purpose },
             ]}
           />
       ))}
@@ -99,10 +118,10 @@ export function How() {
             rows={REGISTRY.filter((r) => r.subject === subject)}
             rowKey={(r) => r.id}
             columns={[
-              { key: 'what', header: 'What it looks for', render: (r) => ruleText(r.id).what },
+              { key: 'what', header: 'What it looks for', minWidth: '16rem', render: (r) => ruleText(r.id).what },
               { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{SEVERITY[r.severity]}</Chip> },
-              { key: 'why', header: 'Why it matters', render: (r) => ruleText(r.id).why },
-              { key: 'needs', header: 'Needs', render: (r) => (r.needs.length === 0 ? 'nothing' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
+              { key: 'why', header: 'Why it matters', minWidth: '18rem', render: (r) => ruleText(r.id).why },
+              { key: 'needs', header: 'Needs', minWidth: '12rem', render: (r) => (r.needs.length === 0 ? 'nothing' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
               {
                 key: 'source',
                 header: CITATION.source,
@@ -125,14 +144,13 @@ export function How() {
           />
       ))}
 
-      <h2 id="package">{C.packages}</h2>
+      <h2 id="package" ref={packageHeading} tabIndex={-1}>{C.packages}</h2>
       <p className="reason">{PACKAGE.does}</p>
       <ol className="sections">
-        <li>{PACKAGE.way1Title}</li>
-        <li>{PACKAGE.way2Title}</li>
-        <li>{PACKAGE.way3Title}</li>
+        <li><h3>{PACKAGE.way1Title}</h3><ul>{PACKAGE.way1.map(line => <li key={line}>{line}</li>)}</ul></li>
+        <li><h3>{PACKAGE.way2Title}</h3><p>{PACKAGE.way2Intro}</p><pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre></li>
+        <li><h3>{PACKAGE.way3Title}</h3><p>{PACKAGE.way3}</p></li>
       </ol>
-      <pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre>
 
       {/* Where the public site runs, and where the tenant's data does not (task 016).
           Said once, here: the home page makes its own short read-only / browser /

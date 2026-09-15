@@ -193,7 +193,7 @@ test('the status zone consumes the one lane reading and computes nothing', () =>
 })
 
 test('the state is a word, never a colour alone, in every state the plan can be in', () => {
-  assert.match(ROW, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/, 'the state is no longer rendered as a word')
+  assert.match(ROW, /<span className=\{`lane lane-\$\{tone\}`\}>\{compactLane\(lane\)\}<\/span>/, 'the state is no longer rendered as a word')
   // Every status a step can project renders a non-empty word. A tone with no
   // word would be a row whose meaning is the dot's colour.
   // A step nothing holds: the word reads the hold (roadmap/holds.ts), which reads the step's kind and blockers.

@@ -56,12 +56,14 @@ export function referenceAnswer(answer: string | null | undefined): { omit: true
  */
 export function questionLabels(stepId: string): Record<AnswerKind, string | null> {
   const d = contentDecision(stepId)
-  return { decision: str(d?.label), question: str(d?.question?.label), strict: str(d?.strict?.label) }
+  return { decision: str(d?.label), question: str(d?.question?.label), strict: str(d?.strict?.label) ?? (stepId === PREREQ_STEP_ID.devicePlan ? 'Block phones' : null) }
 }
 
 /** The options a step's decision block offers, by kind; the strict toggle offers its one option. */
 export function questionOptions(stepId: string, kind: AnswerKind): string[] {
   const d = contentDecision(stepId)
+  // Read saved restrictions from before the redundant toggle was removed.
+  if (stepId === PREREQ_STEP_ID.devicePlan && kind === 'strict' && !d?.strict) return ['Block phones that are not enrolled']
   const raw = kind === 'decision' ? d?.options : kind === 'question' ? d?.question?.options : d?.strict?.option !== undefined ? [d.strict.option] : undefined
   return Array.isArray(raw) ? raw.filter((o): o is string => typeof o === 'string') : []
 }
@@ -84,11 +86,14 @@ const RENAMED_OPTIONS: Readonly<Record<string, string>> = {
   'Protect the apps only': 'Protect company apps only',
   'No company data on phones': 'Keep company data off phones',
   'Enrol in Intune': 'Enroll in Intune',
-  'Hybrid-joined is enough': 'Hybrid join is sufficient',
+  'Hybrid-joined is enough': 'Hybrid-joined Windows computers',
+  'Hybrid join is sufficient': 'Hybrid-joined Windows computers',
 }
 
 /** A stored answer in the content's current words. */
 export function currentAnswerText(answer: string): string {
+  const mail = /^Yes: add: (.*); the service-accounts group carries them$/.exec(answer)
+  if (mail) return `Temporary exception accounts: ${mail[1]}`
   return RENAMED_OPTIONS[answer] ?? answer
 }
 

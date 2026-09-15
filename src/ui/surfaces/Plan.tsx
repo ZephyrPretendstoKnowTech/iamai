@@ -52,7 +52,7 @@ type PlanPage = {
   h1: string
   now: string
   settingsLink: string
-  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; close: string }
+  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
   progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
   howTo: { link: string; items: string[] }
@@ -82,9 +82,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
+  const [mappingRequest, setMappingRequest] = useState(0)
   // A Readiness tile's link to Baseline mappings opens the settings panel and
   // moves to it, from wherever on the board the step is open.
   const openSettings = (): void => {
+    setMappingRequest(n => n + 1)
     setShowSettings(true)
     requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
   }
@@ -296,10 +298,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
         <dl className="plan-progress-tiles" aria-label={PP.progress.label}>
           {progressTiles.map((t) => (
             <div key={t.key} className="plan-progress-tile" title={t.tip}>
-              <dt>{t.label}</dt>
+              <dt>{t.label}{t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}</dt>
               <dd>
                 {t.select ? <button type="button" className="plan-tile-control" aria-label={`${t.label}: ${t.value}`} onClick={t.select}>{tileValue(t.value)}</button> : tileValue(t.value)}
-                {t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}
                 {t.sub?.map((line) => (
                   <small key={line}>{line}</small>
                 ))}
@@ -342,7 +343,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           {PP.settingsLink}
         </a>
         <a href="#/plan" aria-expanded={showHow} aria-controls={PLAN_HOW_ID} onClick={(e) => { e.preventDefault(); setShowHow((v) => !v) }}>
-          {PP.howTo.link}
+          {PP.howTo.link} <span aria-hidden="true">{showHow ? "−" : "+"}</span>
         </a>
       </p>
       {showHow && (
@@ -354,7 +355,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           </ul>
         </div>
       )}
-      {showSettings && <Settings data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
+      {showSettings && <Settings mappingRequest={mappingRequest} data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {/* ---- the board's one row set, and the three lanes over it ----
           Every row is built once, here, with the lane the engine read for it;
@@ -626,7 +627,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
 
 
 
-function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType<typeof usePlanData>; steps: readonly Step[]; snapshot: TenantSnapshot; nameOf: (id: string) => string; onClose: () => void }) {
+function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { mappingRequest: number; data: ReturnType<typeof usePlanData>; steps: readonly Step[]; snapshot: TenantSnapshot; nameOf: (id: string) => string; onClose: () => void }) {
   // pages.plan.settings in full, and nothing else: the change freeze (from and
   // to on one line, its note under it), the display time zone the plan stores,
   // the signature every Tell your people box signs with, the Baseline mappings
@@ -643,47 +644,49 @@ function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType
   const zone = data.timeZone ?? ''
   const options = zone && !zones.includes(zone) ? [zone, ...zones] : zones
   const start = (data.computed?.schedule.start ?? data.startDate ?? '').slice(0, 10)
-  // The working days the scheduler places work on: Monday to Friday, and a
-  // weekend day only where the tenant's own sign-ins show it works one
-  // (roadmap/rhythm.ts; weekday indexes run from Monday = 0).
-  const weekend = [5, 6].filter((d) => data.computed?.schedule.rhythm?.workingDays.includes(d)).map((d) => new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 3 + (d - 5)))))
-  const workdays = weekend.length > 0 ? fillText(PP.settings.workdaysWith, { days: list(weekend) }) : PP.settings.workdaysWeek
-  // The change freeze's two days as typed (A2, R-SCHED §6): a from-only freeze,
-  // or one that ends before it starts, is rejected here with its message and the
-  // plan carries no freeze, rather than stored and dropped without a word at
-  // buildSchedule. The days as typed stay in the inputs until both are given.
+  // Keep a local date draft until the owner explicitly saves a valid range.
   const [freezeDays, setFreezeDays] = useState({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })
   const freezeInput = freezeInputOf(freezeDays.from, freezeDays.to)
   const setFreezeDay = (key: 'from' | 'to', day: string) => {
     const next = { ...freezeDays, [key]: day }
     setFreezeDays(next)
-    data.setFreeze(freezeInputOf(next.from, next.to).freeze)
+    // Invalid or incomplete drafts never change the saved schedule.
   }
   return (
     <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
       <label className="rows">
         <span>{PP.settings.planStarts}</span>
-        <input type="date" value={start} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+        <span>{absoluteDate(start)}</span>
       </label>
+      <details className="scheduling-options">
+      <summary>{PP.settings.scheduling}</summary>
       <label className="rows">
         <span>{PP.settings.firstDeployment}</span>
         <input type="date" min={start} value={(data.firstDeployment ?? '').slice(0, 10)} onChange={(e) => data.setFirstDeployment(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
       </label>
       <p className="reason">{PP.settings.firstDeploymentNote}</p>
-      <div className="rows">
-        <span>{PP.settings.workdays}</span>
-        <span>{workdays}</span>
-      </div>
-      <label className="rows">
+
+      <div className="rows freeze-range" role="group" aria-label={PP.settings.freeze}>
         <span>{PP.settings.freeze}</span>
-        <span>{PP.settings.freezeFrom}</span>
-        <input type="date" value={freezeDays.from} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('from', e.currentTarget.value)} />
-        <span>{PP.settings.freezeTo}</span>
-        <input type="date" value={freezeDays.to} min={freezeDays.from || undefined} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('to', e.currentTarget.value)} />
-      </label>
-      {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
-      <p className="reason">{PP.settings.freezeNote}</p>
+        <label className="freeze-field">
+          <span>{PP.settings.freezeFrom}</span>
+          <input type="date" aria-label={`${PP.settings.freeze} ${PP.settings.freezeFrom}`} aria-describedby={freezeInput.reason ? 'plan-freeze-note plan-freeze-error' : 'plan-freeze-note'} value={freezeDays.from} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('from', e.currentTarget.value)} />
+        </label>
+        <label className="freeze-field">
+          <span>{PP.settings.freezeTo}</span>
+          <input type="date" aria-label={`${PP.settings.freeze} ${PP.settings.freezeTo}`} aria-describedby={freezeInput.reason ? 'plan-freeze-note plan-freeze-error' : 'plan-freeze-note'} value={freezeDays.to} min={freezeDays.from || undefined} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('to', e.currentTarget.value)} />
+        </label>
+      </div>
+      {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" id="plan-freeze-error" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
+      <p className="reason" id="plan-freeze-note">{PP.settings.freezeNote}</p>
+      <p className="reason">{PP.settings.freezeSaved}</p>
+      <p className="actions">
+        <Button variant="primary" disabled={freezeInput.reason !== null || freezeInput.freeze === null} onClick={() => { if (freezeInput.freeze && freezeInput.reason === null) data.setFreeze(freezeInput.freeze) }}>{PP.settings.saveFreeze}</Button>
+        <Button variant="secondary" onClick={() => setFreezeDays({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })}>{PP.settings.cancelFreeze}</Button>
+        {data.freeze && <Button variant="tertiary" onClick={() => { data.setFreeze(null); setFreezeDays({ from: '', to: '' }) }}>{PP.settings.removeFreeze}</Button>}
+      </p>
+      </details>
       <label className="rows">
         <span>{PP.settings.timezone}</span>
         <select value={zone} onChange={(e) => data.setTimeZone(e.currentTarget.value || null)}>
@@ -695,11 +698,13 @@ function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType
           ))}
         </select>
       </label>
+      <details><summary>{PP.settings.communications}</summary>
       <label className="rows">
         <span>{PP.settings.signature}</span>
         <input type="text" value={data.signature} onChange={(e) => data.setSignature(e.currentTarget.value)} />
       </label>
-      {data.mapping && <BaselineMappings steps={steps} snapshot={snapshot} mapping={data.mapping} nameOf={nameOf} groups={data.groups} saved={data.stepDecisions[BASELINE_MAPPINGS_KEY] ?? null} onDecide={(d) => data.onDecide(BASELINE_MAPPINGS_KEY, d)} />}
+      </details>
+      {data.mapping && <BaselineMappings openRequest={mappingRequest} steps={steps} snapshot={snapshot} mapping={data.mapping} nameOf={nameOf} groups={data.groups} saved={data.stepDecisions[BASELINE_MAPPINGS_KEY] ?? null} onDecide={(d) => data.onDecide(BASELINE_MAPPINGS_KEY, d)} />}
       <p className="actions">
         <Button variant="secondary" onClick={onClose}>
           {PP.settings.close}

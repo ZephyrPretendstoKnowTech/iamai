@@ -278,6 +278,19 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // contradiction; there is nothing to submit." — was in no artifact at all.
   // Where the reason line and the action are the same sentence (a missing
   // object, an emergency account in reach) the guard below keeps it once.
+  const pkg = implementationPackageFor(step)
+  const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  if (pkg && state && cs.kind === 'policy') {
+    const bindings = packageBindings(step, ctx, contract)
+    const { runtime } = packageRuntime(pkg, state, bindings, {})
+    const projection = projectSafely(pkg, state, bindings, runtime)
+    const preview = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
+    const entra = (preview?.channels ?? projection.channels).find(channel => channel.channel === 'entra')
+    if (entra && implementationIsCurrent(step) && !suppressed && !unearned) {
+      lines.splice(0)
+      lines.push(...entra.text.replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
+    }
+  }
   const action = contract.whatToDo.text
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   // The completion, from the contract, for every step. Nothing here implies the

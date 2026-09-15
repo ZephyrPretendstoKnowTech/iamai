@@ -134,6 +134,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.howTo.items[2]',
   '.pages.plan.howTo.items[3]',
   '.pages.plan.howTo.items[4]',
+  '.pages.plan.howTo.items[5]',
+  '.pages.plan.settings.cancelFreeze',
+  '.pages.plan.settings.communications',
+  '.pages.plan.settings.freezeSaved',
+  '.pages.plan.settings.removeFreeze',
+  '.pages.plan.settings.scheduling',
   '.pages.plan.howTo.link',
   '.pages.plan.impact.noUserImpact',
   '.pages.plan.impact.notEstablished',
@@ -146,8 +152,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.settings.workdays',
   '.pages.plan.settings.workdaysWeek',
   '.pages.plan.settings.workdaysWith',
-  '.steps[12].decision.strict.heading',
-  '.steps[12].decision.strict.text',
   '.pages.plan.blocked.emergency',
   '.pages.connect.plan.sample.weeksEstimate',
   // And the same column for a policy whose observation window closed on records
@@ -255,7 +259,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // policy's own end state, read by stepContract.ts in place of the shared one (B8).
 // steps[].aiFocus is the step's own request to the assistant, read by AI Info's
 // briefing (aiGrounding.ts) and never by the review page.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.registrationScope.') || p.startsWith('.pages.readiness.proof.marks.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

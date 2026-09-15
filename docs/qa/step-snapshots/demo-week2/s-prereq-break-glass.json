@@ -15,8 +15,7 @@
   "tiles": [],
   "channels": [
     "Entra",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Already in place"
 }
