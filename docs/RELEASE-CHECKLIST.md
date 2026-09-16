@@ -1,15 +1,14 @@
 # Release checklist
 
-What a person does before the app is shown to anyone outside the project. The automated
-checks run once per PR update and again for the exact merged main commit. Unit/type
-checks and build/browser checks are independently retryable. Deployment starts for the
-exact pushed main commit in parallel with CI, builds the site once, and publishes it
-without waiting for the complete suite or deployment walk.
+What a person does before the app is shown to anyone outside the project. Full automated
+checks run on pull requests or on an explicit manual run. Deployment starts immediately
+for the exact pushed main commit and performs only the operations needed to publish it:
+dependency installation, the production build, artifact upload, and Pages deployment.
+An install or build failure stops publication before it can replace the live site.
 Use `npm run verify -- src/path/example.test.ts` during a batch. Before a routine
 push, run `npm run verify -- --prepush src/path/example.test.ts` with every
 relevant test file; it typechecks and builds first, then overlaps the focused
-tests with browser smoke. The exact main commit still receives the complete
-suite in CI. Use `npm run verify -- --release` only when a local full release
+tests with browser smoke. Use `npm run verify -- --release` only when a local full release
 preflight is specifically needed.
 
 ## App registration (Entra)
