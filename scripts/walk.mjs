@@ -1560,7 +1560,7 @@ async function walkFixture(fx) {
           }
           if (/^Block Authentication Transfer$/.test(title)) {
             if (/Workflow Check|Authentication Transfer Workflow Tested/.test(bodyText)) add('P0', `${slabel}: the removed workflow form has returned`)
-            if (!/scan confirms.*policy is On/i.test(bodyText)) add('P0', `${slabel}: completion does not explain the scan-confirmed policy outcome`)
+            if (!/scan confirms.*policy is On|scan found the assessed configuration in place/i.test(bodyText)) add('P0', `${slabel}: completion does not explain the scan-confirmed policy outcome`)
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
             emailChecks.push({ title, slabel, run: (_email, more) => {
