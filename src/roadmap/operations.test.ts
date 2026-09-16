@@ -351,7 +351,7 @@ test('F: a confirmed authentication strength is the tenant’s object on every c
   const base = fixture('demo-week2')
   const { r, ctx } = demoRun([], { records: { ...base.mapping.records, [AUTHOR]: record } }, (f) => {
     const strengths = f.snapshot.config.authStrengths ?? { status: 'ok' as const, reason: null, rows: [] }
-    return { config: { ...f.snapshot.config, caPolicies: { ...(f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }), rows: [] }, authStrengths: { ...strengths, rows: [...(strengths.rows ?? []), { id: TENANT, displayName: 'Contoso passkeys', allowedCombinations: ['fido2', 'windowsHelloForBusiness'] }] } } }
+    return { config: { ...f.snapshot.config, caPolicies: { ...(f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }), rows: [] }, authStrengths: { ...strengths, rows: [...(strengths.rows ?? []), { ...(strengths.rows.find(raw => (raw as {policyType?: string}).policyType === 'custom') as Record<string, unknown>), id: TENANT, displayName: 'Contoso passkeys' }] } } }
   })
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant' && s.kind !== 'verify')!
   assert.equal(implementationOffered(step), true)
@@ -615,7 +615,7 @@ test('deny, prompt, strand and batching follow the policy, not the goal it is fi
 
 // ---- a remapped strength with no name of its own ----
 
-test('a remapped strength with no authoritative name shows neither the author’s name nor its id', () => {
+test('a deleted mapped strength is replaced only by an observed exact match', () => {
   const AUTHOR = '42de22a7-5339-4a58-b560-28565d53b14d'
   const TENANT = '00000000-9999-4000-8000-000000000043'
   // Confirmed with no name of its own, and no row in the scan to read one from.
@@ -625,20 +625,13 @@ test('a remapped strength with no authoritative name shows neither the author’
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant' && s.kind !== 'verify')!
   assert.equal(implementationOffered(step), true)
   const strength = ((policyJson(step) as Record<string, Record<string, Record<string, unknown>>>).grantControls).authenticationStrength
-  assert.equal(strength.id, TENANT, 'the operation carries the tenant’s id')
-  assert.equal(strength.displayName, undefined, 'and no name it cannot vouch for')
-  // Nor what the author's object allowed: those describe a different object, and
-  // a policy read through them would be judged by what it does not require.
-  assert.equal(strength.allowedCombinations, undefined, 'and none of the author’s combinations')
-  assert.deepEqual(stepEffects(step)[0].strength, { id: TENANT }, 'the request carries a reference and nothing else')
-  assert.equal(step.lockout, undefined, 'and it counts nobody out')
+  assert.notEqual(strength.id, TENANT, 'a deleted mapped strength must not be used')
+  const observed = base.snapshot.config.authStrengths.rows.find(raw => (raw as {id: string}).id === strength.id) as {displayName: string} | undefined
+  assert.ok(observed, 'the replacement must be an exact matching strength found by the scan')
+  assert.deepEqual(Object.keys(strength), ['id'])
   const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
-  const grant = portal.find((l) => l.startsWith('Grant → '))
-  assert.ok(grant, JSON.stringify(portal))
-  assert.ok(!grant.includes('Modern MFA + TAP'), `never the author’s name: ${grant}`)
-  assert.ok(!grant.includes(TENANT), `never a raw id: ${grant}`)
-  assert.match(grant, /Require authentication strength: Multifactor authentication/, grant)
-  assert.ok(policyJsonText(step).includes(TENANT) && powershellFor(stepOperations(step)).includes(TENANT), 'the id is what the request carries')
+  assert.ok(portal.some(line => line.includes(observed.displayName)), 'guidance names the scanned strength')
+  assert.ok(!policyJsonText(step).includes(TENANT), 'the deleted identifier never reaches an implementation artifact')
 })
 
 // ---- one classification, and preservation never covers a reason ----

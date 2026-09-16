@@ -26,7 +26,7 @@ const HEAD = SC.headings
 
 /** `Label: a | b`, or nothing where the step has nothing under that label. */
 function section(label: string, items: readonly string[]): string | null {
-  const kept = items.filter((x) => typeof x === 'string' && x.trim().length > 0)
+  const kept = items.filter((x) => typeof x === 'string' && x.trim().length > 0).map(x => x.replace(/\s*\r?\n\s*/g, ' '))
   return kept.length === 0 ? null : `${label}: ${kept.join(' | ')}`
 }
 

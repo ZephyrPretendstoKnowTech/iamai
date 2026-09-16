@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Correct",
+  "lane": "Up Next",
+  "substatus": null,
   "reason": "when MFA readiness reaches 90% (now not measured)",
   "fact": "Enforced",
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
+  "badge": "Up Next",
+  "bar": "After Create or Correct Emergency Access Accounts",
   "rail": "Not scheduled",
   "headings": [
     "Why",

@@ -95,15 +95,15 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
   // Editorial batch C: the register Why, and the resolved change on the next scan with the emergency sign-in as a human check.
   assert.equal(cs.why, 'Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.')
   assert.deepEqual(cs.doneWhen, [
-    'Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.',
-    'Existing approved keys still work. Test new emergency-account keys in Create or Correct Emergency Access Accounts.',
+    'The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.',
+    'Verify account-specific key compatibility and recovery in Create or Correct Emergency Access Accounts.',
   ])
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)!
   assert.ok(body.readiness.tiles.some(t => t.key.startsWith('configuration:')), 'scan findings are concrete')
   const b = blocksOf(PASSKEYS)
   const entra = b['entra.configure-fido2'].text
   assert.ok(authoredParts(entra).some(p => p.kind === 'list' && p.ordered))
-  for (const text of ['attestation', '90a3ccdf', 'de1e552d', 'hardware', 'profile']) assert.match(entra, new RegExp(text, 'i'))
+  for (const text of ['attestation', 'modelList', 'hardware', 'profile']) assert.match(entra, new RegExp(text, 'i'))
   const drawn = body.artifacts.find(a => a.id === 'portal')!.text()
   assert.doesNotMatch(drawn, /Open Temporary Access Pass|Open Microsoft Authenticator in the same/)
   assert.match(drawn, /rescan|scan again/i)
@@ -116,9 +116,9 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
   // Editorial batch C: the register Why; the help checks the policies already using the strength; Done when counts combinations and adds its human check.
   assert.equal(cs.why, 'An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.')
   // The line the action column draws under the milestone date (stepExport.ts decisionLine: the help while the decision is open).
-  assert.equal(cs.decision?.help, 'Check the five allowed combinations and every policy already using this strength before changing it.')
+  assert.equal(cs.decision, null)
   assert.deepEqual(cs.doneWhen, [
-    'An authentication strength named "{strengthName}" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.',
+    'An authentication strength named "{strengthName}" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.',
     'Every policy already using the strength still accepts the methods its users rely on.',
   ])
   const b = blocksOf('s-prereq-auth-strength')
@@ -128,7 +128,7 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
         ['Go to Entra admin center → Authentication methods → Authentication strengths.'],
         ['Click + New authentication strength.'],
         ['Name: {{strength.target.displayName}}.'],
-        ['Select exactly these five methods:', '— Windows Hello for Business', '— Passkeys (FIDO2)', '— Certificate-based authentication (multifactor)', '— Temporary Access Pass (one-time use)', '— Temporary Access Pass (multi-use)'],
+        ['Select exactly these methods: {{strength.target.methodNames}}.'],
         ['Do not select any other methods.'],
         ['Review and Create.'],
         ['Rescan in IAMAI.'],
@@ -138,9 +138,9 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
   const ai = b['ai.create'].text
   // Editorial batch C (factual fix): five combinations with both Temporary Access Pass options, TAP is not phishing-resistant,
   // the strength differs from Microsoft's built-in one, and policies reference it by object ID, not by name.
-  assert.match(ai, /^An authentication strength is a named set of sign-in methods that a Conditional Access policy can require\. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message\. This custom strength accepts only five combinations:\n— Windows Hello for Business: a biometric or PIN bound to the device\n— Passkeys \(FIDO2\): a security key or a passkey in Microsoft Authenticator\n— Certificate-based authentication \(multifactor\): a smart card or certificate\n— Temporary Access Pass \(one-time use\)\n— Temporary Access Pass \(multi-use\)$/m)
-  assert.match(ai, /^The first three are phishing-resistant\. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one\. Because both Temporary Access Pass options are accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength\.$/m)
+  assert.match(ai, /This custom strength accepts exactly: \{\{strength.target.methodNames\}\}/)
+  assert.match(ai, /^Windows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant\. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one\. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength\.$/m)
   assert.match(ai, /^Phone call, text message and Authenticator push notifications are not accepted\.$/m)
   assert.match(ai, /^Several baseline policies use this strength\. Create it once in this tenant; those policies reference it by its object ID\.$/m)
-  assert.doesNotMatch(ai, /pinned five|source-tenant|\{\{|all phishing-resistant or temporary|by name/)
+  assert.doesNotMatch(ai, /pinned five|source-tenant|all phishing-resistant or temporary|by name/)
 })

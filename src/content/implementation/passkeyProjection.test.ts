@@ -13,7 +13,7 @@ import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
 import { projectImplementation, planSafely, NO_RUNTIME } from './project.ts'
-import { passkeyBindings, resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
+import { PASSKEY_TARGET_AAGUIDS, passkeyBindings, resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
 import type { Fido2Configuration } from '../../roadmap/passkeySettings.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 
@@ -37,7 +37,7 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
   assert.ok(resolved.kind === 'target')
   assert.deepEqual(body, resolved.target)
   assert.equal(body['@odata.type'], '#microsoft.graph.fido2AuthenticationMethodConfiguration')
-  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, '90a3ccdf-635c-4729-a248-9b709135078f', 'de1e552d-db1d-4423-a619-566b625cdc84'] })
+  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, ...PASSKEY_TARGET_AAGUIDS] })
   // No Authenticator or TAP body is made up, and no channel is withheld for lacking one.
   assert.doesNotMatch(json.text, /microsoftAuthenticator|temporaryAccessPass|lifetimeInMinutes/)
   assert.equal(p.degraded, undefined, JSON.stringify(p.degraded))

@@ -18,7 +18,7 @@
       "state": "0% of admins phishing-resistant"
     },
     {
-      "label": "Prerequisite · To do",
+      "label": "Before enforcement",
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],
@@ -26,8 +26,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Aug 31, 2026"
 }

@@ -12,7 +12,20 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Passkey Authentication",
+      "state": "Configuration required"
+    },
+    {
+      "label": "Break-glass 1",
+      "state": "Compatible key required"
+    },
+    {
+      "label": "Break-glass 2",
+      "state": "Compatible key required"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",

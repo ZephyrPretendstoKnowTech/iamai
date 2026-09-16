@@ -76,7 +76,7 @@ export type LaneReading = {
 }
 
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */
-export type LaneRowInput = { id: string; complete: boolean }
+export type LaneRowInput = { id: string; complete: boolean; afterRollout?: boolean }
 
 /** How many rows each lane holds, counted off the readings (A1c): Connect's Plan tile and any other surface that states a lane count read this. */
 export function laneCountsOf(readings: ReadonlyMap<string, LaneReading>): Record<Lane, number> {
@@ -142,7 +142,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     if (b.kind === 'setup') blockers.push({ kind: 'fact', id: `setup:${b.questionNumber}` })
     else if (b.kind === 'step') {
       if (!GRAPH.steps.has(b.stepId) || byId.get(b.stepId)?.status === 'done') continue
-      const on: Action = policy && GATE.has(b.stepId) ? 'enforce' : action
+      const on: Action = policy && GATE.has(b.stepId) && action === 'create' ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
@@ -426,6 +426,11 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     if (reading?.lane === 'Ready' && (workflowCheckIsNext || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
+  const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)
+  if (rolloutPending) for (const row of rows.filter(row => row.afterRollout && !row.complete)) {
+    const reading = out.get(row.id)
+    if (reading) Object.assign(reading, {lane: 'On Hold', substatus: null, reason: {kind: 'fact', id: 'after-security-rollout', milestone: null, condition: null, abnormal: false, ordinal: 0}, blockers: [], gates: []})
+  }
   // Moving a review into Ready must keep lane positions unique and keep
   // catalogue rows ahead of runtime-only cleanup rows.
   for (const lane of LANE_ORDER) {

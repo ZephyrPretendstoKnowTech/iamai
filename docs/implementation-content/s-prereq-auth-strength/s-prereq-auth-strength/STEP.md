@@ -25,14 +25,13 @@ The current pin remains authoritative. Do not substitute a newer preferred stren
 Target display name; resolved existing strength ID/name/combinations; semantic mismatches; existing Conditional Access usage; blockers.
 
 ## Target state
-Custom authentication strength with exactly these five allowed combinations:
+Custom authentication strength with the allowed combinations from the pinned baseline. The current pin contains these four:
 - Windows Hello for Business
 - Passkeys (FIDO2)
 - Certificate-based authentication, multifactor
 - Temporary Access Pass, one-time
-- Temporary Access Pass, multi-use
 
-Graph values: `windowsHelloForBusiness, fido2, x509CertificateMultiFactor, temporaryAccessPassOneTime, temporaryAccessPassMultiUse`.
+Graph values: `windowsHelloForBusiness, fido2, x509CertificateMultiFactor, temporaryAccessPassOneTime`.
 
 The strength satisfies MFA. No source-tenant custom strength ID is portable into the client tenant.
 
@@ -46,14 +45,14 @@ Preserve the same resolved tenant-local custom object by stable ID during correc
 - Do not paste Jon Hope's custom authentication-strength GUID into another tenant.
 - Do not update a built-in strength.
 - Do not create a duplicate if an equivalent custom strength already exists and IAMAI has resolved it.
-- Do not add weaker combinations outside the pinned five.
+- Do not add weaker combinations outside the pinned target.
 - Do not change allowed combinations without checking usage first.
 
 ## State variants
 Missing/Create; Partial/Correct; Verification required; In place; Blocked; Source conflict.
 
 ## Verification
-Read the tenant-local strength by stable ID and confirm custom policy type, target name, and exactly the five allowed combinations. Review usage and rescan IAMAI.
+Read the tenant-local strength by stable ID and confirm custom policy type, target name, and exactly the pinned allowed combinations. Review usage and rescan IAMAI.
 
 ## Rollback / safe recovery
 For an allowed-combination correction, use Microsoft's updateAllowedCombinations result/previous values as the rollback reference. Do not delete a strength that is referenced by Conditional Access.

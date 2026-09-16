@@ -1,44 +1,23 @@
 {
-  "lane": "Ready",
-  "substatus": "Review",
-  "reason": "Passkey Attestation: Disabled",
+  "lane": "Completed",
+  "substatus": null,
+  "reason": null,
   "fact": null,
-  "badge": "Ready · Review",
-  "bar": "Complete the review below",
-  "rail": "Review now",
+  "badge": "Completed",
+  "bar": "In place",
+  "rail": "Completed",
   "headings": [
     "Why",
     "Readiness",
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Passkey Attestation",
-      "state": "Disabled"
-    },
-    {
-      "label": "Authenticator Models",
-      "state": "Unrestricted"
-    },
-    {
-      "label": "Authenticator iOS",
-      "state": "Allow list not established"
-    },
-    {
-      "label": "Authenticator Android",
-      "state": "Allow list not established"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "Passkey Attestation: Disabled"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",
     "JSON",
     "AI Info"
   ],
-  "when": "Review now"
+  "when": "Already in place"
 }

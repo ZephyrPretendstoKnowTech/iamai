@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
-import { PASSKEY_TARGET_AAGUIDS, passkeyFindingsOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
-import { emergencyPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { PASSKEY_TARGET_AAGUIDS, passkeyFindingsOf, passkeyReadingOf, resolvePasskeyTarget, passkeyReadinessFindingsOf } from './passkeySettings.ts'
+import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
 
 const HARDWARE = 'cb69481e-8ff7-4039-93ec-0a2729a154a8'
 const profile = (id: string, aaGuids: string[] = [...PASSKEY_TARGET_AAGUIDS]) => ({ id, name: id, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids } })
@@ -91,4 +91,40 @@ test('unknown registered key type cannot be claimed compatible with a device-bou
   const snapshot = scan(policy())
   snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE }] }
   assert.equal(emergencyPasskeyCompatibility(snapshot, ['emergency'])[0].state, 'unknown')
+})
+
+
+test('readiness groups missing platform and hardware IDs into one named model finding', () => {
+  const current = policy()
+  current.passkeyProfiles[0].keyRestrictions.aaGuids = []
+  const findings = passkeyReadinessFindingsOf(scan(current))
+  assert.equal(findings.filter(f => f.key === 'models').length, 1)
+  const models = findings.find(f => f.key === 'models')!
+  assert.match(models.detail, /Microsoft Authenticator \(Android\)/)
+  assert.match(models.detail, /YubiKey/)
+  assert.doesNotMatch(models.detail, /all_users/)
+  assert.ok(findings.length <= 4)
+})
+
+test('an accepted model is required on the next scan without bypassing other configuration checks', () => {
+  const snapshot = scan(policy())
+  const mapping = { ...fixture('demo').mapping, passkeyApprovedModels: [{name: 'Approved extra', aaguid: '11111111-1111-4111-8111-111111111111'}] }
+  assert.equal(passkeyReadingOf(snapshot, mapping).state, 'review')
+  const current = policy()
+  current.passkeyProfiles[0].keyRestrictions.aaGuids.push(mapping.passkeyApprovedModels[0].aaguid)
+  assert.equal(passkeyReadingOf(scan(current), mapping).state, 'inPlace')
+  current.passkeyProfiles[0].attestationEnforcement = 'disabled'
+  assert.notEqual(passkeyReadingOf(scan(current), mapping).state, 'inPlace')
+})
+
+test('a currently allowed synced key cannot satisfy planned emergency recovery compatibility', () => {
+  const current = policy()
+  current.passkeyProfiles = [{...profile('authenticator'), passkeyTypes: 'deviceBound,synced', keyRestrictions: {isEnforced:false,enforcementType:'allow',aaGuids:[]}}]
+  current.includeTargets[0].allowedPasskeyProfiles = ['authenticator']
+  const snapshot = scan(current)
+  snapshot.authMethods = { emergency: [{kind:'passkey', aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'synced'}] }
+  assert.equal(emergencyPasskeyCompatibility(snapshot,['emergency'])[0].state,'eligible')
+  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'])[0].state,'review')
+  snapshot.authMethods.emergency = [{kind:'fido2',aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'deviceBound'}]
+  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'])[0].state,'eligible')
 })

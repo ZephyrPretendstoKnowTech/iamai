@@ -21,7 +21,11 @@ Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, th
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state. If it is On, the changed rule can affect access after you save. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured. Remove any other session controls.
+Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) in Entra ID → Conditional Access → Policies.
+
+- Under Session, set Sign-in frequency to **4 hours**.
+- Set Persistent browser session to **Never persistent**.
+- Match the remaining session controls to the target shown for this dedicated session policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -29,9 +33,9 @@ Rename the same policy to **{{policy.target.displayName}}** only when the name i
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.
+- Save with **Enable policy** unchanged. If it is On, the changed rule can affect access after you save.
    This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
-6. Rescan in IAMAI to confirm the correction.
+- Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

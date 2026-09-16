@@ -70,6 +70,7 @@
     "tenant.displayName",
     "passkey.profileOptInApproved",
     "passkey.target.summary",
+    "passkey.target.modelList",
     "passkey.review.detail",
     "passkey.current.fido2Configuration",
     "authenticator.target.configuration",
