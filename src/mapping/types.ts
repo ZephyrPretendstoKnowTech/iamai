@@ -83,6 +83,9 @@ export type MappingState = {
    *  (validation-rules.md §3): asked once alongside the accounts themselves,
    *  recorded in the plan file, and a Phase 0 step when either is no. */
   breakGlassAnswers?: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
+  /** Credential identity covered by the custody confirmation, per selected
+   * account. A method replacement invalidates only the affected confirmation. */
+  breakGlassCustodyBasis?: Record<string, string>
   /** High-priority care targets: changes still apply; the plan takes extra
    *  caution (verify-before-enforce, white-glove callouts, sequenced last). */
   highCareUserIds: string[]

@@ -23,12 +23,13 @@ test('a full tenant renders all five Cleanup rows in order, each with its lists'
   assert.deepEqual(rows[4].lists, { policies: FULL.notAssessed })
 })
 
-test('a row with nothing to say does not render', () => {
+test('the canonical recovery row remains when optional cleanup has nothing to say', () => {
   const none = cleanupRows({ emergencyAccounts: [], renames: [], overlaps: [], notAssessed: [] })
-  assert.deepEqual(none, [], 'an empty Cleanup renders no rows, and the phase does not render (§5)')
+  assert.deepEqual(none.map((r) => r.kind), ['drill'])
+  assert.deepEqual(none[0].lists, { emergencyAccounts: [] })
 
   const onlyNotAssessed = cleanupRows({ emergencyAccounts: [], renames: [], overlaps: [], notAssessed: ['A policy'] })
-  assert.deepEqual(onlyNotAssessed.map((r) => r.kind), ['notAssessed'])
+  assert.deepEqual(onlyNotAssessed.map((r) => r.kind), ['drill', 'notAssessed'])
 })
 
 test('every Cleanup row has its prose in content.cleanup (no missing key)', () => {

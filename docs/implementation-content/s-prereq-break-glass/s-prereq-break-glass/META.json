@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-break-glass",
-  "title": "Create or Correct Emergency Access Accounts",
+  "title": "Prepare Emergency Access Accounts",
   "milestone": {
     "actionText": "Complete the remaining emergency access checks."
   },

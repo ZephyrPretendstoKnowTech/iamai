@@ -1029,6 +1029,10 @@ export function trackExecution(
     // member keeps the policy it owns, the operation is not offered against
     // another, and a person decides (`correctionOf`, types.ts CorrectionSafety).
     if (memberTracking.some((m) => m.correction?.safe === false)) raiseCondition(step, 'review-required')
+    // A policy this scan proves reaches an emergency-access account is unsafe,
+    // not merely something to review. Keep that known safety boundary stronger
+    // than the observation that first noticed the tenant-side change.
+    if (step.action.emergencyExposure?.reached.length) raiseCondition(step, 'blocked')
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)

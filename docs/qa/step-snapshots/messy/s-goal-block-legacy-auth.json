@@ -16,10 +16,6 @@
     {
       "label": "Mail-sending devices",
       "state": "Not confirmed"
-    },
-    {
-      "label": "Prerequisite · Waiting",
-      "state": "Turn Off Security Defaults"
     }
   ],
   "channels": [

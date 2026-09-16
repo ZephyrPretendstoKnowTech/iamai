@@ -134,7 +134,7 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
   const references: Record<string, string> = {
     'service accounts group display name': 'the group selected in Create or Correct Service Accounts Group',
     'service accounts group': 'the Object ID on that group’s Overview page in Entra',
-    'exclusions group': 'the group selected in Create or Correct Exclusions Group',
+    'exclusions group': 'the group selected in Configure Emergency Exclusions',
     'trusted locations display names': 'the named locations selected in Trusted Network',
     'authentication context name': 'the authentication context configured for the intended PIM role',
     'authentication context ID': 'the ID of that context in Conditional Access → Authentication context',

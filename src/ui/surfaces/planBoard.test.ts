@@ -36,6 +36,8 @@ import {
   laneLabelOf,
   workTypeOf,
   WORK_TYPE_IDS,
+  EMERGENCY_STEP_IDS,
+  partitionEmergencyItems,
 } from './planBoard.ts'
 import type { BoardItem, LaneTab } from './planBoard.ts'
 
@@ -84,6 +86,18 @@ function itemsFor(name: FixtureName): BoardItem[] {
 
 const ids = (items: readonly BoardItem[]): string[] => items.map((i) => i.id)
 const ALL = { ...NO_FOCUS, showCompleted: true, showDeferred: true }
+
+test('the emergency foundation partitions the canonical rows once and stays active until all four are completed', () => {
+  const extra = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, hold: null, workType: 'setup', order: 0 })
+  const items = [...EMERGENCY_STEP_IDS.map((id, index) => extra(id, index === 0 ? 'Completed' : index === 1 ? 'Ready' : index === 2 ? 'Up Next' : 'On Hold')), extra('ordinary', 'Ready')]
+  const partitioned = partitionEmergencyItems(items)
+  assert.deepEqual(ids(partitioned.emergency), [...EMERGENCY_STEP_IDS])
+  assert.equal(partitioned.complete, false)
+  assert.equal(new Set([...ids(partitioned.emergency), ...ids(partitioned.remaining)]).size, items.length)
+  assert.equal(partitioned.remaining.some(item => EMERGENCY_STEP_IDS.includes(item.id as typeof EMERGENCY_STEP_IDS[number])), false)
+  const complete = partitionEmergencyItems(items.map(item => EMERGENCY_STEP_IDS.includes(item.id as typeof EMERGENCY_STEP_IDS[number]) ? { ...item, lane: 'Completed' } : item))
+  assert.equal(complete.complete, true)
+})
 /** Every row the three tabs draw between them, with both toggles on, each tab's own lane only. */
 const acrossTabs = (items: readonly BoardItem[]): string[] =>
   LANES.flatMap((tab) => groupsFor(tab, applyFocus(items, tab, ALL)).filter((g) => g.key !== 'complete' && g.key !== 'deferred').flatMap((g) => ids(g.items)))

@@ -65,20 +65,16 @@ test('2. prerequisite still collecting evidence → it waits On Hold, and so doe
   assert.equal(r.reason?.milestone, 'enforced')
 })
 
-test('3. prerequisite Up Next several layers away: the deeper dependency holds, and depth still sorts', () => {
+test('3. exclusions preparation can start from saved choices while protected enforcement keeps its direct gates', () => {
   const s = state({ 's-prereq-break-glass': ABSENT, 's-prereq-exclusion-group': ABSENT, 's-goal-token-protection': ABSENT })
   assert.equal(read(lane('s-prereq-break-glass', s)), 'Ready · Create')
   const group = lane('s-prereq-exclusion-group', s)
-  assert.equal(read(group), 'Up Next · step:s-prereq-break-glass')
-  assert.equal(group.layers, 1)
+  assert.equal(read(group), 'Ready · Create')
+  assert.equal(group.layers, 0)
   const token = lane('s-goal-token-protection', s)
-  assert.equal(read(token), 'On Hold · step:s-prereq-exclusion-group')
+  assert.equal(read(token), 'Up Next · step:s-prereq-exclusion-group')
   assert.equal(token.reason?.abnormal, false, 'a deeper healthy prerequisite, not an abnormal blocker')
-  assert.equal(token.layers, 2)
-  const sorted = sortUpNext(
-    [{ id: 's-goal-token-protection', result: token }, { id: 's-prereq-exclusion-group', result: group }],
-    graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] }))
-  assert.deepEqual(sorted.map((r) => r.id), ['s-prereq-exclusion-group', 's-goal-token-protection'])
+  assert.equal(token.layers, 1)
 })
 
 test('4. prerequisite On Hold → dependent On Hold naming the prerequisite', () => {
@@ -300,9 +296,9 @@ test('invariant: Completed and Deferred are outside the three lanes; every step 
 test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edges excluded', () => {
   const counts = unlockCounts(graph, { excludeConditions: ['sd-enabled'] })
   const expect = (id: string, direct: number, transitive: number): void => assert.deepEqual(counts.get(id), { direct, transitive }, id)
-  expect('s-prereq-break-glass', 3, 24)
-  expect('s-prereq-exclusion-group', 19, 21)
-  expect('s-prereq-passkey-settings', 4, 10)
+  expect('s-prereq-break-glass', 25, 27)
+  expect('s-prereq-exclusion-group', 20, 26)
+  expect('s-prereq-passkey-settings', 5, 28)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
   expect('s-prereq-trusted-location', 4, 5)
@@ -334,7 +330,7 @@ test('§13 Ready order: unlocking creates by unlock count, then policy creates, 
   const sorted = sortReady(ready, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] }))
   assert.deepEqual(sorted.map((r) => r.id), [
     's-prereq-break-glass', 's-prereq-auth-strength', 's-goal-intune-enrollment-reauth',
-    's-check-dormant-accounts', 's-goal-block-legacy-auth', 's-goal-block-device-code',
+    's-check-dormant-accounts', 's-goal-block-device-code',
   ])
 })
 
@@ -354,15 +350,14 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
     's-goal-require-managed-device': ABSENT,           // 4 layers (device-plan, trusted-location, exclusion-group, break-glass)
   }, { conditions: { 'shared-devices-exist': 'unresolved' } })
   const results = deriveLanes(graph, tenant, owner)
-  assert.equal(results.get('s-prereq-per-user-mfa')?.layers, 1, 'a created policy has passed its create gates')
+  assert.equal(results.get('s-prereq-per-user-mfa')?.layers, 4, 'its enforcement path retains all emergency-access gates')
   const upNext = [...results].filter(([, r]) => r.lane === 'Up Next').map(([id, result]) => ({ id, result }))
   // Behind an unfinished prerequisite that is not itself Ready, a step waits On Hold (owner's status contract); its depth still sorts it.
   const deeper = [...results].filter(([, r]) => r.lane === 'On Hold').map(([id, result]) => ({ id, result }))
-  assert.deepEqual(sortUpNext(deeper, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] })).map((r) => r.id), ['s-goal-token-protection', 's-goal-require-managed-device'])
+  assert.deepEqual(sortUpNext(deeper, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] })).map((r) => r.id), ['s-goal-mfa-all-users', 's-prereq-per-user-mfa'])
   const sorted = sortUpNext(upNext, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] }))
   assert.deepEqual(sorted.map((r) => r.id), [
-    's-prereq-per-user-mfa',
-    's-prereq-exclusion-group', 's-shared-devices',
-    'cleanup-drill', 'cleanup-hardening', 's-goal-service-accounts-trusted-network',
+    's-shared-devices', 'cleanup-hardening', 's-goal-service-accounts-trusted-network',
+    's-goal-token-protection', 'cleanup-drill', 's-goal-require-managed-device',
   ])
 })

@@ -32,6 +32,7 @@ export type ConfigSectionKey =
   | 'crossTenantAccess'
   | 'deviceRegistrationPolicy'
   | 'roleAssignments'
+  | 'roleAssignmentSchedules'
   | 'pimEligibility'
   | 'subscribedSkus'
   | 'organization'
@@ -114,8 +115,27 @@ export type UserEvidence = {
    * proof was recorded, which readiness reads as proof not read, never as none.
    */
   proofs?: ProofRecord[]
+  /** Minimal, event-addressable evidence for the emergency recovery drill.
+   * This deliberately omits IP address, device identifiers, tokens and the
+   * full authentication-details payload. */
+  recoveryCandidates?: RecoverySignInCandidate[]
   /** The platform families this account signed in from successfully, latest per family. */
   platforms?: PlatformSeen[]
+}
+
+export type RecoverySignInCandidate = {
+  schema: 1
+  eventId: string
+  userId: string
+  at: string
+  success: boolean
+  isInteractive: boolean | null
+  appId: string | null
+  resourceId: string | null
+  app: string | null
+  resource: string | null
+  method: string | null
+  freshMethod: boolean | null
 }
 
 // The raw sign-in subset Lane B keeps: lives only in the worker and the
@@ -126,12 +146,14 @@ export type StoredSignIn = {
   userId: string
   authenticationRequirement?: string
   mfaDetail?: { authMethod?: string } | null
-  authenticationDetails?: { succeeded?: boolean; authenticationMethod?: string }[] | null
+  authenticationDetails?: { succeeded?: boolean; authenticationMethod?: string; authenticationStepDateTime?: string; authenticationStepResultDetail?: string }[] | null
   status?: { errorCode?: number } | null
   conditionalAccessStatus?: string
   appliedConditionalAccessPolicies?: { id?: string; displayName?: string; result?: string }[] | null
   clientAppUsed?: string
   appId?: string
+  resourceId?: string
+  isInteractive?: boolean
   authenticationProtocol?: string
   originalTransferMethod?: string
   country?: string

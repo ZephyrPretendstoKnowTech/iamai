@@ -6,7 +6,7 @@ Use the emergency accounts you selected.
 3. Confirm the account is enabled and used only for emergency access, not for normal daily work.
 4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.
 5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.
-6. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member.
+6. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member.
 7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.
 8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.
 9. Confirm monitoring exists for emergency-account use.
@@ -32,7 +32,7 @@ Under **Roles and administrators**, ensure the exact emergency account has **Glo
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.exclusion-membership","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Add this emergency account to the resolved exclusions group. Do not add unrelated administrators, service accounts or convenience exclusions. Policy exclusions themselves are corrected in **Create or Correct Exclusions Group**.
+Add this emergency account to the resolved exclusions group. Do not add unrelated administrators, service accounts or convenience exclusions. Policy exclusions themselves are corrected in **Configure Emergency Exclusions**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.auth","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -223,7 +223,7 @@ Emergency access work for {{tenant.displayName}} is blocked: {{dependencies.bloc
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"authorized-emergency-administrators"}
-Subject: Action needed: Create or Correct Emergency Access Accounts
+Subject: Action needed: Prepare Emergency Access Accounts
 
 Please arrange a controlled emergency access drill. Confirm credential access, sign-in, administrative access and alert delivery for each selected account. Record the result and date; do not send credentials.
 @@IAMAI-END

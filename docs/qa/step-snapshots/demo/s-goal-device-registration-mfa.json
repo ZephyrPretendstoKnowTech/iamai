@@ -22,8 +22,12 @@
       "state": "Baseline references an unmapped group"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Create or Correct Exclusions Group"
+      "label": "Prerequisite · To do",
+      "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Configure Emergency Exclusions"
     },
     {
       "label": "Exclusions",

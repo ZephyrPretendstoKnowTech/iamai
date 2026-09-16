@@ -26,7 +26,7 @@ test('§10.0 step index: every gated step and step prerequisite is indexed; iama
 })
 
 test('§10.1 placeholder row expands to every step under §11 E–H, on enforce, conditional on sd-enabled', () => {
-  const expanded = parsed.edges.filter((e) => e.expandedFrom)
+  const expanded = parsed.edges.filter((e) => e.expandedFrom && e.prerequisite === 's-prereq-security-defaults')
   assert.ok(expanded.length > 0)
   for (const e of expanded) {
     assert.equal(e.action, 'enforce')

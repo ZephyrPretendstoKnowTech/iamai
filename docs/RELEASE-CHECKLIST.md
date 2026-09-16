@@ -5,8 +5,12 @@ checks run once per PR update and again for the exact merged main commit. Unit/t
 checks and build/browser checks are independently retryable. Deployment walks main and
 publishes the same commit- and content-verified build artifact; it does not repeat the
 suite or rebuild the site. Manual releases start by running the ci workflow on main.
-Use `npm run verify -- src/path/example.test.ts` during a batch; use
-`npm run verify -- --release` only when a local full release preflight is needed.
+Use `npm run verify -- src/path/example.test.ts` during a batch. Before a routine
+push, run `npm run verify -- --prepush src/path/example.test.ts` with every
+relevant test file; it typechecks and builds first, then overlaps the focused
+tests with browser smoke. The exact main commit still receives the complete
+suite in CI. Use `npm run verify -- --release` only when a local full release
+preflight is specifically needed.
 
 ## App registration (Entra)
 

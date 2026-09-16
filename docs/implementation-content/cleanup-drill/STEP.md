@@ -1,4 +1,4 @@
-# Run the Emergency Access Drill
+# Verify Emergency Access
 
 ## Goal
 Prove that every confirmed emergency access account can still sign in and perform the minimum required administrative access before IAMAI relies on those accounts as the rollback path for Conditional Access changes.

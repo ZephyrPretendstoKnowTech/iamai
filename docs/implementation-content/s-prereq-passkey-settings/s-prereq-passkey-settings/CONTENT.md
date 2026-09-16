@@ -4,7 +4,7 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 
 @@IAMAI-BEGIN {"id":"entra.configure-fido2","channel":"entra","states":["missing","partial","needsDecision","blocked"],"format":"markdown","kind":"template"}
 1. Open Entra admin center → Entra ID → Security → Authentication methods → Policies → Passkey (FIDO2).
-2. Before tightening restrictions, check the emergency-access step for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.
+2. Before tightening restrictions, check Prepare Emergency Access Accounts for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.
 3. Enable the method for the intended users. Keep the existing target groups and exclusions. Under Configure, enable self-service setup.
 4. If profiles are already enabled, open each applicable profile under Configure. Select device-bound passkeys, require attestation, enable key restrictions and choose Allow. For legacy settings, set attestation and key restrictions on the Configure tab, with Allow as the restriction type.
 5. Add the model IDs below to that allowed AAGUID list. They are IAMAI defaults, not a hardware-brand requirement specified by Jon's imported baseline.
@@ -13,7 +13,7 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 
 6. An AAGUID identifies a model family, not an individual key. Other versions of the same brand can have different IDs. Keep existing approved recovery models; additional models are a tenant customization of IAMAI's defaults. Find a registered key's AAGUID in the user's Authentication methods details, or verify it against the manufacturer's information and Microsoft's hardware catalog.
 7. For profiles, check Enable and Target to confirm assignments. A user can use any applicable profile, so check that another assigned profile does not permit an unintended authenticator.
-8. Save, reopen the settings and scan again. Test emergency-account access in the emergency-access step.
+8. Save, reopen the settings and scan again. Complete the account-specific sign-in and recovery check in Verify Emergency Access.
 
 Settings read: {{passkey.current.summary}} [omit this line when unavailable]
 Resolved change: {{passkey.target.summary}} [omit this line when unavailable]
@@ -35,7 +35,7 @@ Then check the supporting methods:
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["inPlace"],"format":"markdown","kind":"template"}
-Reopen Passkey (FIDO2) and compare its settings and applicable profiles with the intended configuration. Scan again to verify the settings. Test emergency-account access in the emergency-access step.
+Reopen Passkey (FIDO2) and compare its settings and applicable profiles with the intended configuration. Scan again to verify the settings. Complete the account-specific sign-in and recovery check in Verify Emergency Access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.fido2","channel":"json","states":["missing","partial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2"}

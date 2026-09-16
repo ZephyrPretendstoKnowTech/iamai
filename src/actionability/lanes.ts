@@ -280,7 +280,7 @@ function milestoneReached(ctx: Ctx, id: string, milestone: Milestone, requester:
     case 'complete': case 'resolved': return false
     case 'created': return obs.exists === true
     case 'enforced': return obs.enforced === true
-    case 'minimum-satisfied': case 'hardening-complete': return obs.milestones?.includes(milestone) === true
+    case 'minimum-satisfied': case 'hardening-complete': case 'recovery-verified': return obs.milestones?.includes(milestone) === true
     case 'ready-to-enforce': {
       if (!obs.exists || obs.drift || !obs.evidenceSatisfied) return false
       if (gatesOf(ctx, id).some((g) => !g.satisfied)) return false
@@ -416,6 +416,13 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const started = kind !== 'decision' && obs.exists === true
   const layers = layersOf(ctx, id, nextAction)
   const gates = kind === 'policy' ? gatesOf(ctx, id) : []
+
+  // An already enforced policy can still need an owner choice recorded. The
+  // choice is available now; rollout prerequisites on a future enforcement do
+  // not retroactively hold that input or the policy already in place.
+  if (started && obs.enforced === true && obs.drift !== true && (obs.unsaved ?? []).length > 0 && (obs.blockers ?? []).length === 0) {
+    return result('Ready', { substatus: 'Decision', nextAction, started, reason: null, blockers: [], gates, layers })
+  }
 
   // 3. Abnormal blockers on the next action (§15), the step's own observed blockers included.
   const unresolved = unresolvedOn(ctx, id, nextAction)

@@ -165,7 +165,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'One account is a single point of failure: a lost key or a forgotten passphrase leaves nobody able to get back in.',
   },
   'bg.role.permanentGa': {
-    what: 'Global Administrator is assigned permanently and active, never eligible-only.',
+    what: 'Global Administrator is assigned permanently and active, not only eligible through PIM.',
     why: 'An eligible-only account has to activate its role first, and activation is one of the things a bad policy can block.',
   },
   'bg.cloudOnly': {
@@ -466,7 +466,7 @@ export const RULE_ACTION: Record<string, (finding: string | null) => string> = {
   'bg.cloudOnly': () => 'Replace the synced account with a cloud-only one. Entra admin center → Users → New user, no on-premises sync.',
   'bg.initialDomain': () => 'Give the account a sign-in address on the tenant onmicrosoft.com domain. Entra admin center → Users → the account.',
   'bg.enabled': () => 'Enable the emergency account. Entra admin center → Users → the account → Account status.',
-  'bg.role.permanentGa': () => 'Assign Global Administrator to each account permanently, never eligible-only. Entra admin center → Roles and administrators → Global Administrator.',
+  'bg.role.permanentGa': () => 'Assign Global Administrator to each account permanently and actively, not only as eligible through PIM. Entra admin center → Roles and administrators → Global Administrator.',
   'bg.hasMfaMethod': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
   'bg.phishingResistant': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
   'bg.excludedFromAllPolicies': (finding) =>

@@ -100,7 +100,7 @@ test('readiness groups missing platform and hardware IDs into one named model fi
   const findings = passkeyReadinessFindingsOf(scan(current))
   assert.equal(findings.filter(f => f.key === 'models').length, 1)
   const models = findings.find(f => f.key === 'models')!
-  assert.match(models.detail, /Microsoft Authenticator \(Android\)/)
+  assert.match(models.detail, /Microsoft Authenticator — Android/)
   assert.match(models.detail, /YubiKey/)
   assert.doesNotMatch(models.detail, /all_users/)
   assert.ok(findings.length <= 4)

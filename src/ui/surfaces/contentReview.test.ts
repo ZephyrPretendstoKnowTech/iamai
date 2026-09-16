@@ -224,14 +224,15 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
 })
 
-test('D4: an emergency account slot with its minimum met reads ✓, whatever hardening is still open', () => {
+test('D4: emergency account findings stay inside the four step topics, including hardening after the minimum is met', () => {
   let met = 0
   for (const name of ['demo', 'small', 'mid'] as const) {
     for (const [id, b] of bodiesOf(fixture(name))) {
       for (const slot of b.contract.emergencySlots.filter((s) => s.state === 'hardening')) {
-        const tile = [...b.readiness.tiles, ...b.readiness.satisfied].find((t) => t.key === slot.key)
-        assert.equal(tile?.tone, 'good', `${name}/${id}: ${slot.label} has its minimum met and still reads !`)
-        assert.equal(b.readiness.tiles.some((t) => t.key === slot.key), false, `${name}/${id}: ${slot.label} is listed as blocking`)
+        const topics = [...b.readiness.tiles, ...b.readiness.satisfied].filter((t) => t.key.startsWith('configuration:'))
+        assert.equal(topics.length, 4, `${name}/${id}: emergency account work is not organized into four topics`)
+        assert.equal(topics.some((t) => t.key === slot.key), false, `${name}/${id}: ${slot.label} became a separate top-level tile`)
+        assert.ok(topics.some((t) => (t.items ?? []).some((item) => item.label === slot.label || item.value.includes(slot.label))), `${name}/${id}: ${slot.label} is absent from the topic details`)
         met += 1
       }
     }
@@ -253,7 +254,7 @@ test('D5: blocking tiles open with the step; past the height cap only the first 
   assert.match(section, /const blocking = readiness\.tiles\.filter\(\(t\) => MARK\[t\.tone\] === '!'\)/)
   assert.match(section, /autoOpen=\{cls === 'unresolved' && autoKeys\.includes\(t\.key\)\}/, 'a satisfied tile can open with the step')
   assert.match(section, /useLayoutEffect\(\(\) => \{[\s\S]*getBoundingClientRect\(\)\.height[\s\S]*autoOpenTiles\(measured\)/, 'the explanations are not measured before paint')
-  assert.match(section, /\{closedBlocking > 0 && <p className="readiness-more">\{fillText\(W\.tiles\.moreBlocking, \{ n: closedBlocking \}\)\}<\/p>\}/, 'nothing says more blocking tiles wait closed')
+  assert.match(section, /\{showClosedCount && closedBlocking > 0 && <p className="readiness-more">\{fillText\(W\.tiles\.moreBlocking, \{ n: closedBlocking \}\)\}<\/p>\}/, 'nothing says more blocking tiles wait closed')
   assert.match(section, /const shown = open \|\| \(expanded \?\? autoOpen\)/, 'a pressed tile does not keep its own state')
   assert.equal((CONTRACT.readiness.tiles as Record<string, string>).moreBlocking, 'Blocking items still closed: {n}')
 })

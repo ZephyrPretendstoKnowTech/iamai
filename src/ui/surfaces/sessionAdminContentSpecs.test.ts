@@ -133,7 +133,7 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
         [KEEP_STATE],
         ['Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.'],
         ['Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.'],
-        ['Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Create or Correct Exclusions Group step.'],
+        ['Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.'],
         ['Under Grant, make sure "Block access" is selected.'],
       ],
     },

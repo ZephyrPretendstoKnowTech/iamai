@@ -1,4 +1,4 @@
-# Set Up Passkeys to Match the Baseline
+# Configure Passkey Authentication
 
 ## Goal
 Configure the tenant authentication-method policies so the IAMAI baseline can use approved passkeys/security keys, Microsoft Authenticator, and Temporary Access Pass without invalidating already-approved credentials.

@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
   "reason": "when device readiness reaches 80% (now 27%)",
   "fact": null,
-  "badge": "On Hold",
-  "bar": "After Create or Correct Exclusions Group",
+  "badge": "Up Next",
+  "bar": "After Confirm the Services You Use",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -22,8 +22,16 @@
       "state": "Decide How Devices Are Managed"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Create or Correct Exclusions Group"
+      "label": "Before enforcement",
+      "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Configure Emergency Exclusions"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Confirm the Services You Use"
     }
   ],
   "channels": [

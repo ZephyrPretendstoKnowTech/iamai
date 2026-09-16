@@ -7,7 +7,7 @@ import { ownerConfirmationOf } from './decisions.ts'
 import type { OwnerConfirmation } from './decisions.ts'
 import type { Step } from './types.ts'
 import { setState } from './lifecycle.ts'
-import { cleanupRecord, withCleanupDone, isRecordedDrill, latestRecoveryTest, cleanupComplete } from './cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, isRecordedDrill, latestRecoveryTest, cleanupComplete, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 
 const at = '2026-09-01T12:00:00Z'
 function setup(id: string) {
@@ -90,12 +90,19 @@ test('failed workflow or observed administrator separation defect cannot be over
 test('a dated successful recovery test never exempts every same-day sign-in', () => {
   const details = { accountIds: ['a'], outcome: 'passed' as const, timeZone: 'UTC' }
   let records = cleanupRecord(withCleanupDone([], 'drill', '2026-08-31', at, details)).records!
-  assert.equal(latestRecoveryTest('a', records, at), '2026-08-31T12:00:00.000Z')
+  assert.equal(latestRecoveryTest('a', records, at), null, 'a legacy Passed date has no qualifying event evidence')
   assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records), false)
-  records = cleanupRecord(withCleanupDone([], 'drill', '2026-08-31', at, { ...details, signInAtByAccount: { a: '2026-08-31T10:00:00Z' } })).records!
-  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records), true)
-  assert.equal(isRecordedDrill('2026-08-31T11:00:00Z', [], 'a', records), false)
-  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'b', records), false)
+  const configurationObservedAt = '2026-08-31T09:00:00Z'
+  const evidence = { a: { schema: 1 as const, tenantId: 'tenant', accountId: 'a', eventId: 'event-a', eventAt: '2026-08-31T10:00:00Z', appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } }
+  const candidate = { schema: 1 as const, eventId: 'event-a', userId: 'a', at: evidence.a.eventAt, success: true, isInteractive: true, appId: evidence.a.appId, resourceId: evidence.a.resourceId, app: 'Portal', resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }
+  let checkpoints = withCleanupDone([], 'drill', '2026-08-31', configurationObservedAt, { accountIds: ['a'], workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: 'tenant', configurationObservedAt })
+  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-08-31', at, { ...details, recoveryEvidence: evidence, signInAtByAccount: { a: '2026-08-31T10:00:00Z' } })
+  records = cleanupRecord(checkpoints).records!
+  const context = { readings: [{ candidate, qualifies: true, reason: null }], tenantId: 'tenant', currentSnapshotObservedAt: at }
+  assert.equal(latestRecoveryTest('a', records, at, undefined, context), '2026-08-31T12:00:00.000Z')
+  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records, context), true)
+  assert.equal(isRecordedDrill('2026-08-31T11:00:00Z', [], 'a', records, context), false)
+  assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'b', records, context), false)
   assert.equal(cleanupComplete({ kind: 'alerting', done: null }, { signInMonitoring: true }), false)
 })
 
@@ -195,9 +202,13 @@ test('free-tier emergency check reuses scoped recovery tests and does not offer 
   f.snapshot.config.securityDefaults = { status: 'ok', reason: null, rows: [{ isEnabled: true }] }
   f.snapshot.config.caPolicies = { status: 'disabled', rows: [], reason: 'Free tenant' }
   const { recoveryAccountBasis } = await import('./cleanupDone.ts')
-  const accountBasis = recoveryAccountBasis(f.snapshot, step.population.ids)
+  const accountBasis = recoveryAccountBasis(f.snapshot, step.population.ids, f.mapping, f.groups)
   assert.equal(Object.keys(accountBasis).length, step.population.ids.length)
-  const records = step.population.ids.map(id => ({ cleanup: 'drill' as const, date: f.snapshot.asOf, at: f.snapshot.asOf, outcome: 'passed' as const, accountIds: [id], accountBasis }))
+  const eventAt = new Date(Date.parse(f.snapshot.asOf) - 3_600_000).toISOString()
+  const configurationObservedAt = new Date(Date.parse(eventAt) - 3_600_000).toISOString()
+  for (const [index, id] of step.population.ids.entries()) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `free-tier-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Portal', resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
+  const preparation = { cleanup: 'drill' as const, date: configurationObservedAt, at: configurationObservedAt, workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: f.snapshot.tenantId, configurationObservedAt, accountIds: step.population.ids, accountBasis }
+  const records = [preparation, ...step.population.ids.map((id, index) => ({ cleanup: 'drill' as const, date: f.snapshot.asOf, at: f.snapshot.asOf, outcome: 'passed' as const, accountIds: [id], accountBasis, recoveryEvidence: { [id]: { schema: 1 as const, tenantId: f.snapshot.tenantId, accountId: id, eventId: `free-tier-${index}`, eventAt, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } } }))]
   applyManualReviews([step], f.snapshot, {}, f.mapping, records, f.groups)
   assert.equal(step.manualReview, undefined)
   assert.equal(step.state.satisfied, true)

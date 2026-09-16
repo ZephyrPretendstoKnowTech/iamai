@@ -38,7 +38,7 @@ import { DEMO_TENANT_ID, DEMO_PARAM, DEMO_SNAPSHOT_STATE_ID } from './demoMode.t
 import { demoSnapshotKey, demoTenant, nextDemoRecord } from './demo.ts'
 import type { DemoPlanRecord, DemoSnapshotState, DemoTenant } from './demo.ts'
 import type { Step } from '../roadmap/types.ts'
-import { cleanupRecord, isRecordedDrill } from '../roadmap/cleanupDone.ts'
+import { cleanupRecord, isRecordedDrill, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from '../roadmap/cleanupDone.ts'
 
 test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC hour', (t) => {
   let now = 0
@@ -47,9 +47,11 @@ test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC 
     now = Date.parse(`2026-09-15T${String(hour).padStart(2, '0')}:30:00.000Z`)
     const demo = demoTenant(true)
     const record = cleanupRecord(demo.checkpoints ?? [])
+    const basis = recoveryAccountBasis(demo.snapshot, demo.mapping.breakGlassUserIds, demo.mapping, demo.groups)
     for (const id of demo.mapping.breakGlassUserIds) {
       const signIn = demo.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!
-      assert.equal(isRecordedDrill(signIn, record.drills, id, record.records), true, `hour ${hour}, account ${id}`)
+      const configuredAt = recoveryPreparation(id, record.records ?? [], demo.snapshot.asOf, basis[id], demo.snapshot.tenantId)?.configurationObservedAt ?? null
+      assert.equal(isRecordedDrill(signIn, record.drills, id, record.records, { readings: recoveryCandidateReadings(demo.snapshot, id, demo.snapshot.asOf, configuredAt), tenantId: demo.snapshot.tenantId, currentSnapshotObservedAt: demo.snapshot.asOf }), true, `hour ${hour}, account ${id}`)
     }
   }
 })

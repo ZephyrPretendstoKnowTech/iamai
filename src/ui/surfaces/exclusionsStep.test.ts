@@ -13,8 +13,9 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepLines } from './stepExport.ts'
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import type { SafetyStatus } from '../../mapping/safetyChoice.ts'
+import type { ConfigurationFinding } from '../../roadmap/types.ts'
 
-const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, unknown>; status: SafetyStatus; stored: string | null } => {
+const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, unknown>; findings: ConfigurationFinding[]; status: SafetyStatus; stored: string | null } => {
   // The demo answers the question like any other tenant, so the unanswered case
   // is the same tenant with the answer taken out.
   // The small tenant whose policies carve out its break-glass group, so the chosen group has checks to fail.
@@ -23,7 +24,7 @@ const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, 
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
   const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.exclusionsGroup)!
   const choice = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups })
-  return { lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, status: choice.status, stored: operatorExclusionsDecision(f.mapping)?.id ?? null }
+  return { lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, findings: step.configurationFindings ?? [], status: choice.status, stored: operatorExclusionsDecision(f.mapping)?.id ?? null }
 }
 
 test('two groups qualify and nobody has chosen: the step asks which, and offers to create nothing', () => {
@@ -40,10 +41,10 @@ test('two groups qualify and nobody has chosen: the step asks which, and offers 
   assert.ok(Array.isArray(ex.candidateGroups) && (ex.candidateGroups as string[]).length === 2)
 })
 
-test('a group the operator confirmed and the scan read: the checks count and the help name it', () => {
-  const { lines, ex, status } = linesOn('small')
+test('a group the operator confirmed and the scan read: four owned topics and the help name it', () => {
+  const { lines, ex, findings, status } = linesOn('small')
   assert.equal(status, 'confirmed')
   assert.ok(typeof ex.total === 'number' && ex.total > 0)
-  assert.ok(lines.some((l) => new RegExp(`All ${ex.total} checks pass on the next scan`).test(l)))
+  assert.deepEqual(findings.map(f => f.label), ['Exclusions Group', 'Group Settings', 'Emergency Account Membership', 'Policy Exclusions'])
   assert.ok(lines.some((l) => l === `The one group every policy excludes. IAMAI recognised ${ex.exclusionsGroup} from the exclusions already in place.`), 'the help names the recognised group')
 })

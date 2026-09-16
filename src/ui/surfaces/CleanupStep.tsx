@@ -1,5 +1,5 @@
-import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
-import { validCompletionDate } from '../../roadmap/cleanupDone.ts'
+import type { CleanupCheckpoint, VerifiedRecoveryEvidence } from '../../roadmap/cleanupDone.ts'
+import { RECOVERY_PREPARATION_WORKFLOW, validCompletionDate } from '../../roadmap/cleanupDone.ts'
 // A Cleanup row's body (target-state §5; prompt 52 Part 3): Why, What to do and
 // Done when from content.cleanup, filled with the tenant's lists, shared by the
 // Plan (opened in place) and the print (every step in full). A line with a hole
@@ -16,7 +16,8 @@ import { app } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import { DoneWhen, StepHead, StepSection } from './StepSections.tsx'
+import { DoneWhen, ReadinessSection, StepHead, StepSection } from './StepSections.tsx'
+import type { ReadinessTile } from './stepContract.ts'
 import { HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
@@ -40,7 +41,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   onScan?: () => void
   onClose?: () => void
   /** Done: record the date (YYYY-MM-DD) in the plan's checkpoints. */
-  onDone?: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'signInAtByAccount' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
+  onDone?: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   /** The not-assessed row's notes by policy name, and the control that writes one (null clears it). */
   notes?: NotAssessedNotes
   onNote?: (policy: string, reason: string | null) => void
@@ -49,6 +50,9 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   const entry = cleanupEntry(row.kind)
   const [tested, setTested] = useState<string[]>([])
   const [outcome, setOutcome] = useState<'passed' | 'failed' | ''>('')
+  const [selectedEvents, setSelectedEvents] = useState<Record<string, string>>({})
+  const [recoveryConfirmed, setRecoveryConfirmed] = useState<Record<string, boolean>>({})
+  const [credentialConfirmed, setCredentialConfirmed] = useState<Record<string, boolean>>({})
   const [recipient, setRecipient] = useState('')
   const [consolidationDecision, setConsolidationDecision] = useState<'retire' | 'retain-both'>('retire')
   const [rationale, setRationale] = useState('')
@@ -76,6 +80,21 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
   const doneWhen = entry.doneWhen.filter(whole)
   const policies: string[] = row.kind === 'notAssessed' ? row.lists.policies ?? [] : []
+  const recoveryTiles: ReadinessTile[] = (phase.recoveryFindings ?? []).map(f => ({ key: f.key, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  const configurationReady = phase.recoveryFindings?.find(finding => finding.key === 'recovery-configuration')?.outcome === 'pass' && phase.accountIds.length > 0 && phase.accountIds.every(id => !!phase.accountBasis?.[id])
+  const preparationCurrent = phase.accountIds.length > 0 && phase.accountIds.every(id => !!phase.configurationObservedAtByAccount?.[id])
+  const recoveryReady = outcome !== 'passed' || tested.every(id => {
+    const eventId = selectedEvents[id]
+    return !!phase.configurationObservedAtByAccount?.[id] && !!eventId && recoveryConfirmed[id] === true && credentialConfirmed[id] === true && (phase.recoveryCandidates?.[id] ?? []).some(reading => reading.qualifies && reading.candidate.eventId === eventId)
+  })
+  const recoveryEvidence = (): Record<string, VerifiedRecoveryEvidence> => Object.fromEntries(tested.flatMap(id => {
+    const reading = (phase.recoveryCandidates?.[id] ?? []).find(item => item.qualifies && item.candidate.eventId === selectedEvents[id])
+    const configurationObservedAt = phase.configurationObservedAtByAccount?.[id] ?? null
+    if (!reading || !phase.tenantId || !configurationObservedAt || recoveryConfirmed[id] !== true || credentialConfirmed[id] !== true) return []
+    const candidate = reading.candidate
+    if (Date.parse(candidate.at) < Date.parse(configurationObservedAt)) return []
+    return [[id, { schema: 1, tenantId: phase.tenantId, accountId: id, eventId: candidate.eventId, eventAt: candidate.at, appId: candidate.appId, resourceId: candidate.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt } satisfies VerifiedRecoveryEvidence]]
+  }))
   return (
     // The same frame the Plan draws for a step (task 034): attached under the row
     // that opened it, its head above the body. A Cleanup row is not a policy,
@@ -100,6 +119,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       </StepSection>
+      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection readiness={{ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery tests recorded' : 'Complete the configuration findings, then verify recovery for each account.' } }} lead={null} showClosedCount={false} printing={!onDone} />}
       {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
           no step draws What to do, and the not-assessed notes below stay in this
           one column under it rather than in an action column. */}
@@ -122,7 +142,17 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
       {row.record && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>}
       {onDone && row.kind !== 'hardening' && (
         <div className="decision">
-          {row.kind === 'drill' && <fieldset><legend>{A.recoveryTestAccounts}</legend>{phase.accountIds.map((id, i) => <label key={id} className="option-value"><input type="checkbox" checked={tested.includes(id)} onChange={(e) => { const checked = e.currentTarget.checked; setTested((ids) => checked ? [...ids, id] : ids.filter((x) => x !== id)) }} />{row.lists.emergencyAccounts?.[i] ?? id}</label>)}</fieldset>}
+          {row.kind === 'drill' && <div className="decision-fields"><Button variant="secondary" disabled={!configurationReady || preparationCurrent || !phase.tenantId || !phase.snapshotObservedAt} onClick={() => onDone(date, phase.accountIds, { workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: phase.tenantId, configurationObservedAt: phase.snapshotObservedAt })}>Record configuration and begin test</Button><p className="reason">{preparationCurrent ? 'Configuration recorded. Perform the recovery sign-in, then scan again before saving Passed.' : 'Record the verified configuration before performing the recovery sign-in.'}</p></div>}
+          {row.kind === 'drill' && <fieldset><legend>{A.recoveryTestAccounts}</legend>{phase.accountIds.length === 0 ? <p>Select and save an emergency account in Prepare Emergency Access Accounts first.</p> : phase.accountIds.map((id, i) => {
+            const readings = phase.recoveryCandidates?.[id] ?? []
+            const qualifying = phase.configurationObservedAtByAccount?.[id] ? readings.filter(reading => reading.qualifies) : []
+            return <div key={id} className="decision-fields"><label className="option-value"><input type="checkbox" checked={tested.includes(id)} onChange={(e) => { const checked = e.currentTarget.checked; setTested((ids) => checked ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)) }} />{row.lists.emergencyAccounts?.[i] ?? id}</label>{tested.includes(id) && <>
+              <label><strong>Observed recovery sign-in</strong><select value={selectedEvents[id] ?? ''} onChange={event => setSelectedEvents(values => ({ ...values, [id]: event.currentTarget.value }))}><option value="">Choose the exact event…</option>{qualifying.map(({ candidate }) => <option key={candidate.eventId} value={candidate.eventId}>{new Date(candidate.at).toLocaleString()} · {candidate.resource ?? candidate.app ?? candidate.resourceId ?? candidate.appId ?? 'Administrative resource'} · {candidate.method}</option>)}</select></label>
+              {qualifying.length === 0 && <p className="reason">{!phase.configurationObservedAtByAccount?.[id] ? 'Record configuration and begin the test first.' : readings[0]?.reason ?? 'No qualifying interactive administrative passkey sign-in was found. Perform the recovery sign-in, then scan again.'}</p>}
+              <label className="choice"><input type="checkbox" checked={credentialConfirmed[id] ?? false} onChange={event => setCredentialConfirmed(values => ({ ...values, [id]: event.currentTarget.checked }))} />I used the prepared credential associated with this emergency account.</label>
+              <label className="choice"><input type="checkbox" checked={recoveryConfirmed[id] ?? false} onChange={event => setRecoveryConfirmed(values => ({ ...values, [id]: event.currentTarget.checked }))} />I retrieved it through the approved recovery process and confirmed non-destructive administrative access in the correct tenant.</label>
+            </>}</div>
+          })}</fieldset>}
           {(row.kind === 'drill' || row.kind === 'alerting') && <div className="decision-field"><label><strong>Test Result</strong><select value={outcome} onChange={event => setOutcome(event.currentTarget.value as typeof outcome)}><option value="">Choose…</option><option value="passed">Passed</option><option value="failed">Failed</option></select></label></div>}
           {row.kind === 'alerting' && <div className="decision-field"><label><strong>Alert Recipient</strong><input value={recipient} onChange={event => setRecipient(event.currentTarget.value)} /></label></div>}
           {row.kind === 'naming' && <div className="decision-fields"><ul>{namingProposals.map(p => <li key={p.id}><strong>{p.from}</strong><label><span className="sr-only">Approved name for {p.from}</span><input value={p.to} onChange={e => { const value = e.currentTarget.value; setNameDrafts(prev => ({ ...prev, [p.id]: value })) }} /></label><span className="reason">ID: {p.id}</span>{p.collision && <p>Name collision: resolve the duplicate name before saving this proposal.</p>}</li>)}</ul><label className="choice"><input type="checkbox" checked={toolingVerified} onChange={e => setToolingVerified(e.currentTarget.checked)} />Name-based scripts and reports have been checked.</label><p>Save the proposed names before renaming in Entra, then rescan. Confirm the tooling check after the names are updated.</p></div>}
@@ -136,7 +166,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           </div>}
           <div className="dlabel">{A.cleanupDoneOn}</div>
           <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-          <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision))) || (row.kind === 'drill' && tested.length === 0) || ((row.kind === 'drill' || row.kind === 'alerting') && !outcome) || (row.kind === 'alerting' && !recipient.trim())} onClick={() => onDone(date, row.kind === 'alerting' ? phase.accountIds : tested, { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}), ...(outcome ? { outcome } : {}), ...(recipient.trim() ? { recipient: recipient.trim() } : {}) })}>{row.kind === 'drill' || row.kind === 'alerting' ? 'Save Test Result' : row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button>
+          <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision))) || (row.kind === 'drill' && tested.length === 0) || ((row.kind === 'drill' || row.kind === 'alerting') && !outcome) || (row.kind === 'drill' && !recoveryReady) || (row.kind === 'alerting' && !recipient.trim())} onClick={() => onDone(date, row.kind === 'alerting' ? phase.accountIds : tested, { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}), ...(row.kind === 'drill' && outcome === 'passed' ? { recoveryEvidence: recoveryEvidence(), signInAtByAccount: Object.fromEntries(Object.entries(recoveryEvidence()).map(([id, evidence]) => [id, evidence.eventAt])) } : {}), ...(outcome ? { outcome } : {}), ...(recipient.trim() ? { recipient: recipient.trim() } : {}) })}>{row.kind === 'drill' || row.kind === 'alerting' ? 'Save Test Result' : row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button>
           {row.done && <p className="reason">{cleanupWhen(row)}</p>}
         </div>
       )}

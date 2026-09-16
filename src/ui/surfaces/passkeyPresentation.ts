@@ -10,6 +10,7 @@ export const PASSKEY_METHODOLOGY = [
 /** Configuration findings replace the same step’s generic review prerequisite. */
 export function passkeyReadiness(step: Step, readiness: ContractReadiness): ContractReadiness {
   if (step.id !== 's-prereq-passkey-settings' || !step.configurationFindings?.length) return readiness
+  if (step.configurationFindings.some(f => f.key === 'recovery-methods')) return readiness
   const tiles = readiness.tiles.filter(tile => !tile.key.startsWith('evidence:passkey-settings-'))
   const outstanding = tiles.filter(tile => tile.key.startsWith('configuration:')).length
   return { ...readiness, tiles, bar: { ...readiness.bar, main: outstanding ? `${outstanding} ${outstanding === 1 ? 'setting needs' : 'settings need'} attention` : 'Configuration checks passed' } }

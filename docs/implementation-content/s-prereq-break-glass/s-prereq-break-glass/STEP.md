@@ -1,4 +1,4 @@
-# Create or Correct Emergency Access Accounts
+# Prepare Emergency Access Accounts
 
 ## Goal
 Establish at least two owner-confirmed emergency access accounts that can recover the Microsoft Entra tenant when normal administrator access or Conditional Access fails, without making those accounts dependent on a person, federation, device compliance, or just-in-time role activation.

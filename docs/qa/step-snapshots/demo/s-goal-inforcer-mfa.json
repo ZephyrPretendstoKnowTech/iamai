@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "after: Create or Correct Emergency Access Accounts",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Confirm the Services You Use",
@@ -19,7 +19,7 @@
     },
     {
       "label": "Prerequisite · To do",
-      "state": "Create or Correct Emergency Access Accounts"
+      "state": "Prepare Emergency Access Accounts"
     },
     {
       "label": "Prerequisites",

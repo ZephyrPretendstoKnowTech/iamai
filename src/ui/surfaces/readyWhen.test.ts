@@ -25,6 +25,7 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, unavailableReason } from '../../roadmap/operations.ts'
 import { statusOf } from './statusWord.ts'
+import { laneReadings } from './planLanes.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
@@ -253,31 +254,25 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
 })
 
-test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (held Report-only / ready <date>) and the admins policy reads In place', () => {
+test('the app\'s demo: safe report-only correction remains available while final emergency verification still gates enforcement', () => {
   const f = fixture('demo-week2')
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
   assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
   const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId })
   const token = run.steps.find((s) => s.id === TOKEN)!
-  // The token policy's window has closed on clean records, and something still
-  // holds it on the tenant a visitor actually sees: Foundation A hands nothing
-  // over. It was the Ready-but-withheld case (task 007); a held policy is never
-  // Ready to enforce (Step 4), so it reads Report-only, with no date, in no wave,
-  // and its row does not offer the evidence that would earn the change.
+  // The token policy's window has closed on clean records. Its bounded
+  // correction remains safe in Report-only; final emergency verification still
+  // gates the later enforcement through the dependency graph.
   assert.equal(token.tracking?.readyNow, true)
-  assert.ok(isHeld(token))
-  assert.equal(statusOf(token).word, 'Report-only · Blocked', 'held, the row says so beside its stage')
-  assert.notEqual(unavailableReason(token), null)
-  assert.equal(implementationOffered(token), false)
-  assert.equal(token.events, null)
-  assert.equal(rowWhen(token), '')
-  assert.notEqual(rowReason(token), readyBasis(readyWhen(token)!))
+  assert.equal(unavailableReason(token), null)
+  assert.equal(implementationOffered(token), true)
+  assert.equal(laneReadings(run.steps).get(TOKEN)?.lane, 'Ready')
+  assert.equal(laneReadings(run.steps).get(TOKEN)?.substatus, 'Ready to enforce')
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word.split(' · ')[0], 'Report-only')
-  // Held on the app's own tenant too, so it reads no ready day either.
-  assert.ok(isHeld(transfer))
-  assert.equal(rowWhen(transfer), '')
+  assert.equal(isHeld(transfer), false)
+  assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'On Hold', 'its evidence gate remains open independently of the safe token-policy path')
   // And the tenant's own admins policy, which no tag of this plan's touches,
   // reads as what it is: a control already in place, not one the plan enforced.
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')

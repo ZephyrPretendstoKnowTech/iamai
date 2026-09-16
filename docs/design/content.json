@@ -31,7 +31,7 @@
     "scanControl": "Scan to update the plan",
     "doesntApplyControl": "Doesn't apply here",
     "doesntApplyPrompt": "Why does this not apply to {tenant}? One line; it goes on the plan.",
-    "lockedOutLine": "If you are locked out, see Create or Correct Emergency Access Accounts.",
+    "lockedOutLine": "If you are locked out, see Prepare Emergency Access Accounts.",
     "learn": "Learn →",
     "moreLabel": "More",
     "andMore": "and {n} more · Export CSV",
@@ -53,8 +53,8 @@
       "Until a later scan finds the policy enabled, it is ready to enforce, not enforced."
     ],
     "policyIfWrong": "If the change blocks legitimate access, return the affected policy to Report-only and investigate before enabling it again. If normal administrator sign-in is blocked, use your tested emergency access account.",
-    "enforceIfWrong": "Set the policy back to report-only; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
-    "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
+    "enforceIfWrong": "Set the policy back to report-only; nothing else in the tenant changes. If you are locked out, see Prepare Emergency Access Accounts.",
+    "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Prepare Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
@@ -2238,17 +2238,22 @@
       ]
     },
     "drill": {
-      "title": "Run the Emergency Access Drill",
+      "title": "Verify Emergency Access",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "A regular drill checks that emergency access still works before it is needed. It can reveal expired credentials, missing roles or an alert nobody receives.",
+      "why": "Verify that each selected account can recover administrative access using its approved credentials, with the account, passkey and exclusion settings now in place.",
       "whatToDo": [
-        "For each emergency account, in your approved secure recovery environment: retrieve its credentials through the authorized process, sign in, perform a non-destructive administrative check, confirm the expected logs and alert, and sign out.",
-        "Record the full result and date in the plan file. Repeat at least every 90 days."
+        "Review Account Preparation, Policy Exclusions and Emergency Recovery Methods in Readiness. Complete the listed corrections and scan again before recording a passing final test.",
+        "For each selected account, review Observed Passkey Sign-ins. An earlier successful sign-in can support a drill only when it belongs to the intended recovery test and the relevant configuration has not changed. A generic last sign-in or previously satisfied MFA claim is insufficient.",
+        "If no qualifying test exists, retrieve the approved recovery key and credentials through the authorized custody process. Keep a working administrator session available and use a separate fresh session in your approved recovery environment.",
+        "Sign in as the selected emergency account using its intended hardware recovery key. Confirm the account identity, then perform a non-destructive administrative check, such as opening Conditional Access and reading a policy. Sign out when finished.",
+        "In Entra ID → Monitoring & health → Sign-in logs, locate that account’s successful event. Match the time, target resource and authentication details to your test; verify that the intended passkey was used. Review the relevant policy exclusions against the current group membership. An overall Conditional Access status alone does not prove the exclusion.",
+        "Scan again to refresh the observed sign-in findings; newly written log details may take time to appear. A scan cannot establish physical key custody or the administrative task, so verify those through the drill itself. Check sign-in alert delivery in the separate monitoring step.",
+        "Select only the accounts tested with the same outcome on the chosen date and use Save Test Result. Record failures too, then correct and repeat the affected test. Repeat at least every 90 days and after a relevant recovery configuration change."
       ],
       "doneWhen": [
-        "Each selected account passed a controlled drill within the last 90 days, with the result and date recorded; failed checks stay open."
+        "Each selected account has a recorded passing drill within the last 90 days that matches its current readable recovery configuration; a later failed result reopens that account’s test."
       ]
     }
   },
@@ -2256,21 +2261,20 @@
     {
       "id": "s-prereq-break-glass",
       "kind": "blocker",
-      "title": "Create or Correct Emergency Access Accounts",
+      "title": "Prepare Emergency Access Accounts",
       "changeLine": null,
-      "why": "Emergency access accounts give your team another way into the tenant when normal administrator sign-in fails. Checking their roles, authentication and exclusions helps uncover recovery routes that exist on paper but would fail when needed.",
+      "why": "Prepare dedicated accounts and recoverable credentials before relying on them to restore administrative access.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
       "who": {
-        "lead": "The emergency access accounts, and every policy that must exclude them:",
+        "lead": "The selected emergency access accounts:",
         "accounts": "{list:emergencyAccounts}",
-        "policiesNotExcluding": "Policies that do not exclude the selected exclusions group: {list:policiesNotExcluding}. Keep existing emergency-account exclusions until replacement coverage is verified.",
         "operatorNote": "Use these accounts only for emergency recovery and controlled tests. Do not use them for daily administration."
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Add every account that exists only for this purpose; two are needed. IAMAI nominated these from names, roles and exclusions; a nomination is not a choice, so no account is emergency access until you choose it here and save.",
+        "help": "Review the suggested accounts, select every account dedicated to emergency access, and save. At least two are needed. Review the approved recovery-key models in Configure Passkey Authentication before registering a method.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
@@ -2291,13 +2295,13 @@
           "cloud-only": "{name}: this account is synced from on-premises; recreate it as cloud-only.",
           "onmicrosoft-domain": "{name}: move the sign-in address to {onmicrosoftDomain}; a custom domain depends on DNS and on any federation.",
           "enabled": "{name}: enable the account.",
-          "excluded-everywhere": "{name} is inside {list:policies}: add the exclusions group to each policy's Users → Exclude → Groups in Create or Correct Exclusions Group. Do not exclude the account itself.",
+          "excluded-everywhere": "{name} is inside {list:policies}: add the exclusions group to each policy's Users → Exclude → Groups in Configure Emergency Exclusions. Do not exclude the account itself.",
           "no-dynamic-group": "{name} is a member of the dynamic group {group}, which a policy targets; remove it or change the rule.",
           "mfa-method": "{name}: register a hardware security key (FIDO2) and keep it with the passphrase; not a passkey in Authenticator, which lives on a person's phone.",
           "shared-authenticator": "{name} shares the Authenticator device {device} with {otherAccount}; move it to its own security key or passkey.",
           "not-a-person": "{name} looks like a person's account (it has {attribute}); use a dedicated account instead.",
-          "report-only-excluded": "The report-only policies {list:policies} do not exclude the exclusions group either; same fix, in Create or Correct Exclusions Group.",
-          "managed-policies-excluded": "The Microsoft-managed policies {list:policies} do not exclude the exclusions group; Microsoft turns these on itself. Same fix, in Create or Correct Exclusions Group.",
+          "report-only-excluded": "The report-only policies {list:policies} do not exclude the exclusions group either; same fix, in Configure Emergency Exclusions.",
+          "managed-policies-excluded": "The Microsoft-managed policies {list:policies} do not exclude the exclusions group; Microsoft turns these on itself. Same fix, in Configure Emergency Exclusions.",
           "phishing-resistant": "{name}: register a hardware security key; text and call codes are taken by a swapped SIM.",
           "method-diversity": "Both accounts depend on {method} alone; give one of them a different method type.",
           "auth-methods-migration": "Finish migrating to the authentication methods policy (the per-user MFA setting can block a recovery sign-in): Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration complete.",
@@ -2311,9 +2315,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "The next scan confirms that the selected accounts meet every required emergency-access check.",
-        "Any remaining hardening work is recorded in Cleanup with your deferral.",
-        "Record a successful recovery test for each account; a configuration scan cannot confirm that test for you."
+        "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
+        "Each account has a compatible approved hardware recovery method and confirmed credential custody in independent recovery locations."
       ],
       "ifWrong": null,
       "lockedOut": {
@@ -2390,15 +2393,14 @@
           "Breakglass · breakglass@contoso.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
         ]
       },
-      "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes.",
       "aiFocus": "Explain configuration evidence separately from credential custody, monitoring and the last successful drill. Keep minimum safety and deferred hardening distinct."
     },
     {
       "id": "s-prereq-exclusion-group",
       "kind": "blocker",
-      "title": "Create or Correct Exclusions Group",
+      "title": "Configure Emergency Exclusions",
       "changeLine": null,
-      "why": "One reviewed group keeps emergency access exclusions consistent. Checking its members can also reveal ordinary accounts that are bypassing controls intended to protect them.",
+      "why": "Keep the selected recovery accounts outside policies that could prevent recovery, using the intended exclusions group.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },
@@ -2428,15 +2430,15 @@
         "create": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned, never Dynamic.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add only the accounts chosen in Create or Correct Emergency Access Accounts: {list:emergencyAccounts}.",
+          "Add only the accounts chosen in Prepare Emergency Access Accounts: {list:emergencyAccounts}.",
           "Leave it without a licence and not mail-enabled."
         ],
         "checkFixes": {
           "all-emergency-accounts": "Add {list:missingAccounts} to the group: every policy excludes the group and never an account by name, so an emergency account outside it is covered by every policy the group is excluded from.",
           "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
-          "members-only-emergency-unconfirmed": "In the group and not an emergency account you have chosen: {list:extraMembers}. If those are the tenant's emergency accounts, choose them on Create or Correct Emergency Access Accounts first; otherwise remove them from the group, because anyone in it who is not an emergency account is outside every policy it is excluded from.",
+          "members-only-emergency-unconfirmed": "In the group and not an emergency account you have chosen: {list:extraMembers}. If those are the tenant's emergency accounts, choose them on Prepare Emergency Access Accounts first; otherwise remove them from the group, because anyone in it who is not an emergency account is outside every policy it is excluded from.",
           "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
-          "no-admin-members-unconfirmed": "{name} holds {role} and is in the group without being an emergency account you have chosen. Choose the tenant's emergency accounts on Create or Correct Emergency Access Accounts first, then remove from the group whoever is left besides them: an excluded administrator that is not the way back in is the most valuable unprotected account in the tenant.",
+          "no-admin-members-unconfirmed": "{name} holds {role} and is in the group without being an emergency account you have chosen. Choose the tenant's emergency accounts on Prepare Emergency Access Accounts first, then remove from the group whoever is left besides them: an excluded administrator that is not the way back in is the most valuable unprotected account in the tenant.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
           "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
           "not-mail-enabled": "The group is mail-enabled or licensed; recreate it as a plain security group."
@@ -2445,7 +2447,7 @@
       "dates": null,
       "doneWhen": [
         "The exclusions group is confirmed and contains only the selected emergency access accounts.",
-        "All {total} checks pass on the next scan.",
+        "The next scan verifies assigned membership, the group settings and the required policy exclusions.",
         "Each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan."
       ],
       "ifWrong": null,
@@ -2500,7 +2502,6 @@
         ],
         "from": "Aug 1"
       },
-      "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members.",
       "partnerStep": {
         "id": "s-prereq-break-glass"
       },
@@ -3021,7 +3022,7 @@
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
-      "why": "Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.",
+      "why": "Choose which passkeys are approved before preparing the emergency accounts. Apply the intended settings after confirming that a working recovery method will remain available.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
@@ -3044,7 +3045,7 @@
       "dates": null,
       "doneWhen": [
         "The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.",
-        "Verify account-specific key compatibility and recovery in Create or Correct Emergency Access Accounts."
+        "Verify account-specific key compatibility and recovery in Prepare Emergency Access Accounts."
       ],
       "ifWrong": null,
       "comms": null,

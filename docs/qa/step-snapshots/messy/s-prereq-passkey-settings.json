@@ -14,16 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Attestation",
+      "label": "Storage and Attestation",
       "state": "Disabled"
     },
     {
-      "label": "Allowed Authenticators",
+      "label": "Approved Authenticators",
       "state": "Unrestricted"
     },
     {
-      "label": "Prerequisites",
-      "state": "Attestation: Disabled"
+      "label": "Emergency Recovery Methods",
+      "state": "Replacement or settings correction needed"
     }
   ],
   "channels": [

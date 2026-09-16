@@ -1,4 +1,5 @@
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
+import { emergencyImplementation } from './emergencyImplementation.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
@@ -375,6 +376,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   if (supported.has('portal') && !produced.some(a => a.id === 'portal')) {
     const lines = portalLines.length ? portalLines : policyInspectionLines(step)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
+  }
+  const emergencyPortal = emergencyImplementation(step, ctx)
+  if (emergencyPortal !== null) {
+    for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
+    supported.add('portal')
+    produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
   }
   const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step))
   const W = CONTRACT.implementation

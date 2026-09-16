@@ -257,7 +257,7 @@ const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wai
  * the evidence where there is evidence to open. The grid takes its track
  * count from the tiles it is handed, so nothing is padded.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null }: {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true }: {
   readiness: ContractReadiness
   lead: ReactNode
   onWhy?: (() => void) | null
@@ -270,6 +270,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   /** Printing: every disclosure stands open, so the printed step is the whole step. */
   printing?: boolean
   children?: ReactNode
+  showClosedCount?: boolean
 }) {
   const W = CONTRACT.readiness
   // The blocking tiles open with the step (content review D5). Their explanations
@@ -313,7 +314,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           <span>{W.tiles.clearNote}</span>
         </p>
       )}
-      {closedBlocking > 0 && <p className="readiness-more">{fillText(W.tiles.moreBlocking, { n: closedBlocking })}</p>}
+      {showClosedCount && closedBlocking > 0 && <p className="readiness-more">{fillText(W.tiles.moreBlocking, { n: closedBlocking })}</p>}
       {readiness.satisfied.length > 0 && (
         <details className="readiness-satisfied" open={printing || undefined}>
           <summary>{fillText(W.tiles.satisfied, { n: readiness.satisfied.length })}</summary>
@@ -359,7 +360,7 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
   const [expanded, setExpanded] = useState<boolean | null>(null)
   const detailId = useId()
   const link = t.link === undefined ? null : 'href' in t.link ? <a href={t.link.href}>{t.link.label}</a> : onOpenMappings ? <button type="button" className="inline-link" onClick={onOpenMappings}>{t.link.label}</button> : null
-  const more = t.note !== null || link !== null || extra !== null
+  const more = t.note !== null || link !== null || extra !== null || !!t.items?.length
   const shown = open || (expanded ?? autoOpen)
   const line = (
     <>
@@ -387,6 +388,7 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
       {more && (
         <div id={detailId} className="tile-detail" hidden={!shown}>
           {t.note && <p>{t.note}</p>}
+          {!!t.items?.length && <ul className="sections">{t.items.map((item, index) => <li key={index}>{item.label && <strong>{item.label} — </strong>}{item.value}</li>)}</ul>}
           {extra}
           {link && <p className="readiness-link">{link}</p>}
         </div>

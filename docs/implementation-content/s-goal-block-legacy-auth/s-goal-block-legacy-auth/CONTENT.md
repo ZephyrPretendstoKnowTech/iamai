@@ -13,7 +13,7 @@
 2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 3. Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.
 4. Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.
-5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Create or Correct Exclusions Group step.
+5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.
 6. Under Grant, make sure "Block access" is selected.
 @@IAMAI-END
 

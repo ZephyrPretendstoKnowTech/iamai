@@ -46,9 +46,15 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 
 test('s-prereq-break-glass: Why names the tenant, Entra names the group and where keys go', () => {
   // Editorial batch C: the register Why, and custody the authorized staff can reach without this tenant.
-  assert.equal(stepOf('s-prereq-break-glass').why, 'Emergency access accounts give your team another way into the tenant when normal administrator sign-in fails. Checking their roles, authentication and exclusions helps uncover recovery routes that exist on paper but would fail when needed.')
+  assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare dedicated accounts and recoverable credentials before relying on them to restore administrative access.')
+  const cs = stepOf('s-prereq-break-glass')
+  assert.equal(cs.partner, undefined)
+  assert.deepEqual(cs.doneWhen, [
+    "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
+    'Each account has a compatible approved hardware recovery method and confirmed credential custody in independent recovery locations.',
+  ])
   const entra = blocksOf('s-prereq-break-glass')['entra.create-or-correct'].text
-  assert.match(entra, /^6\. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member\.$/m)
+  assert.match(entra, /^6\. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member\.$/m)
   assert.match(entra, /^8\. Store credentials and recovery keys [^\n]*where authorized staff can retrieve them without this tenant \(for example, a safe or an independent vault\)\. Do not store them in IAMAI\.$/m)
   assert.match(entra, /^10\. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access\. A passing configuration check does not prove the recovery path works\.$/m)
   assert.doesNotMatch(entra, /IAMAI-resolved|outside IAMAI/)
@@ -57,14 +63,15 @@ test('s-prereq-break-glass: Why names the tenant, Entra names the group and wher
 test('s-prereq-exclusion-group: Why says what the group does, a match says what Save confirms, the note links its partner, and Entra has two paths', () => {
   const cs = stepOf(EXCLUSIONS)
   // Editorial batch C: the register Why.
-  assert.equal(cs.why, 'One reviewed group keeps emergency access exclusions consistent. Checking its members can also reveal ordinary accounts that are bypassing controls intended to protect them.')
+  assert.equal(cs.why, 'Keep the selected recovery accounts outside policies that could prevent recovery, using the intended exclusions group.')
   // The pre-filled match: a ✓ badge, and one line saying what Save confirms.
   assert.equal(app.picker.matched, '✓ Matched by IAMAI')
   assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Breakglass Exclusion', badge: app.picker.matched }], app.picker.matched), 'IAMAI found "Breakglass Exclusion" in your tenant. Confirm this is the group every policy should exclude, then Save.')
   assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Another group' }], app.picker.matched), null, 'a group the operator chose reads as IAMAI’s match')
   assert.match(CONTENT_STEP, /\{matchedNote !== null && <p className="reason">\{matchedNote\}<\/p>\}/)
-  // The header note links the step it is done together with.
-  assert.deepEqual(partnerLinkOf(stepById[EXCLUSIONS] as never), { label: 'Open Create or Correct Emergency Access Accounts', href: '#/plan/s-prereq-break-glass' })
+  // The relationship link remains available without a repeated "Done together" lead.
+  assert.equal(cs.partner, undefined)
+  assert.deepEqual(partnerLinkOf(stepById[EXCLUSIONS] as never), { label: 'Open Prepare Emergency Access Accounts', href: '#/plan/s-prereq-break-glass' })
   assert.match(CONTENT_STEP, /const partnerLink = partnerLinkOf\(cs\)/)
   const entra = blocksOf(EXCLUSIONS)['entra.create-group'].text
   // Editorial batch C (channel correction): saving records the group's ID and changes no policy; each policy is corrected separately.
@@ -93,10 +100,10 @@ test('authored Markdown: a numbered list starts where it is written, and an inde
 test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile are clear, Entra is one numbered procedure, AI Info explains it, and Done when is one line', () => {
   const cs = stepOf(PASSKEYS)
   // Editorial batch C: the register Why, and the resolved change on the next scan with the emergency sign-in as a human check.
-  assert.equal(cs.why, 'Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.')
+  assert.equal(cs.why, 'Choose which passkeys are approved before preparing the emergency accounts. Apply the intended settings after confirming that a working recovery method will remain available.')
   assert.deepEqual(cs.doneWhen, [
     'The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.',
-    'Verify account-specific key compatibility and recovery in Create or Correct Emergency Access Accounts.',
+    'Verify account-specific key compatibility and recovery in Prepare Emergency Access Accounts.',
   ])
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)!
   assert.ok(body.readiness.tiles.some(t => t.key.startsWith('configuration:')), 'scan findings are concrete')

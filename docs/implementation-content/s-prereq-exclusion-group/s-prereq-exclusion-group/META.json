@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-exclusion-group",
-  "title": "Create or Correct Exclusions Group",
+  "title": "Configure Emergency Exclusions",
   "baseline": "jon-hope-pinned",
   "relationship": "prerequisite",
   "packagePath": "docs/implementation-content/s-prereq-exclusion-group/",

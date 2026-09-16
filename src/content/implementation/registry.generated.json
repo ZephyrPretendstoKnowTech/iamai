@@ -4066,7 +4066,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.\n2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n3. Under Conditions → Client apps, make sure only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, make sure \"All users\" is selected. Under Target resources, make sure \"All resources\" is selected.\n5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Create or Correct Exclusions Group step.\n6. Under Grant, make sure \"Block access\" is selected.\n"
+          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.\n2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n3. Under Conditions → Client apps, make sure only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, make sure \"All users\" is selected. Under Target resources, make sure \"All resources\" is selected.\n5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.\n6. Under Grant, make sure \"Block access\" is selected.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -20287,7 +20287,7 @@
     "s-prereq-break-glass": {
       "meta": {
         "stepId": "s-prereq-break-glass",
-        "title": "Create or Correct Emergency Access Accounts",
+        "title": "Prepare Emergency Access Accounts",
         "relationship": "prerequisite",
         "contentFile": "CONTENT.md",
         "requiredBindings": [
@@ -20414,7 +20414,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Use the emergency accounts you selected.\n\n1. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.\n2. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.\n3. Confirm the account is enabled and used only for emergency access, not for normal daily work.\n4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.\n5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.\n6. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member.\n7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.\n8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.\n9. Confirm monitoring exists for emergency-account use.\n10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.\n\nComplete account creation, method registration and credential storage in the appropriate Microsoft tools. IAMAI does not make these changes or store the credentials.\n"
+          "text": "Use the emergency accounts you selected.\n\n1. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.\n2. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.\n3. Confirm the account is enabled and used only for emergency access, not for normal daily work.\n4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.\n5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.\n6. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member.\n7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.\n8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.\n9. Confirm monitoring exists for emergency-account use.\n10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.\n\nComplete account creation, method registration and credential storage in the appropriate Microsoft tools. IAMAI does not make these changes or store the credentials.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -20474,7 +20474,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Add this emergency account to the resolved exclusions group. Do not add unrelated administrators, service accounts or convenience exclusions. Policy exclusions themselves are corrected in **Create or Correct Exclusions Group**.\n"
+          "text": "Add this emergency account to the resolved exclusions group. Do not add unrelated administrators, service accounts or convenience exclusions. Policy exclusions themselves are corrected in **Configure Emergency Exclusions**.\n"
         },
         "entra.correct.auth": {
           "meta": {
@@ -20649,7 +20649,7 @@
             "audience": "authorized-emergency-administrators",
             "communicationTrigger": "during-verification-required"
           },
-          "text": "Subject: Action needed: Create or Correct Emergency Access Accounts\n\nPlease arrange a controlled emergency access drill. Confirm credential access, sign-in, administrative access and alert delivery for each selected account. Record the result and date; do not send credentials.\n"
+          "text": "Subject: Action needed: Prepare Emergency Access Accounts\n\nPlease arrange a controlled emergency access drill. Confirm credential access, sign-in, administrative access and alert delivery for each selected account. Record the result and date; do not send credentials.\n"
         },
         "readiness.model": {
           "meta": {
@@ -20844,7 +20844,7 @@
     "s-prereq-exclusion-group": {
       "meta": {
         "stepId": "s-prereq-exclusion-group",
-        "title": "Create or Correct Exclusions Group",
+        "title": "Configure Emergency Exclusions",
         "relationship": "prerequisite",
         "contentFile": "CONTENT.md",
         "requiredBindings": [
@@ -21205,7 +21205,7 @@
             "audience": "administrators",
             "communicationTrigger": "during-verification-required"
           },
-          "text": "Subject: Action needed: Create or Correct Exclusions Group\n\nWe plan to update the emergency access group or its policy references. Please check that only the selected emergency accounts are members and that the required policies exclude the group. No credentials or recovery secrets should be shared in this message.\n"
+          "text": "Subject: Action needed: Configure Emergency Exclusions\n\nWe plan to update the emergency access group or its policy references. Please check that only the selected emergency accounts are members and that the required policies exclude the group. No credentials or recovery secrets should be shared in this message.\n"
         },
         "readiness.model": {
           "meta": {
@@ -21244,7 +21244,7 @@
     "s-prereq-passkey-settings": {
       "meta": {
         "stepId": "s-prereq-passkey-settings",
-        "title": "Set Up Passkeys to Match the Baseline",
+        "title": "Configure Passkey Authentication",
         "relationship": "prerequisite",
         "contentFile": "CONTENT.md",
         "requiredBindings": [
@@ -21362,7 +21362,9 @@
                 "enforcementType": "allow",
                 "aaGuids": [
                   "90a3ccdf-635c-4729-a248-9b709135078f",
-                  "de1e552d-db1d-4423-a619-566b625cdc84"
+                  "de1e552d-db1d-4423-a619-566b625cdc84",
+                  "a25342c0-3cdc-4414-8e46-f4807fca511c",
+                  "19083c3d-8383-4b18-bc03-8f1c9ab2fd1b"
                 ]
               },
               "includeTargets": [
@@ -21406,7 +21408,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open Entra admin center → Entra ID → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Before tightening restrictions, check the emergency-access step for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.\n3. Enable the method for the intended users. Keep the existing target groups and exclusions. Under Configure, enable self-service setup.\n4. If profiles are already enabled, open each applicable profile under Configure. Select device-bound passkeys, require attestation, enable key restrictions and choose Allow. For legacy settings, set attestation and key restrictions on the Configure tab, with Allow as the restriction type.\n5. Add the model IDs below to that allowed AAGUID list. They are IAMAI defaults, not a hardware-brand requirement specified by Jon's imported baseline.\n\n{{passkey.target.modelList}}\n\n6. An AAGUID identifies a model family, not an individual key. Other versions of the same brand can have different IDs. Keep existing approved recovery models; additional models are a tenant customization of IAMAI's defaults. Find a registered key's AAGUID in the user's Authentication methods details, or verify it against the manufacturer's information and Microsoft's hardware catalog.\n7. For profiles, check Enable and Target to confirm assignments. A user can use any applicable profile, so check that another assigned profile does not permit an unintended authenticator.\n8. Save, reopen the settings and scan again. Test emergency-account access in the emergency-access step.\n\nSettings read: {{passkey.current.summary}} [omit this line when unavailable]\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n{{passkey.review.detail}} [omit this line when unavailable]\n"
+          "text": "1. Open Entra admin center → Entra ID → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Before tightening restrictions, check Prepare Emergency Access Accounts for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.\n3. Enable the method for the intended users. Keep the existing target groups and exclusions. Under Configure, enable self-service setup.\n4. If profiles are already enabled, open each applicable profile under Configure. Select device-bound passkeys, require attestation, enable key restrictions and choose Allow. For legacy settings, set attestation and key restrictions on the Configure tab, with Allow as the restriction type.\n5. Add the model IDs below to that allowed AAGUID list. They are IAMAI defaults, not a hardware-brand requirement specified by Jon's imported baseline.\n\n{{passkey.target.modelList}}\n\n6. An AAGUID identifies a model family, not an individual key. Other versions of the same brand can have different IDs. Keep existing approved recovery models; additional models are a tenant customization of IAMAI's defaults. Find a registered key's AAGUID in the user's Authentication methods details, or verify it against the manufacturer's information and Microsoft's hardware catalog.\n7. For profiles, check Enable and Target to confirm assignments. A user can use any applicable profile, so check that another assigned profile does not permit an unintended authenticator.\n8. Save, reopen the settings and scan again. Complete the account-specific sign-in and recovery check in Verify Emergency Access.\n\nSettings read: {{passkey.current.summary}} [omit this line when unavailable]\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n{{passkey.review.detail}} [omit this line when unavailable]\n"
         },
         "entra.configure-authenticator": {
           "meta": {
@@ -21444,7 +21446,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Reopen Passkey (FIDO2) and compare its settings and applicable profiles with the intended configuration. Scan again to verify the settings. Test emergency-account access in the emergency-access step.\n"
+          "text": "Reopen Passkey (FIDO2) and compare its settings and applicable profiles with the intended configuration. Scan again to verify the settings. Complete the account-specific sign-in and recovery check in Verify Emergency Access.\n"
         },
         "json.fido2": {
           "meta": {

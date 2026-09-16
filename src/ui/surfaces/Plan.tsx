@@ -25,7 +25,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, EMERGENCY_STEP_IDS, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, partitionEmergencyItems, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -241,19 +241,27 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : items
-  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
+  const emergencyIdSet = new Set<string>(EMERGENCY_STEP_IDS)
+  const { emergency: emergencyItems, remaining: remainingItems, complete: emergencyComplete } = partitionEmergencyItems(items)
+  const summaryItems = summaryFilter === 'input' ? remainingItems.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? remainingItems.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? remainingItems.filter((i) => i.lane === 'Completed') : remainingItems
+  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(remainingItems, tab, focus)
   const groups = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : groupsFor(tab, shown)
   const aside = asideGroupsFor(shown)
+  const emergencyGroup: BoardGroup | null = !emergencyComplete && emergencyItems.length > 0 ? { key: 'emergency-access', label: 'Establish Emergency Access', secondary: false, closed: false, items: emergencyItems } : null
+  const showCompletedEmergency = emergencyComplete && (summaryFilter === 'completed' || focus.showCompleted || (open !== null && emergencyIdSet.has(open)))
+  const emergencyCompletedGroup: BoardGroup | null = showCompletedEmergency ? { key: 'emergency-access-complete', label: 'Establish Emergency Access', secondary: true, closed: false, items: emergencyItems } : null
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
   // tab follows the step; otherwise the link would open nothing on screen.
-  const openTab = open ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
+  const openInActiveEmergency = !!open && !emergencyComplete && emergencyIdSet.has(open)
+  const openTab = open && !openInActiveEmergency ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
   // until then) and the day the plan started.
-  const counts = focusCounts(items)
+  const remainingCounts = focusCounts(remainingItems)
+  const allCounts = focusCounts(items)
+  const counts = { ...remainingCounts, complete: allCounts.complete, deferred: allCounts.deferred }
   const drawGroup = (scope: string) => (g: BoardGroup) => {
     const key = `${scope}:${g.key}`
     // A group holding the open step is not collapsed by default: switching
@@ -376,11 +384,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
         base={boardBase}
       />
       {summaryFilter && <p className="actions"><strong>{fillText(summary.filter, { view: summary[summaryFilter] })}</strong><Button variant="tertiary" onClick={() => selectSummary(null)}>{summary.all}</Button></p>}
+      {emergencyGroup && <div className="plan-board plan-board-foundation">{drawGroup('emergency')(emergencyGroup)}</div>}
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
-        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
+        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{emergencyGroup && !focusActive(focus) ? 'No other items in this lane.' : focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
         {groups.map(drawGroup(tab))}
       </div>
-      {aside.length > 0 && <div className="plan-board plan-board-aside">{aside.map(drawGroup('aside'))}</div>}
+      {(aside.length > 0 || emergencyCompletedGroup) && <div className="plan-board plan-board-aside">{emergencyCompletedGroup ? drawGroup('aside')(emergencyCompletedGroup) : null}{aside.map(drawGroup('aside'))}</div>}
 
       {/* What is left in the footer is what was never a row: the person's own
           Doesn't apply here answers, the licence ladder and housekeeping. The
@@ -516,7 +525,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
   open: boolean
   onToggle: () => void
   onScan?: (returnTo: string) => void
-  onDone: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'signInAtByAccount' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
+  onDone: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   notes: NotAssessedNotes
   onNote: (policy: string, reason: string | null) => void
   tenant: string
@@ -626,6 +635,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
           confirmations={confirmations}
           onConfirm={onConfirm}
           onUnconfirm={onUnconfirm}
+          onCredentialStorage={(done) => onTick('credentialStorage', done)}
         />
       )}
     </>

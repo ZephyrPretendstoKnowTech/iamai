@@ -8,12 +8,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, withCleanupDone, recoveryAccountBasis } from './cleanupDone.ts'
+import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, withCleanupDone, recoveryAccountBasis, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import { renameLine } from './cleanupPhase.ts'
 import { supersededPolicies } from './generate.ts'
 import { cleanupWhen } from '../ui/surfaces/cleanupExport.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { absoluteDate } from '../copy/dates.ts'
+import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
 
 test('a Done records the row and its date in the checkpoints; the latest record per row wins', () => {
   let cps: unknown[] = [{ at: '2026-09-01T00:00:00.000Z', coverage: [] }]
@@ -30,6 +31,10 @@ test('a Done records the row and its date in the checkpoints; the latest record 
 
 test('an exact drill association exempts the matching emergency sign-in from the recent-sign-in check', () => {
   const f = fixture('demo')
+  for (const [index, id] of f.mapping.breakGlassUserIds.entries()) {
+    const eventAt = f.snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!
+    f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `observed-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Microsoft Azure portal', resource: 'Microsoft Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
+  }
   const bgId = f.mapping.breakGlassUserIds[0]
   const signIn = f.snapshot.users.find((u) => u.id === bgId)!.lastSuccessfulSignIn!
   const before = runFixture(f)
@@ -42,13 +47,45 @@ test('an exact drill association exempts the matching emergency sign-in from the
   const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][]; hardeningChecks: [string, Record<string, unknown>][] }
   assert.ok([...ex.failingChecks, ...ex.hardeningChecks].some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
 
-  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn, { accountIds: f.mapping.breakGlassUserIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds), signInAtByAccount: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => [id, f.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!])), timeZone: 'UTC' })) })
+  const accountBasis = recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups)
+  const configurationObservedAt = new Date(Math.min(...f.mapping.breakGlassUserIds.map(id => Date.parse(f.snapshot.signInEvidence[id]!.recoveryCandidates![0].at))) - 3_600_000).toISOString()
+  const recoveryEvidence = Object.fromEntries(f.mapping.breakGlassUserIds.map((id) => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1 as const, tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } ] }))
+  let checkpoints = withCleanupDone([], 'drill', configurationObservedAt.slice(0, 10), configurationObservedAt, { accountIds: f.mapping.breakGlassUserIds, workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: f.snapshot.tenantId, configurationObservedAt, accountBasis, timeZone: 'UTC' })
+  checkpoints = withCleanupDone(checkpoints, 'drill', signIn.slice(0, 10), f.snapshot.asOf, { accountIds: f.mapping.breakGlassUserIds, outcome: 'passed', accountBasis, recoveryEvidence, signInAtByAccount: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => [id, f.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!])), timeZone: 'UTC' })
+  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!
   assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'a sign-in on a recorded drill day is the drill')
   const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
   assert.equal(row.done, `${signIn.slice(0, 10)}T12:00:00.000Z`, 'the drill row carries its recorded date')
   assert.equal(cleanupWhen(row), `done ${absoluteDate(row.done!)}`, 'the row reads done <date>')
   assert.equal(cleanupWhen(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!), absoluteDate(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!.day.slice(0, 10)), 'undone, the row reads its planned day')
+})
+
+test('fabricated or imported recovery event ids never complete the drill', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  const configuredAt = new Date(Date.parse(event.at) - 3_600_000).toISOString()
+  const evidence = { [id]: { schema: 1 as const, tenantId: f.snapshot.tenantId, accountId: id, eventId: 'fabricated-event-id', eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt: configuredAt } }
+  const basis = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)
+  let checkpoints = withCleanupDone([], 'drill', configuredAt.slice(0, 10), configuredAt, { accountIds: [id], workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: f.snapshot.tenantId, configurationObservedAt: configuredAt, accountBasis: basis })
+  checkpoints = withCleanupDone(checkpoints, 'drill', event.at.slice(0, 10), f.snapshot.asOf, { accountIds: [id], outcome: 'passed', accountBasis: basis, recoveryEvidence: evidence })
+  const record = cleanupRecord(checkpoints).records!
+  const result = runFixture(f, { cleanupRecord: { done: {}, drills: [], records: record } })
+  assert.notEqual(result.schedule.cleanup!.rows.find(row => row.kind === 'drill')!.done, event.at.slice(0, 10))
+})
+
+test('recovery basis changes with effective exclusions membership and saved approved-model intent', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const original = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]?.resolvedId
+  assert.ok(original && groupId)
+  f.groups.get(groupId!)!.memberIds.push('unexpected-member')
+  assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], original)
+  f.groups.get(groupId!)!.memberIds.pop()
+  f.mapping.passkeyApprovedModels = [{ name: 'Approved recovery model', aaguid: '11111111-2222-4333-8444-555555555555' }]
+  assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], original)
 })
 
 test('the naming row renders renames as from → to, in the tenant\'s convention', () => {
