@@ -11,7 +11,9 @@ export type MethodPreparation = { ids: string[]; readyIds: string[]; unknownIds:
 /** A readiness cohort includes an eligible administrator's activation path,
  * without claiming that the eligible role is currently active in Impact. */
 function applies(effect: PolicyEffect, id: string, snapshot: TenantSnapshot, context: ScopeEvidence): 'in' | 'out' | 'unknown' {
-  const answers = [accountApplicability(effect.scope, id, snapshot, context)]
+  const current = accountApplicability(effect.scope, id, snapshot, context)
+  if (!effect.scope.roles.include.length && !effect.scope.roles.exclude.length) return current
+  const answers = [current]
   for (const role of snapshot.roles.eligible?.[id] ?? []) {
     const roles = { active: { ...snapshot.roles.active, [id]: [...(snapshot.roles.active[id] ?? []), role] } }
     answers.push(accountApplicability(effect.scope, id, { users: snapshot.users, roles }, context))
@@ -25,8 +27,9 @@ export function createMethodPreparationCache(snapshot: TenantSnapshot, context: 
   return { snapshot, indexedContext, availability: methodAvailability(snapshot, indexedContext),
     combinations: new Map<string, Map<string, ReturnType<typeof strengthSatisfaction>>>(),
     combinationSets: new WeakMap<string[], Map<string, ReturnType<typeof strengthSatisfaction>>>(),
+    unrestrictedStrengths: new Map<string, Map<string, Answer>>(),
     scopeAnswers: new Map<string, Map<string, 'in' | 'out' | 'unknown'>>(), methodAnswers: new Map<string, Map<string, Answer>>(),
-    methods: new Map<string, { usableMethods: string[]; possibleMethods: string[] }>(),
+    methods: new Map<string, { usableMethods: string[]; possibleMethods: string[]; signature: string }>(),
     strengths: tenantStrengthsOf(snapshot), registrations: new Map(snapshot.registrationDetails.map(r => [r.id, r])), users: new Map(snapshot.users.map(u => [u.id, u])) }
 }
 type PreparationCache = ReturnType<typeof createMethodPreparationCache>
@@ -66,7 +69,9 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     let registrationMethods = cache.methods.get(id)
     if (!registrationMethods) {
       const states = row.methodsRegistered.map(method => ({ method, usable: availability.usable(id, method) }))
-      registrationMethods = { usableMethods: states.filter(m => m.usable === 'yes').map(m => m.method), possibleMethods: states.filter(m => m.usable !== 'no').map(m => m.method) }
+      const usableMethods = states.filter(m => m.usable === 'yes').map(m => m.method)
+      const possibleMethods = states.filter(m => m.usable !== 'no').map(m => m.method)
+      registrationMethods = { usableMethods, possibleMethods, signature: JSON.stringify([usableMethods, possibleMethods]) }
       cache.methods.set(id, registrationMethods)
     }
     const { usableMethods, possibleMethods } = registrationMethods
@@ -75,6 +80,20 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       if (requirement.kind !== 'strength') return 'unknown'
       const strength = strengths.get(requirement.id.toLowerCase())
       if (!strength) return 'unknown'
+      if (Array.isArray(strength.combinationConfigurations) && strength.combinationConfigurations.length === 0) {
+        // Without key/model restrictions this answer depends only on the usable
+        // method sets and the strength, not on which account registered them.
+        let shared = cache.unrestrictedStrengths.get(requirement.id.toLowerCase())
+        if (!shared) { shared = new Map(); cache.unrestrictedStrengths.set(requirement.id.toLowerCase(), shared) }
+        const signature = registrationMethods!.signature
+        let answer = shared.get(signature)
+        if (answer === undefined) {
+          const usable = strength.allowedCombinations.length ? strengthSatisfaction(strength.allowedCombinations, usableMethods) : 'no'
+          answer = usable !== 'no' ? usable : strength.allowedCombinations.length && strengthSatisfaction(strength.allowedCombinations, possibleMethods) !== 'no' ? 'unknown' : 'no'
+          shared.set(signature, answer)
+        }
+        return answer
+      }
       let unknown = false
       for (const combination of strength.allowedCombinations) {
         const answer = combinationAnswer(combination, usableMethods)
@@ -108,22 +127,22 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
   }
   for (const id of [...new Set(candidates)]) {
     if (users.get(id)?.accountEnabled === false) continue
-    const scoped = scopedTargets.map(target => {
+    let included = false, failed = false, unknown = false
+    for (const target of scopedTargets) {
       let scope = target.scopes.get(id)
       if (scope === undefined) { scope = applies(target.effect, id, snapshot, indexedContext); target.scopes.set(id, scope) }
-      return { ...target, scope }
-    })
-    if (scoped.some(s => s.scope === 'unknown')) result.completeScope = false
-    const applicable = scoped.filter(s => s.scope === 'in')
-    if (applicable.length === 0) continue
+      if (scope === 'unknown') result.completeScope = false
+      if (scope !== 'in') continue
+      included = true
+      let answer = target.methods.get(id)
+      if (answer === undefined) { answer = registered(target.effect, id); target.methods.set(id, answer) }
+      if (answer === 'no') failed = true
+      else if (answer === 'unknown') unknown = true
+    }
+    if (!included) continue
     result.ids.push(id)
-    const answers = applicable.map(s => {
-      let answer = s.methods.get(id)
-      if (answer === undefined) { answer = registered(s.effect, id); s.methods.set(id, answer) }
-      return answer
-    })
-    if (answers.every(a => a === 'yes')) result.readyIds.push(id)
-    else if (!answers.includes('no')) result.unknownIds.push(id)
+    if (!failed && !unknown) result.readyIds.push(id)
+    else if (!failed) result.unknownIds.push(id)
   }
   return result
 }
