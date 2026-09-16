@@ -16,6 +16,7 @@ import { requiredModels } from './passkeySettings.ts'
 import type { CleanupKind } from './cleanup.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 
+export type RecoveryPurpose = 'pre-change' | 'final'
 export type VerifiedRecoveryEvidence = {
   schema: 1
   tenantId: string
@@ -29,8 +30,9 @@ export type VerifiedRecoveryEvidence = {
   recoveryConfirmed: true
   credentialConfirmed: true
   configurationObservedAt: string
+  purpose?: RecoveryPurpose
 }
-export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; tenantId?: string; configurationObservedAt?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
+export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; purpose?: RecoveryPurpose; tenantId?: string; configurationObservedAt?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
 /** The latest recorded completion per row, as an ISO instant. */
 export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
@@ -49,13 +51,13 @@ export function cleanupDateToIso(date: string): string {
 }
 
 /** The checkpoints with one more completion recorded. */
-export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string, details: Pick<CleanupCheckpoint, 'basis' | 'accountIds' | 'timeZone' | 'outcome' | 'workflow' | 'tenantId' | 'configurationObservedAt' | 'recipient' | 'signInAtByAccount' | 'accountBasis' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'> = {}): unknown[] {
+export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string, details: Pick<CleanupCheckpoint, 'basis' | 'accountIds' | 'timeZone' | 'outcome' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'recipient' | 'signInAtByAccount' | 'accountBasis' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'> = {}): unknown[] {
   if (!validCompletionDate(date, at, details.timeZone)) return [...checkpoints]
   if (kind === 'drill' && details.outcome === 'passed') {
     const ids = details.accountIds ?? []
     if (!ids.length || ids.some(id => {
       const evidence = details.recoveryEvidence?.[id]
-      return !evidence || evidence.accountId.toLowerCase() !== id.toLowerCase() || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true
+      return !details.purpose || !evidence || evidence.purpose !== details.purpose || evidence.accountId.toLowerCase() !== id.toLowerCase() || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true
     })) return [...checkpoints]
   }
   const entry: CleanupCheckpoint = { at, cleanup: kind, date: cleanupDateToIso(date), ...details }
@@ -68,7 +70,7 @@ export function cleanupDoneDates(checkpoints: readonly unknown[]): CleanupDone {
   const seenAt: Partial<Record<CleanupKind, string>> = {}
   for (const c of checkpoints) {
     if (!isCleanupCheckpoint(c)) continue
-    if (c.cleanup === 'drill' && c.workflow === RECOVERY_PREPARATION_WORKFLOW && c.outcome === undefined) continue
+    if (c.cleanup === 'drill' && (c.workflow === RECOVERY_PREPARATION_WORKFLOW && c.outcome === undefined || c.purpose === 'pre-change')) continue
     const prev = seenAt[c.cleanup]
     if (prev !== undefined && prev > c.at) continue
     seenAt[c.cleanup] = c.at
@@ -79,7 +81,7 @@ export function cleanupDoneDates(checkpoints: readonly unknown[]): CleanupDone {
 
 /** Every drill date ever recorded: an older sign-in matches an older drill. */
 export function drillDates(checkpoints: readonly unknown[]): string[] {
-  return checkpoints.filter(isCleanupCheckpoint).filter((c) => c.cleanup === 'drill' && c.workflow !== RECOVERY_PREPARATION_WORKFLOW).map((c) => c.date)
+  return checkpoints.filter(isCleanupCheckpoint).filter((c) => c.cleanup === 'drill' && c.workflow !== RECOVERY_PREPARATION_WORKFLOW && c.purpose === 'final').map((c) => c.date)
 }
 
 export function cleanupRecord(checkpoints: readonly unknown[]): CleanupRecord {
@@ -112,12 +114,13 @@ export type RecoveryEvidenceContext = {
 
 export const RECOVERY_PREPARATION_WORKFLOW = 'Emergency recovery configuration prepared'
 
-export function recoveryPreparation(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis: string | undefined, tenantId: string): CleanupCheckpoint | null {
-  return records.filter(record => record.cleanup === 'drill' && record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.outcome === undefined && record.tenantId === tenantId && record.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && typeof record.configurationObservedAt === 'string' && Number.isFinite(Date.parse(record.configurationObservedAt)) && Date.parse(record.configurationObservedAt) <= Date.parse(now) && Date.parse(record.at) <= Date.parse(now) && (expectedBasis === undefined || record.accountBasis?.[accountId] === expectedBasis)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1) ?? null
+export function recoveryPreparation(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis: string | undefined, tenantId: string, purpose: RecoveryPurpose = 'final'): CleanupCheckpoint | null {
+  return records.filter(record => record.cleanup === 'drill' && record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.outcome === undefined && record.purpose === purpose && record.tenantId === tenantId && record.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && typeof record.configurationObservedAt === 'string' && Number.isFinite(Date.parse(record.configurationObservedAt)) && Date.parse(record.configurationObservedAt) <= Date.parse(now) && Date.parse(record.at) <= Date.parse(now) && (expectedBasis === undefined || record.accountBasis?.[accountId] === expectedBasis)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1) ?? null
 }
 
-function evidenceMatchesCurrentCandidate(evidence: VerifiedRecoveryEvidence | undefined, accountId: string, context: RecoveryEvidenceContext | undefined, preparation: CleanupCheckpoint | null): boolean {
+function evidenceMatchesCurrentCandidate(evidence: VerifiedRecoveryEvidence | undefined, accountId: string, context: RecoveryEvidenceContext | undefined, preparation: CleanupCheckpoint | null, purpose: RecoveryPurpose): boolean {
   if (!context || !evidence || evidence.tenantId !== context.tenantId || evidence.schema !== 1 || evidence.provenance !== 'observed-sign-in' || evidence.method !== 'Passkey (FIDO2)') return false
+  if (evidence.purpose !== purpose || preparation?.purpose !== purpose) return false
   if (!preparation?.configurationObservedAt || evidence.configurationObservedAt !== preparation.configurationObservedAt) return false
   if (!Number.isFinite(Date.parse(evidence.configurationObservedAt)) || Date.parse(evidence.eventAt) < Date.parse(evidence.configurationObservedAt)) return false
   if (Date.parse(context.currentSnapshotObservedAt) < Date.parse(evidence.eventAt)) return false
@@ -137,17 +140,18 @@ export function isRecordedDrill(signInIso: string, _legacyDates: readonly string
     if (r.cleanup !== 'drill' || !r.accountIds?.some((id) => id.toLowerCase() === accountId.toLowerCase())) return false
     if (r.outcome !== 'passed') return false
     const evidence = Object.entries(r.recoveryEvidence ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1]
-    const preparation = recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(r.at)), r.at, r.accountBasis?.[accountId], context?.tenantId ?? '')
+    if (r.purpose !== 'final') return false
+    const preparation = recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(r.at)), r.at, r.accountBasis?.[accountId], context?.tenantId ?? '', 'final')
     const exact = evidence?.eventAt ?? Object.entries(r.signInAtByAccount ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1]
-    return evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation) && !!exact && Number.isFinite(Date.parse(exact)) && Date.parse(exact) === Date.parse(signInIso) && Date.parse(exact) <= Date.parse(r.at)
+    return evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, 'final') && !!exact && Number.isFinite(Date.parse(exact)) && Date.parse(exact) === Date.parse(signInIso) && Date.parse(exact) <= Date.parse(r.at)
   })
 }
 
-export function latestRecoveryTest(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis?: string, context?: RecoveryEvidenceContext): string | null {
-  const latest = records.filter(r => r.cleanup === 'drill' && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
+export function latestRecoveryTest(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis?: string, context?: RecoveryEvidenceContext, purpose: RecoveryPurpose = 'final'): string | null {
+  const latest = records.filter(r => r.cleanup === 'drill' && r.purpose === purpose && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
   const evidence = latest ? Object.entries(latest.recoveryEvidence ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1] : undefined
-  const preparation = latest && context ? recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(latest.at)), latest.at, expectedBasis, context.tenantId) : null
-  if (!latest || latest.outcome !== 'passed' || !evidence || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation) || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  const preparation = latest && context ? recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(latest.at)), latest.at, expectedBasis, context.tenantId, purpose) : null
+  if (!latest || latest.outcome !== 'passed' || !evidence || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, purpose) || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
   return latest.date
 }
 

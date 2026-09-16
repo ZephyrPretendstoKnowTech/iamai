@@ -117,14 +117,18 @@ test('an accepted model is required on the next scan without bypassing other con
   assert.notEqual(passkeyReadingOf(scan(current), mapping).state, 'inPlace')
 })
 
-test('a currently allowed synced key cannot satisfy planned emergency recovery compatibility', () => {
-  const current = policy()
-  current.passkeyProfiles = [{...profile('authenticator'), passkeyTypes: 'deviceBound,synced', keyRestrictions: {isEnforced:false,enforcementType:'allow',aaGuids:[]}}]
-  current.includeTargets[0].allowedPasskeyProfiles = ['authenticator']
+test('an incompletely described synced-profile change stays unknown rather than claiming recovery compatibility', () => {
+  const current: any = policy()
+  current.passkeyProfiles = []
+  delete (current as Partial<typeof current>).defaultPasskeyProfile
+  current.passkeyTypes = 'deviceBound,synced'
+  current.attestationEnforcement = 'disabled'
+  current.keyRestrictions = {isEnforced:false,enforcementType:'allow',aaGuids:[]}
+  current.includeTargets = [{ id: 'all_users', targetType: 'group' }]
   const snapshot = scan(current)
   snapshot.authMethods = { emergency: [{kind:'passkey', aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'synced'}] }
   assert.equal(emergencyPasskeyCompatibility(snapshot,['emergency'])[0].state,'eligible')
-  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'])[0].state,'review')
+  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'], fixture('demo').mapping)[0].state,'unknown')
   snapshot.authMethods.emergency = [{kind:'fido2',aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'deviceBound'}]
-  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'])[0].state,'eligible')
+  assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'], fixture('demo').mapping)[0].state,'unknown')
 })

@@ -17,12 +17,17 @@ export type EvidenceCacheMeta = {
 }
 
 export type GroupMembersCacheEntry = {
+  /** Group object shape version. Older entries remain readable but their new suitability facts are unknown. */
+  schema?: 2
   tenantId: string
   groupId: string
   displayName: string | null
   membershipRule: string | null
   /** A mail-enabled exclusions group is a target that also delivers mail. */
   mailEnabled?: boolean
+  securityEnabled?: boolean | null
+  groupTypes?: string[] | null
+  isAssignableToRole?: boolean | null
   memberCount: number
   memberIds: string[]
   sampled: boolean

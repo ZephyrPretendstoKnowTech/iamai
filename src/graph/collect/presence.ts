@@ -40,7 +40,7 @@ export type GroupRead = {
   /** Why presence is what it is, in the read's own words; null when the object was read. */
   reason: string | null
   /** The object's own fields — only when the object itself was read. */
-  object: { displayName: string | null; membershipRule: string | null; mailEnabled: boolean } | null
+  object: { displayName: string | null; membershipRule: string | null; mailEnabled: boolean; securityEnabled?: boolean | null; groupTypes?: string[] | null; isAssignableToRole?: boolean | null } | null
   /** Membership evidence, independent of presence. */
   members: MemberEvidence
   /** The ids read; empty where `members` is `unknown`, a first page where it is `sampled`. */

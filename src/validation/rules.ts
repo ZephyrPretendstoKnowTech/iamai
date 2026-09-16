@@ -39,6 +39,9 @@ export type GroupFacts = {
   displayName?: string | null
   membershipRule?: string | null
   mailEnabled?: boolean
+  securityEnabled?: boolean | null
+  groupTypes?: string[] | null
+  isAssignableToRole?: boolean | null
   memberIds: string[]
   memberCount: number
   sampled: boolean
@@ -736,7 +739,10 @@ const xgNotDynamic: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
-    return !entry.membershipRule ? PASS : fail(F.xgDynamic(entry.membershipRule))
+    if (entry.securityEnabled === undefined || entry.securityEnabled === null || !Array.isArray(entry.groupTypes)) return unknown('The group type and security-enabled state were not fully read.')
+    if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.')
+    if (entry.membershipRule || entry.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership')) return fail(F.xgDynamic(entry.membershipRule || 'DynamicMembership'))
+    return PASS
   },
 }
 

@@ -15,6 +15,9 @@ export type GroupMembers = Map<
     /** Carried from the group cache: the validation rules need both. */
     membershipRule?: string | null
     mailEnabled?: boolean
+    securityEnabled?: boolean | null
+    groupTypes?: string[] | null
+    isAssignableToRole?: boolean | null
   }
 >
 

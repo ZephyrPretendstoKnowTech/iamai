@@ -58,7 +58,7 @@ test('partial passkey settings remain explicit inside Availability even when oth
   const policy = f.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, any>[] }
   const method = policy.authenticationMethodConfigurations.find(p => p.id === 'Fido2')!
   for (const target of method.includeTargets) delete target.allowedPasskeyProfiles
-  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'availability')!
+  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'recovery-ready')!
   assert.equal(availability.outcome, 'unknown')
   assert.match(JSON.stringify(availability.items), /allowedPasskeyProfiles/)
 })
@@ -85,8 +85,8 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   const date = now.slice(0, 10)
   const accountBasis = recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups)
   const configurationObservedAt = new Date(Math.min(...f.mapping.breakGlassUserIds.map(id => Date.parse(f.snapshot.signInEvidence[id]!.recoveryCandidates![0].at))) - 3_600_000).toISOString()
-  const preparation: CleanupCheckpoint = { cleanup: 'drill', date: configurationObservedAt, at: configurationObservedAt, accountIds: f.mapping.breakGlassUserIds, workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: f.snapshot.tenantId, configurationObservedAt, accountBasis }
-  const record: CleanupCheckpoint = { cleanup: 'drill', date, at: now, outcome: 'passed', accountIds: f.mapping.breakGlassUserIds, accountBasis, recoveryEvidence: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1, tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })) }
+  const preparation: CleanupCheckpoint = { cleanup: 'drill', date: configurationObservedAt, at: configurationObservedAt, accountIds: f.mapping.breakGlassUserIds, workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: f.snapshot.tenantId, configurationObservedAt, accountBasis }
+  const record: CleanupCheckpoint = { cleanup: 'drill', date, at: now, outcome: 'passed', purpose: 'final', accountIds: f.mapping.breakGlassUserIds, accountBasis, recoveryEvidence: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1, purpose: 'final', tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })) }
   const read = (records: CleanupCheckpoint[]) => journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, records, now)
   assert.ok(read([preparation, record]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => i.value.startsWith('Passed')))
   assert.ok(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => /failed/.test(i.value)))

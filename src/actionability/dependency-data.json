@@ -356,11 +356,35 @@
   ],
   "edges": [
     {
+      "step": "s-prereq-passkey-settings",
+      "action": "start",
+      "prerequisite": "s-prereq-break-glass",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-prereq-passkey-settings",
+      "action": "start",
+      "prerequisite": "s-prereq-exclusion-group",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "cleanup-drill",
       "action": "start",
       "prerequisite": "s-prereq-break-glass",
       "prerequisiteKind": "step",
-      "milestone": "minimum-satisfied",
+      "milestone": "complete",
       "condition": null,
       "edgeKind": "hard",
       "source": "package",
@@ -416,9 +440,21 @@
       "table": "10.1"
     },
     {
+      "step": "s-ladder-operator-passkey",
+      "action": "start",
+      "prerequisite": "cleanup-drill",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-verify-mfa",
       "action": "start",
-      "prerequisite": "s-prereq-passkey-settings",
+      "prerequisite": "s-ladder-operator-passkey",
       "prerequisiteKind": "step",
       "milestone": "complete",
       "condition": null,
