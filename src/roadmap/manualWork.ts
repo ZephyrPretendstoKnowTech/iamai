@@ -112,7 +112,18 @@ function scopedBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingStat
   const accountKey = `${accountEvidence}:${step.id === 's-ladder-guest-review'}`
   let accounts = accountCache?.get(accountKey)
   if (!accounts) {
-    accounts = JSON.stringify(stable(Object.fromEntries(snapshot.users.map(u => [u.id, { enabled: u.accountEnabled, type: u.userType, synced: u.onPremisesSyncEnabled, invitation: step.id === 's-ladder-guest-review' ? u.externalUserState : null, roles: accountEvidence ? snapshot.roles.active[u.id] ?? [] : null, methods: accountEvidence ? snapshot.authMethods[u.id] ?? 'unknown' : null, eligibleRoles: accountEvidence ? snapshot.roles.eligible?.[u.id] ?? [] : null }]))))
+    // These fixed account keys are already in stable()'s canonical order.
+    // Sort the directory once; normalize only the nested evidence fields.
+    const directory = new Map(snapshot.users.map(u => [u.id, u]))
+    accounts = JSON.stringify(Object.fromEntries([...directory].sort(([a], [b]) => a.localeCompare(b)).map(([id, u]) => [id, {
+      eligibleRoles: accountEvidence ? stable(snapshot.roles.eligible?.[id] ?? []) : null,
+      enabled: u.accountEnabled,
+      invitation: step.id === 's-ladder-guest-review' ? u.externalUserState : null,
+      methods: accountEvidence ? stable(snapshot.authMethods[id] ?? 'unknown') : null,
+      roles: accountEvidence ? stable(snapshot.roles.active[id] ?? []) : null,
+      synced: u.onPremisesSyncEnabled,
+      type: u.userType,
+    }])))
     accountCache?.set(accountKey, accounts)
   }
   // Same canonical key order and values; reuse only this derivation's inventory.

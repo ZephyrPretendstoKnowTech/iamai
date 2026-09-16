@@ -127,8 +127,10 @@ export function deviceSetupResource(ctx: StepVarContext): Artifact {
 
 export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Artifact {
   if (artifact.id !== 'portal') return artifact
-  const directory = buildNameDirectory(ctx.snapshot, ctx.groups)
-  const names = new Map(ctx.snapshot.config.caPolicies.rows.map(row => { const p = row as { id?: string; displayName?: string }; return [p.id, p.displayName] }))
+  // Most action sentences contain no object IDs. Resolve names only when a
+  // reference is actually present, retaining this call's snapshot and scope.
+  let directory: ReturnType<typeof buildNameDirectory> | undefined
+  let names: Map<string | undefined, string | undefined> | undefined
   const references: Record<string, string> = {
     'service accounts group display name': 'the group selected in Create or Correct Service Accounts Group',
     'service accounts group': 'the Object ID on that group’s Overview page in Entra',
@@ -141,6 +143,8 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
     'grant controls': 'the access controls listed in Settings for This Action',
   }
   const fill = (line: string) => line.replace(/‹([^›]+)›/g, (match, key: string) => references[key] ?? match).replace(/\b(?:ID\s+)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi, (match, id: string) => {
+    directory ??= buildNameDirectory(ctx.snapshot, ctx.groups)
+    names ??= new Map(ctx.snapshot.config.caPolicies.rows.map(row => { const p = row as { id?: string; displayName?: string }; return [p.id, p.displayName] }))
     const name = names.get(id) ?? directory.nameOf(id)
     return name && name !== id && !line.includes(name) ? `${/^ID\s/i.test(match) ? 'ID ' : ''}“${name.replace(/[\r\n]/g, ' ')}” (${id})` : match
   })
