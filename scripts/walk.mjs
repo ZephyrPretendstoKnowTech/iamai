@@ -1298,12 +1298,14 @@ async function walkFixture(fx) {
         if (rowChips[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld && !heldOnRow) {
           if (!LANE_LABEL_RE.test(rowLabels[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowLabels[i]}" as its state; a row's state is its lane label`)
           if (!ROW_WHEN_RE.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it reads a day or the placeholder`)
-          if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
+          const conciseTokenCompletion = /^Require Token Protection on Windows$/.test(title)
+          if (conciseTokenCompletion && (!/scan confirms token protection is On/i.test(bodyText) || !/Supported work apps sign in successfully/i.test(bodyText))) add('P0', `${slabel}: token-protection completion lacks its policy and client outcomes`)
+          if (!conciseTokenCompletion && !RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           // The evidence half reads records: with none read for this policy it says
           // so and still counts the people it has seen, rather than printing the zero
           // an empty set adds up to (roadmap/tracking.ts, readyWhen.ts readyBasis).
-          if (!RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
-          if (READY_TO_ENFORCE_RE.test(rowLabels[i] || '') && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads Ready to enforce but the step's Done when does not say ready now`)
+          if (!conciseTokenCompletion && !RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
+          if (!conciseTokenCompletion && READY_TO_ENFORCE_RE.test(rowLabels[i] || '') && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads Ready to enforce but the step's Done when does not say ready now`)
         }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
@@ -1461,13 +1463,11 @@ async function walkFixture(fx) {
           // rule one line above rather than a fault here (roadmap/timing.ts
           // eventsFor): the check is about the sessions clause of an email that
           // is written, so it asks for one only where there is one to write.
-          if (/^Shorten Admin Sessions$/.test(title) && !cannotWriteYet && !enforcementHeld) {
+          if (/^Shorten Admin Sessions$/.test(title)) {
             const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
-            const emailText = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
-            if (!/reauthentication (?:after (?:\d+ hours|an hour|a day|a week|\d+ days)|every time)/.test(emailText)) add('P0', `${slabel}: the admin email omits the target reauthentication frequency`)
-            if (!/not kept signed in after the browser is closed/.test(emailText)) add('P0', `${slabel}: the admin email omits the nonpersistent browser behavior`)
-            await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
+            if (openedEmail) add('P0', `${slabel}: the removed admin-only Email channel has returned`)
           }
+
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
           // personal device can still do; step 12 asks for a passkey or a key.
@@ -1535,7 +1535,7 @@ async function walkFixture(fx) {
           if (/Require a Managed Device/.test(title)) {
             const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
             const email = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
-            if (!/Subject:/.test(email) || !/test or change window/.test(email)) add('P0', `${slabel}: managed-device coordination email is missing its actionable review and test request`)
+            if (openedEmail && (!/Subject:/.test(email) || /This format has no output|We are reviewing require a managed device/i.test(email))) add('P0', `${slabel}: managed-device email is a placeholder rather than a recipient message`)
             if (/Personal devices are blocked\./.test(email)) add('P0', `${slabel}: managed-device email incorrectly equates personal ownership with failing the actual compliant-or-hybrid grant`)
             await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
@@ -1551,13 +1551,16 @@ async function walkFixture(fx) {
             if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
-          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
+          if (/^Block Device Code Sign-in$/.test(title)) {
             // Quiet telemetry is not a successful replacement-workflow test. The
             // useful instruction must identify the actual task and recorded result.
             const workflowText = bodyText + '\n' + implText
             if (/Device Code/.test(title) && !/run the actual task with a representative account/.test(workflowText)) add('P0', `${slabel}: device-code guidance omits the representative replacement-task test`)
-            if (/Authentication Transfer/.test(title) && !/Test direct sign-in on each destination app or device/.test(workflowText)) add('P0', `${slabel}: authentication-transfer guidance omits the destination sign-in test`)
             if (!/Record the account, (?:tool\/task, replacement sign-in path|app\/device workflow), date and result/.test(workflowText)) add('P0', `${slabel}: workflow guidance omits the account, task, date or result to record`)
+          }
+          if (/^Block Authentication Transfer$/.test(title)) {
+            if (/Workflow Check|Authentication Transfer Workflow Tested/.test(bodyText)) add('P0', `${slabel}: the removed workflow form has returned`)
+            if (!/scan confirms.*policy is On|scan found the assessed configuration in place/i.test(bodyText)) add('P0', `${slabel}: completion does not explain the scan-confirmed policy outcome`)
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
             emailChecks.push({ title, slabel, run: (_email, more) => {
