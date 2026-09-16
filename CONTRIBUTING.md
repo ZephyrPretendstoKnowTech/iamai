@@ -47,15 +47,15 @@ Name every test file that covers the change. The command typechecks, builds the
 site, then runs those tests and the browser smoke concurrently. It is the quick
 local gate; use `npm run verify -- <tests>` for tighter edit loops.
 
-The `ci` check runs the complete unit suite and build/browser jobs on every push
-and every pull request, and `main` requires it. That exact main commit is the
-authoritative full release gate, so a routine fix does not wait for the entire
-unit corpus twice. Use `npm run verify -- --release` only when a local full
-release preflight is specifically needed.
+The `ci` check runs the complete unit suite and build/browser jobs on pull
+requests and on explicit manual runs. Use `npm run verify -- --release` only
+when a local full release preflight is specifically needed.
 
-Publication starts immediately for the exact commit pushed to `main`. It builds
-and publishes independently while CI continues in parallel, so the complete
-suite and deployment walk do not delay an authorized release.
+Publication starts immediately for the exact commit pushed to `main`. Its only
+gate is the production build itself: dependency installation, compilation,
+artifact upload, and Pages deployment run in one job. A failed install or build
+cannot replace the live site. Full CI and external-health monitoring do not run
+on a main push.
 
 An acceptance is a unit test. A change that can be asserted should arrive with
 the test that asserts it.

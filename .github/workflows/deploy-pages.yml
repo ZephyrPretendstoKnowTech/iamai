@@ -1,17 +1,25 @@
-# Called for the exact commit pushed to main. Publishing is independent of CI;
-# the local pre-push gate validates the release while CI reports in parallel.
+# Publish the exact commit pushed to main. The successful production build is
+# the release gate: if dependencies cannot install or the site cannot compile,
+# no Pages artifact is deployed.
 name: deploy-pages
 on:
-  workflow_call:
+  push:
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
 jobs:
-  build:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,24 +28,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --prefer-offline --no-audit --no-fund
       - run: npm run build:site
       - uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages-${{ github.run_attempt }}
           path: dist
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: pages
-      cancel-in-progress: true
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          artifact_name: github-pages-${{ github.run_attempt }}

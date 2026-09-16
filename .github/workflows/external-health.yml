@@ -15,14 +15,11 @@
 # step *carries* a Learn link, and that the first sign-in click lands on the
 # button, are asserted there on every push and are not repeated here.
 #
-# Runs on main (so a merge that adds a dead link is seen), daily (so a link that
-# rots later is seen), and on demand. Not on pull_request: a contributor must not
-# be blocked, or confused, by Microsoft's uptime.
+# Runs daily and on demand. It never joins the line from a source change to the
+# live site.
 name: external-health
 
 on:
-  push:
-    branches: [main]
   schedule:
     # 07:20 UTC daily. Off the hour, where scheduled-run contention is worst.
     - cron: '20 7 * * *'

@@ -1,8 +1,7 @@
-# One validation per PR update, then the exact merged main commit.
+# Full validation belongs to pull requests or an explicit manual run. A push to
+# main is published by deploy-pages.yml and does not wait for this workflow.
 name: ci
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -99,12 +98,3 @@ jobs:
           CHECKS: ${{ needs.checks.result }}
           BROWSER: ${{ needs.browser.result }}
         run: test "$CHECKS" = success && test "$BROWSER" = success
-  # Publish the exact pushed commit independently of CI. Checks still report
-  # normally, but they do not delay an authorized production deployment.
-  release:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    uses: ./.github/workflows/deploy-pages.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
