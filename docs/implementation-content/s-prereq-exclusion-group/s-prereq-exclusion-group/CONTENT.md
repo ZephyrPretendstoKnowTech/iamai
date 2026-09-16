@@ -232,7 +232,7 @@ State: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. K
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins.exclusion-change","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"administrators"}
-Subject: Action needed: Create or Correct Exclusions Group
+Subject: Action needed: Configure Emergency Exclusions
 
 We plan to update the emergency access group or its policy references. Please check that only the selected emergency accounts are members and that the required policies exclude the group. No credentials or recovery secrets should be shared in this message.
 @@IAMAI-END

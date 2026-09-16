@@ -116,7 +116,7 @@ test('prerequisite → a step edge: the emergency gate holds enforcement, a make
   const plan = run.steps.map((s) => (s.id === step.id ? step : structuredClone(s)))
   for (const s of plan) wake(s)
   const o = observe(step, new Map(plan.map((s) => [s.id, s])))
-  assert.deepEqual(o.waitsOn, [{ step: gate, action: 'enforce', milestone: 'complete' }], 'the gate holds enforcement, never the report-only preparation (A3 B3)')
+  assert.deepEqual(o.waitsOn, [], 'the dependency catalogue already owns the enforcement edge; the observation must not duplicate it')
   assert.deepEqual(o.blockers, [])
   const r = readingOf(step, wake)
   assert.equal(label(r), 'Ready · Create', 'a wait on enforcement does not gate the create')

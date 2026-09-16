@@ -10,7 +10,7 @@
   "packages": [
     {
       "stepId": "cleanup-drill",
-      "title": "Run the Emergency Access Drill",
+      "title": "Verify Emergency Access",
       "packagePath": "docs/implementation-content/cleanup-drill/",
       "relationship": "rollout-proof",
       "status": "SELF-VERIFIED",
@@ -1396,7 +1396,7 @@
     },
     {
       "stepId": "s-prereq-break-glass",
-      "title": "Create or Correct Emergency Access Accounts",
+      "title": "Prepare Emergency Access Accounts",
       "packagePath": "docs/implementation-content/s-prereq-break-glass/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
@@ -1473,7 +1473,7 @@
     },
     {
       "stepId": "s-prereq-exclusion-group",
-      "title": "Create or Correct Exclusions Group",
+      "title": "Configure Emergency Exclusions",
       "packagePath": "docs/implementation-content/s-prereq-exclusion-group/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
@@ -1513,7 +1513,7 @@
     },
     {
       "stepId": "s-prereq-passkey-settings",
-      "title": "Set Up Passkeys to Match the Baseline",
+      "title": "Configure Passkey Authentication",
       "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",

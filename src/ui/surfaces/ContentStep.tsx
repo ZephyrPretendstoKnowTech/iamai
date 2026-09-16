@@ -1,6 +1,5 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
 import { PASSKEY_METHODOLOGY, passkeyReadiness } from './passkeyPresentation.ts'
-import { PASSKEY_DEFAULT_MODELS } from '../../roadmap/passkeySettings.ts'
 import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { DEVICE_ANSWER_KEYS, devicePlanOf } from '../../roadmap/answers.ts'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
@@ -133,6 +132,7 @@ export function ContentStep({
   blockers = NO_BLOCKERS,
   prerequisiteLabel = null,
   onOpenMappings,
+  onCredentialStorage,
 }: {
   step: Step
   ctx: StepVarContext
@@ -148,6 +148,7 @@ export function ContentStep({
   prerequisiteLabel?: ((id: string) => string | null) | null
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings?: () => void
+  onCredentialStorage?: (done: boolean) => void
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void
@@ -289,22 +290,28 @@ export function ContentStep({
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           <ReadinessSection
             readiness={displayedReadiness}
+            showClosedCount={!['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)}
             lead={instructed || hasPasskeyFindings ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
             onOpenMappings={null}
             printing={printing}
             extra={(t) => {
-              const slot = contract.emergencySlots.find((s) => s.key === t.key)
-              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return null
-              const deferralSlot = contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
+              const custody = t.key === 'configuration:credential-custody' && !printing && onCredentialStorage && ctx.mapping.breakGlassUserIds.length > 0
+                ? <label className="choice"><input type="checkbox" checked={ctx.mapping.breakGlassAnswers?.credentialStorage === true} onChange={e => onCredentialStorage(e.currentTarget.checked)} />Credentials and recovery keys for the selected accounts are stored in approved locations accessible without this tenant.</label>
+                : null
+              const slot = t.key === 'configuration:credential-custody' && contract.hardening
+                ? { key: t.key, label: t.label, accountId: null, state: 'hardening' as const, minimum: [], hardening: [] }
+                : contract.emergencySlots.find((s) => s.key === t.key)
+              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return custody
+              const deferralSlot = t.key === 'configuration:credential-custody' || contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
               return (
-                <EmergencySlotBody
+                <>{custody}<EmergencySlotBody
                   slot={slot}
-                  hardening={deferralSlot ? contract.hardening : null}
+                  hardening={deferralSlot && contract.hardening ? { ...contract.hardening, ...(t.key === 'configuration:credential-custody' ? { unchecked: 0 } : {}) } : null}
                   onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
                   onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
-                />
+                /></>
               )
             }}
           >
@@ -314,7 +321,6 @@ export function ContentStep({
             <section className="step-section passkey-methodology">
               <h4>Methodology</h4>
               <ul>{PASSKEY_METHODOLOGY.map(line => <li key={line}>{line}</li>)}</ul>
-              <p><strong>IAMAI defaults:</strong> {PASSKEY_DEFAULT_MODELS.map(model => model.name).join("; ")}.</p>
             </section>
           )}
 
@@ -852,7 +858,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
-      {decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
+      {decisionAnswer === null && !(stepId === 's-prereq-break-glass' && saved?.picked?.length) && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):
             the picker takes it as its group label, the radios as their

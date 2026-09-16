@@ -329,6 +329,16 @@ export type Ring = {
   actualEnd: string | null
 }
 
+export type ConfigurationFinding = {
+  key: string
+  label: string
+  value: string
+  detail: string
+  outcome: 'pass' | 'fail' | 'unknown'
+  items?: { label: string; value: string }[]
+  link?: { label: string; href: string }
+}
+
 export type Step = {
   impactLabel?: string
   guidance?: import('../content/content.ts').ContentStep
@@ -336,7 +346,7 @@ export type Step = {
   workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean; needsReview?: boolean; evidenceBasis?: string }[]
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
-  configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[]
+  configurationFindings?: ConfigurationFinding[]
   preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[] }
   /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
   methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }

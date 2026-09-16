@@ -182,10 +182,13 @@ for (const name of ['demo', 'demo-week2'] as const) {
       const geVars = varsOf(ge, f, f.mapping, directory)
       assert.equal(geVars.exclusionsGroup, f.groups.get(stored)?.displayName, `${universe}: the exclusions step names it`)
       assert.deepEqual(pickerVars(PREREQ_STEP_ID.exclusionsGroup, '{name}', { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => x, groups: f.groups, directory })?.groupsTicked, [stored], `${universe}: the picker ticks it`)
-      // The emergency step's "policies that do not yet exclude the exclusions group" is that group's own check.
-      const fromCheck = sorted((ge.checks?.items ?? []).filter((it) => it.fix === 'excluded-from-every-policy').flatMap((it) => (Array.isArray(it.values.policies) ? (it.values.policies as string[]) : [])))
-      const bgVars = varsOf(bg, f, f.mapping, directory)
-      assert.deepEqual(sorted((bgVars.policiesNotExcluding as string[] | undefined) ?? []), fromCheck, `${universe}: both foundation steps name the same policies`)
+      // Policy-exclusion ownership stays on the exclusions step.
+      const policyCheck = (ge.checks?.items ?? []).find((it) => it.fix === 'excluded-from-every-policy')
+      const fromCheck = sorted(Array.isArray(policyCheck?.values.policies) ? (policyCheck.values.policies as string[]) : [])
+      const policyTopic = ge.configurationFindings?.find(finding => finding.key === 'group-policies')
+      assert.ok(policyTopic, `${universe}: the exclusions step owns the policy-exclusion topic even when no policy is missing it`)
+      for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.label === policy && !item.value.includes('Group already excluded')), `${universe}: ${policy} is absent from the exclusions topic`)
+      assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy Exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
     }
   })
 }

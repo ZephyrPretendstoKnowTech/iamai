@@ -4,7 +4,8 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { addWorkflowSteps, WORKFLOW_STEP } from './workflows.ts'
 import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
-import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis, recoveryAccountBasis } from './cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis, recoveryAccountBasis, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import type { VerifiedRecoveryEvidence } from './cleanupDone.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { buildPlanFile, parsePlanFile, sameBaselineSource, trimCheckpoints } from './plan.ts'
 import { absoluteDate, setDisplayTimeZone } from '../copy/dates.ts'
@@ -15,6 +16,11 @@ import { setState } from './lifecycle.ts'
 import type { Step } from './types.ts'
 
 const at = '2026-09-14T12:00:00Z'
+const recoveryEvidence = (accountIds: string[], tenantId = 'tenant', eventAt = '2026-09-14T03:00:00Z'): Record<string, VerifiedRecoveryEvidence> => Object.fromEntries(accountIds.map(accountId => [accountId, {
+  schema: 1, tenantId, accountId, eventId: `event-${accountId}`, eventAt, appId: null,
+  resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)', provenance: 'observed-sign-in',
+  recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt: new Date(Date.parse(eventAt) - 3_600_000).toISOString(),
+}]))
 
 test('workloads: unknown stays open; no is reversible; each unassessed policy has an individual review', () => {
   const f = fixture('demo')
@@ -88,10 +94,16 @@ test('manual confirmation cannot override an unsatisfied scan requirement', () =
 })
 
 test('recovery records match only the explicitly linked account and event', () => {
-  const records = cleanupRecord(withCleanupDone([], 'drill', '2026-09-13', at, { accountIds: ['account-a'], outcome: 'passed', signInAtByAccount: { 'account-a': '2026-09-14T03:00:00Z' }, timeZone: 'America/Denver' })).records!
-  assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'ACCOUNT-A', records), true)
-  assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'account-b', records), false)
-  assert.equal(isRecordedDrill('2026-09-14T15:00:00Z', [], 'account-a', records), false)
+  const evidence = recoveryEvidence(['account-a'])
+  const configurationObservedAt = evidence['account-a'].configurationObservedAt
+  let checkpoints = withCleanupDone([], 'drill', '2026-09-13', configurationObservedAt, { accountIds: ['account-a'], workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: 'tenant', configurationObservedAt, timeZone: 'America/Denver' })
+  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-13', at, { accountIds: ['account-a'], outcome: 'passed', recoveryEvidence: evidence, timeZone: 'America/Denver' })
+  const records = cleanupRecord(checkpoints).records!
+  const candidate = { schema: 1 as const, eventId: 'event-account-a', userId: 'account-a', at: '2026-09-14T03:00:00Z', success: true, isInteractive: true, appId: null, resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: null, resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }
+  const context = { readings: [{ candidate, qualifies: true, reason: null }], tenantId: 'tenant', currentSnapshotObservedAt: at }
+  assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'ACCOUNT-A', records, context), true)
+  assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'account-b', records, context), false)
+  assert.equal(isRecordedDrill('2026-09-14T15:00:00Z', [], 'account-a', records, context), false)
   assert.equal(isRecordedDrill('2026-09-13T15:00:00Z', ['2026-09-13T12:00:00Z'], 'account-a'), false)
   assert.equal(validCompletionDate('2026-02-30', at), false)
   assert.equal(validCompletionDate('2026-09-15', at), false)
@@ -101,10 +113,16 @@ test('recovery records match only the explicitly linked account and event', () =
 test('recovery tests can be recorded separately, expire, and never cover a newly chosen account', () => {
   const f = fixture('demo')
   const organisation = runFixture(f).coverage.organisation
-  const input = { after: at, rhythm: null, emergencyAccountIds: ['a','b'], emergencyAccounts: ['A','B'], emergencyAccountUpns: ['a@example.test','b@example.test'], organisation, now: at }
-  let checkpoints = withCleanupDone([], 'drill', '2026-09-12', at, { accountIds: ['a'], outcome: 'passed' })
+  const ids = ['a','b']
+  const eventAt = '2026-09-14T03:00:00Z'
+  const configurationObservedAt = '2026-09-14T02:00:00.000Z'
+  const accountBasis = { a: 'basis-a', b: 'basis-b' }
+  const recoveryCandidates = Object.fromEntries(ids.map(id => [id, [{ candidate: { schema: 1 as const, eventId: `event-${id}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: null, resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: null, resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }, qualifies: true, reason: null }]]))
+  const input = { after: at, rhythm: null, emergencyAccountIds: ids, emergencyAccounts: ['A','B'], emergencyAccountUpns: ['a@example.test','b@example.test'], organisation, now: at, accountBasis, recoveryCandidates, tenantId: 'tenant', configurationObservedAtByAccount: { a: configurationObservedAt, b: configurationObservedAt }, snapshotObservedAt: at }
+  let checkpoints = withCleanupDone([], 'drill', configurationObservedAt.slice(0,10), configurationObservedAt, { accountIds: ids, workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: 'tenant', configurationObservedAt, accountBasis })
+  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-12', at, { accountIds: ['a'], outcome: 'passed', accountBasis, recoveryEvidence: recoveryEvidence(['a']) })
   assert.equal(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
-  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-13', at, { accountIds: ['b'], outcome: 'passed' })
+  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-13', at, { accountIds: ['b'], outcome: 'passed', accountBasis, recoveryEvidence: recoveryEvidence(['b']) })
   assert.ok(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done)
   assert.equal(cleanupPhaseFor({ ...input, now: '2027-03-14T12:00:00Z', records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
   assert.equal(cleanupPhaseFor({ ...input, emergencyAccountIds: ['a','c'], records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
@@ -213,11 +231,17 @@ test('free-licence emergency accounts need explicit selection and the shared sco
   applyManualReviews([first], f.snapshot, {}, mapping)
   assert.notEqual(first.status, 'done', 'selection alone cannot certify a recovery test')
   assert.equal(first.manualReview, undefined, 'the existing Test Emergency Access owner records the test')
-  const accountBasis = recoveryAccountBasis(f.snapshot, mapping.breakGlassUserIds)
-  const records = cleanupRecord(withCleanupDone([], 'drill', at.slice(0,10), at, { accountIds: mapping.breakGlassUserIds, accountBasis, outcome: 'passed' })).records!
+  const eventAt = '2026-09-14T03:00:00Z'
+  for (const id of mapping.breakGlassUserIds) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `event-${id}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: null, resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: null, resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
+  const accountBasis = recoveryAccountBasis(f.snapshot, mapping.breakGlassUserIds, mapping, f.groups)
+  const configurationObservedAt = '2026-09-14T02:00:00.000Z'
+  let checkpoints = withCleanupDone([], 'drill', at.slice(0,10), configurationObservedAt, { accountIds: mapping.breakGlassUserIds, workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId: f.snapshot.tenantId, configurationObservedAt, accountBasis })
+  checkpoints = withCleanupDone(checkpoints, 'drill', at.slice(0,10), at, { accountIds: mapping.breakGlassUserIds, accountBasis, outcome: 'passed', recoveryEvidence: recoveryEvidence(mapping.breakGlassUserIds, f.snapshot.tenantId, eventAt) })
+  const records = cleanupRecord(checkpoints).records!
+  f.snapshot.asOf = at
   const confirmed = generate()
   applyManualReviews([confirmed], f.snapshot, {}, mapping, records, f.groups, at)
-  assert.equal(confirmed.status, 'done', 'a current record saved after the scan completes immediately')
+  assert.equal(confirmed.status, 'done', 'a post-event scan can complete the matching prepared recovery test')
   users[0].accountEnabled = false
   const disabled = generate()
   applyManualReviews([disabled], f.snapshot, {}, mapping, records, f.groups, at)
@@ -225,14 +249,14 @@ test('free-licence emergency accounts need explicit selection and the shared sco
 })
 
 
-test('a recovery test recorded after the last scan completes without rescanning', () => {
+test('a recovery result recorded after the last scan remains incomplete until a post-event scan observes it', () => {
   const f = fixture('demo-week2')
   const before = runFixture(f)
   const phase = before.schedule.cleanup!
   const row = phase.rows.find(r => r.kind === 'drill')!
   const recordedAt = new Date(Date.parse(f.snapshot.asOf) + 86400000).toISOString()
   const date = recordedAt.slice(0, 10)
-  const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, phase.accountIds), basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
+  const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, phase.accountIds), recoveryEvidence: recoveryEvidence(phase.accountIds, f.snapshot.tenantId, f.snapshot.asOf), basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
   const after = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints), reviewNow: recordedAt })
-  assert.equal(after.schedule.cleanup!.rows.find(r => r.kind === 'drill')!.done?.slice(0, 10), date)
+  assert.equal(after.schedule.cleanup!.rows.find(r => r.kind === 'drill')!.done, null)
 })

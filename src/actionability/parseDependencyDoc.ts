@@ -10,7 +10,7 @@
 export type Action = 'create' | 'correct' | 'observe' | 'enforce' | 'start' | 'complete' | 'decide'
 export type Milestone =
   | 'created' | 'complete' | 'ready-to-enforce' | 'enforced' | 'resolved'
-  | 'minimum-satisfied' | 'hardening-complete'
+  | 'minimum-satisfied' | 'hardening-complete' | 'recovery-verified'
 export type PrerequisiteKind =
   | 'step' | 'fact' | 'decision' | 'evidence' | 'license/platform' | 'time/evidence-window'
   | 'sourceConflict' | 'baselineSafetyConflict' | 'sourceMapping' | 'suspendedPrerequisite'
@@ -51,7 +51,7 @@ export const PLAYBOOK_PATH = 'docs/product/actionability/IAMAI-Actionability-Dep
 
 const ACTIONS: readonly Action[] = ['create', 'correct', 'observe', 'enforce', 'start', 'complete', 'decide']
 const MILESTONES: readonly Milestone[] = [
-  'created', 'complete', 'ready-to-enforce', 'enforced', 'resolved', 'minimum-satisfied', 'hardening-complete',
+  'created', 'complete', 'ready-to-enforce', 'enforced', 'resolved', 'minimum-satisfied', 'hardening-complete', 'recovery-verified',
 ]
 const KINDS: readonly PrerequisiteKind[] = [
   'step', 'fact', 'decision', 'evidence', 'license/platform', 'time/evidence-window',

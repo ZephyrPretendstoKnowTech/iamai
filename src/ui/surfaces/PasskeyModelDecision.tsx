@@ -29,7 +29,7 @@ export function PasskeyModelDecision({ mapping, saved, onDecide, printing = fals
   const displayed = printing ? accepted : models
   return <section className="step-section passkey-model-decision">
     <h4>Additional Authenticators</h4>
-    <p>Add hardware models you approve in addition to the default authenticators.</p>
+    <p>Add approved hardware models before registering recovery keys. Add to List stages a model; Save Additional Authenticators applies the list to this plan.</p>
     {displayed.length > 0 && <ul>{displayed.map(model => <li key={model.aaguid}>
       <strong>{model.name}</strong><div className="reason" style={{ overflowWrap: 'anywhere' }}>{model.aaguid}</div>
       {!printing && <Button type="button" variant="tertiary" disabled={!onDecide} aria-label={`Remove ${model.name}`} onClick={() => { setModels(models.filter(item => item.aaguid !== model.aaguid)); setError(null) }}>Remove</Button>}
@@ -38,7 +38,7 @@ export function PasskeyModelDecision({ mapping, saved, onDecide, printing = fals
       <div className="decision-field"><label htmlFor={`${id}-name`}><strong>Authenticator Name</strong></label><input type="text" id={`${id}-name`} value={name} disabled={!onDecide} onChange={event => setName(event.currentTarget.value)} /></div>
       <div className="decision-field"><label htmlFor={`${id}-aaguid`}><strong>AAGUID</strong></label><input type="text" id={`${id}-aaguid`} value={aaguid} disabled={!onDecide} autoCapitalize="none" spellCheck={false} aria-describedby={error ? `${id}-error` : undefined} onChange={event => setAaguid(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); add() } }} /></div>
       {error && <p id={`${id}-error`} role="alert">{error}</p>}
-      <div className="actions"><Button type="button" disabled={!onDecide || !name.trim() || !aaguid.trim()} onClick={add}>Add</Button><Button type="button" variant="primary" disabled={!onDecide || !changed || Boolean(name.trim() || aaguid.trim())} onClick={() => onDecide?.({ option: PASSKEY_MODELS_ACCEPT, answers: { ...saved?.answers, [PASSKEY_MODELS_ANSWER]: JSON.stringify(models) } })}>Accept Deviation</Button></div>
+      <div className="actions"><Button type="button" disabled={!onDecide || !name.trim() || !aaguid.trim()} onClick={add}>Add to List</Button><Button type="button" variant="primary" disabled={!onDecide || !changed || Boolean(name.trim() || aaguid.trim())} onClick={() => onDecide?.({ option: PASSKEY_MODELS_ACCEPT, answers: { ...saved?.answers, [PASSKEY_MODELS_ANSWER]: JSON.stringify(models) } })}>Save Additional Authenticators</Button></div>
     </div>}
   </section>
 }

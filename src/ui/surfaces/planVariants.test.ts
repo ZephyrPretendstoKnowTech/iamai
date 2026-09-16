@@ -394,7 +394,10 @@ const INVENTORY: string[] = [
   'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
+  'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known',
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-unknown',
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · members · who-unknown',
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-register-info-protected
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-admin-session

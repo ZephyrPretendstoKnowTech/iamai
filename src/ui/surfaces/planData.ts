@@ -49,7 +49,7 @@ import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 import type { CleanupKind } from '../../roadmap/cleanup.ts'
-import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis } from '../../roadmap/cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryCredentialBasis, RECOVERY_PREPARATION_WORKFLOW } from '../../roadmap/cleanupDone.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -127,7 +127,7 @@ export type PlanData = {
   /** The plan's checkpoints as saved (the scan checkpoints a save writes, and each Cleanup row's Done); they travel in the plan file. */
   checkpoints: unknown[]
   /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
-  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'signInAtByAccount' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
+  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
@@ -486,11 +486,27 @@ export function usePlanData(
     markCleanupDone: (kind, date, accountIds = [], evidence = {}) => {
       const phase = computed?.schedule.cleanup
       const row = phase?.rows.find((r) => r.kind === kind)
-      if (!row) return
+      if (!phase || !row) return
+      const currentBasis = snapshot ? recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) : {}
+      if (kind === 'drill' && evidence.workflow === RECOVERY_PREPARATION_WORKFLOW) {
+        const configurationReady = phase.recoveryFindings?.find(finding => finding.key === 'recovery-configuration')?.outcome === 'pass'
+        if (!snapshot || !configurationReady || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id) || !currentBasis[id]) || evidence.tenantId !== snapshot.tenantId || evidence.configurationObservedAt !== snapshot.asOf) return
+      }
+      if (kind === 'drill' && evidence.outcome === 'passed') {
+        if (!snapshot || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id))) return
+        const valid = accountIds.every(id => {
+          const recorded = evidence.recoveryEvidence?.[id]
+          const preparation = recoveryPreparation(id, cleanupRecord(saved?.checkpoints ?? []).records ?? [], snapshot.asOf, currentBasis[id], snapshot.tenantId)
+          const configurationObservedAt = preparation?.configurationObservedAt ?? null
+          const observed = recoveryCandidateReadings(snapshot, id, snapshot.asOf, configurationObservedAt).find(reading => reading.qualifies && reading.candidate.eventId === recorded?.eventId)?.candidate
+          return !!recorded && !!observed && !!configurationObservedAt && recorded.schema === 1 && recorded.tenantId === snapshot.tenantId && recorded.accountId.toLowerCase() === id.toLowerCase() && recorded.eventAt === observed.at && recorded.appId === observed.appId && recorded.resourceId === observed.resourceId && recorded.method === observed.method && recorded.provenance === 'observed-sign-in' && recorded.configurationObservedAt === configurationObservedAt && Date.parse(recorded.eventAt) >= Date.parse(configurationObservedAt) && Date.parse(snapshot.asOf) >= Date.parse(recorded.eventAt) && recorded.recoveryConfirmed === true && recorded.credentialConfirmed === true && !!currentBasis[id]
+        })
+        if (!valid) return
+      }
       const basis = cleanupBasis(kind, row.lists, kind === 'drill' || kind === 'alerting' ? phase?.accountIds ?? [] : [])
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
-        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && (kind === 'drill' || kind === 'alerting') ? { accountBasis: recoveryAccountBasis(snapshot, accountIds) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
+        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && (kind === 'drill' || kind === 'alerting') ? { accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
       })
       bump()
     },
@@ -526,13 +542,22 @@ export function usePlanData(
     tickAnswer: (key, done) => {
       if (!mapping) return
       const prev = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
-      const next = { ...mapping, breakGlassAnswers: { ...prev, [key]: done } }
+      const next = { ...mapping, breakGlassAnswers: { ...prev, [key]: done }, ...(key === 'credentialStorage' ? { breakGlassCustodyBasis: done && snapshot ? recoveryCredentialBasis(snapshot, mapping.breakGlassUserIds) : {} } : {}) }
       setMapping(next)
       persistMapping(next)
       bump()
     },
     stepDecisions: saved?.stepDecisions ?? {},
     onDecide: (stepId, decision) => {
+      // A custody answer about the previous set cannot vouch for a new account.
+      if (stepId === BREAK_GLASS_STEP_ID && decision.picked && mapping && applied) {
+        const same = [...decision.picked].sort().join('|') === [...applied.breakGlassUserIds].sort().join('|')
+        if (!same) {
+          const next = { ...mapping, breakGlassAnswers: { ...(mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }), credentialStorage: null }, breakGlassCustodyBasis: {} }
+          setMapping(next)
+          persistMapping(next)
+        }
+      }
       // The decision is the plan's (target-state §6.4): recorded, then the plan
       // regenerates around it; the next scan verifies it.
       setSaved((p) => {

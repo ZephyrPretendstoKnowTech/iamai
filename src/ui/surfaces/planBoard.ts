@@ -387,6 +387,20 @@ export type BoardItem = {
   order: number
 }
 
+/** The four existing rows that form the shared emergency-access foundation. */
+export const EMERGENCY_STEP_IDS = ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group', 'cleanup-drill'] as const
+
+/** Partition the canonical row set without cloning or dropping an id. */
+export function partitionEmergencyItems(items: readonly BoardItem[]): { emergency: BoardItem[]; remaining: BoardItem[]; complete: boolean } {
+  const ids = new Set<string>(EMERGENCY_STEP_IDS)
+  const emergency = EMERGENCY_STEP_IDS.map(id => items.find(item => item.id === id)).filter((item): item is BoardItem => item !== undefined)
+  return {
+    emergency,
+    remaining: items.filter(item => !ids.has(item.id)),
+    complete: emergency.length === EMERGENCY_STEP_IDS.length && emergency.every(item => item.lane === 'Completed'),
+  }
+}
+
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
   /** Stable key: `ready`, `upNext`, `hold-<n>`, `complete`, `deferred`. */

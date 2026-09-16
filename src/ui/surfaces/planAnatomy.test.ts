@@ -594,9 +594,14 @@ test('Readiness is the pack’s tiles over its bar, from facts the contract alre
   for (const name of ['demo', 'demo-week2', 'messy', 'hostile'] as const) {
     for (const { step: s, c } of contractsOf(name)) {
       const r = readinessOf(s, c)
-      // Emergency access lists its checks under fix for the exports; its slot tiles carry them on the step (B10 P0-7).
-      const drawn = c.emergencySlots.length > 0 ? c.fix.filter((f) => !f.key.startsWith('check:')) : c.fix
-      assert.equal(r.tiles.length, drawn.length + r.tiles.filter((t) => !drawn.some((f) => f.key === t.key)).length, `${name}/${s.id}: a fix without its tile`)
+      const topicStep = ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(s.id) && (s.configurationFindings?.length ?? 0) > 0
+      if (topicStep) {
+        assert.equal(r.tiles.length + r.satisfied.length, s.configurationFindings!.length, `${name}/${s.id}: one of the four configured topics was split or dropped`)
+        for (const finding of s.configurationFindings!) assert.ok([...r.tiles, ...r.satisfied].some(t => t.key === `configuration:${finding.key}`), `${name}/${s.id}: ${finding.key} has no topic`)
+      } else {
+        const drawn = c.emergencySlots.length > 0 ? c.fix.filter((f) => !f.key.startsWith('check:')) : c.fix
+        assert.equal(r.tiles.length, drawn.length + r.tiles.filter((t) => !drawn.some((f) => f.key === t.key)).length, `${name}/${s.id}: a fix without its tile`)
+      }
       for (const t of [...r.tiles, ...r.satisfied]) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
       assert.ok(r.satisfied.every((t) => t.tone === 'good' || t.tone === 'info'), `${name}/${s.id}: an unresolved tile among the satisfied`)
       assert.ok(bars.has(r.bar.main), `${name}/${s.id}: the bar’s headline is not the content file’s`)

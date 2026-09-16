@@ -514,7 +514,7 @@ test('a plan whose policies wait on an unchosen safety object says what holds it
   assert.ok(fin.unwritable.count > 0, 'the steps that cannot be written are counted')
   assert.ok(fin.unwritable.waitsOn.includes(EXCLUSIONS_STEP), 'and the exclusions-group step is among what they wait on')
   const clause = FINISH.unwritable(fin.unwritable.count, fin.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
-  assert.match(clause, /^\d+ steps wait on .*Exclusions Group/)
+  assert.match(clause, /^\d+ steps wait on .*Emergency Exclusions/)
   assert.match(headerLine1({ steps: 30, inPlace: 5, finish: fin.finish, weeks: '4 weeks', constraint: clause, startedFrom: null }), /cannot finish until \S/, 'the line does not trail off')
 })
 

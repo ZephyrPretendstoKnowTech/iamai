@@ -99,7 +99,7 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
       // Foundation A's reach, its outstanding prerequisites, its completion, and
       // the one answer the four implementation channels read.
       assert.equal(v.who, k.who?.text ?? null, `${where}: who`)
-      const configuration = readinessOf(s, k).tiles.filter(t => t.key.startsWith('configuration:')).map(t => `${t.label}: ${t.value}. ${t.note}`)
+      const configuration = readinessOf(s, k).tiles.filter(t => t.key.startsWith('configuration:')).map(t => `${t.label}: ${t.value}. ${t.note ?? ''}`)
       assert.deepEqual(v.fix, [...new Set([...k.fix.map((x) => x.text), ...configuration])], `${where}: fix and visible configuration findings`)
       assert.deepEqual(v.doneWhen, k.doneWhen, `${where}: done when`)
       assert.equal(v.implementation, k.implementation.offered, `${where}: implementation offered`)

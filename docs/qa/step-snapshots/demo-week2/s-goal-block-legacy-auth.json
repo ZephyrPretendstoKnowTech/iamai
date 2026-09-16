@@ -16,10 +16,6 @@
     {
       "label": "Mail-sending devices",
       "state": "Not confirmed"
-    },
-    {
-      "label": "Prerequisite · To do",
-      "state": "Create or Correct Service Accounts Group"
     }
   ],
   "channels": [

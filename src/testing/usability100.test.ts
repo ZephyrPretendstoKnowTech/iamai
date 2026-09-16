@@ -32,8 +32,8 @@ test('100 identities remain stable across deployment stages; drift reopens the a
   }
   assert.equal(runs[2].r.steps.find(s=>s.id==='s-goal-admins-phishing-resistant')!.state.satisfied,true)
   assert.equal(runs[3].r.steps.find(s=>s.id==='s-goal-admins-phishing-resistant')!.state.satisfied,false)
-  assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.lane,'Up Next')
-  assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.reason?.id,'s-prereq-break-glass', 'an enabled-policy correction waits for recovery readiness')
+  assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.lane,'Ready')
+  assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.substatus,'Correct', 'a safe correction that does not enforce can proceed before final recovery verification')
 })
 test('completed decisions retain their completion criteria without claiming report-only history',()=>{
   const {body}=setup('configured')

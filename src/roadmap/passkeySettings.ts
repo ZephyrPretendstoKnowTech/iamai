@@ -176,12 +176,10 @@ if (!TARGET) throw new Error(`${PASSKEY_SETTINGS_STEP_ID}: the package carries n
 
 /** The pinned product object: the approved Authenticator models and settings, and the whole target for a policy with no Fido2 entry. */
 export const PASSKEY_DEFAULT_MODELS = [
-  { name: 'Microsoft Authenticator (iOS)', aaguid: '90a3ccdf-635c-4729-a248-9b709135078f' },
-  { name: 'Microsoft Authenticator (Android)', aaguid: 'de1e552d-db1d-4423-a619-566b625cdc84' },
-  { name: 'YubiKey 5 NFC family', aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' },
-  { name: 'YubiKey 5 non-NFC family', aaguid: '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b' },
-  { name: 'FEITIAN ePass FIDO2-NFC (CTAP 2.1)', aaguid: '234cd403-35a2-4cc2-8015-77ea280c77f5' },
-  { name: 'TOKEN2 PIN Plus', aaguid: 'eabb46cc-e241-80bf-ae9e-96fa6d2975cf' },
+  { name: 'Microsoft Authenticator — iOS', aaguid: '90a3ccdf-635c-4729-a248-9b709135078f' },
+  { name: 'Microsoft Authenticator — Android', aaguid: 'de1e552d-db1d-4423-a619-566b625cdc84' },
+  { name: 'YubiKey 5 Series with NFC', aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' },
+  { name: 'YubiKey 5 Series', aaguid: '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b' },
 ] as const
 // IAMAI defaults identify specific models, not blanket brand approval.
 export const PASSKEY_TARGET: Readonly<Fido2Configuration> = { ...TARGET, keyRestrictions: { ...TARGET.keyRestrictions, aaGuids: PASSKEY_DEFAULT_MODELS.map(m => m.aaguid) } }

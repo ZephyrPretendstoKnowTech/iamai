@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.5-compact",
   "stepId": "cleanup-drill",
-  "title": "Run the Emergency Access Drill",
+  "title": "Verify Emergency Access",
   "baseline": "jon-hope-pinned",
   "relationship": "rollout-proof",
   "packagePath": "docs/implementation-content/cleanup-drill/",

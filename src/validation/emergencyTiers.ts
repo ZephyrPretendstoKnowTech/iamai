@@ -27,6 +27,14 @@ type Result = SubjectReport['targets'][number]['results'][number]
 /** The checks without which there is no usable way back in. */
 export const EMERGENCY_MINIMUM_RULES: ReadonlySet<string> = new Set(['bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled', 'bg.excludedFromAllPolicies', 'bg.notInDynamicScope', 'bg.hasMfaMethod'])
 
+/** Checks whose completion belongs to Prepare Emergency Access Accounts. */
+export const EMERGENCY_ACCOUNT_RULES: ReadonlySet<string> = new Set([
+  'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled',
+  'bg.hasMfaMethod', 'bg.separateDevices', 'bg.notPersonal', 'bg.phishingResistant',
+  'bg.methodDiversity', 'bg.perUserMfaOff', 'bg.noLicenceNeeded',
+  'bg.credentialStorage', 'bg.nameIdentifiesPurpose',
+])
+
 /** The owner confirmation a deferral is recorded under (PlanDecisions.confirmations[emergency step][this]). */
 export const HARDENING_DEFERRAL_ID = 'hardening-deferred'
 
@@ -56,6 +64,15 @@ export function emergencyStanding(report: SubjectReport, confirmedAccounts: numb
   }
 }
 
+/** Account-step standing excludes exclusions, the final drill, and monitoring. */
+export function emergencyAccountStandingForStep(report: SubjectReport, confirmedAccounts: number): EmergencyStanding {
+  const all = report.targets.flatMap((t) => t.results).filter((r) => EMERGENCY_ACCOUNT_RULES.has(r.id))
+  return {
+    minimum: all.filter((r) => emergencyTierOf(r, confirmedAccounts) === 'minimum'),
+    hardening: all.filter((r) => emergencyTierOf(r, confirmedAccounts) === 'hardening'),
+  }
+}
+
 /** One confirmed account's own standing: what its checks found about it alone, and whether any ran. */
 export type EmergencyAccountStanding = { id: string; minimum: number; hardening: number; assessed: boolean }
 
@@ -70,7 +87,7 @@ export type EmergencyAccountStanding = { id: string; minimum: number; hardening:
  */
 export function emergencyAccountStanding(report: SubjectReport, confirmedIds: readonly string[]): EmergencyAccountStanding[] {
   return confirmedIds.map((id) => {
-    const own = report.targets.flatMap((t) => t.results).filter((r) => r.subject === 'breakGlass' && r.target === id && !SET_LEVEL.has(r.id))
+    const own = report.targets.flatMap((t) => t.results).filter((r) => r.subject === 'breakGlass' && r.target === id && !SET_LEVEL.has(r.id) && EMERGENCY_ACCOUNT_RULES.has(r.id))
     return {
       id,
       minimum: own.filter((r) => emergencyTierOf(r, confirmedIds.length) === 'minimum').length,

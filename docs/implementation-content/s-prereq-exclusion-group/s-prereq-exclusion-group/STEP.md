@@ -1,4 +1,4 @@
-# Create or Correct Exclusions Group
+# Configure Emergency Exclusions
 
 ## Goal
 Create or correct the single owner-confirmed security group IAMAI uses to carry emergency-access exclusions consistently across the Conditional Access policies that would otherwise block or restrict those accounts.

@@ -42,6 +42,6 @@ test('the passkey-only presentation explains the model controls and uses scoped 
   assert.match(source, /isPasskeySettings && \([\s\S]*PASSKEY_METHODOLOGY/)
   assert.doesNotMatch(source, /pkgBindings\?\.\['emergency.passkey.compatibility'\]/)
   assert.match(source, /isPasskeySettings \? <PasskeyModelDecision mapping=\{ctx.mapping\}/)
-  assert.match(source, /PASSKEY_DEFAULT_MODELS.map\(model => model.name\)/)
+  assert.doesNotMatch(source, /PASSKEY_DEFAULT_MODELS.map\(model => model.name\)/, 'methodology does not repeat the approved-model list')
   assert.match(source, /lead=\{instructed \|\| hasPasskeyFindings \? null : actionLead\}/)
 })

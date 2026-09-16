@@ -278,8 +278,9 @@ test('B.9 one resolved target in every channel: the bound request, the Entra wal
   assert.deepEqual((target.includeTargets as { id: string }[]).map(t => t.id), [staff])
   for (const text of [entra, ai]) {
     assert.match(text, /Microsoft Authenticator/)
-    assert.ok(text.includes(`Keep the allow list and its existing allowed models (${HARDWARE}); add approved authenticator models (${PASSKEY_TARGET_AAGUIDS.join(', ')}).`), text)
+    for (const id of [HARDWARE, ...PASSKEY_TARGET_AAGUIDS]) assert.ok(text.includes(id), id + ' is missing from the instructions')
   }
+  assert.match(entra, /Retain approved existing entries/)
   // AI Info's intended result carries the request the step's JSON sends, whole.
   const sent = ai.split('\n').find((l) => l.startsWith('{"@odata.type"'))
   assert.ok(sent, 'the request body is in the briefing')

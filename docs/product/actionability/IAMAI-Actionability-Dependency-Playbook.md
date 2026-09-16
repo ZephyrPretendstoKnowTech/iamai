@@ -201,11 +201,12 @@ A missing object that a plan step produces is a healthy prerequisite (Up Next te
 ### 9.1 Milestones
 - `emergency-access.minimum-satisfied` — the safety minimum the Emergency Access step requires before its own scan completes. **May gate downstream rollout.**
 - `emergency-access.hardening-complete` — deferrable resilience work, closed by the runtime row `cleanup-hardening`. **Never a generic rollout prerequisite.** Only an independently proven per-control requirement may reference it, recorded explicitly with its source.
+- `emergency-access.recovery-verified` — exact event-backed recovery verification for the selected emergency accounts, closed by `cleanup-drill`. **Required before a new deny-capable Conditional Access enforcement transition.**
 
 Do not require the whole Emergency Access step to be complete when minimum safety is satisfied. No new visible step is created for this.
 
 ### 9.2 Where emergency-access proof enters the graph
-Every policy that references the exclusions group inherits `minimum-satisfied` through `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied`. Direct break-glass edges on policy steps are therefore not recorded (Appendix B).
+The exclusions group can be prepared after account choices are saved; it no longer carries minimum safety transitively. Every Conditional Access enforcement transition therefore carries an explicit `minimum-satisfied` edge and an exact event-backed `cleanup-drill@complete` edge. Policy creation continues to require the completed exclusions group wherever the target needs its stable group ID.
 
 ### 9.3 Transitive inference invariant
 Only direct causal edges are stored. Transitive blockers, chains, and unlock counts are computed. A direct edge may be omitted as redundant **only** when the indirect path proves the same or a stronger prerequisite milestone for the same gated action under the same or a broader condition. A weaker intermediate milestone cannot imply a stronger prerequisite: `minimum → exclusions:create → policy:create` establishes minimum, never hardening.
@@ -241,10 +242,10 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-check-separate-admin-accounts` | Use Separate Accounts for Admin Work | privileged identity hygiene | admins | portal | | yes |
 | `s-prereq-device-plan` | Decide How Devices Are Managed | owner decision | decision | decision | | yes |
 | `cleanup-notAssessed` | Review Baseline Policies IAMAI Did Not Assess | source review / cleanup | n/a | portal | | yes |
-| `s-prereq-break-glass` | Create or Correct Emergency Access Accounts | foundation safety | admins | portal | | yes |
-| `s-prereq-exclusion-group` | Create or Correct Exclusions Group | foundation object | n/a | portal | | yes |
-| `cleanup-drill` | Run the Emergency Access Drill | rollout proof / cleanup | admins | operational | | yes |
-| `s-prereq-passkey-settings` | Set Up Passkeys to Match the Baseline | authentication-method foundation | all-users | portal | | yes |
+| `s-prereq-break-glass` | Prepare Emergency Access Accounts | foundation safety | admins | portal | | yes |
+| `s-prereq-exclusion-group` | Configure Emergency Exclusions | foundation object | n/a | portal | | yes |
+| `cleanup-drill` | Verify Emergency Access | rollout proof / cleanup | admins | operational | | yes |
+| `s-prereq-passkey-settings` | Configure Passkey Authentication | authentication-method foundation | all-users | portal | | yes |
 | `s-ladder-operator-passkey` | Register Your Own Passkey | operator readiness | admins | portal | | yes |
 | `s-prereq-auth-strength` | Create the Baseline's Authentication Strength | foundation object | n/a | portal | | yes |
 | `s-verify-mfa` | Create and Enforce the MFA Registration Campaign | readiness / registration | all-users | portal | | yes |
@@ -289,8 +290,9 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 | gated_action | prerequisite | prerequisite_kind | milestone | condition | edge_kind | source | status |
 |---|---|---|---|---|---|---|---|
-| `s-prereq-exclusion-group:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | package | ok |
 | `cleanup-drill:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | package | ok |
+| `cleanup-drill:start` | `s-prereq-exclusion-group` | step | `complete` | — | hard | owner | ok |
+| `cleanup-drill:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | owner | ok |
 | `cleanup-hardening:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | audit | ok |
 | `s-ladder-operator-passkey:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | package | ok |
 | `s-verify-mfa:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | owner | ok |
@@ -304,6 +306,8 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-prereq-security-defaults:start` | `s-goal-block-legacy-auth` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-azure-management-mfa` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `<every CA policy step in §11 E–H>:enforce` | `s-prereq-security-defaults` | step | `complete` | `sd-enabled` | conditional | ms-doc | ok |
+| `<every CA policy step in §11 E–H>:enforce` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | owner | ok |
+| `<every CA policy step in §11 E–H>:enforce` | `cleanup-drill` | step | `complete` | — | hard | owner | ok |
 
 ### 10.2 Broad and privileged Conditional Access controls
 
@@ -385,7 +389,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 ### 10.6 Edges removed from v1
 
-- All 18 direct `s-prereq-break-glass` enforcement edges on policy steps. Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge (§9.2). Removing them also fixes the v1 inconsistency where four steps carried both edges and `s-goal-all-users-no-persistence` carried only one.
+- The old, inconsistently enumerated direct emergency-account enforcement edges. They are replaced by the two complete §10.1 rules applied to every Conditional Access policy step: `s-prereq-break-glass@minimum-satisfied` and exact event-backed `cleanup-drill@complete`.
 - `s-prereq-auth-strength:enforce ← s-prereq-passkey-settings`. A strength object has no enforce state; method readiness is already gated on the policies that consume the strength.
 
 ### 10.7 Source-mapping blockers (from V11)
@@ -443,25 +447,25 @@ Observation predicates are written as the kind of evidence required, never as a 
 
 ### B. Emergency access and common exclusion foundation
 
-#### `s-prereq-break-glass` — Create or Correct Emergency Access Accounts
+#### `s-prereq-break-glass` — Prepare Emergency Access Accounts
 - Work type: foundation safety · scope_class: admins · effort_kind: portal · actions: start → complete
 - Milestones: `minimum-satisfied` (what this step requires before its own scan completes); `hardening-complete` (closed by `cleanup-hardening`).
 - Non-step blockers: `fact:` at least two cloud-only accounts with permanent active Global Administrator; `evidence:` sign-in validated; `decision:` custody and method posture where the baseline leaves it open.
 - Rationale: account creation does not depend on the exclusions group; the group is downstream. Any package binding implying the reverse must not become dependency truth. Cannot be deferred.
 
-#### `s-prereq-exclusion-group` — Create or Correct Exclusions Group
+#### `s-prereq-exclusion-group` — Configure Emergency Exclusions
 - Work type: foundation object · scope_class: n/a · effort_kind: portal · actions: start → complete
 - Non-step blockers: `fact:` emergency account member IDs known; `decision:` any other owner-approved exclusions.
 - Rationale: the single object through which all policy exclusions flow (existing product rule). It is the one place emergency-access proof enters the policy graph (§9.2).
 
-#### `cleanup-drill` — Run the Emergency Access Drill
+#### `cleanup-drill` — Verify Emergency Access
 - Work type: rollout proof / cleanup · scope_class: admins · effort_kind: operational · actions: start → complete
 - Non-step blockers: `evidence:` accounts usable with intended method; `fact:` monitoring path exists if the drill also validates alerting.
-- Rationale: the recurring drill gates nothing. Enforcement-time emergency proof belongs to `minimum-satisfied`, not to this row.
+- Rationale: the first exact event-backed verification gates every new deny-capable enforcement transition. Later recurring verification keeps the emergency path current without reopening policy creation work.
 
 ### C. Authentication-method and MFA readiness foundation
 
-#### `s-prereq-passkey-settings` — Set Up Passkeys to Match the Baseline
+#### `s-prereq-passkey-settings` — Configure Passkey Authentication
 - Work type: authentication-method foundation · scope_class: all-users · effort_kind: portal · actions: start → complete
 - Non-step blockers: `decision:` target FIDO2/passkey profile or AAGUID posture where the baseline requires one; `fact:` Authentication Policy Administrator or equivalent.
 - Rationale: enables registration work and phishing-resistant enforcement.
@@ -860,7 +864,7 @@ Each example gives next action · applicable blockers · started? · lane · sub
 
 **14. Unresolved source-group mapping.** A pinned policy references source group `62d67e66` in its exclusions. Its `create` requires that reference to construct the canonical object → `sourceMapping` blocker → **On Hold · Baseline references an unmapped group**, resolver Plan settings → Baseline mappings. The same reference used only as an include would block the same action; the tile states the role (include / exclude / both).
 
-**15. Multiple prerequisites with mixed states.** `s-goal-sign-in-risk` (§10.5): `create` ← auth-strength@complete (Completed), exclusion-group@complete (Ready · Create); `enforce` ← verify-mfa@complete (Ready, in progress). Not started; next action `create`; one `create` gate unsatisfied and healthy → **Up Next · After Create or Correct Exclusions Group** (1 layer). Once the group completes → **Ready · Create**; the enforce-side prerequisite appears as a readiness tile but does not affect the current lane. Licensing is not an edge in §10: a tenant without Entra ID P2 gets no step for this goal at all (coverage reads it `licence-limited`), so there is no **On Hold · Required license missing** row.
+**15. Multiple prerequisites with mixed states.** `s-goal-sign-in-risk` (§10.5): `create` ← auth-strength@complete (Completed), exclusion-group@complete (Ready · Create); `enforce` ← verify-mfa@complete (Ready, in progress). Not started; next action `create`; one `create` gate unsatisfied and healthy → **Up Next · After Configure Emergency Exclusions** (1 layer). Once the group completes → **Ready · Create**; the enforce-side prerequisite appears as a readiness tile but does not affect the current lane. Licensing is not an edge in §10: a tenant without Entra ID P2 gets no step for this goal at all (coverage reads it `licence-limited`), so there is no **On Hold · Required license missing** row.
 
 ---
 
@@ -961,7 +965,7 @@ Findings (S0, 2026-09-11, against `pinned-refs.tsv` at pin 90d9b890 and `docs/im
 
 ## Appendix B. Edge changes since v1 (with reasons)
 
-- **Removed: 18 direct `s-prereq-break-glass` enforcement edges on policy steps.** Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge, under the §9.3 invariant. Also removes the v1 inconsistency where four steps carried both edges and `s-goal-all-users-no-persistence` carried neither.
+- **Replaced: 18 inconsistently enumerated emergency-account enforcement edges.** The current graph applies the two complete §10.1 rules to every Conditional Access policy step: `s-prereq-break-glass@minimum-satisfied` and exact event-backed `cleanup-drill@complete`.
 - **Removed: `s-prereq-auth-strength:enforce ← s-prereq-passkey-settings`.** A strength object has no enforce state; method readiness is gated on the consuming policies (`admins-phishing-resistant`, `register-info-protected`).
 - **Added: Security Defaults cutover edges both directions, conditional on `sd-enabled`.** v1 showed the relationship in the spine but encoded no edges.
 - **Added: `s-goal-block-legacy-auth:enforce ← s-question-mail-devices [mail-devices-incompatible-path]`, `s-goal-geo-restriction:enforce ← s-question-partner [partner-accounts-exist]`, `s-goal-geo-restriction:enforce ← s-question-travel [travel-exceptions-allowed]`.** v1 carried these only in prose.

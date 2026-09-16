@@ -61,18 +61,16 @@ function oneGroup(): Fixture {
   return f
 }
 
-test('P0-11: the exclusions group sends nobody to edit existing policies; it states how many exclude it and that each policy step owns the rest', () => {
+test('P0-11: the exclusions step owns policy exclusions and states the shared correction once', () => {
   for (const [name, f] of [['demo', fixture('demo')], ['mid', fixture('mid')]] as const) {
     const b = bodiesOf(f).get(EXCLUSIONS)!
-    for (const t of allTiles(b)) assert.doesNotMatch(`${t.value} ${t.note ?? ''}`, /Exclude the group from|open each policy/, `${name}: ${t.key}`)
-    assert.equal(b.contract.fix.some((x) => x.key.endsWith(':excluded-from-every-policy')), false, `${name}: the check is still a fix`)
-    const reach = allTiles(b).find((t) => t.key === 'exclusions-reach')
-    assert.ok(reach, `${name}: no reach tile`)
-    assert.equal(reach.tone, 'info')
-    assert.match(reach.value, /^\d+ of \d+ policies exclude the group$/)
-    assert.equal(reach.note, T.exclusionsReachNote)
+    const policies = allTiles(b).find((t) => t.key === 'configuration:group-policies')
+    assert.ok(policies, `${name}: no policy-exclusions topic`)
+    assert.match(policies.note ?? '', /Correct missing exclusions on enabled policies now/)
+    assert.ok(policies.items?.length)
+    assert.ok(policies.items?.every(item => /^(On|Report-only|Mode not read)( · Group already excluded)?$/.test(item.value)))
+    assert.doesNotMatch(JSON.stringify(policies.items), /Add the group exclusion/)
   }
-  assert.equal(allTiles(bodiesOf(fixture('mid')).get(EXCLUSIONS)!).find((t) => t.key === 'exclusions-reach')?.value, '11 of 11 policies exclude the group')
 })
 
 test('P1-1: the Decision tile reads Decision, explains the ask, and names the one group IAMAI found', () => {
@@ -85,9 +83,9 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')
   const name = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') }).candidates[0].name
-  const tile = group.readiness.tiles.find((t) => t.key === 'decision')!
-  assert.equal(tile.value, 'Decision')
-  assert.equal(tile.note, `IAMAI found ${name}. Confirm this is the right group.`)
+  const tile = group.readiness.tiles.find((t) => t.key === 'configuration:group-choice')!
+  assert.equal(tile.value, name)
+  assert.match(tile.note ?? '', /Confirm the intended group in the selector/)
   for (const t of allTiles(group)) assert.doesNotMatch(t.value, /Needs decision/)
 })
 
@@ -104,11 +102,11 @@ test('P1-3: a prerequisite another prerequisite tile already waits on is not dra
   const step = r.steps.find((s) => s.id === LEGACY)!
   const body = bodiesOf(demo).get(LEGACY)!
   const edge = (id: string): PrerequisiteBlocker => ({ kind: 'step', id, abnormal: false, label: 'Prerequisite', title: null })
-  // The exclusions group waits on emergency access (dependency-data.json): with both named, only the exclusions group is drawn.
+  // Account preparation and exclusions are independent prerequisites, so both direct owners remain visible.
   const tiles = readinessOf(step, body.contract, [edge(EMERGENCY), edge(EXCLUSIONS)]).tiles
   const steps = tiles.map((t) => /^(?:step|missing|engine:step|engine:suspendedPrerequisite):(.+)$/.exec(t.key)?.[1]).filter(Boolean)
   assert.ok(steps.includes(EXCLUSIONS), tiles.map((t) => t.key).join(', '))
-  assert.equal(steps.includes(EMERGENCY), false, 'the transitive prerequisite is drawn beside the direct one')
+  assert.equal(steps.includes(EMERGENCY), true, 'the independent account prerequisite is missing')
   assert.equal(new Set(steps).size, steps.length, 'a step is drawn twice')
   assert.doesNotMatch(CONTRACT_SRC, /function directFixes/, 'the emergency special case is still there')
   // Two prerequisites that wait on each other (the security-defaults cutover pair) are neither's ancestor: both stay.
@@ -163,5 +161,5 @@ test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions g
   assert.match(line, /Create the Baseline's Authentication Strength first: this policy names an object Contoso does not have yet\.$/)
   assert.doesNotMatch(line, /Exclusions Group and /)
   // Answered, the group is an object like any other.
-  assert.match(waitingLine(step, 'Contoso', false), /^Create or Correct Exclusions Group and Create the Baseline's Authentication Strength first: /)
+  assert.match(waitingLine(step, 'Contoso', false), /^Configure Emergency Exclusions and Create the Baseline's Authentication Strength first: /)
 })

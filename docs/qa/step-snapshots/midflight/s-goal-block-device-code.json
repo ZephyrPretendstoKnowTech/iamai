@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Create",
-  "reason": "after: Create or Correct Emergency Access Accounts",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "Ready · Create",
   "bar": "Ready now",
@@ -19,7 +19,7 @@
     },
     {
       "label": "Before enforcement",
-      "state": "Create or Correct Emergency Access Accounts"
+      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

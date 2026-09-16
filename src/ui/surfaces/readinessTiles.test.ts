@@ -89,7 +89,8 @@ test('with nothing unresolved the region is its compact success line and the sat
   const { step, c, blockers } = opened('demo-week2', EMERGENCY)
   const r = readinessOf(step, c, blockers)
   assert.deepEqual(r.tiles, [])
-  assert.deepEqual(r.satisfied.filter(t => !t.key.startsWith('configuration:')).map((t) => `${t.key}:${t.tone}`), ['slot:1:good', 'slot:2:good', 'coverage:good'])
+  assert.equal(r.satisfied.length, 4)
+  assert.ok(r.satisfied.every(t => t.key.startsWith('configuration:') && t.tone === 'good'))
   assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
   const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
   assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
@@ -103,17 +104,16 @@ test('with nothing unresolved the region is its compact success line and the sat
 test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step; each account slot carries its own minimum blockers or hardening', () => {
   for (const gone of ['<FixBeforeContinuing', '<HardeningRecommendations', 'fixHeading', 'W.preview.checks']) assert.equal(CONTENT_STEP.includes(gone), false, `ContentStep still draws ${gone}`)
   for (const gone of ['export function FixBeforeContinuing', 'export function HardeningRecommendations', 'CONTRACT.fixHeading']) assert.equal(SECTIONS.includes(gone), false, `StepSections still exports ${gone}`)
-  assert.match(CONTENT_STEP, /extra=\{\(t\) => \{\s*const slot = contract\.emergencySlots\.find\(\(s\) => s\.key === t\.key\)/, 'an account slot’s lines are not its tile’s evidence')
+  assert.match(CONTENT_STEP, /t.key === 'configuration:credential-custody' && contract.hardening/, 'the grouped custody topic retains the existing deferral control')
   // The content file no longer points at a container that does not exist (the export's section heading keeps the key).
   assert.equal((CONTENT.match(/Fix before continuing/g) ?? []).length, 1)
   const { step, c, blockers } = opened('demo', EMERGENCY)
   const r = readinessOf(step, c, blockers)
   // The account slots (P0-7): the failing minimum leads as its slot's line; a slot whose minimum is met is ✓ with its
   // hardening open (content review D4), with the satisfied evidence, carrying the hardening lead; no check tile stands beside them.
-  assert.ok(r.tiles[0]?.key.startsWith('slot:'), 'the failing account slot is not the first tile')
-  const hardening = r.satisfied.find((t) => t.value === CONTRACT.hardening.tiles.hardeningOpen)
-  assert.equal(hardening?.tone, 'good', 'a slot with its minimum met still blocks')
-  assert.equal(hardening?.note, CONTRACT.hardening.leadBlocked, 'the hardening slot does not carry its lead')
+  assert.equal(r.tiles.length + r.satisfied.length, 4)
+  const hardening = r.tiles.find(t => t.key === 'configuration:credential-custody')
+  assert.ok(hardening?.items?.length, 'the grouped custody topic contains its outstanding findings')
   assert.equal(r.tiles.some((t) => t.key.startsWith('check:')), false, 'a failing check is drawn beside its account slot')
   assert.ok(c.emergencySlots.some((s) => s.state === 'minimum' && s.minimum.length > 0), 'the failing minimum check is no slot’s line')
   assert.equal(c.doneWhen.some((l) => /Fix before continuing/.test(l)), false)
@@ -145,7 +145,7 @@ test('the package’s gates merge without a cap: unresolved after the runtime’
     tiles: [
       { id: 'pkg.open', gate: 'Safe to prove', result: 'Unknown', line: 'x', gateKey: null, confirm: null },
       { id: 'pkg.done', gate: 'Safe to continue', result: 'Ready', line: 'y', gateKey: null, confirm: null },
-      { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'slot:1', confirm: null },
+      { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'configuration:recovery-methods', confirm: null },
     ],
     conclusion: null,
     whyItMatters: null,
@@ -161,7 +161,7 @@ test('the printed step and the screen read the same blockers, the row hands them
   const plan = read('src/ui/surfaces/Plan.tsx')
   assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
   // A prerequisite in another lane: the tab follows the step the link opened, or the link would open nothing on screen.
-  assert.match(plan, /const openTab = open \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
+  assert.match(plan, /const openTab = open && !openInActiveEmergency \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
   assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\}[^>]*\/>/)
   assert.match(plan, /if \(open && openTab && openTab !== tab\) onTab\(openTab\)/)
   // Narrow widths: two across at the pack's first breakpoint, one at the second; nothing hidden.

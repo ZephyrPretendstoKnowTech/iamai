@@ -14,16 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Passkey Authentication",
-      "state": "Configuration required"
+      "label": "Emergency Recovery Methods",
+      "state": "Replacement or settings correction needed"
     },
     {
-      "label": "Break-glass 1",
-      "state": "Compatible key required"
-    },
-    {
-      "label": "Break-glass 2",
-      "state": "Compatible key required"
+      "label": "Credential Custody",
+      "state": "Correction required"
     }
   ],
   "channels": [

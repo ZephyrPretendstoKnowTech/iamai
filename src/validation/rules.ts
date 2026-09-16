@@ -28,7 +28,8 @@ import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
-import { isRecordedDrill, latestRecoveryTest, recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
+import { isRecordedDrill, latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryCredentialBasis } from '../roadmap/cleanupDone.ts'
+import type { MappingState } from '../mapping/types.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -101,6 +102,7 @@ export type RuleResult = RuleEval & {
 
 export type ValidationContext = {
   snapshot: TenantSnapshot
+  mapping: MappingState
   /** Conditional Access policies as collected; empty when the section was refused. */
   tenantPolicies: unknown[]
   groupMembers: GroupFacts[]
@@ -124,6 +126,7 @@ export type ValidationContext = {
   viability: MfaViability[]
   /** The two facts no tenant exposes, answered once in Setup. */
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
+  custodyBasis: Record<string, string>
   /** Every emergency access drill the plan recorded (the Cleanup drill row's Done): a sign-in on one of these days is the drill. */
   drillDates: string[]
   drillRecords?: import('../roadmap/cleanupDone.ts').CleanupCheckpoint[]
@@ -295,7 +298,19 @@ const bgPermanentGa: ValidationRule = {
   evaluate: (id, ctx) => {
     const active = ctx.snapshot.roles.active[id] ?? []
     const eligible = ctx.snapshot.roles.eligible[id] ?? []
-    if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return PASS
+    const schedules = ctx.snapshot.config.roleAssignmentSchedules
+    if (schedules?.status !== 'ok') return unknown(`Permanent assignment schedule evidence was not read${schedules?.reason ? `: ${schedules.reason}` : '.'}`)
+    const permanent = (schedules.rows as { principalId?: string; roleDefinitionId?: string; directoryScopeId?: string; assignmentType?: string; memberType?: string; endDateTime?: string | null; status?: string }[]).some(row =>
+      row.principalId?.toLowerCase() === id.toLowerCase()
+      && row.roleDefinitionId?.toLowerCase() === GLOBAL_ADMIN_ROLE
+      && row.directoryScopeId === '/'
+      && /assigned|direct/i.test(row.assignmentType ?? row.memberType ?? '')
+      && (row.endDateTime === null || row.endDateTime === undefined)
+      && !/activated/i.test(row.assignmentType ?? '')
+      && (!row.status || !/revoked|canceled|expired/i.test(row.status))
+    )
+    if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE) && permanent) return PASS
+    if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return unknown('Global Administrator is active, but a permanent tenant-wide assigned schedule with no expiration was not established.')
     if (eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return fail(F.bgEligibleOnly)
     return fail(F.bgNoGa)
   },
@@ -525,7 +540,10 @@ const bgDrilled: ValidationRule = {
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, recoveryAccountBasis(ctx.snapshot, [id])[id])
+    const basis = recoveryAccountBasis(ctx.snapshot, [id], ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])))[id]
+    const configuredAt = recoveryPreparation(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, ctx.snapshot.tenantId)?.configurationObservedAt ?? null
+    const readings = recoveryCandidateReadings(ctx.snapshot, id, ctx.snapshot.asOf, configuredAt)
+    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, { readings, tenantId: ctx.snapshot.tenantId, currentSnapshotObservedAt: ctx.snapshot.asOf })
     if (!testedAt) return fail(F.bgNoRecordedDrill)
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(testedAt)) / 86_400_000)
     return days > BREAK_GLASS_DRILL_DAYS
@@ -542,7 +560,12 @@ const bgCredentialStorage: ValidationRule = {
   // No tenant exposes this fact, so an absent answer is "not yet done", never
   // "could not be checked" (prompt 46 item 21): the line stays on the
   // emergency-access step until somebody says it is true.
-  evaluate: (_id, ctx) => (ctx.answers.credentialStorage === true ? PASS : fail(F.bgCredentialStorage)),
+  evaluate: (_id, ctx) => {
+    if (ctx.answers.credentialStorage !== true) return fail(F.bgCredentialStorage)
+    const current = recoveryCredentialBasis(ctx.snapshot, ctx.breakGlassIds)
+    if (!ctx.breakGlassIds.length || ctx.breakGlassIds.some(id => !current[id] || ctx.custodyBasis[id] !== current[id])) return fail('Confirm custody again for the selected accounts and their current recovery credentials.')
+    return PASS
+  },
 }
 
 const bgSignInMonitoring: ValidationRule = {
@@ -587,7 +610,9 @@ const bgLastSignIn: ValidationRule = {
   evaluate: (id, ctx) => {
     const at = userOf(ctx, id)?.lastSuccessfulSignIn ?? null
     if (at === null) return pass()
-    if (isRecordedDrill(at, ctx.drillDates, id, ctx.drillRecords ?? [])) return pass(F.bgLastSignInDrill(absoluteDate(at)))
+    const basis = recoveryAccountBasis(ctx.snapshot, [id], ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])))[id]
+    const configuredAt = recoveryPreparation(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, ctx.snapshot.tenantId)?.configurationObservedAt ?? null
+    if (isRecordedDrill(at, ctx.drillDates, id, ctx.drillRecords ?? [], { readings: recoveryCandidateReadings(ctx.snapshot, id, ctx.snapshot.asOf, configuredAt), tenantId: ctx.snapshot.tenantId, currentSnapshotObservedAt: ctx.snapshot.asOf })) return pass(F.bgLastSignInDrill(absoluteDate(at)))
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(at)) / 86_400_000)
     if (days <= BREAK_GLASS_DRILL_DAYS) return fail(F.bgLastSignInUnrecorded(absoluteDate(at)), { ago: relative(at, Date.parse(ctx.snapshot.asOf)) })
     return pass(F.bgLastSignIn(absoluteDate(at)))
@@ -722,11 +747,11 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
   needs: ['caPolicies'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    // Every enabled or report-only policy: a report-only one becomes enforcing
-    // without a second look at its exclusions.
-    const live = livePolicies(ctx)
+    // Current recovery exclusions are owned here. Report-only preparation stays
+    // with that policy's transition and is checked again before enforcement.
+    const live = enforcingPolicies(ctx)
     if (live.length === 0) return PASS
-    const missing = policiesNotExcludingGroup(ctx.tenantPolicies, entry.groupId)
+    const missing = live.filter((p) => !(p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === entry.groupId.toLowerCase())).map((p) => p.displayName ?? '(unnamed)')
     if (missing.length === 0) return PASS
     return fail(F.xgInconsistent(live.length - missing.length, live.length), { policies: missing })
   },

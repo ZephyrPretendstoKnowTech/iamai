@@ -22,6 +22,8 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
 - Words: reuse a `content.json` key. Missing key → add it, say so in the commit message.
 - Batch related fixes and record an observable acceptance check for each.
 - While working: `npm run verify -- <relevant .test.ts files>` runs type checking and focused tests.
+  Before a routine push, `npm run verify -- --prepush <relevant .test.ts files>` adds the site build
+  and overlaps those focused tests with browser smoke. Name every test file that covers the change.
   Check a decision, policy and completed step at desktop/mobile widths when shared UI changes.
   Test saving, completion and reopening when those transitions change; compare screen/export where applicable.
   CI runs the full suite once per PR update. Do not repeat a full local suite on unchanged code.

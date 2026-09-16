@@ -112,7 +112,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // holds confirmed accounts (they are on the tenant) or its minimum is met;
   // anything else exists when it is delivered.
   const emergency = step.emergency ?? null
-  const exists = policy ? lifecycle !== null && lifecycle !== 'not-deployed' : emergency ? emergency.accounts.length > 0 || emergency.minimum === 0 : done
+  const exists = policy ? lifecycle !== null && lifecycle !== 'not-deployed' : emergency ? emergency.accounts.length > 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
@@ -141,8 +141,12 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   for (const b of step.blockers) {
     if (b.kind === 'setup') blockers.push({ kind: 'fact', id: `setup:${b.questionNumber}` })
     else if (b.kind === 'step') {
+      // A saved choice is the next action on an already deployed policy. Legacy
+      // rollout blockers still describe its enforcement history; they do not
+      // turn the pending choice itself into dependent work.
+      if (action === 'decide') continue
       if (!GRAPH.steps.has(b.stepId) || byId.get(b.stepId)?.status === 'done') continue
-      const on: Action = policy && GATE.has(b.stepId) && action === 'create' ? 'enforce' : action
+      const on: Action = policy && GATE.has(b.stepId) ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
@@ -414,7 +418,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // added to existing policies. Its final completion must not prevent the safe
     // report-only preparation that contributes to finishing those exclusions.
     const safePreparation = implementationOffered(step) && !(step.action.missing?.length) && operationsOf(step).length > 0 && operationsOf(step).every(op => !enforcesOnRun(op))
-    if (reading?.lane === 'On Hold' && reading.blockers.length > 0 && reading.blockers.every(b => b.kind === 'step' && b.id === EXCLUSION_GROUP_STEP_ID) && safePreparation) {
+    if ((reading?.lane === 'On Hold' || reading?.lane === 'Up Next') && reading.blockers.length > 0 && reading.blockers.every(b => b.kind === 'step' && b.id === EXCLUSION_GROUP_STEP_ID) && safePreparation) {
       Object.assign(reading, { lane: 'Ready', substatus: operationsOf(step).some(op => op.mode === 'create') ? 'Create' : 'Correct', reason: null, blockers: [] })
     }
     // Authentication-method configuration already exists in Entra, even when

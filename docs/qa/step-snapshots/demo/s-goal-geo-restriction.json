@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
   "reason": "after: Create or Correct Allowed Countries Location",
   "fact": null,
-  "badge": "On Hold",
-  "bar": "After Create or Correct Exclusions Group",
+  "badge": "Up Next",
+  "bar": "After Create or Correct Allowed Countries Location",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -22,8 +22,12 @@
       "state": "Create or Correct Allowed Countries Location"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Create or Correct Exclusions Group"
+      "label": "Prerequisite · To do",
+      "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Configure Emergency Exclusions"
     }
   ],
   "channels": [

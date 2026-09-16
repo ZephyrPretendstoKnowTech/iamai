@@ -163,7 +163,7 @@ test('9b. an exclusions group that already holds the recommended accounts is nev
   assert.equal(memberLines.length, 2, 'both member checks render a line')
   for (const [, line] of memberLines) {
     assert.doesNotMatch(line, /^Remove /, 'no fix line opens by telling the operator to remove them')
-    assert.match(line, /Create or Correct Emergency Access Accounts first/i, 'the line offers confirmation first')
+    assert.match(line, /Prepare Emergency Access Accounts first/i, 'the line offers confirmation first')
     assert.doesNotMatch(line, /\{[a-zA-Z]/, 'and renders with no hole')
   }
   // The check still fails and the group is still blocked: a recommendation

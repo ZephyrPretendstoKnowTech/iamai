@@ -64,13 +64,13 @@ test('the finish date is the end of the last phase, Cleanup included; a held pla
   assert.equal(held.finish, null)
 })
 
-test('a Cleanup with nothing to say does not exist', () => {
+test('the canonical verification row remains when no optional Cleanup work exists', () => {
   const organisation = { notInBaseline: [], notAssessed: [], consolidation: [], naming: { pattern: null, share: 0, outliers: [], prefix: null, separator: null, convention: null, unprefixed: [], names: [] }, microsoftManaged: [] }
   const none = cleanupPhaseFor({ after: '2026-10-05T00:00:00.000Z', rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation })
-  assert.equal(none, null)
+  assert.deepEqual(none?.rows.map(row => row.kind), ['drill'])
   // Outliers without a usable convention propose no rename (nothing to follow).
   const outliersOnly = cleanupPhaseFor({ after: '2026-10-05T00:00:00.000Z', rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation: { ...organisation, naming: { ...organisation.naming, outliers: ['Odd name'] } } })
-  assert.equal(outliersOnly, null)
+  assert.deepEqual(outliersOnly?.rows.map(row => row.kind), ['drill'])
 })
 
 test('every fixture with emergency accounts schedules their tests independently of last enforcement', () => {

@@ -1155,6 +1155,7 @@ export type ReadinessTile = {
   value: string
   /** The tile's explanation, behind its disclosure; null where the value says it all. */
   note: string | null
+  items?: { label: string; value: string }[]
   /**
    * A package gate a person confirms (content/implementation project.ts): the
    * prerequisites of the next transition its confirmation covers, and whether
@@ -1376,8 +1377,27 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
  */
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
-  const configuration = (step as Step & { configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[] }).configurationFindings ?? []
-  const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  const configuration = step.configurationFindings ?? []
+  const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  // These topics contain the underlying account/group checks, including unknowns.
+  // Do not add one more tile per account, check or dependency beside them.
+  if (configuration.length && ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)) {
+    // Keep independent prerequisites and unsaved choices inside their topic.
+    // The validation results already contain the per-rule fixes.
+    const extras = [...unsavedTiles(step), ...engineTiles(c, blockers, new Set(), prerequisiteLabel)]
+    for (const extra of extras) {
+      const id = tileStepOf(extra)
+      const key = step.id === 's-prereq-exclusion-group' ? id === 's-prereq-break-glass' ? 'group-members' : 'group-choice'
+        : step.id === 's-prereq-break-glass' ? id === 's-prereq-passkey-settings' ? 'recovery-methods' : id === 's-prereq-exclusion-group' ? 'account-exclusions' : 'account-setup'
+        : 'availability'
+      const topic = configuredTiles.find(t => t.key === 'configuration:' + key) ?? configuredTiles[0]
+      if (extra.key.startsWith('engine:evidence:passkey-settings-')) continue
+      topic.items = [...(topic.items ?? []), { label: extra.label, value: [extra.value, extra.note].filter(Boolean).join('. ') }]
+      if (topic.tone === 'good') { topic.tone = extra.tone; topic.value = 'Review required' }
+    }
+    const tiles = configuredTiles.filter(t => t.tone !== 'good')
+    return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
+  }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
   const facts = [...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'

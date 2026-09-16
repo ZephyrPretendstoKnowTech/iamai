@@ -41,7 +41,9 @@
           "enforcementType": "allow",
           "aaGuids": [
             "90a3ccdf-635c-4729-a248-9b709135078f",
-            "de1e552d-db1d-4423-a619-566b625cdc84"
+            "de1e552d-db1d-4423-a619-566b625cdc84",
+            "a25342c0-3cdc-4414-8e46-f4807fca511c",
+            "19083c3d-8383-4b18-bc03-8f1c9ab2fd1b"
           ]
         },
         "includeTargets": [
@@ -178,7 +180,7 @@
   ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-passkey-settings",
-  "title": "Set Up Passkeys to Match the Baseline",
+  "title": "Configure Passkey Authentication",
   "impact": {
     "fallbackLabel": "Passkey settings"
   },

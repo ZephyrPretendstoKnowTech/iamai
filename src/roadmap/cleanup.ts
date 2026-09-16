@@ -39,7 +39,10 @@ export type CleanupInputs = {
 // not-assessed. Each entry names its content key and whether it is present.
 const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists: (i: CleanupInputs) => Record<string, string[]> }[] = [
   { kind: 'alerting', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccountUpns: i.emergencyAccountUpns && i.emergencyAccountUpns.length === i.emergencyAccounts.length ? i.emergencyAccountUpns : i.emergencyAccounts }) },
-  { kind: 'drill', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccounts: i.emergencyAccounts }) },
+  // Recovery verification is one of the four canonical emergency-access steps.
+  // Keep its row present before account selection so the grouped journey has a
+  // stable fourth step and can point back to the selection work it needs.
+  { kind: 'drill', present: () => true, lists: (i) => ({ emergencyAccounts: i.emergencyAccounts }) },
   { kind: 'hardening', present: (i) => (i.hardening ?? []).length > 0, lists: (i) => ({ hardening: i.hardening ?? [] }) },
   { kind: 'naming', present: (i) => i.renames.length > 0, lists: (i) => ({ renames: i.renames }) },
   { kind: 'consolidation', present: (i) => i.overlaps.length > 0, lists: (i) => ({ overlaps: i.overlaps }) },

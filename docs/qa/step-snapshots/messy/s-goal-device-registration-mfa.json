@@ -1,10 +1,10 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "after: Create or Correct Exclusions Group",
+  "reason": "after: Configure Emergency Exclusions",
   "fact": null,
   "badge": "Up Next",
-  "bar": "After Create or Correct Exclusions Group",
+  "bar": "After Configure Emergency Exclusions",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -23,7 +23,7 @@
     },
     {
       "label": "Prerequisite · To do",
-      "state": "Create or Correct Exclusions Group"
+      "state": "Configure Emergency Exclusions"
     },
     {
       "label": "Exclusions",

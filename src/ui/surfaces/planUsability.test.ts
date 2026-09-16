@@ -308,6 +308,7 @@ const waitingOnEmergency = (r: ReturnType<typeof runFixture>): number => r.steps
 
 test('a minimum safety blocker holds the rollout, and no deferral can release it', () => {
   const f = fixture('demo')
+  f.mapping.breakGlassUserIds = []
   const r = runFixture(f)
   const bg = r.steps.find((s) => s.id === EMERGENCY)!
   assert.ok((bg.emergency?.minimum ?? 0) > 0, 'the premise: demo has a minimum safety failure')
@@ -338,21 +339,17 @@ test('resilience hardening holds until fixed or deferred; a deferral releases th
   const at = '2026-09-11T10:00:00.000Z'
   const d = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis } })
   const dbg = d.steps.find((s) => s.id === EMERGENCY)!
-  assert.equal(dbg.status, 'done')
+  assert.equal(dbg.status, 'ready', 'deferral must not complete the account step')
   assert.equal(dbg.emergency?.deferredAt, at)
   assert.equal(waitingOnEmergency(d), 0, 'the deferral did not release the rollout')
-  const row = d.schedule.cleanup!.rows.find((x) => x.kind === 'hardening')
-  assert.ok(row && row.lists.hardening.length === bg.emergency!.hardening, 'the deferred hardening left the plan instead of moving to Cleanup')
   assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'hardening'), false, 'hardening reached Cleanup without a deferral')
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => d.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const c = stepContract(dbg, ctx)
   const rd = readinessOf(dbg, c)
   const tiles = [...rd.tiles, ...rd.satisfied].map((t) => `${t.label}: ${t.value}`)
-  // Each account slot says its hardening is deferred (P0-7); no Resilience tile stands apart.
-  for (const id of f.mapping.breakGlassUserIds) assert.ok(tiles.includes(`${ctx.nameOf(id)}: ${CONTRACT.hardening.tiles.deferred}`), tiles.join(' | '))
-  assert.equal(rd.tiles.some((t) => t.key === 'resilience' || t.key === 'emergency'), false)
-  assert.equal(c.doneWhen.length, 1)
-  assert.doesNotMatch(c.doneWhen[0], /Already satisfied/, 'a deferral is read as full resilience')
+  assert.equal(rd.tiles.some((t) => t.key === 'resilience' || t.key === 'emergency' || t.key.startsWith('slot:')), false)
+  assert.equal([...rd.tiles, ...rd.satisfied].filter(t => t.key.startsWith('configuration:')).length, 4, tiles.join(' | '))
+  assert.ok(c.doneWhen.every(line => !/recovery test|every required emergency-access check/i.test(line)), 'account completion claims final verification')
   assert.equal(c.hardening?.deferredAt, at)
   // A new finding is not covered by an earlier deferral: the rollout waits again.
   const partial = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis.split(',').slice(1).join(',') } })

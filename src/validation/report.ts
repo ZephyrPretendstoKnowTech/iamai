@@ -38,6 +38,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
   const confirmed = new Set(i.state.breakGlassUserIds.map((id) => id.toLowerCase()))
   return {
     snapshot: i.snapshot,
+    mapping: i.state,
     tenantPolicies: i.snapshot.config.caPolicies?.rows ?? [],
     groupMembers: i.groupMembers ?? [],
     breakGlassIds: i.state.breakGlassUserIds,
@@ -48,6 +49,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     unconfirmedEmergencyIds: [...new Set([...sel.recommendedIds, ...sel.priorIds])].filter((id) => !confirmed.has(id.toLowerCase())),
     viability: i.viability ?? [],
     answers,
+    custodyBasis: i.state.breakGlassCustodyBasis ?? {},
     drillDates: i.drillDates ?? [],
     drillRecords: i.drillRecords ?? [],
   }

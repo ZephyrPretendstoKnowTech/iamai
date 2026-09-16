@@ -19,7 +19,7 @@ import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
-import { withCleanupDone, cleanupBasis, recoveryAccountBasis } from '../cleanupDone.ts'
+import { withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCredentialBasis, RECOVERY_PREPARATION_WORKFLOW } from '../cleanupDone.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 
@@ -655,6 +655,7 @@ export function buildFixture(spec: Spec): Fixture {
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
       deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),
       roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
+      roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', endDateTime: null, status: 'Provisioned' }))),
       pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : 'needs Entra ID P2'),
       subscribedSkus: section([
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),
@@ -744,6 +745,11 @@ export function buildFixture(spec: Spec): Fixture {
     const methodsPolicy = snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: {id: string}[] }
     methodsPolicy.authenticationMethodConfigurations = methodsPolicy.authenticationMethodConfigurations.map(c => c.id === 'Fido2' ? { ...structuredClone(PASSKEY_TARGET), id: 'Fido2', excludeTargets: [], includeTargets: [{id:'all_users',targetType:'group',allowedPasskeyProfiles:[]}] } : c)
     for (const id of bgIds) snapshot.authMethods[id] = [...(Array.isArray(snapshot.authMethods[id]) ? snapshot.authMethods[id] : []).filter(m => m.kind !== 'fido2'), {kind: 'fido2', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound'}]
+    for (const [index, id] of bgIds.entries()) {
+      const at = users.find(user => user.id === id)?.lastSuccessfulSignIn ?? daysAgo(10)
+      signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }), recoveryCandidates: [{ schema: 1, eventId: `demo-recovery-${index + 1}`, userId: id, at, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Microsoft Azure portal', resource: 'Microsoft Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
+      snapshot.signInEvidence[id] = signInEvidence[id]
+    }
     for (const [id, methods] of Object.entries(snapshot.authMethods)) {
       if (Array.isArray(methods)) snapshot.authMethods[id] = methods.map(m => m.kind === 'fido2' || m.kind === 'passkey' ? {...m, aaGuid: m.kind === 'fido2' ? 'a25342c0-3cdc-4414-8e46-f4807fca511c' : 'de1e552d-db1d-4423-a619-566b625cdc84', passkeyType: 'deviceBound'} : m)
     }
@@ -760,8 +766,14 @@ export function buildFixture(spec: Spec): Fixture {
     // recorded that sign-in as the drill on the Cleanup row, so the step is In
     // place and the drill row reads done.
     const drillAt = users.find((u) => u.id === bgIds[0])?.lastSuccessfulSignIn ?? null
-    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], outcome: 'passed', workflow: 'Emergency administrator sign-in and recovery', accountBasis: recoveryAccountBasis(snapshot, bgIds), signInAtByAccount: Object.fromEntries(bgIds.flatMap(id => { const at = users.find(u => u.id === id)?.lastSuccessfulSignIn; return at ? [[id, at]] : [] })), timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
+    if (drillAt) {
+      const accountBasis = recoveryAccountBasis(snapshot, bgIds, mapping, groups)
+      const configurationObservedAt = new Date(Date.parse(drillAt) - 3_600_000).toISOString()
+      checkpoints = withCleanupDone([], 'drill', configurationObservedAt.slice(0, 10), configurationObservedAt, { accountIds: [...bgIds], workflow: RECOVERY_PREPARATION_WORKFLOW, tenantId, configurationObservedAt, accountBasis, timeZone: 'UTC' })
+      checkpoints = withCleanupDone(checkpoints, 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], outcome: 'passed', workflow: 'Emergency administrator sign-in and recovery', accountBasis, recoveryEvidence: Object.fromEntries(bgIds.map((id) => { const candidate = snapshot.signInEvidence[id]?.recoveryCandidates?.[0]!; return [id, { schema: 1, tenantId, accountId: id, eventId: candidate.eventId, eventAt: candidate.at, appId: candidate.appId, resourceId: candidate.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })), signInAtByAccount: Object.fromEntries(bgIds.flatMap(id => { const at = users.find(u => u.id === id)?.lastSuccessfulSignIn; return at ? [[id, at]] : [] })), timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
+    }
   }
+  if (mapping.breakGlassAnswers?.credentialStorage === true) mapping.breakGlassCustodyBasis = recoveryCredentialBasis(snapshot, bgIds)
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }
 

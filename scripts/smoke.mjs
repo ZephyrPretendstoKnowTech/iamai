@@ -132,7 +132,7 @@ if (!up) {
 // A fresh profile every run, as CI has: a second run on one machine otherwise
 // inherits the demo record the first run's week-two visit seeded, and the
 // record checks read the wrong order.
-const profile = `${process.env.TMPDIR ?? process.env.TEMP ?? '/tmp'}/iamai-smoke-profile`
+const profile = process.env.SMOKE_PROFILE ?? `${process.env.TMPDIR ?? process.env.TEMP ?? '/tmp'}/iamai-smoke-profile`
 rmSync(profile, { recursive: true, force: true })
 const chrome = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--hide-scrollbars',

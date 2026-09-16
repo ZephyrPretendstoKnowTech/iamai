@@ -151,7 +151,9 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
   const b = bodyOf('demo', DEVICE)
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '27% of devices compliant')
-  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
+  const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
+  for (const t of prerequisites) assert.ok(['Before enforcement', 'Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
+  assert.ok(prerequisites.some(t => t.label === 'Before enforcement'), 'the safe report-only path is not distinguished from enforcement prerequisites')
   assert.equal(b.rail.metric, 'Not scheduled')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')

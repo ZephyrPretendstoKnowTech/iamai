@@ -24,9 +24,10 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 7
-/** A cache written at this schema or later still loads: rows from 6 simply lack the prompt 48 labels (their derived lines do not fire). */
-export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 6
+export const EVIDENCE_SCHEMA = 8
+/** Schema 8 adds exact recovery-event identity and interaction/resource facts.
+ * Older rows must be refreshed: a missing interactive flag is never true. */
+export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 8
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -76,6 +77,8 @@ export function mapRow(raw: unknown): StoredSignIn | null {
     appliedConditionalAccessPolicies: applied,
     clientAppUsed: typeof r.clientAppUsed === 'string' ? r.clientAppUsed : undefined,
     appId: typeof r.appId === 'string' ? r.appId : undefined,
+    resourceId: typeof r.resourceId === 'string' ? r.resourceId : undefined,
+    isInteractive: typeof r.isInteractive === 'boolean' ? r.isInteractive : undefined,
     authenticationProtocol: typeof r.authenticationProtocol === 'string' ? r.authenticationProtocol : undefined,
     originalTransferMethod: typeof r.originalTransferMethod === 'string' ? r.originalTransferMethod : undefined,
     country: (() => {
@@ -251,6 +254,7 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   // later Authenticator sign-in cannot hide an earlier passkey one.
   const proofs = new Map<string, ProofRecord[]>()
   const platforms = new Map<string, Map<string, string>>()
+  const recovery = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>>()
   // The latest record of each kind, kept apart while the rows are read: a
   // record that names a method is proof of that method, a generic one is
   // proof only that MFA happened. Graph returns the newest row first, so one
@@ -267,6 +271,28 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
     const at = row.createdDateTime
     if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
     const read = readSignIn(row)
+    const freshStep = (row.authenticationDetails ?? []).find((detail) => {
+      if (detail?.succeeded !== true || typeof detail.authenticationMethod !== 'string') return false
+      if (!/passkey|fido|security key/i.test(detail.authenticationMethod)) return false
+      return !/previously satisfied|satisfied by token/i.test(detail.authenticationStepResultDetail ?? '')
+    })
+    if (read.proof?.cls === 'passkey') {
+      const candidate = {
+        schema: 1 as const,
+        eventId: row.id,
+        userId: row.userId,
+        at: row.createdDateTime,
+        success: row.status?.errorCode === 0,
+        isInteractive: typeof row.isInteractive === 'boolean' ? row.isInteractive : null,
+        appId: row.appId ?? null,
+        resourceId: row.resourceId ?? null,
+        app: row.appDisplayName ?? null,
+        resource: row.resourceDisplayName ?? null,
+        method: 'Passkey (FIDO2)',
+        freshMethod: freshStep ? true : (Array.isArray(row.authenticationDetails) ? false : null),
+      }
+      recovery.set(row.userId, [...(recovery.get(row.userId) ?? []), candidate])
+    }
     if (read.mfa) {
       const into = read.mfa === GENERIC_MFA ? generic : named
       const held = into.get(row.userId)
@@ -285,6 +311,7 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   for (const [id, u] of Object.entries(perUser)) {
     u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
     u.proofs = latestProofs(proofs.get(id) ?? []).sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
+    u.recoveryCandidates = (recovery.get(id) ?? []).sort((a, b) => b.at.localeCompare(a.at))
     const seen = platforms.get(id)
     u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
   }

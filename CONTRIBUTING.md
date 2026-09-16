@@ -37,17 +37,21 @@ interpretation. Change them when correctness requires it, and say in the pull
 request which decision is being revisited and why. Do not add a second authority
 for a fact that already has one.
 
-## Before you open a pull request
+## Before you push a fix
 
 ```
-npx tsc --noEmit
-npm test
-npm run build:site
-npm run smoke
+npm run verify -- --prepush src/path/to/relevant.test.ts
 ```
 
-The `ci` check runs the same four on every push and every pull request, and
-`main` requires it: a change cannot land on `main` until `ci` is green.
+Name every test file that covers the change. The command typechecks, builds the
+site, then runs those tests and the browser smoke concurrently. It is the quick
+local gate; use `npm run verify -- <tests>` for tighter edit loops.
+
+The `ci` check runs the complete unit suite and build/browser jobs on every push
+and every pull request, and `main` requires it. That exact main commit is the
+authoritative full release gate, so a routine fix does not wait for the entire
+unit corpus twice. Use `npm run verify -- --release` only when a local full
+release preflight is specifically needed.
 
 Publication is gated separately. After a change reaches `main`, the deploy
 workflow runs `walk`, and the build and the deploy each depend on it, so a P0

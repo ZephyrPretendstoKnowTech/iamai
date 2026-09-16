@@ -18,7 +18,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { emergencyAccountStanding, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
+import { emergencyAccountStanding, emergencyAccountStandingForStep, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
 import { stepById as contentStepById } from '../content/content.ts'
@@ -90,7 +90,8 @@ import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
-import { recoveryAccountBasis } from './cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
+import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { answeredCarveOuts, devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
@@ -1162,7 +1163,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess) {
     const s = prereq(PASSKEY_SETTINGS_STEP_ID)
     const passkey = passkeyReadingOf(snapshot, mapping)
-    s.configurationFindings = passkeyReadinessFindingsOf(snapshot, mapping)
+    s.configurationFindings = journeyPasskeyFindings(snapshot, mapping, input.groupMembers)
     s.readiness.lines = s.configurationFindings.map(f => `${f.label}: ${f.value}.`)
     if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
     else if (passkey.state === 'unread') {
@@ -1174,7 +1175,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // or a read short of a setting. The step holds on that fact, like an unread
       // policy, and is never completed by it.
       const review = passkey.resolution.review
-      const binding = s.configurationFindings.filter(f => f.outcome !== 'pass').slice(0, 1).map(f => `${f.label}: ${f.value}`).join('') || (review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead)
+      const binding = passkeyReadinessFindingsOf(snapshot, mapping).filter(f => f.outcome !== 'pass').slice(0, 1).map(f => `${f.label}: ${f.value}`).join('') || (review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead)
       s.blockers = [{ kind: 'evidence', label: `passkey-settings-${review}`, binding, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })
     }
@@ -1288,6 +1289,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
   const bgStep = steps.find((s) => s.id === bgStepId)
   let bgStanding: EmergencyStanding | null = null
+  let bgAccountStanding: EmergencyStanding | null = null
   if (bgStep && bgReport) {
     const confirmed = mapping.breakGlassUserIds.length
     bgStep.checks = stepChecks(bgReport, confirmed)
@@ -1295,36 +1297,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // and nothing defers them; the hardening holds it until it is fixed or the
     // operator defers it, and a deferral moves it to Cleanup (below).
     bgStanding = emergencyStanding(bgReport, confirmed)
-    const deferred = hardeningDeferred(bgStanding.hardening, input.hardeningDeferral)
+    const accountStanding = emergencyAccountStandingForStep(bgReport, confirmed)
+    bgAccountStanding = accountStanding
     bgStep.emergency = {
-      minimum: bgStanding.minimum.length,
-      hardening: bgStanding.hardening.length,
-      basis: hardeningBasis(bgStanding.hardening),
-      deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null,
+      minimum: accountStanding.minimum.length,
+      hardening: accountStanding.hardening.length,
+      basis: hardeningBasis(accountStanding.hardening),
+      deferredAt: hardeningDeferred(accountStanding.hardening, input.hardeningDeferral) ? (input.hardeningDeferral?.at ?? null) : null,
       // Each confirmed account's own evidence, never another's or the set's.
       accounts: emergencyAccountStanding(bgReport, mapping.breakGlassUserIds),
     }
-    const passkeyConfigured = passkeyReadingOf(snapshot, mapping).state === 'inPlace'
     const currentKeys = emergencyPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, input.groupMembers)
     const proposedKeys = emergencyProposedPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
     const compatibleKeys = [...currentKeys, ...proposedKeys].every(c => c.state === 'eligible')
-    bgStep.configurationFindings = [
-      { key: 'passkey-configuration', label: 'Passkey Authentication', value: passkeyConfigured ? 'Configured' : 'Configuration required', detail: passkeyConfigured ? 'The authentication method matches the intended configuration. Check each emergency account’s registered key against these settings.' : 'Complete Configure Passkey Authentication before completing emergency-access setup. You can create accounts and register replacement keys now.', outcome: passkeyConfigured ? 'pass' : 'fail' },
-      ...mapping.breakGlassUserIds.map(id => {
-        const current = currentKeys.find(c => c.accountId === id)!
-        const proposed = proposedKeys.find(c => c.accountId === id)!
-        const ready = current.state === 'eligible' && proposed.state === 'eligible'
-        const unknown = current.state === 'unknown' || proposed.state === 'unknown'
-        const keys = snapshot.authMethods[id]
-        const models = Array.isArray(keys) ? keys.filter(k => k.kind === 'fido2' || k.kind === 'passkey').map(k => `${k.displayName || 'Registered passkey'} (${k.aaGuid || 'model ID not read'}; ${k.passkeyType || 'storage type not read'})`).join('; ') || 'No passkey is registered on this account' : 'Registered methods not read'
-        return { key: `emergency-passkey-${id}`, label: snapshot.users.find(u => u.id === id)?.displayName || id, value: ready ? 'Compatible key available' : unknown ? 'Key compatibility not established' : 'Compatible key required', detail: `${models}. ${ready ? 'At least one device-bound key is allowed by the current and planned settings. Verify it with a recovery sign-in test.' : unknown ? 'The scan did not establish this key’s model, storage type or applicable settings. Check its Authentication methods details in Entra and scan again before tightening restrictions; keep working access in place.' : 'Register and test an approved device-bound replacement before tightening passkey restrictions. Keep working access until the replacement succeeds.'}`, outcome: ready ? 'pass' as const : unknown ? 'unknown' as const : 'fail' as const }
-      }),
-    ]
     const results = bgReport.targets.flatMap((t) => t.results)
-    if (passkeyConfigured && compatibleKeys && confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
+    if (compatibleKeys && confirmed > 0 && results.length > 0 && accountStanding.minimum.length === 0 && accountStanding.hardening.length === 0) {
       setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
+  }
+  // The exclusions group is defined by the selected emergency accounts. With
+  // no selected accounts there is no safe membership target to create or
+  // approve, so Step 3 waits on Step 2 instead of presenting an empty group as
+  // actionable or complete.
+  if (geStep && bgStep && mapping.breakGlassUserIds.length === 0) {
+    if (!geStep.blockers.some(blocker => blocker.kind === 'step' && blocker.stepId === bgStep.id)) geStep.blockers.push({ kind: 'step', stepId: bgStep.id, label: 'select-emergency-accounts', held: true })
+    setState(geStep, { satisfied: false, inPlace: false, condition: conditionFor(geStep.blockers) })
   }
   // The gate is the validation reports' own verdict, and nothing downgrades it.
   // A line here used to clear a gate whenever the gating step's status read
@@ -1336,11 +1334,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // plan through the step not being done until it is fixed or deferred.
   const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
   let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
-  if (gate === null && bgStep && bgStep.status !== 'done') gate = gateFor('breakGlass')
+  if (gate === null && bgStanding && bgAccountStanding && (bgStanding.minimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
   attachConfigurationFindings(steps, validationReports)
+  if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
+  if (geStep) geStep.configurationFindings = journeyGroupFindings(geReport, exclusions.actionableName ?? exclusions.suggested?.name ?? null, exclusions.actionableId !== null, snapshot, exclusions.actionableId)
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
 
@@ -2493,6 +2493,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // (E3): the policies a step found already covering its goal, which the
   // baseline's version supersedes once enforced. A done step cites its
   // policies as what makes it In place, not as overlap.
+  const recoveryBasis = recoveryAccountBasis(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
+  const recoveryPreparedAt = Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryPreparation(id, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf, recoveryBasis[id], snapshot.tenantId)?.configurationObservedAt ?? null]))
   schedule.cleanup = cleanupPhaseFor({
     after: schedule.targetEnd,
     early: input.reviewNow ?? snapshot.asOf,
@@ -2500,7 +2502,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     hardeningVerified: !!bgStep?.emergency && bgStep.emergency.hardening === 0 && bgStep.emergency.accounts.length > 0 && bgStep.emergency.accounts.every(account => account.assessed),
     rhythm,
     emergencyAccountIds: mapping.breakGlassUserIds,
-    accountBasis: recoveryAccountBasis(snapshot, mapping.breakGlassUserIds),
+    accountBasis: recoveryBasis,
+    recoveryFindings: bgReport ? journeyRecoveryFindings(bgReport, snapshot, mapping, input.groupMembers, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf) : undefined,
+    recoveryCandidates: Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryCandidateReadings(snapshot, id, input.reviewNow ?? snapshot.asOf, recoveryPreparedAt[id])])),
+    tenantId: snapshot.tenantId,
+    configurationObservedAtByAccount: recoveryPreparedAt,
+    snapshotObservedAt: snapshot.asOf,
     policies: snapshot.config.caPolicies.status === 'ok' ? snapshot.config.caPolicies.rows : null,
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),

@@ -15,7 +15,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
-import { isCleanupCheckpoint } from '../roadmap/cleanupDone.ts'
+import { isCleanupCheckpoint, recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
 // The demo's switches and its tenant id live in demoMode.ts, which is light;
 // this module carries the fixture and the engine, and loads only on demand.
 // The tenant id is not a GUID, and not the fixture's own generated one,
@@ -82,7 +82,11 @@ export function demoTenant(week2 = false): DemoTenant {
   const calendarOffset = Date.parse(snapshot.asOf.slice(0, 10)) - Date.parse(f.snapshot.asOf.slice(0, 10))
   const checkpoints = f.checkpoints?.map(c => {
     const shifted = shiftDates(c, offset)
-    return isCleanupCheckpoint(c) && isCleanupCheckpoint(shifted) ? { ...shifted, date: shiftDates(c.date, calendarOffset) } : shifted
+    if (!isCleanupCheckpoint(c) || !isCleanupCheckpoint(shifted)) return shifted
+    const dated = { ...shifted, date: shiftDates(c.date, calendarOffset) }
+    if (dated.cleanup !== 'drill') return dated
+    const accountIds = dated.accountIds ?? []
+    return { ...dated, tenantId: dated.tenantId ? DEMO_TENANT_ID : undefined, accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping, f.groups), recoveryEvidence: dated.recoveryEvidence ? Object.fromEntries(Object.entries(dated.recoveryEvidence).map(([id, evidence]) => [id, { ...evidence, tenantId: DEMO_TENANT_ID }])) : undefined }
   }) ?? null
   return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions, checkpoints }
 }
