@@ -53,11 +53,9 @@ authoritative full release gate, so a routine fix does not wait for the entire
 unit corpus twice. Use `npm run verify -- --release` only when a local full
 release preflight is specifically needed.
 
-Publication is gated separately. After a change reaches `main`, the deploy
-workflow runs `walk`, and the build and the deploy each depend on it, so a P0
-finding stops the site from being published. `walk` is not a pull-request check
-— it cannot run before a change lands — so treat a green `ci` as necessary
-rather than sufficient.
+Publication starts immediately for the exact commit pushed to `main`. It builds
+and publishes independently while CI continues in parallel, so the complete
+suite and deployment walk do not delay an authorized release.
 
 An acceptance is a unit test. A change that can be asserted should arrive with
 the test that asserts it.
