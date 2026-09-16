@@ -1,3 +1,4 @@
+import { REPAIR_STEP_ALIASES } from '../../roadmap/stepIds.ts'
 // Routes (target-state §2), pure: no DOM, no React, so Node tests can read
 // them. `home` is the empty hash: App sends it to Plan when a scan exists and
 // to Connect otherwise. The old page names redirect. Plan, Export and How
@@ -102,7 +103,9 @@ export function returnToStep(stepId: string): string {
 /** The step a Plan hash opens (#/plan/<stepId>), or null. */
 export function stepFromPlanHash(hash: string): string | null {
   const m = PLAN_STEP.exec(hash.replace(/^#\/?/, ''))
-  return m ? decodeURIComponent(m[1]) : null
+  if (!m) return null
+  const id = decodeURIComponent(m[1])
+  return REPAIR_STEP_ALIASES[id] ?? id
 }
 
 /** The Show key an MFA Readiness hash carries (#/readiness/rung-3, and the old #/today/rung-3), or null for the whole table. */

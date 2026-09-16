@@ -113,11 +113,11 @@ function BetaNotice() {
   const [before, after] = W.notice.body.split('{feedback}')
   return (
     <Callout kind="warning" title={W.notice.title}>
-      {before}
+      <div>{before}
       <a className="lnk" href={`mailto:${FEEDBACK_ADDRESS}`}>
         {FEEDBACK_ADDRESS}
       </a>
-      {after}
+      {after}</div>
     </Callout>
   )
 }
@@ -716,10 +716,10 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
       tone={t2.tone}
       stage={stage}
       actions={
-        !busy && (
+        !busy && !baseline && (
           /* Held while a scan runs: the baseline it reads against must not change under it. */
-          <Button variant="secondary" aria-expanded={open} aria-controls={BASELINE_CHOICES_ID} disabled={locked} onClick={() => setOpen((o) => !o)}>
-            {t2.actions[0].label}
+          <Button variant="secondary" disabled={locked} onClick={() => void loadPinned(true)}>
+            Load Defense in Depth
           </Button>
         )
       }
@@ -728,10 +728,10 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
           quiet source line, and the copy that says what a baseline is. */}
       {t2.card && (
         <div className="baseline-card">
-          <strong className="baseline-name">{t2.card.name}</strong>
+          <strong className="baseline-name">{baseline?.origin.kind === 'upload' ? t2.card.name : 'Defense in Depth — Maintained by Jon Hope'}</strong>
           <p className="baseline-source">{t2.card.source}</p>
           {t2.card.paragraphs.map((text) => (
-            <p key={text}>{text}</p>
+            <p key={text}>{text.split('ConditionalAccess.Tech').map((part, i) => <span key={i}>{i > 0 && <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>}{part}</span>)}</p>
           ))}
         </div>
       )}
@@ -785,7 +785,8 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
           </ul>
         </details>
       )}
-      {open && !locked && (
+      {/* Custom-package UI is reserved for V2; keep its loader for future use. */}
+      {false && open && !locked && (
         <div className="picker" id={BASELINE_CHOICES_ID} role="group" aria-label={C.pickerLabel}>
           <Button
             variant="secondary"

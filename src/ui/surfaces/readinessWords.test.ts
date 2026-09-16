@@ -80,7 +80,7 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   const decision = devices.readiness.tiles.find((t) => t.key === 'decision')!
   assert.equal(decision.value, 'Decision')
   // Editorial batch C: the help also says the inventory informs the choice and does not make it.
-  assert.equal(decision.note, 'Choose a policy for phones and for computers. Open AI Info for the technical differences and the device evidence from this scan.')
+  assert.equal(decision.note, '', 'short identifiers do not repeat the question as readiness instructions')
   const f = oneGroup()
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')
@@ -93,9 +93,9 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
 
 test('P1-2: an unsaved conditional input is its own Readiness tile, asking for confirmation', () => {
   const legacy = bodiesOf(fixture('demo')).get(LEGACY)!
-  assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, T.unsaved)
+  assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, 'Not confirmed')
   const campaign = bodiesOf(fixture('demo')).get('s-verify-mfa')!
-  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People who need special care' && t.value === 'Confirm who needs hands-on help'))
+  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People Needing Help' && t.value === 'Not confirmed'))
 })
 
 test('P1-3: a prerequisite another prerequisite tile already waits on is not drawn beside it, by the dependency graph', () => {
@@ -120,7 +120,7 @@ test('P1-3: a prerequisite another prerequisite tile already waits on is not dra
 test('P1-4 and P1-5: Separate Accounts and Dormant Accounts offer Entra and AI Info', () => {
   const demo = bodiesOf(fixture('demo'))
   // The channels with content; every channel is a tab (content review D2).
-  for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'AI Info'], id)
+  for (const id of ['s-check-separate-admin-accounts', 's-check-dormant-accounts']) assert.deepEqual(channelTabsOf(demo.get(id)!.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'PowerShell', 'AI Info', 'Email'], id)
   const dormant = demo.get('s-check-dormant-accounts')!.artifacts
   assert.match(dormant.find((a) => a.id === 'portal')!.text(), /Account enabled: No/)
   assert.match(dormant.find((a) => a.id === 'ai')!.text(), /dormant accounts/i)

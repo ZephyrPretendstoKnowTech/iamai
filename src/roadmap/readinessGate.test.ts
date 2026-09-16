@@ -1,3 +1,5 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
+import { recoveryAccountBasis } from './cleanupDone.ts'
 // The readiness prerequisite, as an implementation fact.
 //
 // The plan names a threshold and tells the operator to wait for it: "when device
@@ -170,10 +172,10 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   const g = fixture('getiamai')
   const rg = runFixture(g)
   const guests = rg.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify') as Step
-  assert.equal(guests.readiness.percent, null)
-  assert.equal(guests.readiness.unmeasured, 'no-population', 'no active guest to be ready')
-  assert.equal(guests.action.readinessGate, undefined, 'so nothing waits on a number that cannot move')
-  assert.ok(guests.rings.length > 0, 'and its rollout is planned as before')
+  assert.ok(guests.methodPreparation!.ids.length > 0, 'this policy targets all users despite its guest goal label')
+  assert.equal(guests.readiness.percent, 18, 'actual target registrations are measured')
+  assert.ok(guests.action.readinessGate, 'lack of active guests does not waive an all-user target requirement')
+  assert.deepEqual(guests.rings, [], 'the unmet actual target requirement holds its rollout')
 })
 
 // ---- 5 + 6: a policy the tenant already enforces ----
@@ -186,6 +188,7 @@ test('5: a material change to an already-enabled policy is held while its readin
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step
   assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%' })
@@ -201,7 +204,9 @@ test('5: a material change to an already-enabled policy is held while its readin
   assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 67%') && l.includes('100%')), view.whatToDo.join(' | '))
 
   // With the prerequisite met, the readiness gate releases the same operation.
-  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: withAdminsReady(r.viability) } as never)
+  const readySnapshot = structuredClone(snapshot)
+  readyEvidence(f, readySnapshot, new Set(step.methodPreparation!.ids))
+  const ready = runFixture({ ...f, snapshot: readySnapshot }, { snapshot: readySnapshot } as never)
   const met = ready.steps.find((s) => s.id === ADMINS) as Step
   assert.equal(met.readiness.percent, 100)
   assert.equal(unavailableReason(met), null, 'the readiness gate has released')

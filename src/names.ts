@@ -58,9 +58,19 @@ export function buildNameDirectory(
 
   for (const r of ROLE_TEMPLATES) put(r.templateId, r.name)
   for (const a of firstPartyApps.apps) put(a.appId, a.displayName)
+  // Name from pinned policy 1d3a7677, not a Microsoft first-party or vendor-ownership claim.
+  put('708861da-226e-4d65-a57a-24128df64524', 'Inforcer (baseline name)')
   for (const s of builtinStrengths.strengths) put(s.id, s.displayName)
 
   if (snapshot) {
+    // Readable tenant application evidence takes precedence over the baseline label.
+    for (const source of ['appSignInSummary', 'spActivity'] as const) {
+      if (!['ok', 'partial'].includes(snapshot.sources?.[source]?.status ?? '')) continue
+      for (const raw of snapshot[source] ?? []) {
+        const row = raw as { appId?: string; appDisplayName?: string }
+        put(row.appId, row.appDisplayName)
+      }
+    }
     // The guest of a colliding display-name pair carries a (guest) marker (prompt 49 item 1).
     const markedGuests = collidingGuestIds(snapshot.users)
     for (const u of snapshot.users) {

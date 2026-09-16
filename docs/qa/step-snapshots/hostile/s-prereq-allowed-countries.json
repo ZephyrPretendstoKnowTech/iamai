@@ -14,12 +14,26 @@
   ],
   "tiles": [
     {
-      "label": "People who travel or work abroad",
-      "state": "Confirm"
+      "label": "Allowed countries",
+      "state": "Not Fully Read"
+    },
+    {
+      "label": "Allowed countries",
+      "state": "Not Fully Read"
+    },
+    {
+      "label": "Allowed countries",
+      "state": "Not Fully Read"
+    },
+    {
+      "label": "Recurring Travel Countries",
+      "state": "Not confirmed"
     }
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info",
     "Email"
   ],

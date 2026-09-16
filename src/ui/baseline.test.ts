@@ -32,7 +32,8 @@ test('the count reconciles with the not-assessed Cleanup row on the demo: count 
   const notAssessed = run.coverage.organisation.notAssessed.length
   const row = run.schedule.cleanup?.rows.find((r) => r.kind === 'notAssessed')
   assert.equal(row, undefined, 'the catch-all is gone')
-  assert.equal(run.steps.filter((s) => s.id.startsWith('s-review-baseline-')).length, notAssessed, 'every unassessed policy has a review')
+  const hiddenAgents = PINNED.policies.filter(p => /IAC - AGENT/i.test(p.displayName ?? '')).length
+  assert.equal(run.steps.filter((s) => s.id.startsWith('s-review-baseline-')).length, notAssessed - hiddenAgents, 'unassessed reviews omit the approved hidden agent definitions')
   assert.equal(count - assessed, notAssessed, `${count} policies − ${assessed} assessed = ${notAssessed} not assessed`)
 })
 

@@ -13,7 +13,7 @@ import { redactText } from '../../redactSnapshot.ts'
 import { proofLabel } from './readinessCells.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { applyManualReviews, manualBasis, MANUAL_REVIEW_ID } from '../../roadmap/manualWork.ts'
+import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from '../../roadmap/manualWork.ts'
 
 function setup(name: 'demo' | 'demo-week2' = 'demo') {
  const f = curatedFixture(name); const run = runFixture(f)
@@ -21,12 +21,17 @@ function setup(name: 'demo' | 'demo-week2' = 'demo') {
  return { f, run, ctx }
 }
 
-test('existing manual completion records keep the original persisted basis',()=>{
+test('legacy inventory reviews track observed legacy accounts and protocols, not unrelated directory accounts',()=>{
  const {f,run}=setup();const step={...structuredClone(run.steps[0]),id:'s-ladder-legacy-auth-inventory',manualReview:undefined}
- const users=f.snapshot.users.map(u=>[u.id,u.accountEnabled,u.userType,null,null,null]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
- const legacy=JSON.stringify([step.id,users,null]);assert.equal(manualBasis(step,f.snapshot),legacy)
- applyManualReviews([step],f.snapshot,{[step.id]:{[MANUAL_REVIEW_ID]:{at:f.snapshot.asOf,basis:legacy}}})
+ const record={at:f.snapshot.asOf,basis:'',accountIds:f.snapshot.evidenceUsage?.legacyAuth.userIds??[],workflow:'Each mail job owner recorded its replacement and follow-up',outcome:'passed' as const,testedAt:f.snapshot.asOf.slice(0,10)}
+ record.basis=scopeManualBasis(manualBasis(step,f.snapshot),record)
+ applyManualReviews([step],f.snapshot,{[step.id]:{[MANUAL_REVIEW_ID]:record}})
  assert.equal(step.state.satisfied,true)
+ const unrelated=f.snapshot.users.find(u=>!record.accountIds.includes(u.id))!;unrelated.accountEnabled=!unrelated.accountEnabled
+ applyManualReviews([step],f.snapshot,{[step.id]:{[MANUAL_REVIEW_ID]:record}})
+ assert.equal(step.state.satisfied,true)
+ applyManualReviews([step],f.snapshot,{[step.id]:{[MANUAL_REVIEW_ID]:{at:record.at,basis:record.basis}}})
+ assert.equal(step.state.satisfied,false,'old generic acknowledgement is not a scoped dependency review')
 })
 test('device decision offers technical AI context before a choice and no executable channel',()=>{
  const {run,ctx}=setup(); const step=run.steps.find(s=>s.id===QUESTION_STEP.devices)!; assert.ok(step)
@@ -40,7 +45,7 @@ test('emergency account guidance has no Email placeholder',()=>{
 })
 test('services suggest actual activity without saving it, and preserve a saved No',()=>{
  const f=fixture('demo');const make=()=>{const r=runFixture(f);const steps=structuredClone(r.steps).filter(s=>s.id!==WORKFLOW_STEP);addWorkflowSteps(steps,r.coverage.organisation.notAssessed,f.snapshot,f.mapping);return steps.find(s=>s.id===WORKFLOW_STEP)!}
- const first=make().workflowChoices!.find(c=>c.key==='sharepoint')!;assert.equal(first.suggested,true);assert.equal(first.answer,'unsure')
+ const first=make().workflowChoices!.find(c=>c.key==='sharepoint')!;assert.equal(first.suggested,true);assert.equal(first.answer,'yes')
  f.mapping.workflowAnswers={sharepoint:'no'};const saved=make().workflowChoices!.find(c=>c.key==='sharepoint')!;assert.equal(saved.answer,'no');assert.equal(saved.suggested,false)
 })
 test('licence alone is not suggested service use',()=>{const f=fixture('demo');const r=runFixture(f);const steps=structuredClone(r.steps).filter(s=>s.id!==WORKFLOW_STEP);addWorkflowSteps(steps,r.coverage.organisation.notAssessed,f.snapshot,f.mapping);assert.notEqual(steps.find(s=>s.id===WORKFLOW_STEP)!.workflowChoices!.find(c=>c.key==='intune')?.suggested,true)})
@@ -72,7 +77,7 @@ test('no-data-on-phones adds an explicit manual restriction review in all comput
  const run=runFixture(f);const step=run.steps.find(s=>s.id==='s-ladder-phone-access-restriction');assert.ok(step,computer);assert.equal(step.state.satisfied,false);assert.ok(step.manualReview)
  }
 })
-test('fresh passkey configuration allows hardware instead of imposing an Authenticator-only list',()=>{const r=resolvePasskeyTarget(null);assert.equal(r.kind,'target');if(r.kind==='target'){assert.equal(r.restriction,'unrestricted');assert.equal(r.target.keyRestrictions?.isEnforced,false);assert.equal(r.target.isAttestationEnforced,true)}})
+test('fresh passkey configuration starts with known approved models rather than unrestricted keys',()=>{const r=resolvePasskeyTarget(null);assert.equal(r.kind,'target');if(r.kind==='target'){assert.equal(r.restriction,'allow');assert.equal(r.target.keyRestrictions?.isEnforced,true);assert.equal(r.target.isAttestationEnforced,true)}})
 test('passkey exclusion wins over All users, and incomplete membership stays unknown',()=>{
  const f=fixture('demo');const id=f.mapping.breakGlassUserIds[0];assert.ok(id)
  const config={id:'Fido2',state:'enabled',includeTargets:[{id:'all_users',allowedPasskeyProfiles:[]}],excludeTargets:[{id:'g'}],isSelfServiceRegistrationAllowed:true,isAttestationEnforced:true,keyRestrictions:{isEnforced:false,enforcementType:'allow',aaGuids:[]}}

@@ -144,9 +144,10 @@ test('answering the references recalculates the phases, and taking the answers b
     return (r.schedule.phases ?? []).filter((p) => p.wave > 0 && p.stepIds.some((id) => drawn(r.steps.find((s) => s.id === id)!))).length
   }
   const base = fixture('demo')
-  assert.equal(policyPhases(base), 0, 'unanswered, no policy phase is dated')
+  const initial = policyPhases(base)
+  assert.ok(initial > 0, 'approved optional exclusion defaults do not hold unrelated policies')
   assert.ok(policyPhases(omitted(base)) >= 2, 'answered, the rollout has its phases')
-  assert.equal(policyPhases({ ...base, mapping: applyStepDecisions(base.mapping, { [SOURCE]: { answers: {}, at: base.snapshot.asOf } }) }), 0, 'with the answers taken back, they are withdrawn')
+  assert.equal(policyPhases({ ...base, mapping: applyStepDecisions(base.mapping, { [SOURCE]: { answers: {}, at: base.snapshot.asOf } }) }), initial, 'taking answers back restores the approved default schedule')
 })
 
 test('moving the plan start moves every phase with it', () => {

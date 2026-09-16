@@ -46,13 +46,9 @@ function opened(name: 'demo' | 'demo-week2', id: string) {
 
 test('one tile per outstanding fix, each linking to its step or to Baseline mappings; no count tile stands in for them', () => {
   const { step, c, blockers } = opened('demo', 's-goal-mfa-all-users')
-  assert.deepEqual(c.fix.map((f) => f.key), ['mapping', `step:${EMERGENCY}`], 'the premise: a mapping and a step prerequisite are outstanding')
+  assert.deepEqual(c.fix.map(f => f.key), [`step:${EMERGENCY}`], 'unexplained optional source exclusions do not create public mapping blockers')
   const r = readinessOf(step, c, blockers)
-  const mapping = r.tiles.find((t) => t.key === 'mapping')!
-  assert.equal(mapping.label, CONTRACT.readiness.tiles.mapping)
-  assert.equal(mapping.value, BLOCKED_REASON.sourceMapping)
-  assert.equal(mapping.note, CONTRACT.fixMapping)
-  assert.ok(mapping.link && 'mappings' in mapping.link, 'the mapping tile does not link to Baseline mappings')
+  assert.equal(r.tiles.some(t => t.key === 'mapping'), false)
   const prereq = r.tiles.find((t) => t.key === `step:${EMERGENCY}`)!
   assert.equal(prereq.label, CONTRACT.readiness.tiles.prerequisite)
   assert.ok(prereq.link && 'href' in prereq.link && prereq.link.href === returnToStep(EMERGENCY), 'the step tile does not open its step')
@@ -61,8 +57,8 @@ test('one tile per outstanding fix, each linking to its step or to Baseline mapp
   // The demo's enforced policy is no longer held on its mappings (U21, B1), so the engine's two are stated here.
   const pending = (id: string): PrerequisiteBlocker => ({ kind: 'sourceMapping', id, abnormal: true, label: BOARD.blockers.sourceMapping, title: null })
   const mapped = readinessOf(step, c, [...blockers, pending('mapping:a'), pending('mapping:b')])
-  assert.equal(mapped.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 1)
-  assert.equal(r.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 1)
+  assert.equal(mapped.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 2)
+  assert.equal(r.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 0)
   for (const t of r.tiles) assert.ok(t.tone === 'warn' || t.tone === 'wait', `${t.key}: a satisfied tile among the unresolved`)
 })
 
@@ -128,7 +124,7 @@ test('the Emergency Access step is Why → Readiness → account selection → I
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
     return i
   }
-  const order = [at('<h4>{HEAD.why}</h4>'), at('<ReadinessSection'), at('{decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={HEAD.doneWhen}')]
+  const order = [at('<h4>{HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={HEAD.doneWhen}')]
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'the regions are out of order')
   const { step, ctx, c } = opened('demo', EMERGENCY)
   assert.ok((ctx.mapping.breakGlassUserIds?.length ?? 0) > 1, 'the premise: two accounts are selected')
@@ -163,7 +159,7 @@ test('the printed step and the screen read the same blockers, the row hands them
   assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
   // A prerequisite in another lane: the tab follows the step the link opened, or the link would open nothing on screen.
   assert.match(plan, /const openTab = open \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
-  assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\} \/>/)
+  assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\}[^>]*\/>/)
   assert.match(plan, /if \(open && openTab && openTab !== tab\) onTab\(openTab\)/)
   // Narrow widths: two across at the pack's first breakpoint, one at the second; nothing hidden.
   const narrow = (w: number): string => CSS.slice(CSS.indexOf(`@media (max-width: ${w}px)`))

@@ -1,0 +1,41 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until a scan rebuilds this step",
+  "fact": "Enforced",
+  "badge": "On Hold",
+  "bar": "After Turn Off Security Defaults",
+  "rail": "Not scheduled",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Inforcer Application",
+      "state": "Application not established"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "after: Identify the Inforcer application"
+    },
+    {
+      "label": "Prerequisite · Waiting",
+      "state": "Turn Off Security Defaults"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
+  "when": "After prerequisites"
+}

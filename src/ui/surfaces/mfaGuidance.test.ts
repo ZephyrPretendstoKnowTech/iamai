@@ -311,17 +311,10 @@ test('the campaign step hands person-level setup to MFA Readiness and keeps its 
     const text = lines.join('\n')
     // The handoff.
     assert.ok(lines.includes(GUIDE_POINTER), `${name}: the step points at MFA Readiness`)
-    // The policy consequence and the counts that decide it are still there.
-    // Editorial batch C: the step's Why is the register's.
-    assert.ok(text.includes('Registration alone can hide a rollout problem'), `${name}: the consequence stands`)
-    assert.ok(/\d+ (?:people|person) with /.test(text), `${name}: the people the campaign has to reach, counted`)
-    assert.ok(/Require Phishing-Resistant MFA for Admins waits on each/.test(text), `${name}: what waits on it`)
-    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA.'), `${name}: and the admin completion gate`)
-    // The readiness the plan waits on, where this scan measured one at all.
-    if (name !== 'messy') {
-      assert.ok(/readiness \d+%/.test(text), `${name}: the readiness the plan waits on`)
-      assert.ok(text.includes('Readiness reaches 90% of active people'), `${name}: the readiness completion gate`)
-    }
+    assert.ok(text.includes('Help people set up the sign-in methods'), `${name}: preparation purpose`)
+    assert.ok(text.includes('Everyone in this step has a suitable registered MFA method'), `${name}: exact preparation cohort`)
+    assert.ok(text.includes('Administrators have a phishing-resistant method'), `${name}: stronger administrator requirement`)
+    assert.doesNotMatch(text, /Readiness reaches 90%/, 'preparation cannot mask people without a suitable method')
     // And the long per-method manual is not back: no guide's instruction list
     // renders inline on the step.
     for (const g of METHOD_GUIDES) {

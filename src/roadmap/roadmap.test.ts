@@ -49,18 +49,21 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     tenantId: 't',
     asOf: '2026-08-26T00:00:00Z',
     sources: {
+      users: {status:'ok', coveredWindow:null, reason:null, asOf:''},
+      authMethods: {status:'ok', coveredWindow:null, reason:null, asOf:''},
+      registrationDetails: {status:'ok', coveredWindow:null, reason:null, asOf:''},
       signInEvidence: { status: 'ok', coveredWindow: { from: '2026-07-27T00:00:00Z', to: '2026-08-26T00:00:00Z' }, reason: null, asOf: '' },
     } as unknown as TenantSnapshot['sources'],
     // The role read is declared so the exclusions group's own checks can run: a
     // check that cannot see the directory's roles is unknown, and an unknown
     // check is not a pass, so the group would never be one a policy may name
     // (Foundation C).
-    config: { caPolicies: { status: 'ok', reason: null, rows: [] }, roleAssignments: { status: 'ok', reason: null, rows: [] } } as unknown as TenantSnapshot['config'],
-    registrationDetails: [],
+    config: { authMethodsPolicy: { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: false } }] }] }, caPolicies: { status: 'ok', reason: null, rows: [] }, roleAssignments: { status: 'ok', reason: null, rows: [] } } as unknown as TenantSnapshot['config'],
+    registrationDetails: users.map(u => ({id:u.id,userPrincipalName:u.userPrincipalName,isMfaCapable:true,isMfaRegistered:true,isPasswordlessCapable:true,methodsRegistered:['fido2SecurityKey'],defaultMfaMethod:null,userPreferredMethodForSecondaryAuthentication:null,isAdmin:u.id==='u0',userType:u.userType})),
     users,
     devices: [],
     spActivity: [],
-    authMethods: {},
+    authMethods: Object.fromEntries(users.map(u => [u.id, [{ kind: 'fido2' }]])),
     appSignInSummary: [],
     signInEvidence: {},
     evidencePolicyResults: [],
@@ -159,6 +162,7 @@ function build(args: {
     strengths,
     groupMembers: new Map(),
   })
+  for (const [i, row] of snapshot.registrationDetails.entries()) { row.isMfaCapable = i < (args.ready ?? 10); row.methodsRegistered = row.isMfaCapable ? ['fido2SecurityKey'] : []; snapshot.authMethods[row.id] = row.isMfaCapable ? [{ kind: 'fido2' }] : [] }
   const input: RoadmapInput = {
     planId: PLAN,
     coverage,
@@ -240,12 +244,12 @@ test('4: partial weaker-control → adjust step with the exact field change', ()
   assert.ok((step.action.changes?.length ?? 0) > 0, 'field-by-field changes')
 })
 
-test('5: MFA step with readiness 60% → blocked with the unblocking numbers', () => {
+test('5: MFA step with 6 of 9 in-scope accounts prepared → blocked with the unblocking numbers', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline], ready: 6 })
   const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
-  assert.ok(step.blockers.some((b) => typeof b.binding === 'string' && b.binding.includes('60%') && b.binding.includes('90%')))
+  assert.ok(step.blockers.some((b) => typeof b.binding === 'string' && b.binding.includes('67%') && b.binding.includes('90%')))
 })
 
 test('6: re-scan matching — report-only, then exit criterion, then enabled', () => {

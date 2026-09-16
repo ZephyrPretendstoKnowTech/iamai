@@ -206,7 +206,6 @@ switch ($Mode) {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: no confirmed exclusions group exists in {{tenant.displayName}} yet. The next action creates one assigned, non-mail-enabled security group containing only the owner-confirmed emergency access accounts, or confirms an existing group that already meets that description.
 
@@ -214,7 +213,6 @@ Creating or selecting the group does not change any policy. After creation, a re
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the exclusions group or a policy's reference to it differs from the intended result. Group: {{group.current.id}}. Current members: {{group.current.members}}. Policy needing the exclusion: {{policy.current.displayName}} ({{policy.current.id}}). The correction changes only that difference and keeps the policy's other settings and approved exclusions. If removing a member through Graph, the request must end in `/$ref`; never delete the directory object itself.
 
@@ -222,7 +220,6 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the exclusions group and the policies that should exclude it need verification. Group type evidence: {{group.evidence.type}}. Policies still missing the exclusion: {{policy.evidence.missingExclusions}}.
 
@@ -230,7 +227,6 @@ Check the group's object ID, that its direct members are exactly the owner-confi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["needsDecision","blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name, or one whose membership could not be read, is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.
 @@IAMAI-END

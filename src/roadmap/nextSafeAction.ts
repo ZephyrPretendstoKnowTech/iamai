@@ -19,7 +19,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import type { Condition } from './lifecycle.ts'
-import { nextMilestone } from './lifecycle.ts'
+import { nextMilestone, workflowReviewIsCurrent } from './lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from './operations.ts'
 import { enforcesOnRun, implementationOffered, operationsOf, policyResult, submitsEnforcement, submitsEnforcementOnly, validOperations } from './operations.ts'
 
@@ -63,7 +63,7 @@ export function implementationIsCurrent(step: Step): boolean {
  * (report-only observation) does not stop the action that is due now — verifying.
  */
 export function executableNow(step: Step): boolean {
-  return implementationIsCurrent(step) && policyResult(step).kind !== 'unavailable'
+  return workflowReviewIsCurrent(step) || implementationIsCurrent(step) && policyResult(step).kind !== 'unavailable'
 }
 
 /**
@@ -97,6 +97,7 @@ export function nextSafeAction(step: Step): SafeAction {
   if (s.condition === 'baseline-conflict') return { kind: 'resolve-source', executable: false, blockedBy: 'baseline-conflict', enforceable: false }
   if (s.satisfied || step.status === 'done') return NONE
   if (s.condition === 'needs-decision') return { kind: 'decide', executable: false, blockedBy: 'needs-decision', enforceable: false }
+  if (workflowReviewIsCurrent(step)) return { kind: 'prepare', executable: true, blockedBy: null, enforceable: false }
   const result = policyResult(step)
   const executable = executableNow(step)
   const unavailable = result.kind === 'unavailable' ? result.reason : null

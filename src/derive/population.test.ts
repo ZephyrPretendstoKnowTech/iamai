@@ -7,6 +7,7 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import { activePeopleIds, campaignIdsFor, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { readinessView } from './mfaReadiness.ts'
+import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { fillText } from '../content/render.ts'
@@ -58,7 +59,9 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       assert.ok(m !== null || row === 'No user impact', `${name} ${s.id}: the row counts people and never names them (${row})`)
       const rowCount = m ? Number(m[1]) : 0
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
-      assert.equal(ex.n, view.active, `${name} ${s.id}: the lead's {n}`)
+      assert.equal(ex.n, s.kind === 'check' ? s.population.total : view.active, `${name} ${s.id}: the lead's {n} uses reviewed accounts for check steps`)
+      const reviewCount = rowWho(s).match(/^(\d+) accounts?$/)
+      if (reviewCount) assert.equal(Number(reviewCount[1]), s.population.total, `${s.id}: actual row Impact counts the same reviewed accounts`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)
       assert.equal(ex.people, view.active, `${name} ${s.id}: the lead's {people}`)
       assert.equal(ex.admins, view.admins, `${name} ${s.id}: the lead's {admins}`)

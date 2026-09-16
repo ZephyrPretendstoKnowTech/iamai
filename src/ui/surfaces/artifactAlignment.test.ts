@@ -21,7 +21,8 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView } from './stepExport.ts'
-import { NO_POLICY_REASONS, badgeLabel, stepContract } from './stepContract.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { cleanupText, groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
@@ -98,7 +99,8 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
       // Foundation A's reach, its outstanding prerequisites, its completion, and
       // the one answer the four implementation channels read.
       assert.equal(v.who, k.who?.text ?? null, `${where}: who`)
-      assert.deepEqual(v.fix, k.fix.map((x) => x.text), `${where}: fix`)
+      const configuration = readinessOf(s, k).tiles.filter(t => t.key.startsWith('configuration:')).map(t => `${t.label}: ${t.value}. ${t.note}`)
+      assert.deepEqual(v.fix, [...new Set([...k.fix.map((x) => x.text), ...configuration])], `${where}: fix and visible configuration findings`)
       assert.deepEqual(v.doneWhen, k.doneWhen, `${where}: done when`)
       assert.equal(v.implementation, k.implementation.offered, `${where}: implementation offered`)
       assert.equal(v.implementation, implementationOffered(s), `${where}: the channels and the view disagree`)
@@ -142,9 +144,9 @@ test('013.A: the calendar entry and the prompt block are the same run of lines',
   }
 })
 
-// ---- B. work the Plan withholds leaks no implementation ----
+// ---- B. unresolved operations do not fabricate mutations; useful guidance remains available ----
 
-test('013.B: where the Plan offers no implementation, no artifact carries one', () => {
+test('013.B: unresolved operations retain useful portal guidance without invented mutations or dates', () => {
   const reasons = new Set<string>()
   for (const c of CASES) {
     for (const s of c.run.steps) {
@@ -163,12 +165,19 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
       assert.equal(v.dates, null, `${where}: a Dates line`)
       assert.equal(v.ifWrong, null, `${where}: a rollback for work nobody can do`)
       assert.equal(c.entry(s), undefined, `${where}: a calendar entry`)
-      // And the prose artifacts carry the resolution, not the instructions.
+      // Readiness remains first, alongside the same useful instructions the screen offers.
       const said = [v.whatToDo.join('\n'), c.prompt(s)]
       for (const text of said) {
         assert.equal(/"conditions"|includeUsers|grantControls/.test(text), false, `${where}: a policy body reached a prose artifact`)
-        assert.equal(/Conditional Access → Policies/.test(text), false, `${where}: a portal instruction reached a prose artifact`)
+        assert.doesNotMatch(text, /This format has no output|You can copy this guidance|Values still to resolve|\{\{[^}]+\}\}/, `${where}: a placeholder or repeated copy disclaimer reached an artifact`)
       }
+      const body = stepBodyOf(s, c.ctx(s), { lane: c.lane(s) })
+      const portal = body.artifacts.find(a => a.id === 'portal')
+      if (portal) {
+        assert.ok(portal.text().trim().length > 0, `${where}: empty displayed portal channel`)
+        assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
+      }
+      assert.equal(v.whatToDo[0], stepContract(s, c.ctx(s), undefined, c.lane(s)).whatToDo.text, `${where}: readiness action no longer first`)
       // The completion is one line: the resolution where there is no policy to
       // state an end of, and otherwise the policy's end state — what clears the
       // hold is Fix before continuing's (owner, 2026-09-11); never the rollout's gates.

@@ -11,7 +11,7 @@
 This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
 4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.
 @@IAMAI-END
@@ -120,7 +120,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to 4 hours, Persistent browser session set to Never persistent, and no grant control.
 @@IAMAI-END
@@ -138,25 +137,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. These results show which admin browser sign-ins the policy would apply to; they do not show the re-authentication experience, which needs a controlled test after enforcement. Other session policies that apply to the same admins can change the result.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, Sign-in frequency of 4 hours, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Shorten Admin Sessions** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI marks **Shorten Admin Sessions** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END

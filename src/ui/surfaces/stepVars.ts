@@ -159,7 +159,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     people: view?.active,
     // The step's people: the active ones it touches, or, for a check step, the
     // accounts it checks (the dormant accounts are by definition not active).
-    n: view?.active,
+    n: step.kind === 'check' ? step.population.total : view?.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names: this

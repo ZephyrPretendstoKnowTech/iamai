@@ -26,13 +26,12 @@ import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
-import { FEEDBACK_ADDRESS } from '../../feedback.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
-import { list } from '../../copy/statements.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
+import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
@@ -115,16 +114,6 @@ export const CHANNEL_TABS: TabItem[] = [
   { id: 'ai', label: CONTRACT.implementation.ai },
   { id: 'email', label: CONTRACT.implementation.email },
 ]
-
-/**
- * A channel with no content to show (content review D2): its tab still draws,
- * with the one line that says its content could not be loaded and where to
- * report it, and nothing to copy. No channel is ever suppressed.
- */
-function unavailableArtifact(id: Channel, reason: string): Artifact {
-  const text = reason || fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })
-  return { id, form: 'markdown', lines: [], text: () => text, note: null, unavailable: true }
-}
 
 /** The tabs the Implementation region draws for these artifacts, in the approved order. */
 export function channelTabsOf(artifacts: readonly Artifact[]): TabItem[] {
@@ -282,9 +271,8 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.
-  // PowerShell and JSON are offered on Conditional Access policy steps only
-  // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
-  // work, and filtering here keeps the tabs, the viewer and Copy on one list.
+  // Policy artifacts use the resolved operation. Supporting steps retain the
+  // substantive formats their package defines, including inspection resources.
   const machine = cs.kind === 'policy'
   const shownProjection = preview ?? projection
   // A package channel whose every line waited on a value IAMAI does not hold (the AI
@@ -293,10 +281,15 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     packaged
       ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
-  ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
-  // Keep every channel supported somewhere in this step's lifecycle. A temporarily
-  // unavailable channel explains the next action; a permanently unsupported format has no tab.
-  const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && (machine || (ch !== 'ps' && ch !== 'json'))) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
+  ).filter((a) => resourceChannelAllowed(step, a.id))
+  // Keep every substantively supported lifecycle format. Fill missing machine
+  // projections with clearly labelled inspection, never a placeholder message.
+  const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && resourceChannelAllowed(step, ch)) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
+  const resources = pkg && pkgState && pkgBindings && pkgRuntime ? lifecycleResources(pkg, pkgState, pkgBindings, pkgRuntime.runtime, key => `‹${key.split('.').join(' ')}›`) : []
+  for (const resource of resources) {
+    const artifact = packageArtifact(resource, grounding)
+    if (resourceChannelAllowed(step, artifact.id) && !produced.some(a => a.id === artifact.id) && artifact.text().trim()) produced.push(artifact)
+  }
   const explanations = pkg && pkgState && pkgBindings && pkgRuntime ? projectExplanation(pkg, pkgState, pkgBindings, pkgRuntime.runtime).channels : []
   for (const explanation of explanations) {
     const artifact = packageArtifact(explanation, grounding)
@@ -322,14 +315,45 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
     supported.add('portal')
   }
-  const artifacts: Artifact[] = CHANNEL_TABS.filter((t) => supported.has(t.id as Channel)).map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel, fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })))
+  for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)
+  // A retained format always contains actual work or inspection, never a message
+  // saying the format has nothing to offer. Resolved mutations remain first choice.
+  for (const channel of ['ps', 'json'] as const) {
+    const index = produced.findIndex(a => a.id === channel)
+    const unresolved = index >= 0 && /‹[^›]+›/.test(produced[index].text())
+    if (unresolved) produced.splice(index, 1)
+    if (supported.has(channel) && !produced.some(a => a.id === channel)) produced.push(inspectionResource(step, channel))
+  }
+  if (supported.has('email')) {
+    const existing = produced.findIndex(a => a.id === 'email')
+    if (existing >= 0) produced.splice(existing, 1)
+    produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
+  }
+  if (step.id === 's-verify-mfa') {
+    const lines = [...(Array.isArray(w.steps) ? w.steps : []), ...(Array.isArray(w.generic) ? w.generic : [])].filter((line): line is string => typeof line === 'string').map(line => fillText(line, ex)).filter(line => line.trim() && !/\{[^}]+\}/.test(line))
+    for (const channel of ['portal', 'ps', 'ai'] as const) {
+      const existing = produced.findIndex(a => a.id === channel)
+      if (existing >= 0) produced.splice(existing, 1)
+      supported.add(channel)
+    }
+    produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
+    produced.push(inspectionResource(step, 'ps'))
+    produced.push({ id: 'ai', form: 'markdown', lines: [], text: () => aiBriefingText('Help prepare the people in this plan for their actual MFA requirements. Explain who needs a method, which registered methods satisfy their target, and who needs help. Distinguish registered-method readiness from a tested workflow. Explain useful Microsoft Authenticator registration-campaign options without claiming a campaign object is required or already configured.', grounding('')), note: null })
+  }
+  if (step.id === 's-prereq-device-plan') {
+    const existing = produced.findIndex(a => a.id === 'portal')
+    if (existing >= 0) produced.splice(existing, 1)
+    supported.add('portal')
+    produced.push(deviceSetupResource(ctx))
+  }
+  if (supported.has('portal') && !produced.some(a => a.id === 'portal')) {
+    const lines = portalLines.length ? portalLines : policyInspectionLines(step)
+    produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
+  }
+  const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step))
   const W = CONTRACT.implementation
-  // Why a preview's work cannot be copied: the values still to resolve, never the
-  // blocker again. No Planned work banner draws it over the channels (U4); it is
-  // the disabled Copy's reason (U18, B5).
-  // The lead follows the step's intended next action, and the export reads the same
-  // lines (stepPackage.ts previewNoteLines).
-  const previewNote = preview ? { lines: previewNoteLines(step, contract, preview.hold) } : null
+  // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
+  const previewNote = null as { lines: string[] } | null
   // A channel the package could not finish on its own (project.ts `degraded`) is
   // not offered, and nothing stands in for it (S6, A1 §16.2): a line that only
   // says a channel is missing is not implementation content, and whatever really
@@ -339,7 +363,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // A step the baseline defines two ways draws no channels at all, so it says
   // nothing about where they come from (content review S4).
   const review = conflictWords === null ? packageReviewFor(step) : null
-  const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded] : []
+  const notes: string[] = []
   // Every step draws its Implementation region, a decision, a question and a check
   // included (content review D2, which replaces the owner's 2026-09-11 rule that a
   // step with nothing to implement by design draws none).

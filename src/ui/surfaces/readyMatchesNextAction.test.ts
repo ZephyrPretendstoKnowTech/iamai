@@ -41,12 +41,9 @@ test('a report-only create waiting only on values reads Ready on the board, the 
     assert.equal(exp.state, 'Ready · Create', what)
     assert.equal(lane.label, exp.state, `${what}: board and export disagree`)
     assert.match(exp.whatToDo[0], /^Create the policy in report-only/, `${what}: the report-only create was not kept`)
-    assert.ok(body.previewNote, `${what}: the create became copyable, which is not this fix`)
-    assert.equal(body.previewNote.lines[0], W.textValues, what)
-    assert.match(body.previewNote.lines[1] ?? '', /^Values still to resolve: /, what)
-    // The export carries the screen's own note lines, and neither says "not ready to run".
-    assert.deepEqual(exp.whatToDo.slice(-body.previewNote.lines.length), body.previewNote.lines, `${what}: the export's note is not the screen's`)
-    for (const line of [...exp.whatToDo, ...body.previewNote.lines]) assert.equal(line.includes(NOT_READY), false, `${what}: ${line}`)
+    assert.equal(body.previewNote, null, what)
+    assert.ok(body.artifacts.every(a => a.unavailable !== true), what)
+    for (const line of exp.whatToDo) assert.equal(line.includes(NOT_READY) || line === W.text || line === W.textValues, false, `${what}: ${line}`)
   }
 })
 
@@ -54,6 +51,6 @@ test('a step whose next action is to clear a hold keeps the hold, the prerequisi
   const { step, body, exp } = open(fixture('demo'), 's-goal-mfa-all-users')
   assert.equal(implementationIsCurrent(step), false)
   assert.equal(nextSafeAction(step).executable, false, 'the hold was released')
-  assert.equal(body.previewNote?.lines[0], W.text)
+  assert.equal(body.previewNote, null)
   assert.equal(exp.whatToDo.some((l) => l.startsWith('Enable policy:') || l === W.text || l === W.textValues), false, JSON.stringify(exp.whatToDo))
 })

@@ -32,7 +32,7 @@ test('passkey profiles offer an early manual review without fabricating an updat
   assert.ok(step.blockers.length > 0)
   assert.equal(passkeyBindings(f.snapshot)['passkey.target.fido2Configuration'], undefined)
   const body = stepBodyOf(step, ctx, { lane: laneViewFor(step, r.steps) })
-  assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /profile assigned to those accounts/)
+  assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /review every applicable profile/)
   assert.doesNotMatch(body.artifacts.find(a => a.id === 'portal')!.text(), /Apply the resolved change/)
 })
 

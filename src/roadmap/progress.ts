@@ -1,3 +1,4 @@
+import { ownerConfirmationOf } from './decisions.ts'
 // Progress on re-scan (roadmap.md §7) and the skip rule (§9 test 8). Pure.
 import type { CoverageReport } from '../coverage/types.ts'
 import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
@@ -155,13 +156,13 @@ export function decisionsOf(
   }
   // Owner confirmations travel as written — when, and the fingerprint of what
   // they were given against — and anything else in their place is not one.
-  const confirmations: Record<string, Record<string, { at: string; basis: string }>> = {}
+  const confirmations: Record<string, Record<string, import('./decisions.ts').OwnerConfirmation>> = {}
   for (const [stepId, byId] of Object.entries((rec as { confirmations?: unknown } | null | undefined)?.confirmations ?? {})) {
     if (!byId || typeof byId !== 'object') continue
-    const kept: Record<string, { at: string; basis: string }> = {}
+    const kept: Record<string, import('./decisions.ts').OwnerConfirmation> = {}
     for (const [id, c] of Object.entries(byId as Record<string, unknown>)) {
-      const v = c as { at?: unknown; basis?: unknown } | null
-      if (v && typeof v.at === 'string' && typeof v.basis === 'string') kept[id] = { at: v.at, basis: v.basis }
+      const v = ownerConfirmationOf(c)
+      if (v) kept[id] = v
     }
     if (Object.keys(kept).length > 0) confirmations[stepId] = kept
   }

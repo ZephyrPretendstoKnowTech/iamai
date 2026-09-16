@@ -61,16 +61,20 @@ export function countryName(code: string): string {
 }
 
 /** The tenant's country named location whose set equals the allowed list, if any. */
-export function tenantCountryLocation(snapshot: TenantSnapshot, allowed: string[]): { id: string; displayName: string } | null {
+export function tenantCountryLocation(snapshot: TenantSnapshot, allowed: string[], preferredIds: readonly string[] = []): { id: string; displayName: string } | null {
   const want = [...new Set(allowed.map((c) => c.toUpperCase()))].sort().join(',')
-  if (want === '') return null
-  for (const raw of snapshot.config.namedLocations?.rows ?? []) {
-    const l = raw as { id?: string; displayName?: string; '@odata.type'?: string; countriesAndRegions?: unknown }
-    if (!String(l['@odata.type'] ?? '').includes('countryNamedLocation') || !Array.isArray(l.countriesAndRegions)) continue
-    const have = [...new Set(l.countriesAndRegions.map((c) => String(c).toUpperCase()))].sort().join(',')
-    if (have === want && typeof l.id === 'string') return { id: l.id, displayName: l.displayName ?? l.id }
-  }
-  return null
+  if (want === '' || snapshot.config.namedLocations?.status !== 'ok') return null
+  const locations = snapshot.config.namedLocations.rows.map(raw => raw as { id?: string; displayName?: string; '@odata.type'?: string; countriesAndRegions?: unknown; countryLookupMethod?: string; includeUnknownCountriesAndRegions?: boolean })
+  const exact = locations.filter(l => String(l['@odata.type'] ?? '').includes('countryNamedLocation') && Array.isArray(l.countriesAndRegions) && typeof l.id === 'string'
+    && [...new Set(l.countriesAndRegions.map(c => String(c).toUpperCase()))].sort().join(',') === want
+    && l.countryLookupMethod === 'clientIpAddress' && l.includeUnknownCountriesAndRegions === false)
+  // Explicit identity wins; if it drifts, correct that object rather than quietly
+  // changing all dependent references to another equally named location.
+  const selected = locations.filter(l => l.id && preferredIds.includes(l.id) && String(l['@odata.type'] ?? '').includes('countryNamedLocation'))
+  const candidates = selected.length ? exact.filter(l => selected.some(s => s.id === l.id)) : exact
+  if (selected.length && candidates.length !== selected.length) return null
+  const match = candidates.sort((a, b) => a.id!.localeCompare(b.id!))[0]
+  return match ? { id: match.id!, displayName: match.displayName ?? match.id! } : null
 }
 
 /** True when a baseline policy uses the location as "everywhere except" with a block: the allowlist-style geo policy. */
@@ -91,3 +95,9 @@ export function isAllowlistGeoPolicy(p: { conditions?: { locations?: { includeLo
   const includeAll = (loc.includeLocations ?? []).some((l) => l.toLowerCase() === 'all')
   return includeAll && (loc.excludeLocations ?? []).length > 0 && (p.grantControls?.builtInControls ?? []).includes('block')
 }
+
+/** ISO two-letter country/region catalogue for Graph countryNamedLocation.
+ * https://learn.microsoft.com/graph/api/resources/countrynamedlocation
+ * Kept separate from observed suggestions: choosing a country never claims activity there.
+ */
+export const COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ')

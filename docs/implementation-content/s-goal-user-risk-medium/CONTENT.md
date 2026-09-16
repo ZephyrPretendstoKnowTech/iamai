@@ -248,13 +248,11 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisites","channel":"aiInfo","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state for Reset Passwords for Medium-Risk Users in {{tenant.displayName}} is waiting on prerequisites: MFA registration for users in scope, password writeback for synchronized users, the guest/external exclusion, review of current risky users, and confirmation that the separate High-risk policy stays in place. SSPR is not the mechanism for the Conditional Access secure password change; do not treat SSPR alone as a blocker.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; Require multifactor authentication and Require password change, with all selected controls required; no session controls.
 
@@ -262,7 +260,6 @@ This policy covers Medium user risk only. Keep the separate High-risk control un
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state corrects the existing Medium user-risk policy. Differences IAMAI found: {{policy.current.semanticMismatches}}. Correct the same policy ID; do not create a new policy. The intended grant is built-in MFA and password change with AND, as Microsoft Graph v1.0 requires. Do not add exclusions or unrelated conditions.
 
@@ -274,7 +271,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The Medium user-risk policy is in Report-only. IAMAI evidence: Medium-risk users {{evidence.atRiskUsers}}; MFA registration {{evidence.mfaRegistration}}; password writeback {{evidence.hybridWriteback}}; High-risk policy {{evidence.highRiskPolicy}}; risk investigation {{evidence.riskInvestigation}}.
 
@@ -282,7 +278,6 @@ NEXT STEP: explain which of these still block enforcement. Report-only results d
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state enables the reviewed Medium user-risk policy. The only change is this policy's state from Report-only to On; users, exclusions, conditions and grant stay as they are. Before enabling, check that the same policy ID still matches the intended settings, that MFA registration and password writeback prerequisites are met, and that the separate High-risk policy remains enabled. This policy covers Medium user risk only and does not replace High-risk coverage.
 @@IAMAI-END

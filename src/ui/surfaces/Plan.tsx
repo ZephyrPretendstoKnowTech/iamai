@@ -1,3 +1,4 @@
+import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
 import { structuralWords } from '../../content/content.ts'
 // The Plan (prompt 48 Part 2, target-state §5). The front door once a scan
 // exists: two header lines, the phases as rows, the footer. Clicking a row opens
@@ -55,7 +56,7 @@ type PlanPage = {
   settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
   progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
-  howTo: { link: string; items: string[] }
+  howTo: { link: string; items: string[]; intro?: string; legend?: { label: string; description: string }[] }
 }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
@@ -120,6 +121,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     return (
       <section className="surface">
         <h1>{PP.h1}</h1>
+      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
         <p>
           {account ? app.plan.needsScan : S.scanNeedsConnect} <a href="#/connect">{account ? app.plan.scanLink : S.connectLink}</a>
         </p>
@@ -127,10 +129,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
     )
   }
   const c = data.computed
+  if (data.loadError) return <section className="surface plan"><h1>Plan</h1><div role="alert"><p>The saved plan could not be read from this browser.</p><Button onClick={data.retryLoad}>Retry Loading</Button></div></section>
   if (!c) {
     return (
       <section className="surface">
         <h1>{PP.h1}</h1>
+      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
         <p className="reason">{S.loading}</p>
       </section>
     )
@@ -212,7 +216,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -229,7 +233,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         workType: 'setup',
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids) => data.markCleanupDone(r.kind, date, ids)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -290,6 +294,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
 
   return (
     <section className="surface plan">
+      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
       <h1>{P.h1}</h1>
       {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
           repeated what the rows below already say and named blockers the board
@@ -348,11 +353,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
       </p>
       {showHow && (
         <div className="plan-how no-print" id={PLAN_HOW_ID}>
-          <ul>
-            {PP.howTo.items.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
+          <p>{PP.howTo.intro ?? PP.howTo.items[0]}</p>
+          <hr />
+          <h3>Legend</h3>
+          <dl className="plan-legend">{PP.howTo.legend?.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.description}</dd></div>)}</dl>
         </div>
       )}
       {showSettings && <Settings mappingRequest={mappingRequest} data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
@@ -362,7 +366,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
-      <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} />
+      <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} openLane={open ? readings.get(open)?.lane : undefined} onFocus={setFocus} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -462,11 +466,12 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * A child with the one effect, because the Plan's rows are built after its
  * early returns and a hook cannot sit there.
  */
-function TabFollowsOpenStep({ open, openTab, tab, onTab }: { open: string | null; openTab: LaneTab | null; tab: LaneTab; onTab: (t: LaneTab) => void }) {
+function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: LaneTab | null; tab: LaneTab; onTab: (t: LaneTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
   useEffect(() => {
     if (open && openTab && openTab !== tab) onTab(openTab)
+    if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed', showDeferred: openLane === 'Deferred' })
     // Only when the opened step changes: choosing another tab afterwards is the person's.
-  }, [open, openTab])
+  }, [open, openTab, openLane])
   return null
 }
 
@@ -511,7 +516,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
   open: boolean
   onToggle: () => void
   onScan?: (returnTo: string) => void
-  onDone: (date: string, accountIds?: string[]) => void
+  onDone: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'signInAtByAccount' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   notes: NotAssessedNotes
   onNote: (policy: string, reason: string | null) => void
   tenant: string
@@ -539,7 +544,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
@@ -578,6 +583,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
   directory: DirectoryEvidence
   decision: StepDecision | null
   onDecide: (decision: StepDecisionInput) => void
+  saveStatus: 'idle' | 'saving' | 'saved' | 'failed'
   confirmations: Readonly<Record<string, OwnerConfirmation>>
   onConfirm: (confirmed: Record<string, Pick<OwnerConfirmation, 'basis'>>) => void
   onUnconfirm: (prerequisites: string[]) => void
@@ -616,6 +622,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
           onOpenMappings={onOpenMappings}
           decision={decision}
           onDecide={onDecide}
+          saveStatus={saveStatus}
           confirmations={confirmations}
           onConfirm={onConfirm}
           onUnconfirm={onUnconfirm}
@@ -647,6 +654,7 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
   // Keep a local date draft until the owner explicitly saves a valid range.
   const [freezeDays, setFreezeDays] = useState({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })
   const freezeInput = freezeInputOf(freezeDays.from, freezeDays.to)
+  const freezeDirty = freezeDays.from !== (data.freeze?.from ?? '').slice(0, 10) || freezeDays.to !== (data.freeze?.to ?? '').slice(0, 10)
   const setFreezeDay = (key: 'from' | 'to', day: string) => {
     const next = { ...freezeDays, [key]: day }
     setFreezeDays(next)
@@ -655,6 +663,7 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
   return (
     <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
+      <p className="reason" role="status">{freezeDirty ? 'Unsaved Schedule Changes' : data.persistence === 'saving' ? 'Saving…' : data.persistence === 'saved' ? 'Saved' : data.persistence === 'failed' ? 'Changes Could Not Be Saved' : ''}</p>
       <label className="rows">
         <span>{PP.settings.planStarts}</span>
         <span>{absoluteDate(start)}</span>
@@ -680,9 +689,9 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
       </div>
       {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" id="plan-freeze-error" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
       <p className="reason" id="plan-freeze-note">{PP.settings.freezeNote}</p>
-      <p className="reason">{PP.settings.freezeSaved}</p>
+      {data.freeze && !freezeDirty && data.persistence === 'saved' && <p className="reason" role="status">{PP.settings.freezeSaved}</p>}
       <p className="actions">
-        <Button variant="primary" disabled={freezeInput.reason !== null || freezeInput.freeze === null} onClick={() => { if (freezeInput.freeze && freezeInput.reason === null) data.setFreeze(freezeInput.freeze) }}>{PP.settings.saveFreeze}</Button>
+        <Button variant="primary" disabled={!freezeDirty || freezeInput.reason !== null || freezeInput.freeze === null} onClick={() => { if (freezeInput.freeze && freezeInput.reason === null) data.setFreeze(freezeInput.freeze) }}>{PP.settings.saveFreeze}</Button>
         <Button variant="secondary" onClick={() => setFreezeDays({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })}>{PP.settings.cancelFreeze}</Button>
         {data.freeze && <Button variant="tertiary" onClick={() => { data.setFreeze(null); setFreezeDays({ from: '', to: '' }) }}>{PP.settings.removeFreeze}</Button>}
       </p>
@@ -704,7 +713,7 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
         <input type="text" value={data.signature} onChange={(e) => data.setSignature(e.currentTarget.value)} />
       </label>
       </details>
-      {data.mapping && <BaselineMappings openRequest={mappingRequest} steps={steps} snapshot={snapshot} mapping={data.mapping} nameOf={nameOf} groups={data.groups} saved={data.stepDecisions[BASELINE_MAPPINGS_KEY] ?? null} onDecide={(d) => data.onDecide(BASELINE_MAPPINGS_KEY, d)} />}
+      {/* Unexplained source mappings remain internal until Jon clarifies them. */}
       <p className="actions">
         <Button variant="secondary" onClick={onClose}>
           {PP.settings.close}

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
-import { projectImplementation } from './project.ts'
+import { projectImplementation, planSafely, NO_RUNTIME } from './project.ts'
 import { passkeyBindings, resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
 import type { Fido2Configuration } from '../../roadmap/passkeySettings.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -29,7 +29,7 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
   const tenant: Fido2Configuration = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }
   const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(scanOf(tenant)))
   assert.equal(p.hold, null, JSON.stringify(p.hold))
-  assert.deepEqual(p.channels.map((c) => c.channel).sort(), ['aiInfo', 'entra', 'json'])
+  assert.deepEqual(p.channels.map((c) => c.channel).sort(), ['aiInfo', 'entra', 'json', 'powershell'])
   const json = p.channels.find((c) => c.channel === 'json')!
   assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: FIDO2 }])
   const body = JSON.parse(json.text)
@@ -42,12 +42,12 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
   assert.doesNotMatch(json.text, /microsoftAuthenticator|temporaryAccessPass|lifetimeInMinutes/)
   assert.equal(p.degraded, undefined, JSON.stringify(p.degraded))
   const entra = p.channels.find((c) => c.channel === 'entra')!.text
-  assert.match(entra, /removing an allowed model stops that model's existing keys from signing in/)
-  assert.ok(entra.includes(HARDWARE), 'the retained model is named')
+  assert.match(entra, /attestation/i)
+  assert.ok(JSON.stringify(body.keyRestrictions).includes(HARDWARE), 'the retained model stays in the exact request')
   // A settings step draws no JSON tab (stepBody.ts: machine channels are Conditional Access policy steps'), so Entra names none.
   assert.doesNotMatch(entra, /JSON tab/)
   assert.doesNotMatch(entra, /lifetime (of|to) \d|\d+ (minutes|hours|days)/)
-  assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /A key restriction applies at sign-in as well as registration/)
+  assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /passkey|FIDO2/i)
 })
 
 test('passkey settings: with no readable configuration no request body is built at all', () => {
@@ -55,11 +55,12 @@ test('passkey settings: with no readable configuration no request body is built 
   assert.equal(p.channels.some((c) => c.channel === 'json'), false, JSON.stringify(p.channels.map((c) => c.channel)))
 })
 
-test('passkey settings: the script that writes all three methods is not offered while two of them have no target; Verify is', () => {
+test('passkey settings: Apply writes only FIDO2; missing configuration keeps Verify available', () => {
   const script = PASSKEY.blocks['powershell.run']
-  assert.equal(typeof script.meta.invocation?.withheldModes?.Apply, 'string')
+  assert.equal(script.meta.invocation?.withheldModes?.Apply, undefined)
+  assert.doesNotMatch(script.text, /authenticationMethodConfigurations\/(microsoftAuthenticator|temporaryAccessPass)/)
   assert.equal(projectImplementation(PASSKEY, 'missing', passkeyBindings(null)).channels.some((c) => c.channel === 'powershell'), false)
-  const verify = projectImplementation(PASSKEY, 'verificationRequired' as never, passkeyBindings(null))
+  const verify = planSafely(PASSKEY, 'inPlace', passkeyBindings(null), NO_RUNTIME, key => `missing ${key}`)
   const ps = verify.channels.find((c) => c.channel === 'powershell')
   assert.ok(ps, JSON.stringify(verify.hold ?? verify.degraded))
   assert.deepEqual(ps.text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep ')), ["Invoke-IAMAIStep -Mode 'Verify'"])

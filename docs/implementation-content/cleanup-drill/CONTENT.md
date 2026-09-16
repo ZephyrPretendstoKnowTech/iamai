@@ -29,7 +29,6 @@ The emergency-access drill failed. Treat the escape hatch as **unproven**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.run","channel":"aiInfo","states":["due"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
 Help the operator validate the emergency-access drill procedure without receiving or handling credentials.
@@ -51,7 +50,6 @@ Review the operator's non-secret observations, identify any missing proof step, 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.failure","channel":"aiInfo","states":["failed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
 Help diagnose a failed emergency-access drill from non-secret evidence only.

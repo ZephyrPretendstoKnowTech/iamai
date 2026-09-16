@@ -69,6 +69,13 @@ export function stepMfaHold(step: Step, scored: readonly MfaViability[]): StepMf
   const family = goalFamily(step.goalId)
   if (!MFA_FAMILIES.has(family) || !enforcementHeld(step)) return null
   const measure = family as MfaHoldFamily
+  if (step.methodPreparation) {
+    const target = step.methodPreparation
+    if (!target.completeScope) return { family: measure, ids: null }
+    const ready = new Set(target.readyIds)
+    return { family: measure, ids: target.ids.filter(id => !ready.has(id)) }
+  }
+  // Compatibility for saved plans predating target-specific registration evidence.
   // A source the scan could not read is not an empty list of people.
   if (step.readiness.unmeasured === 'unreadable') return { family: measure, ids: null }
   // The people the step reaches (derive/population.ts), not the people its goal

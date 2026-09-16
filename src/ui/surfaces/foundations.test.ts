@@ -1,3 +1,4 @@
+import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 // Emergency access is a foundation: on every plan, In place when every bg.*
 // check passes, Ready otherwise, never removed by a pick or a detection. A
 // change to an existing policy carries a Dates line and a calendar entry, and
@@ -95,6 +96,7 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
   for (const c of cases) {
     const f = fixture(c.name)
     const snapshot = c.snapshot ? c.snapshot(f) : f.snapshot
+    readyEvidence(f, snapshot)
     const first = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)
     const over = { ...(c.snapshot ? { snapshot } : {}), ...(c.adminsReady ? { viability: withAdminsReady(first.viability) } : {}) }
     const r = Object.keys(over).length > 0 ? runFixture({ ...f, snapshot }, over as Partial<RoadmapInput>) : first

@@ -720,6 +720,8 @@ function everybodyProven(name: Parameters<typeof fixture>[0]): { f: Fixture; run
     const held = snapshot.authMethods[id]
     snapshot.authMethods[id] = [...(Array.isArray(held) ? held : []), { kind: 'passkey' }]
   }
+  // Method preparation reads registration evidence separately from successful sign-ins.
+  for (const row of snapshot.registrationDetails) { row.isMfaCapable = true; row.methodsRegistered = [...new Set([...row.methodsRegistered, 'fido2SecurityKey'])] }
   const f: Fixture = { ...base, snapshot }
   return { f, run: runFixture(f) }
 }

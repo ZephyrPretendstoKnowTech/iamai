@@ -444,11 +444,9 @@ test('042.13: a Cleanup row reads the same on the Plan and in the printed plan',
   const silent = { credentialStorage: null, signInMonitoring: null }
   for (const c of corpus()) {
     for (const row of c.run.schedule.cleanup?.rows ?? []) {
-      // The attestation completes the alerting row and nothing else, and it is
-      // the same answer wherever it is asked: the Plan used to read it and the
-      // printed plan did not, so one row read In place on screen and Ready on
-      // paper (task 042).
-      assert.equal(cleanupComplete(row, attested), row.done !== null || row.kind === 'alerting', `${c.label}: the attestation completed the wrong row`)
+      // A monitoring checkbox is not a delivered-alert test. Only the
+      // checkpoint verified by the engine completes this row on either surface.
+      assert.equal(cleanupComplete(row, attested), row.done !== null, `${c.label}: the attestation completed the wrong row`)
       assert.equal(cleanupComplete(row, silent), row.done !== null, `${c.label}: nothing recorded completed a row`)
       assert.equal(cleanupComplete(row, null), cleanupComplete(row, undefined), `${c.label}: an absent record and an unread one differ`)
       // The word is the lane the engine reads for the row (planLanes.ts, A1c), on
@@ -491,12 +489,11 @@ test('042.16: the plan header counts a Cleanup row exactly when the row reads In
       assert.equal(agg.done - stepFacts(c.run.steps, null, answers).done, byRow, `${c.label}: the header counts a Cleanup row the rows do not`)
       assert.ok(agg.done <= agg.steps, `${c.label}: more rows in place than there are rows`)
     }
-    // The attestation moves the aggregate by exactly the alerting row, and only
-    // when that row was not already done; nothing recorded moves nothing.
+    // A monitoring attestation cannot change the verified-test count.
     const alerting = rows.find((r) => r.kind === 'alerting')
     if (!alerting) continue
     alertingCases++
-    const expected = alerting.done === null ? 1 : 0
+    const expected = 0
     assert.equal(stepFacts(c.run.steps, cleanup, attested).done - stepFacts(c.run.steps, cleanup, silent).done, expected, `${c.label}: the attestation did not reach the header's count`)
     assert.equal(stepFacts(c.run.steps, cleanup, denied).done, stepFacts(c.run.steps, cleanup, silent).done, `${c.label}: a declined attestation completed a row`)
     assert.equal(stepFacts(c.run.steps, cleanup, null).done, stepFacts(c.run.steps, cleanup, undefined).done, `${c.label}: an absent record and an unread one differ in the header`)

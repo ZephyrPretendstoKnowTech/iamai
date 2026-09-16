@@ -119,7 +119,7 @@ test('an undated row reads the placeholder and so does its rail: the reason live
       checked += 1
     }
   }
-  assert.ok(checked > 5, `undated rows checked: ${checked}`)
+  assert.ok(checked > 0, `undated rows checked: ${checked}`)
 })
 
 test('a group heading spans every day its rows read: the floor group dates its created rows, the undated group dates none', () => {

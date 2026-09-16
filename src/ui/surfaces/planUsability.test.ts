@@ -150,8 +150,11 @@ test('every row reads an Impact value: people, No user impact, the package’s f
       assert.equal(impact.includes('Configuration only'), false, `${name}/${s.id}: "${impact}"`)
       const pop = reached(s)
       if (pop === null) {
-        assert.equal(impact, 'Not established', `${name}/${s.id}`)
+        assert.ok(impact.length > 0 && !/^0\b/.test(impact) && impact !== 'Not established', `${name}/${s.id}: use the topic when exact reach is unknown`)
         seen.add('unknown')
+      } else if (/^\d+ accounts?$/.test(impact)) {
+        assert.equal(Number.parseInt(impact), new Set(pop.ids).size, `${name}/${s.id}: account review count must match its named inventory`)
+        seen.add('known')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
         // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
         const expected = s.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[s.id] ?? (effectsOf(s) === null ? (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault) : 'No user impact')
@@ -389,7 +392,8 @@ test('the opened emergency step agrees with its row: the bar and the badge are t
 test('a day-0 row borrowing its phase day is not an enforcement date: the campaign window waits for one, and the walk reads it that way', () => {
   const f = fixture('demo-week2')
   const r = runFixture(f)
-  assert.equal(planDates(r.steps, r.schedule.start).enrolWindowDays, null, 'the premise: nothing enforces on a date')
+  const undated = r.steps.map(step => ({ ...step, events: null }))
+  assert.equal(planDates(undated, r.schedule.start).enrolWindowDays, null, 'a phase day cannot substitute for an enforcement date')
   const day0 = r.schedule.waves.find((w) => w.wave === 0)!
   const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
   assert.ok(r.steps.some((s) => DAY_ONLY.test(boardWhenOf(s, day0.start))), 'the premise: a day-0 row reads the phase day')

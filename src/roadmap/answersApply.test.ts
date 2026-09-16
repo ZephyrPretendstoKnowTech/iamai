@@ -36,7 +36,7 @@ function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContex
   return { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
 }
 
-test('the stored answers change the plan: countries added, service providers excluded, the printer a service account', () => {
+test('saved travel stays separate from workplace countries; provider and printer choices still apply', () => {
   const f = fixture('demo-week2')
   assert.ok(f.decisions, 'week two carries the stored answers')
   const before = applied(f, null)
@@ -45,7 +45,7 @@ test('the stored answers change the plan: countries added, service providers exc
   // The travellers answer: New Zealand joins the allowed list.
   assert.ok(!before.allowedCountries.includes('NZ'), 'unanswered: New Zealand is not on the list')
   assert.deepEqual(travelCountriesOf(m), ['NZ'])
-  assert.ok(m.allowedCountries.includes('NZ'), 'answered: New Zealand is on the allowed list')
+  assert.ok(!m.allowedCountries.includes('NZ'), 'travel does not expand ordinary workplace access')
   assert.ok(m.allowedCountries.includes('AU'), 'the picker\'s own countries stay')
 
   // The partner answer: the Service provider type is excluded.
@@ -74,6 +74,7 @@ test('the stored answers change the plan: countries added, service providers exc
   for (const id of Object.values(CARVE_OUT_STEP_ID)) {
     assert.ok(!r0.steps.some((s) => s.id === id), `${id}: not on the plan before the answer`)
     const step = r.steps.find((s) => s.id === id)
+    if (id === CARVE_OUT_STEP_ID.travel) { assert.equal(step, undefined, 'trip operations remain hidden'); continue }
     assert.ok(step, `${id}: on the plan once answered`)
     assert.ok(contentStepFor(step), `${id}: has content`)
   }
@@ -88,7 +89,7 @@ test('the stored answers change the plan: countries added, service providers exc
   const countries = r.steps.find((s) => s.id === PREREQ_STEP_ID.allowedCountries)
   assert.ok(countries)
   const cVars = stepVars(countries, ctxFor(f, r, m))
-  assert.ok((cVars.countriesWithCounts as string[]).some((row) => row.startsWith('New Zealand')), 'New Zealand is a row of the countries picker')
+  assert.ok(!(cVars.countriesWithCounts as string[]).some((row) => row.startsWith('New Zealand')), 'travel is not presented as an approved workplace country')
 })
 
 test('the service-provider exclusion is on both policies, in the JSON and on the portal lines beside the baseline\'s version', () => {
@@ -139,7 +140,7 @@ test('each question\'s effect line is true when it shows, and never before', () 
   const before = applied(f, null)
   const m = applied(f, f.decisions ?? null)
   const countries = contentStepFor({ id: QUESTION_STEP.travel, goalId: '' }) as unknown as { decision: { question: { effect: unknown } } }
-  assert.match(String(effectLine(countries.decision.question.effect, answerOf(m, QUESTION_STEP.travel, 'question'))), /on your plan’s allowed list/)
+  assert.match(String(effectLine(countries.decision.question.effect, answerOf(m, QUESTION_STEP.travel, 'question'))), /recorded separately/)
   assert.equal(effectLine(countries.decision.question.effect, answerOf(before, QUESTION_STEP.travel, 'question')), null)
   const guests = contentStepFor({ id: QUESTION_STEP.partner, goalId: 'guests-mfa' }) as unknown as { decision: { question: { effect: unknown } } }
   assert.match(String(effectLine(guests.decision.question.effect, answerOf(m, QUESTION_STEP.partner, 'question'))), /Service provider type/)

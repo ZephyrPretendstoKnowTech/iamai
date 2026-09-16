@@ -3,13 +3,14 @@
 // one small entry per press, `{ at, cleanup, date }`, beside the scan
 // checkpoints a save writes. The row then reads "done <date>", and the drill's
 // recorded dates exempt the matching emergency sign-ins from the emergency-access
-// step's recent-sign-in check: a sign-in on a recorded drill day is the drill;
-// any other recent one is a question (confirm who signed in and why).
+// step's recent-sign-in check only when an exact account/event association was
+// recorded; the same calendar day alone never identifies a drill sign-in.
 //
 // Pure: no DOM, no network.
+import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CleanupKind } from './cleanup.ts'
 
-export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string }
+export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
 /** The latest recorded completion per row, as an ISO instant. */
 export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
@@ -28,7 +29,7 @@ export function cleanupDateToIso(date: string): string {
 }
 
 /** The checkpoints with one more completion recorded. */
-export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string, details: Pick<CleanupCheckpoint, 'basis' | 'accountIds' | 'timeZone'> = {}): unknown[] {
+export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKind, date: string, at: string, details: Pick<CleanupCheckpoint, 'basis' | 'accountIds' | 'timeZone' | 'outcome' | 'workflow' | 'recipient' | 'signInAtByAccount' | 'accountBasis' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'> = {}): unknown[] {
   if (!validCompletionDate(date, at, details.timeZone)) return [...checkpoints]
   const entry: CleanupCheckpoint = { at, cleanup: kind, date: cleanupDateToIso(date), ...details }
   return [...checkpoints, entry]
@@ -71,7 +72,7 @@ export function validCompletionDate(date: string, now: string, timeZone = 'UTC')
 }
 
 export function cleanupBasis(kind: CleanupKind, lists: Record<string, string[]>, accountIds: string[] = []): string {
-  return JSON.stringify([kind, Object.entries(lists).sort(([a], [b]) => a.localeCompare(b)).map(([key, values]) => [key, [...values].sort()]), accountIds.map((id) => id.toLowerCase()).sort()])
+  return JSON.stringify([kind, Object.entries(kind === 'alerting' || kind === 'drill' ? {} : lists).sort(([a], [b]) => a.localeCompare(b)).map(([key, values]) => [key, [...values].sort()]), accountIds.map((id) => id.toLowerCase()).sort()])
 }
 
 /** A legacy date alone is history, not proof about a particular account. */
@@ -80,43 +81,94 @@ export function isRecordedDrill(signInIso: string, _legacyDates: readonly string
   return records.some((r) => {
     if (!validCompletionDate(r.date, r.at, r.timeZone)) return false
     if (r.cleanup !== 'drill' || !r.accountIds?.some((id) => id.toLowerCase() === accountId.toLowerCase())) return false
-    try {
-      const date = new Intl.DateTimeFormat('en-CA', { timeZone: r.timeZone ?? 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(signInIso))
-      return date === r.date.slice(0, 10)
-    } catch { return false }
+    if (r.outcome !== 'passed') return false
+    const exact = Object.entries(r.signInAtByAccount ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1]
+    return !!exact && Number.isFinite(Date.parse(exact)) && Date.parse(exact) === Date.parse(signInIso) && Date.parse(exact) <= Date.parse(r.at)
   })
 }
 
-export function latestRecoveryTest(accountId: string, records: readonly CleanupCheckpoint[], now: string): string | null {
-  const dates = records.filter((r) => r.cleanup === 'drill' && r.accountIds?.some((id) => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).map((r) => r.date).sort()
-  return dates.at(-1) ?? null
+export function latestRecoveryTest(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis?: string): string | null {
+  const latest = records.filter(r => r.cleanup === 'drill' && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
+  if (!latest || latest.outcome !== 'passed' || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  return latest.date
 }
 
-/**
- * The two facts that can complete the emergency-access alerting row, read as
- * one (task 042).
- *
- * A Cleanup row is normally complete because somebody pressed its Done control,
- * which records a date (`row.done`). Alerting has a second way to be complete
- * and always has: the emergency-access attestation `bg.signInMonitoring`, which
- * the operator ticks on the emergency step and which the validation authority
- * already reads as the answer to "does a sign-in by an emergency account raise
- * an alert somebody sees" (validation/rules.ts). An attestation records no date,
- * so it cannot be a `row.done`, and the two facts had to be read together
- * somewhere.
- *
- * They were being read together in Plan.tsx and read apart in PrintPlan.tsx, so
- * a tenant that had ticked the attestation saw the alerting row as In place on
- * the Plan and as Ready in the printed document — one row, one fact, two
- * answers. This is that reading, once, for both.
- *
- * `answers` is the mapping's `breakGlassAnswers`; absent or null is not "no",
- * it is nothing recorded, and nothing recorded does not complete a row.
- */
+/** A dated scoped successful result completes cleanup. An older monitoring
+ * checkbox is retained as history, not proof that an alert reached a recipient. */
 export function cleanupComplete(
   row: { kind: CleanupKind; done: string | null },
   answers: { signInMonitoring: boolean | null } | null | undefined,
 ): boolean {
   if (row.done !== null) return true
-  return row.kind === 'alerting' && answers?.signInMonitoring === true
+  // Older yes/no monitoring attestations remain historical; they do not
+  // record an actual received alert, recipient, or test date.
+  return false
+}
+
+/** Configuration relevant to a recorded emergency-account test. An unavailable
+ * read yields no current fingerprint, preserving history without false drift. */
+export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: readonly string[]): Record<string, string> {
+  const canonical = (v: unknown): unknown => Array.isArray(v) ? v.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !['displayName', 'description', 'modifiedDateTime', '@odata.context'].includes(k)).sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, canonical(value)])) : v
+  const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
+  if (snapshot.sources.users?.status !== 'ok' || (!securityDefaults && snapshot.config.caPolicies?.status !== 'ok') || snapshot.config.authMethodsPolicy?.status !== 'ok' || snapshot.config.roleAssignments?.status !== 'ok') return {}
+  const methodPolicy = snapshot.config.authMethodsPolicy.rows[0] as Record<string, any> | undefined
+  const fido = methodPolicy?.fido2Configuration ?? methodPolicy?.authenticationMethodConfigurations?.find((p: Record<string, unknown>) => String(p.id).toLowerCase() === 'fido2')
+  const out: Record<string, string> = {}
+  for (const id of accountIds) {
+    const u = snapshot.users.find(u => u.id === id)
+    const methods = snapshot.authMethods[id]
+    if (!u || !methods || methods === 'unknown' || snapshot.config.authMethodsPolicy.fido2Read?.status === 'error') continue
+    const policies = (snapshot.config.caPolicies?.rows ?? []).filter(raw => {
+      const p = raw as Record<string, any>
+      const targets = p.conditions?.users ?? {}
+      if ((targets.excludeUsers ?? []).includes(id)) return false
+      return (targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).includes(id) || (targets.includeGroups ?? []).length > 0 || (targets.includeRoles ?? []).some((r: string) => (snapshot.roles.active[id] ?? []).includes(r))
+    }).map(raw => {
+      const p = raw as Record<string, any>
+      const users = p.conditions?.users ?? {}
+      // A change to another account's direct inclusion or exclusion does not
+      // change this emergency account's recovery path. Group and role targeting
+      // remain material because this read may not resolve their membership.
+      const scopedUsers = { ...users,
+        includeUsers: (users.includeUsers ?? []).filter((v: string) => v === id || v === 'All' || v === 'GuestsOrExternalUsers'),
+        excludeUsers: (users.excludeUsers ?? []).filter((v: string) => v === id || v === 'GuestsOrExternalUsers'),
+      }
+      return [p.id, p.state, { ...p.conditions, users: scopedUsers }, p.grantControls, p.sessionControls]
+    })
+    out[id] = JSON.stringify(canonical([id, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], methods, fido ?? null, policies, securityDefaults]))
+  }
+  return out
+}
+
+/** Rename-insensitive identity and configuration of a retained replacement. */
+export function replacementPolicyBasis(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object') return null
+  const p = raw as Record<string, unknown>
+  if (typeof p.id !== 'string') return null
+  const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'displayName' && k !== 'description' && !k.startsWith('@odata.') && k !== 'createdDateTime' && k !== 'modifiedDateTime').sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, stable(value)])) : v
+  return JSON.stringify(stable([p.id, p.conditions, p.grantControls, p.sessionControls]))
+}
+
+export function consolidationVerified(record: CleanupCheckpoint | undefined, policies: readonly unknown[] | null | undefined): boolean {
+  if (record?.consolidationDecision === 'retain-both') {
+    if (!policies || record.outcome !== 'passed' || !record.rationale?.trim() || (record.retainedPolicyIds?.length ?? 0) < 2) return false
+    return record.retainedPolicyIds!.every(id => {
+      const policy = (policies as Record<string, unknown>[]).find(p => p.id === id)
+      return !!policy && record.retainedPolicyBases?.[id] === JSON.stringify([policy.state, replacementPolicyBasis(policy)])
+    })
+  }
+  if (!record || !policies || record.outcome !== 'passed' || record.coverageVerified !== true || !record.replacementPolicyId || !record.replacementBasis || !record.retiredPolicyIds?.length || record.retiredPolicyIds.includes(record.replacementPolicyId)) return false
+  const rows = policies as Record<string, unknown>[]
+  const replacement = rows.find(p => p.id === record.replacementPolicyId)
+  if (!replacement || replacement.state !== 'enabled' || replacementPolicyBasis(replacement) !== record.replacementBasis) return false
+  return record.retiredPolicyIds.every(id => !rows.some(p => p.id === id && p.state !== 'disabled'))
+}
+
+export function namingVerified(record: CleanupCheckpoint | undefined, policies: readonly unknown[] | null | undefined): boolean {
+  if (!record?.namingChanges?.length || !record.toolingVerified || !policies) return false
+  const rows = policies as Record<string, unknown>[]
+  return record.namingChanges.every(change => {
+    const same = rows.find(p => p.id === change.id)
+    return same?.displayName === change.to && !rows.some(p => p.id !== change.id && String(p.displayName).trim().toLowerCase() === change.to.trim().toLowerCase())
+  })
 }

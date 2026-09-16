@@ -140,7 +140,7 @@ test('every packaged policy step whose lines are handed over: the export lines a
       assert.ok(screen, 'the active Entra channel is present')
       const expected = screen.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
       const lines = stepExportView(step, o.ctx, o.lane).whatToDo
-      for (const line of expected) assert.ok(lines.includes(line), step.id + ': export differs from the rendered Entra instructions')
+      for (const line of expected) assert.ok(lines.includes(line), step.id + ': export differs from rendered Entra: ' + line + '\nExport: ' + lines.join(' | '))
       assert.ok(!lines.some(l => l.startsWith('Description: [IAMAI:')), 'the retired translator cannot add unsupported policy fields')
       compared += 1
     }

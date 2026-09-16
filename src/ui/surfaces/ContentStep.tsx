@@ -1,4 +1,5 @@
-import { MANUAL_REVIEW_ID } from '../../roadmap/manualWork.ts'
+import { DEVICE_ANSWER_KEYS, devicePlanOf } from '../../roadmap/answers.ts'
+import { ManualReviewForm } from './ManualReviewForm.tsx'
 // A step opened in place: the one body the Plan draws for every step it has, and
 // the only one (task 011).
 //
@@ -121,6 +122,7 @@ export function ContentStep({
   confirmations = NO_CONFIRMATIONS,
   onConfirm,
   onUnconfirm,
+  saveStatus,
   baselineCommit = BASELINE_COMMIT,
   printing = false,
   lane = null,
@@ -152,11 +154,12 @@ export function ContentStep({
   decision?: StepDecision | null
   /** The picker's Save: the ticked ids, the chosen option and the question's answer become the plan's decision. */
   onDecide?: (decision: StepDecisionInput) => void
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'failed'
   /** This step's owner confirmations of the checks IAMAI cannot read, by prerequisite id (roadmap/decisions.ts). */
   confirmations?: Readonly<Record<string, OwnerConfirmation>>
   /** Records confirmations, each with the values it was given against. */
   /** The checks confirmed, each with the basis it was given against; the record stamps the time. */
-  onConfirm?: (confirmed: Record<string, Pick<OwnerConfirmation, 'basis'>>) => void
+  onConfirm?: (confirmed: Record<string, import('../../roadmap/decisions.ts').ManualReviewInput>) => void
   /** Withdraws the confirmations of these prerequisites. */
   onUnconfirm?: (prerequisites: string[]) => void
   /**
@@ -282,7 +285,7 @@ export function ContentStep({
             lead={instructed ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
-            onOpenMappings={!printing && onOpenMappings ? onOpenMappings : null}
+            onOpenMappings={null}
             printing={printing}
             extra={(t) => {
               const slot = contract.emergencySlots.find((s) => s.key === t.key)
@@ -298,14 +301,14 @@ export function ContentStep({
               )
             }}
           >
-            <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
+            {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>
           {typeof pkgBindings?.['emergency.passkey.compatibility'] === 'string' && (
-            <details className="step-section">
-              <summary>{(content.shared.passkeyCompatibility as Record<string, string>).heading}</summary>
+            <section className="step-section">
+              <h4>Methodology</h4>
               <ul>{String(pkgBindings['emergency.passkey.compatibility']).split('\n').map((line, i) => <li key={i}>{line}</li>)}</ul>
-              <a href="#/plan#s-prereq-passkey-settings">Configure Passkey Authentication</a>
-            </details>
+              {step.id !== "s-prereq-passkey-settings" && <a href="#/plan/s-prereq-passkey-settings">Configure Passkey Authentication</a>}
+            </section>
           )}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
@@ -333,7 +336,7 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
           {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
-          {decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -362,15 +365,11 @@ export function ContentStep({
             <pre className="mono">{step.baselineReviewSource.json}</pre>
           </details>}
 
+          {step.id === 's-ladder-break-glass-accounts' && !printing && <p className="step-section"><a href="#/plan/cleanup-drill">Test Emergency Access and Record the Result →</a></p>}
+
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
-          {step.manualReview && <section className="step-section">
-            <p>{step.manualReview.confirmedAt ? fillText(app.plan.manualReviewRecorded, { date: absoluteDate(step.manualReview.confirmedAt) }) : app.plan.manualReviewExplain}</p>
-            {!step.manualReview.readyToConfirm && <p>{app.plan.manualReviewScanFirst}</p>}
-            {!printing && (step.manualReview.confirmedAt
-              ? <Button variant="secondary" onClick={() => onUnconfirm?.([MANUAL_REVIEW_ID])}>{app.plan.manualReviewUndo}</Button>
-              : <Button variant="secondary" disabled={!step.manualReview.readyToConfirm || !onConfirm} onClick={() => onConfirm?.({ [MANUAL_REVIEW_ID]: { basis: step.manualReview!.basis } })}>{app.plan.manualReviewConfirm}</Button>)}
-          </section>}
+          {step.manualReview && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={printing} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
 
           {/* The printed plan is the whole step: the evidence and More stand on
               the page there, in the order they always printed. */}
@@ -414,6 +413,7 @@ export function ContentStep({
           )}
         </div>
       </div>
+      {!printing && saveStatus && saveStatus !== 'idle' && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : saveStatus === 'saved' ? 'Plan saved.' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
         <>
@@ -603,19 +603,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
         </div>
       )}
         <>
-          {(notes.length > 0 || (preview?.lines.length ?? 0) > 0) && (
-            <div className="impl-planning" data-review="true">
-              {[...notes, ...(preview?.lines ?? [])].map((line, i) => (
-                <span key={i}>{line}</span>
-              ))}
-            </div>
-          )}
           <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />
-          {tab === 'ai' && (
-            <div className="ai-warning">
-              <Callout kind="warning">{W.aiWarning}</Callout>
-            </div>
-          )}
           <div className="impl-preview" {...onePanelProps(base, tab)}>
             <div className="preview-actions no-print">
               {copyControl}
@@ -644,11 +632,6 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
               </>
             }
           >
-            {tab === 'ai' && (
-              <div className="ai-warning">
-                <Callout kind="warning">{W.aiWarning}</Callout>
-              </div>
-            )}
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
@@ -803,6 +786,8 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // plan's decision only once Save writes it, so the step still reads Decision.
   const initial = initialPicked(ex, key, saved, ids, single)
   const [chips, setChips] = useState<PickerOption[]>(() => initial.picked.map((id) => (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
+  const isNetwork = stepId === 's-prereq-trusted-location'
+  const [remote, setRemote] = useState(isNetwork && saved?.picked?.length === 0)
   const matchedNote = matchedNoteOf(d.matchedNote, chips, app.picker.matched)
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
@@ -835,11 +820,12 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
     const parsed = answerParts(value, choices)
     return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
   }
-  const canSave = (options.length === 0 || complete(option, options)) && (!question || complete(answer, question.options)) && (!single || chips.length > 0)
+  const canSave = (options.length === 0 || complete(option, options)) && (!question || complete(answer, question.options)) && (remote || (!single && stepId !== 's-prereq-allowed-countries') || chips.length > 0)
   const save = (): void => {
     if (!canSave) return
     onDecide?.({
-      ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
+      ...(hasPicker || isNetwork ? { picked: remote ? [] : chips.map((c) => c.id) } : {}),
+      ...(isNetwork && remote ? { assumed: 'none' } : {}),
       ...(option !== null ? { option } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
@@ -866,12 +852,14 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
         {matchedNote !== null && <p className="reason">{matchedNote}</p>}
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
-        {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {isNetwork && <label className="remote-choice"><input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)} />Everyone Is Remote</label>}
+        {hasPicker && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {isNetwork && !remote && <p className="reason">If your office network is not listed, follow the Entra instructions below to create a named location, then scan again.</p>}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
           <>
-            <div className="dlabel" id={`${base}-question`}>{question.label}</div>
+            <h5 className="dlabel" id={`${base}-question`}>{question.label.replace(/:$/, "")}</h5>
             <p className="reason"><T s={question.text} ex={ex} /></p>
             <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />
             {questionEffect && whole(questionEffect, ex) && <p className="reason effect"><T s={questionEffect} ex={ex} /></p>}
@@ -911,6 +899,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
  */
 export function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false, select = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean; select?: boolean }) {
   const parts = answerParts(answer, options)
+  const valued = options.find((o) => o.needs !== null) ?? null
+  const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   if (select && options.every((o) => o.needs === null)) {
     return (
       <select className="decision-select" name={name} aria-labelledby={labelledBy} value={parts ? String(options.indexOf(parts.option)) : ''} onChange={(e) => onAnswer(e.currentTarget.value === '' ? null : answerText(options[Number(e.currentTarget.value)]))}>
@@ -923,13 +915,9 @@ export function Options({ name, labelledBy, options, answer, onAnswer, ex, unive
       </select>
     )
   }
-  const valued = options.find((o) => o.needs !== null) ?? null
-  const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
-  const [query, setQuery] = useState('')
-  const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const pick = (next: PickerOption[]): void => {
     setChips(next)
-    if (valued) onAnswer(next.length > 0 ? answerText(valued, next.map((c) => c.id)) : null)
+    if (valued) onAnswer(answerText(valued, next.map((c) => c.id)))
   }
   // A group of radios only where they are radios: an option that takes a value
   // renders a picker instead, and a radiogroup around a combobox is a lie.
@@ -947,9 +935,9 @@ export function Options({ name, labelledBy, options, answer, onAnswer, ex, unive
         const [before, after] = o.text.split(/\{(?:list:)?[a-zA-Z0-9_]+\}/)
         return (
           <div key={i} className="option-value">
-            {before && <span className="reason">{fillText(before, ex as Record<string, unknown>)}</span>}
-            <Picker selected={chips} options={results} suggestions={[]} onChange={pick} onSearch={setQuery} single={single} />
-            {after && <span className="reason">{fillText(after, ex as Record<string, unknown>)}</span>}
+            <label><input type="radio" name={name} checked={parts?.option === o} onChange={() => onAnswer(answerText(o, chips.map(c => c.id)))} />{fillText(before, ex as Record<string, unknown>).replace(/:\s*$/, '').trim() || 'Choose Accounts'}</label>
+            {parts?.option === o && <><Picker selected={chips} options={results} suggestions={[]} onChange={pick} onSearch={setQuery} single={single} />
+            {after.trim() && <span className="reason">{fillText(after, ex as Record<string, unknown>)}</span>}</>}
           </div>
         )
       })}
@@ -1058,14 +1046,12 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
             {comms.extra.map((l, i) => <p key={i}>{l}</p>)}
             <p>{comms.signature}</p>
           </div>
-          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {Array.isArray(more.helpDesk) && (more.helpDesk as unknown[]).filter((x) => whole(x, ex)).length > 0 && (
         <>
           <h4>{HEAD.helpDesk}</h4>
           <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
-          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {managerText(cs, ex as Record<string, unknown>) !== null && (
@@ -1074,7 +1060,6 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           {/* The three sentences, and the clause the records earn (managerNone under its applies, E9). */}
           <p className="reason">{managerText(cs, ex as Record<string, unknown>)}</p>
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
-          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {/* Defer this step (decision 3), and beside it Doesn't apply here on the content
@@ -1104,6 +1089,26 @@ function WorkflowDecision({ step, onDecide, printing }: { step: Step; onDecide?:
   const choices = step.workflowChoices ?? []
   const [draft, setDraft] = useState<Record<string, string>>({})
   const W = workflowWords
-  const choiceOf = (c: typeof choices[number]) => draft[c.key] ?? (c.suggested ? "yes" : c.answer)
-  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.suggested ? `${W.detected}. ${c.evidence}` : c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={choiceOf(c)} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.map((c) => [c.key, choiceOf(c)])) }); setDraft({}) }}>{W.save}</Button>}</section>
+  const choiceOf = (c: typeof choices[number]) => draft[c.key] ?? c.answer
+  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.needsReview ? `New activity found. ${c.evidence}` : c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={choiceOf(c)} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.flatMap((c) => [[c.key, choiceOf(c)], [`evidence:${c.key}`, c.evidenceBasis ?? ""]])) }); setDraft({}) }}>{W.save}</Button>}</section>
+}
+
+function DeviceDecision({ mapping, saved, onDecide, printing }: { mapping: StepVarContext['mapping']; saved: StepDecision | null; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const existing = devicePlanOf(mapping)
+  const initial: Record<string, string> = { phoneManagement: existing?.phoneManagement ?? '', phoneAppProtection: existing?.phoneAppProtection ?? '', computerManagement: existing?.computers === 'enrol' ? 'enrolled' : existing?.computers ?? '', ...saved?.answers }
+  const [draft, setDraft] = useState(initial)
+  const fields = [
+    { key: DEVICE_ANSWER_KEYS.phoneManagement, label: 'Phone Management', options: [['registered', 'Registered in Entra'], ['enrolled', 'Enrolled in Intune'], ['unmanaged', 'No Device Management'], ['blocked', 'No Company Data on Phones']] },
+    { key: DEVICE_ANSWER_KEYS.phoneAppProtection, label: 'Phone App Protection', options: [['required', 'Require Protection for Company Apps'], ['not-required', 'No App Protection Required']] },
+    { key: DEVICE_ANSWER_KEYS.computers, label: 'Computer Management', options: [['enrolled', 'Enrolled in Intune'], ['hybrid', 'Hybrid-joined Windows Computers'], ['unmanaged', 'Unmanaged Computers']] },
+  ]
+  return <div className="decision-form device-decision"><div className="decision">{fields.map(field => <label key={field.key}><span className="dlabel">{field.label}</span>{printing ? <p>{field.options.find(([key]) => key === draft[field.key])?.[1] ?? 'Not Chosen'}</p> : <select value={draft[field.key]} onChange={e => { setDraft({ ...draft, [field.key]: e.target.value }) }}><option value="">Choose…</option>{field.options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}</label>)}{!printing && <Button variant="primary" disabled={fields.some(field => !draft[field.key])} onClick={() => { onDecide?.({ answers: draft }) }}>Save Device Choices</Button>}</div></div>
+}
+
+function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const rows = step.dormantChoices ?? []
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const outcomeOf = (row: typeof rows[number]) => draft[`outcome:${row.id}`] ?? row.outcome
+  const reasonOf = (row: typeof rows[number]) => draft[`reason:${row.id}`] ?? row.reason
+  return <div className="decision-form dormant-decisions">{rows.map(row => <fieldset key={row.id}><legend>{row.name}</legend>{printing ? <p>{outcomeOf(row) || 'Not Reviewed'}{reasonOf(row) ? ` — ${reasonOf(row)}` : ''}</p> : <><label><span className="dlabel">Account Decision</span><select value={outcomeOf(row)} onChange={e => setDraft({ ...draft, [`outcome:${row.id}`]: e.target.value })}><option value="">Choose…</option><option value="keep">Keep</option><option value="disable">Disable</option><option value="investigate">Investigate</option></select></label>{outcomeOf(row) === 'keep' && <label><span className="dlabel">Reason to Keep</span><input value={reasonOf(row)} onChange={e => setDraft({ ...draft, [`reason:${row.id}`]: e.target.value })} /></label>}{outcomeOf(row) === 'disable' && <p>{row.disabled ? 'Account disabled.' : 'Disable this account in Entra, then scan again.'}</p>}</>}</fieldset>)}{!printing && <Button variant="primary" disabled={rows.some(row => outcomeOf(row) === 'keep' && !reasonOf(row).trim())} onClick={() => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => [[`outcome:${row.id}`, outcomeOf(row)], [`reason:${row.id}`, reasonOf(row)]])) })}>Save Account Decisions</Button>}</div>
 }

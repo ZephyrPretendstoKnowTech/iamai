@@ -285,7 +285,7 @@ try {
     (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Read your organization's policies/.test(document.body.innerText)`)),
   )
   t = await text()
-  check('Connect: one consent row per tenant scope in Microsoft\'s wording, no table, no sign-in scopes', (await evaluate(`document.querySelectorAll('details.permissions .tile-rows li').length`)) === 6 && (await evaluate(`document.querySelectorAll('details.permissions table').length`)) === 0 && !/openid/.test(t))
+  check('Connect: one consent row per tenant scope in Microsoft\'s wording, no table, no sign-in scopes', (await evaluate(`document.querySelectorAll('details.permissions .tile-rows li').length`)) === 7 && (await evaluate(`document.querySelectorAll('details.permissions table').length`)) === 0 && !/openid/.test(t))
   check('Connect: the collapsible ends with the removal line', /Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete\./.test(t) && !/leaves nothing behind/.test(t))
   // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
   // has a collector behind it and the "requested, not yet used" group is absent.
@@ -344,7 +344,7 @@ try {
   // The tile counts the Completed lane (A1c, decision 1): `{steps} steps, {completed} completed`, never a done word of its own.
   check('Connect (scanned): the plan state counts the steps and how many are completed', await waitFor(`/ready · \\d+ steps, \\d+ completed · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ completed[^\n]*/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
-  check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
+  check('Connect (scanned): custom baseline controls stay hidden', await evaluate(`![...document.querySelectorAll('button')].some(b => /Change baseline/.test(b.textContent)) && !document.querySelector('input[type=file]')`))
   // MFA Readiness (Step 7): who can meet phishing-resistant MFA, what IAMAI can prove, and what each person needs next.
   await go('readiness')
   check('MFA Readiness: the summary renders', await waitFor(`document.querySelectorAll('main.page .readiness-summary .summary-stat').length === 3`))
@@ -365,8 +365,8 @@ try {
   )
   check('MFA Readiness: no ladder and no rung badge on the page', (await evaluate(`document.querySelectorAll('main.page .ladder, main.page .ladder-row, main.page .rung-tile, main.page .rung-badge').length`)) === 0)
   check(
-    'MFA Readiness: one strip for the Plan gate and the passkey rollout',
-    (await evaluate(`document.querySelectorAll('main.page .progress-strip .progress-item').length`)) === 2 && /Plan gate/.test(t) && /\d+ of \d+ must be Ready/.test(t) && /Passkey rollout/.test(t) && /\d+ of \d+ (?:has|have) a passkey/.test(t),
+    'MFA Readiness: one strip for tenant evidence and the passkey rollout',
+    (await evaluate(`document.querySelectorAll('main.page .progress-strip .progress-item').length`)) === 2 && /Tenant readiness/.test(t) && /\d+ of \d+ have qualifying sign-in proof/.test(t) && /Passkey rollout/.test(t) && /\d+ of \d+ (?:has|have) a passkey/.test(t),
   )
   check('MFA Readiness: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
   check(
@@ -455,7 +455,7 @@ try {
   // would otherwise be asked what the loading line says.
   await waitFor(HOW_DRAWN)
   t = await text()
-  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
+  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline Packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
 
@@ -565,7 +565,7 @@ try {
   check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
   check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Defer this step', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
   // The Readiness region and the action column, led by the Next milestone, are on every opened step (U2).
-  check('Plan: the opened step draws Readiness and the action column with its Next milestone', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile').length; const rail = st.querySelector('.step-body > .step-action-column'); return tiles >= 1 && tiles <= 3 && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
+  check('Plan: the opened step draws Readiness and the action column with its Next milestone', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile').length; const rail = st.querySelector('.step-body > .step-action-column'); return (tiles >= 1 || !!st.querySelector('.readiness-clear')) && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
   // The head badge carries the lifecycle and the condition, once. The line that
   // repeated them under the title is gone.
   check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
@@ -611,9 +611,9 @@ try {
     // The count bends its noun (pluralise): one person, or n people.
     check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ (people|person)\b/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
     check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
-    // The counts above the table stay the whole tenant, not the filtered set.
-    const scopedSummary = t2.match(SUMMARY_LINE)
-    check('MFA Readiness: a Plan filter does not change the tenant-wide counts', !!scopedSummary && !!summaryLine && scopedSummary[2] === summaryLine[2], `${scopedSummary && scopedSummary[2]} vs ${summaryLine && summaryLine[2]}`)
+    // The summary covers this step's complete cohort; the table lists its remaining work.
+    const scopedSummary = t2.match(/(\d+) of (\d+) people have a method ready for this step/)
+    check('MFA Readiness: the scoped summary and remaining-method rows describe the same cohort', !!scopedSummary && Number(scopedSummary[2]) - Number(scopedSummary[1]) === scoped, `${scopedSummary?.[0]}: ${scoped} remaining rows`)
     await go('plan')
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   }
@@ -722,7 +722,7 @@ try {
   t = await text()
   check('Unlicensed tenant: the plan footer names what is not licensed', /Not licensed \(\d+\)/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/readiness` })
-  await sleep(1500)
+  await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && /no sign-in records/.test(document.body.innerText)`)
   t = await text()
   check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
   // The Show list carries the content file's state names, "Proven" included (walk-51 item 10),
@@ -781,7 +781,7 @@ try {
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')
   await waitFor(HOW_DRAWN)
-  check('How: technical reference tables start collapsed', await evaluate(`document.querySelectorAll('details.how-reference').length === 3 && [...document.querySelectorAll('details.how-reference')].every((d) => !d.open)`))
+  check('How: technical reference tables start collapsed', await evaluate(`document.querySelectorAll('details.how-reference').length === 4 && [...document.querySelectorAll('details.how-reference')].every((d) => !d.open)`))
   await evaluate(`[...document.querySelectorAll('details.how-reference > summary')].find((s) => /Every check/.test(s.textContent)).click()`)
   check('Checks: the disclosure opens the registry', await waitFor(`/Field practice/.test(document.body.innerText)`))
   t = await text()

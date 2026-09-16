@@ -12,7 +12,8 @@ import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, BLOCKER_WHY, HO
 import { ruleText } from '../validation/rules.ts'
 import type { RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
-import { stateFields } from './lifecycle.ts'
+import { REPAIR_STEP_ALIASES } from './stepIds.ts'
+import { stateFields, setState } from './lifecycle.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import type { Step } from './types.ts'
@@ -26,6 +27,11 @@ export function blockerStepId(subject: RuleSubject): string {
   if (subject === 'exclusionGroup') return 's-prereq-exclusion-group'
   if (subject === 'breakGlass') return 's-prereq-break-glass'
   return `s-blocker-${subject.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`
+}
+
+export function canonicalBlockerStepId(subject: RuleSubject): string {
+  const id = blockerStepId(subject)
+  return REPAIR_STEP_ALIASES[id] ?? id
 }
 
 /**
@@ -81,7 +87,7 @@ function checkActions(report: SubjectReport): { actions: string[]; doneWhen: str
 export function blockerSteps(reports: SubjectReport[]): Step[] {
   const out: Step[] = []
   for (const report of reports) {
-    if (report.blocking.length === 0 || report.subject === 'exclusionGroup' || report.subject === 'breakGlass') continue
+    if (report.blocking.length === 0 || report.subject === 'exclusionGroup' || report.subject === 'breakGlass' || ['trustedLocation', 'allowedCountries', 'authStrength', 'serviceAccount'].includes(report.subject)) continue
     const subject = report.subject
     const name = SUBJECT[subject] ?? subject
     const n = report.blocking.length
@@ -133,3 +139,23 @@ export function gateFor(subject: RuleSubject): { stepId: string; label: string }
 
 export const SEVERITY_LABEL = SEVERITY
 
+
+/** Validation belongs beside the existing configuration choice, not a second questionnaire. */
+export function attachConfigurationFindings(steps: Step[], reports: SubjectReport[]): void {
+  for (const report of reports) {
+    if (!['trustedLocation', 'allowedCountries', 'authStrength'].includes(report.subject)) continue
+    const step = steps.find(s => s.id === canonicalBlockerStepId(report.subject))
+    if (!step) continue
+    // User method preparation belongs to each referring policy, not strength object creation.
+    const results = report.targets.flatMap(target => target.results.filter(r => r.id !== 'str.achievable').map(r => ({ r, name: target.label })))
+    const findings = results.filter(({r}) => r.outcome !== 'pass').map(({r, name}) => ({
+      key: `${r.id}:${r.target ?? name}`,
+      label: name || SUBJECT[report.subject] || report.subject,
+      value: r.outcome === 'fail' ? 'Needs Correction' : 'Not Fully Read',
+      detail: r.finding ?? ruleText(r.id).what,
+      outcome: r.outcome,
+    }))
+    step.configurationFindings = [...(step.configurationFindings ?? []), ...findings]
+    if (report.blocking.some(r => r.id !== 'str.achievable')) setState(step, { satisfied: false, inPlace: false })
+  }
+}

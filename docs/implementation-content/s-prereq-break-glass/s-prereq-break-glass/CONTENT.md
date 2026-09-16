@@ -194,13 +194,11 @@ switch ($Mode) {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI found possible emergency access accounts for {{tenant.displayName}}, but no emergency accounts have been selected and saved yet. The next step is that selection, which belongs to the tenant's administrators. A normal daily administrator account is not an emergency access account, and no account change applies until the selection is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.implement","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Selected emergency accounts for {{tenant.displayName}}: {{emergency.target.accountsSummary}}. Check each account separately.
 
@@ -210,19 +208,16 @@ The JSON and PowerShell outputs only add the role assignment and group membershi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Emergency account {{emergency.target.upn}} failed one or more checks. Correct that account by its user ID and keep the selected set of emergency accounts. Configuration corrections (cloud-only identity, enabled state, role, exclusions-group membership) are separate from method registration, credential custody, monitoring and the recovery drill, which need action outside IAMAI. No additional account, credential or exclusion is part of this correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state needs a controlled recovery drill. Account state: {{emergency.evidence.accountState}}. Role: {{emergency.evidence.roleState}}. Authentication methods: {{emergency.evidence.authMethods}}. Credential custody: {{emergency.evidence.custody}}. Monitoring: {{emergency.evidence.monitoring}}. Last drill: {{emergency.evidence.lastDrill}}. Passing configuration checks do not prove recovery works. Only a successful sign-in and administrative-access drill, with the alert delivered, shows that the emergency path works.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Emergency access work for {{tenant.displayName}} is blocked: {{dependencies.blockers}}. Account changes wait until these are resolved, for example an unsaved account selection, evidence IAMAI could not read, or an exclusions group that is not yet resolved.
 @@IAMAI-END

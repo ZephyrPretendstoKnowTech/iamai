@@ -131,7 +131,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. It does not enforce until it is enabled.
 
@@ -139,7 +138,6 @@ Where the tenant has a trusted network, the baseline blocks registration outside
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Protect Sign-in Method Registration**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID.
 
@@ -149,7 +147,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}.
 
@@ -157,19 +154,16 @@ Report-only results may not show registration attempts: treat a settings read-ba
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Protect Sign-in Method Registration** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and a controlled registration test should have used the intended route. From July 6, 2026, Microsoft also applies this user action during Windows Hello for Business and macOS Platform SSO credential registration; include those workflows where the tenant uses them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Protect Sign-in Method Registration** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Protect Sign-in Method Registration** needs Microsoft Entra Conditional Access licensing that this scan did not confirm. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END

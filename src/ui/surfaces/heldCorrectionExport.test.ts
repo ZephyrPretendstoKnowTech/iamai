@@ -38,7 +38,7 @@ function exportsOf(f: Fixture, ids: readonly string[]) {
   })
 }
 
-test('an enforced correction held on emergency access exports its action alone, not the correction', () => {
+test('an enforced correction held on emergency access keeps its readiness action and copyable correction in the export', () => {
   for (const { step, contract, view } of exportsOf(curatedFixture('demo'), ['s-goal-block-legacy-auth', 's-goal-block-device-code'])) {
     const where = step.id
     // The shape this pins: offered, enforced, and not the step's current action.
@@ -46,14 +46,15 @@ test('an enforced correction held on emergency access exports its action alone, 
     assert.equal(implementationOffered(step), true, where)
     assert.equal(implementationIsCurrent(step), false, where)
     assert.equal(contract.whatToDo.text, engine.milestone.resolve, where)
-    assert.deepEqual(view.whatToDo, [engine.milestone.resolve], `${where}: ${JSON.stringify(view.whatToDo)}`)
+    assert.equal(view.whatToDo[0], engine.milestone.resolve, where)
+    assert.ok(view.whatToDo.some(line => PORTAL.test(line)), `${where}: correction guidance is missing`)
   }
 })
 
 // Review 4 N1 (cycle 5): the screen still drew these two corrections as an executable
 // package — a CorrectConditions call and a PATCH whose excluded groups drop Core - Break
 // glass — with Copy enabled, while the export above held them. Both surfaces hold it now.
-test('the same held corrections are a planning preview on screen: no executable package, Copy withheld', () => {
+test('the same held corrections are a planning preview on screen: resources remain copyable without repeated disclaimers', () => {
   const f = curatedFixture('demo')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const readings = laneReadings(r.steps)
@@ -70,7 +71,7 @@ test('the same held corrections are a planning preview on screen: no executable 
     assert.equal(packageStateOf(step, contract, f.snapshot), 'blocked', id)
     assert.equal(plannedPackageStateOf(step, contract, f.snapshot), 'partial', `${id}: the correction is no longer planned`)
     const body = stepBodyOf(step, ctx, { lane })
-    assert.ok(body.previewNote, `${id}: the held correction is drawn as copyable work`)
+    assert.equal(body.previewNote, null, `${id}: repeated implementation disclaimer returned`)
     assert.ok(body.artifacts.some((a) => !a.unavailable), `${id}: the planned correction draws no channel`)
   }
 })

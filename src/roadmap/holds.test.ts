@@ -357,6 +357,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
 test('Step 4 correction 2: a held, unwritable step not yet deployed reads Blocked, never Ready, and sits undated under Waiting', () => {
   const d = demoTenant(true)
   const f = { ...fixture('demo-week2'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  f.mapping.records.__globalExclusion = { ...f.mapping.records.__globalExclusion, resolvedId: null }
   const p = planOf(f)
   for (const id of ['s-goal-admin-session', 's-goal-block-unsupported-platforms', 's-goal-all-users-no-persistence']) {
     const s = stepOf(p, id)
@@ -393,7 +394,7 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
   // A source group nobody has mapped names the mapping it waits on, not the step
   // the row is sequenced after (correction batch 1: it used to name a wait no
   // step could end; S4: the answer is a Plan setting, not a step).
-  const token = stepOf(demos[1], 's-goal-token-protection')
+  const token = stepOf(demos[1], 's-goal-device-registration-mfa')
   assert.equal(token.blockedReason, BLOCKED_REASON.sourceMapping)
   assert.equal(rowReason(token), BLOCKED_REASON.sourceMapping)
 })
@@ -438,12 +439,11 @@ test('Step 4: a campaign with no enrol-by day still says who it reaches, and sta
   const f = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping }
   const r = runFixture(f)
   const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
-  assert.equal(r.steps.some((s) => s.events !== null), false, 'the premise: nothing is dated')
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
   const lines = stepLines(camp, ctx)
-  const lead = lines.find((l) => /^\d+ active people · /.test(l))
-  assert.ok(lead, `the lead is there: ${lines.slice(0, 8).join(' | ')}`)
-  assert.match(lead!, /the plan waits for 90%\.$/, 'and names no day')
+  assert.ok(camp.preparation!.ids.length > 0, 'the preparation cohort remains known without an enrolment deadline')
+  assert.ok(lines.some(l => l.includes('MFA Readiness')), 'the implementation gives the administrator a concrete place to work through that cohort')
+  assert.doesNotMatch(lines.join(' '), /90%/, 'preparation does not finish by rounding away people who still need setup')
   assert.doesNotMatch(lines.join('\n'), /Enroll by /, 'nothing states an enrol-by day')
 })
 

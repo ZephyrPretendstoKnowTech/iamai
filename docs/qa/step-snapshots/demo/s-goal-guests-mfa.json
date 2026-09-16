@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "0%"
+      "state": "not measured"
     },
     {
       "label": "Affected people",

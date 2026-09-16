@@ -347,7 +347,7 @@ test('where Foundation A withholds the operation, the target is unresolved and E
 
 test('the viewer draws every package channel through the one Implementation region, safely', () => {
   // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
-  const step = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
+  const step = (read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')).replace(/\r\n/g, '\n')
   const ids = [...(step.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'Email is not the fifth member of the one selector')
   assert.match(step, /const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = \{ entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' \}/)
@@ -357,11 +357,11 @@ test('the viewer draws every package channel through the one Implementation regi
   assert.match(step, /drawnBy=\{packaged \? 'package' : 'translator'\}/)
   assert.match(step, /if \(copyable\) copy\('implementation', active\?\.text\(\) \?\? ''\)/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
-  assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
+  assert.equal(step.split("{tab === 'ai' && (").length - 1, 0, 'repeated AI warning blocks are removed')
   // Every package channel goes through packageArtifact, which adds IAMAI's facts to AI Info (aiGrounding.ts).
   assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(shownProjection\?\.channels \?\? \[\]\)\.map\(\(a\) => packageArtifact\([\s\S]*?: a, grounding\)\)/)
   // Every channel is a tab (content review D2): the produced channel where there is one, the unavailable one otherwise.
-  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.filter\(\(t\) => supported\.has\(t\.id as Channel\)\)\.map/)
+  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.filter\(t => supported\.has\(t\.id as Channel\)\)\.flatMap/)
   // The projection, the readiness and the troubleshooting never throw through the step.
   for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
   for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)

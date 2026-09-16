@@ -17,7 +17,7 @@ This step manages two separate Conditional Access policies. The policies cover d
 Correct every setting that differs from each policy's resolved target, not only its exclusions. The JSON output for this correction shows each policy's complete target.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open {{policies.guests.strong.current.displayName}} (find it by ID in Plan settings).
+2. Open {{policies.guests.strong.current.displayName}} (use the policy name and ID shown on this step).
 3. Name: set it to **{{policies.guests.strong.target.displayName}}**.
 4. Users → Include → Guest or external users: select exactly the external-user types and external Microsoft Entra organizations in this policy's resolved target. Users → Exclude: match the resolved target's excluded guest types, users, groups and roles, including the exclusions group. Remove any exclusion the target does not list.
 5. Target resources: All resources. Client apps: All. Remove any other condition.
@@ -25,7 +25,7 @@ Correct every setting that differs from each policy's resolved target, not only 
 7. Session: remove any session control the resolved target does not include.
 8. Save. Leave **Enable policy** as it is: if the policy is On, the changed rule can affect access after you save.
    This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
-9. Open {{policies.guests.mixed.current.displayName}} (find it by ID in Plan settings).
+9. Open {{policies.guests.mixed.current.displayName}} (use the policy name and ID shown on this step).
 10. Name: set it to **{{policies.guests.mixed.target.displayName}}**.
 11. Users → Include → Guest or external users: select exactly the external-user types and external Microsoft Entra organizations in this policy's resolved target. Users → Exclude: match the resolved target's excluded guest types, users, groups and roles, including the exclusions group. Remove any exclusion the target does not list.
 12. Target resources: All resources. Client apps: All. Remove any other condition.
@@ -135,13 +135,11 @@ foreach($t in @($strong,$mixed)){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state creates two guest MFA policies for {{tenant.displayName}}, both in Report-only. They cover different external-user types from the baseline, adjusted only through saved partner or service-provider decisions: one requires the tenant's resolved authentication strength and the other requires built-in MFA. The split is by external-user type, not simply trusted partners versus everyone else. Microsoft does not accept authentication strengths for every external identity provider, so check which guests each policy covers. Inbound MFA trust for B2B partners and GDAP service-provider access are handled differently. The JSON output creates both policies in one Graph batch, which can create one policy and fail on the other.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Differences IAMAI found on the guest policies: {{policies.guests.semanticMismatches}}. The correction updates each policy by its own policy ID to its complete resolved target: name, users and exclusions, conditions, grant and session controls. It keeps the saved partner and service-provider decisions and keeps the two policies separate. The JSON output sends both updates in one Graph batch; one policy can update while the other fails. Keep each policy's current state. If a policy is On, the changed rule can affect access after you save.
 
@@ -150,31 +148,26 @@ This change removes {{policies.guests.mixed.current.removedExclusions}} from the
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.partner-trust","channel":"aiInfo","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state applies approved inbound MFA trust for specific ordinary B2B partner tenants: {{partnerTrust.resolvedPatches}}. Each change keeps that partner's existing device trust settings. GDAP service-provider access is handled differently and is not changed here.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Both guest policies are in Report-only. Evidence: {{evidence.reportOnly}}. A guest's result can depend on their external-user type, home organization and identity provider as well as on the policy settings. One successful guest sign-in does not prove that other identity providers or home organizations will work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Both guest policies in {{tenant.displayName}} are ready to enforce. Before they are set On, each should still match its intended target and be Report-only, representative guest access should be tested on both policy paths, and any approved partner MFA trust should already be in place. The JSON output enables both in one Graph batch; one policy can be enabled while the other fails, so both results need checking.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Guest MFA cannot proceed yet. Blockers and pending decisions: {{dependencies.blockers}}. Partner trust, service-provider exclusions and external tenant IDs come only from saved decisions and the scan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find the licensing this step needs. Conditional Access requires Microsoft Entra ID P1 or higher. No guest policy change is available until licensing is resolved.
 @@IAMAI-END

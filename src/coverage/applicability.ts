@@ -13,12 +13,14 @@ export type Facet =
   | 'workload'
   | 'agents'
   | 'azureManagement'
+  | 'inforcer'
 
 export type FacetState = { on: boolean; reason: string; source: 'auto' | 'override'; observedUsage?: boolean; evidence?: string }
 export type FacetOverrides = Partial<Record<Facet, { on: boolean; reason: string }>>
 
 // The single facet table: detection (usage) and ad-hoc inference (classify.ts).
 export const FACET_APPS: Partial<Record<Facet, { ids: string[]; namePattern: RegExp }>> = {
+  inforcer: { ids: ['708861da-226e-4d65-a57a-24128df64524'], namePattern: /$^/ },
   avd: { ids: ['9cdead84-a844-4324-93f2-b2e6bb768d07'], namePattern: /virtual desktop|\bavd\b/i },
   copilot: { ids: [], namePattern: /copilot/i },
   azureDevOps: { ids: ['499b84ac-1321-427f-aa17-267ca6975798'], namePattern: /devops/i },

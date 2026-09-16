@@ -6,7 +6,7 @@
 // what the lane says. Waits on anything else are unchanged.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -83,4 +83,19 @@ test('controls: a wait on anything but emergency access still holds the create; 
   const deployed = structuredClone(base)
   deployed.state = { ...deployed.state, lifecycle: 'report-only' }
   assert.notEqual(nextMilestone(deployed).label, engine.milestone.prepareGated)
+})
+
+
+test('confirmed safe exclusions permit report-only preparation but an unanswered group does not', () => {
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const step = run.steps.find(s => s.id === 's-goal-block-auth-transfer')!
+  assert.equal(laneReadings(run.steps).get(step.id)?.substatus, 'Create')
+  assert.equal(nextSafeAction(step).enforceable, false)
+  assert.ok(operationsOf(step).every(op => !enforcesOnRun(op)))
+  const unanswered = runFixture(noExclusionsAnswer(f))
+  const held = unanswered.steps.find(s => s.id === step.id)!
+  assert.notEqual(laneReadings(unanswered.steps).get(held.id)?.lane, 'Ready')
+  assert.equal(nextSafeAction(held).executable, false)
+  assert.equal(nextSafeAction(held).enforceable, false)
 })

@@ -19,6 +19,7 @@ import {
   collectConfigSection,
   collectDevices,
   collectMethodsForUsers,
+  collectPerUserMfaForUsers,
   collectRegistrationDetails,
   collectSpActivity,
   collectUsers,
@@ -127,6 +128,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     devices: [],
     spActivity: [],
     authMethods: {},
+    perUserMfa: {},
     appSignInSummary: [],
     signInEvidence: {},
     evidencePolicyResults: [],
@@ -182,7 +184,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     const result = await collectConfigSection(runCtx, key)
     // The section's reason travels in the snapshot as well as in the section event,
     // so it is redacted here too: a denied read's Graph message can name a UPN.
-    config[key] = result.reason ? { ...result, reason: redactIdentifiers(result.reason) } : result
+    config[key] = { ...result, reason: result.reason ? redactIdentifiers(result.reason) : null, ...(result.fido2Read ? { fido2Read: { ...result.fido2Read, reason: result.fido2Read.reason ? redactIdentifiers(result.fido2Read.reason) : null } } : {}) }
     post({
       type: 'section',
       source: `config:${key}`,
@@ -248,11 +250,11 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
           collectUsers(
             runCtx,
             async (page) => {
-              try {
-                Object.assign(methods, await collectMethodsForUsers(runCtx, page.map((u) => u.id)))
-              } catch (e) {
-                methodsFailure = e instanceof Error ? e.message : String(e)
-              }
+              const ids = page.map(u => u.id)
+              await Promise.all([
+                collectMethodsForUsers(runCtx, ids).then(result => { Object.assign(methods, result) }).catch(e => { methodsFailure = e instanceof Error ? e.message : String(e) }),
+                collectPerUserMfaForUsers(runCtx, ids).then(result => { Object.assign(snapshot.perUserMfa!, result) }),
+              ])
             },
             { includeSignInActivity: caps.entraP1.enabled },
           ),

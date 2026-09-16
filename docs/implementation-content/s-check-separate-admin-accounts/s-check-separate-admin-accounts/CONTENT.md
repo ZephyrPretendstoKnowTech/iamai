@@ -1,5 +1,5 @@
 @@IAMAI-BEGIN {"id":"entra.separate","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-For each person IAMAI lists as holding a directory role on an account that also has mail or Teams sign-ins:
+Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:
 1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.
 2. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://aka.ms/mysecurityinfo. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.
 3. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.
@@ -8,13 +8,12 @@ For each person IAMAI lists as holding a directory role on an account that also 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.separate","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only, unlicensed admin account; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create-and-stage","channel":"entra","states":["actionRequired"],"format":"markdown","kind":"template"}
-For each affected person in {{admin.peopleToSeparate}}:
+Review {{admin.peopleToSeparate}}. Record Already dedicated to admin work for existing dedicated accounts. Where a handover is needed:
 1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.
 2. Do not assign ordinary mail/Teams/files productivity use to the admin account.
 3. Inventory the everyday account's current directory role assignments and distinguish direct active assignments from PIM eligibility/activation.
@@ -64,7 +63,6 @@ if($Mode -eq 'StageDirectAssignments'){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.stage","channel":"aiInfo","states":["actionRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Tenant: {{tenant.displayName}}. Administrators who need a separate admin account: {{admin.peopleToSeparate}}. Direct active role assignments: {{admin.directRoleAssignments}}. PIM assignments: {{admin.pimAssignments}}.
 
@@ -72,25 +70,21 @@ This state stages the new admin account. Add only the intended roles, under the 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prove","channel":"aiInfo","states":["credentialProofRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The new admin account needs a tested sign-in before any old role assignment is removed: a successful sign-in with an approved phishing-resistant method, such as a passkey or security key, and a check that the account can complete the required administrative task.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.cutover","channel":"aiInfo","states":["roleCutoverRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state moves the role off the everyday account. First confirm the dedicated admin account holds the intended role and can complete the required administrative task. Then remove the role from the everyday account through the surface that owns the assignment: direct role assignment or PIM. The PowerShell output for this state reads both accounts' role assignments; it does not remove anything.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm the separation: the dedicated admin account holds the intended role, the everyday account no longer holds it, and mail, Teams and files stay on the everyday account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Resolve them before creating an admin account or changing role assignments.
 @@IAMAI-END

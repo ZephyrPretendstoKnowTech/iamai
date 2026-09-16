@@ -24,7 +24,7 @@
       "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
       "Name: Core - Block - Admin portals for non-admins",
       "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude Guest or external users (all types).",
-      "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Cloud Login, Windows Azure Service Management API, an unnamed account, an unnamed account",
+      "Target resources → Resources → Select resources → Microsoft Admin Portals, Inforcer (baseline name), Windows Azure Service Management API, an unnamed account, an unnamed account",
       "Grant → Block access",
       "Enable policy: Report-only → Create"
     ]

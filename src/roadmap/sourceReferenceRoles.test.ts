@@ -33,7 +33,7 @@ const MAP = (id: string): string => answerTextFor(referenceOptions()[1], [id])
 const AT = '2026-09-11T00:00:00Z'
 
 // The pinned baseline's own references, one for each part a reference plays.
-const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18' // excluded from 23 policies, included by none
+const BROAD = '5628ad67-f9d1-4495-abe3-99dc8f9074f1' // excluded from 23 policies, included by none
 const PASSKEY_PILOT = '1178bb5d-4f19-4b69-b33b-44eb7f5b39c9' // the whole of who one policy reaches
 const ADMIN_PASSKEYS = '5f96c57d-380f-4872-97ff-cfd74ef1ac1a' // the whole of who another reaches
 const BLOCKED_COUNTRIES = '1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748' // the only location a block policy names
