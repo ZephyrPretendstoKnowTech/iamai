@@ -290,12 +290,15 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 | gated_action | prerequisite | prerequisite_kind | milestone | condition | edge_kind | source | status |
 |---|---|---|---|---|---|---|---|
-| `cleanup-drill:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | package | ok |
+| `s-prereq-passkey-settings:start` | `s-prereq-break-glass` | step | `complete` | — | hard | owner | ok |
+| `s-prereq-passkey-settings:start` | `s-prereq-exclusion-group` | step | `complete` | — | hard | owner | ok |
+| `cleanup-drill:start` | `s-prereq-break-glass` | step | `complete` | — | hard | package | ok |
 | `cleanup-drill:start` | `s-prereq-exclusion-group` | step | `complete` | — | hard | owner | ok |
 | `cleanup-drill:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | owner | ok |
 | `cleanup-hardening:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | audit | ok |
 | `s-ladder-operator-passkey:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | package | ok |
-| `s-verify-mfa:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | owner | ok |
+| `s-ladder-operator-passkey:start` | `cleanup-drill` | step | `complete` | — | hard | owner | ok |
+| `s-verify-mfa:start` | `s-ladder-operator-passkey` | step | `complete` | — | hard | owner | ok |
 | `s-question-travel:start` | `s-prereq-allowed-countries` | step | `complete` | — | hard | package | ok |
 | `s-shared-devices:start` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
 | `s-shared-devices:complete` | `s-goal-require-managed-device` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |

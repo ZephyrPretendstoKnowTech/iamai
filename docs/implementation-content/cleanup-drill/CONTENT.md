@@ -4,16 +4,18 @@ Run the drill **one confirmed emergency account at a time**:
 Emergency accounts:
 {{emergencyAccounts.summary}}
 
-1. Use the approved designated secure workstation or Privileged Access Workstation. Open a private/InPrivate browser session.
-2. Retrieve that account's credential/authentication device through the approved offline custody process. Do not copy the secret into notes, scripts, chat, or AI.
-3. Sign in interactively with the emergency account.
-4. Confirm the expected privileged role is usable by opening the intended Entra administrative surface and performing a minimal **non-destructive read/check**.
-5. Do not change policy, roles, credentials, or exclusions merely to prove access.
-6. Sign out and close the private browser session.
-7. Review the account's sign-in and relevant audit evidence. Confirm the activity is the drill you just performed.
-8. If emergency-account alerting is configured, confirm the expected notification reached the monitored destination. If no alert path is configured, record that separately; do not invent an alert result.
-9. Repeat for every confirmed emergency account.
-10. Only after **all** accounts pass, record the drill date/result in IAMAI. Repeat at least every 90 days.
+1. In IAMAI, choose **Record configuration and begin test** before signing in. This checkpoint must precede the event used as proof.
+2. Use the approved designated secure workstation or Privileged Access Workstation. Open a private/InPrivate browser session.
+3. Retrieve that account's credential/authentication device through the approved offline custody process. Do not copy the secret into notes, scripts, chat, or AI.
+4. Sign in interactively with the emergency account.
+5. Confirm the expected privileged role is usable by opening the intended Entra administrative surface and performing a minimal **non-destructive read/check**.
+6. Do not change policy, roles, credentials, or exclusions merely to prove access.
+7. Sign out and close the private browser session.
+8. Review the account's sign-in and relevant audit evidence. Confirm the activity is the drill you just performed.
+9. Scan IAMAI again, select the exact account/time/administrative resource event, and confirm credential retrieval and the non-destructive check.
+10. If emergency-account alerting is configured, confirm the expected notification reached the monitored destination. If no alert path is configured, record that separately; do not invent an alert result.
+11. Repeat for every confirmed emergency account.
+12. Only after **all** accounts pass, record the drill date/result in IAMAI. Repeat at least every 90 days.
 
 If any account fails, do not mark the drill Done and do not proceed with dependent lockout-sensitive enforcement.
 @@IAMAI-END

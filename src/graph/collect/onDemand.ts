@@ -12,6 +12,17 @@ import type { GroupMembersCacheEntry } from './cache.ts'
 // Above this, membership is stored as count-and-sample, not the full id list.
 export const GROUP_MEMBER_FULL_LIST_CEILING = 20_000
 
+/** Complete transitive group ids for one selected safety-sensitive account. */
+export async function readUserTransitiveGroupIds(userId: string): Promise<string[] | null> {
+  try {
+    const tokens = await msalTokens()
+    const rows = await graphPaged(tokens, `${V1}/users/${encodeURIComponent(userId)}/transitiveMemberOf/microsoft.graph.group?$select=id&$count=true`, { headers: { ConsistencyLevel: 'eventual' } })
+    return [...new Set(rows.map(row => String((row as Record<string, unknown>).id ?? '')).filter(Boolean))]
+  } catch {
+    return null
+  }
+}
+
 async function msalTokens(): Promise<TokenSource> {
   let token = await getGraphToken()
   return {
@@ -135,7 +146,7 @@ export async function readGroup(
         groupId,
         presence: 'present',
         reason: null,
-        object: { displayName: cached.displayName, membershipRule: cached.membershipRule, mailEnabled: cached.mailEnabled === true },
+        object: { displayName: cached.displayName, membershipRule: cached.membershipRule, mailEnabled: cached.mailEnabled === true, securityEnabled: cached.securityEnabled ?? null, groupTypes: cached.groupTypes ?? null, isAssignableToRole: cached.isAssignableToRole ?? null },
         members: cached.sampled ? 'sampled' : 'complete',
         memberIds: cached.memberIds,
         memberCount: cached.memberCount,
@@ -154,7 +165,7 @@ export async function readGroup(
   // 1. Does the object exist? This request, and only this request, answers that.
   let g: Record<string, unknown>
   try {
-    const group = await graphRequest(tokens, `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,mailEnabled`)
+    const group = await graphRequest(tokens, `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,mailEnabled,securityEnabled,groupTypes,isAssignableToRole`)
     g = group as unknown as Record<string, unknown>
   } catch (e) {
     return unread(e)
@@ -163,6 +174,9 @@ export async function readGroup(
     displayName: typeof g.displayName === 'string' ? g.displayName : null,
     membershipRule: typeof g.membershipRule === 'string' ? g.membershipRule : null,
     mailEnabled: g.mailEnabled === true,
+    securityEnabled: typeof g.securityEnabled === 'boolean' ? g.securityEnabled : null,
+    groupTypes: Array.isArray(g.groupTypes) && g.groupTypes.every(value => typeof value === 'string') ? g.groupTypes as string[] : null,
+    isAssignableToRole: typeof g.isAssignableToRole === 'boolean' ? g.isAssignableToRole : null,
   }
   const present = (members: MemberEvidence, memberIds: string[], memberCount: number | null): GroupRead => ({ groupId, presence: 'present', reason: null, object, members, memberIds, memberCount, asOf })
 
@@ -188,11 +202,15 @@ export async function readGroup(
       memberIds = rows.map((m) => String((m as Record<string, unknown>).id ?? '')).filter(Boolean)
     }
     const entry: GroupMembersCacheEntry = {
+      schema: 2,
       tenantId,
       groupId,
       displayName: object.displayName,
       membershipRule: object.membershipRule,
       mailEnabled: object.mailEnabled,
+      securityEnabled: object.securityEnabled,
+      groupTypes: object.groupTypes,
+      isAssignableToRole: object.isAssignableToRole,
       memberCount: sampled ? memberCount : memberIds.length,
       memberIds,
       sampled,
@@ -230,6 +248,9 @@ export async function getGroupMembers(
     displayName: r.object?.displayName ?? null,
     membershipRule: r.object?.membershipRule ?? null,
     mailEnabled: r.object?.mailEnabled === true,
+    securityEnabled: r.object?.securityEnabled ?? null,
+    groupTypes: r.object?.groupTypes ?? null,
+    isAssignableToRole: r.object?.isAssignableToRole ?? null,
     memberCount: r.memberCount,
     memberIds: r.memberIds,
     sampled: r.members === 'sampled',

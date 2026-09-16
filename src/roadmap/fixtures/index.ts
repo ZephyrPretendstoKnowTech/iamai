@@ -716,9 +716,9 @@ export function buildFixture(spec: Spec): Fixture {
     assumed: { breakGlass: 'confirmed' },
   }
   const groups: GroupMembers = new Map()
-  groups.set(bgGroup, { memberIds: bgIds, memberCount: bgIds.length, sampled: false, displayName: 'Core - Break glass' })
+  groups.set(bgGroup, { memberIds: bgIds, memberCount: bgIds.length, sampled: false, displayName: 'Core - Break glass', membershipRule: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false })
   const exclusionMembers = [...bgIds, ...ids.slice(spec.admins, spec.admins + (spec.exclusionGroupSize ?? 0))]
-  groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, displayName: 'Core - Exclusions' })
+  groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, displayName: 'Core - Exclusions', membershipRule: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false })
   // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
   const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
   // The demo derives through the same baseline as the product (walk-51 item 9):

@@ -69,6 +69,9 @@ import { prerequisiteBasis } from '../../content/implementation/project.ts'
 import type { OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import { RecoveryTestControl } from './RecoveryTestControl.tsx'
+import type { RecoveryDone } from './RecoveryTestControl.tsx'
 
 type Ex = Record<string, unknown>
 
@@ -133,6 +136,8 @@ export function ContentStep({
   prerequisiteLabel = null,
   onOpenMappings,
   onCredentialStorage,
+  recoveryPhase = null,
+  onRecoveryDone,
 }: {
   step: Step
   ctx: StepVarContext
@@ -149,6 +154,8 @@ export function ContentStep({
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings?: () => void
   onCredentialStorage?: (done: boolean) => void
+  recoveryPhase?: CleanupPhase | null
+  onRecoveryDone?: RecoveryDone
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void
@@ -297,21 +304,18 @@ export function ContentStep({
             onOpenMappings={null}
             printing={printing}
             extra={(t) => {
-              const custody = t.key === 'configuration:credential-custody' && !printing && onCredentialStorage && ctx.mapping.breakGlassUserIds.length > 0
-                ? <label className="choice"><input type="checkbox" checked={ctx.mapping.breakGlassAnswers?.credentialStorage === true} onChange={e => onCredentialStorage(e.currentTarget.checked)} />Credentials and recovery keys for the selected accounts are stored in approved locations accessible without this tenant.</label>
-                : null
               const slot = t.key === 'configuration:credential-custody' && contract.hardening
                 ? { key: t.key, label: t.label, accountId: null, state: 'hardening' as const, minimum: [], hardening: [] }
                 : contract.emergencySlots.find((s) => s.key === t.key)
-              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return custody
+              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return null
               const deferralSlot = t.key === 'configuration:credential-custody' || contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
               return (
-                <>{custody}<EmergencySlotBody
+                <EmergencySlotBody
                   slot={slot}
                   hardening={deferralSlot && contract.hardening ? { ...contract.hardening, ...(t.key === 'configuration:credential-custody' ? { unchecked: 0 } : {}) } : null}
                   onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
                   onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
-                /></>
+                />
               )
             }}
           >
@@ -350,6 +354,9 @@ export function ContentStep({
         <StepActionColumn rail={rail}>
           {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
           {isPasskeySettings ? <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} printing={printing} /> : step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {step.id === 's-prereq-break-glass' && !printing && onCredentialStorage && ctx.mapping.breakGlassUserIds.length > 0 && <label className="choice"><input type="checkbox" checked={ctx.mapping.breakGlassAnswers?.credentialStorage === true} onChange={e => onCredentialStorage(e.currentTarget.checked)} />Credentials and recovery keys for the selected accounts are stored in approved locations accessible without this tenant.</label>}
+          {['s-prereq-exclusion-group', 's-prereq-passkey-settings'].includes(step.id) && <div className="selected-emergency-accounts"><strong>Selected emergency accounts</strong>{ctx.mapping.breakGlassUserIds.length ? <ul>{ctx.mapping.breakGlassUserIds.map(id => { const user = ctx.snapshot.users.find(item => item.id.toLowerCase() === id.toLowerCase()); const upn = user?.userPrincipalName; return <li key={id}>{ctx.nameOf(id)}{upn && upn !== ctx.nameOf(id) ? ` — ${upn}` : ''}</li> })}</ul> : <p className="reason">No accounts selected.</p>}<a href="#/plan/s-prereq-break-glass">Change accounts in Prepare Emergency Access Accounts</a></div>}
+          {!printing && recoveryPhase && onRecoveryDone && ['s-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id) && <RecoveryTestControl phase={recoveryPhase} purpose="pre-change" onDone={onRecoveryDone} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">

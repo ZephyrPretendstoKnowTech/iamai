@@ -388,7 +388,7 @@ export type BoardItem = {
 }
 
 /** The four existing rows that form the shared emergency-access foundation. */
-export const EMERGENCY_STEP_IDS = ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group', 'cleanup-drill'] as const
+export const EMERGENCY_STEP_IDS = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'] as const
 
 /** Partition the canonical row set without cloning or dropping an id. */
 export function partitionEmergencyItems(items: readonly BoardItem[]): { emergency: BoardItem[]; remaining: BoardItem[]; complete: boolean } {

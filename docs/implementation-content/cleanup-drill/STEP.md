@@ -58,7 +58,7 @@ Preserve emergency-account credentials, authentication devices, role assignments
 - **Blocked:** unresolved emergency-account prerequisite; no drill instructions.
 
 ## Verification
-For each emergency account, verify the interactive sign-in event, expected administrative access, minimal non-destructive admin action, sign-out, and sign-in/audit-log evidence. If emergency-account alerting is configured, confirm the notification reached the intended monitored destination. Record the successful proof date only after the complete procedure passes for every confirmed emergency account.
+Before each test, record the current configuration checkpoint in IAMAI. Then, for each emergency account, verify a later interactive sign-in event, expected administrative access, minimal non-destructive admin action, sign-out, and sign-in/audit-log evidence. Scan again and select the exact event; an older event cannot certify a later checkpoint. If emergency-account alerting is configured, confirm the notification reached the intended monitored destination. Record the successful proof date only after the complete procedure passes for every confirmed emergency account.
 
 ## Rollback / safe recovery
 A drill itself makes no intended tenant configuration change. If it fails, stop dependent lockout-sensitive enforcement work, return to the owning emergency-account/exclusions/monitoring remediation, correct the proven defect, and rerun the drill. Do not compensate by weakening unrelated policies.
@@ -67,4 +67,4 @@ A drill itself makes no intended tenant configuration change. If it fails, stop 
 IAMAI can record the result but cannot perform or prove a human sign-in on the operator's behalf. Sign-in logs alone do not prove the full drill because they do not establish credential custody, administrative task success, or that the sign-in was an intentional validation.
 
 ## Source verification
-Workbook Order 46 is `cleanup-drill`, a rollout-proof step with no Entra, JSON, or PowerShell implementation and a required human sign-in/test. Existing IAMAI product copy requires each emergency account to be exercised and the date recorded. Current Microsoft guidance recommends at least two emergency accounts, a designated secure workstation/PAW, monitoring of sign-in and audit activity, and account validation at least every 90 days.
+Workbook Order 46 is `cleanup-drill`, a rollout-proof step with a required human sign-in/test. IAMAI presents the Entra procedure and read-only evidence guidance; it does not create a write payload. Existing IAMAI product copy requires each emergency account to be exercised and the date recorded. Current Microsoft guidance recommends at least two emergency accounts, a designated secure workstation/PAW, monitoring of sign-in and audit activity, and account validation at least every 90 days.

@@ -39,7 +39,7 @@ import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
-import { readGroup } from '../../graph/collect/onDemand.ts'
+import { readGroup, readUserTransitiveGroupIds } from '../../graph/collect/onDemand.ts'
 import type { GroupRead } from '../../graph/collect/presence.ts'
 import { actionableExclusionsGroupId, directoryEvidenceOf, exclusionsGroupIdToVerify } from '../../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
@@ -127,7 +127,7 @@ export type PlanData = {
   /** The plan's checkpoints as saved (the scan checkpoints a save writes, and each Cleanup row's Done); they travel in the plan file. */
   checkpoints: unknown[]
   /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
-  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
+  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
@@ -228,6 +228,24 @@ export function usePlanData(
       for (const g of users?.includeGroups ?? []) ids.add(g)
       for (const g of users?.excludeGroups ?? []) ids.add(g)
     }
+    // Authentication-method targeting can differ from Conditional Access.
+    // Load its target groups as first-class evidence rather than borrowing a
+    // union of profile allow lists later.
+    for (const row of snapshot.config.authMethodsPolicy?.rows ?? []) {
+      const configurations = (row as { authenticationMethodConfigurations?: { id?: string; includeTargets?: { id?: string }[]; excludeTargets?: { id?: string }[] }[] }).authenticationMethodConfigurations ?? []
+      for (const configuration of configurations) {
+        if (configuration.id?.toLowerCase() !== 'fido2') continue
+        for (const target of [...(configuration.includeTargets ?? []), ...(configuration.excludeTargets ?? [])]) {
+          if (target.id && !['all_users', 'allusers'].includes(target.id.toLowerCase())) ids.add(target.id)
+        }
+      }
+    }
+    // Role assignments can target a group. User ids are already known, so the
+    // remaining principals are bounded group candidates worth resolving.
+    const userIds = new Set(snapshot.users.map(user => user.id.toLowerCase()))
+    for (const principalId of [...Object.keys(snapshot.roles.active), ...Object.keys(snapshot.roles.eligible)]) {
+      if (!userIds.has(principalId.toLowerCase())) ids.add(principalId)
+    }
     // The plan's own groups too — the exclusions group and the service-accounts
     // group the mapping names — whether or not a policy references them yet:
     // the checks on the exclusions group read its members, and without them the
@@ -252,7 +270,17 @@ export function usePlanData(
         const r = await readGroup(snapshot.tenantId, id, { since: snapshot.asOf })
         reads.push(r)
         if (r.presence === 'present' && r.members !== 'unknown' && r.memberCount !== null) {
-          map.set(id, { memberIds: r.memberIds, memberCount: r.memberCount, sampled: r.members === 'sampled', displayName: r.object?.displayName ?? null })
+          map.set(id, { memberIds: r.memberIds, memberCount: r.memberCount, sampled: r.members === 'sampled', displayName: r.object?.displayName ?? null, membershipRule: r.object?.membershipRule ?? null, mailEnabled: r.object?.mailEnabled, securityEnabled: r.object?.securityEnabled ?? null, groupTypes: r.object?.groupTypes ?? null, isAssignableToRole: r.object?.isAssignableToRole ?? null })
+        }
+      }
+      if (reads.some(read => read.members === 'sampled' || read.members === 'unknown')) {
+        for (const accountId of decided.breakGlassUserIds) {
+          const memberships = await readUserTransitiveGroupIds(accountId)
+          if (!memberships) continue
+          const effective = new Set(memberships.map(id => id.toLowerCase()))
+          for (const [groupId, group] of map) {
+            if (effective.has(groupId.toLowerCase()) && !group.memberIds.some(id => id.toLowerCase() === accountId.toLowerCase())) group.memberIds.push(accountId)
+          }
         }
       }
       if (!cancelled) {
@@ -490,16 +518,16 @@ export function usePlanData(
       const currentBasis = snapshot ? recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) : {}
       if (kind === 'drill' && evidence.workflow === RECOVERY_PREPARATION_WORKFLOW) {
         const configurationReady = phase.recoveryFindings?.find(finding => finding.key === 'recovery-configuration')?.outcome === 'pass'
-        if (!snapshot || !configurationReady || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id) || !currentBasis[id]) || evidence.tenantId !== snapshot.tenantId || evidence.configurationObservedAt !== snapshot.asOf) return
+        if (!snapshot || !evidence.purpose || (evidence.purpose === 'final' && !configurationReady) || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id) || !currentBasis[id]) || evidence.tenantId !== snapshot.tenantId || evidence.configurationObservedAt !== snapshot.asOf) return
       }
       if (kind === 'drill' && evidence.outcome === 'passed') {
-        if (!snapshot || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id))) return
+        if (!snapshot || !evidence.purpose || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id))) return
         const valid = accountIds.every(id => {
           const recorded = evidence.recoveryEvidence?.[id]
-          const preparation = recoveryPreparation(id, cleanupRecord(saved?.checkpoints ?? []).records ?? [], snapshot.asOf, currentBasis[id], snapshot.tenantId)
+          const preparation = recoveryPreparation(id, cleanupRecord(saved?.checkpoints ?? []).records ?? [], snapshot.asOf, currentBasis[id], snapshot.tenantId, evidence.purpose)
           const configurationObservedAt = preparation?.configurationObservedAt ?? null
           const observed = recoveryCandidateReadings(snapshot, id, snapshot.asOf, configurationObservedAt).find(reading => reading.qualifies && reading.candidate.eventId === recorded?.eventId)?.candidate
-          return !!recorded && !!observed && !!configurationObservedAt && recorded.schema === 1 && recorded.tenantId === snapshot.tenantId && recorded.accountId.toLowerCase() === id.toLowerCase() && recorded.eventAt === observed.at && recorded.appId === observed.appId && recorded.resourceId === observed.resourceId && recorded.method === observed.method && recorded.provenance === 'observed-sign-in' && recorded.configurationObservedAt === configurationObservedAt && Date.parse(recorded.eventAt) >= Date.parse(configurationObservedAt) && Date.parse(snapshot.asOf) >= Date.parse(recorded.eventAt) && recorded.recoveryConfirmed === true && recorded.credentialConfirmed === true && !!currentBasis[id]
+          return !!recorded && recorded.purpose === evidence.purpose && !!observed && !!configurationObservedAt && recorded.schema === 1 && recorded.tenantId === snapshot.tenantId && recorded.accountId.toLowerCase() === id.toLowerCase() && recorded.eventAt === observed.at && recorded.appId === observed.appId && recorded.resourceId === observed.resourceId && recorded.method === observed.method && recorded.provenance === 'observed-sign-in' && recorded.configurationObservedAt === configurationObservedAt && Date.parse(recorded.eventAt) >= Date.parse(configurationObservedAt) && Date.parse(snapshot.asOf) >= Date.parse(recorded.eventAt) && recorded.recoveryConfirmed === true && recorded.credentialConfirmed === true && !!currentBasis[id]
         })
         if (!valid) return
       }

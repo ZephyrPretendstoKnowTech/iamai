@@ -9,7 +9,7 @@ import { ruleText } from '../validation/rules.ts'
 import type { RuleResult } from '../validation/rules.ts'
 import type { ConfigurationFinding } from './types.ts'
 import { assignedPasskeyProfiles, passkeyFindingsOf, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
-import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
 import { latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
@@ -117,11 +117,36 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
       return { label: m.name, value: [m.aaguid, ...(m.source === 'existing' ? ['Existing tenant allowance retained during the transition'] : []), ...states].join(' · ') }
     }),
   ]
+  const recovery = emergencyMethodFinding(snapshot, mapping, groups)
+  recovery.key = 'recovery-ready'
+  recovery.label = 'Recovery Ready'
+  recovery.link = link(EMERGENCY_ACCOUNTS, 'Prepare emergency recovery')
+  const availabilityRows = raw.filter(f => ['method', 'selfService', 'targets', 'exclusions', 'read'].includes(f.key) || f.key.startsWith('profiles.unread'))
+  if (availabilityRows.some(f => f.outcome !== 'pass')) {
+    recovery.items = [...(recovery.items ?? []), ...availabilityRows.filter(f => f.outcome !== 'pass').map(f => ({ label: f.label, value: `${f.value}. ${f.detail}` }))]
+    if (recovery.outcome === 'pass') recovery.outcome = availabilityRows.some(f => f.outcome === 'fail') ? 'fail' : 'unknown'
+  }
+  const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
+  const affectedFinding: ConfigurationFinding = {
+    key: 'affected-passkeys',
+    label: 'Existing Passkeys Affected',
+    value: affected.users.length
+      ? `${affected.users.length} ${affected.users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
+      : affected.state === 'known'
+        ? 'No existing passkeys were identified as losing sign-in access under this change.'
+        : 'Assessment incomplete',
+    outcome: affected.users.length ? 'fail' : affected.state === 'known' ? 'pass' : 'unknown',
+    detail: affected.coverage.join(' '),
+    items: affected.users.map(user => ({
+      label: accountLabel(snapshot, user.accountId),
+      value: `${user.methods.map(method => `${method.displayName} · ${method.aaguid ?? 'AAGUID not read'} · ${method.passkeyType ?? 'storage type not read'}`).join('; ')}${user.hasCompatibleAlternative ? ' Another compatible passkey is registered.' : ''}`,
+    })),
+  }
   return [
-    grouped('availability', 'Passkey Availability', f => ['method', 'selfService', 'targets', 'exclusions', 'read'].includes(f.key) || f.key.startsWith('profiles.unread')),
+    recovery,
     grouped('protection', 'Storage and Attestation', f => f.key.endsWith('.types') || f.key.endsWith('.attestation')),
     models,
-    emergencyMethodFinding(snapshot, mapping, groups),
+    affectedFinding,
   ]
 }
 
@@ -153,7 +178,7 @@ const IDENTITY = new Set(['bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg
 const EXCLUSIONS = new Set(['bg.excludedFromAllPolicies', 'bg.excludedFromReportOnly', 'bg.microsoftManaged', 'bg.notInDynamicScope'])
 const AUTH = new Set(['bg.hasMfaMethod', 'bg.phishingResistant', 'bg.separateDevices', 'bg.methodDiversity', 'bg.perUserMfaOff'])
 
-export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSnapshot, mapping: MappingState, groups?: GroupMembers): ConfigurationFinding[] {
+export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSnapshot, mapping: MappingState, groups?: GroupMembers, preChangeCurrent = false): ConfigurationFinding[] {
   const authentication = emergencyMethodFinding(snapshot, mapping, groups)
   authentication.link = link(PASSKEY_SETTINGS, 'Review approved passkey models and settings')
   const authChecks = reportFinding(report, 'auth-checks', '', r => AUTH.has(r.id), '')
@@ -162,17 +187,23 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
     authentication.items = [...(authentication.items ?? []), ...(authChecks.items ?? [])]
     if (authentication.outcome === 'pass') { authentication.outcome = authChecks.outcome; authentication.value = 'Recovery method correction required' }
   }
-  const selection = reportFinding(report, 'account-selection', 'Account Selection', r => r.id === 'bg.count', 'Saved')
-  const identity = reportFinding(report, 'account-setup', 'Identity and Roles', r => IDENTITY.has(r.id) && r.id !== 'bg.count', 'Verified')
+  const identity = reportFinding(report, 'account-setup', 'Accounts and Identity', r => IDENTITY.has(r.id), 'Verified')
+  const restrictions = reportFinding(report, 'account-restrictions', 'Existing Restrictions', r => EXCLUSIONS.has(r.id), 'Clear')
   const custody = reportFinding(report, 'credential-custody', 'Credential Custody', r => r.id === 'bg.credentialStorage', 'Confirmed')
-  return [selection, identity, authentication, custody]
+  authentication.label = 'Prepared Passkeys'
+  authentication.detail = `${authentication.detail ? `${authentication.detail} ` : ''}${preChangeCurrent ? 'A current pre-change recovery test is verified.' : 'Record and pass the pre-change recovery test before configuring authentication policy.'}`
+  if (!preChangeCurrent && authentication.outcome === 'pass') { authentication.outcome = 'unknown'; authentication.value = 'Pre-change test required' }
+  return [identity, restrictions, authentication, custody]
 }
 
-export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null): ConfigurationFinding[] {
-  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions Group', value: name || 'Choose a group', detail: selected ? 'This is the saved group used in the plan’s policy exclusions.' : 'Confirm the intended group in the selector. A detected group is a suggestion until saved.', outcome: selected ? 'pass' : 'unknown' }
-  if (!report) return [choice, { key: 'group-members', label: 'Emergency Account Membership', value: 'Not verified', detail: 'Save the group choice and select the emergency accounts so the scan can verify its membership.', outcome: 'unknown', link: link(EMERGENCY_ACCOUNTS, 'Open Emergency Access Accounts') }]
+export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, preChangeCurrent = false): ConfigurationFinding[] {
+  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Group Configuration', value: name || 'Choose a group', detail: selected ? 'This is the saved assigned security group used in the plan’s policy exclusions.' : 'Confirm the intended assigned security group in the selector. A detected group is a suggestion until saved.', outcome: selected ? 'pass' : 'unknown' }
+  const recovery: ConfigurationFinding = { key: 'pre-change-recovery', label: 'Recovery Access', value: preChangeCurrent ? 'Pre-change test passed' : 'Test required', detail: preChangeCurrent ? 'The selected accounts have current event-backed recovery results for this configuration.' : 'Record the current configuration, sign in with each prepared account, scan again, and save the exact qualifying events.', outcome: preChangeCurrent ? 'pass' : 'unknown', link: link(EMERGENCY_ACCOUNTS, 'Review account preparation') }
+  if (!report) return [choice, { key: 'group-members', label: 'Emergency Account Membership', value: 'Not verified', detail: 'Save the group choice and select the emergency accounts so the scan can verify its membership.', outcome: 'unknown', link: link(EMERGENCY_ACCOUNTS, 'Open Emergency Access Accounts') }, { key: 'group-policies', label: 'Policy Exclusions', value: 'Not verified', detail: 'Scan the tenant to verify every applicable policy excludes the selected group.', outcome: 'unknown' }, recovery]
   const members = reportFinding(report, 'group-members', 'Emergency Account Membership', r => ['xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.sizeReasonable'].includes(r.id), 'Selected accounts only')
   const settings = reportFinding(report, 'group-settings', 'Group Settings', r => ['xg.notDynamic', 'xg.notMailEnabled'].includes(r.id), 'Verified')
+  choice.items = settings.items
+  if (settings.outcome !== 'pass') { choice.outcome = settings.outcome; choice.value = settings.value; choice.detail = `${choice.detail} ${settings.detail}`.trim() }
   const policies = reportFinding(report, 'group-policies', 'Policy Exclusions', r => r.id === 'xg.usedConsistently', 'Required references present')
   policies.detail = 'Correct missing exclusions on enabled policies now. Prepare Report-only references before enforcement; keep each policy’s current mode.'
   if (groupId && snapshot?.config.caPolicies.status === 'ok') {
@@ -182,7 +213,7 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
       value: (p.state === 'enabled' ? 'On' : p.state === 'enabledForReportingButNotEnforced' ? 'Report-only' : 'Mode not read') + (p.conditions?.users?.excludeGroups?.some(id => id.toLowerCase() === groupId.toLowerCase()) ? ' · Group already excluded' : ''),
     }))
   }
-  return [choice, settings, members, policies]
+  return [choice, members, policies, recovery]
 }
 
 export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers | undefined, records: CleanupCheckpoint[], now: string): ConfigurationFinding[] {

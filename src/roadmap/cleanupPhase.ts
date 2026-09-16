@@ -34,6 +34,8 @@ export type CleanupPhase = {
   recoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   tenantId?: string
   configurationObservedAtByAccount?: Record<string, string | null>
+  preChangeConfigurationObservedAtByAccount?: Record<string, string | null>
+  preChangeRecoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   snapshotObservedAt?: string
   accountBasis?: Record<string, string>
   consolidationCandidateIds?: string[]
@@ -53,6 +55,8 @@ export type CleanupPhaseInput = {
   recoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   tenantId?: string
   configurationObservedAtByAccount?: Record<string, string | null>
+  preChangeConfigurationObservedAtByAccount?: Record<string, string | null>
+  preChangeRecoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   snapshotObservedAt?: string
   policies?: readonly unknown[] | null
   emergencyAccounts: string[]
@@ -166,5 +170,5 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     if (!policyOptions.has(id)) policyOptions.set(id, { id, name: `${record.policyNames?.[id] ?? id} (not in current scan)`, basis: null, state: 'absent' })
   }
   dated.sort((a, b) => a.day.localeCompare(b.day))
-  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, namingProposals: [...new Map([...namingProposals, ...((input.records ?? []).filter(r => r.cleanup === 'naming').sort((a,b) => a.at.localeCompare(b.at)).at(-1)?.namingChanges ?? []).map(p => ({ ...p, collision: false }))].map(p => [p.id, p])).values()], accountIds: input.emergencyAccountIds, accountBasis: input.accountBasis, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
+  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, namingProposals: [...new Map([...namingProposals, ...((input.records ?? []).filter(r => r.cleanup === 'naming').sort((a,b) => a.at.localeCompare(b.at)).at(-1)?.namingChanges ?? []).map(p => ({ ...p, collision: false }))].map(p => [p.id, p])).values()], accountIds: input.emergencyAccountIds, accountBasis: input.accountBasis, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
 }

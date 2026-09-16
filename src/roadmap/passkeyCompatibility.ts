@@ -1,17 +1,22 @@
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { AuthMethodSummary } from '../scoring/mfaViability.ts'
 import type { GroupMembers } from '../coverage/population.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
+import { assignedPasskeyProfiles, passkeyReadingOf } from './passkeySettings.ts'
+import type { Fido2Configuration } from './passkeySettings.ts'
 
 export type PasskeyCompatibility = { accountId: string; state: 'excluded' | 'unknown' | 'review' | 'eligible'; reason: string }
-/** Account targeting and registered key restrictions, not proof of a recovery drill. */
-export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], groups: GroupMembers = new Map()): PasskeyCompatibility[] {
-  const reading = passkeyReadingOf(snapshot)
-  const policy = reading.current
+export type AffectedPasskeyMethod = { methodId: string | null; displayName: string; model: string | null; aaguid: string | null; passkeyType: string | null; reason: string }
+export type AffectedPasskeyUser = { accountId: string; methods: AffectedPasskeyMethod[]; hasCompatibleAlternative: boolean }
+export type AffectedPasskeyProjection = { state: 'known' | 'unknown'; users: AffectedPasskeyUser[]; coverage: string[] }
+
+const isPasskey = (method: AuthMethodSummary): boolean => method.kind === 'fido2' || method.kind === 'passkey'
+
+function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], policy: Fido2Configuration | null, groups: GroupMembers, unreadReason = 'policyUnread'): PasskeyCompatibility[] {
   return ids.map(accountId => {
     const result = (state: PasskeyCompatibility['state'], reason: string): PasskeyCompatibility => ({ accountId, state, reason })
-    if (!policy || reading.state === 'unread') return result('unknown', 'policyUnread')
-    if (policy.state !== 'enabled') return result(policy.state === 'disabled' ? 'review' : 'unknown', policy.state === 'disabled' ? 'disabled' : 'policyUnread')
+    if (!policy) return result('unknown', unreadReason)
+    if (policy.state !== 'enabled') return result(policy.state === 'disabled' ? 'review' : 'unknown', policy.state === 'disabled' ? 'disabled' : unreadReason)
     const match = (targets: unknown): boolean | null => {
       if (!Array.isArray(targets)) return null
       let unknown = false
@@ -31,30 +36,28 @@ export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: rea
     if (included === null) return result('unknown', 'membershipUnread')
     if (!included) return result('excluded', 'notTargeted')
     const methods = snapshot.authMethods[accountId]
-    if (!methods || methods === 'unknown') return result('unknown', 'methodsUnread')
-    const keys = methods.filter(m => m.kind === 'fido2' || m.kind === 'passkey')
+    if (!Array.isArray(methods)) return result('unknown', 'methodsUnread')
+    const keys = methods.filter(isPasskey)
     if (!keys.length) return result('review', 'newKey')
     if ((Array.isArray(policy.passkeyProfiles) && policy.passkeyProfiles.length > 0) || policy.defaultPasskeyProfile || (Array.isArray(policy.includeTargets) && policy.includeTargets.some(t => Array.isArray(t.allowedPasskeyProfiles) && t.allowedPasskeyProfiles.length))) {
       const assigned = assignedPasskeyProfiles(policy)
       if (assigned.unknown.length) return result('unknown', 'profileOrPartial')
       const matching = assigned.targets.filter(t => match([{ id: t.id }]) === true)
-      // A still-unread membership can grant another applicable profile. Do not
-      // call a known key denied based only on the already-resolved memberships.
       const unknownMembership = assigned.targets.some(t => match([{ id: t.id }]) === null)
-      const ids = new Set(matching.flatMap(t => t.profileIds))
-      const profiles = assigned.profiles.filter(p => ids.has(p.id.toLowerCase()))
+      const profileIds = new Set(matching.flatMap(t => t.profileIds))
+      const profiles = assigned.profiles.filter(p => profileIds.has(p.id.toLowerCase()))
       let unknown = unknownMembership
-      for (const key of keys) for (const p of profiles) {
-        const types = typeof p.passkeyTypes === 'string' ? p.passkeyTypes.toLowerCase().split(',').map(t => t.trim()) : []
+      for (const key of keys) for (const profile of profiles) {
+        const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.toLowerCase().split(',').map(t => t.trim()) : []
         const keyType = key.passkeyType?.toLowerCase()
         if (!keyType || !types.length || types.some(t => t !== 'devicebound' && t !== 'synced')) { unknown = true; continue }
         if (!types.includes(keyType)) continue
-        const kr = p.keyRestrictions
-        if (!kr || typeof kr.isEnforced !== 'boolean') { unknown = true; continue }
-        if (!kr.isEnforced) return result('eligible', 'eligible')
-        if (!key.aaGuid || !Array.isArray(kr.aaGuids) || !['allow', 'block'].includes(String(kr.enforcementType))) { unknown = true; continue }
-        const listed = kr.aaGuids.some(id => String(id).toLowerCase() === key.aaGuid!.toLowerCase())
-        if (kr.enforcementType === 'allow' ? listed : !listed) return result('eligible', 'eligible')
+        const restriction = profile.keyRestrictions
+        if (!restriction || typeof restriction.isEnforced !== 'boolean') { unknown = true; continue }
+        if (!restriction.isEnforced) return result('eligible', 'eligible')
+        if (!key.aaGuid || !Array.isArray(restriction.aaGuids) || !['allow', 'block'].includes(String(restriction.enforcementType))) { unknown = true; continue }
+        const listed = restriction.aaGuids.some(id => String(id).toLowerCase() === key.aaGuid!.toLowerCase())
+        if (restriction.enforcementType === 'allow' ? listed : !listed) return result('eligible', 'eligible')
       }
       return result(unknown ? 'unknown' : 'review', unknown ? 'modelsUnread' : 'modelRestricted')
     }
@@ -64,27 +67,55 @@ export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: rea
     const models = Array.isArray(restrictions.aaGuids) ? restrictions.aaGuids.map(x => String(x).toLowerCase()) : null
     if (!models || !['allow', 'block'].includes(String(restrictions.enforcementType))) return result('unknown', 'modelsUnread')
     const known = keys.filter(key => typeof key.aaGuid === 'string')
-    const allowed = known.some(key => restrictions.enforcementType === 'allow' ? models.includes(key.aaGuid!.toLowerCase()) : restrictions.enforcementType === 'block' && !models.includes(key.aaGuid!.toLowerCase()))
+    const allowed = known.some(key => restrictions.enforcementType === 'allow' ? models.includes(key.aaGuid!.toLowerCase()) : !models.includes(key.aaGuid!.toLowerCase()))
     if (allowed) return result('eligible', 'eligible')
     return known.length === keys.length ? result('review', 'modelRestricted') : result('unknown', 'modelsUnread')
   })
 }
 
-/** A separate prospective check: current eligibility alone cannot establish that
- * a registered key will survive the proposed device-bound model restrictions. */
+/** Account targeting and registered key restrictions, not proof of a recovery drill. */
+export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], groups: GroupMembers = new Map()): PasskeyCompatibility[] {
+  const reading = passkeyReadingOf(snapshot)
+  return policyCompatibility(snapshot, ids, reading.state === 'unread' ? null : reading.current, groups)
+}
+
+/** Prospective compatibility uses the exact resolved target that instructions and artifacts use. */
 export function emergencyProposedPasskeyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], mapping?: MappingState, groups: GroupMembers = new Map()): PasskeyCompatibility[] {
-  const policy = passkeyReadingOf(snapshot, mapping).current
-  const approved = new Set(requiredModels(mapping).map(m => m.aaguid))
-  // Preserve explicit existing allow-list approvals, matching target generation.
-  const restrictions = [policy?.keyRestrictions, ...(policy ? assignedPasskeyProfiles(policy).profiles.map(p => p.keyRestrictions) : [])]
-  for (const r of restrictions) if (r?.isEnforced === true && r.enforcementType === 'allow' && Array.isArray(r.aaGuids)) for (const id of r.aaGuids) if (typeof id === 'string') approved.add(id.toLowerCase())
-  return ids.map(accountId => {
-    const methods = snapshot.authMethods[accountId]
-    if (!Array.isArray(methods)) return {accountId, state: 'unknown', reason: 'methodsUnread'}
-    const keys = methods.filter(m => m.kind === 'fido2' || m.kind === 'passkey')
-    if (!keys.length) return {accountId, state: 'review', reason: 'newKey'}
-    if (keys.some(k => k.passkeyType?.toLowerCase() === 'devicebound' && k.aaGuid && approved.has(k.aaGuid.toLowerCase()) && emergencyPasskeyCompatibility({ ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [k] } }, [accountId], groups)[0].state === 'eligible')) return {accountId, state: 'eligible', reason: 'eligible'}
-    const unread = keys.some(k => !k.aaGuid || !k.passkeyType)
-    return {accountId, state: unread ? 'unknown' : 'review', reason: unread ? 'modelsUnread' : 'proposedModelRestricted'}
-  })
+  const reading = passkeyReadingOf(snapshot, mapping)
+  if (reading.resolution?.kind !== 'target') return ids.map(accountId => ({ accountId, state: 'unknown', reason: reading.resolution?.kind === 'review' ? 'profileOrPartial' : 'policyUnread' }))
+  return policyCompatibility(snapshot, ids, reading.resolution.target, groups)
+}
+
+/** Registered methods that are usable now and not under the exact proposed target. */
+export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
+  const reading = passkeyReadingOf(snapshot, mapping)
+  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'] }
+  const target = reading.resolution.target
+  const users: AffectedPasskeyUser[] = []
+  const coverage = new Set<string>()
+  for (const [accountId, methods] of Object.entries(snapshot.authMethods)) {
+    if (!Array.isArray(methods)) { coverage.add('Some users’ registered authentication methods were not readable.'); continue }
+    const keys = methods.filter(isPasskey)
+    if (!keys.length) continue
+    const states = keys.map(method => {
+      const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+      return { method, current: policyCompatibility(one, [accountId], reading.current, groups)[0], future: policyCompatibility(one, [accountId], target, groups)[0] }
+    })
+    if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
+    const affected = states.filter(state => state.current.state === 'eligible' && state.future.state !== 'eligible' && state.future.state !== 'unknown')
+    if (!affected.length) continue
+    users.push({
+      accountId,
+      hasCompatibleAlternative: states.some(state => state.future.state === 'eligible'),
+      methods: affected.map(({ method, future }) => ({
+        methodId: method.id ?? null,
+        displayName: method.displayName?.trim() || method.model?.trim() || 'Registered passkey',
+        model: method.model?.trim() || null,
+        aaguid: method.aaGuid?.toLowerCase() ?? null,
+        passkeyType: method.passkeyType ?? null,
+        reason: future.reason,
+      })),
+    })
+  }
+  return { state: coverage.size ? 'unknown' : 'known', users, coverage: [...coverage] }
 }

@@ -14,6 +14,16 @@ export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
 export type NotAssessedNotes = Record<string, string>
 
+/** Shared by the live drill and the existing printable/exported plan. */
+export const EMERGENCY_RECOVERY_PROCEDURE = [
+  'Preserve any working administrator session and credentials. Stop further broad authentication or Conditional Access changes.',
+  'Try the prepared emergency account with its intended credential in the documented recovery environment, and verify the tenant and account identity.',
+  'If another authorized administrator or an existing properly permissioned delegated partner can access the tenant, use that established route.',
+  'With sufficient access, inspect the actual failed sign-in and identify the responsible policy or authentication-method setting. Correct only the observed setting; do not disable all Conditional Access or remove all MFA.',
+  'Without working administrative access, use Microsoft business support or the applicable partner-support route. Prepare the tenant and domain, UTC error time, error and correlation details, and the known recent change. Never send passwords, Temporary Access Passes, tokens, PINs, or private keys.',
+  'After recovery, scan again and repeat the applicable emergency-access verification before resuming restrictive work.',
+] as const
+
 const A = app.plan
 
 /** The content entry behind a Cleanup row, or null when content.cleanup lacks it. */
