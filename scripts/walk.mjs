@@ -1551,13 +1551,16 @@ async function walkFixture(fx) {
             if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
-          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
+          if (/^Block Device Code Sign-in$/.test(title)) {
             // Quiet telemetry is not a successful replacement-workflow test. The
             // useful instruction must identify the actual task and recorded result.
             const workflowText = bodyText + '\n' + implText
             if (/Device Code/.test(title) && !/run the actual task with a representative account/.test(workflowText)) add('P0', `${slabel}: device-code guidance omits the representative replacement-task test`)
-            if (/Authentication Transfer/.test(title) && !/Test direct sign-in on each destination app or device/.test(workflowText)) add('P0', `${slabel}: authentication-transfer guidance omits the destination sign-in test`)
             if (!/Record the account, (?:tool\/task, replacement sign-in path|app\/device workflow), date and result/.test(workflowText)) add('P0', `${slabel}: workflow guidance omits the account, task, date or result to record`)
+          }
+          if (/^Block Authentication Transfer$/.test(title)) {
+            if (/Workflow Check|Authentication Transfer Workflow Tested/.test(bodyText)) add('P0', `${slabel}: the removed workflow form has returned`)
+            if (!/scan confirms.*policy is On/i.test(bodyText)) add('P0', `${slabel}: completion does not explain the scan-confirmed policy outcome`)
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
             emailChecks.push({ title, slabel, run: (_email, more) => {
