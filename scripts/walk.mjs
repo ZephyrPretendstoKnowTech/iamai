@@ -1298,12 +1298,14 @@ async function walkFixture(fx) {
         if (rowChips[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld && !heldOnRow) {
           if (!LANE_LABEL_RE.test(rowLabels[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowLabels[i]}" as its state; a row's state is its lane label`)
           if (!ROW_WHEN_RE.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it reads a day or the placeholder`)
-          if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
+          const conciseTokenCompletion = /^Require Token Protection on Windows$/.test(title)
+          if (conciseTokenCompletion && (!/scan confirms token protection is On/i.test(bodyText) || !/Supported work apps sign in successfully/i.test(bodyText))) add('P0', `${slabel}: token-protection completion lacks its policy and client outcomes`)
+          if (!conciseTokenCompletion && !RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           // The evidence half reads records: with none read for this policy it says
           // so and still counts the people it has seen, rather than printing the zero
           // an empty set adds up to (roadmap/tracking.ts, readyWhen.ts readyBasis).
-          if (!RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
-          if (READY_TO_ENFORCE_RE.test(rowLabels[i] || '') && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads Ready to enforce but the step's Done when does not say ready now`)
+          if (!conciseTokenCompletion && !RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
+          if (!conciseTokenCompletion && READY_TO_ENFORCE_RE.test(rowLabels[i] || '') && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads Ready to enforce but the step's Done when does not say ready now`)
         }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
@@ -1461,13 +1463,11 @@ async function walkFixture(fx) {
           // rule one line above rather than a fault here (roadmap/timing.ts
           // eventsFor): the check is about the sessions clause of an email that
           // is written, so it asks for one only where there is one to write.
-          if (/^Shorten Admin Sessions$/.test(title) && !cannotWriteYet && !enforcementHeld) {
+          if (/^Shorten Admin Sessions$/.test(title)) {
             const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
-            const emailText = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
-            if (!/reauthentication (?:after (?:\d+ hours|an hour|a day|a week|\d+ days)|every time)/.test(emailText)) add('P0', `${slabel}: the admin email omits the target reauthentication frequency`)
-            if (!/not kept signed in after the browser is closed/.test(emailText)) add('P0', `${slabel}: the admin email omits the nonpersistent browser behavior`)
-            await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
+            if (openedEmail) add('P0', `${slabel}: the removed admin-only Email channel has returned`)
           }
+
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
           // personal device can still do; step 12 asks for a passkey or a key.
