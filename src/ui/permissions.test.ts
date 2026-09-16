@@ -63,9 +63,10 @@ test('Application.Read.All is not requested (prompt 46 item 23)', () => {
 // deliberate act with a visible diff rather than a quiet widening of consent.
 // Every disclosure on the public surfaces is generated from this list, and
 // src/graph/msal.test.ts holds MSAL's own token requests to it.
-test('the requested scope set is exactly the nine the product discloses', () => {
+test('the requested scope set includes the dedicated read-only method-policy permission', () => {
   assert.deepEqual(GRAPH_SCOPES, [
     'Policy.Read.All',
+    'Policy.Read.AuthenticationMethod',
     'Directory.Read.All',
     'AuditLog.Read.All',
     'RoleManagement.Read.Directory',

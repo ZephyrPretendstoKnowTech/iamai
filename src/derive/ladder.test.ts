@@ -96,7 +96,8 @@ test("the campaign step's groups and the admin readiness list read the states; t
   // The 90% gate is the engine's constant (roadmap/constants.ts): MFA Readiness
   // reads it and renders the count it implies, and no surface writes the number.
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-  assert.match(page, /READINESS_THRESHOLD_MFA_PERCENT/, 'the page reads the gate from the engine')
+  assert.match(page, /step\?\.methodPreparation/, 'the page reads actual policy-scoped method preparation from the engine')
+  assert.doesNotMatch(page, /READINESS_THRESHOLD_MFA_PERCENT/, 'the global readiness strip is not a ninety-percent rollout gate')
   assert.doesNotMatch(page, /\b90\b/, 'and writes no number of its own')
   assert.doesNotMatch(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8').replace(/\/\/.*$/gm, ''), /READINESS_THRESHOLD|\b90 ?%/, 'Connect renders no gate')
 })

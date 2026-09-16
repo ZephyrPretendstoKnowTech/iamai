@@ -3,8 +3,8 @@
   "authoringGuide": "IAMAI-Implementation-Content-Authoring-Guide-v2.5-Compact.md",
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
-    "expectedPackageCount": 46,
-    "packageCount": 46,
+    "expectedPackageCount": 47,
+    "packageCount": 47,
     "complete": true
   },
   "packages": [
@@ -1517,7 +1517,7 @@
       "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
+      "validationResult": "pass",
       "sourceFiles": 3,
       "contentBlocks": 15,
       "outputs": {
@@ -1531,22 +1531,20 @@
       },
       "statesSupported": [
         "needsDecision",
-        "missingOrPartial",
-        "verificationRequired",
         "inPlace",
         "blocked",
         "missing"
       ],
       "correctionModules": 0,
-      "requiredBindings": 3,
-      "optionalBindings": 9,
+      "requiredBindings": 1,
+      "optionalBindings": 12,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 13,
+      "strictValidationErrors": 0,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -1914,6 +1912,49 @@
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
+    },
+    {
+      "stepId": "s-goal-inforcer-mfa",
+      "title": "Require MFA for Inforcer Access",
+      "packagePath": "docs/implementation-content/s-goal-inforcer-mfa/",
+      "relationship": "baseline-goal",
+      "status": "LOCAL-PROJECTION-REVIEW",
+      "validationResult": "parts-withheld",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 6,
+      "optionalBindings": 11,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy",
+      "strictValidationErrors": 4,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     }
   ],
   "bindings": [
@@ -2274,10 +2315,10 @@
     },
     {
       "binding": "authenticator.target.configuration",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-prereq-passkey-settings"
       ],
-      "optionalBy": [],
       "packages": [
         "s-prereq-passkey-settings"
       ],
@@ -2288,10 +2329,12 @@
       "binding": "automation.affected",
       "requiredBy": [],
       "optionalBy": [
-        "s-goal-azure-management-mfa"
+        "s-goal-azure-management-mfa",
+        "s-goal-inforcer-mfa"
       ],
       "packages": [
-        "s-goal-azure-management-mfa"
+        "s-goal-azure-management-mfa",
+        "s-goal-inforcer-mfa"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -2458,6 +2501,7 @@
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -2504,6 +2548,7 @@
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -3237,6 +3282,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -3253,6 +3299,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -3482,10 +3529,12 @@
       "binding": "group.serviceAccounts.id",
       "requiredBy": [],
       "optionalBy": [
-        "s-goal-azure-management-mfa"
+        "s-goal-azure-management-mfa",
+        "s-goal-inforcer-mfa"
       ],
       "packages": [
-        "s-goal-azure-management-mfa"
+        "s-goal-azure-management-mfa",
+        "s-goal-inforcer-mfa"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -4187,6 +4236,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "passkey.current.fido2Configuration",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "passkey.current.registeredAaguids",
       "requiredBy": [],
       "optionalBy": [
@@ -4292,6 +4353,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -4311,6 +4373,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -4902,6 +4965,7 @@
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
         "s-goal-device-registration-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
@@ -4914,6 +4978,7 @@
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
         "s-goal-device-registration-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
@@ -4938,6 +5003,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -4966,6 +5032,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5001,6 +5068,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5026,6 +5094,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5056,6 +5125,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5083,6 +5153,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5117,6 +5188,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5142,6 +5214,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5186,6 +5259,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5201,6 +5275,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5233,6 +5308,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5259,6 +5335,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5352,6 +5429,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
         "s-goal-require-managed-device",
@@ -5366,6 +5444,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
         "s-goal-require-managed-device",
@@ -5436,6 +5515,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5450,6 +5530,7 @@
         "s-goal-block-legacy-auth",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5477,6 +5558,7 @@
         "s-goal-azure-management-mfa",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mobile-app-protection",
         "s-goal-require-managed-device"
       ],
@@ -5486,6 +5568,7 @@
         "s-goal-azure-management-mfa",
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
+        "s-goal-inforcer-mfa",
         "s-goal-mobile-app-protection",
         "s-goal-require-managed-device"
       ],
@@ -5769,6 +5852,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5786,6 +5870,7 @@
         "s-goal-block-unsupported-platforms",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
@@ -5894,10 +5979,10 @@
     },
     {
       "binding": "tap.target.configuration",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-prereq-passkey-settings"
       ],
-      "optionalBy": [],
       "packages": [
         "s-prereq-passkey-settings"
       ],
@@ -5947,6 +6032,7 @@
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -5983,6 +6069,7 @@
         "s-goal-device-registration-mfa",
         "s-goal-geo-restriction",
         "s-goal-guests-mfa",
+        "s-goal-inforcer-mfa",
         "s-goal-intune-enrollment-reauth",
         "s-goal-mfa-all-users",
         "s-goal-mobile-app-protection",
@@ -6465,18 +6552,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 46,
+    "packageCount": 47,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 963,
-    "uniqueBindings": 289,
-    "bindingsRequiredByAtLeastOneProjection": 101,
-    "bindingsOptionalInAtLeastOnePackage": 192,
+    "contentBlocks": 988,
+    "uniqueBindings": 290,
+    "bindingsRequiredByAtLeastOneProjection": 99,
+    "bindingsOptionalInAtLeastOnePackage": 195,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 244,
+    "bindingDefinitionsPendingHolisticReview": 245,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 244,
+    "knownIAMAIInputUnreviewed": 245,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6529,10 +6616,10 @@
       "s-prereq-per-user-mfa"
     ],
     "legacyDependencies": 0,
-    "packagesPassingStrictValidation": 1,
+    "packagesPassingStrictValidation": 2,
     "packagesWithWithheldParts": 45,
     "provenance": {
-      "baseline-member": 22,
+      "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
       "source-review": 1,
@@ -6540,7 +6627,7 @@
       "workflow-check": 8
     },
     "review": {
-      "current": 45,
+      "current": 46,
       "reviewNeeded": 1
     }
   },

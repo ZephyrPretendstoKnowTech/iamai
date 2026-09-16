@@ -89,37 +89,31 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Candidate service accounts for {{tenant.displayName}}: {{service.candidates}}. These are candidates only: a name or sign-in pattern does not confirm that an account runs an unattended job. Each needs its application owner to confirm the workload it supports and that no person signs in with it. This group is for user-based service accounts; service principals and managed identities are separate identities and do not belong in it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-applicable","channel":"aiInfo","states":["notApplicable"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The owner recorded that no user-based service accounts need this group. No empty exception group is planned.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The service-accounts group does not exist yet. The planned change creates one assigned security group named {{group.target.displayName}} containing only the confirmed user-based service accounts. A rescan after creation lets the policies that exclude it reference its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The group exists but differs from the intended settings. Current direct members: {{group.current.members}}. Confirmed service accounts: {{service.confirmedAccounts}}. A correction adds or removes group membership only; it does not delete or disable any user. A removed member is no longer excluded by the policies that exclude this group.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm that the same group holds exactly the confirmed service-account users as direct members. Notes on password-based (ROPC) accounts that could later move to a managed identity or service principal: {{service.migrationNotes}}. Those moves are later work, not part of this step.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. A candidate account is not a confirmed member until its owner confirms it.
 @@IAMAI-END

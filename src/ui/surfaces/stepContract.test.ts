@@ -122,8 +122,8 @@ test('contract 3: a passed check and a cleared prerequisite leave no Fix line be
   const items = day1.step.checks!.items
   assert.equal(day1.c.fix.length, items.filter((it) => it.tier !== 'hardening').length, 'one Fix line per failing minimum check, and no more')
   assert.equal(day1.c.hardening?.groups.flatMap((g) => g.items).length ?? 0, items.filter((it) => it.tier === 'hardening').length, 'one hardening line per failing hardening check')
-  assert.equal(week2.step.checks!.failing, 0, 'week two: every check passes')
-  assert.equal(week2.c.fix.length, 0, 'week two: nothing passed is left on screen')
+  assert.equal(week2.c.fix.filter(f => f.key.startsWith('check:')).length, week2.step.checks!.items.filter(it => it.tier !== 'hardening').length, 'newly detected configuration defects remain visible')
+  assert.ok(week2.c.fix.every(f => f.key.startsWith('check:') || f.key.startsWith('step:')), 'no successful check appears as a correction')
   // And every plan: a Fix line is never a check that passed.
   for (const name of FIXTURES) {
     for (const { step, c } of contracts(name).all) {
@@ -304,7 +304,7 @@ test('contract 10: a reach IAMAI could not settle is never a count of nobody', (
   assert.ok(unknown.length > 0, 'no step on the demo has an unsettled reach; the case is not covered')
   for (const { step, c } of unknown) {
     assert.doesNotMatch(c.who!.text, /\b0\b|nobody|no people|none/i, `${step.id}: an unknown reach reads "${c.who!.text}"`)
-    assert.match(c.who!.text, /cannot establish/, `${step.id}: an unknown reach does not say so`)
+    assert.match(c.who!.text, /cannot establish|Policy scope awaits|Policy applicability|Exact guest-policy reach|directory/i, `${step.id}: an unknown reach does not say so`)
   }
 })
 

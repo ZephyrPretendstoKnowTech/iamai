@@ -2454,6 +2454,10 @@ footer.app a {
    under BOTH columns, full width, on the quieter surface, divided by the frame's
    own hairline. The rollout exception holds the left and the scan the right;
    with no exception to offer, the scan still sits right. */
+.step-save-feedback {
+  margin: 0;
+  padding: 8px 27px;
+}
 .step-footer {
   display: flex;
   align-items: center;
@@ -4617,3 +4621,32 @@ th .th-sort:focus-visible,
 .how-reference[open] > summary { margin-bottom: 1rem; }
 .baseline-definition pre { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media print { .baseline-definition pre { max-height: none; overflow: visible; } }
+
+/* Reviewed V1 question and help hierarchy. */
+.plan-legend { display: grid; gap: .65rem; margin: 0; }
+.plan-legend > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: .75rem; }
+.plan-legend dt, .decision .dlabel { font-weight: var(--weight-strong); }
+.plan-legend dd { margin: 0; }
+.plan-how h3 { font-size: var(--t-3); margin-block: .8rem; }
+.decision .dlabel { margin-top: 1.25rem; }
+.option-value > label { display: flex; align-items: center; gap: .65rem; min-height: 44px; }
+.export-additional { margin-block: 1.5rem; }
+.export-additional > summary { font-weight: var(--weight-strong); }
+.export-error { color: var(--primary-text); padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); }
+@media (max-width: 480px) { .plan-legend > div { grid-template-columns: 1fr; gap: .15rem; } }
+
+.device-decision label, .dormant-decisions label { display: grid; gap: .5rem; }
+.device-decision select, .dormant-decisions select, .dormant-decisions input { width: 100%; min-height: 44px; }
+.dormant-decisions fieldset { min-width: 0; margin-block: 1rem; border: 1px solid var(--line); padding: .75rem; }
+
+/* Forms have one field rhythm; nested pickers do not add repeated dividers. */
+.step-action-column .decision .picker { border: 0; margin: 0; padding: 0; }
+.step-action-column .decision > .dlabel { font-size: var(--t-2); margin: 12px 0 0; }
+.step-action-column .decision > .reason { margin: 0; }
+.step-action-column .decision > button { margin-top: 8px; }
+
+.manual-review .decision-fields { display: grid; gap: 1rem; max-width: 42rem; }
+.manual-review .decision-field { display: grid; gap: .5rem; min-width: 0; }
+.manual-review .decision-field h5 { margin: 0; }
+.manual-review .decision-field input:not([type=checkbox]), .manual-review .decision-field select { width: 100%; min-width: 0; }
+.manual-review .actions { display: flex; flex-wrap: wrap; gap: .75rem; }

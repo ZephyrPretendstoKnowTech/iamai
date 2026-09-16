@@ -1,27 +1,18 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
   "fact": null,
-  "badge": "On Hold · Baseline references an unmapped group",
-  "bar": "Baseline references an unmapped group",
-  "rail": "Not scheduled",
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",
@@ -29,5 +20,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Not scheduled"
+  "when": "Aug 31, 2026"
 }

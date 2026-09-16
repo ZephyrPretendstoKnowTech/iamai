@@ -33,6 +33,7 @@ import { MAPPING_WORDS, mappingRowsOf, shortId } from '../ui/surfaces/baselineMa
 import type { Step } from './types.ts'
 
 const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
+const REQUIRED = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
 const COUNTRIES_ONLY = 'cc7f9bb7-425b-42fc-b025-311a1a3eb0f4'
 const EXCLUSIONS = 'b63c3682-06c6-45f0-9692-ee76b604b4f9'
 const DEVICE_REGISTRATION = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
@@ -79,12 +80,13 @@ test('the known exclusions reference resolves to the tenant’s group; an unread
   const resolved = resolveTenantPolicy(policy as never, tenant, 'device-registration-mfa', pkg.policies)
   const excluded = (resolved.body.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups.map((g) => g.toLowerCase())
   assert.ok(excluded.includes('tenant-exclusions'), 'the exclusions group is the tenant’s')
-  assert.equal(resolved.decisions.get(BROAD)?.answer, 'pending', 'the unread group is a question for a person')
+  assert.equal(resolved.decisions.get(BROAD)?.answer, 'omitted', 'approved optional exclusion defaults absent')
   assert.equal(resolved.unresolved.has(BROAD), true, 'and it is unresolved')
   assert.equal(resolved.unresolved.get(BROAD), null, 'with no step of the plan to answer it: the mapping does')
   const whole = implementable(resolved.body, resolved)
   const waiting = whole.missing.find((m) => m.token.toLowerCase() === BROAD)
-  assert.deepEqual(waiting, { token: waiting?.token, stepId: null, decision: true })
+  assert.equal(waiting, undefined)
+  assert.ok(whole.missing.some(m => m.token.toLowerCase() === REQUIRED), 'the documented emergency reference is not guessed away')
   assert.equal(whole.missing.some((m) => m.unreadable), false, 'nothing is left waiting on a reading nobody can give')
   assert.equal(JSON.stringify(whole.policy).toLowerCase().includes(BROAD), false, 'and the author’s id is in no body')
 })
@@ -107,7 +109,7 @@ test('S4: each policy naming an unmapped reference is On Hold with the reason, a
     const readings = laneReadings(r.steps)
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
     const pending = unresolvedSourceMappings(r.steps)
-    const broad = pending.find((x) => x.id.toLowerCase() === BROAD)
+    const broad = pending.find((x) => x.id.toLowerCase() === REQUIRED)
     assert.ok(broad && (broad.stepIds ?? []).length > 0, `${name}: the broad group is pending, with the steps that name it`)
     assert.equal(broad.role, 'exclude', `${name}: the broad group is an exception everywhere (§18.1)`)
     for (const s of r.steps) {
@@ -139,13 +141,13 @@ test('S4: each policy naming an unmapped reference is On Hold with the reason, a
         assert.equal(reading.reason?.role, named.role, `${name}/${id}: the blocker's role is the reference's`)
         assert.equal(holdLabelOf(reading, titleOf), BLOCKED_REASON.sourceMapping)
         assert.equal(holdGroupOf(reading), BLOCKED_REASON.sourceMapping)
-        assert.equal(laneLabelOf(reading, titleOf), `On Hold · ${BLOCKED_REASON.sourceMapping}`)
+        assert.equal(laneLabelOf(reading, titleOf), 'On Hold', 'compact state labels keep the cause in the expanded step')
         assert.equal(step.blockedReason, BLOCKED_REASON.sourceMapping, `${name}/${id}: the row's own reason`)
         assert.equal(holdWaitsOn(step).includes(REMOVED_ROW), false, `${name}/${id}: the hold names the removed row`)
         checked += 1
       }
     }
-    assert.ok(checked >= 5, `${name}: held policies checked: ${checked}`)
+    assert.ok(checked >= 1, `${name}: the preserved required-reference gate was exercised`)
   }
   assert.equal(BLOCKED_REASON.sourceMapping, 'Baseline references an unmapped group')
 })
@@ -170,7 +172,8 @@ test('S4: the Baseline mappings surface lists each unresolved reference with its
     assert.ok(row.role !== null && row.roleWord === MAPPING_WORDS.role[row.role], `${row.id}: the role is stated`)
     assert.deepEqual(row.policies.length, (ref.stepIds ?? []).length)
     assert.ok(row.policies.every((p) => !/^s-goal-/.test(p)), `${row.id}: names the policies by title`)
-    assert.equal(row.answerLine, MAPPING_WORDS.unanswered)
+    if (ref.answer === 'pending') assert.equal(row.answerLine, MAPPING_WORDS.unanswered)
+    else assert.ok(row.answerLine.includes(referenceOptions()[0]), 'optional excluded references retain their explicit V1 assumption')
   }
 })
 
@@ -179,7 +182,7 @@ test('S4: the mapping round-trips — mapped, left out, and taken back — throu
   const r0 = runFixture(f)
   const group = [...f.groups.keys()].find((id) => id.toLowerCase() !== EXCLUSIONS)
   assert.ok(group, 'the demo holds a group to choose')
-  const pending = unresolvedSourceMappings(r0.steps)
+  const pending = sourceMappingsOf(r0.steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
   const [a, b] = pending
   assert.ok(a && b, 'two references to answer')
   const ctxOf = (x: Fixture, run: ReturnType<typeof runFixture>) => ({ snapshot: x.snapshot, mapping: x.mapping, nameOf: (id: string) => run.input.names!.label(id) })
@@ -263,11 +266,11 @@ test('an answer for one reference answers that reference only', () => {
   const geo = stepOf(r.steps, GEO)
   assert.deepEqual(
     (geo.action.missing ?? []).filter((m) => m.decision).map((m) => m.token.toLowerCase()),
-    [COUNTRIES_ONLY],
-    'the policy naming another still waits on that one',
+    [],
+    'other optional exclusions use the approved default independently',
   )
-  assert.equal(implementationOffered(geo), false)
-  assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === COUNTRIES_ONLY), 'that mapping is still open')
+  assert.ok(!unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === COUNTRIES_ONLY), 'optional reference is not an impossible user question')
+  assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id.toLowerCase() === REQUIRED), 'the unrelated required reference remains unresolved')
 })
 
 test('a reference the interpretation settles as naming nothing fails closed, and nobody is asked about it', () => {

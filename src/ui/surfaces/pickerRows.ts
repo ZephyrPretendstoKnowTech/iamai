@@ -14,7 +14,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { emergencySignals } from '../../mapping/emergencyAccess.ts'
 import { emergencySelection } from '../../mapping/emergencyChoice.ts'
-import { suggestCountries, countryName } from '../../mapping/countries.ts'
+import { suggestCountries, countryName, COUNTRY_CODES } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
@@ -198,6 +198,7 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       .map((raw) => raw as { id?: string; displayName?: string; '@odata.type'?: string; isTrusted?: boolean; ipRanges?: { cidrAddress?: string }[] })
       .filter((l) => typeof l.id === 'string' && String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
     const matches = snapshot.scenarioEvidence?.trustedLocationMatches.byLocation ?? null
+    locations.sort((a, b) => (matches?.[b.displayName ?? ''] ?? 0) - (matches?.[a.displayName ?? ''] ?? 0) || Number(b.isTrusted) - Number(a.isTrusted))
     const ids = locations.map((l) => l.id as string)
     const rows = locations.map((l) => {
       const name = l.displayName ?? nameOf(l.id as string)
@@ -255,8 +256,8 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
     const ticked = pickerVars(stepId, '', ctx)?.[`${key}Ticked`]
     if (Array.isArray(ticked) && ticked.length > 0) out[stepId] = { picked: ticked, at }
   }
-  pick(DECISION_STEPS.countries, 'countriesWithCounts')
-  pick(DECISION_STEPS.trustedLocation, 'locationsWithMatches')
+  // Countries are suggested in the picker; only Save applies them.
+  // Trusted locations require explicit operator confirmation.
   pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')
   const care = contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }).specialCareIds
   if (care.length > 0) out[DECISION_STEPS.campaign] = { picked: care, at }
@@ -314,8 +315,8 @@ export function pickerUniverse(stepId: string, source: string | null, ctx: Picke
       .map((l) => ({ id: l.id as string, name: l.displayName ?? nameOf(l.id as string) }))
   }
   if (kind === 'countries') {
-    const codes = [...new Set([...suggestCountries(snapshot).countries.map((c) => c.code), ...mapping.allowedCountries.map((c) => c.toUpperCase())])]
-    return codes.map((code) => ({ id: code, name: countryName(code), secondary: code }))
+    const codes = [...new Set([...COUNTRY_CODES, ...suggestCountries(snapshot).countries.map((c) => c.code), ...mapping.allowedCountries.map((c) => c.toUpperCase())])]
+    return codes.map((code) => ({ id: code, name: countryName(code), secondary: code })).sort((a, b) => a.name.localeCompare(b.name))
   }
   if (kind === 'strengths') {
     return (snapshot.config.authStrengths?.rows ?? [])

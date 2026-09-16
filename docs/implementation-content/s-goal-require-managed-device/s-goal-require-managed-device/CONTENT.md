@@ -1,5 +1,5 @@
 @@IAMAI-BEGIN {"id":"entra.intune-prerequisite","channel":"entra","states":["missing","partial","reportOnly"],"format":"markdown","kind":"template"}
-Before you create, correct or enforce this policy, verify the Intune prerequisite: **Endpoint security > Device compliance > Compliance policy settings > Mark devices with no compliance policy assigned as = Not compliant**. For each in-scope compliance policy IAMAI identifies, verify that the baseline's **Mark device noncompliant** action uses a 3-day grace period where it applies. Do not change a compliance policy you identified only by its name. Prerequisite state IAMAI reports: `{{intune.compliance.prerequisiteState}}`. Continue only when IAMAI shows the prerequisite as satisfied.
+In **Intune admin center → Devices → Compliance → Compliance policy settings**, set **Mark devices with no compliance policy assigned as** to **Not compliant**. In the compliance policies assigned to the intended users and devices, review **Actions for noncompliance** and the **Mark device noncompliant** action. Apply the baseline's 3-day grace period where applicable. The Conditional Access policy accepts a compliant device **or** a Microsoft Entra hybrid joined device; registration alone does not satisfy either control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
@@ -117,7 +117,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, Any location except the resolved trusted locations, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
 
@@ -125,7 +124,6 @@ The Intune prerequisite comes first: devices with no compliance policy assigned 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Require a Managed Device Outside the Office**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID. The intended grant stays Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device.
 
@@ -135,7 +133,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require a Managed Device Outside the Office** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
 
@@ -143,19 +140,16 @@ A sign-in with no device information is different from a noncompliant device: th
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require a Managed Device Outside the Office** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, the Intune prerequisite should be satisfied, and the report-only evidence should have been reviewed. After enabling, test the required compliant and hybrid-joined device paths outside the trusted locations, and emergency access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require a Managed Device Outside the Office** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved, including any unsaved device-plan choice, before the policy is created or changed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require a Managed Device Outside the Office** needs licensing that this scan did not confirm for {{tenant.displayName}}. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END

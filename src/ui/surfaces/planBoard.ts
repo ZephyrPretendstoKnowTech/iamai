@@ -209,7 +209,7 @@ const LANE_KEY: Readonly<Record<Lane, keyof typeof BOARD.lanes>> = { Ready: 'rea
  * <step>` on Up Next, `Lane · <blocker>` on On Hold, the lane alone otherwise.
  */
 export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
-  const tail = laneTailOf(r, titleOf)
+  const tail = r.lane === 'Ready' ? laneTailOf(r, titleOf) : null
   return tail === null ? laneWordOf(r.lane) : `${laneWordOf(r.lane)} · ${tail}`
 }
 

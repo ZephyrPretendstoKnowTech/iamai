@@ -63,6 +63,7 @@ function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): U
 
 function appsClass(f: PolicyFacts): string {
   const a = f.apps
+  if (a.ids.size === 1 && a.ids.has('708861da-226e-4d65-a57a-24128df64524')) return 'inforcer'
   if (a.adminPortals) return 'adminPortals'
   if ([...a.ids].some((id) => AZURE_MGMT_APP_IDS.has(id))) return 'azureManagement'
   if (a.userActions.size > 0) return 'userAction'

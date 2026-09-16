@@ -114,7 +114,6 @@ switch($Mode){
 }
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.prepare","channel":"aiInfo","states":["resourceMissing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 IAMAI did not find the Microsoft Intune Enrollment service principal (application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`). The Conditional Access policy cannot target it until it exists. Do not substitute the Microsoft Intune admin-center application.
@@ -143,7 +142,6 @@ Grant stays unconfigured. Session → Sign-in frequency is Every time, a session
 MFA must come from other applicable controls. The all-user MFA policy excludes the Intune Enrollment resource, so it does not supply MFA there.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state corrects the existing policy. Correct only the differences IAMAI found, on the same policy ID.
@@ -164,7 +162,6 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The policy is in Report-only. Report-only can show whether the policy applies to enrollment sign-ins, but it cannot prove that a fresh reauthentication prompt occurred.
@@ -184,7 +181,6 @@ NEXT STEP
 Explain which user-driven and userless/self-deploying enrollment paths still need review, and what evidence is still missing.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state turns the reviewed policy On. The only change is the policy state from Report-only to On.

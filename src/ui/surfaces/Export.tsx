@@ -82,6 +82,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
   const data = usePlanData(scan, baseline)
   const [copied, setCopied] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [showPrompts, setShowPrompts] = useState(false)
   const [bundleRedacted, setBundleRedacted] = useState(true)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -138,6 +139,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       </section>
     )
   }
+  if (data.loadError) return <section className="surface export"><h1>{P.h1}</h1><div role="alert"><p>The saved plan could not be read from this browser.</p><Button onClick={data.retryLoad}>Retry Loading</Button></div></section>
   if (!c) {
     return (
       <section className="surface export">
@@ -160,7 +162,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
-      if (!ok) return
+      if (!ok) { setExportError('Copy failed. Try copying again.'); return }
+      setExportError(null)
       setCopied(id)
       setTimeout(() => setCopied(null), 1500)
     })
@@ -184,22 +187,23 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
 
   const loadPlan = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return
-    await loadPlanInner(files)
+    setExportError(null)
+    try { await loadPlanInner(files) } catch { setExportError(A.couldNotRead) } finally { if (fileInput.current) fileInput.current.value = '' }
   }
   const loadPlanInner = async (files: FileList): Promise<void> => {
     const { plan, error } = parsePlanFile(await files[0].text())
     if (!plan) {
-      window.alert?.(error ?? A.couldNotRead)
+      setExportError(error ?? A.couldNotRead)
       return
     }
     // The tenant check runs before anything is persisted (planTenant.test.ts).
     const planTenantId = plan.tenant?.id || plan.mappings?.tenantId || ''
     if (!planTenantId) {
-      window.alert?.(fillText(A.planTenantUnknown, { current: tenantName || A.thisTenant }))
+      setExportError(fillText(A.planTenantUnknown, { current: tenantName || A.thisTenant }))
       return
     }
     if (planTenantId !== snapshot.tenantId) {
-      window.alert?.(fillText(A.planFromAnotherTenant, { planTenant: plan.tenant?.name || A.anotherTenant, current: tenantName || A.differentTenant, madeFor: plan.tenant?.name || A.madeFor }))
+      setExportError(fillText(A.planFromAnotherTenant, { planTenant: plan.tenant?.name || A.anotherTenant, current: tenantName || A.differentTenant, madeFor: plan.tenant?.name || A.madeFor }))
       return
     }
     // Take the decisions and regenerate: a 50.1 file carries a decisions block;
@@ -218,13 +222,13 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     )
     const currentSource = await planBaselineSource(baseline)
     if (!sameBaselineSource(plan.baseline.source, currentSource)) {
-      window.alert?.(A.importBaselineMismatch)
+      setExportError(A.importBaselineMismatch)
       return
     }
     try {
       await importPlanRecords(snapshot.tenantId, record, plan.mappings as unknown as Record<string, unknown>)
     } catch {
-      window.alert?.(A.importSaveFailed)
+      setExportError(A.importSaveFailed)
       return
     }
     window.location.hash = '#/plan'
@@ -259,6 +263,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     <section className="surface export">
       <h1>{P.h1}</h1>
       <p className="reason">{P.intro}</p>
+      <div role="status">{exportError && <p className="export-error">{exportError}</p>}</div>
       <PageTip page="export" text={(pages.export as Record<string, string>).tip} />
 
       <h2>{G.plan}</h2>
@@ -275,7 +280,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.planFile[0]}>
           <p className="reason">{P.cards.planFile[1]}</p>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={savePlan}>
+            <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError("The plan could not be saved. Try again.")) }}>
               {buttons('planFile')[0]}
             </Button>
             <Button variant="tertiary" onClick={() => fileInput.current?.click()}>
@@ -289,6 +294,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       {/* Doing the work. The machine artifacts for a policy are on that policy's
           own step in the Plan, because they are one step's, and the note says so
           rather than the page implying it exports them for the whole plan. */}
+      <details className="export-additional"><summary>Additional Formats</summary>
       <h2>{G.implementation}</h2>
       <p className="reason">{G.implementationNote}</p>
       <div className="export-grid">
@@ -360,6 +366,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           </p>
         </Card>
       </div>
+
+      </details>
 
       {printing && (
         <PrintPlan

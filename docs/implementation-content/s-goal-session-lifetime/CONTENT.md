@@ -296,7 +296,6 @@ switch ($Mode) {
 }
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.
@@ -314,7 +313,6 @@ CAUTIONS
 Shared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.
@@ -337,7 +335,6 @@ This change removes {{policies.session.browser.current.removedExclusions}} from 
 This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The browser session policy is in Report-only. The baseline has one session policy for this step.
@@ -358,7 +355,6 @@ NEXT STEP
 Explain which What If results, sign-in records and browser tests are still needed before enforcement.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.

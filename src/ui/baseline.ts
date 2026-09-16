@@ -27,7 +27,7 @@ export type BaselineResult = {
   goalMap?: GoalMap
 }
 
-export const PINNED_BASELINE = baselineIndex as BaselineIndex
+export const PINNED_BASELINE = { ...baselineIndex, label: 'Defense in Depth — Maintained by Jon Hope' } as BaselineIndex
 
 export { PINNED }
 

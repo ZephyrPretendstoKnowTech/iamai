@@ -45,6 +45,10 @@ for (const name of NAMES) {
     if (gates.length === 0) return
     for (const s of steps) {
       if (!canDenyAccess(s) || !open(s)) continue
+      if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') {
+        assert.deepEqual(operationsOf(s), [], `${s.id}: workflow review must not write a policy`)
+        continue
+      }
       // Ready is the state that invites action, so nothing deny-capable may sit
       // there. A policy the tenant already has in report-only reports reality
       // instead, and still has to carry the gate before it can be enforced.
@@ -75,6 +79,7 @@ for (const name of NAMES) {
   test(`${name}: no MFA requirement is offered while people still have no method`, () => {
     for (const s of steps) {
       if (!open(s) || !offered(s)) continue
+      if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') { assert.deepEqual(operationsOf(s), []); continue }
       // The campaign is the step that runs at low readiness by design: it is
       // how readiness gets to the threshold in the first place.
       if (s.kind === 'verify') continue
@@ -155,6 +160,7 @@ for (const name of NAMES) {
     if (!secDefaults) return
     for (const s of steps) {
       if ((s.kind !== 'create' && s.kind !== 'adjust') || !open(s)) continue
+      if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') { assert.deepEqual(operationsOf(s), []); continue }
       assert.notEqual(s.status, 'ready', `${s.id} is Ready while security defaults are still on`)
       assert.ok(s.blockedBy.includes(secDefaults.id), `${s.id} does not wait on turning security defaults off`)
     }

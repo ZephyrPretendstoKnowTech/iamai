@@ -631,8 +631,8 @@ test('Implementation is the pack’s pill channels over a fixed preview, or one 
   for (const forbidden of ['JSON.stringify', 'conditions:', 'grantControls', 'displayName:']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface builds ${forbidden}; policy JSON is not composed in presentation`)
   }
-  // Tenant context is flagged wherever the AI channel is shown.
-  assert.equal(CONTENT_STEP.split("{tab === 'ai' && (").length - 1, 2, 'the AI channel is shown without its tenant-context warning')
+  // Repeated disclaimers are intentionally removed; copy disposition remains tested separately.
+  assert.equal(CONTENT_STEP.split("{tab === 'ai' && (").length - 1, 0, 'an unapproved repeated disclaimer was restored')
   assert.match(rule('.step .impl-preview .preview-text'), /overflow-wrap: anywhere;/, 'a long line widens the step')
 })
 

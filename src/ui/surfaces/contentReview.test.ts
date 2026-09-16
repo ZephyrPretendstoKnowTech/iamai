@@ -183,7 +183,7 @@ test('U-P1: a header tile date reads the day on one line and the year under it, 
 
 test('D1: the Managed Device Done when names no shared-device exception', () => {
   const content = readFileSync('docs/design/content.json', 'utf8')
-  assert.ok(content.includes('"doneEnd": "The policy is enforced in {tenant}, requiring a compliant device on the selected platforms outside the trusted network, with the approved exclusions applied."'), 'the Managed Device end state is not the decided sentence')
+  assert.ok(content.includes('"doneEnd": "The policy is enforced in {tenant}, requiring a compliant device OR Microsoft Entra hybrid joined device on the selected platforms outside the trusted network, with the approved exclusions applied."'), 'the Managed Device end state is not the decided sentence')
   assert.equal(/shared-device exception/i.test(content), false, 'an orphaned shared-device exception is still in content')
   // Every opened step's Done when, as the fixtures draw it.
   let lines = 0
@@ -209,7 +209,7 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
     for (const [id, b] of bodiesOf(fixture(name))) {
       assert.equal(b.showImplementation, true, `${name}/${id}: the Implementation region is hidden`)
       assert.ok(b.artifacts.some((a) => a.id === 'ai'), `${name}/${id}: AI briefing is missing`)
-      if (b.cs.kind !== 'policy') assert.ok(b.artifacts.every((a) => a.id !== 'ps' && a.id !== 'json'), `${name}/${id}: a permanently unsupported channel is shown`)
+      assert.ok(b.artifacts.every(a => a.text().trim().length > 0), `${name}/${id}: empty resource`)
       for (const a of b.artifacts.filter((x) => x.unavailable)) {
         assert.ok(a.text().trim().length > 0, `${name}/${id}: ${a.id} has no explanation`)
         assert.doesNotMatch(a.text(), /could not be loaded/, `${name}/${id}: lifecycle wait is presented as an error`)
@@ -218,7 +218,7 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
       steps += 1
     }
   }
-  assert.ok(steps > 20 && missing > 0, `steps ${steps}, channels without content ${missing}`)
+  assert.ok(steps > 20 && missing === 0, `steps ${steps}, channels without content ${missing}`)
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   assert.match(src, /const copyable = active !== null && active\.unavailable !== true/, 'a channel with no content can be copied')
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')

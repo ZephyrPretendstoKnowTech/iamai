@@ -1,3 +1,5 @@
+import { methodAvailability } from './methodAvailability.ts'
+import type { ScopeEvidence } from './operations.ts'
 // The free-tier ladder as plan steps (SPEC §12; pre-share-blockers §1).
 //
 // A tenant without Entra ID P1 cannot hold a Conditional Access policy, so
@@ -63,6 +65,8 @@ type Facts = {
   authenticatorOn: boolean
   passkeysOn: boolean
   methodsReadable: boolean
+  rolesReadable: boolean
+  replacement: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds: string[]; complete: boolean }
 }
 
 function nameOf(u: UserRow): string {
@@ -80,11 +84,11 @@ const METHOD_LABEL: Record<string, string> = {
   MicrosoftAuthenticator: 'Microsoft Authenticator',
 }
 
-export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState): Facts {
+export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState, context: ScopeEvidence = {}): Facts {
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const enabled = snapshot.users.filter((u) => u.userType === 'member' && u.accountEnabled !== false)
   const active = snapshot.roles?.active ?? {}
-  const adminIds = Object.keys(active).filter((id) => byId.has(id))
+  const adminIds = [...new Set([...Object.keys(active), ...Object.keys(snapshot.roles?.eligible ?? {})])].filter(id => byId.has(id) && ((active[id]?.length ?? 0) > 0 || (snapshot.roles?.eligible?.[id]?.length ?? 0) > 0))
   const licensed = (u: UserRow): boolean => u.assignedPlans.some((p) => p.capabilityStatus === 'Enabled')
   const hasMailbox = (u: UserRow): boolean => u.assignedPlans.some((p) => p.capabilityStatus === 'Enabled' && EXCHANGE_PLANS.has(p.servicePlanId))
   const guests = snapshot.users.filter((u) => u.userType === 'guest')
@@ -99,9 +103,24 @@ export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState): Fa
   const configs = methodsRow?.authenticationMethodConfigurations ?? []
   const stateOf = (id: string): string | null => configs.find((c) => c.id === id)?.state ?? null
   const weakMethodsOn = ['Sms', 'Voice'].filter((id) => stateOf(id) === 'enabled').map((id) => METHOD_LABEL[id] ?? id)
+  const availability = methodAvailability(snapshot, context)
+  const registrations = new Map(snapshot.registrationDetails.map(row => [row.id, row]))
+  const replacement = { ids: enabled.map(u => u.id), readyIds: [] as string[], missingIds: [] as string[], unknownIds: [] as string[], complete: false }
+  for (const id of replacement.ids) {
+    const row = registrations.get(id)
+    if (!row || !['ok', 'partial'].includes(snapshot.sources.registrationDetails?.status ?? '')) { replacement.unknownIds.push(id); continue }
+    const methods = row.methodsRegistered.filter(m => /^(microsoftAuthenticatorPush|microsoftAuthenticatorPasswordless|fido2SecurityKey|passkey)/i.test(m))
+    const readings = methods.map(method => availability.usable(id, method))
+    if (row.isMfaCapable && readings.includes('yes')) replacement.readyIds.push(id)
+    else if (readings.includes('unknown')) replacement.unknownIds.push(id)
+    else replacement.missingIds.push(id)
+  }
+  replacement.complete = snapshot.sources.users?.status === 'ok' && replacement.missingIds.length === 0 && replacement.unknownIds.length === 0
 
   return {
     enabledUsers: enabled.length,
+    rolesReadable: snapshot.sources.users?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok' && snapshot.config.pimEligibility?.status === 'ok',
+    replacement,
     adminIds,
     adminNames: adminIds.map((id) => nameOf(byId.get(id) as UserRow)),
     globalAdminNames: adminIds.filter((id) => active[id]?.includes(GLOBAL_ADMIN_ROLE_ID)).map((id) => nameOf(byId.get(id) as UserRow)),
@@ -138,15 +157,15 @@ function verdictFor(itemId: string, f: Facts): Verdict {
     case 'break-glass-accounts':
       return f.breakGlassNames.length >= BREAK_GLASS_TARGET ? done(`the break-glass accounts confirmed in Setup: ${names(f.breakGlassNames).join(', ')}`) : not
     case 'per-user-mfa-cleanup':
-      return f.migrationState === 'migrationComplete' ? done('an authentication methods migration this tenant reports as complete') : not
+      return { done: false, evidence: [`Authentication methods migration: ${f.migrationState ?? 'not read'}. Check legacy per-user MFA separately in Entra.`] }
     case 'admin-accounts-separate':
-      return f.adminIds.length > 0 && f.adminsWithMailbox.length === 0 ? done('directory roles held only by accounts with no mailbox licence') : not
+      return { done: f.rolesReadable, evidence: f.rolesReadable ? ['Current active and eligible role assignments are readable; the separate scoped handover record determines completion.'] : [] } // Readable roles enable the scoped handover proof; mailbox licensing cannot prove account separation.
     case 'global-admin-count':
       return f.globalAdmins >= GLOBAL_ADMIN_MIN && f.globalAdmins <= GLOBAL_ADMIN_MAX ? done(`the ${f.globalAdmins} accounts holding Global Administrator, inside the two to four Microsoft recommends`) : not
     case 'guest-review':
       return f.guests === 0 ? done('a directory with no guest accounts and no unaccepted invitations') : not
     case 'authenticator-over-sms':
-      return f.methodsReadable && f.weakMethodsOff && (f.authenticatorOn || f.passkeysOn) ? done('an authentication methods policy with text message and voice call off') : not
+      return f.methodsReadable && f.weakMethodsOff && f.replacement.complete ? done('Text message and voice call are disabled, and every enabled member has a targeted, usable Authenticator or passkey registration.') : not
     default:
       return not
   }
@@ -163,9 +182,9 @@ export type LadderResult = {
  * where one covers a ladder item, that step takes the ladder's place and keeps
  * the ladder's position rather than being duplicated.
  */
-export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, existingIds: Iterable<string>): LadderResult {
+export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, existingIds: Iterable<string>, context: ScopeEvidence = {}): LadderResult {
   const have = new Set(existingIds)
-  const f = ladderFacts(snapshot, mapping)
+  const f = ladderFacts(snapshot, mapping, context)
   const steps: Step[] = []
   const order = new Map<string, number>()
 
@@ -178,9 +197,16 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
     const v = verdictFor(item.id, f)
     const id = ladderStepId(item.id)
     order.set(id, index)
-    const reviewIds = item.id === 'break-glass-accounts' ? [...new Set(mapping.breakGlassUserIds)].filter((id) => snapshot.users.some((u) => u.id === id && u.accountEnabled === true)) : []
+    const reviewIds = item.id === 'admin-accounts-separate' ? f.adminIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : item.id === 'authenticator-over-sms' ? f.replacement.ids : item.id === 'break-glass-accounts' ? [...new Set(mapping.breakGlassUserIds)].filter((id) => snapshot.users.some((u) => u.id === id && u.accountEnabled === true)) : []
     steps.push({
       ...STEP_EXTRAS,
+      ...(item.id === 'authenticator-over-sms' ? {
+        preparation: { ids: f.replacement.ids, readyIds: f.replacement.readyIds, missingIds: [...f.replacement.missingIds, ...f.replacement.unknownIds], unknownIds: f.replacement.unknownIds },
+        configurationFindings: [
+          { key: 'weakMethods', label: 'SMS and Voice', value: f.weakMethodsOff ? 'Disabled' : f.weakMethodsOn.length ? 'Still enabled' : 'Not fully read', detail: 'Both methods must be disabled after replacement methods are available.', outcome: f.weakMethodsOff ? 'pass' as const : f.weakMethodsOn.length ? 'fail' as const : 'unknown' as const },
+          { key: 'replacementMethods', label: 'Replacement Methods', value: `${f.replacement.readyIds.length} of ${f.replacement.ids.length} accounts ready`, detail: f.replacement.unknownIds.length ? `Method targeting or registration is unread for ${f.replacement.unknownIds.length} accounts.` : f.replacement.missingIds.length ? `A usable Authenticator or passkey registration is missing for ${f.replacement.missingIds.length} accounts.` : 'Registered replacements are allowed by their current method targeting and passkey profiles.', outcome: f.replacement.complete ? 'pass' as const : f.replacement.missingIds.length ? 'fail' as const : 'unknown' as const },
+        ],
+      } : {}),
       id,
       goalId: item.goalId ?? item.id,
       phase: 0,

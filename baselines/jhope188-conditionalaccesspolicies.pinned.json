@@ -2305,6 +2305,9 @@
     ],
     "service-accounts-trusted-network": [
       "99eabebd-877c-4800-aa15-d389b8767760"
+    ],
+    "inforcer-mfa": [
+      "1d3a7677-a723-4c56-924c-2e1dc63df105"
     ]
   }
 }

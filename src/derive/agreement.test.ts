@@ -157,7 +157,7 @@ test('one denominator: active people agree across sets, viability and rollout, a
   }
 })
 
-test('one verdict: for every goal in every fixture, the findings verdict and the step status agree (prompt 46 item 9)', async () => {
+test('one verdict: task completion requires coverage and any explicit workflow evidence (prompt 46 item 9)', async () => {
   const { applyProgress } = await import('../roadmap/progress.ts')
   for (const f of allFixtures()) {
     const run = runFixture(f)
@@ -174,7 +174,8 @@ test('one verdict: for every goal in every fixture, the findings verdict and the
       const r = byGoal.get(s.goalId)
       if (!r) continue
       const stepDone = s.status === 'done'
-      const verdictDone = r.verdict === 'inPlace'
+      const unresolvedIdentity = s.blockers.some(b => b.kind === 'evidence' && b.label === 'inforcer-application')
+      const verdictDone = r.verdict === 'inPlace' && !unresolvedIdentity && (!s.manualReview || s.manualReview.confirmedAt !== null)
       if (stepDone !== verdictDone) disagreements.push(`${f.name}: ${s.id} is ${s.status} while its goal's verdict is ${r.verdict}`)
       // A partly or below-baseline goal is a change step carrying its gap.
       if ((r.verdict === 'partly' || r.verdict === 'belowBaseline') && s.status !== 'done' && s.gap === null && r.gapSentence !== null) {
@@ -205,9 +206,11 @@ for (const f of allFixtures()) {
       const p = s.population
       assert.ok(p.active <= pc.active, `${s.id}: population active ${p.active} exceeds Today's active ${pc.active}`)
       assert.ok(p.admins <= pc.admins, `${s.id}: population admins ${p.admins} exceeds Today's admins ${pc.admins}`)
-      assert.ok((p.inScope ?? p.total) <= pc.enabled, `${s.id}: in-scope ${p.inScope ?? p.total} exceeds Today's enabled ${pc.enabled}`)
+      const enabledBound = s.id === 's-ladder-authenticator-over-sms' ? snapshot.users.filter(u => u.userType === 'member' && u.accountEnabled !== false).length : pc.enabled
+      if (s.id === 's-ladder-authenticator-over-sms') assert.deepEqual([...p.ids].sort(), snapshot.users.filter(u => u.userType === 'member' && u.accountEnabled !== false).map(u => u.id).sort(), 'method policy preparation includes emergency/service members that Today intentionally separates')
+      assert.ok((p.inScope ?? p.total) <= enabledBound, `${s.id}: in-scope ${p.inScope ?? p.total} exceeds its enabled cohort ${enabledBound}`)
       // The who-line names people, never a count Today never counted.
-      assert.ok(affectedIds(p).length <= pc.enabled, `${s.id}: who-line names ${affectedIds(p).length}, more than Today's enabled ${pc.enabled}`)
+      assert.ok(affectedIds(p).length <= enabledBound, `${s.id}: who-line names ${affectedIds(p).length}, more than Today's enabled ${pc.enabled}`)
       // A step that touches active people names exactly the active set — never
       // the in-scope count (the "11 people" regression).
       if (p.active > 0) assert.equal(affectedIds(p).length, p.active, `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)

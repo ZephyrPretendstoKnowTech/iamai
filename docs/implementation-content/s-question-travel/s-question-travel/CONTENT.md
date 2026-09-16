@@ -16,7 +16,6 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.approval","channel":"aiInfo","states":["approvalRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 A trip for {{travel.traveler}} needs approval before any location change. The approval needs the destination countries, the travel dates and the approver.
 
@@ -26,7 +25,6 @@ NEXT STEP: Explain which approval facts are still missing and why each one matte
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.apply","channel":"aiInfo","states":["approvedPendingApply"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The trip is approved. For {{tenant.displayName}}, add {{travel.countries}} to {{location.allowedCountries.displayName}} for {{travel.startDate}} through {{travel.endDate}}. Countries currently on the location, all of which stay: {{location.allowedCountries.currentCountries}}.
 
@@ -36,7 +34,6 @@ NEXT STEP: Explain the change, who it affects and the removal task to record.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.active","channel":"aiInfo","states":["activeTrip"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The approved trip is in progress. If the traveler is blocked, first check the sign-in's IP address and the country Microsoft resolved for it; a VPN or mobile carrier can present a different country from the one the traveler is in. Do not add a Conditional Access exclusion for the traveler.
 
@@ -44,7 +41,6 @@ NEXT STEP: Explain how to diagnose a blocked sign-in during the trip, and that a
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.remove","channel":"aiInfo","states":["revertDue"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The approved travel window ended {{travel.endDate}}. The temporary countries {{travel.countries}} stay on the location until a person removes them; they do not expire automatically.
 
@@ -52,7 +48,6 @@ NEXT STEP: Explain how to remove only the temporary countries, keeping any count
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This travel step is on hold: {{dependencies.blockers}}. Do not suggest a Conditional Access exclusion for the traveler as a workaround.
 

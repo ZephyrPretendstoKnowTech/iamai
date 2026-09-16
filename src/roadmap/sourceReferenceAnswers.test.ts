@@ -40,7 +40,7 @@ function withDecisions(f: Fixture, decisions: Record<string, StepDecision>): Fix
 }
 
 const base = fixture('demo')
-const pending = sourceMappingsOf(runFixture(base).steps)
+const pending = sourceMappingsOf(runFixture(base).steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
 const at = base.snapshot.asOf
 const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
 
@@ -125,7 +125,7 @@ test('each reference says the part it plays, and leaving out an exception reads 
     assert.equal(row.roleLine.includes(row.id) || row.omitLine.includes(row.id) || row.answerLine.includes(row.id), false, 'the author’s id is never the words')
   }
   // The same reference, as a target instead of an exception.
-  const first = sourceMappingsOf(r.steps)[0]
+  const first = unresolvedSourceMappings(r.steps)[0]
   const include = mappingRowOf({ ...first, role: 'include' }, ctx)
   const exclude = mappingRowOf({ ...first, role: 'exclude' }, ctx)
   assert.notEqual(include.omitLine, exclude.omitLine)

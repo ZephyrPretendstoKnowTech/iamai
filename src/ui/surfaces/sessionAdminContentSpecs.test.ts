@@ -61,7 +61,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
-        ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).'],
+        ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
         ['Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.'],
       ],

@@ -36,7 +36,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
-import { heldForReview } from './lifecycle.ts'
+import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
 import { enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
@@ -47,6 +47,7 @@ export type Hold = { kind: HoldKind }
 /** What holds the step now, or null when nothing does. */
 export function holdOf(step: Step): Hold | null {
   if (step.status === 'done' || step.status === 'skipped' || step.state.setAside || step.doesntApply) return null
+  if (workflowReviewIsCurrent(step)) return null
   const c = step.state.condition
   if (c === 'baseline-conflict') return { kind: 'conflict' }
   if (heldForReview(step)) return { kind: 'review' }

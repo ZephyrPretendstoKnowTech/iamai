@@ -49,7 +49,9 @@ test('midflight: a policy created outside the plan is matched by what it does, w
   try {
     const again = runFixture(f)
     const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
-    assert.equal(step.status, 'done')
+    assert.equal(step.state.lifecycle, 'enforced')
+    assert.notEqual(step.status, 'done', 'a fingerprint match is not a guest workflow result')
+    assert.equal(step.manualReview?.confirmedAt, null)
     assert.equal(step.tracking?.matchedBy, 'fingerprint')
     assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
   } finally {

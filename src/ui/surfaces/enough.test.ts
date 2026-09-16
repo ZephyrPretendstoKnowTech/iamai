@@ -34,7 +34,7 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))
   const camp = stepById['s-verify-mfa'] as unknown as { doneWhen: string[]; whatToDo: { steps: string[] } }
   // Editorial batch C: the admin gate is its own line; the campaign settings check is a human check.
-  assert.ok(camp.doneWhen.some((l) => l === 'Every admin is Ready for phishing-resistant MFA.'))
+  assert.ok(camp.doneWhen.some((l) => /Administrators have a phishing-resistant method/.test(l)))
   assert.ok(camp.whatToDo.steps.some((l) => l.includes('Admins: a passkey or a hardware security key; either is phishing-resistant.')))
   const op = stepById['s-ladder-operator-passkey'] as unknown as { whatToDo: { steps: string[] } }
   assert.ok(op.whatToDo.steps[0].includes('or a hardware security key'), 'step 12 says or')

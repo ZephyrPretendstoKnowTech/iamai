@@ -3,7 +3,7 @@
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Up Next · After Create or Correct Emergency Access Accounts",
+  "badge": "Up Next",
   "bar": "After Create or Correct Emergency Access Accounts",
   "rail": "Aug 31, 2026",
   "headings": [
@@ -20,6 +20,8 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info",
     "Email"
   ],

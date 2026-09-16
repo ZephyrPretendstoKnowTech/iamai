@@ -19,6 +19,7 @@ import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
 import { stepById } from '../content/content.ts'
 import { syncIdentitySupportOf, workloadIdentitySupport } from './workloadIdentity.ts'
+import { nextSafeAction } from './nextSafeAction.ts'
 
 const WORKLOAD = 's-goal-workload-identity-block'
 const TENANT = '11111111-2222-4333-8444-555555555555'
@@ -40,7 +41,7 @@ test('a sync role holder with a Workload ID licence is not proof of support: the
 
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext
   const body = stepBodyOf(step, ctx)
-  assert.equal(body.artifacts.some((a) => !a.unavailable && body.previewNote === null && a.id !== 'ai'), false, 'nothing copyable is offered')
+  assert.equal(nextSafeAction(step).enforceable, false, 'unknown support is never proof that workload protection can be enforced; useful guidance remains copyable')
   assert.equal(body.cs.why, stepById['workload-identity-block'].why)
   assert.match(String(body.cs.why), /^Review which identity performs synchronization before relying on a network restriction\./)
   assert.doesNotMatch(String(body.cs.why), /works from anywhere/)

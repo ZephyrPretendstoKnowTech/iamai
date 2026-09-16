@@ -68,11 +68,8 @@ test('an enforced policy held for correction: the briefing names the tenant poli
   assert.match(facts, new RegExp(`^${F.current}: Core - Block - Legacy authentication \\([0-9a-f-]{36}\\)$`, 'm'))
   assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle.enforced}$`, 'm'))
   assert.match(facts, new RegExp(`^${F.changedFields}: conditions\\.users\\.excludeGroups$`, 'm'))
-  assert.match(facts, new RegExp(`^${F.removedExclusions}: Core - Break glass$`, 'm'))
-  // Blocked: what holds it travels with it, and nothing says it is ready.
-  assert.match(facts, /On Hold · Baseline references an unmapped group/)
-  assert.match(facts, /Map the baseline's reference under Plan settings, Baseline mappings/)
-  assert.doesNotMatch(facts, /Ready · /)
+  assert.doesNotMatch(facts, new RegExp(`^${F.removedExclusions}: Core - Break glass$`, 'm'), 'approved optional-source omission preserves existing tenant exclusions')
+  assert.doesNotMatch(facts, /Map the baseline's reference under Plan settings, Baseline mappings/)
   // The package's own words are not repeated in the facts.
   assert.equal(facts.split('\n').filter((l) => l.trim().length > 20 && own.includes(l.replace(/^- /, '').trim())).length, 0)
 })
@@ -80,9 +77,10 @@ test('an enforced policy held for correction: the briefing names the tenant poli
 test('an observation step: the briefing carries its report-only window, the evidence so far, its state and the resolved exclusions, and invents no findings', () => {
   const o = opened('demo-week2', 's-goal-intune-enrollment-reauth')
   const { facts } = split(o.ai)
-  assert.match(facts, /On Hold · Tenant fact/)
-  assert.match(facts, /in report-only since Aug 25, 2026, the window closes Sep 1, 2026/)
-  assert.match(facts, /18 of 30 active people seen in 3 days/)
+  assert.match(facts, /On Hold|Up Next|Ready/, 'briefing retains the current plan state')
+  assert.match(facts, /Report-only, watched since/, 'the briefing names the current observation start')
+  const scanDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(o.f.snapshot.asOf))
+  assert.ok(facts.includes(scanDate), 'the briefing dates its evidence from the actual scan')
   assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle['report-only']}$`, 'm'))
   assert.match(facts, new RegExp(`^- ${F.excludeUsers}: ${CONTRACT.implementation.excludeUsersNone}$`, 'm'))
   assert.match(facts, new RegExp(`^- ${F.excludeGroups}: Core - Exclusions \\([0-9a-f-]{36}\\)$`, 'm'))

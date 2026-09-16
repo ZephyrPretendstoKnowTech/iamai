@@ -504,6 +504,7 @@ function evaluateGoal(
       (impl.expectedWho.kind === 'all'
         ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null && !(floor.grant !== undefined && grantExceedsFloor(c.grant, floor.grant)))
         : !c.who.all) && carriesFloorControl(c, floor)
+      && (goal.id !== 'inforcer-mfa' || (!c.apps.all && c.apps.ids.size === 1 && c.apps.ids.has('708861da-226e-4d65-a57a-24128df64524')))
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only

@@ -73,7 +73,7 @@ test('the summary is one panel: the answer and three counts that are filters, on
   assert.doesNotMatch(SURFACE, /group-tile|group-counts|RungBadge|rung-badge/, 'a count card or a rung badge came back')
 })
 
-test('one strip does two jobs — the Plan gate and the passkey rollout — on both sides', () => {
+test('one strip shows tenant proof and passkey rollout without a generic completion gate', () => {
   const ref = read(REFERENCE)
   assert.equal((ref.match(/<div class="progress-item">/g) ?? []).length, 2)
   assert.match(ref, /<strong>Plan gate<\/strong>/)
@@ -82,11 +82,12 @@ test('one strip does two jobs — the Plan gate and the passkey rollout — on b
 
   assert.match(SURFACE, /<section className="progress-strip"/)
   assert.equal((SURFACE.match(/<div className="progress-item">/g) ?? []).length, 2)
-  assert.equal(W.strip.gate, 'Plan gate')
+  assert.equal(W.strip.gate, 'Tenant readiness')
   assert.equal(W.strip.rollout, 'Passkey rollout')
   // The gate strip is the Plan's own measurement, never a count of its own.
-  assert.match(SURFACE, /readinessFor\('mfa-all-users', \[\.\.\.view\.ladder\.viability\.keys\(\)\], \[\.\.\.view\.ladder\.viability\.values\(\)\], snapshot\)/, 'the gate strip does not read the Plan\'s gate')
-  assert.match(SURFACE, /readyNeeded\(facts\.active, READINESS_THRESHOLD_MFA_PERCENT\)/)
+  assert.match(SURFACE, /readinessFor\(context\?\.goalId \?\? 'mfa-all-users', context\?\.ids \?\? \[\.\.\.view\.ladder\.viability\.keys\(\)\]/, 'the gate strip does not read the Plan\'s gate')
+  assert.doesNotMatch(SURFACE, /readyNeeded|READINESS_THRESHOLD_MFA_PERCENT/)
+  assert.match(SURFACE, /fillText\(S\.gateLine, \{ ready: counts\.ready, active: facts\.active \}\)/)
   assert.match(CSS, /\.progress-strip \{[^}]*grid-template-columns: 1fr 1fr/)
 })
 
@@ -196,7 +197,7 @@ test('a filter decides which rows are on screen and nothing else', () => {
   assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, v.counts.needsProof + v.counts.needsSetup + v.counts.unknown)
   assert.equal(v.rows.filter((r) => shows(r, 'all')).length, v.facts.active)
   assert.match(SURFACE, /shows\(r, show\)/, 'the filter is not a predicate over the rows')
-  assert.match(SURFACE, /const \{ facts, counts, passkeys \} = view/, 'the counts are not read from the unfiltered view')
+  assert.match(SURFACE, /const cohortRows = context \? view.rows.filter/, 'the counts must use the full selected cohort, independently of table filters')
 })
 
 // The regression Step 7 exists to prevent: a tenant IAMAI could not read is

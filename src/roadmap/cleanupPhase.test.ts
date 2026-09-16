@@ -14,7 +14,7 @@ import { cleanup as cleanupContent } from '../content/content.ts'
 
 const ORDER = ['alerting', 'drill', 'naming', 'consolidation', 'notAssessed']
 
-test('the demo has a Cleanup phase: dated after the last enforcement, one working day per row, in render order', () => {
+test('emergency tests are early while optional hygiene follows enforcement', () => {
   const f = fixture('demo')
   const r = runFixture(f)
   const c = r.schedule.cleanup
@@ -24,7 +24,8 @@ test('the demo has a Cleanup phase: dated after the last enforcement, one workin
   assert.deepEqual(kinds, ORDER.filter((k) => kinds.includes(k)), 'rows keep the §5 order')
   assert.ok(kinds.includes('alerting') && kinds.includes('drill'), 'the emergency accounts give alerting and the drill')
   assert.equal(kinds.includes('notAssessed'), false, 'individual workflow reviews replace the catch-all')
-  assert.ok(c.start > r.schedule.targetEnd, 'Cleanup starts after the last enforcement window')
+  assert.ok(c.rows.find(row => row.kind === 'alerting')!.day <= r.schedule.targetEnd, 'alerting is early')
+  assert.ok(c.rows.find(row => row.kind === 'drill')!.day <= r.schedule.targetEnd, 'recovery testing is early')
   const ctx = r.schedule.rhythm ? { rhythm: r.schedule.rhythm } : undefined
   for (const [i, row] of c.rows.entries()) {
     assert.ok(ctx ? isWorkingDay(row.day, ctx) : true, `${row.kind} lands on a working day`)
@@ -32,7 +33,7 @@ test('the demo has a Cleanup phase: dated after the last enforcement, one workin
     assert.ok((cleanupContent as Record<string, unknown>)[row.kind], `${row.kind} has its prose in content.cleanup`)
   }
   assert.equal(c.start, c.rows[0].day)
-  assert.equal(c.end, c.rows[c.rows.length - 1].day)
+  assert.equal(c.end, [r.schedule.targetEnd, ...c.rows.map(row => row.day)].sort().at(-1))
   // The alert rule lists sign-in names; the drill lists accounts by name.
   const alerting = c.rows.find((x) => x.kind === 'alerting')!
   assert.equal(alerting.lists.emergencyAccountUpns.length, f.mapping.breakGlassUserIds.length)
@@ -72,13 +73,14 @@ test('a Cleanup with nothing to say does not exist', () => {
   assert.equal(outliersOnly, null)
 })
 
-test('every fixture with emergency accounts dates Cleanup after its schedule, on working days', () => {
+test('every fixture with emergency accounts schedules their tests independently of last enforcement', () => {
   for (const f of allFixtures()) {
     const r = runFixture(f)
     const c = r.schedule.cleanup
     if (f.mapping.breakGlassUserIds.length === 0) continue
     assert.ok(c, `${f.name}: emergency accounts give Cleanup at least the alerting and drill rows`)
-    assert.ok(c.start > r.schedule.targetEnd, `${f.name}: Cleanup follows the last enforcement window`)
+    assert.equal(c.start, c.rows.find(row => row.kind === 'alerting')!.day, `${f.name}: alerting starts independently of last enforcement`)
+    for (const row of c.rows.filter(row => row.kind !== 'alerting' && row.kind !== 'drill')) assert.ok(row.day > r.schedule.targetEnd)
     assert.ok(c.end >= c.start)
   }
 })

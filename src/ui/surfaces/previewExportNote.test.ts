@@ -49,6 +49,6 @@ test('an exported walk-through of work the screen previews says what the screen 
   // preview on excluded people though its target excludes nobody; a resolved empty list is now the
   // target's own value (consolidated batch), so it is handed over and its export carries no note.
   assert.ok(!seen.includes('demo-week2+curated s-goal-all-users-no-persistence'), JSON.stringify(seen))
-  assert.ok(seen.length >= 3, JSON.stringify(seen))
+  assert.deepEqual(seen, [], 'No step may restore a repeated implementation disclaimer without approval')
   assert.ok(executable > 0)
 })

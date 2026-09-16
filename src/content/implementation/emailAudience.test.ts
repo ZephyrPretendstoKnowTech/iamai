@@ -56,6 +56,7 @@ const NEEDS_AUTHORING: Readonly<Record<string, readonly string[]>> = {
 
 /** Audiences the package author wrote on the block itself (not assigned by review). */
 const AUTHORED_ON_BLOCK: Readonly<Record<string, readonly string[]>> = {
+  's-goal-inforcer-mfa': ['email.rollout', 'email.enforce'],
   's-question-partner': ['email.change'],
   's-goal-device-registration-mfa': ['email.users.pre-enforcement'],
   's-goal-pim-activation-reauth': ['email.admins.pre-activation-change'],

@@ -1,3 +1,4 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
 // C01 (preview corrections): which tenant policy a goal's step corrects is decided
 // by what the policy is — who it is assigned to and which kind of control it
 // carries — never by the order the scan listed the policies in or by their names.
@@ -212,6 +213,7 @@ function groupRun(opts: GroupShape): FixtureRun & { ctx: StepVarContext } {
   const keep = (ca.rows as Record<string, unknown>[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
   // Reversed, the shape's policies are listed after the tenant's others as well.
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: opts.reversed ? [...keep, ...[...rows].reverse()] : [...rows, ...keep] } } }
+  if (opts.ready) readyEvidence(f, snapshot)
   const viability = opts.ready ? runFixture({ ...f, snapshot }, { snapshot } as never).viability.map((v) => ({ ...v, readiness: READY })) : undefined
   const r = runFixture({ ...f, snapshot }, { snapshot, ...(viability ? { viability } : {}) } as never)
   const ctx = { snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, reportOnlyAt: null } as unknown as StepVarContext

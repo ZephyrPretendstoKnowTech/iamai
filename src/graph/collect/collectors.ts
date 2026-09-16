@@ -11,6 +11,7 @@ import type {
   ConfigSectionKey,
   DeviceRow,
   MethodsByUser,
+  PerUserMfaByUser,
   RegistrationRow,
   UserRow,
 } from './types.ts'
@@ -82,10 +83,34 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
     }
     const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
     const fallback = key === 'authMethodsPolicy' ? await migrationStateFallback(ctx, body as Record<string, unknown>) : null
-    return { status: 'ok', reason: null, rows: [body], ...how(), ...(fallback ? { fallback } : {}) }
+    const fido2Read = key === 'authMethodsPolicy' ? await readFido2Configuration(ctx, body as Record<string, unknown>) : undefined
+    return { status: 'ok', reason: null, rows: [body], ...how(), ...(fallback ? { fallback } : {}), ...(fido2Read ? { fido2Read } : {}) }
   } catch (e) {
     if (e instanceof SectionDisabledError) return { status: 'disabled', reason: e.message, rows: [], ...how(e.status) }
     return { status: 'error', reason: e instanceof Error ? e.message : String(e), rows: [], ...how(e instanceof GraphRequestError ? e.status : null) }
+  }
+}
+
+/** The parent policy can omit profile relationships. Never merge a partial
+ * dedicated response with old fields: doing so can hide configuration removal.
+ * Keep the parent response on failure, with explicit provenance for the reader. */
+async function readFido2Configuration(ctx: Ctx, body: Record<string, unknown>): Promise<ConfigSection['fido2Read']> {
+  const spec = COLLECTOR_REGISTRY.find(s => s.name === 'Passkey configuration')!
+  let status: number | null = null
+  try {
+    const raw = await graphRequest(ctx.tokens, `${V1}${spec.endpoint}`, { signal: ctx.signal, onResponse: r => { status = r.status } })
+    const method = raw as Record<string, unknown> | null
+    if (!method || String(method.id).toLowerCase() !== 'fido2') return { status: 'error', reason: 'The passkey response did not contain the Fido2 configuration.', httpStatus: status }
+    // Only replace this method. An incomplete parent list must not become a
+    // claim that every other authentication method is absent.
+    if (Array.isArray(body.authenticationMethodConfigurations)) {
+      body.authenticationMethodConfigurations = [...body.authenticationMethodConfigurations.filter(c => String(c?.id).toLowerCase() !== 'fido2'), method]
+    } else {
+      body.fido2Configuration = method
+    }
+    return { status: 'ok', reason: null, httpStatus: status }
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error), httpStatus: status ?? (error instanceof GraphRequestError || error instanceof SectionDisabledError ? error.status : null) }
   }
 }
 
@@ -336,6 +361,52 @@ export async function collectMethodsForUsers(ctx: Ctx, userIds: string[]): Promi
     }
     // A user the batch answered nothing for is unread, never a person with no methods.
     for (const id of chunk) out[id] ??= 'unknown'
+  }
+  return out
+}
+
+/** Read legacy per-user MFA independently from migration status and registered
+ * methods. User pages already cover the directory; batches contain at most 20
+ * requests. Every absent, failed, or future enum response remains unknown. */
+export async function collectPerUserMfaForUsers(ctx: Ctx, userIds: string[]): Promise<PerUserMfaByUser> {
+  const out: PerUserMfaByUser = {}
+  const record = (id: string, body: unknown): void => {
+    const state = body && typeof body === 'object' ? (body as Record<string, unknown>).perUserMfaState : undefined
+    out[id] = state === 'disabled' || state === 'enabled' || state === 'enforced'
+      ? { state, reason: null }
+      : { state: 'unknown', reason: 'The authentication requirements response did not contain a supported per-user MFA state.' }
+  }
+  for (let offset = 0; offset < userIds.length; offset += 20) {
+    const chunk = userIds.slice(offset, offset + 20)
+    for (const id of chunk) out[id] = { state: 'unknown', reason: 'The authentication requirements batch did not return this account.' }
+    try {
+      const body = await graphRequest(ctx.tokens, `${BETA}/$batch`, {
+        signal: ctx.signal, method: 'POST', jsonBody: { requests: chunk.map((id, index) => ({ id: String(index), method: 'GET', url: `/users/${encodeURIComponent(id)}/authentication/requirements` })) },
+      })
+      for (const response of Array.isArray(body.responses) ? body.responses : []) {
+        const index = String(response?.id ?? '')
+        if (!/^(0|[1-9][0-9]*)$/.test(index)) continue
+        const id = chunk[Number(index)]
+        if (!id) continue
+        if (response.status === 200) { record(id, response.body); continue }
+        if (response.status === 401 || response.status >= 500) {
+          // Retry a transient subrequest through the normal request helper.
+          // Throttled subrequests remain unknown for the next scan rather
+          // than immediately violating the batch's Retry-After response.
+          try {
+            record(id, await graphRequest(ctx.tokens, `${BETA}/users/${encodeURIComponent(id)}/authentication/requirements`, { signal: ctx.signal }))
+            continue
+          } catch (error) {
+            if (ctx.signal.aborted) throw error
+          }
+        }
+        out[id] = { state: 'unknown', reason: `Authentication requirements could not be read (HTTP ${Number(response.status) || 'unknown'}).` }
+      }
+    } catch (error) {
+      if (ctx.signal.aborted) throw error
+      const status = error instanceof GraphRequestError || error instanceof SectionDisabledError ? error.status : null
+      for (const id of chunk) out[id] = { state: 'unknown', reason: status ? `Authentication requirements could not be read (HTTP ${status}).` : 'Authentication requirements could not be read because the request failed.' }
+    }
   }
   return out
 }

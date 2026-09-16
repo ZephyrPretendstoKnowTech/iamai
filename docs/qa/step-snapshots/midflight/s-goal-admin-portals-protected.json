@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Create",
-  "reason": "when MFA readiness reaches 90% (now 12%)",
+  "reason": "when MFA readiness reaches 90% (now not measured)",
   "fact": null,
   "badge": "Ready · Create",
   "bar": "Ready now",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "12% MFA-ready"
+      "state": "not measured"
     },
     {
       "label": "Prerequisite · To do",

@@ -1,3 +1,6 @@
+import { emergencyPasskeyCompatibility } from '../roadmap/passkeyCompatibility.ts'
+import { methodPreparation } from '../roadmap/methodReadiness.ts'
+import { effectOf } from '../roadmap/operations.ts'
 // The validation rule registry (docs/design/validation-rules.md).
 //
 // Every object the plan depends on is checked here and nowhere else. The
@@ -25,7 +28,7 @@ import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
-import { isRecordedDrill, latestRecoveryTest } from '../roadmap/cleanupDone.ts'
+import { isRecordedDrill, latestRecoveryTest, recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -522,7 +525,7 @@ const bgDrilled: ValidationRule = {
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf)
+    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, recoveryAccountBasis(ctx.snapshot, [id])[id])
     if (!testedAt) return fail(F.bgNoRecordedDrill)
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(testedAt)) / 86_400_000)
     return days > BREAK_GLASS_DRILL_DAYS
@@ -762,6 +765,18 @@ function cidrs(loc: LocationTarget): string[] {
   return (loc?.ipRanges ?? []).map((r) => r.cidrAddress).filter((c): c is string => typeof c === 'string')
 }
 
+function cidrParts(cidr: string): { bits: 32 | 128; prefix: number } | null {
+  const parts = cidr.split('/')
+  if (parts.length !== 2 || !/^\d+$/.test(parts[1])) return null
+  const address = parts[0], prefix = Number(parts[1])
+  if (address.includes(':')) {
+    try { new URL(`https://[${address}]/`) } catch { return null }
+    return prefix <= 128 ? { bits: 128, prefix } : null
+  }
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(address) || address.split('.').some(v => Number(v) > 255)) return null
+  return prefix <= 32 ? { bits: 32, prefix } : null
+}
+
 const locNotWholeInternet: ValidationRule<LocationTarget> = {
   id: 'loc.notWholeInternet',
   subject: 'trustedLocation',
@@ -769,7 +784,9 @@ const locNotWholeInternet: ValidationRule<LocationTarget> = {
   needs: ['namedLocations'],
   evaluate: (loc) => {
     if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
-    const bad = cidrs(loc).find((c) => c === '0.0.0.0/0' || c === '::/0')
+    const ranges = cidrs(loc)
+    if (ranges.some(c => !cidrParts(c))) return unknown('A configured CIDR range is malformed; inspect the named location.')
+    const bad = ranges.find(c => cidrParts(c)?.prefix === 0)
     return bad ? fail(F.locWholeInternet(bad)) : PASS
   },
 }
@@ -777,14 +794,13 @@ const locNotWholeInternet: ValidationRule<LocationTarget> = {
 const locNotTooWide: ValidationRule<LocationTarget> = {
   id: 'loc.notTooWide',
   subject: 'trustedLocation',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['namedLocations'],
   evaluate: (loc) => {
     if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     const wide = cidrs(loc).find((c) => {
-      if (c === '0.0.0.0/0' || c === '::/0') return false
-      const prefix = Number(c.split('/')[1])
-      return Number.isFinite(prefix) && prefix < 16
+      const range = cidrParts(c)
+      return range !== null && range.prefix > 0 && range.prefix < (range.bits === 128 ? 48 : 16)
     })
     return wide ? fail(F.locTooWide(wide)) : PASS
   },
@@ -810,8 +826,9 @@ const locRedundancy: ValidationRule<LocationTarget> = {
     if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     const list = cidrs(loc)
     if (list.length !== 1) return PASS
-    const prefix = Number(list[0].split('/')[1])
-    return list[0].includes('/') && Number.isFinite(prefix) && prefix < 32 ? PASS : fail(F.locSingle(list[0]))
+    const range = cidrParts(list[0])
+    if (!range) return unknown('The configured CIDR range could not be interpreted.')
+    return range.prefix < range.bits ? PASS : fail(F.locSingle(list[0]))
   },
 }
 
@@ -822,11 +839,12 @@ const locSeenInSignIns: ValidationRule<LocationTarget> = {
   needs: ['namedLocations', 'signInEvidence'],
   evaluate: (loc, ctx) => {
     if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
-    // IAMAI keeps no addresses from sign-in records, by design: what it can say
-    // is whether the window holds sign-ins at all to compare against.
-    const total = ctx.snapshot.evidenceAggregates?.total ?? 0
-    if (total === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
-    return pass()
+    const matches = ctx.snapshot.scenarioEvidence?.trustedLocationMatches
+    if (!matches || !loc.displayName) return unknown('Named-location match evidence was not collected for this location.')
+    const sameName = (ctx.snapshot.config.namedLocations?.rows ?? []).filter(row => (row as { displayName?: string }).displayName === loc.displayName)
+    if (sameName.length !== 1) return unknown('The location name is not unique, so sign-in matches cannot identify this location.')
+    const count = matches.byLocation[loc.displayName] ?? 0
+    return count > 0 ? pass(`${count} sign-ins matched ${loc.displayName} in the recorded window.`) : unknown('No sign-in in the recorded window names this location. Confirm its current office ranges with the network owner.')
   },
 }
 
@@ -843,7 +861,7 @@ const ctyAtLeastOne: ValidationRule = {
 const ctyIncludesOperator: ValidationRule = {
   id: 'cty.includesOperator',
   subject: 'allowedCountries',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
     // The admins' sign-in countries, never the signed-in account's alone: the
@@ -913,7 +931,8 @@ const pilotSpread: ValidationRule<GroupTarget> = {
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
     const depts = new Set(entry.memberIds.map((id) => userOf(ctx, id)?.department ?? '').filter(Boolean))
-    if (depts.size !== 1) return PASS
+    const tenantDepartments = new Set(ctx.snapshot.users.filter(u => u.accountEnabled && u.userType === 'member').map(u => u.department).filter(Boolean))
+    if (tenantDepartments.size <= 1 || depts.size !== 1) return PASS
     return fail(F.pilotOneDepartment([...depts][0]))
   },
 }
@@ -945,13 +964,30 @@ const pilotMembersReady: ValidationRule<GroupTarget> = {
 }
 
 /** The method a passkey pilot needs, enabled and pointed at this group. */
-function methodTargeted(ctx: ValidationContext, methodId: string, groupId: string): 'ok' | 'off' | 'untargeted' {
-  const policy = (ctx.snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as
-    | { authenticationMethodConfigurations?: { id?: string; state?: string; includeTargets?: { id?: string }[] }[] }
-    | null
-  const c = (policy?.authenticationMethodConfigurations ?? []).find((x) => x.id?.toLowerCase() === methodId.toLowerCase())
-  if (!c || c.state !== 'enabled') return 'off'
-  return (c.includeTargets ?? []).some((t) => t.id === groupId || t.id === 'all_users') ? 'ok' : 'untargeted'
+function methodTargeted(ctx: ValidationContext, methodId: string, entry: GroupFacts): 'ok' | 'off' | 'untargeted' | 'unknown' {
+  const policy = ctx.snapshot.config.authMethodsPolicy?.rows?.[0] as { authenticationMethodConfigurations?: { id?: string; state?: string; includeTargets?: { id?: string }[]; excludeTargets?: { id?: string }[] }[] } | undefined
+  const c = policy?.authenticationMethodConfigurations?.find(x => x.id?.toLowerCase() === methodId.toLowerCase())
+  if (!c || !['enabled', 'disabled'].includes(c.state ?? '')) return 'unknown'
+  if (c.state !== 'enabled') return 'off'
+  if (entry.sampled || entry.memberIds.length < entry.memberCount) return 'unknown'
+  const target = (targets: { id?: string }[] | undefined, member: string): boolean | null => {
+    if (!targets) return null
+    let unread = false
+    for (const t of targets) {
+      if (t.id === 'all_users' || t.id === 'allUsers' || t.id === entry.groupId) return true
+      const group = ctx.groupMembers.find(g => g.groupId === t.id)
+      if (group?.memberIds.includes(member)) return true
+      if (!group || group.sampled || group.memberIds.length < group.memberCount) unread = true
+    }
+    return unread ? null : false
+  }
+  let unread = false
+  for (const member of entry.memberIds) {
+    const included = target(c.includeTargets, member), excluded = target(c.excludeTargets, member)
+    if (excluded === true || included === false) return 'untargeted'
+    if (included === null || excluded === null) unread = true
+  }
+  return unread ? 'unknown' : 'ok'
 }
 
 const pilotPasskeyEnabled: ValidationRule<GroupTarget> = {
@@ -961,8 +997,16 @@ const pilotPasskeyEnabled: ValidationRule<GroupTarget> = {
   needs: ['authMethodsPolicy'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    const state = methodTargeted(ctx, 'Fido2', entry.groupId)
-    if (state === 'ok') return PASS
+    const state = methodTargeted(ctx, 'Fido2', entry)
+    if (state === 'unknown') return unknown('The effective passkey target membership was not fully read.')
+    if (state === 'ok') {
+      const groups = new Map(ctx.groupMembers.map(g => [g.groupId, g]))
+      groups.set(entry.groupId, entry)
+      const compatibility = emergencyPasskeyCompatibility(ctx.snapshot, entry.memberIds, groups)
+      if (compatibility.some(c => c.state === 'unknown')) return unknown('Passkey profile or key-model evidence is incomplete for some pilot members.')
+      const blocked = compatibility.filter(c => c.state !== 'eligible')
+      return blocked.length ? fail(`Passkey registration or model compatibility needs review for ${blocked.map(c => nameOf(ctx, c.accountId)).join(', ')}.`) : PASS
+    }
     return fail(state === 'off' ? F.pilotMethodOff('Passkeys and security keys') : F.pilotMethodUntargeted('Passkeys and security keys'))
   },
 }
@@ -974,7 +1018,8 @@ const pilotTapEnabled: ValidationRule<GroupTarget> = {
   needs: ['authMethodsPolicy'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    const state = methodTargeted(ctx, 'TemporaryAccessPass', entry.groupId)
+    const state = methodTargeted(ctx, 'TemporaryAccessPass', entry)
+    if (state === 'unknown') return unknown('The effective Temporary Access Pass target membership was not fully read.')
     if (state === 'ok') return PASS
     return fail(state === 'off' ? F.pilotMethodOff('Temporary Access Pass') : F.pilotMethodUntargeted('Temporary Access Pass'))
   },
@@ -1033,18 +1078,18 @@ const strExists: ValidationRule<StrengthTarget> = {
 const strAchievable: ValidationRule<StrengthTarget> = {
   id: 'str.achievable',
   subject: 'authStrength',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['authStrengths', 'authMethods'],
   evaluate: (t, ctx) => {
     const combos = t.tenant?.allowedCombinations ?? []
     if (combos.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.authStrengths]))
     if (t.population.length === 0) return PASS
-    const wantsPhishingResistant = combos.every((c) => /fido2|windowsHelloForBusiness|x509/i.test(c))
-    if (!wantsPhishingResistant) return PASS
-    const by = new Map(ctx.viability.map((v) => [v.userId, v]))
-    if (by.size === 0) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
-    const anyone = t.population.some((id) => (by.get(id)?.methodTiers ?? []).includes('phishingResistant'))
-    return anyone ? PASS : fail(F.strUnachievable(combos))
+    if (!t.tenant?.id) return unknown('The authentication strength identity was not read.')
+    const target = effectOf({ conditions: { users: { includeUsers: t.population }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'AND', authenticationStrength: { id: t.tenant.id } } })
+    const readiness = methodPreparation([target], t.population, ctx.snapshot)
+    if (!readiness.completeScope || readiness.unknownIds.length) return unknown('The scan could not establish a compatible registered method for every targeted person.')
+    const missing = readiness.ids.filter(id => !readiness.readyIds.includes(id))
+    return missing.length ? fail(`${missing.length} targeted people need a method accepted by this strength: ${missing.map(id => nameOf(ctx, id)).join(', ')}.`) : PASS
   },
 }
 

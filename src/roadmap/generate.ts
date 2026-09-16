@@ -10,7 +10,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, unavailableReason } from './operations.ts'
+import { effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -47,6 +47,8 @@ import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
+import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
+import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds } from '../derive/population.ts'
 import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
@@ -86,8 +88,9 @@ import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
+import { recoveryAccountBasis } from './cleanupDone.ts'
 import { isFloorGoal } from './floor.ts'
-import { answeredCarveOuts, devicePlanOf, deviceScopeOf, unsavedInputsOf } from './answers.ts'
+import { answeredCarveOuts, devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -204,7 +207,7 @@ import { proposedName, proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
-import { EMERGENCY_ACCESS_STEP_IDS, blockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
+import { EMERGENCY_ACCESS_STEP_IDS, attachConfigurationFindings, blockerStepId, canonicalBlockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -288,7 +291,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
@@ -576,6 +579,18 @@ export function buildCreateAction(
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
     const whole = implementable(artifact(answered, p, tag), p.resolved)
+    // The approved absent-source assumption concerns the source export only.
+    // It must not remove any exclusion already configured in this tenant.
+    if (p.target?.policy && whole.omitted.length > 0) {
+      const currentUsers = ((p.target.policy.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
+      const nextUsers = ((whole.policy.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
+      if (currentUsers && nextUsers) {
+        for (const key of ['excludeGroups', 'excludeUsers', 'excludeRoles']) {
+          nextUsers[key] = [...new Set([...(Array.isArray(nextUsers[key]) ? nextUsers[key] as string[] : []), ...(Array.isArray(currentUsers[key]) ? currentUsers[key] as string[] : [])])]
+        }
+        if (currentUsers.excludeGuestsOrExternalUsers && !nextUsers.excludeGuestsOrExternalUsers) nextUsers.excludeGuestsOrExternalUsers = structuredClone(currentUsers.excludeGuestsOrExternalUsers)
+      }
+    }
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
     for (const o of whole.omitted) if (!omitted.includes(o)) omitted.push(o)
@@ -709,6 +724,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
   const expectedCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
+  const methodTargets = new Map<string, MethodTarget[]>()
   const readinessCache = new Map<string, Readiness>()
   // One readiness per family, over that family's canonical population (walk-51
   // item 8): the same number on every step of a kind, and on the campaign — all
@@ -746,7 +762,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // measuredReach). The tenant's own people, never a step's list of them.
   const activePeople = viability.filter((v) => v.activity === 'active' && !excluded.has(v.userId)).map((v) => v.userId)
   // The directory-sync account is out of the MFA and strength templates via excludeRoles in goals.json.
-  const sharedDevices = sharedDeviceUsers(snapshot)
+  const sharedDevices = mapping.sharedDeviceUserIds === undefined ? sharedDeviceUsers(snapshot) : snapshot.users.filter((u) => mapping.sharedDeviceUserIds!.includes(u.id) && u.accountEnabled !== false)
   const exclusionGroupIds = [exclusions.actionableId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
@@ -784,7 +800,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // mapping cannot name on its own. A reference nothing resolves is left out of
   // the policy body and the body says so, naming the Preparation step that
   // creates the object.
-  const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
+  const selectedCountryLocationIds = Object.values(mapping.records).filter(r => r.group === 'namedLocations' && r.provenance !== 'auto' && r.resolvedId).map(r => r.resolvedId!)
+  const countryLocation = tenantCountryLocation(snapshot, mapping.allowedCountries, selectedCountryLocationIds)
+  const countriesLocationId = countryLocation?.id ?? null
   // The exclusions group's own checks, run here rather than with the rest of the
   // validation below, because the answer decides what the policies say and not
   // only what the plan asks somebody to fix. The report is the one built; the
@@ -859,6 +877,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     strengths: tenantStrengths,
     groupMembers: knownGroupMembers,
   }
+  const methodPreparationCache = createMethodPreparationCache(snapshot, strandContext)
   // ---- the rollout cohort (Foundation A) ----
   // Who a step's own policies *name*, read from their user scope and from
   // nothing else (roadmap/strand.ts scopeCohort): every account in the directory
@@ -987,15 +1006,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (canUseConditionalAccess) {
     const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
-      .map((l) => l as { id?: string; displayName?: string; '@odata.type'?: string })
-      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
+      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
+      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true && mapping.trustedLocationIds.includes(l.id ?? ''))
     const proposed = proposedObjectNames(naming).trustedLocation
     // In place names the locations that make it so: the evidence a done step carries.
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: proposed.name, fromBaseline: null },
       // A tenant that already has an IP named location is preserving one, not making one.
-      ...stateFields(ipLocations.length > 0 ? { satisfied: true, inPlace: true } : {}),
+      ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
     })
   }
@@ -1009,32 +1028,47 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // the step that makes one, and the policies that require it wait on it.
   const strengthStepId = PREREQ_STEP_ID.authStrength
   const strengthsUnanswered = canUseConditionalAccess ? unmatchedStrengths(input.baseline.policies, tenantObjects) : []
-  if (strengthsUnanswered.length > 0) {
+  const requiredStrengths = canUseConditionalAccess ? unmatchedStrengths(input.baseline.policies, { ...tenantObjects, strengths: new Map(), confirmed: new Map() }) : []
+  if (requiredStrengths.length > 0) {
     // The author's own name for it, which is what the step's words call it: the
     // strength this tenant is being asked to make is the baseline's, not one of
     // ours to rename.
-    const name = strengthsUnanswered.map((x) => x.name).find((n): n is string => typeof n === 'string' && n.trim() !== '') ?? null
-    steps.push(name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId))
+    const name = requiredStrengths.map((x) => x.name).find((n): n is string => typeof n === 'string' && n.trim() !== '') ?? null
+    const s = name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId)
+    if (strengthsUnanswered.length === 0 && snapshot.config.authStrengths?.status === 'ok') {
+      setState(s, { satisfied: true, inPlace: true })
+      s.deliveredBy = ['Scanned authentication strengths match the resolved baseline method combinations and restrictions.']
+    }
+    steps.push(s)
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
   // 0 unless the tenant already has one with exactly that list.
   const countriesStepId = PREREQ_STEP_ID.allowedCountries
-  const countriesMissing =
-    canUseConditionalAccess &&
-    mapping.wizardAnswered.countries === true &&
-    mapping.allowedCountries.length > 0 &&
-    tenantCountryLocation(snapshot, mapping.allowedCountries) === null &&
-    input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'enforced' && r.status !== 'not-applicable')
-  if (countriesMissing) {
+  if (canUseConditionalAccess && input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'licence-limited')) {
     const proposed = proposedObjectNames(naming).allowedCountries
-    steps.push({ ...prereq(countriesStepId), naming: { proposed: proposed.name, fromBaseline: null } })
+    const needsWorkCountryReview = mapping.workCountriesConfirmed !== true && travelCountriesOf(mapping).some(country => mapping.allowedCountries.includes(country))
+    const matched = !needsWorkCountryReview && mapping.wizardAnswered.countries === true && mapping.allowedCountries.length > 0 && snapshot.config.namedLocations?.status === 'ok' && countryLocation !== null
+    const s = { ...prereq(countriesStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null } }
+    if (matched) s.deliveredBy = [`A scanned countries location matches the confirmed Work Countries: ${mapping.allowedCountries.join(', ')}.`]
+    if (needsWorkCountryReview) {
+      s.blockers = [{ kind: 'decision', label: 'work-countries-review', binding: 'Confirm Work Countries: this older plan combined work and travel countries.' }]
+      setState(s, { condition: 'needs-decision' })
+    }
+    steps.push(s)
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
-  if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
+  if (canUseConditionalAccess && (mapping.serviceAccountUserIds.length > 0 || mapping.wizardAnswered.serviceAccounts === true)) {
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
-    steps.push({ ...prereq(saStepId), naming: { proposed: proposed.name, fromBaseline: null } })
+    const members = mapping.serviceAccountsGroupId ? input.groupMembers?.get(mapping.serviceAccountsGroupId) : null
+    const matched = !!members && !members.sampled && new Set(members.memberIds).size === new Set(mapping.serviceAccountUserIds).size && mapping.serviceAccountUserIds.every((id) => members.memberIds.includes(id))
+    const step = { ...prereq(saStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null }, deliveredBy: matched ? ['The scanned group includes exactly the selected service accounts.'] : [] }
+    if (mapping.serviceAccountUserIds.length === 0) {
+      step.doesntApply = 'No service accounts are selected. No group or group protection is claimed.'
+      setState(step, { setAside: true, satisfied: false, inPlace: false })
+    }
+    steps.push(step)
   }
 
   // Wave 0: the accounts nobody signs in to (target-state §8.1, prompt 46
@@ -1043,12 +1077,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // whoever signs in first registers the MFA method. Present only while there
   // is somebody to decide on; done when the count reaches 0 on re-scan.
   const dormant = notActiveUsers(snapshot, snapshot.asOf, notPeopleIds(mapping))
-  if (dormant.length > 0) {
+  if (canUseConditionalAccess) {
     const s = prereq('s-check-dormant-accounts')
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
     s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id), activeIds: dormant.map((u) => u.id), inScope: dormant.length }
+    if (dormant.length === 0 && snapshot.sources.users?.status === 'ok') setState(s, { satisfied: true, inPlace: true })
     steps.push(s)
   }
 
@@ -1056,20 +1091,29 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // joins Teams on the same account. A Preparation check step, skippable, only
   // while somebody does; the admin policies name the same people beside it.
   const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
-  if (canUseConditionalAccess && adminsWithWorkload.length > 0) {
+  if (canUseConditionalAccess) {
     const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
-    s.population = { total: adminsWithWorkload.length, active: adminsWithWorkload.length, admins: adminsWithWorkload.length, guests: 0, ids: adminsWithWorkload, activeIds: adminsWithWorkload, inScope: adminsWithWorkload.length }
+    s.population = population(adminsWithWorkload, popIndex)
+    if (adminsWithWorkload.length === 0 && snapshot.scenarioEvidence?.officeSignIns && snapshot.sources.signInEvidence?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok') {
+      setState(s, { satisfied: true, inPlace: true })
+      s.deliveredBy = ['The scanned directory-role holders have no Outlook or Teams activity in the collected sign-in window.']
+    }
     steps.push(s)
   }
 
   // Shared devices, their own policy (prompt 48 item 4).
-  if (canUseConditionalAccess && sharedDevices.length > 0) {
+  if (canUseConditionalAccess && (sharedDevices.length > 0 || mapping.sharedDeviceUserIds !== undefined || input.manualConfirmations?.['s-shared-devices'])) {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
+    if (sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok') {
+      step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : 'No shared accounts are selected. No shared-device policy protection is claimed.'
+      setState(step, { setAside: true, satisfied: false, inPlace: false })
+      step.configurationFindings = [{ key: 'sharedAccounts', label: 'Shared Accounts', value: 'No active selected accounts', detail: step.doesntApply, outcome: 'pass' }]
+    }
     steps.push(step)
   }
 
@@ -1082,12 +1126,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const deviceStepId = PREREQ_STEP_ID.devicePlan
   const phoneIds = snapshot.scenarioEvidence?.phoneSignIns?.people ?? []
   const unjoinedIds = snapshot.scenarioEvidence?.unjoinedComputers?.people ?? []
-  if (canUseConditionalAccess && snapshot.capabilities.intune.enabled && (phoneIds.length > 0 || unjoinedIds.length > 0)) {
+  if (canUseConditionalAccess && (devicePlan !== null || phoneIds.length > 0 || unjoinedIds.length > 0)) {
     const s = prereq(deviceStepId)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     s.population = population([...new Set([...phoneIds, ...unjoinedIds])].filter((id) => !excluded.has(id)), popIndex)
-    if (devicePlan) {
+    if (devicePlanComplete(devicePlan) && devicePlan) {
       setState(s, { satisfied: true, inPlace: true })
       s.deliveredBy = [devicePlan.phonesText, ...(devicePlan.computersText ? [devicePlan.computersText] : [])]
     } else {
@@ -1109,6 +1153,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess) {
     const s = prereq(PASSKEY_SETTINGS_STEP_ID)
     const passkey = passkeyReadingOf(snapshot)
+    s.configurationFindings = passkeyFindingsOf(snapshot)
+    s.readiness.lines = s.configurationFindings.map(f => `${f.label}: ${f.value}.`)
     if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
     else if (passkey.state === 'unread') {
       s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
@@ -1119,7 +1165,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // or a read short of a setting. The step holds on that fact, like an unread
       // policy, and is never completed by it.
       const review = passkey.resolution.review
-      const binding = review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead
+      const binding = s.configurationFindings.filter(f => f.outcome !== 'pass').slice(0, 1).map(f => `${f.label}: ${f.value}`).join('') || (review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead)
       s.blockers = [{ kind: 'evidence', label: `passkey-settings-${review}`, binding, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })
     }
@@ -1129,11 +1175,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // account's methods and found no passkey. Their account makes every change, so
   // the admin policies reach it first.
   const operatorPasskey = operatorPasskeyOf(snapshot)
-  if (canUseConditionalAccess && operatorPasskey !== null && !operatorPasskey.holds) {
+  if (canUseConditionalAccess && operatorPasskey !== null) {
     const s = prereq(OPERATOR_PASSKEY_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     s.population = population([operatorPasskey.operatorId], popIndex)
+    if (operatorPasskey.holds && viability.find(v => v.userId === operatorPasskey.operatorId)?.readiness.state === 'ready') setState(s, { satisfied: true, inPlace: true })
     steps.push(s)
   }
 
@@ -1147,13 +1194,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   // Nothing can take security defaults' place without Conditional Access, so
   // turning them off is never the advice: the ladder asks for them instead.
-  if (secDefaults?.isEnabled === true && canUseConditionalAccess) {
-    steps.push(prereq('s-prereq-security-defaults'))
+  if (canUseConditionalAccess) {
+    const s = prereq('s-prereq-security-defaults')
+    if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === false) {
+      setState(s, { satisfied: true, inPlace: true })
+      s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
+    }
+    steps.push(s)
   }
   // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
   const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-  if (methodsPolicy?.policyMigrationState && methodsPolicy.policyMigrationState !== 'migrationComplete') {
-    steps.push(prereq('s-prereq-per-user-mfa'))
+  if (canUseConditionalAccess) {
+    const s = prereq('s-prereq-per-user-mfa')
+    s.readiness.lines = [`Authentication methods migration: ${methodsPolicy?.policyMigrationState ?? 'not read'}. Legacy per-user MFA states require a separate check in Entra.`]
+    steps.push(s)
   }
 
   // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
@@ -1162,7 +1216,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ladder item keeps the item's place rather than being duplicated.
   const ladderOrder = new Map<string, number>()
   if (!canUseConditionalAccess) {
-    const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id))
+    const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id), { groupMembers: knownGroupMembers })
     steps.push(...ladder.steps)
     for (const [id, index] of ladder.order) ladderOrder.set(id, index)
   }
@@ -1178,7 +1232,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // because a policy is about to use it, never as housekeeping.
   const geoPlanned = input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'not-applicable' && r.status !== 'licence-limited')
   if (geoPlanned && mapping.wizardAnswered.countries === true) {
-    validationReports.push(reportFor('allowedCountries', [tenantCountryLocation(snapshot, mapping.allowedCountries)], validationCtx))
+    validationReports.push(reportFor('allowedCountries', [countryLocation], validationCtx))
   }
   if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
   // The exclusions group's checks sit on its own step. In place when the
@@ -1261,6 +1315,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
+  attachConfigurationFindings(steps, validationReports)
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
 
@@ -1286,14 +1341,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     '{exclusionsGroup}': policyUsableExclusionsGroupId,
     '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
-    '{allowedCountriesLocation}': tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null,
+    '{allowedCountriesLocation}': countryLocation?.id ?? null,
     '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
   }
 
   // ---- Goal steps ----
 
   for (const result of input.coverage.results) {
-    if (result.status === 'not-applicable' || result.status === 'licence-limited') continue
+    if (result.status === 'not-applicable' || result.status === 'licence-limited') {
+      if (result.goal.id === 'inforcer-mfa' && result.status === 'not-applicable' && inBaseline(result.goal)) {
+        const s = prereq('s-goal-inforcer-mfa', 'Require MFA for Inforcer Access')
+        s.goalId = result.goal.id
+        s.doesntApply = 'Inforcer is confirmed not in use. MFA protection for this service is not claimed.'
+        setState(s, { setAside: true })
+        steps.push(s)
+      }
+      continue
+    }
     const goal = result.goal
     // A goal this baseline does not hold has no step: the catalogue keeps intent
     // only, and the plan renders the baseline (walk-51 item 9) — except the floor
@@ -1360,6 +1424,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const popIds = expectedCache.get(whoKey) ?? []
     if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? { total: popIds.length, active: popIds.length, admins: 0, guests: 0, ids: popIds, activeIds: popIds, inScope: popIds.length } : population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
+    let policyPreparation: Step['methodPreparation']
     const readinessKey = goalFamily(goal.id)
     if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
     const readiness = { ...(readinessCache.get(readinessKey) as Readiness), lines: [...(readinessCache.get(readinessKey) as Readiness).lines] }
@@ -1679,6 +1744,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const conflictSource = typeof goal.id === 'string' ? (conflictGoals.get(goal.id) ?? null) : null
     const conflictState = conflictSource !== null ? { state: { condition: BASELINE_CONFLICT, conflictSource } } : {}
 
+    // The resolved target determines method suitability and its denominator.
+    // Eligible role holders are prepared for activation; Impact stays active-only.
+    if (['mfa', 'admin', 'guest'].includes(readinessKey)) {
+      const effects = state.satisfied
+        ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => (result.satisfaction?.policyIds ?? []).includes(String(p.id))).map(effectOf)
+        : validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
+      methodTargets.set(goal.id, effects)
+      policyPreparation = methodPreparation(effects, viability.map(v => v.userId), snapshot, strandContext, methodPreparationCache)
+      const reading = methodReadiness(readinessKey, policyPreparation)
+      Object.assign(readiness, reading)
+      if (!reading.unmeasured) delete readiness.unmeasured
+    }
+
     // Gating (roadmap.md §6).
     if (!state.satisfied) {
       const threshold =
@@ -1976,6 +2054,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
       readiness,
+      ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
       evidence,
       action,
       history: [],
@@ -2029,6 +2108,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             : null,
     })
 
+    if (goal.id === 'inforcer-mfa') {
+      const s = steps[steps.length - 1]
+      const appId = '708861da-226e-4d65-a57a-24128df64524'
+      const observed = (['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status ?? '') && snapshot.appSignInSummary.some(raw => String((raw as { appId?: string }).appId ?? '').toLowerCase() === appId))
+        || (['ok', 'partial'].includes(snapshot.sources.spActivity?.status ?? '') && snapshot.spActivity.some(raw => String((raw as { appId?: string }).appId ?? '').toLowerCase() === appId))
+        || (snapshot.config.caPolicies?.status === 'ok' && snapshot.config.caPolicies.rows.some(raw => ((raw as { conditions?: { applications?: { includeApplications?: string[] } } }).conditions?.applications?.includeApplications ?? []).some(id => id.toLowerCase() === appId)))
+      const tenantApplicationName = [
+        ...(['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status ?? '') ? snapshot.appSignInSummary : []),
+        ...(['ok', 'partial'].includes(snapshot.sources.spActivity?.status ?? '') ? snapshot.spActivity : []),
+      ].map(raw => raw as { appId?: string; appDisplayName?: string }).find(row => row.appId?.toLowerCase() === appId && row.appDisplayName)?.appDisplayName
+      s.configurationFindings = [{ key: 'inforcerApplication', label: 'Inforcer Application', value: observed ? 'Exact application ID found' : 'Application not established', detail: observed ? `The tenant contains application ${tenantApplicationName ? `${tenantApplicationName} (${appId})` : appId}, the exact target of the pinned policy IAC - APP - inforcer - RequireMFA.` : `The current scan has no exact application match for Inforcer (${appId}). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.`, outcome: observed ? 'pass' : 'unknown' }]
+      if (!observed) {
+        s.blockers.push({ kind: 'evidence', label: 'inforcer-application', binding: BLOCKED_REASON.after('Identify the Inforcer application'), unverified: true })
+        setState(s, { satisfied: false, inPlace: false, condition: 'blocked' })
+      }
+    }
+
     // The workload step restricts the identity that performs synchronization, and
     // nothing the scan reads establishes that identity or that workload Conditional
     // Access supports it (roadmap/workloadIdentity.ts): a sync role holder, a licence
@@ -2075,21 +2171,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Break-glass is never in the campaign (prompt 48.1 item 2): it has its own drill.
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
-    const verifyReadiness = readinessCache.get('mfa') ?? readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
+    const candidates = campaignIds(viability, snapshot, mapping)
+    const adminCandidates = [...new Set([...Object.keys(snapshot.roles.active), ...Object.keys(snapshot.roles.eligible ?? {})])].filter(id => viabilityById.has(id) && !excluded.has(id))
+    const targetEffects = [...(methodTargets.get('mfa-all-users') ?? []), ...(methodTargets.get('admins-phishing-resistant') ?? [])]
+    const preparation = methodPreparation(targetEffects, [...new Set([...candidates, ...adminCandidates])], snapshot, strandContext, methodPreparationCache)
+    const preparationIds = preparation.completeScope ? preparation.ids : [...new Set([...candidates, ...adminCandidates])]
+    const targetsKnown = (methodTargets.get('mfa-all-users')?.length ?? 0) > 0 && (!steps.some(s => s.id === 's-goal-admins-phishing-resistant') || (methodTargets.get('admins-phishing-resistant')?.length ?? 0) > 0)
+    const preparedSet = new Set(targetsKnown ? preparation.readyIds : [])
+    const registrationKnown = preparation.completeScope && preparation.unknownIds.length === 0 && targetsKnown
+    const verifyReadiness: Step['readiness'] = methodReadiness('mfa', { ...preparation, ids: preparationIds, readyIds: [...preparedSet], completeScope: preparation.completeScope && targetsKnown })
     // Required whenever anyone enabled still has to be set up (ux-review-04 §2):
     // the Overview sentence, the blocked-step reasons and the pace all read
     // from this one number.
     // The active people not Ready yet (scoring/phishingResistant.ts): the one
     // count MFA Readiness and the MFA gate read, not a second "to set up".
-    const toSetUp = viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state !== 'ready').length
-    const verifyDone = toSetUp === 0
+    const toSetUp = preparationIds.length - preparedSet.size
+    const verifyDone = registrationKnown && toSetUp === 0
     steps.push({
       ...prereq('s-verify-mfa'),
+      title: 'Prepare Your Team for MFA',
+      preparation: { ids: preparationIds, readyIds: [...preparedSet], missingIds: preparationIds.filter(id => !preparedSet.has(id)), unknownIds: targetsKnown ? preparation.unknownIds : preparationIds },
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
       ...stateFields(verifyDone ? { satisfied: true } : {}),
-      population: population(campaignIds(viability, snapshot, mapping), popIndex),
+      deliveredBy: verifyDone ? ['Every person in the preparation cohort has a suitable registered authentication method.'] : [],
+      population: population(preparationIds, popIndex),
       readiness: verifyReadiness,
       forManager: MANAGER.verify(toSetUp),
     })
@@ -2203,14 +2310,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const s of steps) {
       const effects = effectsOf(s)
       const namesAPlace = effects !== null ? effects.some((e) => e.usesLocations) : familyReading(s) === 'location'
-      if (namesAPlace) blockLate(s, 'countries-unsafe', null, blockerStepId('allowedCountries'))
+      if (namesAPlace) blockLate(s, 'countries-unsafe', null, canonicalBlockerStepId('allowedCountries'))
     }
   }
 
   // 3. Security defaults come off before any Conditional Access policy: with
   // them on, a policy can be created and cannot be turned on.
   const secDefaultsStep = steps.find((s) => s.id === 's-prereq-security-defaults')
-  if (secDefaultsStep) {
+  if (secDefaultsStep && !secDefaultsStep.state.satisfied) {
     for (const s of steps) {
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
       blockLate(s, 'security-defaults-first', null, secDefaultsStep.id)
@@ -2303,7 +2410,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The registration window is sized by who still needs a proven method: five
   // a working day, at most twenty working days, alongside the first soak
   // (target-state §9). Never by the size of the tenant.
-  const toSetUpIds = viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state !== 'ready').map((v) => v.userId)
+  const toSetUpIds = steps.find(s => s.id === 's-verify-mfa')?.preparation?.missingIds ?? viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state !== 'ready').map((v) => v.userId)
   const registration = registrationWindow(toSetUpIds)
   // A step the person said does not apply here leaves its phase for the footer:
   // it takes no slot and nothing waits on it.
@@ -2327,7 +2434,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
   if (canUseConditionalAccess) addWorkflowSteps(steps, input.coverage.organisation.notAssessed, snapshot, mapping, input.manualConfirmations, input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id))
-  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping)
+  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, input.cleanupRecord?.records ?? [], input.groupMembers, input.reviewNow ?? snapshot.asOf, new Set(campaignIds(viability, snapshot, mapping)))
+  for (const s of steps.filter(s => ['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(s.id))) {
+    const dormantIds = new Set(dormant.map(u => u.id))
+    const reviewed = mapping.dormantAccountChoices ?? {}
+    const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))
+    s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), outcome: reviewed[u.id]?.outcome ?? '', reason: reviewed[u.id]?.reason ?? '', disabled: u.accountEnabled === false }))
+    const remaining = accounts.filter(u => dormantIds.has(u.id) && u.accountEnabled !== false && !(reviewed[u.id]?.outcome === 'keep' && reviewed[u.id].reason.trim()))
+    s.population = population(accounts.map(u => u.id), popIndex)
+    delete s.manualReview
+    const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
+    setState(s, { satisfied: complete, inPlace: complete })
+    if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
+  }
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,
@@ -2343,8 +2462,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // policies as what makes it In place, not as overlap.
   schedule.cleanup = cleanupPhaseFor({
     after: schedule.targetEnd,
+    early: input.reviewNow ?? snapshot.asOf,
+    hardeningTracked: !!input.hardeningDeferral,
+    hardeningVerified: !!bgStep?.emergency && bgStep.emergency.hardening === 0 && bgStep.emergency.accounts.length > 0 && bgStep.emergency.accounts.every(account => account.assessed),
     rhythm,
     emergencyAccountIds: mapping.breakGlassUserIds,
+    accountBasis: recoveryAccountBasis(snapshot, mapping.breakGlassUserIds),
+    policies: snapshot.config.caPolicies.status === 'ok' ? snapshot.config.caPolicies.rows : null,
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),
     organisation: { ...input.coverage.organisation, notAssessed: [] },

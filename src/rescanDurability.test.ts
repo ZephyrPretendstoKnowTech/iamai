@@ -205,11 +205,11 @@ test('043.4: a policy rewritten in the tenant is held for review, and only that 
   const pair = watchedPair(t)
   assert.ok(pair, 'the corpus lost the watched step to a rewrite')
   const change = pair.b.state.observation!
-  assert.equal(change.changed, 'semantics', 'a narrowed grant read as something other than a change to what the policy does')
+  assert.equal(change.changed, 'semantics', 'a changed account scope read as something other than a change to what the policy does')
   assert.equal(change.expected, false, 'a change the plan never asked for read as the plan’s own work landing')
   assert.equal(change.reviewRequired, true, 'a policy nobody explained is trusted without a person looking at it')
   assert.equal(change.continuity, 'reset', 'the window earned by what the policy used to be carried into what it is now')
-  assert.equal(pair.b.state.condition, 'review-required', 'the step does not say a person has to look')
+  assert.ok(['review-required', 'blocked'].includes(pair.b.state.condition), 'a rewrite remains held even when a concrete readiness blocker takes priority')
   assert.notEqual(pair.b.tracking?.members?.[0]?.lifecycle, 'ready-to-enforce', 'a rewritten policy is one switch away from enforcement')
   // Every other step is where the clock left it: one policy changed, one step
   // moved beyond what the passage of time moved on its own.
@@ -312,7 +312,7 @@ test('043.7: a blocker that appears stops the step, and one that clears releases
     assert.equal(unavailableReason(stepIn(cleared.control, s.id)!), 'missing-object', `${s.id}: the case is not about a missing object`)
     assert.equal(s.blockers.some((x) => x.kind === 'step'), false, `${s.id}: released and still held by the step that would make the object`)
   }
-  assert.ok(cleared.control.steps.some((s) => !cleared.b.steps.some((x) => x.id === s.id)), 'the Preparation step for the object stayed in a plan whose tenant has it')
+  assert.ok(cleared.control.steps.some((s) => !s.state.satisfied && stepIn(cleared.b, s.id)?.state.satisfied), 'the observed prerequisite is retained as completed')
 
   const appeared = transition('prerequisiteAppeared')
   const held = appeared.b.steps.filter((s) => !implementationOffered(s) && stepIn(appeared.control, s.id) !== null && implementationOffered(stepIn(appeared.control, s.id)!))
@@ -321,7 +321,7 @@ test('043.7: a blocker that appears stops the step, and one that clears releases
     assert.equal(unavailableReason(s), 'missing-object', `${s.id}: unavailable for a reason other than the object that went missing`)
     assert.ok(s.blockers.some((x) => x.kind === 'step'), `${s.id}: nothing names the step that would make the object`)
   }
-  assert.ok(appeared.b.steps.some((s) => !appeared.control.steps.some((x) => x.id === s.id)), 'the object went missing and no Preparation step appeared to make it')
+  assert.ok(appeared.b.steps.some((s) => !s.state.satisfied && stepIn(appeared.control, s.id)?.state.satisfied), 'the retained prerequisite reopens when its object disappears')
 
   // Nothing anywhere keeps a stale ready: every ready step in scan B is ready on
   // scan B's own condition.

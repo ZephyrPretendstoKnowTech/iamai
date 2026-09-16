@@ -1,3 +1,5 @@
+import type { Step } from '../../roadmap/types.ts'
+import { reached } from '../../derive/population.ts'
 // MFA Readiness (task 012; Step 7): who can meet phishing-resistant MFA, what
 // IAMAI can actually prove, and what each person needs next.
 //
@@ -32,8 +34,7 @@ import type { BaselineResult } from '../baseline.ts'
 import { DEFAULT_SHOW, SHOW_KEYS, SUMMARY_STATES, readinessView, showKeyOf, shows } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
-import { goalFamily, readinessFor, readyNeeded } from '../../roadmap/readiness.ts'
-import { READINESS_THRESHOLD_MFA_PERCENT } from '../../roadmap/constants.ts'
+import { goalFamily, readinessFor } from '../../roadmap/readiness.ts'
 import type { ReadinessState } from '../../scoring/phishingResistant.ts'
 import { app, pages } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -87,7 +88,7 @@ const stepHref = (stepId: string): string => `#/plan/${encodeURIComponent(stepId
 const DETAIL_ID = 'readiness-detail'
 
 /** The Plan step this page is scoped to: the people it is waiting on, or null where this scan could not settle who. */
-type PlanContext = { title: string; stepId: string; ids: string[] | null }
+type PlanContext = { title: string; stepId: string; goalId: string; ids: string[] | null; preparation?: Step['preparation'] & { unknownIds?: string[] } }
 
 export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null }) {
   const [stepId, setStepId] = useState<string | null>(() => stepFromReadinessHash(window.location.hash))
@@ -103,13 +104,11 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   const scored = data.computed?.viability ?? []
   const step = stepId === null ? null : (steps.find((s) => s.id === stepId) ?? null)
   const hold = step && data.computed ? stepMfaHold(step, scored) : null
-  const context: PlanContext | null = step && hold ? { title: contentTitle(step), stepId: step.id, ids: hold.ids } : null
-  // The step the 90% MFA gate holds, where the plan holds one; Require MFA for Everyone otherwise, where the plan has it.
-  const gateStepId = useMemo(() => {
-    const all = data.computed?.steps ?? []
-    const held = all.find((s) => goalFamily(s.goalId) === 'mfa' && s.action.readinessGate)
-    return (held ?? all.find((s) => s.goalId === 'mfa-all-users'))?.id ?? null
-  }, [data.computed])
+  const method = step?.methodPreparation
+  const preparation = method?.completeScope ? { ids: method.ids, readyIds: method.readyIds, missingIds: method.ids.filter(id => !method.readyIds.includes(id)), unknownIds: method.unknownIds } : step?.preparation
+  const context: PlanContext | null = step && (preparation || method || hold || step.id === 's-verify-mfa') ? { title: contentTitle(step), stepId: step.id, goalId: step.id === 's-verify-mfa' ? 'mfa-all-users' : step.goalId, ids: preparation?.ids ?? (method && !method.completeScope ? null : reached(step)?.ids ?? null), preparation } : null
+  // Link the overview to preparation without presenting its tenant-wide metric as a policy rollout gate.
+  const gateStepId = context?.stepId ?? steps.find(s => s.id === 's-verify-mfa')?.id ?? steps.find(s => s.goalId === 'mfa-all-users')?.id ?? null
   return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} gateStepId={gateStepId} />
 }
 
@@ -119,7 +118,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
   const again = useAction()
   const view = useMemo(() => (snapshot && mapping ? readinessView(snapshot, snapshot.asOf, mapping) : null), [snapshot, mapping])
   // The Plan's own MFA gate measurement, over the same scored people the rows are (roadmap/readiness.ts).
-  const gate = useMemo(() => (snapshot && view ? readinessFor('mfa-all-users', [...view.ladder.viability.keys()], [...view.ladder.viability.values()], snapshot) : null), [snapshot, view])
+  const gate = useMemo(() => (snapshot && view ? readinessFor(context?.goalId ?? 'mfa-all-users', context?.ids ?? [...view.ladder.viability.keys()], [...view.ladder.viability.values()], snapshot) : null), [snapshot, view, context?.goalId, context?.ids])
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<ShowKey>(() => showKeyOf(showFromReadinessHash(window.location.hash)) ?? DEFAULT_SHOW)
   // The detail is held by the account id the row carries, never the display name.
@@ -157,9 +156,9 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
   const q = query.trim().toLowerCase()
   const scoped = context?.ids ? new Set(context.ids) : null
   const rows = useMemo(
-    () => (view?.rows ?? []).filter((r) => (!scoped || scoped.has(r.user.id)) && shows(r, show) && (!q || searchText(r).includes(q))),
+    () => (view?.rows ?? []).filter((r) => (!context || (scoped !== null && scoped.has(r.user.id))) && (context?.preparation && show === 'needsAction' ? context.preparation.missingIds.includes(r.user.id) : context?.preparation && show === 'ready' ? context.preparation.readyIds.includes(r.user.id) : context?.preparation && show === 'all' ? true : context?.preparation && show === 'admins' ? r.admin : shows(r, show)) && (!q || searchText(r).includes(q))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, show, q, context?.ids],
+    [view, show, q, context?.ids, context?.preparation],
   )
 
   const heading = (
@@ -176,20 +175,25 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
       </section>
     )
   }
-  const { facts, counts, passkeys } = view
+  const cohortRows = context ? view.rows.filter(row => scoped?.has(row.user.id)) : view.rows
+  const countedRows = context?.preparation ? cohortRows : cohortRows.filter(row => row.state !== null)
+  const facts = context ? { ...view.facts, active: countedRows.length } : view.facts
+  const counts = scoped ? Object.fromEntries(Object.keys(view.counts).map(key => [key, countedRows.filter(row => row.state === key).length])) as typeof view.counts : view.counts
+  const passkeys = scoped ? { have: countedRows.filter(row => row.readiness?.hasPasskey === true).length, without: countedRows.filter(row => row.readiness?.hasPasskey === false).length, unread: countedRows.filter(row => row.readiness?.hasPasskey == null).length } : view.passkeys
   // A gate this scan could not measure is not "0 of N are Ready": nobody's proof
   // was read, which is Unknown for everyone rather than Ready for no one.
-  const summary = facts.active === 0 ? T.summaryNone : gate?.unmeasured === 'unreadable' ? fillText(T.summaryUnmeasured, { active: facts.active }) : fillText(T.summary, { ready: counts.ready, active: facts.active })
-  const required = facts.active > 0 ? readyNeeded(facts.active, READINESS_THRESHOLD_MFA_PERCENT) : 0
-  const more = Math.max(0, required - counts.ready)
-  // A gate the scan could not measure is not stated as a shortfall (Step 7).
-  const gateValue = gate?.unmeasured === 'unreadable' ? S.gateNotMeasured : more > 0 ? fillText(S.gateMore, { n: more }) : S.gateMet
+  const summary = context && context.ids === null ? 'Resolve this step’s policy scope to identify the people who need preparation.' : context?.preparation ? `${context.preparation.readyIds.length} of ${context.preparation.ids.length} people have a method ready for this step` : facts.active === 0 ? T.summaryNone : gate?.unmeasured === 'unreadable' ? fillText(T.summaryUnmeasured, { active: facts.active }) : fillText(T.summary, { ready: counts.ready, active: facts.active })
+  const more = context?.preparation ? context.preparation.missingIds.length : Math.max(0, facts.active - counts.ready)
+  const unknownMethods = context?.preparation?.unknownIds?.length ?? 0
+  const setupNeeded = Math.max(0, more - unknownMethods)
+  // Keep unknown compatibility separate from a known setup defect.
+  const gateValue = context?.preparation ? (more > 0 ? [setupNeeded > 0 ? `${setupNeeded} need method setup` : '', unknownMethods > 0 ? `${unknownMethods} need a compatibility check` : ''].filter(Boolean).join(' · ') : 'Required methods are ready') : gate?.unmeasured === 'unreadable' ? S.gateNotMeasured : more > 0 ? fillText(S.gateMore, { n: more }) : S.gateMet
   const source = snapshot?.sources.signInEvidence
   const records = source?.coveredWindow ? fillText(C.lineRecords, { from: monthDay(source.coveredWindow.from), to: monthDay(source.coveredWindow.to) }) : source?.status === 'disabled' && source.reason ? fillText(C.lineNoRecordsReason, { reason: source.reason }) : C.lineNoRecords
-  const parts = footerParts(facts)
+  const parts = context ? [] : footerParts(facts)
   const rollout = passkeyStripParts(passkeys)
   // The toolbar's filters; a link that arrived on a population the toolbar does not offer keeps its own pill, so the control still says what is on screen.
-  const pills: ShowKey[] = SHOW_KEYS.includes(show) || (SUMMARY_STATES as readonly string[]).includes(show) ? [...SHOW_KEYS] : [...SHOW_KEYS, show]
+  const pills: ShowKey[] = context?.preparation ? ['needsAction', 'ready', 'all', 'admins', 'noPasskey'] : SHOW_KEYS.includes(show) || (SUMMARY_STATES as readonly string[]).includes(show) ? [...SHOW_KEYS] : [...SHOW_KEYS, show]
 
   const columns: Column<ReadinessRow>[] = [
     {
@@ -242,15 +246,17 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
     },
     {
       key: 'readiness',
-      header: T.columns[4],
-      csv: (r) => readinessWord(r),
-      render: (r) => (r.state !== null ? <span className={`status status-${STATUS_TONE[r.state]}`}>{stateTitle(r.state)}</span> : <span className="not-person">{readinessWord(r)}</span>),
+      header: context?.preparation ? 'Preparation' : T.columns[4],
+      csv: (r) => context?.preparation ? (context.preparation.readyIds.includes(r.user.id) ? 'Method Ready' : context.preparation.unknownIds?.includes(r.user.id) ? 'Check Compatibility' : 'Method Needed') : readinessWord(r),
+      render: (r) => context?.preparation ? <span>{context.preparation.readyIds.includes(r.user.id) ? 'Method Ready' : context.preparation.unknownIds?.includes(r.user.id) ? 'Check Compatibility' : 'Method Needed'}</span> : (r.state !== null ? <span className={`status status-${STATUS_TONE[r.state]}`}>{stateTitle(r.state)}</span> : <span className="not-person">{readinessWord(r)}</span>),
     },
     {
       key: 'action',
       header: T.columns[5],
-      csv: (r) => actionOf(r)?.text ?? '',
+      csv: (r) => context?.preparation ? (context.preparation.missingIds.includes(r.user.id) ? (context.preparation.unknownIds?.includes(r.user.id) ? 'Review method compatibility in the plan step' : 'Register a method accepted by this step') : '') : actionOf(r)?.text ?? '',
       render: (r) => {
+        if (context?.preparation?.unknownIds?.includes(r.user.id)) return <a href={stepHref(context.stepId)}>Review method compatibility in the plan step</a>
+        if (context?.preparation) return context.preparation.missingIds.includes(r.user.id) ? <a href="https://mysignins.microsoft.com/security-info" target="_blank" rel="noreferrer">Register a method accepted by this step</a> : <span className="no-action" aria-hidden="true">&mdash;</span>
         const a = actionOf(r)
         // Nothing to do: the reference's em rule, a mark and not a word.
         if (!a) return <span className="no-action" aria-hidden="true">&mdash;</span>
@@ -284,9 +290,9 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
         <div className="summary-main">
           <div className="eyebrow">{T.summaryEyebrow}</div>
           <p className="headline display">{summary}</p>
-          {facts.active > 0 && <p className="sub">{T.summarySub}</p>}
+          {facts.active > 0 && <p className="sub">{context?.preparation ? "Registration is checked against this step’s authentication requirements. Sign-in evidence is shown separately." : T.summarySub}</p>}
         </div>
-        {SUMMARY_STATES.map((s) => (
+        {!context?.preparation && (!context || context.ids !== null) && SUMMARY_STATES.map((s) => (
           <button key={s} type="button" className="summary-stat" aria-pressed={show === s} aria-label={T.states[s].aria} onClick={() => select(show === s ? DEFAULT_SHOW : s)}>
             <span className="stat-n">{counts[s]}</span>
             <span className="stat-k">{T.states[s].stat}</span>
@@ -298,15 +304,15 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
         <section className="progress-strip" aria-label={S.label}>
           <div className="progress-item">
             <div className="progress-label">
-              <strong>{S.gate}</strong>
-              <span>{fillText(S.gateLine, { required, active: facts.active })}</span>
+              <strong>{context?.preparation ? "Team Preparation" : S.gate}</strong>
+              <span>{context?.preparation ? "Register a suitable method for each person in this step." : fillText(S.gateLine, { ready: counts.ready, active: facts.active })}</span>
             </div>
             <div className="progress-value">
               {gateValue}
               {gateStepId && (
                 <>
                   {' · '}
-                  <a href={stepHref(gateStepId)}>{S.gateLink}</a>
+                  <a href={stepHref(gateStepId)}>{context ? 'Back to this step →' : S.gateLink}</a>
                 </>
               )}
             </div>
@@ -349,7 +355,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
         <input type="search" placeholder={T.search} aria-label={T.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
         {pills.map((k) => (
           <Button key={k} variant="tertiary" className="pill" aria-pressed={show === k} onClick={() => select(k)}>
-            {showWord(k)}
+            {context?.preparation && k === 'ready' ? 'Method Ready' : showWord(k)}
           </Button>
         ))}
       </div>

@@ -18,7 +18,7 @@ import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
-import { withCleanupDone, cleanupBasis } from '../cleanupDone.ts'
+import { withCleanupDone, cleanupBasis, recoveryAccountBasis } from '../cleanupDone.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 
@@ -648,7 +648,7 @@ export function buildFixture(spec: Spec): Fixture {
       caPolicies: section(policies),
       namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(seed, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
       authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }, ...baselineStrengths(seed)]),
-      authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
+      authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] }, { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
@@ -751,7 +751,7 @@ export function buildFixture(spec: Spec): Fixture {
     // recorded that sign-in as the drill on the Cleanup row, so the step is In
     // place and the drill row reads done.
     const drillAt = users.find((u) => u.id === bgIds[0])?.lastSuccessfulSignIn ?? null
-    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
+    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], outcome: 'passed', workflow: 'Emergency administrator sign-in and recovery', accountBasis: recoveryAccountBasis(snapshot, bgIds), signInAtByAccount: Object.fromEntries(bgIds.flatMap(id => { const at = users.find(u => u.id === id)?.lastSuccessfulSignIn; return at ? [[id, at]] : [] })), timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
   }
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }

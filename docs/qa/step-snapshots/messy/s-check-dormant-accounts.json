@@ -15,6 +15,7 @@
   "tiles": [],
   "channels": [
     "Entra",
+    "PowerShell",
     "AI Info",
     "Email"
   ],

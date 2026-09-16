@@ -515,7 +515,8 @@ test('006.10: no portal, JSON or PowerShell instruction appears merely because t
   assert.deepEqual(screen.before, [])
   assert.deepEqual(screen.steps, [])
   // And the export view's What to do is the review action alone.
-  assert.deepEqual(c.view(step).whatToDo, [stepContract(step, ctx).whatToDo.text])
+  assert.equal(c.view(step).whatToDo[0], stepContract(step, ctx).whatToDo.text)
+  assert.ok(c.view(step).whatToDo.includes('Verify the workflow:'))
 })
 
 // ---- 11. the screen, the exports, the prompts and the calendar agree ----
@@ -535,7 +536,8 @@ test('006.11: every artifact says Report-only, held for review, review-and-scan-
   const b = bundle.plan.steps.find((s) => s.id === c.step.id) as Record<string, unknown>
   assert.equal(b.status, 'Ready')
   assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
-  assert.deepEqual(b.whatToDo, [action])
+  assert.deepEqual(b.whatToDo, v.whatToDo)
+  assert.equal(v.whatToDo[0], action)
   assert.equal(b.dates, v.dates)
   // A held step books nothing (roadmap/holds.ts): there is no day on which a
   // person looks at a change nobody has explained, and the calendar is for days.

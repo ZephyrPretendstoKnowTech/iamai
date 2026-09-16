@@ -151,13 +151,12 @@ export function How() {
 
       </details>
 
-      <h2 id="package" ref={packageHeading} tabIndex={-1}>{C.packages}</h2>
-      <p className="reason">{PACKAGE.does}</p>
-      <ol className="sections">
-        <li><h3>{PACKAGE.way1Title}</h3><ul>{PACKAGE.way1.map(line => <li key={line}>{line}</li>)}</ul></li>
-        <li><h3>{PACKAGE.way2Title}</h3><p>{PACKAGE.way2Intro}</p><pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre></li>
-        <li><h3>{PACKAGE.way3Title}</h3><p>{PACKAGE.way3}</p></li>
-      </ol>
+      <details className="how-reference">
+        <summary>Baseline Packages</summary>
+        <h2 id="package" ref={packageHeading} tabIndex={-1}>Defense in Depth</h2>
+        <p>IAMAI uses the included version of Defense in Depth, maintained by Jon Hope. The Connect page shows its source and version.</p>
+        <a href="https://conditionalaccess.tech" target="_blank" rel="noopener noreferrer">ConditionalAccess.Tech</a>
+      </details>
 
       {/* Where the public site runs, and where the tenant's data does not (task 016).
           Said once, here: the home page makes its own short read-only / browser /

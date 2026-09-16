@@ -6,7 +6,6 @@ Review each account IAMAI lists with its owner before changing it. An old or mis
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.dormant","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI lists enabled accounts with no sign-in recorded in the last 90 days, or none on record. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.
 @@IAMAI-END
@@ -66,31 +65,26 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.review","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This account is a dormant-account candidate waiting for its owner's decision. Account: {{account.current.displayName}} ({{account.current.id}}). Recorded activity: {{account.evidence.activitySummary}}. An old or missing sign-in record is not proof that the account is unused. Before anything changes, the owner must confirm its purpose, or confirm that its sign-in can be disabled.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.disable","channel":"aiInfo","states":["disableConfirmed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The owner's saved decision for {{account.current.displayName}} is {{account.decision.disposition}}. The planned change is one setting on one account: Account enabled off (`accountEnabled=false`) on object ID {{account.current.id}}. It does not delete the account, remove licences, change mailbox data or clean up other accounts.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.keep","channel":"aiInfo","states":["keepConfirmed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The owner confirmed that {{account.current.displayName}} is still needed. That keep decision stands even if the account's activity still matches the dormant-account rule. It records a confirmed purpose; it is not evidence of a recent successful sign-in. No disable action is planned for this account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm that sign-in is disabled on the same account. Account enabled, as last read: {{account.current.accountEnabled}}. Only the Account enabled setting should have changed. Verify after the change: the owner confirms that nothing still relying on this account has lost access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI cannot resolve this dormant-account candidate yet. Blockers: {{dependencies.blockers}}. Missing sign-in data does not support disabling the account.
 @@IAMAI-END

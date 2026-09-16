@@ -30,6 +30,7 @@ export type ScopeRoles = {
  * agree, so consent alone is never enough.
  */
 export const ROLE_FOR_SCOPE: Record<string, ScopeRoles> = {
+  'Policy.Read.AuthenticationMethod': { least: READ_EVERYTHING_ROLE, also: ['Authentication Policy Administrator'] },
   'Policy.Read.All': { least: 'Security Reader', also: [READ_EVERYTHING_ROLE, 'Conditional Access Administrator', 'Security Administrator'] },
   'Directory.Read.All': { least: 'Directory Readers', also: [READ_EVERYTHING_ROLE, 'Security Reader'] },
   'RoleManagement.Read.Directory': { least: READ_EVERYTHING_ROLE, also: ['Privileged Role Administrator'] },

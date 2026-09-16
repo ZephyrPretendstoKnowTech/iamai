@@ -110,13 +110,11 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the owner needs to confirm which accounts belong to shared devices in {{tenant.displayName}}. Proposed accounts: {{shared.confirmedAccounts}}. An account name alone does not show that it is a room or shared-device account rather than a person; each account and its normal network need owner confirmation before any policy excludes it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI has not automatically assessed a dedicated shared-device policy in {{tenant.displayName}}. Inspect existing policies first. If a new dedicated policy is needed, create it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.
 
@@ -124,7 +122,6 @@ The PowerShell Create writes this one policy only. Excluding these accounts from
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the dedicated shared-device policy exists, but these settings differ from the intended target: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID, and keeps the exclusions group excluded. Excluding the accounts from person-interactive policies is a separate change on each of those policies.
 
@@ -134,19 +131,16 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the dedicated shared-device policy is in Report-only. Shared-device sign-in evidence: {{shared.deviceEvidence}}. Look for any person-interactive policy that still prompts a shared device, and for sign-ins from outside the trusted network. A prompt is fixed by excluding only the confirmed account from that policy, not by widening exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the dedicated shared-device policy is in Report-only and the next action is to enable it. Before setting it to On, the trusted-network location must be re-confirmed against the public IP addresses the devices use, and the report-only evidence should cover normal device activity. After enabling, test a real shared device.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: this step cannot proceed yet. Known blockers: {{dependencies.blockers}}.
 @@IAMAI-END
@@ -174,7 +168,7 @@ We plan to turn on the dedicated shared-device Conditional Access policy after i
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.manual-review","channel":"entra","states":["missing","blocked"],"format":"markdown","kind":"referenceOnly"}
-Review and test a dedicated access policy for the shared-device accounts listed on this step. IAMAI does not automatically match or verify this supporting policy.
+Review the dedicated access policy for the shared-device accounts listed on this step, then test each required work task from the approved network. Record the tested accounts, task, date and outcome below.
 
 Proposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]
 Shared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]

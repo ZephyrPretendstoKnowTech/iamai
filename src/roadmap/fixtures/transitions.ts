@@ -330,13 +330,21 @@ const BUILDERS: Builder[] = [
   },
   {
     key: 'rewritten',
-    label: 'somebody narrowed the watched policy to a block',
+    label: 'somebody excluded an ordinary account from the watched policy',
     base: DEPLOYED,
     days: 3,
     build: (f, a) => {
       const target = watchedStep(a.run)?.tracking?.policyId
       if (!target) return null
-      const rows = rowsOf(f).map((r) => (r.id === target ? { ...structuredClone(r), grantControls: { operator: 'OR', builtInControls: ['block'] } } : r))
+      const rows = rowsOf(f).map(r => {
+        if (r.id !== target) return r
+        const copy = structuredClone(r)
+        const conditions = copy.conditions as Record<string, any>
+        const excluded = conditions.users?.excludeUsers ?? []
+        const ordinary = f.snapshot.users.find(u => !f.mapping.breakGlassUserIds.includes(u.id) && !excluded.includes(u.id))!
+        conditions.users = { ...conditions.users, excludeUsers: [...excluded, ordinary.id] }
+        return copy
+      })
       return { fixture: withRows(f, rows), focus: { policyId: target } }
     },
   },

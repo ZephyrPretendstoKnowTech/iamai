@@ -346,7 +346,8 @@ for (const [what, edit] of [
     const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
     const submits = update !== undefined && Object.keys(update.body).length > 0
     if (!submits) {
-      assert.equal(step.state.condition, 'review-required', 'a change the plan does not write is said plainly')
+      assert.equal(step.state.observation?.reviewRequired, true, 'the unsubmitted change requires review')
+      assert.ok(step.state.condition === 'review-required' || step.state.condition === 'blocked' && step.blockers.some(b => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'changed policy conditions can also reopen the recovery check')
       assert.match(step.state.observation?.note ?? '', new RegExp(what === 'location' ? 'locations' : 'platforms', 'i'))
       assert.equal(step.tracking?.members[0].correction?.safe, false)
     }
@@ -363,7 +364,8 @@ test('A5: a report-only policy whose conditions drifted is not offered for enfor
   assert.notEqual(step.state.lifecycle, 'ready-to-enforce')
   assert.equal(step.tracking?.members[0].ready, false)
   assert.equal(nextSafeAction(step).enforceable, false)
-  assert.equal(step.state.condition, 'review-required', 'the conditions were compared before enforcement was offered')
+  assert.equal(step.state.observation?.reviewRequired, true, 'the conditions were compared before enforcement was offered')
+  assert.ok(step.state.condition === 'review-required' || step.state.condition === 'blocked' && step.blockers.some(b => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the location change can also reopen the emergency recovery check')
   assert.match(step.state.observation?.note ?? '', /locations/i)
 })
 

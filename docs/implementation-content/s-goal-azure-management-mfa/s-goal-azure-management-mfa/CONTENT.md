@@ -117,13 +117,11 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find **Require MFA for Azure Management** in {{tenant.displayName}}. The next action is to create it in Report-only. It requires multifactor authentication for sign-ins to Windows Azure Service Management API (797f4846-ba00-4fd7-ba43-dac1f8f63013), which covers Azure portal, Azure CLI and Azure PowerShell access, for all users except the resolved exclusions and service-accounts group. Scripts that sign in with a person's account are affected; workload identities are not targeted by this policy. Microsoft's own MFA requirements for Azure management apply separately from this policy and its exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI found policy {{policy.current.id}} for **Require MFA for Azure Management**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target requires MFA for Windows Azure Service Management API only, for all users except the resolved exclusions and service-accounts group, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
@@ -131,25 +129,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Require MFA for Azure Management** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Separate people managing Azure from scripts or tools that sign in with a person's account; those need a supported workload identity rather than an exclusion. No would-be failures in the available records does not prove that every infrequent script has run.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Require MFA for Azure Management** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, Report-only results for Azure portal, CLI and PowerShell sign-ins have been reviewed, user-based automation has a supported path, and emergency access remains available. Once On, people must satisfy MFA for the Azure management sign-ins the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Require MFA for Azure Management** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI marks **Require MFA for Azure Management** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place. Microsoft's separate MFA requirements for Azure management do not depend on this policy.
 @@IAMAI-END

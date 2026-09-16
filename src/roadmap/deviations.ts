@@ -109,6 +109,6 @@ export function deviceStepDoesntApply(goalId: string, mapping: Pick<MappingState
   const scope = deviceScopeOf(plan)
   const answer = [plan.phonesText, plan.computersText].filter((t): t is string => typeof t === 'string' && t.length > 0).join('; ')
   if (goalId === COMPLIANT_DEVICE_GOAL || goalId === INTUNE_ENROLMENT_GOAL) return !scope.phones && !scope.computers ? answer : null
-  if (goalId === APP_PROTECTION_GOAL) return plan.phones === 'apps' ? null : plan.phonesText
+  if (goalId === APP_PROTECTION_GOAL) return (plan.phoneAppProtection === 'required' || (!plan.phoneAppProtection && plan.phones === 'apps')) && !plan.noWorkPhones ? null : plan.phonesText
   return null
 }

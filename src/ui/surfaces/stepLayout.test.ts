@@ -46,7 +46,7 @@ test('U2/U5: the action column sits between Readiness and Implementation, and ho
   const order = ['<div className="step-body has-rail">', '<div className="step-main step-main-lead">', '<h4>{HEAD.why}</h4>', '<ReadinessSection', '<StepActionColumn rail={rail}>', '<div className="step-main step-main-rest">', '<Implementation', '<DoneWhen'].map(at)
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'the DOM order is not Why → Readiness → action column → Implementation → Done when')
   const column = CONTENT_STEP.slice(at('<StepActionColumn rail={rail}>'), at('</StepActionColumn>'))
-  assert.match(column, /\{decides && <Decision /, 'the decision controls are not children of the action column')
+  assert.match(column, /decides && <Decision /, 'the decision controls are not children of the action column')
   assert.equal(CONTENT_STEP.split('<Decision ').length - 1, 1, 'the decision is drawn somewhere besides the action column')
   assert.doesNotMatch(CONTENT_STEP, /StepRail/, 'the old rail is still drawn')
   // The column is led by the milestone, with no sub-line where the package authors none.

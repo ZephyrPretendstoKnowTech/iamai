@@ -64,8 +64,14 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
     return kinds.length > 0 && kinds.every((k) => k === 'exclusion-missing')
   })
   assert.ok(exclusionOnly.length > 0, 'day one has policies short only of the exclusions group')
-  for (const s of exclusionOnly) assert.equal(week2.steps.find((x) => x.id === s.id)?.status, 'done', `${s.id} is in place once the chosen group is carved out`)
-  assert.equal(inPlace(week2), inPlace(day1) + 3 + exclusionOnly.length, 'phishing-resistant enforced, emergency access and the exclusions group In place by week two, with the policies that lacked only that group')
+  for (const s of exclusionOnly) {
+    const current = week2.steps.find(x => x.id === s.id)!
+    assert.equal(current.state.lifecycle, 'enforced', `${s.id} policy is enforced once the chosen group is carved out`)
+    if (current.blockers.some(b => b.label === 'inforcer-application') || current.manualReview && !current.manualReview.confirmedAt) assert.equal(current.state.satisfied, false, 'observed enforcement does not manufacture application identity or successful workflow evidence')
+    else assert.equal(current.state.satisfied, true)
+  }
+  const verifiedExclusions = exclusionOnly.filter(s => week2.steps.find(x => x.id === s.id)?.state.satisfied).length
+  assert.equal(inPlace(week2), inPlace(day1) + 3 + verifiedExclusions, 'completion adds verified configuration, not unrecorded manual workflows')
   assert.equal(reportOnly(week2), 3, 'three plan-created policies are in report-only in week two (A4 added the Intune enrollment one)')
   // The step is on every plan. Day one: the group its technician chose is not
   // the one the tenant's policies carve out, so the step has a check to fix; by

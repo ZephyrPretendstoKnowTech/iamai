@@ -26,7 +26,6 @@ Get-MgPolicyIdentitySecurityDefaultEnforcementPolicy
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This changeover is on hold: {{dependencies.blockers}}. Keep Security Defaults enabled until the replacement policies can be enabled immediately after it is turned off, in the same change window.
 
@@ -34,7 +33,6 @@ NEXT STEP: Explain what must be completed before the changeover can start.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.disable","channel":"aiInfo","states":["readyToDisable"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The changeover from Security Defaults to the planned Conditional Access policies is available for {{tenant.displayName}}, in one change window. Replacement protection: {{dependencies.replacementProtectionSummary}}. Turning off Security Defaults removes its protections straight away, so the replacement policies must be enabled immediately afterwards.
 
@@ -42,7 +40,6 @@ NEXT STEP: Explain the order of the change, and point out any account or sign-in
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting for verification of the changeover. Cutover checks: {{evidence.cutoverChecks}}.
 

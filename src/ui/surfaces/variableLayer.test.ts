@@ -175,17 +175,16 @@ test('the guests step names the strength its own policy requires, or says nothin
 // count on every step, matching Today — the walk found rows at "now 34%" and
 // "now 37%" for MFA, and Today at 33 active while the campaign said 30. Checked
 // on the demo and GetIAMAI (item 8/17: GetIAMAI beside the demo in the fixtures).
-test('one readiness per family and one active-people count, on the demo and GetIAMAI', () => {
+test('target-specific readiness and one active-people count, on the demo and GetIAMAI', () => {
   for (const f of allFixtures().filter((x) => x.name === 'demo' || x.name === 'getiamai')) {
     const run = runFixture(f)
     const tv = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const byFamily: Record<string, Set<number>> = {}
-    for (const s of run.steps) {
-      const r = s.readiness
-      if (r && r.percent != null) (byFamily[r.family] ??= new Set()).add(r.percent)
-    }
-    for (const [family, set] of Object.entries(byFamily)) {
-      assert.equal(set.size, 1, `${f.name}: ${family} readiness is one value, got ${[...set].join(', ')}`)
+    for (const step of run.steps) {
+      const cohort = step.methodPreparation
+      if (!cohort) continue
+      const expected = cohort.completeScope && cohort.unknownIds.length === 0 && cohort.ids.length > 0
+        ? Math.round(cohort.readyIds.length / cohort.ids.length * 100) : null
+      assert.equal(step.readiness.percent, expected, `${f.name}/${step.id}: readiness uses its actual target and cohort`)
     }
     const camp = run.steps.find((s) => s.id === 's-verify-mfa')
     if (camp) {

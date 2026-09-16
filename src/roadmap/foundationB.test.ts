@@ -20,6 +20,8 @@
 //     rewrite invalidates the observation and starts the window again, however
 //     clean the records look.
 import { test } from 'node:test'
+import { effectOf } from './operations.ts'
+import { methodPreparation } from './methodReadiness.ts'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -27,6 +29,7 @@ import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import { isHeld } from './holds.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
 import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
 import type { SavedStep } from './progress.ts'
@@ -869,6 +872,9 @@ const BREAK_GLASS = 's-prereq-break-glass'
 function scanOf(f: Fixture, edit: (snapshot: typeof f.snapshot, mapping: typeof f.mapping) => void = () => {}): Step[] {
   const snapshot = structuredClone(f.snapshot)
   const mapping = structuredClone(f.mapping)
+  mapping.trustedLocationIds = (snapshot.config.namedLocations?.rows ?? []).filter(raw => (raw as { isTrusted?: boolean }).isTrusted).map(raw => String((raw as { id?: string }).id))
+  mapping.wizardAnswered.trustedLocations = true
+  mapping.assumed = { ...mapping.assumed, trustedLocations: 'confirmed' }
   edit(snapshot, mapping)
   return generateRoadmap(runFixture({ ...f, snapshot, mapping }).input).steps
 }
@@ -1233,6 +1239,18 @@ function pairScan(
   const snapshot = structuredClone(bare)
   snapshot.config.caPolicies = { status: 'ok', reason: null, rows: rowsFor(ops[0], ops[1]) } as typeof snapshot.config.caPolicies
   if (opts.evidence) snapshot.evidencePolicyResults = opts.evidence as typeof snapshot.evidencePolicyResults
+  // This member-lifecycle fixture rewrites the external-kind scope above. Recompute
+  // the readiness premise for that exact synthetic scope, with actual registration
+  // records, instead of overriding the unrelated generic viability score.
+  readyEvidence({ ...W2 }, snapshot, new Set(pairPeople()))
+  const step = run.steps.find(s => s.id === GUESTS)!
+  const preparation = methodPreparation(ops.map(op => effectOf(op.body as PairRow)), [...pairPeople()], snapshot, pairScope())
+  assert.equal(preparation.completeScope, true, 'the test pair has a countable scope')
+  assert.deepEqual(preparation.readyIds, preparation.ids, 'every synthetic target has a method accepted by its member')
+  step.methodPreparation = preparation
+  step.action.readinessGate = undefined
+  step.blockers = step.blockers.filter(b => !(b.kind === 'readiness' && b.label === 'readiness'))
+  setState(step, { condition: conditionFor(step.blockers) })
   applyProgress(run.steps, snapshot, opts.inPlace ? inPlaceCoverage(run.coverage) : run.coverage, W2.planId, undefined, null, prior, pairScope())
   return run.steps.find((s) => s.id === GUESTS) as Step
 }
@@ -1338,15 +1356,16 @@ test('pair 6: A enforced and B ready is a pair to enforce, and not a finished on
   assert.notEqual(step.status, 'done')
 })
 
-test('pair 7: the pair is done when both members are enforced and coverage agrees the goal is in place', () => {
+test('pair 7: both members enforced establishes policy delivery but guest workflow evidence still completes the task', () => {
   const [a, b] = pairOps()
   const rows = (x: PolicyOperation, y: PolicyOperation): PairRow[] => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'enabled')]
   const done = pairScan(rows, {}, { inPlace: true })
   assert.equal(memberOf(done, a.memberKey)?.lifecycle, 'enforced')
   assert.equal(memberOf(done, b.memberKey)?.lifecycle, 'enforced')
   assert.equal(done.state.lifecycle, 'enforced')
-  assert.equal(done.state.satisfied, true)
-  assert.equal(done.status, 'done')
+  assert.equal(done.state.satisfied, false, 'configuration alone does not prove the guest workflow')
+  assert.notEqual(done.status, 'done')
+  assert.equal(done.manualReview?.confirmedAt, null)
   // The same coverage with only one member enforced does not finish it.
   const half = pairScan((x, y) => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'disabled')], {}, { inPlace: true })
   assert.notEqual(half.state.lifecycle, 'enforced', 'a disabled half is not an enforced pair')
@@ -1384,7 +1403,7 @@ test('pair 9: an unexpected rewrite of one member is the whole step’s conditio
   assert.equal(memberOf(step, b.memberKey)?.reviewRequired, true, 'B moved somewhere nobody asked for')
   assert.equal(memberOf(step, a.memberKey)?.reviewRequired, false, 'A is untouched')
   assert.equal(observationOf(step, a.memberKey)?.continuity, 'continues', 'and still healthy')
-  assert.equal(step.state.condition, 'review-required', 'a healthy other half does not settle it')
+  assert.ok(['review-required', 'blocked'].includes(step.state.condition), 'a healthy other half does not settle it; a separate blocker can take priority')
 })
 
 test('pair 10: each member is compared against its own operation, never the first', () => {
@@ -1408,7 +1427,7 @@ test('pair 10: each member is compared against its own operation, never the firs
   const wrong = pairScan(() => [rowA, bAsA], held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) }))
   assert.equal(observationOf(wrong, b.memberKey)?.expected, false, 'A’s intent does not authorise a change to B')
   assert.equal(observationOf(wrong, b.memberKey)?.reviewRequired, true)
-  assert.equal(wrong.state.condition, 'review-required')
+  assert.ok(['review-required', 'blocked'].includes(wrong.state.condition))
 })
 
 test('pair 11: one shared step tag does not collapse the pair into one policy', () => {

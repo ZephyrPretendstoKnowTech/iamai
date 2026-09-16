@@ -230,19 +230,16 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisites","channel":"aiInfo","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Restrict Service Accounts to the Trusted Network in {{tenant.displayName}} is waiting on prerequisites: the confirmed service-accounts group and its ID, confirmation that members are user-based service accounts rather than service principals or managed identities, approved trusted named location IDs, and job owners' confirmation of each required job's public source network. Sign-in history shows where accounts signed in; it does not approve a network.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state creates a block policy for user-based service accounts in Report-only. It targets only the service-accounts group, with the resolved exclusions, All resources and all client apps, and blocks sign-ins from any location except the approved trusted locations. It does not cover service principals or managed identities. Limiting where these accounts can sign in reduces where a stolen password can be used; it does not replace moving these jobs to managed identities or service principals.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Differences IAMAI found: {{policy.current.semanticMismatches}}. The correction updates the same policy ID and keeps the service-accounts group and the approved trusted location IDs. It does not add trusted networks or extend this user policy to service principals.
 
@@ -252,13 +249,11 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The policy is in Report-only. Identity types: {{evidence.identityTypes}}. Source locations: {{evidence.sourceLocations}}. Job owner confirmation: {{evidence.workflowValidation}}. Service-account members: {{serviceAccounts.members}}. A required job seen outside the approved trusted locations would be blocked after enforcement. Jobs that did not run during the review period do not appear in this evidence.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The policy is ready to enforce. Before it is set On, the same policy ID should still be Report-only and match its intended target, every targeted member should be a user-based service account, and every required job should run from an approved trusted network. The enforcement operation changes only the policy state. After enforcement, the jobs need to be checked for normal operation.
 @@IAMAI-END

@@ -142,7 +142,7 @@ test('a group of the author’s that nothing settles waits on a person’s answe
   assert.ok(step, 'the device-registration step is on the demo plan')
   const unsettled = unsettledGroups()
   const held = (step.action.missing ?? []).filter((m) => unsettled.includes(m.token.toLowerCase()))
-  assert.ok(held.length >= 3, `the source policy's own unexplained carve-outs are what it waits on (${held.length})`)
+  assert.deepEqual(held.map(m => m.token.toLowerCase()), ['5628ad67-f9d1-4495-abe3-99dc8f9074f1'], 'documented emergency reference is preserved while optional unexplained exclusions use the approved V1 assumption')
   assert.ok(held.every((m) => m.decision === true && m.stepId === null && m.unreadable === undefined), 'each waits on a person’s mapping, and on no step')
   assert.equal(step.blockedReason, BLOCKED_REASON.sourceMapping, 'and what holds it is the unmapped reference')
   assert.deepEqual(holdWaitsOn(step), [], 'no step of the plan ends the wait')

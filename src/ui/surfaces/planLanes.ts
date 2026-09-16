@@ -1,3 +1,5 @@
+import { EXCLUSION_GROUP_STEP_ID } from '../../roadmap/stepIds.ts'
+import { workflowReviewIsCurrent } from '../../roadmap/lifecycle.ts'
 import { WORKFLOW_STEP } from '../../roadmap/workflows.ts'
 import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // The Plan's lanes: the actionability engine (src/actionability) read over the
@@ -41,7 +43,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
@@ -408,11 +410,20 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
       reading.reason = null
       reading.blockers = []
     }
+    // A confirmed, policy-usable exclusions group may still need its exclusions
+    // added to existing policies. Its final completion must not prevent the safe
+    // report-only preparation that contributes to finishing those exclusions.
+    const safePreparation = implementationOffered(step) && !(step.action.missing?.length) && operationsOf(step).length > 0 && operationsOf(step).every(op => !enforcesOnRun(op))
+    if (reading?.lane === 'On Hold' && reading.blockers.length > 0 && reading.blockers.every(b => b.kind === 'step' && b.id === EXCLUSION_GROUP_STEP_ID) && safePreparation) {
+      Object.assign(reading, { lane: 'Ready', substatus: operationsOf(step).some(op => op.mode === 'create') ? 'Create' : 'Correct', reason: null, blockers: [] })
+    }
     // Authentication-method configuration already exists in Entra, even when
     // disabled. This action changes its settings rather than creating an object.
     if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
     // Account checks ask for a review, not creation of a policy or object.
-    if (reading?.lane === 'Ready' && (step.manualReview || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
+    if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
+    const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
+    if (reading?.lane === 'Ready' && (workflowCheckIsNext || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   // Moving a review into Ready must keep lane positions unique and keep

@@ -26,7 +26,6 @@ try {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.route","channel":"aiInfo","states":["routeDecisionRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{tenant.displayName}} has mail-sending devices or applications that need a supported route before legacy authentication is blocked: {{mail.devices}}. No route is chosen yet.
 
@@ -36,7 +35,6 @@ NEXT STEP: Explain which device facts decide the route (authentication and TLS s
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.migrate","channel":"aiInfo","states":["migrationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The chosen route is {{mail.route}} for {{mail.devices}}. Moving to it means configuring the device or application, setting up any Exchange Online connector the route needs, and proving delivery with test messages. Keep the existing route available until the replacement sends successfully.
 
@@ -44,7 +42,6 @@ NEXT STEP: Explain the remaining device, application and Exchange Online steps f
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.relay","channel":"aiInfo","states":["relayConnectorReady"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 SMTP relay is the chosen route, and a certificate-based inbound connector is the next change. Creating the connector does not configure the device or prove delivery.
 
@@ -52,7 +49,6 @@ NEXT STEP: Explain how to confirm the certificate name the connector will expect
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting for proof that the replacement route works. The old service account stays in the exception group until then.
 
@@ -60,7 +56,6 @@ NEXT STEP: Explain the evidence needed before removing it: successful delivery t
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This mail-route step is on hold: {{dependencies.blockers}}. Do not assume a mail route, IP address, certificate or credential that the facts do not show.
 

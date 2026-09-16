@@ -12,6 +12,7 @@
 // under Directory.Read.All (docs/design/application-read-decision.md).
 export const GRAPH_SCOPES = [
   'Policy.Read.All',
+  'Policy.Read.AuthenticationMethod',
   'Directory.Read.All',
   'AuditLog.Read.All',
   'RoleManagement.Read.Directory',
