@@ -3,7 +3,7 @@
   "substatus": null,
   "reason": "after: Create or Correct Exclusions Group",
   "fact": "Report-only",
-  "badge": "On Hold · Observing",
+  "badge": "On Hold",
   "bar": "Observing",
   "rail": "Not scheduled",
   "headings": [
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "0% of admins phishing-resistant"
+      "state": "17% of admins phishing-resistant"
     },
     {
       "label": "Affected people",

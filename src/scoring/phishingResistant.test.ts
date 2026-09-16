@@ -216,7 +216,7 @@ test('only Ready counts toward the 90% gate; Needs proof and Unknown do not', ()
 
 const PLANS = ['demo', 'demo-week2', 'small', 'mid', 'getiamai'] as const
 
-test('the summary, the table, the Plan gate and the campaign read one derivation over one active-person population', () => {
+test('the summary and campaign share active proof readiness; Plan gates use their actual target method cohort', () => {
   for (const name of PLANS) {
     const f = fixture(name)
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
@@ -228,9 +228,15 @@ test('the summary, the table, the Plan gate and the campaign read one derivation
     const counted = view.rows.filter((r) => r.state !== null)
     assert.equal(counted.length, view.facts.active, `${where}: counted rows`)
     for (const s of ['ready', 'needsProof', 'needsSetup', 'unknown'] as const) assert.equal(counted.filter((r) => r.state === s).length, view.counts[s], `${where}: ${s}`)
-    // The Plan's MFA gate is the page's Ready over the page's active people.
-    const step = run.steps.find((s) => s.goalId === 'mfa-all-users')
-    if (step && step.readiness.percent !== null) assert.equal(step.readiness.percent, Math.round((view.counts.ready / view.facts.active) * 100), `${where}: the Plan's MFA readiness`)
+    // Policy readiness measures accepted registered methods in its exact target
+    // cohort; the overview independently measures phishing-resistant sign-in proof.
+    const step = run.steps.find((s) => s.id === 's-goal-mfa-all-users')
+    if (step && step.readiness.percent !== null) {
+      const preparation = step.methodPreparation!
+      assert.equal(preparation.completeScope, true)
+      assert.deepEqual(preparation.unknownIds, [])
+      assert.equal(step.readiness.percent, Math.round(preparation.readyIds.length / preparation.ids.length * 100), `${where}: actual target method readiness`)
+    }
     const gate = readinessFor('mfa-all-users', [...view.ladder.viability.keys()], [...view.ladder.viability.values()], f.snapshot)
     if (gate.percent !== null) {
       assert.equal(gate.percent >= READINESS_THRESHOLD_MFA_PERCENT, view.counts.ready >= readyNeeded(view.facts.active, READINESS_THRESHOLD_MFA_PERCENT), `${where}: the strip and the gate agree on met`)

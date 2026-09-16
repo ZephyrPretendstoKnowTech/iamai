@@ -3,7 +3,7 @@
   "substatus": null,
   "reason": "after: Create or Correct Emergency Access Accounts",
   "fact": null,
-  "badge": "Up Next · After Confirm the Services You Use",
+  "badge": "Up Next",
   "bar": "After Confirm the Services You Use",
   "rail": "Aug 31, 2026",
   "headings": [
@@ -33,5 +33,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Est. Aug 31, 2026"
 }

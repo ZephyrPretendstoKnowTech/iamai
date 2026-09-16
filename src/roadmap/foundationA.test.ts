@@ -17,6 +17,7 @@
 // and assert that nothing downstream moves. A new consumer that reads the goal
 // family, the floor or the step's population for an open policy fails them
 // without anybody having to notice the new line.
+import { isHeld } from './holds.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
@@ -115,8 +116,12 @@ test('a rollout is the people the policy names, even where the goal is filed und
   // The goal's own population is narrower, and decides none of it.
   assert.ok(step.population.ids.length < cohort.length, `the goal lists fewer (${step.population.ids.length}) than the policy names (${cohort.length})`)
   const members = step.rings.flatMap((x) => x.targeting.suggestedMemberIds)
-  assert.deepEqual(members.slice().sort(), cohort, 'every ring member comes from the policy, and everyone the policy names is in a ring')
-  assert.equal(step.rings.reduce((n, x) => n + x.targeting.memberCount, 0), cohort.length, 'and the counts say so')
+  if (isHeld(step)) {
+    assert.deepEqual(members, [], 'unmet actual method readiness withdraws the rollout without changing its cohort')
+  } else {
+    assert.deepEqual(members.slice().sort(), cohort, 'every ring member comes from the policy, and everyone the policy names is in a ring')
+    assert.equal(step.rings.reduce((n, x) => n + x.targeting.memberCount, 0), cohort.length, 'and the counts say so')
+  }
   // The who-line and the audience read the same authority. The goal's one guest
   // is dormant, so a goal-derived line would have read "nobody affected".
   assert.equal(step.population.active, 0, 'the goal population holds nobody active')
@@ -302,8 +307,9 @@ test('a policy whose goal says guests but which names everybody does not announc
   const { r } = runs.find((x) => x.f.name === 'getiamai') as { f: Fixture; r: FixtureRun }
   const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
   assert.equal(step.readiness.family, 'guest', 'the goal is still filed under guests')
-  assert.ok(typeof step.comms === 'string' && step.comms.length > 0, 'and it still announces')
-  assert.doesNotMatch(step.comms as string, /guest access/, 'but not about guest access')
+  if (isHeld(step)) assert.equal(step.comms, null, 'a held rollout has no dated announcement')
+  else assert.ok(typeof step.comms === 'string' && step.comms.length > 0, 'a scheduled rollout announces')
+  assert.doesNotMatch(step.comms ?? '', /guest access/, 'but not about guest access')
 })
 
 test('a policy about a place says so from its own conditions, not from the goal', () => {
@@ -1428,6 +1434,8 @@ test('no policy IAMAI writes names an emergency account, in any clause, on any f
         const patch = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
         for (const clause of ['includeUsers', 'excludeUsers'] as const) {
           for (const id of ((patch[clause] as string[]) ?? [])) {
+            const existing = f.snapshot.config.caPolicies.rows.find(raw => String((raw as { id?: string }).id) === o.policyId) as { conditions?: { users?: { excludeUsers?: string[] } } } | undefined
+            if (clause === 'excludeUsers' && existing?.conditions?.users?.excludeUsers?.some(value => value.toLowerCase() === String(id).toLowerCase())) continue
             assert.equal(bg.has(String(id).toLowerCase()), false, `${f.name} ${s.id}: an update writes an emergency account into ${clause}`)
           }
         }

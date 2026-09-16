@@ -1,3 +1,4 @@
+import { recoveryAccountBasis } from '../../roadmap/cleanupDone.ts'
 import { stepBodyOf } from './stepBody.ts'
 // The canonical Plan case: Ready to enforce (task 007).
 //
@@ -186,6 +187,8 @@ function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; record
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } },
     evidencePolicyResults: over.evidence === false ? [] : (results as typeof f.snapshot.evidencePolicyResults),
   } as TenantSnapshot
+  // This is a first scan of the deliberately shaped fixture, not drift after its drill.
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const run = runFixture({ ...f, snapshot }, { snapshot })
   return caseOf(run, snapshot, f, STEP_ID)
 }
@@ -1015,6 +1018,19 @@ test('007.14b: the fixtures’ own enforced policies are delivered, and carry no
   const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
   assert.ok(enforced.length > 0, 'the fixture has policies the tenant already enforces')
   for (const step of enforced) {
+    if (step.blockers.some(b => b.kind === 'evidence' && b.label === 'inforcer-application')) {
+      assert.equal(step.state.satisfied, false, 'broad MFA coverage does not identify the required application')
+      assert.notEqual(step.status, 'done')
+      assert.ok(step.configurationFindings?.some(f => f.key === 'inforcerApplication' && f.outcome === 'unknown'))
+      assert.ok((step.action.resolution?.policies ?? []).every(p => p.mode === 'create'), 'never repurpose the broad all-app policy as a dedicated application policy')
+      continue
+    }
+    if (step.manualReview?.fields?.length && !step.manualReview.confirmedAt) {
+      assert.equal(step.state.satisfied, false, `${step.id}: enforced configuration is not a recorded workflow test`)
+      assert.notEqual(step.status, 'done')
+      assert.deepEqual(operationsOf(step), [], 'workflow review does not invent a policy mutation')
+      continue
+    }
     assert.equal(step.state.satisfied, true, `${step.id}: enforced and not delivered`)
     assert.equal(step.status, 'done', step.id)
     assert.deepEqual(findTaggedPolicies(run.input.snapshot, run.input.planId, step.id), [], `${step.id}: this plan deployed a policy for it after all`)

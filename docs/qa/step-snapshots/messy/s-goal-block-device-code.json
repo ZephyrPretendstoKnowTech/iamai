@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Decision",
-  "reason": "Satisfied by Core - Block - Device code flow — no change needed",
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
+  "badge": "On Hold",
+  "bar": "Not supported",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -14,12 +14,20 @@
   ],
   "tiles": [
     {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Implementation",
+      "state": "Unavailable"
+    },
+    {
       "label": "Device code sign-in",
       "state": "Confirm no legitimate use"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Turn Off Security Defaults"
+      "label": "Not supported",
+      "state": "Not supported"
     }
   ],
   "channels": [
@@ -29,5 +37,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Not scheduled"
 }

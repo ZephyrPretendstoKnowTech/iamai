@@ -100,6 +100,15 @@ test('item 12: with no baseline at all, every create step still carries a body, 
     // A step whose policy names an object this tenant does not have has no body
     // at all; the ones that can be written have theirs.
     if (!s.action.json) {
+      if (s.blockers.some(b => b.label === 'inforcer-application')) {
+        assert.ok(s.configurationFindings?.some(f => f.key === 'inforcerApplication' && f.outcome === 'unknown'), 'unresolved app identity remains explicit even when broad MFA covers the goal')
+        assert.equal(s.state.satisfied, false)
+        continue
+      }
+      if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') {
+        assert.equal(s.manualReview.confirmedAt, null, `${s.id}: the remaining action is a workflow test, not policy creation`)
+        continue
+      }
       assert.ok((s.action.missing ?? []).length > 0, `${s.id}: no body, and it says why`)
       continue
     }

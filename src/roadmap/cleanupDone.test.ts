@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, withCleanupDone } from './cleanupDone.ts'
+import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, withCleanupDone, recoveryAccountBasis } from './cleanupDone.ts'
 import { renameLine } from './cleanupPhase.ts'
 import { supersededPolicies } from './generate.ts'
 import { cleanupWhen } from '../ui/surfaces/cleanupExport.ts'
@@ -28,7 +28,7 @@ test('a Done records the row and its date in the checkpoints; the latest record 
   assert.ok(!isRecordedDrill('2026-09-03T02:15:00.000Z', []))
 })
 
-test('the drill date exempts the matching emergency sign-in from the recent-sign-in check', () => {
+test('an exact drill association exempts the matching emergency sign-in from the recent-sign-in check', () => {
   const f = fixture('demo')
   const bgId = f.mapping.breakGlassUserIds[0]
   const signIn = f.snapshot.users.find((u) => u.id === bgId)!.lastSuccessfulSignIn!
@@ -42,7 +42,7 @@ test('the drill date exempts the matching emergency sign-in from the recent-sign
   const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][]; hardeningChecks: [string, Record<string, unknown>][] }
   assert.ok([...ex.failingChecks, ...ex.hardeningChecks].some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
 
-  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn, { accountIds: f.mapping.breakGlassUserIds, timeZone: 'UTC' })) })
+  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn, { accountIds: f.mapping.breakGlassUserIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds), signInAtByAccount: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => [id, f.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!])), timeZone: 'UTC' })) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!
   assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'a sign-in on a recorded drill day is the drill')
   const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
@@ -59,7 +59,8 @@ test('the naming row renders renames as from → to, in the tenant\'s convention
   const row = r.schedule.cleanup!.rows.find((x) => x.kind === 'naming')!
   assert.ok(row, 'the naming row is present')
   for (const line of row.lists.renames) assert.match(line, /^.+ → .+$/, line)
-  assert.equal(row.lists.renames[0], renameLine(naming.outliers[0], naming))
+  assert.ok(row.lists.renames[0].startsWith(renameLine(naming.outliers[0], naming)))
+  assert.match(row.lists.renames[0], /\(ID: [^)]+\)/)
   assert.ok(!row.lists.renames[0].endsWith(`→ ${naming.outliers[0]}`), 'the proposed name is not the old one')
 })
 
@@ -74,7 +75,7 @@ test('the consolidation row exists whenever a step\'s existingCoverage line rend
     if (superseded.length === 0) continue
     seen = true
     assert.ok(row, `${name}: a step found existing coverage, so the consolidation row exists`)
-    for (const s of superseded) assert.ok(row!.lists.overlaps.includes(s), `${name}: the row names ${s}`)
+    for (const s of superseded) assert.ok(row!.lists.overlaps.some(line => line.startsWith(s)), `${name}: the row names ${s}`)
     // The line renders on those steps and on no done step (its policies are what makes it In place).
     for (const s of r.steps) {
       const ex = stepVars(s, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }) as { existingPolicies: string[] }
@@ -89,6 +90,11 @@ test('unassessed baseline policies become individual reviews, with no catch-all 
   const r = runFixture(fixture('demo'))
   assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'notAssessed'), false)
   const reviews = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
-  assert.equal(reviews.length, r.coverage.organisation.notAssessed.length)
-  assert.ok(reviews.every((s) => s.guidance?.doneWhen && s.manualReview))
+  assert.equal(reviews.length, r.coverage.organisation.notAssessed.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name)).length)
+  assert.ok(reviews.every((s) => s.guidance?.doneWhen && (s.manualReview || s.configurationFindings?.some(f => f.key === 'avd-allowed-population' && f.outcome === 'unknown'))))
+  const avd = reviews.find(s => s.configurationFindings?.some(f => f.key === 'avd-allowed-population'))!
+  assert.equal(avd.state.satisfied, false, 'an unresolved allowed-user definition is not verified protection')
+  assert.equal(avd.manualReview, undefined, 'generic acknowledgement cannot clear the source gate')
+  assert.ok(r.steps.some(s => s.id === 's-goal-inforcer-mfa'), 'Inforcer uses its ordinary application-scoped goal')
+  assert.ok(!reviews.some(s => /inforcer/i.test(s.id)), 'the old Inforcer review is not duplicated')
 })

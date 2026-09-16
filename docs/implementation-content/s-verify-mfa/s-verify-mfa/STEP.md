@@ -1,4 +1,4 @@
-# Create and Enforce the MFA Registration Campaign
+# Prepare Your Team for MFA
 
 ## Goal
 Move active people toward a working MFA method before Conditional Access enforcement, with extra handling for people who have no method and admins who still need phishing-resistant authentication.

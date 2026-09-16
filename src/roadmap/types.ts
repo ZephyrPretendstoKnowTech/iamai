@@ -333,9 +333,14 @@ export type Step = {
   impactLabel?: string
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
-  workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean }[]
+  workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean; needsReview?: boolean; evidenceBasis?: string }[]
+  dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
+  configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[]
+  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[] }
+  /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
+  methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }
 
-  manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean }
+  manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string
   goalId: string
   phase: number
@@ -542,6 +547,8 @@ export type ExportStep = {
    * stored count beside it.
    */
   population: number | null
+  /** Current or historical administrator-recorded test results, separate from implementation instructions. */
+  manualEvidence?: string[]
   whatToDo: string[]
   /** What must be cleared before this step can move (never a passed check); empty where nothing holds it. */
   fix: string[]
@@ -554,7 +561,7 @@ export type ExportStep = {
 export type StepView = (step: Step) => ExportStep
 
 /** A Cleanup row as an export says it (E4): the calendar entry on its day, the prompt pack's and the bundle's cleanup list. Built by src/ui/surfaces/cleanupExport.ts. */
-export type CleanupExport = { kind: string; day: string; done: string | null; title: string; why: string; whatToDo: string[]; doneWhen: string[] }
+export type CleanupExport = { kind: string; day: string; done: string | null; title: string; manualEvidence?: string[]; why: string; whatToDo: string[]; doneWhen: string[] }
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; reason: string; outOfHours: boolean }
 export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }

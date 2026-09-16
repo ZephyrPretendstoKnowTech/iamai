@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Decision",
-  "reason": "Satisfied by Core - Grant - Guests MFA — no change needed",
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
+  "badge": "On Hold",
+  "bar": "Not supported",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -14,8 +14,20 @@
   ],
   "tiles": [
     {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Implementation",
+      "state": "Unavailable"
+    },
+    {
       "label": "Partner or MSP access",
       "state": "Confirm whether partners access your tenant"
+    },
+    {
+      "label": "Not supported",
+      "state": "Not supported"
     }
   ],
   "channels": [
@@ -25,5 +37,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Not scheduled"
 }

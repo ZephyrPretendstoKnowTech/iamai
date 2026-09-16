@@ -409,7 +409,6 @@ switch ($Mode) {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.location-create","channel":"aiInfo","states":["locationMissing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{workload.identity.detail}} [omit this line when unavailable]
 
@@ -431,7 +430,6 @@ Explain the named-location creation and how to verify it, and why the workload p
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{workload.identity.detail}} [omit this line when unavailable]
 
@@ -449,7 +447,6 @@ Do not target all service principals, a group containing the service principal, 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{workload.identity.detail}} [omit this line when unavailable]
 
@@ -473,7 +470,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{workload.identity.detail}} [omit this line when unavailable]
 
@@ -495,7 +491,6 @@ Identify the remaining evidence needed to confirm that the sync identity is supp
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{workload.identity.detail}} [omit this line when unavailable]
 

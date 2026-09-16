@@ -6,13 +6,14 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { cleanupArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { stepExportView } from './stepExport.ts'
-import { cleanupExportViews } from './cleanupExport.ts'
+import { cleanupExportView, cleanupExportViews } from './cleanupExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const setUp = () => {
@@ -58,13 +59,12 @@ test("the print cover's step count is the Plan header's: the steps and the Clean
   assert.equal(counts.done, doneSteps(r.steps).length, 'no Cleanup row is done yet')
   const withDone = { ...r.schedule.cleanup!, rows: r.schedule.cleanup!.rows.map((x, i) => (i === 0 ? { ...x, done: '2026-09-03T12:00:00.000Z' } : x)) }
   assert.equal(stepFacts(r.steps, withDone, silent).done, counts.done + 1, 'a Cleanup row marked done is in place')
-  // The attestation completes the alerting row without a date, and the count the
-  // Plan header and the print cover state moves with it (task 042 correction 1).
+  // A legacy checkbox is retained, but completion requires a scoped alert test.
   const alerting = r.schedule.cleanup!.rows.find((x) => x.kind === 'alerting')
   assert.ok(alerting && alerting.done === null, 'the fixture no longer has an undone alerting row')
   const attested = { credentialStorage: true, signInMonitoring: true }
   const denied = { credentialStorage: true, signInMonitoring: false }
-  assert.equal(stepFacts(r.steps, r.schedule.cleanup, attested).done, counts.done + 1, 'the sign-in-monitoring attestation is not in the header count')
+  assert.equal(stepFacts(r.steps, r.schedule.cleanup, attested).done, counts.done, 'a legacy monitoring checkbox does not establish a received test alert')
   assert.equal(stepFacts(r.steps, r.schedule.cleanup, denied).done, counts.done, 'a declined attestation completed a row')
 })
 
@@ -83,4 +83,33 @@ test('the prompt pack and the bundle list Cleanup under cleanup; the bundle drop
     assert.ok(!('events' in s), `${String(s.id)}: no events`)
     assert.ok('dates' in s && 'whatToDo' in s, `${String(s.id)}: what the screen says`)
   }
+})
+
+
+test('cleanup export retains scoped historical evidence and policy names without claiming completion', () => {
+  const { r } = setUp()
+  const phase = r.schedule.cleanup!
+  const row = {
+    kind: 'consolidation' as const, day: '2026-09-04', done: null, lists: { overlaps: ['Earlier policy'] },
+    verification: 'changed' as const, verificationReason: 'The retained policy changed.',
+    record: { cleanup: 'consolidation' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', outcome: 'passed' as const, replacementPolicyId: 'keep', retiredPolicyIds: ['old'], coverageVerified: true, reference: 'CHG-42', policyNames: { keep: 'Baseline MFA', old: 'Earlier MFA' } },
+  }
+  const view = cleanupExportView(phase, row)!
+  assert.equal(view.done, null)
+  assert.ok(view.manualEvidence?.includes('Evidence status: changed'))
+  assert.ok(view.manualEvidence?.includes('Retained policy: Baseline MFA (keep)'))
+  assert.ok(view.manualEvidence?.includes('Retired policies: Earlier MFA (old)'))
+  assert.ok(view.manualEvidence?.includes('Change record: CHG-42'))
+  assert.ok(cleanupArtifactLines(view).some(line => line.includes('Workflow Check:') && line.includes('Evidence status: changed')))
+})
+
+test('cleanup export names the tested account and preserves a failed alert outcome', () => {
+  const { r } = setUp()
+  const phase = { ...r.schedule.cleanup!, accountIds: ['ea-1'] }
+  const row = { kind: 'alerting' as const, day: '2026-09-04', done: null, lists: { emergencyAccountUpns: ['recovery@example.test'] }, verification: 'incomplete' as const,
+    record: { cleanup: 'alerting' as const, at: '2026-09-03T12:00:00Z', date: '2026-09-03', accountIds: ['ea-1'], outcome: 'failed' as const, recipient: 'Operations' } }
+  const lines = cleanupExportView(phase, row)!.manualEvidence!
+  assert.ok(lines.includes('Accounts: recovery@example.test (ea-1)'))
+  assert.ok(lines.includes('Recorded outcome: Failed'))
+  assert.ok(lines.includes('Alert recipient: Operations'))
 })

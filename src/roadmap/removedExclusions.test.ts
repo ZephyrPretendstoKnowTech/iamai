@@ -1,3 +1,4 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
 // Review 3 queue 3: an all-users correction sends its users and applications sections
 // whole, so a tenant exclusion the baseline does not carry is gone once it is saved.
 // The request is the baseline's; what was missing was saying so. The export named only
@@ -33,6 +34,7 @@ function plan(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [rowOf({ staffGroup, excl }), ...keep] } } }
+  readyEvidence(f, snapshot)
   const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!

@@ -1,5 +1,4 @@
 @@IAMAI-BEGIN {"id":"ai.source-conflict","channel":"aiInfo","states":["sourceConflict","blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is on hold because the baseline sources disagree: {{sourceConflict.summary}}. Evidence: {{sourceConflict.evidence}}. The written intent says to block non-admin users, but the retained export targets All users without an administrator exclusion. Applying the export as written could block the administrators and approved workflows that need these portals. Applying the written intent needs an administrator scope that no reviewed source defines.
 

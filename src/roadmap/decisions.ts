@@ -10,7 +10,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyC
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
+import { SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -33,7 +33,45 @@ export type StepDecisionInput = Omit<StepDecision, 'at'>
  * while those values are the same, and stops counting — without being deleted —
  * the moment they change.
  */
-export type OwnerConfirmation = { at: string; basis: string }
+export type ManualOutcome = 'passed' | 'failed' | 'retained' | 'revoked' | 'investigate'
+export type OwnerConfirmation = {
+  at: string
+  basis: string
+  outcome?: ManualOutcome
+  testedAt?: string
+  accountIds?: string[]
+  workflow?: string
+  reference?: string
+  replacementAccountId?: string
+  roleIds?: string[]
+  exceptionRemoved?: boolean
+  contextId?: string
+  networkId?: string
+  configurationVerified?: boolean
+}
+export type ManualReviewInput = Omit<OwnerConfirmation, 'at'>
+export type ManualEvidenceField = {
+  key: 'outcome' | 'testedAt' | 'accountIds' | 'workflow' | 'reference' | 'replacementAccountId' | 'roleIds' | 'exceptionRemoved' | 'contextId' | 'networkId' | 'configurationVerified'
+  label: string
+  type: 'text' | 'date' | 'accounts' | 'select' | 'checkbox'
+  required: boolean
+  options?: { value: string; label: string }[]
+  whenOutcome?: ManualOutcome[]
+}
+
+/** Preserve known optional evidence without upgrading old date/basis records. */
+export function ownerConfirmationOf(value: unknown): OwnerConfirmation | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  if (typeof v.at !== 'string' || typeof v.basis !== 'string') return null
+  const out: OwnerConfirmation = { at: v.at, basis: v.basis }
+  if (typeof v.outcome === 'string' && ['passed', 'failed', 'retained', 'revoked', 'investigate'].includes(v.outcome)) out.outcome = v.outcome as ManualOutcome
+  for (const key of ['testedAt', 'workflow', 'reference', 'replacementAccountId', 'contextId', 'networkId'] as const) if (typeof v[key] === 'string') out[key] = v[key]
+  for (const key of ['accountIds', 'roleIds'] as const) if (Array.isArray(v[key])) out[key] = [...new Set(v[key].filter((x): x is string => typeof x === 'string' && x.trim().length > 0))]
+  if (typeof v.exceptionRemoved === 'boolean') out.exceptionRemoved = v.exceptionRemoved
+  if (typeof v.configurationVerified === 'boolean') out.configurationVerified = v.configurationVerified
+  return out
+}
 
 /**
  * Everything a person decided about the plan, persisted between sessions and
@@ -163,13 +201,27 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.decision)], d.option)
       && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.question)], d.answers?.[labels.question])
     if (labels.strict && !preserveRestriction && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
+    if (['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(stepId) && provenance === 'confirmed') {
+      next.dormantAccountChoices = { ...next.dormantAccountChoices }
+      for (const [key, value] of Object.entries(d.answers ?? {})) {
+        if (!key.startsWith('outcome:') || !['keep', 'disable', 'investigate'].includes(value)) continue
+        const id = key.slice('outcome:'.length)
+        const reason = (d.answers?.[`reason:${id}`] ?? '').trim()
+        next.dormantAccountChoices[id] = { outcome: value as 'keep' | 'disable' | 'investigate', reason }
+      }
+      continue
+    }
     if (stepId === 's-confirm-workloads') {
+      if (provenance !== 'confirmed') continue
       next.workflowConfirmedAt = d.at
       next.workflowAnswers = { ...(next.workflowAnswers ?? {}) }
+      next.workflowEvidenceBasis = { ...(next.workflowEvidenceBasis ?? {}) }
       next.facetOverrides = { ...next.facetOverrides }
       for (const [key, value] of Object.entries(d.answers ?? {})) {
         if (!['avd', 'copilot', 'azureDevOps', 'intune', 'sharepoint', 'workload', 'agents', 'azureManagement', 'inforcer'].includes(key) || !['yes', 'no', 'unsure'].includes(value)) continue
         next.workflowAnswers[key] = value as 'yes' | 'no' | 'unsure'
+        const basis = d.answers?.[`evidence:${key}`]
+        if (typeof basis === 'string') next.workflowEvidenceBasis[key] = basis
         if (value === 'unsure') delete next.facetOverrides[key]
         else next.facetOverrides[key] = { on: value === 'yes', reason: value === 'yes' ? 'confirmed in use' : 'confirmed not in use' }
       }
@@ -224,6 +276,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       }
     } else if (stepId === DECISION_STEPS.countries) {
       next.allowedCountries = picked.map((c) => c.toUpperCase())
+      if (provenance === 'confirmed') next.workCountriesConfirmed = true
       answered('countries')
     } else if (stepId === DECISION_STEPS.trustedLocation) {
       next.trustedLocationIds = picked
@@ -232,6 +285,8 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       next.serviceAccountUserIds = picked
       next.serviceAccountRejectedIds = next.serviceAccountRejectedIds.filter((id) => !picked.includes(id))
       answered('serviceAccounts')
+    } else if (stepId === DECISION_STEPS.sharedDevices && provenance === 'confirmed') {
+      next.sharedDeviceUserIds = picked
     } else if (stepId === DECISION_STEPS.campaign) {
       next.highCareUserIds = picked
       // Only a person's Save confirms the list; the picker's pre-ticked proposal does not.
@@ -239,11 +294,12 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries
-  // join the allowed list; the mail-sending devices join the service accounts
+  // stay separate; the mail-sending devices join the service accounts
   // (and leave the rejected list). Read from the words just stored, so a Save
   // of the picker and its question lands as one decision.
-  const travel = travelCountriesOf(next).filter((c) => !next.allowedCountries.includes(c))
-  if (travel.length > 0) next.allowedCountries = [...next.allowedCountries, ...travel]
+  // Travel is context for a future temporary policy, never approval to expand
+  // the normal workplace location. Replaying an old decision uses its explicit
+  // picked workplace list above and therefore also removes the old implicit union.
   const devices = mailDevicesOf(next).filter((id) => !next.serviceAccountUserIds.includes(id))
   if (devices.length > 0) {
     next.serviceAccountUserIds = [...next.serviceAccountUserIds, ...devices]

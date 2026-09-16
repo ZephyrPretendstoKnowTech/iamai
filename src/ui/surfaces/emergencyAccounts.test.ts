@@ -1,3 +1,4 @@
+import { recoveryAccountBasis } from '../../roadmap/cleanupDone.ts'
 // Emergency access with more than one confirmed account (Batch 2, B5). Each
 // confirmed account stands on its own evidence: one account's minimum failure is
 // not the other's, one account's pass is not borrowed by the other, and a finding
@@ -29,7 +30,7 @@ function tenant(edit: (f: Tenant, a: string, b: string) => void): { f: Tenant; a
 
 function run(f: Tenant, over: Partial<RoadmapInput> = {}) {
   // A recorded drill on the day the first account signed in (cleanupDone.ts isRecordedDrill).
-  const r = runFixture(f, { cleanupRecord: { done: {}, drills: [DRILL], records: [{ at: f.snapshot.asOf, cleanup: 'drill', date: DRILL, accountIds: f.mapping.breakGlassUserIds, timeZone: 'UTC' }] }, ...over })
+  const r = runFixture(f, { cleanupRecord: { done: {}, drills: [DRILL], records: [{ at: f.snapshot.asOf, cleanup: 'drill', date: DRILL, accountIds: f.mapping.breakGlassUserIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds), signInAtByAccount: { [f.mapping.breakGlassUserIds[0]]: DRILL }, timeZone: 'UTC' }] }, ...over })
   const step = r.steps.find((s) => s.id === EMERGENCY)!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   return { r, step, ctx, c: stepContract(step, ctx) }

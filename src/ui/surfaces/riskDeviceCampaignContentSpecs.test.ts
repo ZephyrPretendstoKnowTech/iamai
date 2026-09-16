@@ -158,7 +158,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('require-managed-device')
   assert.equal(words.why, "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.")
-  assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a compliant device on the selected platforms outside the trusted network, with the approved exclusions applied.')
+  assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a compliant device OR Microsoft Entra hybrid joined device on the selected platforms outside the trusted network, with the approved exclusions applied.')
 })
 
 test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that explains the target and the missing grant, AI Info reads for a tech, and Done when names the outcome', () => {
@@ -204,56 +204,15 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
 })
 
-test('s-verify-mfa: Why is two sentences, the special-care tile is short, the input says who belongs in it, Entra adds the snooze, and AI Info is the in-person walkthrough', () => {
-  const CAMPAIGN = 's-verify-mfa'
-  const words = stepWords(CAMPAIGN)
-  // Editorial batch C: the register Why.
-  assert.equal(words.why, 'Registration alone can hide a rollout problem: someone may have a method but never have used it successfully. This step helps people set up a suitable method and prove it works before access depends on it.')
-  // The input keeps its label, which is its answer's key; the help under the milestone is short, and who qualifies sits between the label and the chips.
-  const WHO = 'Admins, anyone with no sign-in method, and anyone who only has text or phone call. These people need in-person walkthrough to set up their passkey.'
-  assert.equal(words.decision?.label, 'People who need special care')
-  assert.equal(words.decision?.help, 'Identify anyone who needs hands-on help registering.')
-  assert.equal(words.decision?.text, WHO)
-  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  const heading = step.indexOf('<h5 className="dlabel action-heading"')
-  const text = step.indexOf("{typeof d.text === 'string' && <p className=\"reason\">")
-  const picker = step.indexOf('{hasPicker && <Picker')
-  assert.ok(heading > 0 && heading < text && text < picker, 'the input text is not drawn between its label and its chips')
-  const b = bodyOf('demo', CAMPAIGN)
-  assert.deepEqual(b.readiness.tiles.find((t) => t.key === 'unsaved:People who need special care'), { key: 'unsaved:People who need special care', label: 'Special care', tone: 'warn', value: 'Confirm who needs hands-on help', note: WHO })
-  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
-  // Editorial batch C: the method the campaign's JSON targets (Microsoft Authenticator), no snooze value IAMAI does not
-  // hold, a read-back before the rescan, and no promise that every user is prompted until they register.
-  assert.deepEqual(authoredParts(drawn(b, 'portal')), [
-    {
-      kind: 'list', ordered: true, start: 1, items: [
-        ['Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.'],
-        ['State: Enabled.'],
-        ['Target: All users, keeping any existing exclusions.'],
-        ["Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets."],
-        ['Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.'],
-        ['Save, reopen the settings and rescan.'],
-      ],
-    },
-    { kind: 'break' },
-    { kind: 'line', text: 'Whether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.' },
-  ])
-  assert.doesNotMatch(drawn(b, 'portal'), /Passkey \(Microsoft Authenticator\)|14 \(or|returns until/)
-  // Editorial batch C: a Temporary Access Pass is time-limited, and an older method is retired only through an approved change.
-  assert.equal(ownAi(b), [
-    'After enabling the campaign, help each special-care person register in person:',
-    [
-      '1. Book 10 minutes with each person listed under "People who need special care."',
-      '2. Open aka.ms/mfasetup with them signed in.',
-      '3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a time-limited passcode to sign in and register.',
-      '4. If they only have text message or phone call: register the replacement method with them. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.',
-      '5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.',
-      '6. Have each person sign in once more using the new method. IAMAI looks for that sign-in record on the next scan.',
-    ].join('\n'),
-    'Track progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.',
-    '[MFA Readiness →](#/readiness)',
-  ].join('\n\n'))
-  // Editorial batch C: the admin gate stands alone, and the campaign's settings are a human check.
-  assert.ok(b.contract.doneWhen.includes('Every admin is Ready for phishing-resistant MFA.'), b.contract.doneWhen.join(' | '))
-  assert.ok(b.contract.doneWhen.includes("The registration campaign's settings match what your organization approved."), b.contract.doneWhen.join(' | '))
+test('MFA preparation explains registration, support and useful campaign setup without inventing configuration approval', () => {
+  const words = stepWords('s-verify-mfa')
+  assert.equal(words.decision?.label, 'People Needing Help')
+  const b = bodyOf('demo', 's-verify-mfa')
+  assert.ok(b.readiness.tiles.some(t => t.key === 'unsaved:People Needing Help'))
+  assert.match(drawn(b, 'portal'), /Registration campaign/)
+  assert.match(drawn(b, 'portal'), /snooze/)
+  assert.doesNotMatch(drawn(b, 'portal'), /Target: All users|State: Enabled/)
+  assert.ok(b.contract.doneWhen.some(l => /Everyone in this step has a suitable registered MFA method/.test(l)))
+  assert.ok(b.contract.doneWhen.some(l => /Administrators have a phishing-resistant method/.test(l)))
+  assert.doesNotMatch(b.contract.doneWhen.join(' '), /90%|campaign's settings match/)
 })

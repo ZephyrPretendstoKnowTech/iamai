@@ -41,7 +41,10 @@ test('the three blocks are evidence-gated with no device-readiness gate; the adm
   // Nobody used device code or authentication transfer on the demo; one sign-in carried no platform.
   const dc = r.steps.find((x) => x.goalId === 'block-device-code')!
   const up = r.steps.find((x) => x.goalId === 'block-unsupported-platforms')!
-  assert.equal(nobodyAffected(dc), true)
+  assert.equal(nobodyAffected(dc), false, 'unverified workflows are not a confirmed zero')
+  assert.equal(dc.evidence.affectedUserIds.length, 0)
+  assert.ok(dc.manualReview?.fields?.length)
+  assert.equal(dc.state.satisfied, false)
   assert.equal(up.evidence.affectedUserIds.length, 1, 'the empty-platform sign-in is the evidence')
   assert.equal(nobodyAffected(up), false)
   const session = r.steps.find((x) => x.goalId === 'admin-session')!
@@ -57,7 +60,7 @@ test("the manager's nobody-here-used-it clause applies only when the records sho
   const dc = r.steps.find((x) => x.goalId === 'block-device-code')!
   const up = r.steps.find((x) => x.goalId === 'block-unsupported-platforms')!
   // Editorial batch C: the clause reads "No use appears in the records since", the evidence it has, not a claim about everyone.
-  assert.match(managerText(stepById['block-device-code'] as unknown as Record<string, unknown>, stepVars(dc, ctx) as Record<string, unknown>)!, /No use appears in the records since /)
+  assert.match(managerText(stepById['block-device-code'] as unknown as Record<string, unknown>, stepVars(dc, ctx) as Record<string, unknown>)!, /tested alternative first/)
   assert.doesNotMatch(managerText(stepById['block-unsupported-platforms'] as unknown as Record<string, unknown>, stepVars(up, ctx) as Record<string, unknown>)!, /No use appears in the records|Nobody here/)
   // The none line stands in for the usage line, and never beside it.
   const dcLines = stepLines(dc, ctx)
@@ -94,6 +97,7 @@ test('a step the plan cannot write reports no zero and announces nothing; on a b
   // settles: there is no policy to run, so nothing was measured against one and
   // no zero is claimed, and there is no day to announce so no email is written.
   const f = fixture('demo')
+  f.mapping.records.__globalExclusion = { ...f.mapping.records.__globalExclusion, resolvedId: null }
   const r = runFixture(f)
   const ctx = ctxFor(f, r)
   const at = r.steps.find((x) => x.goalId === 'block-auth-transfer')!

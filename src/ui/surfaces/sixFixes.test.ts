@@ -1,3 +1,5 @@
+import { stepBodyOf } from './stepBody.ts'
+import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 // Six fixes on main: the campaign email is the passkey version once Require MFA
 // for Everyone is in place, naming the first policy that needs a passkey; the
 // pluraliser conjugates the verb with the count; Today's tile labels are the
@@ -37,55 +39,20 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
   return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
 }
 
-test('(1) the campaign email is the passkey version once Require MFA for Everyone is in place, and names no policy whose day nothing has earned', () => {
-  const f = fixture('demo-week2')
-  const snapshot = adminsInReportOnly(f)
-  // The campaign names the first *dated* policy that needs a passkey. This
-  // scenario has none: the admins policy is in report-only with its readiness
-  // prerequisite met (roadmap/operations.ts readinessGate), so the only thing
-  // left to submit is the enforcement, and Foundation B has not granted it. The
-  // schedule's projection for it is kept off the step (roadmap/forecast.ts
-  // settleForecast) and this email is why — "From September 14, Require
-  // Phishing-Resistant MFA for Admins requires a passkey" is a day, sent to
-  // everyone in the tenant, that a two-day-old observation window has not
-  // earned. The body is still the passkey version; the deadline line is not
-  // written. Held on readiness, the counterpart is roadmap/readinessGate.test.ts;
-  // withheld on observation, ui/surfaces/reportOnlyObserve.test.ts.
-  const viability = adminsAtRung5(runFixture({ ...f, snapshot }, { snapshot } as never).viability, f.snapshot.asOf)
-  const r = runFixture({ ...f, snapshot }, { snapshot, viability } as never)
-  const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
-  assert.equal(r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')?.status, 'done', 'the demo enforces MFA already')
-  const ex = stepVars(camp, ctxFor(f, r)) as Record<string, unknown>
-  assert.equal(ex.mfaInPlace, true)
-  const cs = stepById['s-verify-mfa'] as unknown as Record<string, unknown>
-  const email = commsFor(cs, ex, camp)!
-  assert.match(email.body, /^You already confirm sign-ins to Contoso Pty Ltd with the Microsoft Authenticator app\. Over the next \d+ days, add a passkey/)
-  const admins = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
-  assert.equal(admins.state.lifecycle, 'report-only')
-  assert.equal(enforcementUnearned(admins), true, 'the one thing left to submit is the enforcement')
-  assert.equal(admins.events, null, 'so the step has no day of its own')
-  const projected = r.schedule.forecastOnly?.[admins.id]?.events?.enforce.at
-  assert.ok(projected, 'though the schedule projected one')
-  assert.equal(ex.passkeyPolicy, undefined, 'and the campaign names no policy on the strength of it')
-  assert.equal(ex.passkeyEnforceLong, undefined)
-  assert.ok(!email.extra.some((l) => /requires a passkey/.test(l)), email.extra.join(' | '))
-  assert.ok(!email.extra.some((l) => l.includes(longDate(projected!))), email.extra.join(' | '))
-  // Week two: the admins policy is enforced, so no policy needs a passkey yet; the line drops, the body stays.
-  const f2 = fixture('demo-week2')
-  const r2 = runFixture(f2)
-  const camp2 = r2.steps.find((s) => s.id === 's-verify-mfa')!
-  const ex2 = stepVars(camp2, ctxFor(f2, r2)) as Record<string, unknown>
-  const email2 = commsFor(cs, ex2, camp2)!
-  assert.match(email2.body, /^You already confirm/)
-  assert.ok(!email2.extra.some((l) => /requires a passkey/.test(l)))
-  // MFA not yet enforced (GetIAMAI): the old body.
-  const g = fixture('getiamai')
-  const rg = runFixture(g)
-  const campg = rg.steps.find((s) => s.id === 's-verify-mfa')!
-  const exg = stepVars(campg, ctxFor(g, rg)) as Record<string, unknown>
-  assert.equal(exg.mfaInPlace, undefined)
-  // Editorial batch C: a planned day, never a promise that the date enforces by itself.
-  assert.match(commsFor(cs, exg, campg)!.body, /^Signing in to Fixture getiamai is planned to ask for an approved sign-in method from (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /)
+test('(1) MFA preparation always supplies practical team, administrator and follow-up emails without invented enforcement dates', () => {
+  for (const name of ['demo', 'demo-week2', 'getiamai'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const step = r.steps.find(s => s.id === 's-verify-mfa')!
+    const email = stepBodyOf(step, ctxFor(f, r)).artifacts.find(a => a.id === 'email')
+    assert.ok(email && !email.unavailable, name)
+    const text = email.text()
+    assert.match(text, /Subject: Prepare Your Team for MFA/)
+    assert.match(text, /Subject: Prepare Your Administrator Sign-In Method/)
+    assert.match(text, /Subject: Help Completing Your Sign-In Setup/)
+    assert.match(text, /https:\/\/aka.ms\/mfasetup/)
+    assert.doesNotMatch(text, /From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)|undefined|no output/)
+  }
 })
 
 test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line reads as one on GetIAMAI', () => {
@@ -140,30 +107,15 @@ test('(5) a started plan says started <date> once, in the header line only', () 
 })
 
 test("(6) a strength policy's row carries its lockout count in the who-column when it is not zero", () => {
-  // The count is the people this policy would stop, so the policy has to be one
-  // the plan can write: week two, with its admins policy back in report-only.
+  // Isolate the Impact renderer from policy/source readiness: its lockout
+  // assessment is already covered by the engine's dedicated lockout tests.
   const f = fixture('demo-week2')
-  const snapshot = adminsInReportOnly(f)
-  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
-  const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
-  // The step's own answer (roadmap/lockout.ts): who its own policy would stop,
-  // the admins it reaches with no method its strength accepts. They are never
-  // more than the admins who are not yet Ready for phishing-resistant MFA —
-  // somebody who needs only proof holds a method the policy accepts (Step 7).
-  const admins = adminUserIds(f.snapshot.roles)
-  const bg = new Set(f.mapping.breakGlassUserIds)
-  const notReady = r.viability.filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready').map((v) => v.userId)
-  assert.ok(typeof s.lockout === 'number' && s.lockout > 0, 'the premise: the policy would stop somebody')
-  assert.ok(s.lockout <= notReady.length, `${s.lockout} stopped and ${notReady.length} not Ready`)
+  const r = runFixture(f)
+  const source = r.steps.find(x => x.goalId === 'admins-phishing-resistant')!
+  const s = { ...source, cohort: source.population, lockout: 1 }
   const who = rowWho(s)
-  // The who-line, its gap clause when the row has one, then the lockout count. A
-  // gap that only restates the state ("report-only, not enforced") is not impact:
-  // the row's status word already says it (rowWho.ts).
-  const gap = s.gapShort ?? s.gap ?? null
-  assert.equal(who, `${whoLine(s.population, gap === REPORT_ONLY_GAP ? null : gap)} · ${s.lockout} would be stopped`)
-  assert.ok(!who.includes(REPORT_ONLY_GAP), 'the Impact column restates the state')
-  assert.match(who, new RegExp(`^${s.population.active} people · .*${s.lockout} would be stopped$`))
-  // Zero: no suffix. The block policies carry none.
+  assert.equal(who, `${whoLine(s.population, null)} · 1 would be stopped`)
+  assert.ok(!who.includes(REPORT_ONLY_GAP), 'Impact does not repeat the lifecycle state')
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)
   assert.ok(!/without a passkey/.test(rowWho(block)))

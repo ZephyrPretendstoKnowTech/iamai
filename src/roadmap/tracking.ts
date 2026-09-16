@@ -32,7 +32,7 @@ import { evidenceStrategyOf } from './evidenceStrategy.ts'
 import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
-import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
+import { advanceState, aggregateObservation, raiseCondition, setState, workflowReviewIsCurrent } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
 import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
@@ -108,7 +108,10 @@ function advance(step: Step, to: Partial<StepState>, note: string, at: string): 
   // completed by a policy that looks like its target (roadmap/workloadIdentity.ts):
   // the policy is observed and kept as it is, and the step stays on its hold. What
   // the scan saw of the policy's lifecycle still records.
-  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER)) return
+  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER || b.kind === 'evidence' && b.label === 'inforcer-application')) return
+  // Observing an enforced policy proves deployment, not the separately recorded
+  // workflow check. Keep that lifecycle visible without completing its task.
+  if (to.satisfied === true && step.manualReview && !step.manualReview.confirmedAt) return
   const from = step.status
   if (!advanceState(step, to)) return
   // A step generated already at this status (coverage saw it enforced) still
@@ -1189,6 +1192,7 @@ export type DriftOutcome = 'correctable' | 'review-required' | 'on-hold'
  * no policy delivers yet, one that is done, or one set aside.
  */
 export function driftOutcomeOf(step: Step): DriftOutcome | null {
+  if (workflowReviewIsCurrent(step)) return null
   if (step.status === 'done' || step.status === 'skipped') return null
   const members = step.tracking?.members ?? []
   if (!members.some((m) => m.policyId !== null)) return null

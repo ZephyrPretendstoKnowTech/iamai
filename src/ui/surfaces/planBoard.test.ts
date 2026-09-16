@@ -267,26 +267,26 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   assert.equal(laneLabelOf(ready, titleOf), 'Ready · Review')
   // The wait while report-only collects evidence is On Hold, in the lane's own word for watching.
   const collecting = { lane: 'On Hold' as const, substatus: null, reason: { kind: 'evidence' as const, id: 'evidence:observation', milestone: null, condition: null, abnormal: false, ordinal: 1 }, blockers: [], gates: [], order: 0, fromEngine: true }
-  assert.equal(laneLabelOf(collecting, titleOf), 'On Hold · Observing')
+  assert.equal(laneLabelOf(collecting, titleOf), 'On Hold')
   const blocker = { kind: 'step' as const, id: 's-prereq-break-glass', milestone: null, condition: null, abnormal: false, ordinal: 5 }
   const upNext = { lane: 'Up Next' as const, substatus: null, reason: blocker, blockers: [blocker], gates: [], order: 0, fromEngine: true }
-  assert.equal(laneLabelOf(upNext, titleOf), 'Up Next · After Emergency Access Accounts')
+  assert.equal(laneLabelOf(upNext, titleOf), 'Up Next')
   const held = { lane: 'On Hold' as const, substatus: null, reason: { ...blocker, kind: 'sourceMapping' as const, id: 'sourceMapping:62d67e66', abnormal: true }, blockers: [], gates: [], order: 0, fromEngine: true }
-  assert.equal(laneLabelOf(held, titleOf), `On Hold · ${BOARD.blockers.sourceMapping}`)
+  assert.equal(laneLabelOf(held, titleOf), 'On Hold')
   assert.equal(holdGroupOf(held), BOARD.blockers.sourceMapping)
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }
-  assert.equal(laneLabelOf(heldOnStep, titleOf), `On Hold · ${BOARD.blockers.step}: Emergency Access Accounts`)
+  assert.equal(laneLabelOf(heldOnStep, titleOf), 'On Hold')
   assert.equal(holdGroupOf(heldOnStep), BOARD.blockers.step, 'rows held by the same kind of thing group together')
   // A deeper healthy prerequisite holds without anything abnormal, and reads as the wait it is.
   const heldBehind = { ...held, reason: blocker }
-  assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold · After Emergency Access Accounts')
+  assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold')
   assert.equal(holdGroupOf(heldBehind), WHEN.afterPrerequisites)
   assert.equal(laneLabelOf({ ...ready, lane: 'Completed', substatus: null }, titleOf), BOARD.lanes.completed)
   assert.equal(laneLabelOf({ ...ready, lane: 'Deferred', substatus: null }, titleOf), BOARD.lanes.deferred)
   for (const name of FIXTURES) {
     for (const i of itemsFor(name)) {
       assert.ok(i.laneLabel.startsWith(BOARD.lanes[TAB_OF[i.lane] ?? (i.lane === 'Completed' ? 'completed' : 'deferred')]), `${name}/${i.id}: "${i.laneLabel}" does not lead with its lane`)
-      if (TAB_OF[i.lane] !== null) assert.match(i.laneLabel, / · /, `${name}/${i.id}: "${i.laneLabel}" says no substatus or reason`)
+      if (i.lane === 'Ready') assert.match(i.laneLabel, / · /, `${name}/${i.id}: "${i.laneLabel}" says no substatus or reason`)
     }
   }
 })

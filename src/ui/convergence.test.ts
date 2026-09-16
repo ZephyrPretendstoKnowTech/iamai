@@ -280,8 +280,8 @@ test('a surface takes its own route styling in every state it can render, not on
       assert.ok(rest.split(/\s+/).includes(name), `a ${name} branch renders <section className="surface${rest}">`)
     }
   }
-  // Export's three branches are still the three states, with their own words.
-  assert.equal([...EXPORT.matchAll(/<section className="surface export">/g)].length, 3)
+  // Export includes a recoverable storage-read error alongside its three data states.
+  assert.equal([...EXPORT.matchAll(/<section className="surface export">/g)].length, 4)
   assert.match(EXPORT, /\{S\.scanNeedsConnect\}/)
   assert.match(EXPORT, /\{S\.loading\}/)
   assert.match(EXPORT, /\{P\.intro\}/)

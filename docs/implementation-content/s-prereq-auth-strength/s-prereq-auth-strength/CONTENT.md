@@ -74,7 +74,6 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 An authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts only five combinations:
 — Windows Hello for Business: a biometric or PIN bound to the device
@@ -91,25 +90,21 @@ Several baseline policies use this strength. Create it once in this tenant; thos
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 A custom authentication strength exists but differs from the intended one. Differences IAMAI detected: {{strength.current.semanticMismatches}}. Policies that use it: {{strength.current.usage}}. The intended strength allows Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. A change to this shared strength applies to every policy that uses it as soon as it is saved, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm the authentication strength. The intended result is one custom strength in this tenant that allows exactly Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. Any additional method would apply to every policy that uses this strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Resolve them before creating or changing an authentication strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.source-conflict","channel":"aiInfo","states":["sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI found a conflict about which authentication strength this step should use: the source descriptions disagree, or more than one tenant strength could be the intended one. None of the candidates counts as selected until the conflict is resolved. Built-in authentication strengths cannot be edited; a correction applies only to a custom strength.
 @@IAMAI-END

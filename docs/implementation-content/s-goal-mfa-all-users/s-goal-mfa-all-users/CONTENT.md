@@ -14,7 +14,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -139,7 +139,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the MFA-for-everyone policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources except Microsoft Intune Enrollment, no additional conditions, Grant: Require multifactor authentication, and no session controls. It does not prompt anyone until it is enabled.
 
@@ -155,7 +154,7 @@ The policy already exists on your tenant. The correction changes only the settin
 — Conditions: no location, device platform or risk conditions; client apps remains All.
 — Grant: Require multifactor authentication. Session controls: none.
 
-An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in. Whether each person has a usable method is shown on MFA Readiness; the MFA Registration Campaign step helps people register one.
+An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in. Whether each person has a usable method is shown on MFA Readiness; the Prepare Your Team for MFA step helps people register one.
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
@@ -163,7 +162,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}}; it does not prompt anyone yet. Report-only evidence: {{evidence.reportOnly}}.
 
@@ -171,19 +169,16 @@ Separate people who could not satisfy MFA from accounts excluded as intended. A 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the MFA-for-everyone policy is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only and match the intended target: All resources except Microsoft Intune Enrollment, Require multifactor authentication, no session controls. After enabling, test an ordinary user in scope and emergency access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: the MFA-for-everyone step cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: this Conditional Access policy needs Microsoft Entra licensing that this scan did not confirm. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END

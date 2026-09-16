@@ -1,11 +1,11 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": "after: Create or Correct Emergency Access Accounts",
   "fact": null,
-  "badge": "On Hold · Baseline references an unmapped group",
-  "bar": "Baseline references an unmapped group",
-  "rail": "Not scheduled",
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
@@ -14,16 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
-    },
-    {
-      "label": "Prerequisite · Waiting",
-      "state": "Create or Correct Exclusions Group"
+      "label": "Prerequisite · To do",
+      "state": "Create or Correct Emergency Access Accounts"
     }
   ],
   "channels": [
@@ -33,5 +25,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "After prerequisites"
+  "when": "Aug 31, 2026"
 }

@@ -79,13 +79,11 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The trusted network for {{tenant.displayName}} is not approved yet. Observed sign-in IP summary: {{evidence.signInIpSummary}}. These addresses are review evidence, not approval: an unrelated office, a VPN or a shared provider address can appear in sign-ins. The network owner needs to confirm the exact public ranges, who controls them and whether they can change. A range broader than the approved ones would extend trust to other networks.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-applicable","channel":"aiInfo","states":["notApplicable"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The owner recorded that no office or VPN network should be treated as trusted. No trusted location is planned for this tenant, and none should be created from historical sign-in addresses.
 @@IAMAI-END
@@ -101,19 +99,16 @@ If nobody works from an office (fully remote, no VPN), you can mark this step as
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Named location {{location.current.id}} exists but differs from the intended settings in its name, IP ranges or trusted flag. Graph replaces the whole `ipRanges` collection on update, so the submitted set must include every approved range that should remain. A change applies to the policies that use this location as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm that the same named location (same ID) contains exactly the approved ranges and is marked trusted. If expected sign-ins no longer match, the network's public address may have changed; the fix is a newly approved range, not a wider one.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The trusted-network prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Public ranges come only from the network owner's approval.
 @@IAMAI-END

@@ -2107,6 +2107,75 @@
       "learnUrl": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
       "tldr": "The accounts every other policy leaves out are pinned to the office network, where a stolen password is useless from anywhere else.",
       "cis": []
+    },
+    {
+      "id": "inforcer-mfa",
+      "name": "Require MFA for Inforcer Access",
+      "shortName": "Inforcer MFA",
+      "description": "Require MFA when people sign in to Inforcer.",
+      "phase": 3,
+      "domain": "Specialist services",
+      "securityValue": 4,
+      "baseEffort": 2,
+      "applicability": "inforcer",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "708861da-226e-4d65-a57a-24128df64524"
+            ],
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true,
+            "grantHasAuthControl": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "inforcer",
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Inforcer MFA",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "708861da-226e-4d65-a57a-24128df64524"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-policy-all-users-mfa",
+      "tldr": "Inforcer access requires multifactor authentication.",
+      "cis": []
     }
   ]
 }

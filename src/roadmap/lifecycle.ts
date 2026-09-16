@@ -279,6 +279,10 @@ export function raiseCondition(step: Step, next: Condition): Step {
  * policy that was rewritten — or a different one deployed in its place — has not
  * been watched (observation.ts historyReset).
  */
+export function workflowReviewIsCurrent(step: Step): boolean {
+  return !!step.manualReview?.readyToConfirm && !step.manualReview.confirmedAt && step.state.lifecycle === 'enforced' && step.state.condition === 'healthy' && !step.state.satisfied && !step.state.setAside && !(step.unsavedInputs?.length)
+}
+
 export function nextMilestone(step: Step): Milestone {
   const s = step.state
   if (s.setAside) return { kind: 'none', label: MILESTONE.setAside, at: null, gatedBy: step.skipReason }
@@ -289,6 +293,7 @@ export function nextMilestone(step: Step): Milestone {
   if (s.satisfied) {
     return s.inPlace ? { kind: 'preserve', label: MILESTONE.preserve, at: null, gatedBy: null } : { kind: 'none', label: MILESTONE.none, at: null, gatedBy: null }
   }
+  if (workflowReviewIsCurrent(step)) return { kind: 'verify', label: 'Test the required workflow and record its outcome.', at: null, gatedBy: null }
   // A deployed policy that is no longer what the plan asked for is held until
   // somebody has looked at it, and that comes before the stage's own next move:
   // a window closing does not settle a change nobody has explained, and there is

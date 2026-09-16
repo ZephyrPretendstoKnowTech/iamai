@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Up Next · After Configure Passkey Authentication",
-  "bar": "After Configure Passkey Authentication",
+  "badge": "On Hold",
+  "bar": "Prerequisite on hold: Configure Passkey Authentication",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",

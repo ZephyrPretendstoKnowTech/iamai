@@ -3,7 +3,7 @@
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "On Hold · After Require Phishing-Resistant MFA for Admins",
+  "badge": "On Hold",
   "bar": "After Require Phishing-Resistant MFA for Admins",
   "rail": "Aug 31, 2026",
   "headings": [
@@ -24,6 +24,8 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info",
     "Email"
   ],

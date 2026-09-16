@@ -29,3 +29,10 @@ export const PREREQ_STEP_ID = {
   /** The device decision (E2): how phones and computers are managed, before any device policy is offered. */
   devicePlan: 's-prereq-device-plan',
 } as const
+
+/** Old repair links resolve to the single configuration task; saved records remain intact. */
+export const REPAIR_STEP_ALIASES: Readonly<Record<string, string>> = {
+  's-blocker-trusted-location': PREREQ_STEP_ID.trustedLocation,
+  's-blocker-allowed-countries': PREREQ_STEP_ID.allowedCountries,
+  's-blocker-auth-strength': PREREQ_STEP_ID.authStrength,
+}

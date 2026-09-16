@@ -25,6 +25,7 @@ import { inventoryReferences, unresolvedReferences } from '../baseline/index.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import type { TemplatePlaceholder } from './template.ts'
+import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 
 export type RawPolicy = Record<string, unknown>
 
@@ -717,7 +718,9 @@ function dedupeCollections(value: unknown): unknown {
  * group and the de-duplication.
  */
 export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
-  const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
+  const assumptions = assumedAbsentSourceGroups(policy, policies)
+  const effectiveTenant = assumptions.length ? { ...tenant, omitted: new Set([...(tenant.omitted ?? []), ...assumptions]) } : tenant
+  const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), effectiveTenant, goalId)
   // "None needed here" is an answer about an exception or about part of who a
   // policy reaches. Where the references left out are the whole of who or where
   // this policy applies, it would not narrow the policy, it would empty the

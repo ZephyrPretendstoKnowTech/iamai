@@ -70,6 +70,6 @@ test('only the Implementation region copies as an artifact; the copy boxes under
   assert.equal(step.split("unredactedFrom('implementation-artifact')").length - 1, 1, 'the artifact disposition is claimed from more than one place')
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.match(step, /<More[\s\S]*?copy=\{copy\}/, 'More no longer copies through the redacting disposition')
-  // The warning the AI channel carries is the one the disposition names.
-  assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
+  // Approved V1 removes repeated AI disclaimer panels without changing copy disposition.
+  assert.equal(step.split("{tab === 'ai' && (").length - 1, 0)
 })

@@ -47,6 +47,8 @@ export type ConfigSection = {
   bodyBytes?: number | null
   /** A field the v1.0 read lacked and a second read supplied (prompt 47 item 8), e.g. "policyMigrationState from beta". */
   fallback?: string | null
+  /** Result of the dedicated method read, kept separate from the parent policy response. */
+  fido2Read?: { status: 'ok' | 'error'; reason: string | null; httpStatus: number | null }
 }
 
 export type UserRow = {
@@ -93,6 +95,9 @@ export type RegistrationRow = {
   isAdmin: boolean
   userType: 'member' | 'guest'
 }
+
+export type PerUserMfaReading = { state: 'disabled' | 'enabled' | 'enforced' | 'unknown'; reason: string | null }
+export type PerUserMfaByUser = Record<string, PerUserMfaReading>
 
 export type MethodsByUser = Record<string, AuthMethodSummary[] | 'unknown'>
 
@@ -227,6 +232,8 @@ export type TenantSnapshot = {
   devices: DeviceRow[]
   spActivity: unknown[]
   authMethods: MethodsByUser
+  /** Actual legacy per-user MFA requirements; absent on snapshots collected before this read existed. */
+  perUserMfa?: PerUserMfaByUser
   appSignInSummary: unknown[]
   signInEvidence: Record<string, UserEvidence>
   evidencePolicyResults: PolicyAppliedResult[]

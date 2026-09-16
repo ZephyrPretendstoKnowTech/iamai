@@ -37,7 +37,6 @@ foreach($p in $patches){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{tenant.displayName}} has not saved how partner or MSP access should be handled. Evidence: {{partner.currentEvidence}}.
 
@@ -47,7 +46,6 @@ NEXT STEP: Explain the options for keeping approved partner access working and w
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.apply","channel":"aiInfo","states":["applyRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The partner decision is saved for {{tenant.displayName}}: {{partner.decisionSummary}}. Access model: {{partner.accessModel}}.
 
@@ -59,7 +57,6 @@ NEXT STEP: Explain the change to each affected policy and how to test the delega
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting for verification of the partner exclusions.
 
@@ -67,7 +64,6 @@ NEXT STEP: Explain how to confirm that each affected policy has the intended Ser
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-applicable","channel":"aiInfo","states":["notApplicable"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI treats this partner or MSP step as not applicable. Do not assume a delegated relationship or suggest an external-user exception that the facts do not show.
 
@@ -75,7 +71,6 @@ NEXT STEP: Explain why no partner change is needed now and what would make the s
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This partner step is on hold: {{dependencies.blockers}}. Do not assume a partner identity or policy scope that the facts do not show.
 

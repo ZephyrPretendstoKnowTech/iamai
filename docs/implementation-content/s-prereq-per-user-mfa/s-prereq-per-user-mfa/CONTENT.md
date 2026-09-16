@@ -33,7 +33,6 @@ $rows
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Per-user MFA stays in place for now: {{dependencies.blockers}}. Keep it until a replacement Conditional Access policy that requires MFA is enabled for the affected accounts.
 
@@ -41,7 +40,6 @@ NEXT STEP: Explain what must be completed before per-user MFA can be retired.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.migrate","channel":"aiInfo","states":["migrationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The Authentication methods policy migration still needs work. Migration state: {{mfa.methodsMigrationState}}. Method coverage: {{mfa.methodsCoverage}}. This migration decides which methods people can register and use; it does not require MFA and does not replace per-user MFA. Per-user MFA stays in place during this state.
 
@@ -49,7 +47,6 @@ NEXT STEP: Explain which methods allowed by the legacy MFA and SSPR settings sti
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.disable","channel":"aiInfo","states":["readyToDisablePerUser"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Per-user MFA can now be disabled for these accounts: {{mfa.perUser.accounts}}. Replacement MFA: {{dependencies.replacementMfaSummary}}. Disabling the per-user setting removes only the old requirement. These accounts stay protected only if the replacement Conditional Access policy is enabled and covers each of them.
 
@@ -57,7 +54,6 @@ NEXT STEP: Explain how to confirm that coverage for each listed account, then ho
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting for verification. Accounts: {{mfa.perUser.accounts}}. Each should read back per-user MFA Disabled and remain covered by the enabled replacement Conditional Access policy.
 

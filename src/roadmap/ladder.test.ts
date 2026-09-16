@@ -33,6 +33,7 @@ test('a done ladder step always names the evidence that satisfied it', () => {
   const { steps } = ladderSteps(freeSnapshot(), mapping({ breakGlassUserIds: [] }), [])
   for (const s of steps) {
     if (s.status === 'done') assert.ok(s.deliveredBy.length > 0, `${s.id}: done names its evidence`)
+    else if (s.id === ladderStepId('per-user-mfa-cleanup')) { assert.equal(s.state.satisfied, false); assert.match(s.deliveredBy.join(' '), /migration.*Check legacy per-user MFA separately/, 'migration evidence alone does not prove per-user cleanup') }
     else assert.equal(s.deliveredBy.length, 0, `${s.id}: only a done step cites evidence`)
   }
 })
@@ -107,4 +108,30 @@ test('a licensed tenant gets no ladder steps', () => {
     // The operator's own passkey rung (A5 task 5) is not a free-tier ladder item: it is asked of a licensed tenant's operator.
     assert.equal(steps.some((s) => s.id.startsWith('s-ladder-') && s.id !== OPERATOR_PASSKEY_STEP_ID), false, `${name}: no ladder without a free licence`)
   }
+})
+
+
+test('Authenticator replacement requires registration plus effective method targeting', () => {
+  const snapshot = freeSnapshot()
+  snapshot.users = snapshot.users.filter(u => u.userType === 'member').slice(0, 2)
+  snapshot.sources.users.status = 'ok'
+  snapshot.sources.registrationDetails.status = 'ok'
+  snapshot.registrationDetails = snapshot.users.map(u => ({ id: u.id, userPrincipalName: u.userPrincipalName, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: false, methodsRegistered: ['microsoftAuthenticatorPush'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: false, userType: u.userType }))
+  const authenticator = { id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] as { id: string; targetType: string }[] }
+  snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [authenticator, { id: 'Sms', state: 'disabled' }, { id: 'Voice', state: 'disabled' }] }] }
+  const read = () => ladderSteps(snapshot, mapping(), []).steps.find(s => s.id === ladderStepId('authenticator-over-sms'))!
+  assert.equal(read().state.satisfied, true, 'observed readiness passes; scoped manual proof is applied later')
+  authenticator.excludeTargets = [{ id: snapshot.users[0].id, targetType: 'user' }]
+  assert.equal(read().state.satisfied, false)
+  assert.deepEqual(read().preparation?.missingIds, [snapshot.users[0].id])
+  authenticator.excludeTargets = [{ id: 'unread-group', targetType: 'group' }]
+  assert.deepEqual(read().preparation?.unknownIds, snapshot.users.map(u => u.id))
+})
+
+test('separation review includes eligible role holders but excludes emergency accounts', () => {
+  const snapshot = freeSnapshot()
+  const [ordinary, emergency] = snapshot.users.slice(0, 2)
+  snapshot.roles = { active: { [emergency.id]: [GLOBAL_ADMIN_ROLE_ID] }, eligible: { [ordinary.id]: [GLOBAL_ADMIN_ROLE_ID] } }
+  const step = ladderSteps(snapshot, mapping({ breakGlassUserIds: [emergency.id] }), []).steps.find(s => s.id === ladderStepId('admin-accounts-separate'))!
+  assert.deepEqual(step.population.ids, [ordinary.id])
 })

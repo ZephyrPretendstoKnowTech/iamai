@@ -51,8 +51,14 @@ export type ScopeCopy = { reads: string; without: string; consentName?: string; 
 
 /** One entry per scope in `GRAPH_SCOPES`. */
 export const SCOPE_COPY: Record<string, ScopeCopy> = {
+  'Policy.Read.AuthenticationMethod': {
+    reads: 'The Passkey (FIDO2) method configuration, assigned profiles, attestation settings and allowed authenticator models.',
+    without: 'IAMAI cannot verify passkey profiles or whether the configured models meet the plan.',
+    consentName: 'Read authentication methods policies',
+    consentReads: 'Passkey profiles, target groups, attestation and key restrictions',
+  },
   'Policy.Read.All': {
-    reads: 'Conditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults and the cross-tenant access settings.',
+    reads: 'Conditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults, legacy per-user MFA requirements and the cross-tenant access settings.',
     without: 'Nothing can be compared against the baseline, so there is no plan at all.',
     consentName: "Read your organization's policies",
     consentReads: 'Conditional Access policies, named locations, strengths, cross-tenant settings',
@@ -101,7 +107,7 @@ export const SIGN_IN_SCOPES = ['openid', 'profile', 'offline_access']
 /**
  * The order Microsoft's consent screen puts the tenant permissions in, which is
  * not the order the app requests them in. Connect says "the consent screen will
- * list these six, in this order", so the order is a fact about the screen and is
+ * list these permissions", so the order is a fact about the screen and is
  * written down once here; permissions.test.ts holds it to exactly the tenant
  * scopes in `GRAPH_SCOPES`, so a scope can never be added or dropped on one side
  * alone.
@@ -109,6 +115,7 @@ export const SIGN_IN_SCOPES = ['openid', 'profile', 'offline_access']
 export const CONSENT_SCREEN_ORDER = [
   'Directory.Read.All',
   'Policy.Read.All',
+  'Policy.Read.AuthenticationMethod',
   'AuditLog.Read.All',
   'RoleManagement.Read.Directory',
   'UserAuthenticationMethod.Read.All',

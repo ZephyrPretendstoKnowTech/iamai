@@ -1,3 +1,4 @@
+import { recoveryAccountBasis } from './cleanupDone.ts'
 // Cycle 3 (review 2 R1): a group policy whose OR grant offers a way round the floor
 // ("phishing-resistant OR compliant device", "MFA OR compliant device") is the
 // all-users goal's own policy — under OR the person may use the weakest control, so
@@ -37,6 +38,9 @@ function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
   const row = { id: A, displayName: 'Policy A', state: 'enabled', conditions: { users: { includeGroups: [group === 'admins' ? ADMINS : staff], excludeGroups: [excl] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: grant }
   const rows = reversed ? [...keep, row] : [row, ...keep]
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
+  snapshot.registrationDetails = snapshot.users.filter(u => !f.mapping.breakGlassUserIds.includes(u.id)).map(u => ({ ...snapshot.registrationDetails[0], id:u.id, userType:u.userType, isMfaCapable:true, methodsRegistered:['fido2SecurityKey'] })).concat(snapshot.registrationDetails.filter(r => f.mapping.breakGlassUserIds.includes(r.id)))
+  // This translation fixture assumes a successful recovery drill against its replaced policy set.
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const scored = runFixture({ ...f, snapshot }, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot }, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!

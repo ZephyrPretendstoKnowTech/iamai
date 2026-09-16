@@ -26,7 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
+    "productContract": "Configure device-bound, attested passkeys using Microsoft Authenticator or approved hardware-key models, preserving existing recovery access and effective profile assignments.",
     "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027.",
     "passkeyTarget": {
       "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12), superseded in part by the owner's approval of 2026-09-14: support Microsoft Authenticator passkeys while preserving existing approved hardware keys and profile configurations. This object supplies the approved Authenticator AAGUIDs (copied from the Microsoft Learn page in verifiedSources, ms-authenticator-passkey, never from memory) and the product settings; roadmap/passkeySettings.ts resolves each tenant's target from its own configuration (existing allowed models, groups and exclusions retained) and binds it as passkey.target.fido2Configuration. The whole object is the target only for a methods policy with no Fido2 entry.",
@@ -59,9 +59,7 @@
     }
   },
   "requiredBindings": [
-    "passkey.target.fido2Configuration",
-    "authenticator.target.configuration",
-    "tap.target.configuration"
+    "passkey.target.fido2Configuration"
   ],
   "optionalBindings": [
     "passkey.current.summary",
@@ -72,12 +70,15 @@
     "tenant.displayName",
     "passkey.profileOptInApproved",
     "passkey.target.summary",
-    "passkey.review.detail"
+    "passkey.review.detail",
+    "passkey.current.fido2Configuration",
+    "authenticator.target.configuration",
+    "tap.target.configuration"
   ],
   "projection": {
     "needsDecision": {
       "entra": [
-        "entra.profile-decision"
+        "entra.configure-fido2"
       ],
       "json": [],
       "powershell": [],
@@ -86,27 +87,7 @@
       ],
       "email": []
     },
-    "missingOrPartial": {
-      "entra": [
-        "entra.configure-fido2",
-        "entra.configure-authenticator",
-        "entra.configure-tap"
-      ],
-      "json": [
-        "json.fido2"
-      ],
-      "powershell": [
-        {
-          "block": "powershell.run",
-          "mode": "Apply"
-        }
-      ],
-      "aiInfo": [
-        "ai.apply"
-      ],
-      "email": []
-    },
-    "verificationRequired": {
+    "inPlace": {
       "entra": [
         "entra.verify"
       ],
@@ -122,19 +103,32 @@
       ],
       "email": []
     },
-    "inPlace": {
-      "entra": [],
-      "json": [],
-      "powershell": [],
-      "aiInfo": [],
-      "email": []
-    },
     "blocked": {
-      "entra": [],
+      "entra": [
+        "entra.configure-fido2"
+      ],
       "json": [],
       "powershell": [],
       "aiInfo": [
         "ai.blocked"
+      ],
+      "email": []
+    },
+    "missing": {
+      "entra": [
+        "entra.configure-fido2"
+      ],
+      "json": [
+        "json.fido2"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Apply"
+        }
+      ],
+      "aiInfo": [
+        "ai.apply"
       ],
       "email": []
     }

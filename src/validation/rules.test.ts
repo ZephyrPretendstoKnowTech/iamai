@@ -1,3 +1,4 @@
+import { recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
 // One test per rule, pass and fail and unknown; a worst-state fixture per
 // subject; and the registry regression test that makes dropping a rule fail the
 // build (validation-rules.md §6).
@@ -62,10 +63,10 @@ const BLOCKERS = new Set([
   'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled', 'bg.excludedFromAllPolicies',
   'bg.notInDynamicScope', 'bg.hasMfaMethod', 'bg.separateDevices', 'bg.notPersonal',
   'xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently',
-  'loc.notWholeInternet', 'loc.notTooWide', 'loc.isTrusted',
-  'cty.atLeastOne', 'cty.includesOperator',
+  'loc.notWholeInternet', 'loc.isTrusted',
+  'cty.atLeastOne',
   'pilot.hasMembers', 'pilot.noBreakGlass',
-  'str.exists', 'str.achievable',
+  'str.exists',
 ])
 
 test('the registry holds exactly the rule set the design lists, by subject', () => {
@@ -121,7 +122,7 @@ function base(): Base {
     groups: [...f.groups.entries()].map(([groupId, g]) => structuredClone({ groupId, ...g })),
     viability: [],
     // The healthy tenant's emergency accounts signed in ten days ago, on a recorded drill (E3).
-    drillRecords: f.mapping.breakGlassUserIds.map((id) => ({ cleanup: 'drill' as const, at: f.snapshot.asOf, date: f.snapshot.users.find((u) => u.id === id)!.lastSuccessfulSignIn!, accountIds: [id], timeZone: 'UTC' })),
+    drillRecords: f.mapping.breakGlassUserIds.map((id) => ({ cleanup: 'drill' as const, at: f.snapshot.asOf, date: f.snapshot.users.find((u) => u.id === id)!.lastSuccessfulSignIn!, accountIds: [id], outcome: 'passed' as const, accountBasis: recoveryAccountBasis(f.snapshot, [id]), signInAtByAccount: { [id]: f.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn! }, timeZone: 'UTC' })),
     drillDates: [...new Set(f.mapping.breakGlassUserIds.map((id) => f.snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn).filter((d): d is string => typeof d === 'string'))],
   }
 }
@@ -390,6 +391,7 @@ const CASES: Record<string, Case> = {
     unknown: 'target',
     fail: (b) => {
       for (const u of b.snapshot.users) u.department = 'IT'
+      b.snapshot.users.find(u=>u.accountEnabled&&u.userType==='member'&&!b.snapshot.users.slice(0,3).includes(u))!.department = 'Finance'
       return { groupId: 'g-pilot', displayName: 'Pilot', membershipRule: null, memberIds: b.snapshot.users.slice(0, 3).map((u) => u.id), memberCount: 3, sampled: false }
     },
   },
@@ -431,7 +433,7 @@ const CASES: Record<string, Case> = {
       return { groupId: 'g-pilot', displayName: 'Pilot', membershipRule: null, memberIds: [], memberCount: 0, sampled: false }
     },
     unknown: 'target',
-    fail: () => ({ groupId: 'g-pilot', displayName: 'Pilot', membershipRule: null, memberIds: [], memberCount: 0, sampled: false }),
+    fail: (b) => { b.snapshot.config.authMethodsPolicy.rows = [{ authenticationMethodConfigurations: [{ id: 'TemporaryAccessPass', state: 'disabled' }] }]; return { groupId: 'g-pilot', displayName: 'Pilot', membershipRule: null, memberIds: [], memberCount: 0, sampled: false } },
   },
   // ---- service accounts ----
   'svc.noInteractive': {
@@ -466,7 +468,8 @@ const CASES: Record<string, Case> = {
     target: goodStrength,
     fail: (b) => {
       const id = b.snapshot.users[0].id
-      b.viability = [{ userId: id, mfa: 'verified', methodTiers: [] } as unknown as MfaViability]
+      b.snapshot.config.authStrengths.rows = [{ id: 's-1', allowedCombinations: ['fido2'], combinationConfigurations: [] }]
+      b.snapshot.registrationDetails.find(r=>r.id===id)!.methodsRegistered = ['microsoftAuthenticatorPush']
       return { tenant: { id: 's-1', allowedCombinations: ['fido2'] }, baselineCombinations: ['fido2'], population: [id] }
     },
   },
@@ -592,10 +595,16 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
   // and a step whose exclusions group is unusable has no operations at all, so
   // it answers "denies nothing" for exactly the steps this gate exists to hold.
   // The gate is what is under test, so the steps it holds are.
-  const denying = steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped')
+  for (const review of steps.filter(s => s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced')) assert.deepEqual(review.action.resolution?.policies ?? [], [], `${review.id}: a workflow check offers no tenant write`)
+  const denying = steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped' && !(s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced'))
   assert.ok(denying.length > 0, 'the fixture has policy steps the plan is still trying to write')
   assert.equal(denying.some((s) => canDenyAccess(s)) || denying.every((s) => stepEffects(s).length === 0), true, 'each either denies access or cannot be written at all')
   for (const s of denying) {
+    if (s.blockers.some(b => b.label === 'inforcer-application') && s.state.lifecycle === 'enforced') {
+      assert.equal(s.state.satisfied, false, 'broad coverage does not resolve the application')
+      assert.deepEqual(s.action.resolution?.policies ?? [], [], 'an unresolved identity review cannot change tenant policies')
+      continue
+    }
     assert.equal(s.status, 'blocked', `${s.id} is offered while the way back in is unverified`)
     assert.ok(s.blockedBy.includes(gate.id), `${s.id} does not name the emergency-access step`)
     // A step whose baseline contradicts itself still waits on the gate, but the
@@ -630,4 +639,25 @@ test('xg.usedConsistently lists every policy that does not exclude the group, re
   const r = run('xg.usedConsistently', g, b)
   assert.equal(r.outcome, 'fail')
   assert.deepEqual((r as { values?: { policies?: string[] } }).values?.policies, ['Policy B', 'Defender test'])
+})
+
+
+test('network findings require location-specific evidence and validate IPv4 and IPv6 ranges', () => {
+  const b = base()
+  const loc = { id: 'office', displayName: 'Office', isTrusted: true, ipRanges: [{ cidrAddress: '2001:db8::/64' }] }
+  b.snapshot.config.namedLocations.rows = [loc]
+  b.snapshot.scenarioEvidence = { ...b.snapshot.scenarioEvidence, trustedLocationMatches: { total: 0, byLocation: {}, trusted: [] } } as any
+  assert.equal(run('loc.seenInSignIns', loc, b).outcome, 'unknown', 'unrelated activity is not a location match')
+  assert.equal(run('loc.redundancy', loc, b).outcome, 'pass', 'IPv6 /64 contains more than one address')
+  assert.equal(run('loc.notWholeInternet', loc, b).outcome, 'pass')
+  loc.ipRanges = [{ cidrAddress: '2001:db8::/0' }]
+  assert.equal(run('loc.notWholeInternet', loc, b).outcome, 'fail', 'any /0 denotes the whole address family')
+  loc.ipRanges = [{ cidrAddress: '999.1.2.3/24' }]
+  assert.equal(run('loc.notWholeInternet', loc, b).outcome, 'unknown', 'malformed range is not silently valid')
+})
+
+test('a single-department tenant does not manufacture a pilot diversity defect', () => {
+  const b = base()
+  b.snapshot.users.forEach(u => { u.department = 'Operations' })
+  assert.equal(run('pilot.spread', b.groups[0], b).outcome, 'pass')
 })

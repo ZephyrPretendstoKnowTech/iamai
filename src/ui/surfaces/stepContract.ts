@@ -53,6 +53,7 @@ import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { BlockerKind, Lane, Substatus } from '../../actionability/lanes.ts'
 import { returnToStep } from '../shell/routes.ts'
+import { namedPortalResource } from './stepResources.ts'
 import dependencyData from '../../actionability/dependency-data.json' with { type: 'json' }
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph } from '../../actionability/lanes.ts'
@@ -270,6 +271,8 @@ export type ContractFound = { key: string; label: string; text: string }
  */
 export type ContractWho = { known: boolean; text: string }
 
+export type ContractInventory = { label: string; count: number; complete: boolean; names: string[]; note: string }
+
 /** The one next operator action. Every step has exactly one, and it is never absent. */
 export type ContractAction = {
   kind: 'decide' | 'resolve' | 'preserve' | 'observe' | 'enforce' | 'deploy' | 'verify' | 'restore' | 'none'
@@ -385,6 +388,8 @@ export type StepContract = {
   why: string
   found: ContractFound[]
   who: ContractWho | null
+  /** Known directory inventory is distinct from exact policy applicability. */
+  inventory?: ContractInventory | null
   whatToDo: ContractAction
   fix: ContractFix[]
   doneWhen: string[]
@@ -560,14 +565,34 @@ export function existingOf(step: Step): ContractExisting | null {
 }
 
 /** Who the policy reaches, from the reach Foundation A settled — never the goal's population standing in for it. */
-function whoOf(step: Step): ContractWho | null {
+function whoOf(step: Step, ctx: StepVarContext): ContractWho | null {
   const pop = reached(step)
   // Where the scope waits on a person's answer about the baseline's own groups, that is the reason, not the scan.
-  if (pop === null) return { known: false, text: (step.action.missing ?? []).some((m) => m.decision) ? CONTRACT.whoUnknownDecision : CONTRACT.whoUnknown }
+  if (pop === null) {
+    const source = ctx.snapshot.sources.users
+    const missing = [...new Set((step.action.missing ?? []).map(m => m.stepId ? stepById[m.stepId]?.title : null).filter(Boolean))]
+    const text = source && source.status !== 'ok'
+      ? `Directory read incomplete${source.reason ? `: ${source.reason}` : '.'}`
+      : missing.length ? `Policy scope awaits: ${missing.join('; ')}.`
+      : step.goalId === 'guests-mfa' ? 'Exact guest-policy reach needs the external-user type, home organization and applicable exclusions for each account.'
+      : 'Policy applicability is not fully resolved. Review the named policy assignments and prerequisites on this step.'
+    return { known: false, text }
+  }
   const view = stepPopulation(step)
   if (view === null) return { known: false, text: CONTRACT.whoUnknown }
   if (view.active === 0 && view.enabledCovered === 0) return null
   return { known: true, text: populationLine(pop) }
+}
+
+function inventoryOf(step: Step, ctx: StepVarContext): ContractInventory | null {
+  if (step.goalId !== 'guests-mfa') return null
+  const users = ctx.snapshot.users.filter(u => u.userType === 'guest')
+  const complete = ctx.snapshot.sources.users?.status === 'ok'
+  return {
+    label: 'Guest Directory', count: users.length, complete,
+    names: users.map(u => ctx.nameOf(u.id)),
+    note: `${complete ? 'Guest accounts read from the directory' : 'Guest accounts returned by the incomplete directory read'}. Policy applicability also depends on external-user type, home organization and exclusions.`,
+  }
 }
 
 /** The step's required policy members (Foundation B), each with its own name, stage and history. */
@@ -832,6 +857,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
   const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
   const whatToDo = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed)
+  const actionText = whatToDo.text
+  whatToDo.text = namedPortalResource({ id: 'portal', form: 'list', lines: [actionText], text: () => actionText, note: null }, ctx).text()
   // A date only where Foundation B has one; nothing here manufactures one, and a
   // label that already carries its date is not given it twice.
   // The Next line says the one thing What to do cannot: when. So it renders only
@@ -849,6 +876,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
   const found = foundOf(step, tenant, milestone.line)
+  const inventory = inventoryOf(step, ctx)
+  if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest accounts. ${inventory.names.join('; ')}` })
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
   return {
     id: step.id,
@@ -873,7 +902,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     track: stepTrack(step),
     why,
     found,
-    who: whoOf(step),
+    who: whoOf(step, ctx),
+    inventory,
     whatToDo,
     fix,
     doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant),
@@ -1345,13 +1375,17 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
  */
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
-  const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
+  const configuration = (step as Step & { configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[] }).configurationFindings ?? []
+  const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} guests`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
+  const facts = [...configuredTiles, ...emergencyTiles(step, c), ...(configuration.length ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')))
+  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(t.value)))
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
   const lead = facts.filter(unresolved)
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel)])
+  const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
+  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)])
   const satisfied = facts.filter((t) => !unresolved(t))
   return { tiles, satisfied, bar: barOf(c) }
 }
@@ -1406,9 +1440,9 @@ function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
 
 /** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
 function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
+  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; tileNote?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown; tileNote?: unknown } } | null } | undefined)?.decision
   const ask = (label: string): string | null => {
-    const text = d?.question?.label === label ? d.question.text : d?.label === label ? (d.text ?? d.help) : null
+    const text = d?.question?.label === label ? (d.question.tileNote ?? d.question.text) : d?.label === label ? (d.tileNote ?? d.text ?? d.help) : null
     return typeof text === 'string' && whole(text, {}) ? text : null
   }
   // What the tile asks to confirm, where the input names it (content review S3); otherwise the shared word.

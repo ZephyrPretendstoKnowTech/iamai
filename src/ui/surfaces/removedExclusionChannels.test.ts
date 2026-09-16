@@ -1,3 +1,4 @@
+import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 // Review 5 queue 1: a correction that takes a tenant exclusion off named it only in the
 // step's portal and export lines (review 3 queue 3). The viewer's package tabs, the
 // Entra procedure, AI Info and the called script, drew the same correction without
@@ -38,6 +39,7 @@ function opened(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [rowOf({ staffGroup, excl }), ...keep] } } }
+  readyEvidence(f, snapshot)
   const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!

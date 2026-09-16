@@ -318,8 +318,9 @@ test('the primitive itself: only confirmed-and-present carries an id', () => {
 
 const EXCLUSIONS_STEP = PREREQ_STEP_ID.exclusionsGroup
 
-/** Every string a plan's steps carry, so an id that reached any channel is found. */
-const planText = (r: FixtureRun): string => JSON.stringify(r.steps)
+/** Proposed actions may not use an unverified group. Stored manual-review bases
+ * legitimately retain the observed configuration, but are not deployable output. */
+const planText = (r: FixtureRun): string => JSON.stringify(r.steps.map(s => s.action))
 
 function planWith(name: 'small', directory: DirectoryEvidence): FixtureRun {
   const f = fixture(name)

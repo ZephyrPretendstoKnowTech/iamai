@@ -367,7 +367,6 @@ switch ($Mode) {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state creates the Windows token protection Conditional Access policy in Report-only.
@@ -408,7 +407,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The policy is in Report-only. Do not recreate it.
@@ -428,7 +426,6 @@ Explain which compatibility evidence still blocks enforcement, for interactive a
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 IAMAI shows this step Ready to enforce.

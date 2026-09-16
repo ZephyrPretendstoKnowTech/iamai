@@ -16,6 +16,9 @@ import { buildNameDirectory } from '../names.ts'
 
 const snapshot = fixtureSnapshot()
 const baseline = fixtureBaseline()
+// This cross-surface policy test needs an actual all-users MFA baseline goal;
+// preparation verification is a separate method-registration step.
+baseline.pkg.policies.push({ id: 'b-mfa', displayName: 'Require MFA for everyone', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
 const goalMap = goalMapFor(baseline.pkg.policies, new Map()).map
 const now = new Date().toISOString()
 
@@ -76,15 +79,13 @@ test('goal counts: Findings tiles sum to the scored goals and match the Roadmap'
   for (const goalId of Object.keys(goalMap)) assert.ok(steps.some((s) => s.goalId === goalId), `${goalId}: a baseline goal has no plan step`)
 })
 
-test('percentages: the MFA-ready share reads the same on Findings and on the all-users step', () => {
-  // Ready is phishing-resistant readiness (Step 7): the one state the MFA gate counts, never likelyViable metadata.
-  const active = summary.activityCounts.active
-  const ready = viability.filter((v) => v.activity === 'active' && v.readiness.state === 'ready').length
-  const readyPct = active > 0 ? Math.round((ready / active) * 100) : 0
-  const allUsers = steps.find((s) => s.goalId === 'mfa-all-users')
-  assert.ok(allUsers, 'the all-users MFA step exists')
-  assert.equal(allUsers.readiness.percent, readyPct)
-  assert.ok(readyPct >= 0 && readyPct <= 100)
+test('the all-users MFA readiness percentage matches its actual registered-method cohort', () => {
+  const allUsers = steps.find(s => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
+  assert.ok(allUsers?.methodPreparation)
+  const cohort = new Set(allUsers.methodPreparation.ids)
+  const registered = snapshot.registrationDetails.filter(row => cohort.has(row.id) && row.isMfaCapable && row.methodsRegistered.length > 0)
+  assert.equal(allUsers.readiness.percent, Math.round(registered.length / cohort.size * 100))
+  assert.equal(allUsers.methodPreparation.readyIds.length, registered.length)
 })
 
 // ---- prompt 31 §3.13-14: the comms plan and the log agree with the steps; nothing is done, safe or verified without evidence ----

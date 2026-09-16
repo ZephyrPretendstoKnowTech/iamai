@@ -660,6 +660,10 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
 
 test('a revised source keeping the same id is implemented like any other policy', () => {
   const f = withRevisedBaseline()
+  // This translator case explicitly resolves the custom application reference;
+  // a revised source does not by itself prove a tenant application exists.
+  const app = '708861da-226e-4d65-a57a-24128df64524'
+  f.mapping.records[app] = { placeholder: app, kind: 'application', group: 'servicePrincipals', resolvedId: app, resolvedName: 'Reviewed tenant application', provenance: 'confirmed', doesNotExist: false, validation: null }
   const r = runFixture(f)
   const step = r.steps.find((x) => x.goalId === GOAL)
   assert.ok(step, 'the admin-portals step is in the plan')
@@ -686,7 +690,7 @@ test('a revised source keeping the same id is implemented like any other policy'
 
   // And the implementation the reviewed version earned is really there.
   const contract = stepContract(s, ctx, stepVars(s, ctx))
-  assert.equal(unavailableReason(s), null, 'the settled policy is still held back from being written')
+  assert.equal(unavailableReason(s), null, `the settled policy is still held back from being written: ${JSON.stringify(s.action.missing)}`)
   assert.equal(typeof s.action.json, 'string', 'no policy body was written for a policy that now says one thing')
   assert.equal(jsonOffered(s), true, 'the JSON, PowerShell and Download tabs are withheld')
   assert.notEqual(s.state.lifecycle, null, 'the step lost its rollout stage')

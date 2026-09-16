@@ -63,7 +63,8 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   assert.ok(demo, 'the demo plan has the MFA step')
   const gate = tilesOf(demo).find((t) => t.key === 'gate')
   assert.ok(gate, 'the demo MFA step has no threshold tile')
-  assert.match(String(gate.value), /^\d{1,3}% MFA-ready$/)
+  assert.equal(gate.value, 'not measured')
+  assert.ok(gate.note, 'unmeasured readiness explains the missing evidence')
   // Where the scan could not work out who is held: the line, the link, and what follows it.
   const P = app.plan as unknown as Record<string, Record<string, string>>
   // The spec's "Some users may not…" is not applied: the Plan's words say people (footer.test.ts; BLOCKED.md).
@@ -81,7 +82,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: REMOVED })
   assert.deepEqual(authoredParts(entra).filter(p => p.kind === "line")[1], { kind: 'line', text: 'This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
-    { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
+    { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).']] },
     {
       kind: 'list', ordered: true, start: 3, items: [
         ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
@@ -99,7 +100,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   // Editorial batch C (channel correction): the built-in grant, the Intune Enrollment exclusion, no promise of a prompt at every sign-in.
   assert.match(ai, /^This policy requires multifactor authentication for the users it covers\. It uses the built-in Require multifactor authentication grant, not an authentication strength\./m)
   assert.match(ai, /^— Target resources: All resources, excluding Microsoft Intune Enrollment\. A separate step sets the requirement for Intune enrollment\.$/m)
-  assert.match(ai, /^An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in\. Whether each person has a usable method is shown on MFA Readiness; the MFA Registration Campaign step helps people register one\.$/m)
+  assert.match(ai, /^An existing MFA claim may satisfy the policy, so people are not necessarily prompted at every sign-in\. Whether each person has a usable method is shown on MFA Readiness; the Prepare Your Team for MFA step helps people register one\.$/m)
   assert.ok(ai.includes(KEEP_STATE))
   assert.doesNotMatch(ai, /single most impactful|unconditionally|already enforced|\d+% threshold/)
 })
@@ -128,14 +129,14 @@ test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names 
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
-        ['Open {{policies.guests.strong.current.displayName}} (find it by ID in Plan settings).'],
+        ['Open {{policies.guests.strong.current.displayName}} (use the policy name and ID shown on this step).'],
         ['Name: set it to **{{policies.guests.strong.target.displayName}}**.'],
         [USERS],
         ['Target resources: All resources. Client apps: All. Remove any other condition.'],
         ['Grant: **Grant access → Require authentication strength**, and select the authentication strength in the resolved target. Remove any other grant control.'],
         ['Session: remove any session control the resolved target does not include.'],
         [SAVE, REMOVED_MEMBER('strong')],
-        ['Open {{policies.guests.mixed.current.displayName}} (find it by ID in Plan settings).'],
+        ['Open {{policies.guests.mixed.current.displayName}} (use the policy name and ID shown on this step).'],
         ['Name: set it to **{{policies.guests.mixed.target.displayName}}**.'],
         [USERS],
         ['Target resources: All resources. Client apps: All. Remove any other condition.'],
@@ -164,7 +165,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.ok(demo, 'the demo plan has the admin step')
   const gate = tilesOf(demo).find((t) => t.key === 'gate')
   assert.ok(gate, 'the demo admin step has no threshold tile')
-  assert.match(String(gate.value), /^\d{1,3}% of admins phishing-resistant$/)
+  assert.equal(gate.value, '67% of admins phishing-resistant')
   // Where the scan could not work out which admins are held.
   const P = app.plan as unknown as Record<string, Record<string, string>>
   assert.equal(P.mfaReadinessHoldUnknown.admin, "Check which admins don't have a phishing-resistant method yet:")
@@ -176,7 +177,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: REMOVED })
   assert.deepEqual(authoredParts(entra).filter(p => p.kind === "line")[1], { kind: 'line', text: 'This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
-    { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
+    { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).']] },
     {
       kind: 'list', ordered: true, start: 3, items: [
         ['Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.'],
@@ -195,7 +196,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.match(ai, /the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass\. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass\.$/m)
   // No fixed claim about the tenant's registrations: nothing binds one (C07).
   assert.doesNotMatch(ai, /0% threshold|none of your admins|every time they sign in/)
-  assert.match(ai, /Whether admins have an accepted method registered is shown on MFA Readiness, and the MFA Registration Campaign step helps them register one\./)
+  assert.match(ai, /Whether admins have an accepted method registered is shown on MFA Readiness, and the Prepare Your Team for MFA step helps them register one\./)
   assert.match(ai, /^The correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name\.$/m)
   assert.ok(ai.includes(KEEP_STATE))
 })
@@ -212,7 +213,7 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
-        ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).'],
+        ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
         ['Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.'],
       ],
@@ -238,7 +239,7 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
   assert.ok(tile, 'the unsaved device code decision has no tile')
   assert.equal(tile.value, 'Confirm no legitimate use')
   // The note stays the step's own question: the spec's exceptions note contradicts the step (BLOCKED.md).
-  assert.equal(tile.note, 'Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?')
+  assert.equal(tile.note, 'The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows.')
   // The options are the stored answers, so they stay None and Yes (BLOCKED.md).
   const steps = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as { id: string; decision?: { options?: string[] } }[]
   assert.deepEqual(steps.find((s) => s.id === 'block-device-code')?.decision?.options, ['None', 'Yes'])
@@ -251,7 +252,7 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
-        ['Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).'],
+        ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
         ['Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.'],
       ],

@@ -14,7 +14,6 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.register","channel":"aiInfo","states":["register"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step starts with registering an approved passkey or security key for {{operator.displayName}}. Current registered methods: {{operator.current.methods}}.
 
@@ -24,7 +23,6 @@ NEXT STEP: Explain which approved path the operator can register now (a passkey 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI has not yet seen the successful phishing-resistant sign-in this step needs for {{operator.displayName}}. Sign-in evidence: {{operator.current.proof}}. Registration alone does not complete the step, and the evidence covers only the sign-in records in this scan.
 
@@ -32,7 +30,6 @@ NEXT STEP: Explain how to sign out and sign in again deliberately with the passk
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is on hold: {{dependencies.blockers}}. Resolve the blocker rather than bypassing the passkey method policy or adding a Conditional Access exclusion for the operator.
 

@@ -115,19 +115,16 @@ $out
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisite","channel":"aiInfo","states":["configurePrerequisite"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The next action for **Limit Unmanaged Devices in the Browser** in {{tenant.displayName}} is the SharePoint unmanaged-device setting, before either Conditional Access policy is created or changed. Current SharePoint mode: {{sharepoint.unmanagedDevices.currentMode}}. Intended mode: `AllowLimitedAccess` (Allow limited, web-only access). Microsoft documents that saving this setting in the SharePoint admin center can disable Conditional Access policies previously created from that page and create a new one without earlier customizations, so let the change propagate and rescan in IAMAI before using any policy ID. The SharePoint setting does not configure Exchange mailbox restrictions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Limit Unmanaged Devices in the Browser** needs two Conditional Access policies in {{tenant.displayName}}, each created in Report-only after the SharePoint setting (`AllowLimitedAccess`) is in place and IAMAI has rescanned. Policy A limits Office 365 browser sessions with app enforced restrictions (`applicationEnforcedRestrictions`). Policy B uses Conditional Access App Control with Block downloads (`cloudAppSecurity: blockDownloads`) and applies only when Defender for Cloud Apps is licensed. Neither policy sets a grant control. The policy IDs come from the tenant scan; the baseline does not supply them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The unmanaged-browser policies in {{tenant.displayName}} differ from the intended target: {{policies.unmanagedBrowser.semanticMismatches}}. The next action is to correct each differing policy using its ID from the latest scan, because a SharePoint access-control change can replace earlier policies. The SharePoint setting is changed in SharePoint, not in the Conditional Access policy.
 
@@ -135,25 +132,21 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Both unmanaged-browser policies are in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. These results show where each policy would apply; session restrictions are not applied in Report-only, so they do not show whether download, print or sync limits work. Policy A and Policy B have separate evidence, and the SharePoint setting is checked separately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The unmanaged-browser policies in {{tenant.displayName}} are ready for enforcement. Before setting each policy to On, confirm by its current ID that it still matches the intended target, Grant is unconfigured, the SharePoint setting is in place and, for Policy B, Defender for Cloud Apps is licensed. Enable one policy at a time. Browser restrictions can only be tested once a policy is On; test SharePoint and Exchange separately from an unmanaged device.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Limit Unmanaged Devices in the Browser** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. The step covers the SharePoint unmanaged-device setting and two Conditional Access policies, and Policy B also depends on Defender for Cloud Apps licensing.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Defender for Cloud Apps licensed (`license.defenderCloudApps`): {{license.defenderCloudApps}}. Policy B, which uses Conditional Access App Control with Block downloads, is unavailable without that license. The SharePoint setting and Policy A may still be actionable, but Policy A alone does not complete this step.
 @@IAMAI-END

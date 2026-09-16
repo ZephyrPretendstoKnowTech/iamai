@@ -779,7 +779,7 @@ function externalIdentityOf(snapshot: { users?: DirectoryRow[] }, accountId: str
 export type Applicability = 'in' | 'out' | 'unknown'
 
 /** What the scan can say about who is in a group. A group it holds nothing for cannot be answered. */
-export type ScopeEvidence = { groupMembers?: Record<string, readonly string[]> }
+export type ScopeEvidence = { groupMembers?: Record<string, readonly string[]>; /** Optional per-assessment index; never persisted across scans. */ groupMemberSets?: Record<string, ReadonlySet<string>> }
 
 /**
  * Whether one policy reaches one account, from the policy's own include and
@@ -802,6 +802,8 @@ export function accountApplicability(
   const roles = new Set(snapshot.roles?.active?.[accountId] ?? [])
   const members = evidence.groupMembers ?? {}
   const inGroup = (id: string): boolean | null => {
+    const indexed = evidence.groupMemberSets?.[id] ?? evidence.groupMemberSets?.[id.toLowerCase()]
+    if (indexed) return indexed.has(accountId.toLowerCase())
     const known = members[id] ?? members[id.toLowerCase()]
     return known === undefined ? null : known.some((m) => m.toLowerCase() === accountId.toLowerCase())
   }
@@ -818,7 +820,7 @@ export function accountApplicability(
   // from. The directory says one thing — Member or Guest — so a clause is
   // answered exactly only where every kind that account could be is named
   // (guestClauseCovers); anything narrower is a question nothing here settles.
-  const who = externalIdentityOf(snapshot, accountId)
+  const who = scope.guests.include !== null || scope.guests.exclude !== null ? externalIdentityOf(snapshot, accountId) : null
   const clauseCovers = (clause: GuestClause): 'yes' | 'no' | 'unknown' => (who === null ? 'unknown' : guestClauseCovers(clause, who))
   if (scope.guests.exclude !== null) {
     const covered = clauseCovers(scope.guests.exclude)

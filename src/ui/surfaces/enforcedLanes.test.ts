@@ -82,7 +82,7 @@ const stepOf = (run: ReturnType<typeof runFixture>, id: string): Step => {
   return s
 }
 
-test('U21 (owner contract): on the demo Initial scan every enforced policy that drifted behind an unmapped reference is On Hold, on the board and in its export alike, and its operations are untouched', () => {
+test('U21 (owner contract): on the demo Initial scan an enforced policy with a resolved correction is Ready to Correct, on the board and in its export alike, and its operations are untouched', () => {
   const before = demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s)))
   const readings = laneReadings(demoRun.steps)
   const drifted = demoRun.steps.filter((s) => s.state.lifecycle === 'enforced' && s.status !== 'done')
@@ -91,11 +91,12 @@ test('U21 (owner contract): on the demo Initial scan every enforced policy that 
   for (const s of drifted) {
     assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
     const r = readings.get(s.id)
-    assert.equal(r?.lane, 'On Hold', s.id)
-    assert.equal(r?.reason?.kind, 'sourceMapping', `${s.id}: the correction waits on a Baseline mapping`)
+    assert.equal(r?.lane, 'Ready', s.id)
+    assert.equal(r?.substatus, 'Correct', s.id)
+    assert.equal(r?.reason, null, `${s.id}: undocumented optional exclusions no longer hold the correction`)
     const view = laneViewFor(s, demoRun.steps)
     const exported = stepExportView(s, ctx, view)
-    assert.deepEqual([exported.state, exported.lane, exported.reason], [view.label, BOARD.lanes.onHold, view.tail], `${s.id}: the export says another state`)
+    assert.deepEqual([exported.state, exported.lane, exported.reason], [view.label, BOARD.lanes.ready, null], `${s.id}: the export says another state`)
   }
   // Classification reads the operations; it never changes them.
   assert.deepEqual(demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s))), before)
@@ -107,13 +108,20 @@ test('U20: on the demo Follow-up scan with its saved answers every enforced poli
   const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
   assert.ok(enforced.length >= 5, 'the premise: week two enforces the first policies')
   for (const s of enforced) {
+    if (s.blockers.some(b => b.label === 'inforcer-application')) {
+      assert.equal(s.state.satisfied, false, 'broad coverage cannot settle application identity')
+      assert.ok(['Up Next', 'On Hold'].includes(readings.get(s.id)?.lane ?? ''), 'unresolved identity remains pending; a Ready prerequisite may make it Up Next')
+      continue
+    }
     assert.equal(driftOutcomeOf(s), null, `${s.id}: the premise, no drift`)
-    assert.equal(readings.get(s.id)?.lane, 'Completed', s.id)
+    assert.equal(readings.get(s.id)?.lane, s.manualReview && !s.manualReview.confirmedAt ? 'Ready' : 'Completed', s.id)
+    if (s.manualReview && !s.manualReview.confirmedAt) assert.equal(readings.get(s.id)?.substatus, 'Review', s.id)
   }
   const intune = readings.get('s-goal-intune-enrollment-reauth')
   assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'fact'], 'the session-loop configuration guard is not cleared by waiting for more evidence')
   const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), run.steps)
-  assert.equal(view.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.fact}`)
+  assert.equal(view.label, BOARD.lanes.onHold)
+  assert.equal(view.tail, BOARD.blockers.fact)
 })
 
 test('U28: a step whose conditional input nobody saved does not read Completed even when the scan delivers it; a Save clears it', () => {
@@ -127,7 +135,7 @@ test('U28: a step whose conditional input nobody saved does not read Completed e
   assert.notEqual(r?.lane, 'Completed')
   assert.notEqual(r?.substatus, 'Ready to enforce')
   // The answer that changes nothing, saved, is still an answer.
-  assert.deepEqual(unsavedInputsOf(legacy.id, { questionAnswers: { [answerKey(legacy.id, label)]: 'No' } }), [])
+  assert.deepEqual(unsavedInputsOf(legacy.id, { questionAnswers: { [answerKey(legacy.id, label)]: 'None' } }), [])
   assert.equal(stepOf(runFixture(answered, {}, null, answered.snapshot.asOf), legacy.id).unsavedInputs, undefined)
 })
 
@@ -160,7 +168,7 @@ test('B7 (S-DC-6): Block Device Code Sign-in asks whether anyone uses device cod
 test('U19: an enforced block policy missing the exclusions group is Partial even where Foundation A will not write the whole policy; a group taken out is not', () => {
   const step = stepOf(demoRun, LEGACY)
   assert.equal(step.state.lifecycle, 'enforced')
-  assert.equal(policyResult(step).kind, 'unavailable', 'the premise: the whole policy cannot be written')
+  assert.equal(policyResult(step).kind, 'implementable', 'the documented correction has resolved inputs')
   const op = plannedOperationsOf(step)[0]
   const rows = (demo.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const missing = rows.map((r) => {
@@ -172,9 +180,12 @@ test('U19: an enforced block policy missing the exclusions group is Partial even
   assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'])
   assert.equal(safeCorrectionOf(step, snapshot), true)
   assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'partial')
-  // As the demo stands the update swaps the tenant's own excluded group out: that can lock someone out, so it stays planned work.
-  assert.equal(safeCorrectionOf(step, demo.snapshot), false)
-  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, demo.snapshot)), demo.snapshot), 'blocked')
+  // A real removed tenant exclusion remains an unsafe automatic correction.
+  const removed = structuredClone(snapshot)
+  const row = removed.config.caPolicies!.rows.find((r: any) => r.id === op.policyId) as any
+  row.conditions.users.excludeGroups = ['existing-tenant-exception']
+  assert.equal(safeCorrectionOf(step, removed), false)
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, removed)), removed), 'blocked')
 })
 
 test('U22: the threshold tile states the fact on an enforced policy and the gate on one not yet enforced', () => {
@@ -184,7 +195,7 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   }
   const mfa = stepOf(demoRun, 's-goal-mfa-all-users')
   assert.equal(mfa.state.lifecycle, 'enforced')
-  assert.equal(note(mfa), `${mfa.action.readinessGate!.value} of people in scope have a qualifying method.`)
+  assert.equal(note(mfa), `MFA readiness is not measured today; enforcement waits for ${mfa.action.readinessGate!.threshold}.`, 'unknown evidence must not be phrased as a measured percentage')
   const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
   const gate = admins.action.readinessGate!
   assert.equal(admins.state.lifecycle, 'report-only')

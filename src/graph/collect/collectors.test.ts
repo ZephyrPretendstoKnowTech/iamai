@@ -9,6 +9,40 @@ import { collectConfigSection } from './collectors.ts'
 const tokens = { get: () => 't', refresh: async () => 't' }
 const ctx = { tokens, signal: new AbortController().signal } as unknown as Parameters<typeof collectConfigSection>[0]
 
+test('dedicated v1.0 Fido2 read replaces the partial parent method and records its provenance', async () => {
+  const fido = { id: 'Fido2', state: 'enabled', passkeyProfiles: [{ id: 'profile', passkeyTypes: 'deviceBound' }], includeTargets: [{ id: 'all_users', allowedPasskeyProfiles: ['profile'] }] }
+  const section = await withFetch({
+    '/authenticationMethodConfigurations/Fido2': () => new Response(JSON.stringify(fido), { status: 200 }),
+    '/policies/authenticationMethodsPolicy': () => new Response(JSON.stringify({ policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator' }, { id: 'Fido2', state: 'disabled', keyRestrictions: { isEnforced: false } }] }), { status: 200 }),
+  }, () => collectConfigSection(ctx, 'authMethodsPolicy'))
+  assert.deepEqual(section.fido2Read, { status: 'ok', reason: null, httpStatus: 200 })
+  const row = section.rows[0] as { authenticationMethodConfigurations: unknown[] }
+  assert.deepEqual(row.authenticationMethodConfigurations, [{ id: 'MicrosoftAuthenticator' }, fido], 'partial responses must not inherit stale parent fields')
+})
+
+test('a refused Fido2 relationship read preserves the parent data and precise failure', async () => {
+  const parent = { policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled' }] }
+  const section = await withFetch({
+    '/authenticationMethodConfigurations/Fido2': () => new Response(JSON.stringify({ error: { code: 'Authorization_RequestDenied', message: 'Read permission missing' } }), { status: 403 }),
+    '/policies/authenticationMethodsPolicy': () => new Response(JSON.stringify(parent), { status: 200 }),
+  }, () => collectConfigSection(ctx, 'authMethodsPolicy'))
+  assert.equal(section.status, 'ok', 'an auxiliary read cannot destroy other authentication-policy evidence')
+  assert.deepEqual(section.rows, [parent])
+  assert.equal(section.fido2Read?.status, 'error')
+  assert.equal(section.fido2Read?.httpStatus, 403)
+  assert.match(section.fido2Read?.reason ?? '', /Read permission missing/)
+})
+
+test('a dedicated Fido2 response does not manufacture an otherwise missing methods collection', async () => {
+  const section = await withFetch({
+    '/authenticationMethodConfigurations/Fido2': () => new Response(JSON.stringify({ id: 'Fido2', state: 'enabled' }), { status: 200 }),
+    '/policies/authenticationMethodsPolicy': () => new Response(JSON.stringify({ policyMigrationState: 'migrationComplete' }), { status: 200 }),
+  }, () => collectConfigSection(ctx, 'authMethodsPolicy'))
+  const row = section.rows[0] as Record<string, unknown>
+  assert.equal(row.authenticationMethodConfigurations, undefined)
+  assert.deepEqual(row.fido2Configuration, { id: 'Fido2', state: 'enabled' })
+})
+
 async function withFetch<T>(routes: Record<string, () => Response>, run: () => Promise<T>): Promise<T> {
   const original = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL) => {

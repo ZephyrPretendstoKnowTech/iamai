@@ -41,7 +41,7 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   const baseRun = runFixture(base)
   const ctxOf = (f: typeof base, r: typeof baseRun): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
   // Unavailable: its users still name a reference nobody has answered.
-  const waiting = baseRun.steps.find((s) => s.id === SESSION)!
+  const waiting = baseRun.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
   assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
   assert.equal(Object.hasOwn(bindingsOf(waiting, ctxOf(base, baseRun)), 'policy.target.excludeUsers'), false, 'bound while the users wait')
   // Answered: the pinned target excludes nobody by account, and that is a value.
