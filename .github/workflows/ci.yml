@@ -99,8 +99,9 @@ jobs:
           CHECKS: ${{ needs.checks.result }}
           BROWSER: ${{ needs.browser.result }}
         run: test "$CHECKS" = success && test "$BROWSER" = success
+  # Publish the exact pushed commit independently of CI. Checks still report
+  # normally, but they do not delay an authorized production deployment.
   release:
-    needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     uses: ./.github/workflows/deploy-pages.yml
     permissions:

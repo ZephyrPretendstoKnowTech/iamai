@@ -1,5 +1,5 @@
-# Called after the exact main commit passes ci; reuse its immutable build.
-# Manual releases start through ci.yml on main, with the same validation gates.
+# Called for the exact commit pushed to main. Publishing is independent of CI;
+# the local pre-push gate validates the release while CI reports in parallel.
 name: deploy-pages
 on:
   workflow_call:
@@ -8,10 +8,10 @@ permissions:
   pages: write
   id-token: write
 jobs:
-  walk:
+  build:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,23 +21,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - run: npm run build:site
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: site-${{ github.sha }}
-      - name: Verify validated artifact
-        run: node scripts/release-artifact.mjs verify "$GITHUB_SHA"
-      - run: npm run walk
-        env:
-          CHROME: /usr/bin/google-chrome
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: walk-${{ github.sha }}-${{ github.run_attempt }}
-          path: walk/
-          if-no-files-found: ignore
-          retention-days: 7
+          name: github-pages-${{ github.run_attempt }}
+          path: dist
   deploy:
-    needs: walk
+    needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     concurrency:
@@ -47,21 +37,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/download-artifact@v4
-        with:
-          name: site-${{ github.sha }}
-      - name: Verify exact build before publication
-        run: node scripts/release-artifact.mjs verify "$GITHUB_SHA"
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          name: github-pages-${{ github.run_attempt }}
-          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
         with:

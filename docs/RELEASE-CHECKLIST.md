@@ -2,9 +2,9 @@
 
 What a person does before the app is shown to anyone outside the project. The automated
 checks run once per PR update and again for the exact merged main commit. Unit/type
-checks and build/browser checks are independently retryable. Deployment walks main and
-publishes the same commit- and content-verified build artifact; it does not repeat the
-suite or rebuild the site. Manual releases start by running the ci workflow on main.
+checks and build/browser checks are independently retryable. Deployment starts for the
+exact pushed main commit in parallel with CI, builds the site once, and publishes it
+without waiting for the complete suite or deployment walk.
 Use `npm run verify -- src/path/example.test.ts` during a batch. Before a routine
 push, run `npm run verify -- --prepush src/path/example.test.ts` with every
 relevant test file; it typechecks and builds first, then overlaps the focused
