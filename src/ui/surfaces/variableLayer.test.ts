@@ -76,23 +76,16 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   }
 })
 
-// Prompt 52, walk-51 item 6: a policy step's done-when comes from
-// shared.policyDoneWhen; the walk found token-protection showing a "Done when"
-// heading with nothing under it. Expanded and filled, the section has content.
-test('a policy step expands its done-when from the shared lines, no empty section', () => {
+// Token protection has concise, scan-verifiable completion plus client compatibility.
+test('token protection has concrete completion criteria without the generic checklist', () => {
   const f = allFixtures().find((x) => x.name === 'demo')!
   const run = runFixture(f)
   const tp = run.steps.find((s) => s.goalId === 'token-protection')!
   const cs = contentStepFor(tp) as { doneWhen: string[] }
-  // Editorial batch C: after the shared lines, only the step's own human check, labelled as one.
-  assert.equal(cs.doneWhen[0], '{policyDoneWhen}', 'token-protection defers to the shared policy lines')
-  assert.deepEqual(cs.doneWhen.slice(1), ['The required supported Windows clients work, and unresolved compatibility issues are recorded.'], 'the client compatibility check remains explicit')
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: run.input.operatorUserId ?? null, now: f.snapshot.asOf }
-  const ex = stepVars(tp, ctx) as Record<string, unknown>
-  const shared = content.shared as Record<string, string[]>
-  const dw = cs.doneWhen.flatMap((x) => (x === '{policyDoneWhen}' ? shared.policyDoneWhen : [x])).filter((l) => missingVars(l, ex).length === 0)
-  assert.ok(dw.length >= 2, `the shared policy done-when lines render (${dw.length})`)
-  assert.ok(dw.some((l) => l.includes('report-only period of {reportOnlyDays} days')), 'the report-only line fills reportOnlyDays')
+  assert.equal(cs.doneWhen.length, 2)
+  assert.match(cs.doneWhen[0], /scan confirms token protection is On.*Windows clients and resources.*exclusions/i)
+  assert.match(cs.doneWhen[1], /Supported work apps sign in successfully with token protection/i)
+  assert.ok(cs.doneWhen.every(line => !line.includes('{')))
 })
 
 // Prompt 52, walk-51 item 7: a per-person email fills the first name or falls

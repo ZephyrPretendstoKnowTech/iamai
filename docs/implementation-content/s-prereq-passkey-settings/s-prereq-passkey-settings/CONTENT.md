@@ -3,12 +3,17 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-fido2","channel":"entra","states":["missing","partial","needsDecision","blocked"],"format":"markdown","kind":"template"}
-1. Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).
-2. Enable Passkey (FIDO2) and self-service registration for the intended users. Preserve the existing target groups and exclusions.
-3. For profile-based settings, inspect every profile that applies to those users. Use device-bound passkeys, require attestation, and check each profile's allowed authenticator models. A second applicable profile must not permit methods the first profile excludes.
-4. For legacy settings, require attestation and use an allowed-model list. Include Microsoft Authenticator for iOS AAGUID 90a3ccdf-635c-4729-a248-9b709135078f and Android AAGUID de1e552d-db1d-4423-a619-566b625cdc84, together with the approved hardware-key models used for emergency access.
-5. Confirm the hardware model's AAGUID against its manufacturer's information. Keep a tested recovery method available before narrowing an existing model list.
-6. Save, reopen the settings and scan again. Readiness identifies each remaining mismatch.
+1. Open Entra admin center → Entra ID → Security → Authentication methods → Policies → Passkey (FIDO2).
+2. Before tightening restrictions, check the emergency-access step for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.
+3. Enable the method for the intended users. Keep the existing target groups and exclusions. Under Configure, enable self-service setup.
+4. If profiles are already enabled, open each applicable profile under Configure. Select device-bound passkeys, require attestation, enable key restrictions and choose Allow. For legacy settings, set attestation and key restrictions on the Configure tab, with Allow as the restriction type.
+5. Add the model IDs below to that allowed AAGUID list. They are IAMAI defaults, not a hardware-brand requirement specified by Jon's imported baseline.
+
+{{passkey.target.modelList}}
+
+6. An AAGUID identifies a model family, not an individual key. Other versions of the same brand can have different IDs. Keep existing approved recovery models; additional models are a tenant customization of IAMAI's defaults. Find a registered key's AAGUID in the user's Authentication methods details, or verify it against the manufacturer's information and Microsoft's hardware catalog.
+7. For profiles, check Enable and Target to confirm assignments. A user can use any applicable profile, so check that another assigned profile does not permit an unintended authenticator.
+8. Save, reopen the settings and scan again. Test emergency-account access in the emergency-access step.
 
 Settings read: {{passkey.current.summary}} [omit this line when unavailable]
 Resolved change: {{passkey.target.summary}} [omit this line when unavailable]

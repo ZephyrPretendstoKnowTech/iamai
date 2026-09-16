@@ -117,24 +117,17 @@ test('a later failed recovery test supersedes the previous successful test', () 
   assert.equal(latestRecoveryTest('a', cleanupRecord(checkpoints).records!, at), null)
 })
 
-test('a listed policy workflow needs both current configuration and a scoped successful test', () => {
-  const { f, step } = setup('s-goal-token-protection')
-  step.satisfiedBy = { policies: ['target'], sufficient: 'target' }
-  f.snapshot.config.caPolicies.rows = [{ id: 'target', displayName: 'Token policy', state: 'enabled', conditions: { users: { includeUsers: ['All'] } }, sessionControls: { secureSignInSession: { isEnabled: true } } }]
-  const record = recordFor(step, f)
-  applyManualReviews([step], f.snapshot, {}, f.mapping)
-  assert.equal(step.state.satisfied, false, 'a matching configuration alone is not the recorded workflow test')
-  setState(step, { satisfied: true, inPlace: true })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  ;(f.snapshot.config.caPolicies.rows[0] as any).displayName = 'Renamed'
-  setState(step, { satisfied: true, inPlace: true })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, true)
-  ;(f.snapshot.config.caPolicies.rows[0] as any).sessionControls.secureSignInSession.isEnabled = false
-  setState(step, { satisfied: false, inPlace: false })
-  apply(step, f, record)
-  assert.equal(step.state.satisfied, false, 'manual success never overrides the scanned mismatch')
+test('the simplified policy steps complete from scanned configuration without a Workflow Check form', () => {
+  for (const id of ['s-goal-token-protection', 's-goal-block-auth-transfer', 's-goal-user-risk']) {
+    const {f, step} = setup(id)
+    setState(step, {satisfied: true, inPlace: true})
+    applyManualReviews([step], f.snapshot, {}, f.mapping)
+    assert.equal(step.state.satisfied, true, id)
+    assert.equal(step.manualReview, undefined, id)
+    setState(step, {satisfied: false, inPlace: false})
+    applyManualReviews([step], f.snapshot, {}, f.mapping)
+    assert.equal(step.state.satisfied, false, 'removing a workflow form does not override a scan failure')
+  }
 })
 
 test('PIM manual proof identifies the actual policy context, tested role and linked configuration', () => {

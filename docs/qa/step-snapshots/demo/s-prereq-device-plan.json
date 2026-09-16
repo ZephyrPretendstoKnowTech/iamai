@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Decision",
-      "state": "Decision"
+      "state": "Choose device management"
     }
   ],
   "channels": [

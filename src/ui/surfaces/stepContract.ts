@@ -1224,7 +1224,7 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (s.satisfied && (step.workflowChoices || step.id === 's-prereq-device-plan')) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
-  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
+  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: step.id === 's-prereq-device-plan' ? 'Choose device management' : t.decisionValue, note: step.id === 's-prereq-device-plan' ? 'Save your choices for Phone Management, Phone App Protection and Computer Management.' : c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
   const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string }
   if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote }
@@ -1279,7 +1279,8 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 
 /** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
 function peopleTile(c: StepContract): ReadinessTile | null {
-  if (c.who === null) return null
+  if (c.id === 's-prereq-device-plan') return null
+  if (c.who === null || (!c.who.known && c.who.text.startsWith('Policy applicability is not fully resolved.'))) return null
   const t = R().tiles
   const peopleNote = c.policy ? t.peopleNote : (t as unknown as { peopleStepNote: string }).peopleStepNote
   return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: peopleNote } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
@@ -1378,7 +1379,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const configuration = (step as Step & { configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[] }).configurationFindings ?? []
   const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
-  const facts = [...configuredTiles, ...emergencyTiles(step, c), ...(configuration.length ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(t.value)))
@@ -1386,6 +1387,15 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)])
+  if (step.state.lifecycle === 'not-deployed' && c.implementation.offered && operationsOf(step).length > 0 && operationsOf(step).every(op => op.mode === 'create' && !enforcesOnRun(op))) {
+    for (const tile of tiles) {
+      const prerequisite = tileStepOf(tile)
+      if (prerequisite && Object.values(GATE_STEP).includes(prerequisite) && !blockers.some(b => b.id === prerequisite)) {
+        tile.label = 'Before enforcement'
+        tile.note = `Ready for report-only deployment. Complete ${tile.value} before enforcement. Creating this policy in Report-only does not enforce access restrictions.`
+      }
+    }
+  }
   const satisfied = facts.filter((t) => !unresolved(t))
   return { tiles, satisfied, bar: barOf(c) }
 }

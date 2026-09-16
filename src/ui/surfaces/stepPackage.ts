@@ -626,6 +626,12 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   if (step.kind === 'prerequisite') {
     put('location.target.displayName', step.naming?.proposed)
     put('strength.target.displayName', step.naming?.proposed)
+    const combinations = step.authenticationStrengthTarget?.allowedCombinations
+    if (combinations?.length) {
+      const names: Record<string, string> = { windowsHelloForBusiness: 'Windows Hello for Business', fido2: 'Passkeys (FIDO2)', x509CertificateMultiFactor: 'Certificate-based authentication (multifactor)', temporaryAccessPassOneTime: 'Temporary Access Pass (one-time use)', temporaryAccessPassMultiUse: 'Temporary Access Pass (multi-use)' }
+      put('strength.target.allowedCombinations', combinations)
+      put('strength.target.methodNames', combinations.map(value => names[value] ?? value))
+    }
     if (step.id === 's-prereq-service-accounts-group') put('group.target.displayName', step.naming?.proposed)
   }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
@@ -653,7 +659,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot, ctx.nameOf))) out[key] = value
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
   if (step.id === PASSKEY_SETTINGS_STEP_ID) {
-    for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
+    for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot, ctx.mapping))) out[key] = value
     const target = out['passkey.target.fido2Configuration'] as Record<string, unknown> | undefined
     // An already-correct profile is evidence, not a writable property of this
     // method patch. Only the two resolved global switches need changing.

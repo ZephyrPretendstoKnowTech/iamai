@@ -83,7 +83,7 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
   // Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('sign-in-risk-medium')
   assert.equal(words.why, 'This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.')
-  assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.")
+  assert.equal(words.doneEnd, "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions.")
 })
 
 test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the strength, and AI Info explains why high risk needs the strength and Every time', () => {

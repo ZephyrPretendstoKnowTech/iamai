@@ -318,3 +318,30 @@ test('the two named locations this baseline does settle keep their Preparation s
     )
   }
 })
+
+
+test('authentication strength completes from exact scanned settings without a selector, including duplicate equivalents', () => {
+  const f = curatedFixture('demo-week2')
+  const section = f.snapshot.config.authStrengths!
+  const strength = section.rows.find((r: any) => r.policyType !== 'builtIn') as Record<string, unknown>
+  assert.ok(strength)
+  section.rows.push({...strength, id: 'zz-equivalent-strength', displayName: 'Another exact equivalent'})
+  const get = () => runFixture(f).steps.find(s => s.id === PREREQ_STEP_ID.authStrength)!
+  assert.equal(get().state.satisfied, true)
+  assert.equal(get().configurationFindings?.[0].value, 'Exact match found')
+  section.rows = section.rows.filter((r: any) => r.policyType === 'builtIn')
+  assert.equal(get().state.satisfied, false)
+  assert.equal(get().configurationFindings?.[0].value, 'Matching strength missing')
+})
+
+test('admin-session corrections never repurpose an unrelated MFA grant policy', () => {
+ for (const name of ['demo', 'mid', 'messy'] as const) {
+  const f = fixture(name)
+  const r = runFixture(f)
+  const step = r.steps.find(s => s.goalId === 'admin-session')!
+  for (const op of operationsOf(step).filter(op => op.mode === 'update')) {
+   const raw = f.snapshot.config.caPolicies.rows.find(raw => (raw as {id?: string}).id === op.policyId) as {grantControls?: unknown} | undefined
+   assert.equal(raw?.grantControls == null, true, name)
+  }
+ }
+})

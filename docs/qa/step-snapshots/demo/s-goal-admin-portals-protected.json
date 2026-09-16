@@ -19,10 +19,6 @@
       "state": "Conflict unresolved"
     },
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
       "label": "Prerequisite · Waiting",
       "state": "Create or Correct Exclusions Group"
     }

@@ -18,10 +18,6 @@
       "state": "not measured"
     },
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
       "label": "Baseline mapping",
       "state": "Baseline references an unmapped group"
     },
@@ -38,8 +34,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Not scheduled"
 }

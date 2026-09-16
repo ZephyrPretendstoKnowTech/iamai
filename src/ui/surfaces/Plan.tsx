@@ -185,7 +185,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // this scan left it. A step's phase is not an input, so its tab cannot move
   // when its dates do. A step the person said does not apply here is not a row
   // (the footer holds it); a skipped step is a deferred one.
-  const readings = laneReadings(c.steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete })))
+  const readings = laneReadings(c.steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: ['alerting', 'consolidation', 'naming'].includes(r.row.kind) })))
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // A prerequisite tile's label is the prerequisite's own lane (decision 12).
   const prerequisiteLabel = prerequisiteLabelFor(readings)
@@ -663,7 +663,7 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
   return (
     <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
-      <p className="reason" role="status">{freezeDirty ? 'Unsaved Schedule Changes' : data.persistence === 'saving' ? 'Saving…' : data.persistence === 'saved' ? 'Saved' : data.persistence === 'failed' ? 'Changes Could Not Be Saved' : ''}</p>
+      {(freezeDirty || data.persistence === 'saving' || data.persistence === 'failed') && <p className="reason" role="status">{freezeDirty ? 'Unsaved Schedule Changes' : data.persistence === 'saving' ? 'Saving…' : 'Changes Could Not Be Saved'}</p>}
       <label className="rows">
         <span>{PP.settings.planStarts}</span>
         <span>{absoluteDate(start)}</span>
@@ -689,7 +689,6 @@ function Settings({ data, steps, snapshot, nameOf, onClose, mappingRequest }: { 
       </div>
       {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" id="plan-freeze-error" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
       <p className="reason" id="plan-freeze-note">{PP.settings.freezeNote}</p>
-      {data.freeze && !freezeDirty && data.persistence === 'saved' && <p className="reason" role="status">{PP.settings.freezeSaved}</p>}
       <p className="actions">
         <Button variant="primary" disabled={!freezeDirty || freezeInput.reason !== null || freezeInput.freeze === null} onClick={() => { if (freezeInput.freeze && freezeInput.reason === null) data.setFreeze(freezeInput.freeze) }}>{PP.settings.saveFreeze}</Button>
         <Button variant="secondary" onClick={() => setFreezeDays({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })}>{PP.settings.cancelFreeze}</Button>

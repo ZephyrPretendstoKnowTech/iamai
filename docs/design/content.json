@@ -1811,8 +1811,8 @@
               },
               "target": {
                 "unrestricted": "Keep key restrictions off, so every model that can register today still can, including Microsoft Authenticator.",
-                "allow": "Keep the allow list and its existing allowed models ({retained}); add Microsoft Authenticator ({added}).",
-                "allowPresent": "Keep the allow list and its existing allowed models ({retained}); Microsoft Authenticator is already allowed.",
+                "allow": "Keep the allow list and its existing allowed models ({retained}); add approved authenticator models ({added}).",
+                "allowPresent": "Keep the allow list and its existing allowed models ({retained}); the required authenticator models are already allowed.",
                 "block": "Keep the block list as it is ({blocked}); it does not block Microsoft Authenticator.",
                 "common": "Enable the method and self-service registration, require attestation for new registrations, and keep the target groups and exclusions shown in the resolved configuration."
               },
@@ -3043,8 +3043,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.",
-        "Existing approved keys still work. Test new emergency-account keys in Create or Correct Emergency Access Accounts."
+        "The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.",
+        "Verify account-specific key compatibility and recovery in Create or Correct Emergency Access Accounts."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3101,13 +3101,7 @@
         "match": "{matchedStrength} already allows exactly the baseline's combinations; it is used as is.",
         "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass."
       },
-      "decision": {
-        "label": "Authentication strength",
-        "help": "Check the five allowed combinations and every policy already using this strength before changing it.",
-        "pickerSource": "strengths",
-        "pickerRow": "{name} · {combinations}",
-        "save": "Save"
-      },
+      "decision": null,
       "whatToDo": {
         "lead": null,
         "steps": [
@@ -3119,7 +3113,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "An authentication strength named \"{strengthName}\" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.",
+        "An authentication strength named \"{strengthName}\" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.",
         "Every policy already using the strength still accepts the methods its users rely on."
       ],
       "ifWrong": "Delete the strength; no policy references it yet.",
@@ -4107,8 +4101,8 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Required applications and devices use a supported sign-in path; no events in the records does not prove there are none."
+        "A scan confirms legacy authentication is blocked for the intended users, with the approved exclusions.",
+        "Mail-sending devices and applications have a supported sign-in method, or their temporary exception accounts are saved."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4277,8 +4271,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Affected apps and devices can sign in directly where supported."
+        "A scan confirms the policy is On and matches the intended settings for blocking authentication transfer, including its assignments and exclusions."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4326,12 +4319,7 @@
         ]
       },
       "aiFocus": "Describe this specific flow rather than all QR-code sign-in or all token theft. Exclusion from this policy does not guarantee access through other policies.",
-      "whatToDo": {
-        "verification": [
-          "Test direct sign-in on each destination app or device that used authentication transfer. Confirm the work task completes without relying on the blocked transfer path.",
-          "Record the account, app/device workflow, date and result."
-        ]
-      }
+      "whatToDo": {}
     },
     {
       "id": "geo-restriction",
@@ -4452,8 +4440,8 @@
       "dates": "{datesChange}",
       "doneEnd": "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.",
       "doneWhen": [
-        "{changeDoneWhen}",
-        "Representative admin browser sessions reauthenticate at the set frequency without losing work."
+        "A scan confirms the session policy is On with the intended sign-in frequency, browser persistence, assignments and exclusions.",
+        "Representative browser sign-ins behave as intended without interrupting normal work."
       ],
       "ifWrong": "{changeIfWrong}",
       "comms": {
@@ -4762,8 +4750,7 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from unsupported device platforms, with the exclusions group applied and the baseline mapping resolved.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Required workflows on excluded or unidentified platforms have an approved, tested access path."
+        "A scan confirms the policy is On and matches the intended settings for blocking unsupported device platforms, including its assignments and exclusions."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5064,10 +5051,10 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.",
+      "doneEnd": "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions. Supported work apps sign in successfully with token protection.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The required supported Windows clients work, and unresolved compatibility issues are recorded."
+        "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions.",
+        "Supported work apps sign in successfully with token protection."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5122,12 +5109,7 @@
         ]
       },
       "aiFocus": "Name the exact resources, filter and client boundary. Do not describe this as protecting all browser sessions or all stolen tokens; explain the API exception without changing it.",
-      "whatToDo": {
-        "verification": [
-          "Test each supported application and device path this policy targets with a representative account. Inspect its sign-in result and token-protection status, rather than treating device registration as proof of token binding.",
-          "Record the account, application/device path, date and result. Investigate unsupported clients separately before recording a successful workflow."
-        ]
-      }
+      "whatToDo": {}
     },
     {
       "id": "workload-identity-block",
@@ -5221,8 +5203,8 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Representative browser sessions reauthenticate at the set frequency and stop persisting, without losing work."
+        "A scan confirms the session policy is On with the intended sign-in frequency, browser persistence, assignments and exclusions.",
+        "Representative browser sign-ins behave as intended without interrupting normal work."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5573,17 +5555,13 @@
         "before": [
           "Synchronized users who remediate with a password change need password writeback in Entra Connect.",
           "Check that people in scope have an accepted authentication method; remediation asks for it."
-        ],
-        "verification": [
-          "Identify the supported recovery path for each account type in scope. For synchronized users using secure password change, verify the required password-writeback configuration.",
-          "Test the approved recovery procedure using an appropriate test account and change process. Record the account type, recovery path, date and outcome; do not manufacture a risky sign-in or dismiss a real detection merely to complete this check."
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target, and the password-change remediation is confirmed to work for hybrid users if any exist.",
+      "doneEnd": "A scan confirms the high-risk user policy is On with the intended risk conditions, recovery requirements and exclusions. Users can complete the required secure password change; hybrid accounts have the required password writeback.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "People rated at risk were reviewed, and the remediation and recovery paths they need work."
+        "A scan confirms the high-risk user policy is On with the intended recovery controls and exclusions.",
+        "People rated at risk were reviewed. Affected users can complete the required password change, including writeback where required."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5651,10 +5629,9 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.",
+      "doneEnd": "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "People in scope have usable MFA methods, and available Medium-risk sign-ins were reviewed."
+        "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,

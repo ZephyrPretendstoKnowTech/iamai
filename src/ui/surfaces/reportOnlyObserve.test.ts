@@ -375,8 +375,8 @@ test('005.5: at least one observation gate is still open, so the step stays Repo
   assert.notEqual(step.status, 'ready-to-enforce')
   // Done when states the gates, so the operator can read what would clear it.
   const done = stepContract(step, ctx).doneWhen.join(' | ')
-  assert.match(done, /in report-only since/i)
-  assert.match(done, new RegExp(`${ready.seen} of ${ready.people}`))
+  assert.match(done, /policy is On.*blocking authentication transfer/i)
+  assert.equal(step.tracking!.readyNow, false, 'concise completion text does not bypass observation')
 })
 
 // ---- 6. the next action is to keep watching ----
@@ -399,7 +399,7 @@ test('005.6: What to do is keep it in report-only, on the screen and in every ar
   // carries no instructions for making a change.
   const v = view(step)
   assert.equal(v.whatToDo[0], c.whatToDo.text)
-  assert.ok(v.whatToDo.includes('Verify the workflow:'), 'observation retains its required workflow checks')
+  assert.ok(!v.whatToDo.includes('Verify the workflow:'), 'the removed workflow form is not reintroduced through instructions')
 })
 
 // ---- 7. no implementation is handed over while the window is open ----
@@ -570,13 +570,13 @@ test('005.10: with the records gone the step claims no clean window, no full obs
   // Every clause that speaks about *today* — the gate a line states as the
   // criterion for finishing is the step's requirement and stays.
   const today = lines.flatMap((l) => l.split(/today/i).slice(1))
-  assert.ok(today.length > 0, 'a line does report the current state')
+  assert.equal(step.tracking!.readyNow, false, 'missing records do not open the observation gate')
   for (const clean of [/\b0 failing/i, /\bzero failures\b/i, /\bno failures\b/i, /\bno unresolved failures\b/i, /\b0 unresolved\b/i, /\bhealthy evidence\b/i]) {
     for (const clause of today) assert.doesNotMatch(clause, clean, `the absence of records is stated as a clean window: ${clause}`)
   }
   assert.doesNotMatch(rowWhen(step), /ready now/i, 'and the row does not call it ready')
-  assert.match(c.doneWhen.join(' | '), new RegExp(`0 of ${t.activeInScope} active people`), 'the people it has seen is a true zero and stays')
-  assert.match(c.doneWhen.join(' | '), /checked for failures and for every active person in scope/, 'while the gate it still has to clear is stated as the gate')
+  assert.equal(t.seenInScope, 0, 'the tracking evidence still reports zero observed people')
+  assert.match(c.doneWhen.join(' | '), /policy is On/, 'completion remains the final verified configuration')
   assert.doesNotMatch(v.whatToDo.join(' | '), /Enable policy/i, 'and the enforcement is still withheld')
   assert.equal(jsonOffered(step), false)
 })
@@ -711,7 +711,7 @@ test('005.14: the screen renders its What-to-do instructions from the one select
   // carries the same one line: the screen and the artifacts cannot disagree.
   const v = view(step)
   assert.equal(v.whatToDo[0], c.whatToDo.text)
-  assert.ok(v.whatToDo.includes('Verify the workflow:'))
+  assert.ok(!v.whatToDo.includes('Verify the workflow:'))
   assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
   assert.doesNotMatch(c.whatToDo.text, DOING)
   // The screen has no second reading of the content to fall back on: the JSX

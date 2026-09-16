@@ -28,7 +28,7 @@ test('available account checks say Review while policy creation keeps Create', (
     }
   }
   assert.ok(checks > 0)
-  assert.ok(steps.some(s => s.kind === 'create' && readings.get(s.id)?.substatus === 'Create'))
+  for (const step of steps.filter(s => s.kind === 'create' && readings.get(s.id)?.lane === 'Ready')) assert.equal(readings.get(step.id)?.substatus, 'Create')
 })
 
 const lanesOf = (readings: Map<string, LaneReading>): Record<string, string> => Object.fromEntries([...readings].map(([id, r]) => [id, `${r.lane}${r.substatus ? ` · ${r.substatus}` : ''}${r.reason ? ` · ${r.reason.kind}:${r.reason.id}` : ''}`]).sort())
@@ -194,4 +194,30 @@ test('a row the graph does not know takes the Plan’s own state, after the engi
     const state = planStateOf(step, isHeld(step))
     assert.equal(v.lane, state.complete ? 'Completed' : state.kind === 'skipped' ? 'Deferred' : v.lane)
   }
+})
+
+test('report-only preparation remains Ready while its enforcement waits on emergency access', () => {
+ const {steps} = runFixture(fixture('demo'))
+ const exclusion = steps.find(s => s.id === 's-prereq-exclusion-group')!
+ exclusion.status = 'done'
+ const readings = laneReadings(steps)
+ for (const step of steps.filter(s => ['s-goal-all-users-no-persistence', 's-goal-admin-session'].includes(s.id))) {
+   assert.equal(readings.get(step.id)?.lane, 'Ready', step.id)
+ }
+})
+
+
+test('cleanup waits for security rollout without blocking core steps or reopening completed cleanup', () => {
+  const {steps} = runFixture(fixture('demo'))
+  const rows = ['alerting', 'consolidation', 'naming'].map(id => ({id: `cleanup-${id}`, complete: false, afterRollout: true}))
+  const before = laneReadings(steps)
+  const pending = laneReadings(steps, rows)
+  for (const row of rows) {
+    assert.equal(pending.get(row.id)?.lane, 'On Hold')
+    assert.equal(pending.get(row.id)?.reason?.id, 'after-security-rollout')
+  }
+  for (const step of steps) assert.equal(pending.get(step.id)?.lane, before.get(step.id)?.lane)
+  assert.equal(laneReadings(steps, [{...rows[0], complete: true}]).get(rows[0].id)?.lane, 'Completed')
+  const finished = steps.map(step => ({...step, status: 'done' as const}))
+  for (const row of rows) assert.equal(laneReadings(finished, rows).get(row.id)?.lane, 'Ready')
 })

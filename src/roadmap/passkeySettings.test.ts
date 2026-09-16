@@ -13,7 +13,7 @@ import { packageBindings, packageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { operatorUserId } from '../derive/operator.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, PASSKEY_DEFAULT_MODELS, PASSKEY_TARGET_AAGUIDS, operatorPasskeyOf, passkeyReadingOf, resolvePasskeyTarget } from './passkeySettings.ts'
 import type { Fido2Configuration, PasskeyResolution } from './passkeySettings.ts'
 
 const CAMPAIGN = 's-verify-mfa'
@@ -31,7 +31,7 @@ const legacy = (over: Record<string, unknown> = {}): Record<string, unknown> => 
   state: 'enabled',
   isSelfServiceRegistrationAllowed: true,
   isAttestationEnforced: true,
-  keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [IOS, ANDROID] },
+  keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] },
   includeTargets: [everyone],
   excludeTargets: [],
   ...over,
@@ -91,7 +91,7 @@ test('A5.1 the pinned object carries the approved Authenticator AAGUIDs from Mic
   assert.equal(PASSKEY_TARGET.isSelfServiceRegistrationAllowed, true)
   assert.equal(PASSKEY_TARGET.keyRestrictions?.isEnforced, true)
   assert.equal(PASSKEY_TARGET.keyRestrictions?.enforcementType, 'allow')
-  assert.deepEqual([...PASSKEY_TARGET_AAGUIDS], [IOS, ANDROID].sort())
+  assert.deepEqual([...PASSKEY_TARGET_AAGUIDS], PASSKEY_DEFAULT_MODELS.map(m => m.aaguid).sort())
 })
 
 test('A5.2 the tenant reading against its resolved target: disabled is Missing, on and different is Partial, every field matching is In place, unread is never a match', () => {
@@ -104,7 +104,7 @@ test('A5.2 the tenant reading against its resolved target: disabled is Missing, 
   assert.deepEqual(partial.differs, ['isAttestationEnforced'])
   assert.equal(passkeyReadingOf(withFido2(demo, legacy()).snapshot).state, 'inPlace')
   // The allow list is compared as a set: any case, any order.
-  assert.equal(passkeyReadingOf(withFido2(demo, legacy(allow(ANDROID.toUpperCase(), IOS.toUpperCase()))).snapshot).state, 'inPlace')
+  assert.equal(passkeyReadingOf(withFido2(demo, legacy(allow(...PASSKEY_TARGET_AAGUIDS.map(id => id.toUpperCase()).reverse()))).snapshot).state, 'inPlace')
   assert.deepEqual(passkeyReadingOf(withFido2(demo, legacy({ includeTargets: [{ ...everyone, id: 'pilot-group' }] })).snapshot).differs, [], 'an existing pilot scope is preserved')
   assert.equal(passkeyReadingOf(refused(demo).snapshot).state, 'unread')
   assert.equal(passkeyReadingOf(null).state, 'unread')
@@ -120,8 +120,8 @@ test('A5.3 on the demo the step reads Ready · Correct, the campaign waits on it
   assert.equal(state, 'missing')
   const target = targetOf(passkeyReadingOf(demo.snapshot).resolution).target
   assert.deepEqual(bindings['passkey.target.fido2Configuration'], target)
-  assert.deepEqual(target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [IOS, ANDROID] })
-  assert.deepEqual(bindings['passkey.target.allowedAaguids'], [IOS, ANDROID])
+  assert.deepEqual(target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
+  assert.deepEqual(bindings['passkey.target.allowedAaguids'], [...PASSKEY_TARGET_AAGUIDS])
   assert.equal(bindings['passkey.current.state'], 'partial')
   assert.deepEqual(bindings['passkey.current.differences'], ['isAttestationEnforced'])
   assert.match(String(bindings['passkey.target.summary']), /allow list/i)
@@ -182,14 +182,14 @@ test('B.1 an allow list keeps its existing hardware model and gains the approved
   assert.deepEqual(r.added, [...PASSKEY_TARGET_AAGUIDS])
   assert.deepEqual(r.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, ...PASSKEY_TARGET_AAGUIDS] })
   assert.equal(passkeyReadingOf(withFido2(fixture('demo'), legacy(allow(HARDWARE))).snapshot).state, 'partial')
-  assert.equal(passkeyReadingOf(withFido2(fixture('demo'), legacy(allow(HARDWARE, IOS, ANDROID))).snapshot).state, 'inPlace')
+  assert.equal(passkeyReadingOf(withFido2(fixture('demo'), legacy(allow(HARDWARE, ...PASSKEY_TARGET_AAGUIDS))).snapshot).state, 'inPlace')
 })
 
 test('B.2 duplicates and case: each model once, as Graph returned it first, compared case-insensitively', () => {
   const r = targetOf(resolved(legacy(allow(IOS.toUpperCase(), IOS, HARDWARE, HARDWARE.toUpperCase()))))
   assert.deepEqual(r.retained, [IOS.toUpperCase(), HARDWARE])
-  assert.deepEqual(r.added, [ANDROID])
-  assert.deepEqual(r.target.keyRestrictions?.aaGuids, [IOS.toUpperCase(), HARDWARE, ANDROID])
+  assert.deepEqual(r.added, PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS))
+  assert.deepEqual(r.target.keyRestrictions?.aaGuids, [IOS.toUpperCase(), HARDWARE, ...PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS)])
 })
 
 test('B.3 an unrestricted policy needs approved-model selection, never a silent narrowing', () => {
@@ -222,7 +222,7 @@ test('B.5 a profile-based policy keeps its profiles and assignments: nothing leg
   }
   const f = withFido2(fixture('demo'), assigned)
   const { r, lane } = plan(f)
-  assert.match(r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)!.blockers.map(b => b.binding).join(' '), /Passkey Profiles: Not fully read/)
+  assert.match(r.steps.find((s) => s.id === PASSKEY_SETTINGS_STEP_ID)!.blockers.map(b => b.binding).join(' '), /Method Availability: Not fully read/)
   assert.equal(lane(PASSKEY_SETTINGS_STEP_ID), 'Ready')
   const { step, ctx, bindings } = packageOf(f, r)
   assert.equal(bindings['passkey.target.fido2Configuration'], undefined, 'no legacy request is built over profiles')
@@ -278,7 +278,7 @@ test('B.9 one resolved target in every channel: the bound request, the Entra wal
   assert.deepEqual((target.includeTargets as { id: string }[]).map(t => t.id), [staff])
   for (const text of [entra, ai]) {
     assert.match(text, /Microsoft Authenticator/)
-    assert.ok(text.includes(`Keep the allow list and its existing allowed models (${HARDWARE}); add Microsoft Authenticator (${PASSKEY_TARGET_AAGUIDS.join(', ')}).`), text)
+    assert.ok(text.includes(`Keep the allow list and its existing allowed models (${HARDWARE}); add approved authenticator models (${PASSKEY_TARGET_AAGUIDS.join(', ')}).`), text)
   }
   // AI Info's intended result carries the request the step's JSON sends, whole.
   const sent = ai.split('\n').find((l) => l.startsWith('{"@odata.type"'))

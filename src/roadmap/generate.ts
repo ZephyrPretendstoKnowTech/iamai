@@ -1,3 +1,5 @@
+import { networkDraftOf } from '../mapping/networkDraft.ts'
+import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -291,7 +293,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyFindingsOf } from './passkeySettings.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
@@ -1009,10 +1011,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
       .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true && mapping.trustedLocationIds.includes(l.id ?? ''))
     const proposed = proposedObjectNames(naming).trustedLocation
+    const networkDraft = networkDraftOf(mapping)
+    const networkConfirmed = mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected'
+    const networkRead = snapshot.config.namedLocations?.status === 'ok'
     // In place names the locations that make it so: the evidence a done step carries.
     steps.push({
       ...prereq(locStepId),
-      naming: { proposed: proposed.name, fromBaseline: null },
+      naming: { proposed: networkDraft?.name ?? proposed.name, fromBaseline: null },
+      configurationFindings: [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? networkDraft ? 'Create the saved network' : 'Choose your office networks' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : !networkConfirmed ? 'Select your office networks or confirm that everyone is remote.' : mapping.trustedLocationIds.length === 0 ? 'No office network is selected; location-based exceptions are not applied.' : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
       // A tenant that already has an IP named location is preserving one, not making one.
       ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
@@ -1035,7 +1041,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // ours to rename.
     const name = requiredStrengths.map((x) => x.name).find((n): n is string => typeof n === 'string' && n.trim() !== '') ?? null
     const s = name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId)
-    if (strengthsUnanswered.length === 0 && snapshot.config.authStrengths?.status === 'ok') {
+    s.authenticationStrengthTarget = { allowedCombinations: requiredStrengths[0].allowedCombinations }
+    const strengthRead = snapshot.config.authStrengths?.status === 'ok'
+    s.configurationFindings = [{ key: 'authentication-strength', label: 'Authentication Strength', value: !strengthRead ? 'Configuration not read' : strengthsUnanswered.length ? 'Matching strength missing' : 'Exact match found', detail: !strengthRead ? 'The scan did not read authentication strengths. Scan again to compare the allowed methods and model restrictions.' : strengthsUnanswered.length ? `No scanned strength matches all required method combinations and restrictions. Create ${name || 'the required strength'} using the instructions below, then scan again.` : 'A scanned strength matches the baseline’s allowed method combinations and restrictions. IAMAI uses that existing object automatically.', outcome: !strengthRead ? 'unknown' : strengthsUnanswered.length ? 'fail' : 'pass' }]
+    if (strengthsUnanswered.length === 0 && strengthRead) {
       setState(s, { satisfied: true, inPlace: true })
       s.deliveredBy = ['Scanned authentication strengths match the resolved baseline method combinations and restrictions.']
     }
@@ -1152,8 +1161,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // an unread configuration is never a match.
   if (canUseConditionalAccess) {
     const s = prereq(PASSKEY_SETTINGS_STEP_ID)
-    const passkey = passkeyReadingOf(snapshot)
-    s.configurationFindings = passkeyFindingsOf(snapshot)
+    const passkey = passkeyReadingOf(snapshot, mapping)
+    s.configurationFindings = passkeyReadinessFindingsOf(snapshot, mapping)
     s.readiness.lines = s.configurationFindings.map(f => `${f.label}: ${f.value}.`)
     if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
     else if (passkey.state === 'unread') {
@@ -1295,8 +1304,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Each confirmed account's own evidence, never another's or the set's.
       accounts: emergencyAccountStanding(bgReport, mapping.breakGlassUserIds),
     }
+    const passkeyConfigured = passkeyReadingOf(snapshot, mapping).state === 'inPlace'
+    const currentKeys = emergencyPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, input.groupMembers)
+    const proposedKeys = emergencyProposedPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
+    const compatibleKeys = [...currentKeys, ...proposedKeys].every(c => c.state === 'eligible')
+    bgStep.configurationFindings = [
+      { key: 'passkey-configuration', label: 'Passkey Authentication', value: passkeyConfigured ? 'Configured' : 'Configuration required', detail: passkeyConfigured ? 'The authentication method matches the intended configuration. Check each emergency account’s registered key against these settings.' : 'Complete Configure Passkey Authentication before completing emergency-access setup. You can create accounts and register replacement keys now.', outcome: passkeyConfigured ? 'pass' : 'fail' },
+      ...mapping.breakGlassUserIds.map(id => {
+        const current = currentKeys.find(c => c.accountId === id)!
+        const proposed = proposedKeys.find(c => c.accountId === id)!
+        const ready = current.state === 'eligible' && proposed.state === 'eligible'
+        const unknown = current.state === 'unknown' || proposed.state === 'unknown'
+        const keys = snapshot.authMethods[id]
+        const models = Array.isArray(keys) ? keys.filter(k => k.kind === 'fido2' || k.kind === 'passkey').map(k => `${k.displayName || 'Registered passkey'} (${k.aaGuid || 'model ID not read'}; ${k.passkeyType || 'storage type not read'})`).join('; ') || 'No passkey is registered on this account' : 'Registered methods not read'
+        return { key: `emergency-passkey-${id}`, label: snapshot.users.find(u => u.id === id)?.displayName || id, value: ready ? 'Compatible key available' : unknown ? 'Key compatibility not established' : 'Compatible key required', detail: `${models}. ${ready ? 'At least one device-bound key is allowed by the current and planned settings. Verify it with a recovery sign-in test.' : unknown ? 'The scan did not establish this key’s model, storage type or applicable settings. Check its Authentication methods details in Entra and scan again before tightening restrictions; keep working access in place.' : 'Register and test an approved device-bound replacement before tightening passkey restrictions. Keep working access until the replacement succeeds.'}`, outcome: ready ? 'pass' as const : unknown ? 'unknown' as const : 'fail' as const }
+      }),
+    ]
     const results = bgReport.targets.flatMap((t) => t.results)
-    if (confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
+    if (passkeyConfigured && compatibleKeys && confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
       setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
@@ -1586,7 +1611,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ]
       existing = null
       for (const fits of tiers) {
-        const hit = ownCandidate(result.candidates, fits)
+        const hit = ownCandidate(result.candidates, candidate => {
+          if (goal.id === 'admin-session') {
+            const row = snapshot.config.caPolicies.rows.find(raw => (raw as RawPolicy).id === candidate.policyId) as RawPolicy | undefined
+            // A grant policy can contribute session coverage without belonging to
+            // this session-only step. Never repurpose its MFA or block controls.
+            if (row?.grantControls != null) return false
+          }
+          return fits(candidate)
+        })
         if (hit === 'ambiguous') {
           ambiguousTarget = true
           break

@@ -10,7 +10,7 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { isHeld } from './holds.ts'
 
-const SHAPES = [/^(Passkey|Authenticator) [^:]+: .+$/,/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/]
+const SHAPES = [/^(Attestation|Allowed Authenticators|Method Availability): .+$/, /^(Passkey|Authenticator) [^:]+: .+$/,/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/]
 /**
  * The fourth shape is the content file's own sentence, not a fill: matched whole.
  * So are the holds no step of the plan clears (roadmap/stateReason.ts holdReasonFor).

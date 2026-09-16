@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Create",
   "reason": null,
   "fact": null,
-  "badge": "On Hold",
-  "bar": "Prerequisite on hold: Configure Passkey Authentication",
+  "badge": "Ready · Create",
+  "bar": "Ready now",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -16,10 +16,6 @@
     {
       "label": "Registration Support",
       "state": "Not confirmed"
-    },
-    {
-      "label": "Prerequisite · To do",
-      "state": "Configure Passkey Authentication"
     }
   ],
   "channels": [

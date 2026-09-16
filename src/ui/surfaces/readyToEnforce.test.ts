@@ -676,7 +676,7 @@ test('007.3: the tenant policy is still in report-only, and nothing records an e
   assert.doesNotMatch(said, /Enforced (Sep|Oct|Aug|Nov|Dec|Jan|Feb|Mar|Apr|May|Jun|Jul)\b/, said)
   // Completion is a later observation, stated as one.
   assert.ok(
-    c.view(c.step).doneWhen.some((l) => /later scan finds the policy enabled/i.test(l)),
+    c.view(c.step).doneWhen.some((l) => /scan confirms.* is On/i.test(l)),
     c.view(c.step).doneWhen.join('\n'),
   )
 })

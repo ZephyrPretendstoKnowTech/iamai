@@ -667,7 +667,7 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   // Both bodies are the same frame: the pack's `.step` article, its head, its
   // main column. A Cleanup row activates less of it; it does not get its own.
   for (const [name, src] of [['the step', step], ['a Cleanup row', cleanup]] as const) {
-    assert.match(src, /<article className="step panel panel-key">/, `${name} no longer draws the approved frame`)
+    assert.match(src, /<article className="step panel panel-key"(?: data-step-id=\{step.id\})?>/, `${name} no longer draws the approved frame`)
     assert.match(src, /<StepHead/, `${name} no longer draws the approved head`)
     assert.match(src, /<div className="step-main[" ]/, `${name} no longer draws the approved main column`)
   }
@@ -675,7 +675,7 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   // id or a goal id in the presentation is the bespoke fork this pack retired.
   const code = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const [name, src] of [['Plan.tsx', plan], ['ContentStep.tsx', step], ['StepSections.tsx', read('src/ui/surfaces/StepSections.tsx')]] as const) {
-    assert.doesNotMatch(code(src).replace(/step\.id === '(?:s-prereq-device-plan|s-verify-mfa|s-ladder-break-glass-accounts)'/g, ''), /step\.id === ['"]s-/, `${name} branches its presentation on one step's id`)
+    assert.doesNotMatch(code(src).replace(/step\.id === '(?:s-prereq-passkey-settings|s-prereq-device-plan|s-verify-mfa|s-ladder-break-glass-accounts)'/g, ''), /step\.id === ['"]s-/, `${name} branches its presentation on one step's id`)
     assert.doesNotMatch(code(src), /step\.goalId === ['"]/, `${name} branches its presentation on one goal`)
     assert.doesNotMatch(code(src), /step\.kind === ['"]/, `${name} branches its presentation on the step's kind`)
   }

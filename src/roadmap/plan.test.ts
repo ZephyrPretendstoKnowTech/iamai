@@ -115,3 +115,15 @@ test('saved plan restores scoped workflow evidence without upgrading old confirm
   assert.deepEqual(restored.plan!.decisions!.confirmations!['s-question-partner']['manual-review'], record)
   assert.deepEqual(restored.plan!.decisions!.confirmations!.old.review, old)
 })
+
+
+test('additional authenticator approvals round trip in the plan; malformed imports are refused', () => {
+  const model = { name: 'Approved hardware', aaguid: '11111111-2222-3333-4444-555555555555' }
+  const mapping = { ...emptyMappingState(snapshot.tenantId), passkeyApprovedModels: [model] }
+  const file = buildPlanFile({ planId: 'passkey-plan', snapshot, operator: { userId: 'u-1', userPrincipalName: 'alex@example.com' }, baselineSource: { kind: 'upload', fileName: 'synthetic.json' }, mapping, steps: [], checkpoints: [] })
+  const restored = parsePlanFile(JSON.stringify(file))
+  assert.equal(restored.error, null)
+  assert.deepEqual(restored.plan?.mappings.passkeyApprovedModels, [model])
+  file.mappings.passkeyApprovedModels = [{ ...model, aaguid: 'broken' }]
+  assert.match(parsePlanFile(JSON.stringify(file)).error ?? '', /invalid additional authenticator/)
+})

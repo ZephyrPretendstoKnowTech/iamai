@@ -180,7 +180,7 @@ test('004.5: nothing claims report-only evidence, readiness or enforcement befor
   // change to settings that are not there.
   assert.deepEqual(c.found, [], 'a first scan of an absent policy has nothing to report as a finding')
   assert.ok(
-    c.doneWhen.some((l) => /report-only/i.test(l)),
+    c.doneWhen.some((l) => /scan confirms.*policy is On/i.test(l)),
     `Done when must name the report-only observation this case still owes: ${c.doneWhen.join(' | ')}`,
   )
   // Editorial batch C: "Verify after the change:" labels a human check and claims nothing about settings.

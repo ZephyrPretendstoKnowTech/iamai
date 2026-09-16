@@ -4,6 +4,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
+import { normalizePasskeyApprovedModels } from '../mapping/passkeyModels.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
@@ -262,6 +263,7 @@ function validatePlanShape(plan: PlanFile): string | null {
   if (plan.decisions !== undefined && (!object(plan.decisions) || !object(plan.decisions.skips) || !Array.isArray(plan.decisions.checkpoints))) return 'not a plan file (invalid decisions)'
   for (const value of Object.values(plan.mappings.records)) if (!object(value) || typeof value.placeholder !== 'string' || typeof value.kind !== 'string' || typeof value.doesNotExist !== 'boolean' || !(value.resolvedId === null || typeof value.resolvedId === 'string')) return 'not a plan file (invalid mapping record)'
   for (const value of Object.values(plan.mappings.facetOverrides)) if (!object(value) || typeof value.on !== 'boolean' || typeof value.reason !== 'string') return 'not a plan file (invalid service choice)'
+  if (plan.mappings.passkeyApprovedModels !== undefined && normalizePasskeyApprovedModels(plan.mappings.passkeyApprovedModels) === null) return 'not a plan file (invalid additional authenticator)'
   if (plan.mappings.workflowAnswers && (!object(plan.mappings.workflowAnswers) || Object.values(plan.mappings.workflowAnswers).some((v) => !['yes', 'no', 'unsure'].includes(v)))) return 'not a plan file (invalid workflow choice)'
   const decisions = plan.decisions
   if (decisions) {
