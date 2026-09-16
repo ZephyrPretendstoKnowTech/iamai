@@ -611,8 +611,8 @@ try {
     // The count bends its noun (pluralise): one person, or n people.
     check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ (people|person)\b/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
     check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
-    // The counts above the table stay the whole tenant, not the filtered set.
-    const scopedSummary = t2.match(/(\d+) of (\d+) people have the required method registered/)
+    // The summary covers this step's complete cohort; the table lists its remaining work.
+    const scopedSummary = t2.match(/(\d+) of (\d+) people have a method ready for this step/)
     check('MFA Readiness: the scoped summary and remaining-method rows describe the same cohort', !!scopedSummary && Number(scopedSummary[2]) - Number(scopedSummary[1]) === scoped, `${scopedSummary?.[0]}: ${scoped} remaining rows`)
     await go('plan')
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
