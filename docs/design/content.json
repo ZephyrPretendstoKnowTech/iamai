@@ -3439,7 +3439,6 @@
       },
       "who": {
         "lead": "{n} people are included in this preparation step.",
-        "leadUndated": "{n} people are included in this preparation step.",
         "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
