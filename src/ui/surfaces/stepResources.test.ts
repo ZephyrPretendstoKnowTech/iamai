@@ -126,3 +126,20 @@ test('legacy inventory and app-password owner emails describe the concrete coord
   assert.match(legacy, /actual protocol.*infrequent run schedules.*test window/)
   assert.match(passwords, /supported replacement.*removing the old credential/)
 })
+
+
+test('admin session email states the resolved duration and persistence without inventing enforcement timing', () => {
+  const { r, ctx } = opened('demo')
+  const step = r.steps.find(s => s.id === 's-goal-admin-session')!
+  const text = emailResource(step, ctx, '').text()
+  assert.match(text, /reauthentication after 4 hours/)
+  assert.match(text, /not kept signed in after the browser is closed/)
+  assert.doesNotMatch(text, /expire after|From (Monday|Tuesday)|will be enforced on/)
+  const changed = structuredClone(step)
+  const session = changed.action.resolution!.policies[0].body.sessionControls as { signInFrequency: { value: number }; persistentBrowser: { isEnabled: boolean } }
+  session.signInFrequency.value = 8
+  session.persistentBrowser.isEnabled = false
+  const updated = emailResource(changed, ctx, '').text()
+  assert.match(updated, /reauthentication after 8 hours/)
+  assert.doesNotMatch(updated, /4 hours|not kept signed in/)
+})
