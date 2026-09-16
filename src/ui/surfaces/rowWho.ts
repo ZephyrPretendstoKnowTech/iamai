@@ -28,6 +28,7 @@ const ACCOUNT_REVIEW_STEPS = new Set([
   's-shared-devices', 's-ladder-break-glass-accounts',
 ])
 export function rowWho(step: Step): string {
+  if (step.preparation) return step.preparation.ids.length ? `${step.preparation.ids.length} ${step.preparation.ids.length === 1 ? 'person' : 'people'}` : 'User Authentication'
   if (ACCOUNT_REVIEW_STEPS.has(step.id) && step.population.total > 0) {
     return `${step.population.total} ${step.population.total === 1 ? 'account' : 'accounts'}`
   }
