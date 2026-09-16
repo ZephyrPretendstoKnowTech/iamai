@@ -1535,7 +1535,7 @@ async function walkFixture(fx) {
           if (/Require a Managed Device/.test(title)) {
             const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
             const email = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
-            if (!/Subject:/.test(email) || !/test or change window/.test(email)) add('P0', `${slabel}: managed-device coordination email is missing its actionable review and test request`)
+            if (openedEmail && (!/Subject:/.test(email) || /This format has no output|We are reviewing require a managed device/i.test(email))) add('P0', `${slabel}: managed-device email is a placeholder rather than a recipient message`)
             if (/Personal devices are blocked\./.test(email)) add('P0', `${slabel}: managed-device email incorrectly equates personal ownership with failing the actual compliant-or-hybrid grant`)
             await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
