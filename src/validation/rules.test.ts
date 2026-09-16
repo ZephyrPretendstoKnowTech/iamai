@@ -363,7 +363,7 @@ const CASES: Record<string, Case> = {
   },
   'cty.unknownCountries': {
     target: () => ({ id: 'loc-c', includeUnknownCountriesAndRegions: false }),
-    unknown: 'target',
+    unknown: 'needs',
     fail: () => ({ id: 'loc-c', includeUnknownCountriesAndRegions: true }),
   },
   'cty.seenCountriesIncluded': {

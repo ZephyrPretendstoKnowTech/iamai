@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
       "label": "Implementation",
       "state": "Unavailable"
     },
@@ -34,8 +30,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Not scheduled"
 }

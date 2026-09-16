@@ -128,18 +128,21 @@ test('legacy inventory and app-password owner emails describe the concrete coord
 })
 
 
-test('admin session email states the resolved duration and persistence without inventing enforcement timing', () => {
-  const { r, ctx } = opened('demo')
-  const step = r.steps.find(s => s.id === 's-goal-admin-session')!
-  const text = emailResource(step, ctx, '').text()
-  assert.match(text, /reauthentication after 4 hours/)
-  assert.match(text, /not kept signed in after the browser is closed/)
-  assert.doesNotMatch(text, /expire after|From (Monday|Tuesday)|will be enforced on/)
-  const changed = structuredClone(step)
-  const session = changed.action.resolution!.policies[0].body.sessionControls as { signInFrequency: { value: number }; persistentBrowser: { isEnabled: boolean } }
-  session.signInFrequency.value = 8
-  session.persistentBrowser.isEnabled = false
-  const updated = emailResource(changed, ctx, '').text()
-  assert.match(updated, /reauthentication after 8 hours/)
-  assert.doesNotMatch(updated, /4 hours|not kept signed in/)
+test('session email speaks to affected users; admin-only and undefined emails are absent', () => {
+  const { bodies } = opened('demo')
+  const session = bodies.get('s-goal-all-users-no-persistence')!
+  const email = session.artifacts.find(a => a.id === 'email')!
+  assert.match(email.text(), /sign in again when you reopen your browser/)
+  assert.doesNotMatch(email.text(), /Accounts to review|We are reviewing limit|test or change window/)
+  for (const id of ['s-goal-admin-session', 's-prereq-auth-strength']) assert.equal(bodies.get(id)!.artifacts.some(a => a.id === 'email'), false)
+})
+
+// Verify the delivered artifact, not only the view-model instructions.
+test('removed workflow forms do not leave recording instructions in copied guidance', () => {
+  const { bodies } = opened('demo')
+  for (const id of ['s-goal-block-auth-transfer', 's-goal-token-protection']) {
+    const body = bodies.get(id)!
+    assert.ok(body, id)
+    for (const artifact of body.artifacts) assert.doesNotMatch(artifact.text(), /Verify the workflow:|Record the account, application\/device path, date and result/)
+  }
 })

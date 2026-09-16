@@ -45,13 +45,10 @@ const POLICY_WORKFLOWS: Record<string, string> = {
   's-goal-guests-mfa': 'Guest Sign-In and Collaboration Workflow',
   's-goal-device-registration-mfa': 'Registration or Join Workflow and Client',
   's-goal-intune-enrollment-reauth': 'Enrollment Workflow and Client',
-  's-goal-token-protection': 'Supported Client and Resource Tested',
   's-goal-pim-activation-reauth': 'Role Activation Tested',
-  's-goal-user-risk': 'High-Risk Recovery Workflow',
   's-goal-user-risk-medium': 'Medium-Risk Password Recovery Workflow',
   's-goal-service-accounts-trusted-network': 'Service Job Tested',
   's-goal-block-device-code': 'Device-Code Client and Workflow Tested',
-  's-goal-block-auth-transfer': 'Authentication Transfer Workflow Tested',
 }
 const ADMIN_SEPARATION = new Set(['s-ladder-admin-accounts-separate', 's-check-separate-admin-accounts'])
 const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts','s-ladder-break-glass-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-question-mail-devices', 's-question-partner', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])

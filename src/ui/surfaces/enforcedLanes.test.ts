@@ -91,12 +91,12 @@ test('U21 (owner contract): on the demo Initial scan an enforced policy with a r
   for (const s of drifted) {
     assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
     const r = readings.get(s.id)
-    assert.equal(r?.lane, 'Ready', s.id)
-    assert.equal(r?.substatus, 'Correct', s.id)
-    assert.equal(r?.reason, null, `${s.id}: undocumented optional exclusions no longer hold the correction`)
+    assert.equal(r?.lane, 'Up Next', s.id)
+    assert.equal(r?.substatus, null, s.id)
+    assert.equal(r?.reason?.id, 's-prereq-break-glass', 'an enforced correction waits for emergency access')
     const view = laneViewFor(s, demoRun.steps)
     const exported = stepExportView(s, ctx, view)
-    assert.deepEqual([exported.state, exported.lane, exported.reason], [view.label, BOARD.lanes.ready, null], `${s.id}: the export says another state`)
+    assert.deepEqual([exported.state, exported.lane, exported.reason], [view.label, view.lane, view.tail], `${s.id}: the export says another state`)
   }
   // Classification reads the operations; it never changes them.
   assert.deepEqual(demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s))), before)

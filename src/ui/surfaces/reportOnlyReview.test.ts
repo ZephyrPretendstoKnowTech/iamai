@@ -486,7 +486,7 @@ test('006.9: the Step Contract states the stage, the condition, what changed, wh
   assert.ok(contract.doneWhen.length > 1)
   assert.match(contract.doneWhen[0], /accounted for/i)
   assert.ok(
-    contract.doneWhen.slice(1).some((l) => /^Time:/.test(l)),
+    contract.doneWhen.slice(1).some((l) => /policy is On/.test(l)),
     `the step’s own gates were dropped: ${JSON.stringify(contract.doneWhen)}`,
   )
   // The member line says the policy needs a look.
@@ -516,7 +516,7 @@ test('006.10: no portal, JSON or PowerShell instruction appears merely because t
   assert.deepEqual(screen.steps, [])
   // And the export view's What to do is the review action alone.
   assert.equal(c.view(step).whatToDo[0], stepContract(step, ctx).whatToDo.text)
-  assert.ok(c.view(step).whatToDo.includes('Verify the workflow:'))
+  assert.ok(!c.view(step).whatToDo.includes('Verify the workflow:'))
 })
 
 // ---- 11. the screen, the exports, the prompts and the calendar agree ----

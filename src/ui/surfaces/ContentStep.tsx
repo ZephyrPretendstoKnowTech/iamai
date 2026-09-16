@@ -1,3 +1,7 @@
+import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
+import { PASSKEY_METHODOLOGY, passkeyReadiness } from './passkeyPresentation.ts'
+import { PASSKEY_DEFAULT_MODELS } from '../../roadmap/passkeySettings.ts'
+import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { DEVICE_ANSWER_KEYS, devicePlanOf } from '../../roadmap/answers.ts'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
 // A step opened in place: the one body the Plan draws for every step it has, and
@@ -183,6 +187,9 @@ export function ContentStep({
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit })
   const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
+  const isPasskeySettings = step.id === 's-prereq-passkey-settings'
+  const hasPasskeyFindings = isPasskeySettings && !!step.configurationFindings?.length
+  const displayedReadiness = passkeyReadiness(step, readiness)
   const copied1500 = (id: string) => (ok: boolean): void => {
     setCopied(ok ? id : 'copy-failed')
     setTimeout(() => setCopied(null), ok ? 1500 : 6000)
@@ -240,7 +247,7 @@ export function ContentStep({
     // (docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached
     // under the roadmap row that opened it, with the head above and the main
     // column and its action column below.
-    <article className="step panel panel-key">
+    <article className="step panel panel-key" data-step-id={step.id}>
       <StepHead eyebrow={eyebrow} title={title} sub={<>
             {/* The one supporting line the step already carried under its
                 title: what this change is, and the step it is done with. */}
@@ -281,8 +288,8 @@ export function ContentStep({
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           <ReadinessSection
-            readiness={readiness}
-            lead={instructed ? null : actionLead}
+            readiness={displayedReadiness}
+            lead={instructed || hasPasskeyFindings ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
             onOpenMappings={null}
@@ -303,11 +310,11 @@ export function ContentStep({
           >
             {step.id === 's-verify-mfa' ? <p><a href="#/readiness/step/s-verify-mfa">Open MFA Readiness</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>
-          {typeof pkgBindings?.['emergency.passkey.compatibility'] === 'string' && (
-            <section className="step-section">
+          {isPasskeySettings && (
+            <section className="step-section passkey-methodology">
               <h4>Methodology</h4>
-              <ul>{String(pkgBindings['emergency.passkey.compatibility']).split('\n').map((line, i) => <li key={i}>{line}</li>)}</ul>
-              {step.id !== "s-prereq-passkey-settings" && <a href="#/plan/s-prereq-passkey-settings">Configure Passkey Authentication</a>}
+              <ul>{PASSKEY_METHODOLOGY.map(line => <li key={line}>{line}</li>)}</ul>
+              <p><strong>IAMAI defaults:</strong> {PASSKEY_DEFAULT_MODELS.map(model => model.name).join("; ")}.</p>
             </section>
           )}
 
@@ -336,7 +343,7 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
           {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
-          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {isPasskeySettings ? <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} printing={printing} /> : step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -413,7 +420,7 @@ export function ContentStep({
           )}
         </div>
       </div>
-      {!printing && saveStatus && saveStatus !== 'idle' && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : saveStatus === 'saved' ? 'Plan saved.' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
+      {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
         <>
@@ -787,7 +794,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   const initial = initialPicked(ex, key, saved, ids, single)
   const [chips, setChips] = useState<PickerOption[]>(() => initial.picked.map((id) => (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
   const isNetwork = stepId === 's-prereq-trusted-location'
-  const [remote, setRemote] = useState(isNetwork && saved?.picked?.length === 0)
+  const [remote, setRemote] = useState(isNetwork && saved?.picked?.length === 0 && saved?.option !== 'office-network')
+  const [networkName, setNetworkName] = useState(saved?.answers?.[NETWORK_NAME] ?? '')
+  const [networkRanges, setNetworkRanges] = useState(saved?.answers?.[NETWORK_RANGES] ?? '')
+  const networkDraftValid = networkName.trim().length > 0 && validNetworkRanges(networkRanges)
   const matchedNote = matchedNoteOf(d.matchedNote, chips, app.picker.matched)
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
@@ -798,6 +808,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // otherwise, and its chips are the answer. The question's answer persists as
   // questionAnswers[stepId:label] (decisions.ts).
   const options = optionsOf(d.options, ex)
+  const accountPickerOnly = stepId === 's-goal-block-legacy-auth'
   const question = questionFor(d, ex)
   const needsValue = options.some((o) => o.needs !== null) || (question?.options.some((o) => o.needs !== null) ?? false)
   const valueUniverse = useMemo(() => (needsValue ? pickerUniverse(stepId, valueSource(stepId), pickerCtx) : []), [needsValue, stepId, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
@@ -820,14 +831,14 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
     const parsed = answerParts(value, choices)
     return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
   }
-  const canSave = (options.length === 0 || complete(option, options)) && (!question || complete(answer, question.options)) && (remote || (!single && stepId !== 's-prereq-allowed-countries') || chips.length > 0)
+  const canSave = (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || chips.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || chips.length > 0)
   const save = (): void => {
     if (!canSave) return
     onDecide?.({
       ...(hasPicker || isNetwork ? { picked: remote ? [] : chips.map((c) => c.id) } : {}),
-      ...(isNetwork && remote ? { assumed: 'none' } : {}),
-      ...(option !== null ? { option } : {}),
-      ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
+      ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && chips.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && chips.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
+      ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
+      ...(question && (answer !== null || stepId === 's-prereq-allowed-countries') ? { answers: { [question.label]: answer ?? 'No Recurring Destinations' } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
     })
   }
@@ -853,15 +864,21 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {isNetwork && <label className="remote-choice"><input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)} />Everyone Is Remote</label>}
-        {hasPicker && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} />}
-        {isNetwork && !remote && <p className="reason">If your office network is not listed, follow the Entra instructions below to create a named location, then scan again.</p>}
-        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
+        {(hasPicker || isNetwork) && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
+          {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
+          <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>
+          <div className="decision-field"><label htmlFor={`${base}-network-ranges`}><strong>Public IP Ranges</strong></label><textarea id={`${base}-network-ranges`} value={networkRanges} placeholder="203.0.113.10/32" onChange={e => setNetworkRanges(e.target.value)} /></div>
+          {networkRanges.trim() && !validNetworkRanges(networkRanges) && <p role="alert">Enter IPv4 or IPv6 ranges with a prefix, one per line. A whole-internet range is not allowed.</p>}
+        </div>}
+        {isNetwork && !remote && <p className="reason">If your office network is not listed, save its name and approved public ranges here. Follow the Entra steps to create it, then scan again and select it.</p>}
+        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} pickerOnly={accountPickerOnly} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
           <>
             <h5 className="dlabel" id={`${base}-question`}>{question.label.replace(/:$/, "")}</h5>
             <p className="reason"><T s={question.text} ex={ex} /></p>
-            <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />
+            <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} pickerOnly={stepId === 's-prereq-allowed-countries'} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />
             {questionEffect && whole(questionEffect, ex) && <p className="reason effect"><T s={questionEffect} ex={ex} /></p>}
           </>
         )}
@@ -897,12 +914,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
  * one-line labels as a dropdown (archetype rule A1, S-DD-1), with nothing chosen
  * until a person chooses.
  */
-export function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false, select = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean; select?: boolean }) {
+export function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false, select = false, pickerOnly = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean; select?: boolean; pickerOnly?: boolean }) {
   const parts = answerParts(answer, options)
   const valued = options.find((o) => o.needs !== null) ?? null
   const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
+  if (pickerOnly && valued) return <Picker labelledBy={labelledBy} selected={chips} options={results} onSearch={setQuery} onChange={next => { setChips(next); onAnswer(next.length ? answerText(valued, next.map(c => c.id)) : answerText(options.find(o => o.needs === null)!)) }} />
   if (select && options.every((o) => o.needs === null)) {
     return (
       <select className="decision-select" name={name} aria-labelledby={labelledBy} value={parts ? String(options.indexOf(parts.option)) : ''} onChange={(e) => onAnswer(e.currentTarget.value === '' ? null : answerText(options[Number(e.currentTarget.value)]))}>

@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Review",
-  "reason": "Passkey Attestation: Disabled",
+  "reason": "Attestation: Disabled",
   "fact": null,
   "badge": "Ready · Review",
   "bar": "Complete the review below",
@@ -14,24 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Passkey Attestation",
+      "label": "Attestation",
       "state": "Disabled"
     },
     {
-      "label": "Authenticator Models",
+      "label": "Allowed Authenticators",
       "state": "Unrestricted"
     },
     {
-      "label": "Authenticator iOS",
-      "state": "Allow list not established"
-    },
-    {
-      "label": "Authenticator Android",
-      "state": "Allow list not established"
-    },
-    {
       "label": "Prerequisites",
-      "state": "Passkey Attestation: Disabled"
+      "state": "Attestation: Disabled"
     }
   ],
   "channels": [

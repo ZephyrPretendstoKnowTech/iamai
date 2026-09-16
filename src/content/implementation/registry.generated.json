@@ -1049,7 +1049,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. Keep its current state. If it is On, the changed rule can affect access after you save. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured. Remove any other session controls.\n"
+          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) in Entra ID → Conditional Access → Policies.\n\n- Under Session, set Sign-in frequency to **4 hours**.\n- Set Persistent browser session to **Never persistent**.\n- Match the remaining session controls to the target shown for this dedicated session policy.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -1073,7 +1073,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.\n   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "- Save with **Enable policy** unchanged. If it is On, the changed rule can affect access after you save.\n   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n- Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -19967,7 +19967,9 @@
           "strength.current.displayName",
           "strength.current.allowedCombinations",
           "strength.current.usage",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "strength.target.allowedCombinations",
+          "strength.target.methodNames"
         ],
         "projection": {
           "missing": {
@@ -20076,7 +20078,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Authentication methods → Authentication strengths.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these five methods:\n   — Windows Hello for Business\n   — Passkeys (FIDO2)\n   — Certificate-based authentication (multifactor)\n   — Temporary Access Pass (one-time use)\n   — Temporary Access Pass (multi-use)\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Authentication methods → Authentication strengths.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -20112,7 +20114,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.\n2. Edit allowed methods to exactly the baseline's five: Windows Hello for Business; Passkeys (FIDO2); CBA multifactor; TAP one-time; TAP multi-use.\n3. Do not add any other method.\n4. Save and re-read the same strength.\n"
+          "text": "1. Review **Usage** for the resolved strength so you know which Conditional Access policies will be affected, including any that are already On.\n2. Edit allowed methods to exactly {{strength.target.methodNames}}.\n3. Do not add any other method.\n4. Save and re-read the same strength.\n"
         },
         "entra.verify": {
           "meta": {
@@ -20125,7 +20127,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify that the same strength (same object ID) is a custom strength named **{{strength.target.displayName}}** and allows exactly the baseline's five combinations. Rescan IAMAI.\n\nVerify after the change: review each Conditional Access policy that uses this strength and confirm the people it covers can still satisfy one of the five combinations.\n"
+          "text": "Verify that the same strength (same object ID) is a custom strength named **{{strength.target.displayName}}** and allows exactly these combinations: {{strength.target.methodNames}}. Rescan IAMAI.\n\nVerify after the change: review each Conditional Access policy that uses this strength and confirm the people it covers can still satisfy one of the required combinations.\n"
         },
         "json.create": {
           "meta": {
@@ -20135,9 +20137,11 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/authenticationStrength/policies"
           },
-          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"description\": \"IAMAI pinned-baseline authentication strength\",\n  \"allowedCombinations\": [\"windowsHelloForBusiness\",\"fido2\",\"x509CertificateMultiFactor\",\"temporaryAccessPassOneTime\",\"temporaryAccessPassMultiUse\"]\n}\n"
+          "text": "{\n  \"displayName\": {{json:strength.target.displayName}},\n  \"description\": \"IAMAI pinned-baseline authentication strength\",\n  \"allowedCombinations\": {{json:strength.target.allowedCombinations}}\n}\n"
         },
         "json.correct.metadata": {
           "meta": {
@@ -20158,10 +20162,10 @@
             "states": [
               "partial"
             ],
-            "format": "json",
+            "format": "json-template",
             "kind": "template"
           },
-          "text": "{\"allowedCombinations\":[\"windowsHelloForBusiness\",\"fido2\",\"x509CertificateMultiFactor\",\"temporaryAccessPassOneTime\",\"temporaryAccessPassMultiUse\"]}\n"
+          "text": "{\"allowedCombinations\":{{json:strength.target.allowedCombinations}}}\n"
         },
         "powershell.run": {
           "meta": {
@@ -20175,7 +20179,7 @@
             "format": "powershell",
             "kind": "template"
           },
-          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@('windowsHelloForBusiness','fido2','x509CertificateMultiFactor','temporaryAccessPassOneTime','temporaryAccessPassMultiUse')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength';allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength'}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
+          "text": "param(\n [ValidateSet('Create','CorrectMetadata','CorrectCombinations','Verify')][string]$Mode,\n [string]$StrengthId,\n [string]$DisplayName\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess','Policy.Read.All' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\n$Desired=@(ConvertFrom-Json -InputObject '{{json:strength.target.allowedCombinations}}')\nfunction IG([string]$Method,[string]$Uri,$Body=$null){\n $p=@{Method=$Method;Uri=$Uri}; if($null-ne $Body){$p.Body=($Body|ConvertTo-Json -Depth 20);$p.ContentType='application/json'}\n Invoke-MgGraphRequest @p\n}\nfunction ReadStrength([string]$Id){IG 'GET' \"$G/policies/authenticationStrengthPolicies/$Id\"}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required'};IG 'POST' \"$G/policies/authenticationStrengthPolicies\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength';allowedCombinations=$Desired}}\n 'CorrectMetadata'{if(-not $StrengthId){throw 'StrengthId required'};IG 'PATCH' \"$G/policies/authenticationStrengthPolicies/$StrengthId\" @{displayName=$DisplayName;description='IAMAI pinned-baseline authentication strength'}|Out-Null;ReadStrength $StrengthId}\n 'CorrectCombinations'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;if($s.policyType -ne 'custom'){throw 'Built-in strengths cannot be modified'};IG 'GET' \"$G/policies/authenticationStrengthPolicies/$StrengthId/usage\"|Out-Host;IG 'POST' \"$G/policies/authenticationStrengthPolicies/$StrengthId/updateAllowedCombinations\" @{allowedCombinations=$Desired}|Out-Host;ReadStrength $StrengthId}\n 'Verify'{if(-not $StrengthId){throw 'StrengthId required'};$s=ReadStrength $StrengthId;$a=@($s.allowedCombinations|Sort-Object);$d=@($Desired|Sort-Object);if(($a -join '|') -ne ($d -join '|')){throw 'Allowed combinations do not match the pinned target'};$s}\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -20187,7 +20191,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts only five combinations:\n— Windows Hello for Business: a biometric or PIN bound to the device\n— Passkeys (FIDO2): a security key or a passkey in Microsoft Authenticator\n— Certificate-based authentication (multifactor): a smart card or certificate\n— Temporary Access Pass (one-time use)\n— Temporary Access Pass (multi-use)\n\nThe first three are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. Because both Temporary Access Pass options are accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
+          "text": "\nAn authentication strength is a named set of sign-in methods that a Conditional Access policy can require. The grant \"Require multifactor authentication\" accepts any second factor the tenant allows, including phone call and text message. This custom strength accepts exactly: {{strength.target.methodNames}}.\n\nWindows Hello for Business, FIDO2 and multifactor certificate authentication are phishing-resistant. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one. When a Temporary Access Pass option is accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength.\n\nPhone call, text message and Authenticator push notifications are not accepted.\n\nSeveral baseline policies use this strength. Create it once in this tenant; those policies reference it by its object ID.\n"
         },
         "ai.correct": {
           "meta": {
@@ -20199,7 +20203,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nA custom authentication strength exists but differs from the intended one. Differences IAMAI detected: {{strength.current.semanticMismatches}}. Policies that use it: {{strength.current.usage}}. The intended strength allows Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. A change to this shared strength applies to every policy that uses it as soon as it is saved, including policies that are already On.\n"
+          "text": "\nA custom authentication strength exists but differs from the intended one. Differences IAMAI detected: {{strength.current.semanticMismatches}}. Policies that use it: {{strength.current.usage}}. The intended strength allows {{strength.target.methodNames}}. A change to this shared strength applies to every policy that uses it as soon as it is saved, including policies that are already On.\n"
         },
         "ai.verify": {
           "meta": {
@@ -20211,7 +20215,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThis step is waiting to confirm the authentication strength. The intended result is one custom strength in this tenant that allows exactly Windows Hello for Business, Passkeys (FIDO2), multifactor certificate authentication, Temporary Access Pass one-time and Temporary Access Pass multi-use. Any additional method would apply to every policy that uses this strength.\n"
+          "text": "\nThis step is waiting to confirm the authentication strength. The intended result is one custom strength in this tenant that allows exactly {{strength.target.methodNames}}. Any additional method would apply to every policy that uses this strength.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -21255,6 +21259,7 @@
           "tenant.displayName",
           "passkey.profileOptInApproved",
           "passkey.target.summary",
+          "passkey.target.modelList",
           "passkey.review.detail",
           "passkey.current.fido2Configuration",
           "authenticator.target.configuration",
@@ -21401,7 +21406,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).\n2. Enable Passkey (FIDO2) and self-service registration for the intended users. Preserve the existing target groups and exclusions.\n3. For profile-based settings, inspect every profile that applies to those users. Use device-bound passkeys, require attestation, and check each profile's allowed authenticator models. A second applicable profile must not permit methods the first profile excludes.\n4. For legacy settings, require attestation and use an allowed-model list. Include Microsoft Authenticator for iOS AAGUID 90a3ccdf-635c-4729-a248-9b709135078f and Android AAGUID de1e552d-db1d-4423-a619-566b625cdc84, together with the approved hardware-key models used for emergency access.\n5. Confirm the hardware model's AAGUID against its manufacturer's information. Keep a tested recovery method available before narrowing an existing model list.\n6. Save, reopen the settings and scan again. Readiness identifies each remaining mismatch.\n\nSettings read: {{passkey.current.summary}} [omit this line when unavailable]\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n{{passkey.review.detail}} [omit this line when unavailable]\n"
+          "text": "1. Open Entra admin center → Entra ID → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Before tightening restrictions, check the emergency-access step for incompatible keys. Register and test an approved replacement while existing access still works; keep the old method until the replacement succeeds.\n3. Enable the method for the intended users. Keep the existing target groups and exclusions. Under Configure, enable self-service setup.\n4. If profiles are already enabled, open each applicable profile under Configure. Select device-bound passkeys, require attestation, enable key restrictions and choose Allow. For legacy settings, set attestation and key restrictions on the Configure tab, with Allow as the restriction type.\n5. Add the model IDs below to that allowed AAGUID list. They are IAMAI defaults, not a hardware-brand requirement specified by Jon's imported baseline.\n\n{{passkey.target.modelList}}\n\n6. An AAGUID identifies a model family, not an individual key. Other versions of the same brand can have different IDs. Keep existing approved recovery models; additional models are a tenant customization of IAMAI's defaults. Find a registered key's AAGUID in the user's Authentication methods details, or verify it against the manufacturer's information and Microsoft's hardware catalog.\n7. For profiles, check Enable and Target to confirm assignments. A user can use any applicable profile, so check that another assigned profile does not permit an unintended authenticator.\n8. Save, reopen the settings and scan again. Test emergency-account access in the emergency-access step.\n\nSettings read: {{passkey.current.summary}} [omit this line when unavailable]\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n{{passkey.review.detail}} [omit this line when unavailable]\n"
         },
         "entra.configure-authenticator": {
           "meta": {

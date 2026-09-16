@@ -12,7 +12,7 @@ import { isHeld } from './holds.ts'
 import { isWorkingDay } from './timing.ts'
 import { cleanup as cleanupContent } from '../content/content.ts'
 
-const ORDER = ['alerting', 'drill', 'naming', 'consolidation', 'notAssessed']
+const ORDER = ['drill', 'alerting', 'naming', 'consolidation', 'notAssessed']
 
 test('emergency tests are early while optional hygiene follows enforcement', () => {
   const f = fixture('demo')
@@ -24,7 +24,7 @@ test('emergency tests are early while optional hygiene follows enforcement', () 
   assert.deepEqual(kinds, ORDER.filter((k) => kinds.includes(k)), 'rows keep the §5 order')
   assert.ok(kinds.includes('alerting') && kinds.includes('drill'), 'the emergency accounts give alerting and the drill')
   assert.equal(kinds.includes('notAssessed'), false, 'individual workflow reviews replace the catch-all')
-  assert.ok(c.rows.find(row => row.kind === 'alerting')!.day <= r.schedule.targetEnd, 'alerting is early')
+  assert.ok(c.rows.find(row => row.kind === 'alerting')!.day > r.schedule.targetEnd, 'alerting follows security rollout')
   assert.ok(c.rows.find(row => row.kind === 'drill')!.day <= r.schedule.targetEnd, 'recovery testing is early')
   const ctx = r.schedule.rhythm ? { rhythm: r.schedule.rhythm } : undefined
   for (const [i, row] of c.rows.entries()) {
@@ -79,8 +79,8 @@ test('every fixture with emergency accounts schedules their tests independently 
     const c = r.schedule.cleanup
     if (f.mapping.breakGlassUserIds.length === 0) continue
     assert.ok(c, `${f.name}: emergency accounts give Cleanup at least the alerting and drill rows`)
-    assert.equal(c.start, c.rows.find(row => row.kind === 'alerting')!.day, `${f.name}: alerting starts independently of last enforcement`)
-    for (const row of c.rows.filter(row => row.kind !== 'alerting' && row.kind !== 'drill')) assert.ok(row.day > r.schedule.targetEnd)
+    assert.equal(c.start, c.rows.find(row => row.kind === 'drill')!.day, `${f.name}: recovery testing starts independently of last enforcement`)
+    for (const row of c.rows.filter(row => row.kind !== 'drill')) assert.ok(row.day > r.schedule.targetEnd)
     assert.ok(c.end >= c.start)
   }
 })

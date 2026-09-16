@@ -310,9 +310,9 @@ export function pickerUniverse(stepId: string, source: string | null, ctx: Picke
   }
   if (kind === 'locations') {
     return (snapshot.config.namedLocations?.rows ?? [])
-      .map((raw) => raw as { id?: string; displayName?: string })
-      .filter((l) => typeof l.id === 'string')
-      .map((l) => ({ id: l.id as string, name: l.displayName ?? nameOf(l.id as string) }))
+      .map((raw) => raw as { id?: string; displayName?: string; '@odata.type'?: string; ipRanges?: {cidrAddress?: string}[] })
+      .filter((l) => typeof l.id === 'string' && String(l['@odata.type']).includes('ipNamedLocation'))
+      .map((l) => ({ id: l.id as string, name: l.displayName ?? nameOf(l.id as string), secondary: l.ipRanges?.map(r => r.cidrAddress).filter(Boolean).join(', ') }))
   }
   if (kind === 'countries') {
     const codes = [...new Set([...COUNTRY_CODES, ...suggestCountries(snapshot).countries.map((c) => c.code), ...mapping.allowedCountries.map((c) => c.toUpperCase())])]

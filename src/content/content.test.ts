@@ -71,6 +71,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // "only these fields" note and the enable-and-save line. Every mapped policy
   // in the example is created new, so neither is emitted here.
   '.shared.changeUntouched',
+  '.shared.changeDoneWhen[0]', // Used for dynamic correction variants, not the static example.
+  '.shared.changeDoneWhen[1]',
   // What a message says about a date the roadmap projected but nothing has
   // earned (roadmap/forecast.ts): the paragraph the email and the prompt pack's
   // draft add under the day they name. It is composed at render time from the

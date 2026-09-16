@@ -6,6 +6,7 @@
 import type { SizeBand } from './constants.ts'
 import type { ChangeFreeze } from './schedule.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { PASSKEY_MODELS_STEP, PASSKEY_MODELS_ANSWER, PASSKEY_MODELS_ACCEPT, parsePasskeyApprovedModels } from '../mapping/passkeyModels.ts'
 import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
@@ -188,6 +189,13 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
   }
   for (const [stepId, d] of Object.entries(stepDecisions)) {
     if (!d) continue
+    if (stepId === PASSKEY_MODELS_STEP) {
+      if (provenance === 'confirmed' && d.option === PASSKEY_MODELS_ACCEPT) {
+        const models = parsePasskeyApprovedModels(d.answers?.[PASSKEY_MODELS_ANSWER])
+        if (models !== null) next.passkeyApprovedModels = models
+      }
+      continue
+    }
     // The decision's own option persists under the decision's label, the
     // question's answer under the question's, so one rule reads every answer.
     const labels = questionLabels(stepId)
@@ -281,6 +289,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     } else if (stepId === DECISION_STEPS.trustedLocation) {
       next.trustedLocationIds = picked
       answered('trustedLocations')
+      if (d.option === 'office-network' && picked.length === 0) next.wizardAnswered.trustedLocations = false
     } else if (stepId === DECISION_STEPS.serviceAccounts) {
       next.serviceAccountUserIds = picked
       next.serviceAccountRejectedIds = next.serviceAccountRejectedIds.filter((id) => !picked.includes(id))

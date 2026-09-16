@@ -140,6 +140,8 @@ test('a group heading spans every day its rows read: the floor group dates its c
 
 test('deferred hardening is delivered work: Completed on every surface, never Already satisfied, and the resilience tile says so', () => {
   const base = fixture('small')
+  base.snapshot.config.authMethodsPolicy = structuredClone(fixture('demo-week2').snapshot.config.authMethodsPolicy)
+  for (const id of base.mapping.breakGlassUserIds) { const methods = base.snapshot.authMethods[id]; if (Array.isArray(methods)) base.snapshot.authMethods[id] = methods.map(method => method.kind === 'fido2' ? { ...method, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound' } : method) }
   const basis = runFixture(base).steps.find((s) => s.id === BREAK_GLASS_STEP_ID)!.emergency!.basis
   const r = runFixture(base, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis } })
   const bg = r.steps.find((s) => s.id === BREAK_GLASS_STEP_ID)!

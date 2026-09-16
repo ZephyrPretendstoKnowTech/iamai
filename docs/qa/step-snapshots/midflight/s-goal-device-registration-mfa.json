@@ -18,7 +18,7 @@
       "state": "not measured"
     },
     {
-      "label": "Prerequisite · To do",
+      "label": "Before enforcement",
       "state": "Create or Correct Emergency Access Accounts"
     },
     {
@@ -34,8 +34,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Est. Aug 31, 2026"
 }

@@ -372,9 +372,8 @@ function demandKey(combinations: readonly string[], configurations: unknown[] | 
  * restrictions were not read — an export that never fetched them, a snapshot
  * collected before IAMAI asked for them — nothing is known about them and no
  * tenant strength can be shown to be the author's; the reference stays
- * unresolved and waits on the step that creates the strength. Where two tenant
- * strengths both are the author's, the plan does not pick one for the operator
- * (roadmap/generate.ts, the same rule the pair matching uses).
+ * unresolved and waits on the step that creates the strength. Equivalent strengths can be resolved automatically; a stable identifier
+ * keeps repeated scans deterministic without changing either object.
  */
 function tenantStrengthFor(authorId: string, strengths: Map<string, BaselineStrength>, tenant: TenantObjects): string | null {
   const want = strengths.get(authorId)
@@ -382,7 +381,8 @@ function tenantStrengthFor(authorId: string, strengths: Map<string, BaselineStre
   if (key === null) return null
   const hits: string[] = []
   for (const [id, own] of tenant.strengths ?? []) if (demandKey(own.allowedCombinations, own.combinationConfigurations) === key) hits.push(id)
-  return hits.length === 1 ? hits[0] : null
+  const prior = tenant.confirmed?.get(authorId)
+  return prior && hits.includes(prior) ? prior : hits.sort()[0] ?? null
 }
 
 /**
@@ -396,7 +396,6 @@ export function unmatchedStrengths(policies: readonly CaPolicy[], tenant: Tenant
   const out: { id: string; name: string | null; allowedCombinations: string[] }[] = []
   for (const r of referencesOf(policies)) {
     if (r.kind !== 'authenticationStrength') continue
-    if (tenant.confirmed?.get(r.id)) continue
     if (tenantStrengthFor(r.id, strengths, tenant)) continue
     const st = strengths.get(r.id)
     out.push({ id: r.id, name: st?.name ?? null, allowedCombinations: st?.allowedCombinations ?? [] })
@@ -567,7 +566,7 @@ function substitutionsFor(
     const kind = r.kind === 'group' || r.kind === 'namedLocation' ? r.kind : null
     const needsAnswer = token === null && kind !== null && (kind === 'group' || stepForReference(kind, null, goalId) === null)
     const confirmed = tenant.confirmed?.get(r.id) ?? null
-    if (confirmed) {
+    if (confirmed && r.kind !== 'authenticationStrength') {
       ids.set(r.id, [confirmed])
       if (needsAnswer && kind) decisions.set(r.id, { kind, answer: 'mapped' })
       continue

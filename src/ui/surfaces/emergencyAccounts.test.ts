@@ -25,6 +25,8 @@ function tenant(edit: (f: Tenant, a: string, b: string) => void): { f: Tenant; a
   const f = structuredClone(fixture('small'))
   const [a, b] = f.mapping.breakGlassUserIds
   edit(f, a, b)
+  f.snapshot.config.authMethodsPolicy = structuredClone(fixture('demo-week2').snapshot.config.authMethodsPolicy)
+  for (const id of f.mapping.breakGlassUserIds) { const methods = f.snapshot.authMethods[id]; if (Array.isArray(methods)) f.snapshot.authMethods[id] = methods.map(method => method.kind === 'fido2' ? { ...method, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound' } : method) }
   return { f, a, b }
 }
 

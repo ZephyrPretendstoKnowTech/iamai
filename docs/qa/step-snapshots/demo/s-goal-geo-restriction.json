@@ -30,8 +30,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "After prerequisites"
 }

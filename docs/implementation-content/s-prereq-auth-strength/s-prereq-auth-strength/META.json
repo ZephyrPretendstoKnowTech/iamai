@@ -45,7 +45,9 @@
     "strength.current.displayName",
     "strength.current.allowedCombinations",
     "strength.current.usage",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "strength.target.allowedCombinations",
+    "strength.target.methodNames"
   ],
   "projection": {
     "missing": {

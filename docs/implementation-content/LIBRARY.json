@@ -1382,7 +1382,7 @@
       ],
       "correctionModules": 2,
       "requiredBindings": 3,
-      "optionalBindings": 5,
+      "optionalBindings": 7,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -1537,7 +1537,7 @@
       ],
       "correctionModules": 0,
       "requiredBindings": 1,
-      "optionalBindings": 12,
+      "optionalBindings": 13,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -4320,6 +4320,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "passkey.target.modelList",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "passkey.target.profileSummary",
       "requiredBy": [],
       "optionalBy": [
@@ -5966,11 +5978,35 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "strength.target.allowedCombinations",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-auth-strength"
+      ],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "strength.target.displayName",
       "requiredBy": [
         "s-prereq-auth-strength"
       ],
       "optionalBy": [],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.target.methodNames",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-auth-strength"
+      ],
       "packages": [
         "s-prereq-auth-strength"
       ],
@@ -6556,14 +6592,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 988,
-    "uniqueBindings": 290,
+    "uniqueBindings": 293,
     "bindingsRequiredByAtLeastOneProjection": 99,
-    "bindingsOptionalInAtLeastOnePackage": 195,
+    "bindingsOptionalInAtLeastOnePackage": 198,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 245,
+    "bindingDefinitionsPendingHolisticReview": 248,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 245,
+    "knownIAMAIInputUnreviewed": 248,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

@@ -335,6 +335,7 @@ export type Step = {
   baselineReviewSource?: { name: string; json: string | null; reason: string }
   workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean; needsReview?: boolean; evidenceBasis?: string }[]
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
+  authenticationStrengthTarget?: { allowedCombinations: string[] }
   configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[]
   preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[] }
   /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */

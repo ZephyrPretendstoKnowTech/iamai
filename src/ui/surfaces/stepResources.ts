@@ -6,7 +6,6 @@ import type { StepVarContext } from './stepVars.ts'
 import type { Channel, Artifact } from './stepBody.ts'
 import { contentTitle, contentStepFor } from '../../content/stepTitle.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { hoursAsDuration } from './stepPortal.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { devicePlanOf, travelCountriesOf } from '../../roadmap/answers.ts'
 
@@ -18,11 +17,11 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
 }
 
 const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-question-travel'])
-const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads'])
+const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
   if (step.id === 's-verify-mfa' && channel === 'json') return false
-  if (channel === 'email' && NO_EMAIL.has(step.id)) return false
+  if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAIL[step.id]))) return false
   if ((channel === 'ps' || channel === 'json') && NON_MACHINE.has(step.id)) return false
   return true
 }
@@ -58,6 +57,8 @@ export function inspectionResource(step: Step, channel: 'ps' | 'json'): Artifact
 }
 
 const EMAIL: Record<string, { subject: string; body: string }> = {
+  's-goal-all-users-no-persistence': { subject: 'Changes to Work Browser Sign-ins', body: 'We are updating browser sign-in settings to reduce the risk of work accounts staying signed in on shared or unattended computers. After the change, you may need to sign in again when you reopen your browser. Keep your approved sign-in method available. Save work before closing the browser and always sign out on shared computers. If you encounter repeated prompts or cannot access a work app, contact IT with the app name and the time of the problem.' },
+  's-goal-mfa-all-users': { subject: 'Stronger Sign-in Protection for Your Work Account', body: 'We are strengthening sign-in protection for work accounts. Make sure you have registered an approved authentication method at https://aka.ms/mfasetup and can use it to sign in. Contact IT before the change if you need help registering or cannot use the offered methods. We will confirm the rollout date separately.' },
   's-goal-admin-session': { subject: 'Review Administrator Session Settings', body: 'We are reviewing sign-in session settings for administrator accounts. Test your normal administrative tasks and tell IT about any unexpected prompts or interrupted work so we can coordinate the change.' },
   's-goal-inforcer-mfa': { subject: 'MFA for Inforcer Access', body: 'We are reviewing MFA protection for Inforcer access. Please confirm your work account has an approved MFA method and contact IT if you need help testing sign-in. Tell IT about any unattended job that uses a person’s account so its access path can be reviewed separately.' },
   's-ladder-legacy-auth-inventory': { subject: 'Review Older Sign-In Workflows', body: 'Please identify each application, printer or scheduled job that uses an older client or username-and-password protocol. Include the account, actual protocol, owner, normal and infrequent run schedules, supported replacement and a delivery or access test window.' },
@@ -77,36 +78,14 @@ const EMAIL: Record<string, { subject: string; body: string }> = {
   's-goal-block-legacy-auth': { subject: 'Review Older Sign-In and Email Methods', body: 'We are preparing to block older username-and-password sign-in methods. Please identify applications, printers or scanners that still depend on them, and confirm a supported replacement and test window. SMTP with OAuth, connector-based relay and Direct Send use different paths; please provide the actual method your device uses.' },
 }
 
-/** The actual target controls, without claiming the change is already enforced. */
-function adminSessionDetails(step: Step, ctx: StepVarContext): string {
-  if (step.id !== 's-goal-admin-session') return ''
-  const targets = (step.action.resolution?.policies ?? []).map(p => p.target ?? p.body)
-  const rows = targets.length ? targets : ctx.snapshot.config.caPolicies.rows.filter(raw => step.satisfiedBy?.policies.includes(String((raw as Record<string, unknown>).id)))
-  const descriptions = rows.flatMap(raw => {
-    const controls = (raw as { sessionControls?: { signInFrequency?: { isEnabled?: boolean; frequencyInterval?: string; type?: string; value?: number }; persistentBrowser?: { isEnabled?: boolean; mode?: string } } }).sessionControls
-    const frequency = controls?.signInFrequency
-    const lines: string[] = []
-    if (frequency?.isEnabled) {
-      if (frequency.frequencyInterval === 'everyTime') lines.push('The settings for this step require reauthentication every time.')
-      else if (typeof frequency.value === 'number' && frequency.value > 0 && (frequency.type === 'hours' || frequency.type === 'days')) lines.push(`The settings for this step require reauthentication after ${hoursAsDuration(frequency.value * (frequency.type === 'days' ? 24 : 1))}.`)
-    }
-    if (controls?.persistentBrowser?.isEnabled && controls.persistentBrowser.mode === 'never') lines.push('Browser sessions are not kept signed in after the browser is closed.')
-    return lines
-  })
-  return descriptions.length ? `\n\n${[...new Set(descriptions)].join(' ')}` : ''
-}
-
 /** Neutral coordination language stays truthful before and after a change. */
 export function emailResource(step: Step, ctx: StepVarContext, why: string): Artifact {
-  const title = contentTitle(step)
-  const template = EMAIL[step.id] ?? { subject: `Review ${title}`, body: `We are reviewing ${title.toLowerCase()}. ${why}\n\nPlease review the affected accounts and requirements below, identify any workflow that needs attention, and suggest a suitable test or change window.` }
-  const people = step.id === 's-goal-guests-mfa' ? [] : step.population.ids
-  const names = people.map(id => ctx.nameOf(id)).filter(Boolean)
-  const scope = names.length ? `\n\n${step.id === 's-goal-guests-mfa' ? 'Guest accounts in this tenant' : 'Accounts to review'}:\n${names.map(n => `- ${n.replace(/[\r\n]/g, ' ')}`).join('\n')}` : ''
+  const template = EMAIL[step.id]
+  if (!template) throw new Error(`No audience email defined for ${step.id}`)
   const countries = step.id === 's-prereq-allowed-countries' ? `\n\nNormal-work countries: ${ctx.mapping.allowedCountries.map(countryName).join(', ') || 'Not selected'}\nRecurring travel destinations: ${travelCountriesOf(ctx.mapping).map(countryName).join(', ') || 'None selected'}` : ''
   const device = devicePlanOf(ctx.mapping)
   const choices = step.id === 's-prereq-device-plan' ? `\n\nPhone Management: ${device?.phonesText ?? 'Not selected'}\nPhone App Protection: ${device?.phoneAppProtection === 'required' ? 'Required' : device?.phoneAppProtection === 'not-required' ? 'Not required' : 'Not selected'}\nComputer Management: ${device?.computersText ?? 'Not selected'}` : ''
-  const text = `Subject: ${template.subject}\n\n${template.body}${adminSessionDetails(step, ctx)}${scope}${countries}${choices}\n\n[administrator contact]`
+  const text = `Subject: ${template.subject}\n\n${template.body}${countries}${choices}\n\n[administrator contact]`
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 

@@ -78,9 +78,9 @@ test('P0-11: the exclusions group sends nobody to edit existing policies; it sta
 test('P1-1: the Decision tile reads Decision, explains the ask, and names the one group IAMAI found', () => {
   const devices = bodiesOf(fixture('demo')).get('s-prereq-device-plan')!
   const decision = devices.readiness.tiles.find((t) => t.key === 'decision')!
-  assert.equal(decision.value, 'Decision')
+  assert.equal(decision.value, 'Choose device management')
   // Editorial batch C: the help also says the inventory informs the choice and does not make it.
-  assert.equal(decision.note, '', 'short identifiers do not repeat the question as readiness instructions')
+  assert.equal(decision.note, 'Save your choices for Phone Management, Phone App Protection and Computer Management.')
   const f = oneGroup()
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')

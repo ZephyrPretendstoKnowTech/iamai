@@ -68,7 +68,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
     // Cycle 3 (review 2): and says what saving does to a policy that is On.
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
+    { kind: 'list', ordered: false, start: 1, items: [['Save with **Enable policy** unchanged. If it is On, the changed rule can affect access after you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID|the baseline's interval/)
   const ai = packageOf(SESSION).blocks['ai.correct'].text
@@ -107,7 +107,7 @@ test('s-goal-token-protection: Why says what token protection is, AI Info explai
   const words = stepWords('token-protection')
   // Editorial batch C: the register Why.
   assert.equal(words.why, 'Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.')
-  assert.equal(words.doneEnd, "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.")
+  assert.equal(words.doneEnd, "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions. Supported work apps sign in successfully with token protection.")
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   const ai = packageOf(TOKEN).blocks['ai.correct'].text
   // Editorial batch C (factual fix): supported session tokens on the pinned resources and platform only, never every token, and no claim that the correction only adds the exclusions group.

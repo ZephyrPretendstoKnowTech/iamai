@@ -32,7 +32,7 @@ test('passkey profiles offer an early manual review without fabricating an updat
   assert.ok(step.blockers.length > 0)
   assert.equal(passkeyBindings(f.snapshot)['passkey.target.fido2Configuration'], undefined)
   const body = stepBodyOf(step, ctx, { lane: laneViewFor(step, r.steps) })
-  assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /review every applicable profile/)
+  assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /open each applicable profile/)
   assert.doesNotMatch(body.artifacts.find(a => a.id === 'portal')!.text(), /Apply the resolved change/)
 })
 
@@ -55,4 +55,24 @@ test('guest decisions remain answerable without service-provider sign-ins or an 
   const portal = body.artifacts.find(a => a.id === 'portal')!
   assert.ok(portal)
   assert.doesNotMatch(portal.text(), /channel is not available/)
+})
+
+
+test('authentication-strength creation uses the same baseline combinations as automatic completion', () => {
+  const f = fixture('demo')
+  f.snapshot.config.authStrengths.rows = []
+  const r = runFixture(f)
+  const step = r.steps.find(s => s.id === 's-prereq-auth-strength')!
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const body = stepBodyOf(step, ctx, {lane: laneViewFor(step, r.steps)})
+  const wanted = step.authenticationStrengthTarget!.allowedCombinations
+  assert.equal(wanted.length, 4, 'the pinned baseline has four combinations')
+  const portal = body.artifacts.find(a => a.id === 'portal')!.text()
+  assert.match(portal, /Temporary Access Pass \(one-time use\)/)
+  assert.doesNotMatch(portal, /multi-use|five methods|‹/i)
+  for (const a of body.artifacts.filter(a => a.id === 'json')) {
+    assert.doesNotMatch(a.text(), /temporaryAccessPassMultiUse/)
+    for (const method of wanted) assert.ok(a.text().includes(method), `${a.id}: ${method}`)
+  }
+  assert.equal(body.contract.state.satisfied, false)
 })

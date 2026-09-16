@@ -8,6 +8,8 @@
 // only the global fields being changed, never the entire GET response.
 // Authenticator AAGUIDs come from the pinned implementation package. This helper
 // makes no claim that attestation proves Entra registration or device compliance.
+import { passkeyApprovedModelsOf } from '../mapping/passkeyModels.ts'
+import type { MappingState } from '../mapping/types.ts'
 import registry from '../content/implementation/registry.generated.json' with { type: 'json' }
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { operatorUserId } from '../derive/operator.ts'
@@ -96,7 +98,7 @@ export function assignedPasskeyProfiles(current: Fido2Configuration): { profiles
   return { profiles: [...ids].flatMap(id => byId.has(id) ? [byId.get(id)!] : []), targets, unknown: [...new Set(unknown)] }
 }
 
-function findingsFor(current: Fido2Configuration | null): PasskeyFinding[] {
+function findingsFor(current: Fido2Configuration | null, mapping?: MappingState): PasskeyFinding[] {
   const findings: PasskeyFinding[] = []
   const add = (key: string, label: string, outcome: PasskeyFinding['outcome'], value: string, detail: string): void => { findings.push({ key, label, outcome, value, detail }) }
   if (!current) { add('method', 'Passkey Method', 'fail', 'Not configured', 'The authentication methods policy has no FIDO2 entry.'); return findings }
@@ -121,8 +123,8 @@ function findingsFor(current: Fido2Configuration | null): PasskeyFinding[] {
     checkSettings('legacy', 'Passkey method', current.isAttestationEnforced, current.keyRestrictions)
     const kr = current.keyRestrictions
     const models = strings(kr?.aaGuids)
-    for (const id of PASSKEY_TARGET_AAGUIDS) {
-      const platform = id.startsWith('90a3') ? 'iOS' : 'Android'
+    for (const id of requiredModels(mapping).map(m => m.aaguid)) {
+      const platform = requiredModels(mapping).find(m => m.aaguid === id)!.name
       const known = kr?.isEnforced === true && kr.enforcementType === 'allow' && Array.isArray(kr.aaGuids)
       add(`authenticator.${platform}`, `Authenticator ${platform}`, known ? models.includes(id) ? 'pass' : 'fail' : 'unknown', known ? models.includes(id) ? 'Allowed' : 'AAGUID missing' : 'Allow list not established', `${platform} AAGUID: ${id}.`)
     }
@@ -130,22 +132,41 @@ function findingsFor(current: Fido2Configuration | null): PasskeyFinding[] {
     const assigned = assignedPasskeyProfiles(current)
     for (const [i, detail] of assigned.unknown.entries()) add(`profiles.unread.${i}`, 'Passkey Profiles', 'unknown', 'Not fully read', detail)
     for (const p of assigned.profiles) checkSettings(`profile.${p.id}`, p.name || p.id, p.attestationEnforcement === 'registrationOnly' ? true : p.attestationEnforcement === 'disabled' ? false : undefined, p.keyRestrictions, p)
-    for (const target of assigned.targets) for (const id of PASSKEY_TARGET_AAGUIDS) {
-      const platform = id.startsWith('90a3') ? 'iOS' : 'Android'
+    for (const target of assigned.targets) for (const id of requiredModels(mapping).map(m => m.aaguid)) {
+      const platform = requiredModels(mapping).find(m => m.aaguid === id)!.name
       const profiles = assigned.profiles.filter(p => target.profileIds.includes(p.id.toLowerCase()))
       const allowed = profiles.some(p => p.keyRestrictions?.isEnforced === true && p.keyRestrictions.enforcementType === 'allow' && strings(p.keyRestrictions.aaGuids).includes(id) && typeof p.passkeyTypes === 'string' && p.passkeyTypes.toLowerCase().split(',').map(x => x.trim()).includes('devicebound'))
       const unread = profiles.length !== target.profileIds.length || profiles.some(p => !Array.isArray(p.keyRestrictions?.aaGuids))
-      add(`target.${target.id}.${platform}`, `Authenticator ${platform}`, allowed ? 'pass' : unread ? 'unknown' : 'fail', allowed ? 'Allowed' : unread ? 'Profile not read' : 'AAGUID missing', `Target ${target.id}: ${platform} AAGUID ${id} must be allowed by an assigned device-bound profile.`)
+      add(`target.${target.id}.${platform}`, `Authenticator ${platform}`, allowed ? 'pass' : unread ? 'unknown' : 'fail', allowed ? 'Allowed' : unread ? 'Profile not read' : 'AAGUID missing', `${target.id.toLowerCase() === 'all_users' ? 'All users' : 'Group ' + target.id}: ${platform} AAGUID ${id} must be allowed by an assigned device-bound profile.`)
     }
   }
   return findings
 }
 
 /** Concrete current findings, including failures still observable in a partial read. */
-export function passkeyFindingsOf(snapshot: TenantSnapshot | null): PasskeyFinding[] {
-  const reading = passkeyReadingOf(snapshot)
+export function passkeyFindingsOf(snapshot: TenantSnapshot | null, mapping?: MappingState): PasskeyFinding[] {
+  const reading = passkeyReadingOf(snapshot, mapping)
   if (reading.state === 'unread') return [{ key: 'read', label: 'Passkey Configuration', value: 'Not read', outcome: 'unknown', detail: snapshot?.config.authMethodsPolicy?.fido2Read?.reason || snapshot?.config.authMethodsPolicy?.reason || 'The scan did not receive the FIDO2 configuration. Reconnect with the displayed read permission and scan again.' }]
-  return findingsFor(reading.current)
+  return findingsFor(reading.current, mapping)
+}
+
+export function passkeyReadinessFindingsOf(snapshot: TenantSnapshot | null, mapping?: MappingState): PasskeyFinding[] {
+  const findings = passkeyFindingsOf(snapshot, mapping)
+  const groups: [string, string, (f: PasskeyFinding) => boolean][] = [
+    ['availability', 'Method Availability', f => ['method', 'selfService', 'targets', 'exclusions', 'read'].includes(f.key) || f.key.startsWith('profiles.unread')],
+    ['storage', 'Passkey Storage', f => f.key.endsWith('.types')],
+    ['attestation', 'Attestation', f => f.key.endsWith('.attestation')],
+    ['models', 'Allowed Authenticators', f => f.key.endsWith('.restrictions') || f.key.startsWith('authenticator.') || f.key.startsWith('target.')],
+  ]
+  return groups.flatMap(([key, label, include]) => {
+    const items = findings.filter(include)
+    if (!items.length) return []
+    const problems = items.filter(f => f.outcome !== 'pass')
+    const outcome = problems.some(f => f.outcome === 'fail') ? 'fail' : problems.length ? 'unknown' : 'pass'
+    const value = !problems.length ? 'Configured' : key === 'models' && problems.every(f => f.value === 'AAGUID missing') ? `${problems.length} missing AAGUID${problems.length === 1 ? '' : 's'}` : problems.find(f => f.outcome === 'fail')?.value ?? problems[0].value
+    const detail = [...new Set((problems.length ? problems : items).map(f => f.detail))].join('\n')
+    return [{key, label, value, detail, outcome} as PasskeyFinding]
+  })
 }
 
 type PackageMeta = { stepId?: string; baselineAuthority?: { passkeyTarget?: { fido2Configuration?: Fido2Configuration } } }
@@ -154,7 +175,23 @@ const TARGET = PACKAGE?.meta.baselineAuthority?.passkeyTarget?.fido2Configuratio
 if (!TARGET) throw new Error(`${PASSKEY_SETTINGS_STEP_ID}: the package carries no passkeyTarget.fido2Configuration`)
 
 /** The pinned product object: the approved Authenticator models and settings, and the whole target for a policy with no Fido2 entry. */
-export const PASSKEY_TARGET: Readonly<Fido2Configuration> = TARGET
+export const PASSKEY_DEFAULT_MODELS = [
+  { name: 'Microsoft Authenticator (iOS)', aaguid: '90a3ccdf-635c-4729-a248-9b709135078f' },
+  { name: 'Microsoft Authenticator (Android)', aaguid: 'de1e552d-db1d-4423-a619-566b625cdc84' },
+  { name: 'YubiKey 5 NFC family', aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' },
+  { name: 'YubiKey 5 non-NFC family', aaguid: '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b' },
+  { name: 'FEITIAN ePass FIDO2-NFC (CTAP 2.1)', aaguid: '234cd403-35a2-4cc2-8015-77ea280c77f5' },
+  { name: 'TOKEN2 PIN Plus', aaguid: 'eabb46cc-e241-80bf-ae9e-96fa6d2975cf' },
+] as const
+// IAMAI defaults identify specific models, not blanket brand approval.
+export const PASSKEY_TARGET: Readonly<Fido2Configuration> = { ...TARGET, keyRestrictions: { ...TARGET.keyRestrictions, aaGuids: PASSKEY_DEFAULT_MODELS.map(m => m.aaguid) } }
+export function requiredModels(mapping?: MappingState): {name: string; aaguid: string}[] {
+  const models: {name: string; aaguid: string}[] = [...PASSKEY_DEFAULT_MODELS]
+  for (const m of mapping ? passkeyApprovedModelsOf(mapping) : []) {
+    if (typeof m.name === 'string' && m.name.trim() && typeof m.aaguid === 'string' && GUID.test(m.aaguid) && !models.some(x => x.aaguid === m.aaguid.toLowerCase())) models.push({name: m.name.trim(), aaguid: m.aaguid.toLowerCase()})
+  }
+  return models
+}
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map((x) => x.toLowerCase()).sort() : [])
 const targetIds = (v: unknown): string[] => (Array.isArray(v) ? strings(v.map((t) => (t as { id?: unknown } | null)?.id)) : [])
@@ -168,8 +205,9 @@ export const PASSKEY_TARGET_AAGUIDS: readonly string[] = strings(PASSKEY_TARGET.
  * a methods policy with no Fido2 entry — has nothing to preserve and takes the
  * pinned object whole.
  */
-export function resolvePasskeyTarget(current: Fido2Configuration | null): PasskeyResolution {
-  if (current === null) return { kind: 'target', target: structuredClone(PASSKEY_TARGET), restriction: 'allow', retained: [], added: [...PASSKEY_TARGET_AAGUIDS] }
+export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping?: MappingState): PasskeyResolution {
+  const requiredIds = requiredModels(mapping).map(m => m.aaguid).sort()
+  if (current === null) return { kind: 'target', target: { ...structuredClone(PASSKEY_TARGET), keyRestrictions: { ...PASSKEY_TARGET.keyRestrictions, aaGuids: requiredIds } }, restriction: 'allow', retained: [], added: requiredIds }
   const includes = Array.isArray(current.includeTargets) ? (current.includeTargets as (Record<string, unknown> | null)[]) : null
   // Profiles first: a policy that uses them is not described by its global settings, however those read.
   const assigned = (includes ?? []).flatMap((t) => (Array.isArray(t?.allowedPasskeyProfiles) ? (t.allowedPasskeyProfiles as unknown[]) : []))
@@ -179,7 +217,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null): Passke
     ...(assigned.length > 0 ? ['includeTargets.allowedPasskeyProfiles'] : []),
   ]
   if (profiles.length > 0) {
-    const findings = findingsFor(current).filter(f => f.outcome !== 'pass' && f.key !== 'method' && f.key !== 'selfService')
+    const findings = findingsFor(current, mapping).filter(f => f.outcome !== 'pass' && f.key !== 'method' && f.key !== 'selfService')
     if (findings.length > 0) return { kind: 'review', review: 'profiles', subjects: findings.map(f => `${f.label}: ${f.value}. ${f.detail}`) }
     if (!['enabled', 'disabled'].includes(String(current.state)) || typeof current.isSelfServiceRegistrationAllowed !== 'boolean') return { kind: 'review', review: 'partialRead', subjects: ['state', 'isSelfServiceRegistrationAllowed'] }
     // Profile settings already meet the standard. Keep every profile and its
@@ -204,7 +242,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null): Passke
   const models = read as string[]
   const restriction: PasskeyRestriction = kr.isEnforced === true ? (kr.enforcementType as 'allow' | 'block') : 'unrestricted'
   if (restriction === 'block') {
-    const blocked = models.filter((g) => PASSKEY_TARGET_AAGUIDS.includes(g.toLowerCase()))
+    const blocked = models.filter((g) => requiredIds.includes(g.toLowerCase()))
     if (blocked.length > 0) return { kind: 'review', review: 'blockListConflict', subjects: blocked }
   }
   if (restriction !== 'allow') return { kind: 'review', review: 'modelSelection', subjects: [restriction] }
@@ -216,7 +254,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null): Passke
     seen.add(key)
     return true
   })
-  const added = restriction === 'allow' ? PASSKEY_TARGET_AAGUIDS.filter((a) => !seen.has(a)) : []
+  const added = restriction === 'allow' ? requiredIds.filter((a) => !seen.has(a)) : []
   const target: Fido2Configuration = {
     '@odata.type': PASSKEY_TARGET['@odata.type'],
     id: 'Fido2',
@@ -255,7 +293,7 @@ function matches(field: PasskeyField, current: Fido2Configuration, t: Fido2Confi
 }
 
 /** The tenant's Fido2 configuration read against the target resolved from it. */
-export function passkeyReadingOf(snapshot: TenantSnapshot | null): PasskeyReading {
+export function passkeyReadingOf(snapshot: TenantSnapshot | null, mapping?: MappingState): PasskeyReading {
   const section = snapshot?.config.authMethodsPolicy
   const row = section?.status === 'ok' ? ((section.rows?.[0] ?? null) as { authenticationMethodConfigurations?: unknown; fido2Configuration?: unknown } | null) : null
   const configs = row?.authenticationMethodConfigurations
@@ -263,7 +301,7 @@ export function passkeyReadingOf(snapshot: TenantSnapshot | null): PasskeyReadin
   // The parent configuration remains available to diagnostics, not completion.
   if (section?.fido2Read?.status === 'error' || (!Array.isArray(configs) && !object(row?.fido2Configuration))) return { state: 'unread', current: null, differs: [], resolution: null }
   const current = (object(row?.fido2Configuration) ?? (Array.isArray(configs) ? configs.find((c) => String((c as { id?: unknown } | null)?.id ?? '').toLowerCase() === 'fido2') : null) ?? null) as Fido2Configuration | null
-  const resolution = resolvePasskeyTarget(current)
+  const resolution = resolvePasskeyTarget(current, mapping)
   if (resolution.kind === 'review') return { state: 'review', current, differs: [], resolution }
   const differs = PASSKEY_FIELDS.filter((f) => current === null || !matches(f, current, resolution.target))
   const state: PasskeyState = current === null || current.state !== 'enabled' ? 'missing' : differs.length > 0 ? 'partial' : 'inPlace'
@@ -330,11 +368,11 @@ export function passkeyReviewDetail(r: Extract<PasskeyResolution, { kind: 'revie
  * a profile-based one, a block-list conflict or a partial read binds no target, so
  * no request is ever built from settings IAMAI did not read.
  */
-export function passkeyBindings(snapshot: TenantSnapshot | null): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  const r = passkeyReadingOf(snapshot)
+export function passkeyBindings(snapshot: TenantSnapshot | null, mapping?: MappingState): Record<string, unknown> {
+  const out: Record<string, unknown> = { 'passkey.target.modelList': requiredModels(mapping).map(m => `- ${m.name} — ${m.aaguid}`).join('\n') }
+  const r = passkeyReadingOf(snapshot, mapping)
   if (r.resolution === null) return out
-  out['passkey.current.findings'] = passkeyFindingsOf(snapshot)
+  out['passkey.current.findings'] = passkeyFindingsOf(snapshot, mapping)
   out['passkey.current.state'] = r.state
   if (r.current !== null) {
     out['passkey.current.fido2Configuration'] = structuredClone(r.current)

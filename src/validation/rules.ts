@@ -879,8 +879,8 @@ const ctyUnknownCountries: ValidationRule<LocationTarget & { includeUnknownCount
   subject: 'allowedCountries',
   severity: 'warning',
   needs: ['namedLocations'],
-  evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
+  evaluate: (loc, ctx) => {
+    if (!loc) return fail(ctx.snapshot.config.namedLocations.rows.length === 0 ? 'No named locations were found. Create the Work Countries location.' : 'No named location matches Work Countries. Create or correct it.')
     return loc.includeUnknownCountriesAndRegions === true ? fail(F.ctyUnknown) : PASS
   },
 }

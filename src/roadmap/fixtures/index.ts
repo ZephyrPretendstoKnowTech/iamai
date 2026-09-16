@@ -1,3 +1,4 @@
+import { PASSKEY_TARGET } from '../passkeySettings.ts'
 // Synthetic tenants for the roadmap property tests (roadmap-v2.md §7).
 // Every fixture is a seeded generator, never committed JSON: deterministic,
 // small in the repo, and free of real identifiers. docs/design/fixtures.md
@@ -738,6 +739,14 @@ export function buildFixture(spec: Spec): Fixture {
   // saved on the step, and it is what travels through a plan file.
   if (spec.demo) decisions = { [BREAK_GLASS_STEP_ID]: { picked: [...bgIds], at: NOW } }
   if (spec.demo && spec.week2) {
+    // The follow-up fixture represents completed passkey configuration and
+    // registered compatible emergency keys, before recording recovery tests.
+    const methodsPolicy = snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: {id: string}[] }
+    methodsPolicy.authenticationMethodConfigurations = methodsPolicy.authenticationMethodConfigurations.map(c => c.id === 'Fido2' ? { ...structuredClone(PASSKEY_TARGET), id: 'Fido2', excludeTargets: [], includeTargets: [{id:'all_users',targetType:'group',allowedPasskeyProfiles:[]}] } : c)
+    for (const id of bgIds) snapshot.authMethods[id] = [...(Array.isArray(snapshot.authMethods[id]) ? snapshot.authMethods[id] : []).filter(m => m.kind !== 'fido2'), {kind: 'fido2', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound'}]
+    for (const [id, methods] of Object.entries(snapshot.authMethods)) {
+      if (Array.isArray(methods)) snapshot.authMethods[id] = methods.map(m => m.kind === 'fido2' || m.kind === 'passkey' ? {...m, aaGuid: m.kind === 'fido2' ? 'a25342c0-3cdc-4414-8e46-f4807fca511c' : 'de1e552d-db1d-4423-a619-566b625cdc84', passkeyType: 'deviceBound'} : m)
+    }
     decisions = { ...decisions }
     const countries = questionLabels(PREREQ_STEP_ID.allowedCountries)
     if (countries.question) decisions[PREREQ_STEP_ID.allowedCountries] = { picked: [...mapping.allowedCountries], answers: { [countries.question]: 'Regularly: add: NZ' }, at: NOW }

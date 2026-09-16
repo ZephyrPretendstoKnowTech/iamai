@@ -53,7 +53,11 @@ export type MappingRecord = {
   validation: ValidationResult | null
 }
 
+export type PasskeyApprovedModel = { name: string; aaguid: string }
+
 export type MappingState = {
+  /** Additional authenticator models explicitly accepted by this plan's administrator. */
+  passkeyApprovedModels?: PasskeyApprovedModel[]
   workflowConfirmedAt?: string
   workflowAnswers?: Record<string, 'yes' | 'no' | 'unsure'>
   workflowEvidenceBasis?: Record<string, string>

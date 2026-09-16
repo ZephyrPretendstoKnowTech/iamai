@@ -20,6 +20,18 @@
     {
       "label": "Break-glass 2",
       "state": "Minimum not met"
+    },
+    {
+      "label": "Passkey Authentication",
+      "state": "Configuration required"
+    },
+    {
+      "label": "Break-glass 1",
+      "state": "Key compatibility not established"
+    },
+    {
+      "label": "Break-glass 2",
+      "state": "Key compatibility not established"
     }
   ],
   "channels": [

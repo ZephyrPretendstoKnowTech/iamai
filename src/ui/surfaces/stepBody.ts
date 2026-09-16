@@ -1,3 +1,6 @@
+import { requiredModels } from '../../roadmap/passkeySettings.ts'
+import { oneLine } from '../../content/implementation/project.ts'
+import { networkDraftOf } from '../../mapping/networkDraft.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -301,6 +304,13 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     supported.add('portal')
     produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
   }
+  // Keep each validated model on its own copyable line without allowing arbitrary
+  // tenant text to inject new template lines or script content.
+  if (step.id === 's-prereq-passkey-settings') {
+    const portal = produced.find(a => a.id === 'portal')
+    const modelLines = requiredModels(ctx.mapping).map(model => `- ${oneLine(model.name)} — ${model.aaguid}`)
+    if (portal) { const original = portal.text(); portal.text = () => original.replace(modelLines.join(' '), modelLines.join('\n')) }
+  }
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
   supported.add('ai')
@@ -308,11 +318,27 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   if (step.id === 's-prereq-break-glass') supported.delete('email')
   // Preparation is useful even when the executable policy cannot yet be built.
   // It does not replace a resolved operation or bypass its prerequisites.
-  if (Array.isArray(cs.preparation) && (step.id === 's-prereq-passkey-settings' ? step.blockers.some(b => b.label.startsWith('passkey-settings-')) : reason !== null || !produced.some(a => a.id === 'portal'))) {
+  if (Array.isArray(cs.preparation) && (step.id === 's-prereq-passkey-settings' ? !produced.some(a => a.id === 'portal') : reason !== null || !produced.some(a => a.id === 'portal'))) {
     const lines = [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]
     const previous = produced.findIndex(a => a.id === 'portal')
     if (previous >= 0) produced.splice(previous, 1)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
+    supported.add('portal')
+  }
+  if (step.id === 's-prereq-trusted-location') {
+    const draft = networkDraftOf(ctx.mapping)
+    const portal = produced.find(a => a.id === 'portal')
+    if (draft && portal && !step.state.satisfied) {
+      const intro = `Saved office network: ${draft.name}. Public IP ranges: ${draft.ranges.join(', ')}.`
+      const original = portal.text
+      portal.text = () => `${intro}\n\n${original()}`
+      if (portal.form === 'list') portal.lines = [intro, ...portal.lines]
+    }
+  }
+  if (step.id === 's-prereq-auth-strength' && step.state.satisfied) {
+    const lines = ['An existing authentication strength already matches the baseline’s method combinations and restrictions. No new strength is needed.', 'Keep that strength in place. Scan again after any authentication-strength changes to verify it still matches.']
+    for (let i = produced.length - 1; i >= 0; i--) if (['portal', 'ps', 'json'].includes(produced[i].id)) produced.splice(i, 1)
+    produced.push({id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null})
     supported.add('portal')
   }
   for (const channel of [...supported]) if (!resourceChannelAllowed(step, channel)) supported.delete(channel)

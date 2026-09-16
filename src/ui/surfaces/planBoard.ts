@@ -242,6 +242,7 @@ export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf
 
 /** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. The lane alone where the engine named no reason. */
 export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
+  if (r.reason?.id === 'after-security-rollout') return 'After security rollout'
   if (r.reason === null) return BOARD.lanes.onHold
   // A healthy prerequisite that is still more than one action away: the wait reads as Up Next's does.
   if (r.reason.kind === 'step' && !r.reason.abnormal) {
@@ -258,6 +259,7 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
 
 /** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
 export function holdGroupOf(r: LaneReading): string {
+  if (r.reason?.id === 'after-security-rollout') return 'After Security Rollout'
   if (r.reason?.kind === 'step' && !r.reason.abnormal) return WHEN.afterPrerequisites
   return r.reason === null ? BOARD.lanes.onHold : BOARD.blockers[r.reason.kind]
 }

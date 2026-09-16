@@ -73,7 +73,7 @@ test('Copy stays available for every substantive resource without preview notes'
 test('machine resources follow supported step capability, including useful prerequisite inspection', () => {
   const demo = named('demo')
   assert.deepEqual(tabs(demo.get('s-prereq-break-glass')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
-  assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+  assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
   assert.ok(demo.get('s-prereq-device-plan')!.artifacts.every(a => a.id !== 'json' && a.id !== 'ps'))
 })
 
