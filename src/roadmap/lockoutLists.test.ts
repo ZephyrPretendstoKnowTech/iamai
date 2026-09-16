@@ -1,3 +1,5 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
+import { recoveryAccountBasis } from './cleanupDone.ts'
 // Lockout lists (E8): steps 15 and 33 show in Who how many people in scope are
 // not yet Ready for phishing-resistant MFA (scoring/phishingResistant.ts), by name
 // when three or fewer and as a count otherwise; step 35 counts the people with
@@ -42,6 +44,7 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
 test('step 15 names the admins not yet Ready for phishing-resistant MFA on the demo (three or fewer), and counts them past that', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }
@@ -64,7 +67,9 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 67%)'), JSON.stringify(s.blockers))
   // With the prerequisite met the enforcement is dated again, and the line comes
   // back counting whatever list is left.
-  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: withAdminsReady(r.viability) } as never)
+  const readySnapshot = structuredClone(snapshot)
+  readyEvidence(f, readySnapshot, new Set(s.methodPreparation!.ids))
+  const ready = runFixture({ ...f, snapshot: readySnapshot }, { snapshot: readySnapshot, viability: withAdminsReady(r.viability) } as never)
   const dated = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   // The readiness hold is released, so the plan dates the change again. Where it
   // holds that date is Foundation B's: this policy is in report-only and the one

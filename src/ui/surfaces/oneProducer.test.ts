@@ -96,7 +96,7 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       const lane = views.get(step.id)!
       lanes.add(lane.lane)
       // The row: the lane label, and the label is the lane word or `Lane · tail`.
-      assert.equal(lane.label, lane.tail === null ? BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]] : `${BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]]} · ${lane.tail}`, where)
+      assert.equal(lane.label, lane.tail === null || lane.lane !== 'Ready' ? BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]] : `${BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]]} · ${lane.tail}`, where)
       assert.equal(laneViewFor(step, run.steps, titleOf).label, lane.label, `${where}: the step opened on its own reads a different lane from the board's`)
       if (lane.lane === 'Ready') assert.equal(lane.tail, lane.substatus ? SUBSTATUS_WORD[lane.substatus] : null, `${where}: a Ready row's tail is not its substatus word`)
       if (lane.lane === 'Completed' || lane.lane === 'Deferred') assert.equal(lane.tail, null, `${where}: a ${lane.lane} row carries a tail`)
@@ -239,7 +239,7 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.ok(conflict, 'the premise: the demo carries a baseline conflict')
   const cl = laneViewFor(conflict, r.steps)
   const cc = stepContract(conflict, ctx, undefined, cl)
-  assert.equal(cl.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.sourceConflict}`)
+  assert.equal(cl.label, BOARD.lanes.onHold)
   assert.equal(badgeLabel(cc), cl.label)
   assert.equal(readinessOf(conflict, cc).bar.main, BOARD.blockers.sourceConflict)
   assert.equal(railOf(cc).metric, WHEN.none)

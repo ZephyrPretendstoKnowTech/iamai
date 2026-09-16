@@ -88,7 +88,7 @@ test('a held policy finishes on its own end state where its content entry states
 test('the campaign and the exclusions group finish on what their step docs say', () => {
   const byId = (id: string) => content.steps.find((s) => s.id === id)
   // Editorial batch C: the campaign's own settings check is a human check; the admin readiness gate stays.
-  assert.ok(byId('s-verify-mfa')?.doneWhen?.includes('Every admin is Ready for phishing-resistant MFA.'))
+  assert.ok(byId('s-verify-mfa')?.doneWhen?.some((line: string) => /Administrators have a phishing-resistant method/.test(line)))
   const target = 'The exclusions group is confirmed and contains only the selected emergency access accounts.'
   assert.equal(byId('s-prereq-exclusion-group')?.doneWhen?.[0], target)
   let read = 0
@@ -111,7 +111,7 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   const b = stepBodyOf(step, ctx)
   assert.ok(headingsOf(b).includes(CONTRACT.implementation.heading), headingsOf(b).join(' · '))
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
-  assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ai'])
+  assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ps', 'ai', 'email'])
   const text = b.artifacts[0].text()
   for (const line of ['cloud-only account', 'Roles and administrators', 'https://aka.ms/mysecurityinfo', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
 })

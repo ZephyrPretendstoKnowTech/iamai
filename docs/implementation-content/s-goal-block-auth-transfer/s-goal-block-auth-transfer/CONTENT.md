@@ -12,7 +12,7 @@
 This policy already exists. The correction sets its users, exclusions, target resources and conditions to the intended target on the same policy.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.
 4. Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.
 @@IAMAI-END
@@ -134,7 +134,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.
 
@@ -154,7 +153,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Block Authentication Transfer** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
 
@@ -162,19 +160,16 @@ Look for sign-ins that used authentication transfer and the apps involved. Few o
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Block Authentication Transfer** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and direct sign-in should have been tested for the affected workflows. After enabling, test direct sign-in and emergency access, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Block Authentication Transfer** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Block Authentication Transfer** needs Microsoft Entra Conditional Access licensing that this scan did not confirm. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END

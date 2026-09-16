@@ -139,13 +139,11 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisites","channel":"aiInfo","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state for Remediate High-Risk Users in {{tenant.displayName}} is waiting on prerequisites. Check which of these the supplied facts show as unmet: MFA registration for the resolved authentication strength, password writeback for synchronized password users, guest/external scope (Require risk remediation does not support guest or external users), and investigation of current risky users. High user risk can require remediation. The required action can differ for password-based and passwordless users. SSPR can remain available for recovery, but it is not the prerequisite for Require risk remediation.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state creates the High user-risk Conditional Access policy for {{tenant.displayName}} in Report-only. Intended settings: All users with the resolved exclusions; All resources; High user risk only; Require risk remediation + {{authStrength.target.displayName}}; Sign-in frequency Every time.
 
@@ -153,7 +151,6 @@ High user risk can require remediation. The required action can differ for passw
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state corrects the existing High user-risk policy. Differences IAMAI found: {{policy.current.semanticMismatches}}. Correct the same policy ID and leave settings outside the selected correction unchanged. Keep Require risk remediation with the resolved authentication strength; do not replace it with password change or MFA, and do not add exclusions.
 
@@ -163,7 +160,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The High user-risk policy is in Report-only. IAMAI evidence: at-risk users {{evidence.atRiskUsers}}; MFA registration {{evidence.mfaRegistration}}; password writeback {{evidence.hybridWriteback}}; guest/external scope {{evidence.guestExternalScope}}; risk investigation {{evidence.riskInvestigation}}.
 
@@ -171,7 +167,6 @@ NEXT STEP: explain which of these still block enforcement. Report-only results d
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state enables the reviewed High user-risk policy. The only change is the policy's state from Report-only to On. Before enabling, check that the same policy ID still matches the intended settings and that MFA registration, password writeback, guest/external handling and risk investigation are resolved. If any of these is unknown or blocked, explain why enforcement should wait.
 @@IAMAI-END

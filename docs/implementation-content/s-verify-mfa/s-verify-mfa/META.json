@@ -212,7 +212,7 @@
   ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-verify-mfa",
-  "title": "Create and Enforce the MFA Registration Campaign",
+  "title": "Prepare Your Team for MFA",
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-verify-mfa/",
   "sourceFiles": [

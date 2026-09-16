@@ -17,7 +17,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 
 const TITLE = 'Use Separate Accounts for Admin Work'
 
-test('the step exists only when a directory-role holder reads mail or joins Teams on the same account, and lists them', () => {
+test('the review includes role holders and separately lists observed mail or Teams activity', () => {
   const f = fixture('demo')
   const r = runFixture(f)
   const with_ = adminsWithWorkloadOf(f.snapshot, new Set(f.mapping.breakGlassUserIds))
@@ -26,7 +26,7 @@ test('the step exists only when a directory-role holder reads mail or joins Team
   const s = r.steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)!
   assert.ok(s, 'the step is on the demo plan')
   assert.equal(s.kind, 'check')
-  assert.deepEqual([...s.population.ids].sort(), with_.map(([id]) => id).sort(), 'its population is those admins')
+  assert.ok(with_.every(([id]) => s.population.ids.includes(id)), 'the review includes the administrators with observed business activity')
   const cs = stepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID]
   assert.equal(cs.title, TITLE)
   assert.equal(cs.skip, true, 'skippable')
@@ -35,10 +35,10 @@ test('the step exists only when a directory-role holder reads mail or joins Team
   const ex = stepVars(s, ctx) as { adminsWithWorkload: string[]; n: number }
   assert.equal(ex.adminsWithWorkload.length, 2)
   for (const row of ex.adminsWithWorkload) assert.match(row, /^.+ · (Outlook|Microsoft Teams)/, row)
-  assert.ok(stepLines(s, ctx).some((l) => /^2 people hold a directory role and use that same account for mail or Teams since/.test(l)), 'the lead counts them')
-  // Nobody on GetIAMAI signs in to mail or Teams in the records: no step.
+  assert.ok(stepLines(s, ctx).some((l) => /^Review the \d+ administrator accounts for dedicated administration/.test(l)), 'the lead counts them')
+  // Missing mail or Teams activity does not remove the administrator review.
   const g = fixture('getiamai')
-  assert.equal(runFixture(g).steps.some((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID), false)
+  assert.equal(runFixture(g).steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)?.state.satisfied, false, 'a missing business-activity signal does not prove dedicated use')
 })
 
 test('steps 15, 23 and 33 name the same people beside the step instead of assuming separate accounts', () => {

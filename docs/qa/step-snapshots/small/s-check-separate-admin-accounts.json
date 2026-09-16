@@ -12,11 +12,17 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Administrator Account Evidence",
+      "state": "Account or role data not fully read"
+    }
+  ],
   "channels": [
     "Entra",
+    "PowerShell",
     "AI Info",
     "Email"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Est. Aug 31, 2026"
 }

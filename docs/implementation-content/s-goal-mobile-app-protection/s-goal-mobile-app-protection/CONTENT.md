@@ -121,7 +121,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the IAMAI-resolved exclusions, All resources, device platforms Android and iOS, and Grant: Require app protection policy. It does not block anything until it is enabled.
 
@@ -129,7 +128,6 @@ Conditional Access requires app protection; it does not create the Intune App Pr
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Require App Protection on Phones**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID. Conditional Access requires app protection; the Intune App Protection policies are configured separately.
 
@@ -139,7 +137,6 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
 
@@ -147,19 +144,16 @@ A report-only failure for the app protection grant is not by itself proof that t
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, the Intune App Protection prerequisite should be satisfied, and the report-only evidence should have been reviewed. After enabling, test the supported apps on iOS/iPadOS and Android, and emergency access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** needs licensing that this scan did not confirm for {{tenant.displayName}}. A product bundle name alone does not confirm the service plans this step needs. No implementation is offered until licensing is resolved; the licensing gap does not change the baseline goal.
 @@IAMAI-END
@@ -193,7 +187,6 @@ If a supported mobile app is blocked, first check the App Protection policy assi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prerequisite","channel":"aiInfo","states":["configurePrerequisite"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 State: **Require App Protection on Phones** in {{tenant.displayName}} is waiting on its Intune App Protection prerequisite. Current prerequisite state: {{intune.appProtection.prerequisiteState}}.
 

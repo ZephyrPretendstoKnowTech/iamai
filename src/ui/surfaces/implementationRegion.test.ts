@@ -47,55 +47,42 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 const tabs = (b: StepBody | undefined): string[] => (b ? channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)) : [])
 const named = (name: FixtureName) => bodiesOf(fixture(name))
 
-test('P0-1: an enforced policy held by the unanswered exclusions question draws its correction as a planning preview', () => {
+test('held policy resources stay copyable, useful and free of repeated disclaimer panels', () => {
   const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
-  const legacy = bodies.get('s-goal-block-legacy-auth')
-  assert.ok(legacy, 'legacy auth is on the mid plan')
-  assert.equal(legacy.contract.state.lifecycle, 'enforced', 'the premise: the policy is enforced')
-  assert.deepEqual(tabs(legacy), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
-  assert.ok(legacy.previewNote, 'the held correction is offered as if it could run')
-  // The guests pair too (B11 P0-1): its Partial is composed from the changed
-  // fields, so the registry keeps it. Its JSON is the pair's correction batch, one
-  // PATCH per member by its own id (project.ts batchRequests), previewed like the rest.
-  const guests = bodies.get('s-goal-guests-mfa')
-  assert.ok(guests, 'guests MFA is on the mid plan')
-  assert.equal(guests.contract.state.lifecycle, 'enforced', 'the premise: the pair is enforced')
-  assert.deepEqual(tabs(guests), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
-  assert.ok(guests.previewNote, 'the held pair correction is offered as a planning preview')
-  // No empty box, and no content anywhere says "Nothing to submit yet" (decision 5).
-  assert.equal(CONTENT.includes('Nothing to submit'), false)
+  for (const id of ['s-goal-block-legacy-auth', 's-goal-guests-mfa']) {
+    const body = bodies.get(id)!
+    assert.equal(body.contract.state.lifecycle, 'enforced')
+    assert.deepEqual(tabs(body), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+    assert.equal(body.previewNote, null)
+    for (const a of body.artifacts) {
+      assert.notEqual(a.unavailable, true)
+      assert.doesNotMatch(a.text(), /This format has no output|You can copy this guidance/)
+    }
+  }
 })
 
-test('P0-3: Copy is offered for available planning guidance with unresolved values visible', () => {
-  const group = bodiesOf(noExclusionsAnswer(fixture('mid'))).get('s-prereq-exclusion-group')
-  assert.ok(group?.previewNote, 'the exclusions group is a planning preview')
-  assert.ok(group.previewNote.lines.some((l) => /^Values still to resolve: /.test(l)), group.previewNote.lines.join(' | '))
-  // Copy is restricted only when the artifact itself is unavailable.
-  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true\s*\n/)
-  assert.ok(CONTENT_STEP.includes('...notes, ...(preview?.lines ?? [])'), 'unresolved values are visible beside the output')
-  assert.match(CONTENT_STEP, /const copyReason = copyable \? W\.copy : active\?\.unavailable \? active\.text\(\) : \(preview\?\.lines\.join\(' '\) \?\? W\.copy\)/)
-  assert.match(CONTENT_STEP, /title=\{copyReason\}/)
-  assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
+test('Copy stays available for every substantive resource without preview notes', () => {
+  const group = bodiesOf(noExclusionsAnswer(fixture('mid'))).get('s-prereq-exclusion-group')!
+  assert.equal(group.previewNote, null)
+  assert.ok(group.artifacts.every(a => a.unavailable !== true && a.text().trim().length > 0))
+  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true/)
+  assert.equal(CONTENT_STEP.includes('className="impl-planning"'), false)
   assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2)
-  // Muted by colour, as every disabled control is (design 2 allows no opacity on a control's glyph).
-  assert.match(CSS, /\.step \.icon-btn\[aria-disabled="true"\],\n\.step \.icon-btn\[aria-disabled="true"\]:hover \{[^}]*color: var\(--quiet-text\);[^}]*cursor: not-allowed;/)
 })
 
-test('P0-4: PowerShell and JSON render on Conditional Access policy steps only', () => {
+test('machine resources follow supported step capability, including useful prerequisite inspection', () => {
   const demo = named('demo')
-  assert.deepEqual(tabs(demo.get('s-prereq-break-glass')), ['Entra', 'AI Info'])
-  assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'AI Info'])
-  assert.deepEqual(tabs(demo.get('s-goal-block-legacy-auth')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
-  for (const [id, b] of demo) if (b.cs.kind !== 'policy') assert.equal(tabs(b).some((t) => t === 'PowerShell' || t === 'JSON'), false, `${id}: ${tabs(b).join(', ')}`)
+  assert.deepEqual(tabs(demo.get('s-prereq-break-glass')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
+  assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+  assert.ok(demo.get('s-prereq-device-plan')!.artifacts.every(a => a.id !== 'json' && a.id !== 'ps'))
 })
 
-test('P0-6: the baseline-conflict step says there is not enough information, and offers no channel', () => {
-  const conflict = [...named('demo').values()].find((b) => b.contract.state.condition === 'baseline-conflict')
-  assert.ok(conflict, 'the demo has a baseline-conflict step')
-  assert.ok(conflict.artifacts.filter(a => a.id !== 'ai').every((a) => a.unavailable === true), 'the conflict step offers executable content')
-  assert.match(conflict.artifacts.find(a => a.id === 'ai')!.text(), /baseline|conflict/i)
-  assert.equal(conflict.empty.title, 'Not enough information to provide implementation guidance.')
-  assert.equal(conflict.empty.text, 'The baseline defines this policy two ways. Until the baseline author publishes a corrected version, no implementation steps are available.')
+test('retained baseline conflict remains a conflict and has no deployment operation', () => {
+  const conflict = [...named('demo').values()].find(b => b.contract.state.condition === 'baseline-conflict')!
+  assert.ok(conflict)
+  assert.equal(conflict.contract.implementation.offered, false)
+  assert.equal(conflict.empty.key, 'conflict')
+  for (const artifact of conflict.artifacts.filter(a => a.id === 'json')) assert.ok(JSON.parse(artifact.text()).requests.every((r: {method:string}) => r.method === 'GET'))
 })
 
 test('P0-2: a tile is one line until opened; its detail is hidden; the strip does not match heights', () => {

@@ -8,6 +8,20 @@
 //
 // Pure: no DOM, no content, no engine import.
 import type { SourceReference, Step } from './types.ts'
+import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
+
+const UNEXPLAINED_GROUPS = new Set(interpretation.references.filter(r => r.kind === 'group' && r.classification === 'decisionRequired' && r.id !== '5628ad67-f9d1-4495-abe3-99dc8f9074f1').map(r => r.id.toLowerCase()))
+
+/** Approved V1 assumption for unexplained optional source exclusions only.
+ * These are source IDs, never existing tenant exclusions. The AVD allow-list's
+ * excluded groups define who can use the service and cannot be guessed away.
+ */
+export function assumedAbsentSourceGroups(policy: Record<string, unknown>, policies: readonly unknown[]): string[] {
+  if (/AVD.*AllowedAVDUsers/i.test(String(policy.displayName ?? ''))) return []
+  const users = (policy.conditions as { users?: { excludeGroups?: string[] } } | undefined)?.users
+  const included = new Set(policies.flatMap(raw => ((raw as { conditions?: { users?: { includeGroups?: string[] } } }).conditions?.users?.includeGroups ?? []).map(id => id.toLowerCase())))
+  return (users?.excludeGroups ?? []).map(id => id.toLowerCase()).filter(id => UNEXPLAINED_GROUPS.has(id) && !included.has(id))
+}
 
 /**
  * The plan-record key the Baseline mappings persist under (`stepDecisions`,

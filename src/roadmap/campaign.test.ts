@@ -63,7 +63,7 @@ test('someone to set up: the campaign is a live step, the pace includes it, the 
   assert.match(p.rationale, /verification campaign/)
 })
 
-test('everyone proven: the campaign is done, the pace skips it, and the Overview says so', () => {
+test('registered proof does not complete preparation while the admin target is unresolved', () => {
   const s = fixtureSnapshot()
   // Every enabled user is Ready (Step 7): a passkey, and a sign-in with it on the
   // one platform they use, inside the window.
@@ -72,17 +72,22 @@ test('everyone proven: the campaign is done, the pace skips it, and the Overview
     u.lastSuccessfulSignIn = s.asOf
     s.authMethods[u.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey' }]
   }
+  s.registrationDetails = s.users.map(u => ({ ...s.registrationDetails[0], id: u.id, userType: u.userType }))
   for (const r of s.registrationDetails) {
     r.isMfaCapable = true
     r.isMfaRegistered = true
     r.methodsRegistered = ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
   }
+  // Preparation measures the resolved admin target, not a guessed family floor.
+  const admin = s.config.caPolicies.rows.find(raw => (raw as Record<string, unknown>).id === 'p-3') as Record<string, unknown>
+  admin.state = 'enabled'
   const p = plan(s)
   assert.equal(p.rollout.toSetUp, 0)
   assert.ok(p.verify)
-  assert.equal(p.verify.status, 'done')
-  assert.equal(p.schedule.verification.days, 0)
-  assert.match(p.rationale, /no verification campaign needed/)
+  assert.equal(p.verify.readiness.unmeasured, 'unreadable')
+  assert.notEqual(p.verify.status, 'done')
+  assert.ok(p.schedule.verification.days > 0)
+  assert.doesNotMatch(p.rationale, /no verification campaign needed/)
 })
 
 test('a disabled account never counts: it is neither proven nor to set up', () => {

@@ -7,7 +7,7 @@ import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import { laneViewFor } from './planBoard.ts'
-import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis } from '../../roadmap/manualWork.ts'
+import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { CARVE_OUT_STEP_ID, QUESTION_STEP, answerKey, questionLabels, questionOptions } from '../../roadmap/answers.ts'
 import { passkeyCurrentSummary } from '../../roadmap/passkeySettings.ts'
 
@@ -19,13 +19,15 @@ function setup(f = usability100('deployment')) {
 
 test('mail-device follow-up exposes manual directions and a reversible completion', () => {
   const {f,r,ctx} = setup()
-  for (const id of Object.values(CARVE_OUT_STEP_ID)) {
+  for (const id of [CARVE_OUT_STEP_ID.mailDevices, CARVE_OUT_STEP_ID.partner]) {
     const step = r.steps.find(s=>s.id===id)!
     assert.ok(step, id)
     assert.ok(step.manualReview?.readyToConfirm, id)
     const body = stepBodyOf(step,ctx)
     assert.ok(body.artifacts.find(a=>a.id==='portal'&&!a.unavailable)?.text().trim(), id)
-    const confirmation = {[id]:{[MANUAL_REVIEW_ID]:{at:f.snapshot.asOf,basis:manualBasis(step,f.snapshot,f.mapping)}}}
+    const record = {at:f.snapshot.asOf,basis:manualBasis(step,f.snapshot,f.mapping),accountIds:step.population.ids.length ? step.population.ids : [f.snapshot.users.find(u=>u.accountEnabled)!.id],workflow:'Required workflow tested',testedAt:f.snapshot.asOf.slice(0,10),outcome:'passed' as const,exceptionRemoved:true}
+    record.basis=scopeManualBasis(record.basis,record)
+    const confirmation = {[id]:{[MANUAL_REVIEW_ID]:record}}
     applyManualReviews([step],f.snapshot,confirmation,f.mapping)
     assert.equal(step.status,'done')
     const rescan = structuredClone(f.snapshot)
@@ -37,14 +39,12 @@ test('mail-device follow-up exposes manual directions and a reversible completio
   }
 })
 
-test('changed travel decision invalidates the previous follow-up confirmation', () => {
+test('travel follow-up remains hidden when recurring destinations change', () => {
   const {f,r} = setup()
-  const step = r.steps.find(s=>s.id===CARVE_OUT_STEP_ID.travel)!
-  const confirmation = {[step.id]:{[MANUAL_REVIEW_ID]:{at:f.snapshot.asOf,basis:manualBasis(step,f.snapshot,f.mapping)}}}
+  assert.ok(!r.steps.some(step=>step.id===CARVE_OUT_STEP_ID.travel))
   const mapping=structuredClone(f.mapping)
   mapping.questionAnswers![answerKey(QUESTION_STEP.travel,questionLabels(QUESTION_STEP.travel).question!)]=questionOptions(QUESTION_STEP.travel,'question')[0]
-  applyManualReviews([step],f.snapshot,confirmation,mapping)
-  assert.notEqual(step.status,'done')
+  assert.ok(!runFixture({...f,mapping}).steps.some(step=>step.id===CARVE_OUT_STEP_ID.travel))
 })
 
 test('generic Entra references include the selected request settings in the step and export', () => {

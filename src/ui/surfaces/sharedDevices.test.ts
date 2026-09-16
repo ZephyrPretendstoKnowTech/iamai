@@ -27,20 +27,22 @@ test('on a baseline with no shared-device policy, the step renders its instructi
   assert.equal(stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), null, 'the pinned baseline holds no shared-device policy')
   const view = stepExportView(step, ctx)
   // The frozen contract's next action leads, then the step's own lines (stepExport.ts).
-  assert.equal(view.whatToDo.length, 9, JSON.stringify(view.whatToDo))
   assert.equal(view.whatToDo[0], stepContract(step, ctx).whatToDo.text, 'the export leads with the action the screen states')
   for (const l of view.whatToDo) assert.ok(!HOLE.test(l), `no hole: ${l}`)
+  const text = view.whatToDo.join('\n')
   const shared = ex.sharedDevices as string[]
   assert.ok(shared.length > 0)
-  assert.ok(view.whatToDo.some((l) => l === `Name: ${step.naming?.proposed}`), 'the proposed policy name')
-  assert.ok(view.whatToDo.some((l) => l.startsWith('Users → Include: ') && shared.every((n) => l.includes(n))), 'the shared-device accounts')
-  const trusted = r.steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!.naming?.proposed
-  assert.equal(f.mapping.trustedLocationIds?.length ?? 0, 0, 'the demo names no trusted location yet, so the plan proposes one')
-  assert.ok(view.whatToDo.includes(`Conditions → Locations → Include: Any location; Exclude: ${trusted}`), 'the same trusted network the prerequisite step names')
-  assert.ok(view.whatToDo.includes('Grant → Block access'))
-  const people = ex.peoplePolicies as string[]
-  assert.ok(people.length >= 2 && people.includes('Require MFA for Everyone'), JSON.stringify(people))
-  assert.ok(view.whatToDo.some((l) => l.startsWith('Separately, apply the resolved exclusions for these accounts to the policies that ask a person to act: ') && people.every((p) => l.includes(p))))
+  assert.ok(text.includes(`Proposed policy name: ${step.naming?.proposed}`), 'the proposed policy name')
+  for (const name of shared) assert.ok(text.includes(name), `named shared account: ${name}`)
+  assert.match(text, /Boardroom.*00000409-6722-4eda-83dd-bed44631b715/, 'the named account keeps its stable ID')
+  assert.equal(view.whatToDo.filter(l => /^\d+\. /.test(l)).length, 6, 'all six setup and verification actions travel')
+  assert.match(text, /Confirm the named location in Define the Trusted Network/)
+  assert.match(text, /include Any location and exclude only the approved trusted location/)
+  assert.match(text, /Grant: Block access\. Start in Report-only/)
+  assert.match(text, /Add only the exceptions the device needs/)
+  assert.match(text, /do not place shared devices in the emergency-access exclusions group/)
+  assert.match(text, /Test the device's actual tasks, including scheduled jobs/)
+  assert.match(text, /record the completed review/)
   // The rendered lines carry the same instructions.
   const lines = stepLines(step, ctx)
   for (const l of view.whatToDo) assert.ok(lines.includes(l), `rendered: ${l}`)

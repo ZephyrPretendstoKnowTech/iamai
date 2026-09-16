@@ -99,13 +99,13 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const f = fixture('demo')
   // The baseline's compliant-device policy excludes the author's service-accounts
   // group, so this tenant needs one before the policy can be written at all.
-  const m = { ...applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
+  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
   const ds = r.steps.find((s) => s.id === DEVICE)!
-  assert.equal(ds.status, 'done')
+  assert.equal(ds.status, 'done', 'all separate management choices were confirmed')
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
   assert.ok(!compliant.blockedBy.includes(DEVICE), 'nothing waits on a made decision')
   assert.notEqual(compliant.status, 'skipped', 'computers stay in the policy')

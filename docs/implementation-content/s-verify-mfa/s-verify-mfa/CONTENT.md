@@ -75,49 +75,44 @@ $p.registrationEnforcement.authenticationMethodsRegistrationCampaign
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.configure","channel":"aiInfo","states":["setupRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled (not Microsoft managed); method Microsoft Authenticator; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with registration required after the allowed snoozes where the tenant exposes that control. Switching the method to passkeys would change the saved plan and needs an owner decision. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.running","channel":"aiInfo","states":["campaignRunning"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. People who need hands-on help: {{readiness.specialCare}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.holdouts","channel":"aiInfo","states":["holdoutReview"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The enrollment date has passed and some active people still lack a proven method. Each needs an individual review outcome covering account status, recovery method and whether they have been contacted. A Conditional Access exclusion is not the default resolution, and the elapsed date is not proof of readiness.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.ready","channel":"aiInfo","states":["ready"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The remaining work is to confirm that the campaign is still configured as planned and that MFA Readiness evidence meets the step's checks. These are separate: campaign settings do not prove that each person can sign in with their method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.everyone","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"all-users"}
-Subject: Action needed: Create and Enforce the MFA Registration Campaign
+Subject: Action needed: Prepare Your Team for MFA
 
 Please complete the sign-in method setup requested by IT, then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"administrators"}
-Subject: Action needed: Create and Enforce the MFA Registration Campaign
+Subject: Action needed: Prepare Your Team for MFA
 
 Admin sign-ins need a stronger method than the general setup request. If IT has asked you to, register a passkey or hardware security key for your admin sign-in, then sign in once using it. Contact IT if you cannot register or no longer have access to your existing method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.holdout","channel":"email","states":["holdoutReview"],"format":"markdown","kind":"template","audience":"rollout-administrators"}
-Subject: Action needed: Create and Enforce the MFA Registration Campaign
+Subject: Action needed: Prepare Your Team for MFA
 
 The enrollment date has passed and some active people still have not shown a successful sign-in with a registered method. Please review each remaining account for its status, contact and recovery needs, and manager follow-up. A policy exclusion is not the default resolution.
 @@IAMAI-END

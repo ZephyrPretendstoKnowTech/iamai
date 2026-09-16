@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { addWorkflowSteps, WORKFLOW_STEP } from './workflows.ts'
-import { applyManualReviews, manualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
-import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis } from './cleanupDone.ts'
+import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
+import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis, recoveryAccountBasis } from './cleanupDone.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { buildPlanFile, parsePlanFile, sameBaselineSource, trimCheckpoints } from './plan.ts'
 import { absoluteDate, setDisplayTimeZone } from '../copy/dates.ts'
@@ -25,14 +25,16 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
   f.mapping.facetOverrides = {}
   const first = render()
   const chooser = first.find((s) => s.id === WORKFLOW_STEP)!
-  assert.ok(chooser.workflowChoices!.every((c) => c.answer === 'unsure'))
+  assert.ok(chooser.workflowChoices!.some((c) => c.answer === 'yes'), 'observed services are proposed in use')
+  assert.ok(chooser.workflowChoices!.some((c) => c.answer === 'no'), 'unobserved services are opt-in')
+  assert.equal(chooser.state.satisfied, false, 'defaults need confirmation')
   assert.ok(first.filter((s) => s.manualReview).every((s) => !s.manualReview!.readyToConfirm))
   assert.equal(new Set(first.map((s) => s.id)).size, first.length)
   f.mapping.workflowAnswers = Object.fromEntries(chooser.workflowChoices!.map((c) => [c.key, 'no' as const]))
   assert.ok(render().filter((s) => s.manualReview).every((s) => s.doesntApply))
   f.mapping.workflowAnswers = Object.fromEntries(chooser.workflowChoices!.map((c) => [c.key, 'yes' as const]))
   const enabled = render()
-  assert.equal(enabled.filter((s) => s.manualReview?.readyToConfirm).length, policies.length)
+  assert.equal(enabled.filter((s) => s.manualReview?.readyToConfirm).length, policies.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name) && !/AVD.*Exclude.*AllowedAVDUsers/i.test(p.name)).length)
   assert.ok(enabled.filter((s) => s.manualReview).every((s) => Array.isArray(s.guidance?.whatToDo?.steps)))
   assert.equal(original.schedule.cleanup?.rows.some((r) => r.kind === 'notAssessed'), false)
 })
@@ -62,7 +64,9 @@ test('guest review can finish while keeping guests; a changed guest population r
   const step = runFixture(f).steps.find((s) => s.id === 's-ladder-guest-review')!
   assert.ok(step)
   assert.ok(f.snapshot.users.some((u) => u.userType === 'guest'))
-  const confirmation = { [step.id]: { [MANUAL_REVIEW_ID]: { at, basis: manualBasis(step, f.snapshot) } } }
+  const record = { at, testedAt: at.slice(0, 10), outcome: 'retained' as const, accountIds: f.snapshot.users.filter(u => u.userType === 'guest').map(u => u.id), basis: '' }
+  record.basis = scopeManualBasis(manualBasis(step, f.snapshot), record)
+  const confirmation = { [step.id]: { [MANUAL_REVIEW_ID]: record } }
   applyManualReviews([step], f.snapshot, confirmation)
   assert.equal(step.status, 'done')
   f.snapshot.asOf = '2026-09-15T12:00:00Z'
@@ -83,8 +87,8 @@ test('manual confirmation cannot override an unsatisfied scan requirement', () =
   assert.notEqual(step.status, 'done')
 })
 
-test('recovery records match only the tested account and its local calendar day', () => {
-  const records = cleanupRecord(withCleanupDone([], 'drill', '2026-09-13', at, { accountIds: ['account-a'], timeZone: 'America/Denver' })).records!
+test('recovery records match only the explicitly linked account and event', () => {
+  const records = cleanupRecord(withCleanupDone([], 'drill', '2026-09-13', at, { accountIds: ['account-a'], outcome: 'passed', signInAtByAccount: { 'account-a': '2026-09-14T03:00:00Z' }, timeZone: 'America/Denver' })).records!
   assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'ACCOUNT-A', records), true)
   assert.equal(isRecordedDrill('2026-09-14T03:00:00Z', [], 'account-b', records), false)
   assert.equal(isRecordedDrill('2026-09-14T15:00:00Z', [], 'account-a', records), false)
@@ -98,9 +102,9 @@ test('recovery tests can be recorded separately, expire, and never cover a newly
   const f = fixture('demo')
   const organisation = runFixture(f).coverage.organisation
   const input = { after: at, rhythm: null, emergencyAccountIds: ['a','b'], emergencyAccounts: ['A','B'], emergencyAccountUpns: ['a@example.test','b@example.test'], organisation, now: at }
-  let checkpoints = withCleanupDone([], 'drill', '2026-09-12', at, { accountIds: ['a'] })
+  let checkpoints = withCleanupDone([], 'drill', '2026-09-12', at, { accountIds: ['a'], outcome: 'passed' })
   assert.equal(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
-  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-13', at, { accountIds: ['b'] })
+  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-09-13', at, { accountIds: ['b'], outcome: 'passed' })
   assert.ok(cleanupPhaseFor({ ...input, records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done)
   assert.equal(cleanupPhaseFor({ ...input, now: '2027-03-14T12:00:00Z', records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
   assert.equal(cleanupPhaseFor({ ...input, emergencyAccountIds: ['a','c'], records: cleanupRecord(checkpoints).records })!.rows.find((r) => r.kind === 'drill')!.done, null)
@@ -111,10 +115,17 @@ test('cleanup completion reopens when the work changes; scan checkpoint trimming
   const r = runFixture(f)
   const phase = r.schedule.cleanup!
   const row = phase.rows.find((r) => r.kind === 'naming')!
-  const records = cleanupRecord(withCleanupDone([], 'naming', '2026-09-13', at, { basis: cleanupBasis('naming', row.lists) })).records!
-  const input = { after: at, rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation: r.coverage.organisation, now: at, records }
+  const namingChanges = phase.namingProposals!.map((p, i) => ({ id: p.id, from: p.from, to: `CA - Reviewed ${i + 1}` }))
+  assert.ok(namingChanges.length)
+  const policies = structuredClone(f.snapshot.config.caPolicies.rows) as Record<string, unknown>[]
+  for (const change of namingChanges) policies.find(p => p.id === change.id)!.displayName = change.to
+  const records = cleanupRecord(withCleanupDone([], 'naming', '2026-09-13', at, { namingChanges, toolingVerified: true, basis: cleanupBasis('naming', row.lists) })).records!
+  const organisation = structuredClone(r.coverage.organisation)
+  organisation.naming.outliers = []
+  const input = { after: at, rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation, policies, now: at, records }
   assert.ok(cleanupPhaseFor(input)!.rows.find((r) => r.kind === 'naming')!.done)
   input.organisation.naming.outliers.push('Another policy')
+  input.policies.push({ id: 'new-policy', displayName: 'Another policy', state: 'enabled' })
   assert.equal(cleanupPhaseFor(input)!.rows.find((r) => r.kind === 'naming')!.done, null)
   const saved = trimCheckpoints([...records, ...Array.from({length: 45}, (_, n) => ({at: String(n), coverage: []}))])
   assert.ok(saved.includes(records[0]))
@@ -183,31 +194,34 @@ test('uploaded baselines are identified by content, never the display name', asy
   assert.equal(sameBaselineSource(source, { kind: 'upload', fileName: source.fileName }), false)
 })
 
-test('free-licence emergency accounts need an explicit selection and a recorded review', async () => {
+test('free-licence emergency accounts need explicit selection and the shared scoped recovery record', async () => {
   const { applyStepDecisions } = await import('./decisions.ts')
   const { ladderSteps, GLOBAL_ADMIN_ROLE_ID } = await import('./ladder.ts')
   const { contentStepFor } = await import('../content/stepTitle.ts')
   const f = fixture('micro')
+  const known = fixture('small')
+  f.snapshot.config.authMethodsPolicy = structuredClone(known.snapshot.config.authMethodsPolicy)
+  f.snapshot.config.roleAssignments = { status: 'ok', reason: null, rows: [] }
   const users = f.snapshot.users.slice(0, 2)
-  for (const u of users) { u.accountEnabled = true; u.onPremisesSyncEnabled = false; f.snapshot.roles.active[u.id] = [GLOBAL_ADMIN_ROLE_ID] }
+  for (const u of users) { u.accountEnabled = true; u.onPremisesSyncEnabled = false; f.snapshot.roles.active[u.id] = [GLOBAL_ADMIN_ROLE_ID]; f.snapshot.authMethods[u.id] = [{ kind: 'fido2' }] }
   const id = 's-ladder-break-glass-accounts'
   const mapping = applyStepDecisions(f.mapping, { [id]: { picked: users.map((u) => u.id), at } })
   assert.deepEqual(mapping.breakGlassUserIds, users.map((u) => u.id))
   const generate = () => ladderSteps(f.snapshot, mapping, []).steps.find((s) => s.id === id)!
   const first = generate()
   assert.ok(contentStepFor(first)?.decision)
-  applyManualReviews([first], f.snapshot)
-  assert.notEqual(first.status, 'done', 'account selection alone cannot certify a recovery test')
-  assert.equal(first.manualReview!.readyToConfirm, true)
+  applyManualReviews([first], f.snapshot, {}, mapping)
+  assert.notEqual(first.status, 'done', 'selection alone cannot certify a recovery test')
+  assert.equal(first.manualReview, undefined, 'the existing Test Emergency Access owner records the test')
+  const accountBasis = recoveryAccountBasis(f.snapshot, mapping.breakGlassUserIds)
+  const records = cleanupRecord(withCleanupDone([], 'drill', at.slice(0,10), at, { accountIds: mapping.breakGlassUserIds, accountBasis, outcome: 'passed' })).records!
   const confirmed = generate()
-  const confirmations = { [id]: { [MANUAL_REVIEW_ID]: { at, basis: first.manualReview!.basis } } }
-  applyManualReviews([confirmed], f.snapshot, confirmations)
-  assert.equal(confirmed.status, 'done')
+  applyManualReviews([confirmed], f.snapshot, {}, mapping, records, f.groups, at)
+  assert.equal(confirmed.status, 'done', 'a current record saved after the scan completes immediately')
   users[0].accountEnabled = false
   const disabled = generate()
-  applyManualReviews([disabled], f.snapshot, confirmations)
-  assert.notEqual(disabled.status, 'done')
-  assert.equal(disabled.manualReview!.readyToConfirm, false)
+  applyManualReviews([disabled], f.snapshot, {}, mapping, records, f.groups, at)
+  assert.notEqual(disabled.status, 'done', 'the old test cannot override a disabled emergency account')
 })
 
 
@@ -218,7 +232,7 @@ test('a recovery test recorded after the last scan completes without rescanning'
   const row = phase.rows.find(r => r.kind === 'drill')!
   const recordedAt = new Date(Date.parse(f.snapshot.asOf) + 86400000).toISOString()
   const date = recordedAt.slice(0, 10)
-  const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
+  const checkpoints = withCleanupDone([], 'drill', date, recordedAt, { accountIds: phase.accountIds, outcome: 'passed', accountBasis: recoveryAccountBasis(f.snapshot, phase.accountIds), basis: cleanupBasis('drill', row.lists, phase.accountIds), timeZone: 'UTC' })
   const after = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints), reviewNow: recordedAt })
   assert.equal(after.schedule.cleanup!.rows.find(r => r.kind === 'drill')!.done?.slice(0, 10), date)
 })

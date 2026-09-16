@@ -431,11 +431,8 @@ export function entraWithSettings(text: string, step: Step, ctx: StepVarContext,
  * Create" state. Otherwise the work waits on prerequisites. A preview still waiting
  * on a check to confirm is never read as values alone.
  */
-export function previewNoteLines(step: Step, c: StepContract, hold: Hold | null): string[] {
-  const W = CONTRACT.implementation.preview
-  const missing = hold?.missingBindings ?? []
-  const valuesOnly = (c.fix.length === 0 && !c.state.held) || (implementationIsCurrent(step) && missing.length > 0 && (hold?.pendingPrerequisites.length ?? 0) === 0)
-  return [valuesOnly ? W.textValues : W.text, ...(missing.length > 0 ? [fillText(W.values, { values: list([...new Set(missing.map(bindingLabel))]) })] : [])]
+export function previewNoteLines(_step: Step, _c: StepContract, _hold: Hold | null): string[] {
+  return []
 }
 
 const REFERENCE_ROOTS = ['conditions', 'grantControls', 'sessionControls'] as const
@@ -655,7 +652,15 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   }
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot, ctx.nameOf))) out[key] = value
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
-  if (step.id === PASSKEY_SETTINGS_STEP_ID) for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
+  if (step.id === PASSKEY_SETTINGS_STEP_ID) {
+    for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
+    const target = out['passkey.target.fido2Configuration'] as Record<string, unknown> | undefined
+    // An already-correct profile is evidence, not a writable property of this
+    // method patch. Only the two resolved global switches need changing.
+    if (target && (Array.isArray(target.passkeyProfiles) && target.passkeyProfiles.length > 0 || typeof target?.defaultPasskeyProfile === 'string' && target.defaultPasskeyProfile.length > 0)) {
+      out['passkey.target.fido2Configuration'] = { '@odata.type': '#microsoft.graph.fido2AuthenticationMethodConfiguration', id: 'Fido2', state: target.state, isSelfServiceRegistrationAllowed: target.isSelfServiceRegistrationAllowed }
+    }
+  }
   // Why the workload restriction is not counted as protection: the sync identity's
   // support is unknown, or known to be outside workload Conditional Access
   // (roadmap/workloadIdentity.ts). Nothing is bound once support is established.

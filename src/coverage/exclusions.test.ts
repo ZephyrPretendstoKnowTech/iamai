@@ -102,5 +102,7 @@ test('one admin population: Findings, step populations, readiness and the admin 
   assert.ok(adminStep)
   assert.deepEqual([...adminStep.population.ids].sort(), [...admins].sort())
   const readiness = readinessFor('admins-phishing-resistant', [...admins], viability, s)
-  assert.equal(readiness.percent, adminStep.readiness.percent, 'the blocked reason reads the same readiness')
+  assert.deepEqual(adminStep.methodPreparation?.ids, [...admins], 'actual policy method readiness counts the same admin cohort')
+  assert.equal(adminStep.readiness.percent, 100, 'the fixture admin has the method accepted by its target policy')
+  assert.equal(readiness.percent, 0, 'registration readiness does not invent phishing-resistant sign-in proof')
 })

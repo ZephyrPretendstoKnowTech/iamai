@@ -56,6 +56,9 @@ export type MappingRecord = {
 export type MappingState = {
   workflowConfirmedAt?: string
   workflowAnswers?: Record<string, 'yes' | 'no' | 'unsure'>
+  workflowEvidenceBasis?: Record<string, string>
+  sharedDeviceUserIds?: string[]
+  dormantAccountChoices?: Record<string, { outcome: 'keep' | 'disable' | 'investigate'; reason: string }>
   tenantId: string
   records: Record<string, MappingRecord>
   variantChoices: Record<string, string> // intentKey → chosen policy name
@@ -94,6 +97,7 @@ export type MappingState = {
   serviceAccountRejectedIds: string[]
   /** ISO 3166 country codes people are allowed to sign in from (prompt 16 §4). */
   allowedCountries: string[]
+  workCountriesConfirmed?: boolean
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

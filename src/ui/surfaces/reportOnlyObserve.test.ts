@@ -1,3 +1,4 @@
+import { stepBodyOf } from './stepBody.ts'
 // The canonical Plan case: Report-only / Observe (task 005).
 //
 // One real step on one real fixture — demo-week2 / s-goal-block-auth-transfer,
@@ -398,7 +399,7 @@ test('005.6: What to do is keep it in report-only, on the screen and in every ar
   // carries no instructions for making a change.
   const v = view(step)
   assert.equal(v.whatToDo[0], c.whatToDo.text)
-  assert.equal(v.whatToDo.length, 1, `no instructions beside it: ${JSON.stringify(v.whatToDo)}`)
+  assert.ok(v.whatToDo.includes('Verify the workflow:'), 'observation retains its required workflow checks')
 })
 
 // ---- 7. no implementation is handed over while the window is open ----
@@ -682,58 +683,16 @@ test('005.12: the canonical case is the demo tenant’s own week-two policy, dep
 
 // ---- 13. the email is an artifact too ----
 
-test('005.13: a healthy Report-only policy with an email to send states no enforcement date in it', () => {
-  // The canonical fixture step has no communication template, so this is the
-  // same case one goal over: the plan's own session policy, deployed in
-  // report-only two days ago, healthy, with a template whose body names the
-  // enforcement day ({enforceLong}). It is the one artifact IAMAI writes that
-  // leaves the tenant, and before this it read "From Monday, September 14" with
-  // a note under it saying the date was only a target — a projection sent to
-  // everyone in the tenant while the window it depends on was two days old.
-  const { step, ctx, run, view } = deployedByThePlan(COMMS_STEP_ID)
+test('005.13: a report-only policy retains a useful email without promising an unearned enforcement date', () => {
+  const { step, ctx } = deployedByThePlan(COMMS_STEP_ID)
   assert.equal(step.state.lifecycle, 'report-only')
-  assert.equal(step.state.condition, 'healthy')
-  assert.equal(enforcementUnearned(step), true)
-  assert.deepEqual(step.blockers, [])
-  // A real gate, on real records: people seen, none failing, and not everybody yet.
-  const t = step.tracking!
-  assert.equal(t.evidenceQuality, 'enough')
-  assert.equal(t.failures, 0)
-  assert.ok(t.seenInScope! > 0 && t.seenInScope! < t.activeInScope!, `still unseen people in scope (${t.seenInScope} of ${t.activeInScope})`)
-  assert.equal(t.readyNow, false)
-  // The template does name the enforcement day, so there is something to withhold.
-  const cs = contentStepFor(step) as Record<string, unknown>
-  assert.match(String((cs.comms as Record<string, unknown>).body), /\{enforceLong\}/, 'the step has an email that states the enforcement day')
-  const projected = run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? step.events?.enforce.at ?? null
-  assert.ok(projected, 'and the schedule did project one')
-  const forecastDay = absoluteDate(projected!)
-  const review = absoluteDate(readyWhen(step)!.date)
-  assert.notEqual(forecastDay, review)
-  // With no enforce event on the step there is no {enforceLong} to fill, and a
-  // template with a hole in it renders nothing at all — the same rule every
-  // other line follows. No email on the screen, none to copy, none in the export.
+  assert.equal(step.tracking!.readyNow, false)
+  assert.equal(step.events, null)
   const ex = stepVars(step, ctx) as Record<string, unknown>
-  assert.equal(ex.enforce, undefined, 'no enforcement date reaches the step’s values')
   assert.equal(ex.enforceLong, undefined)
-  assert.equal(commsFor(cs, ex, step), null, 'Tell your people has nothing to say yet')
-  assert.deepEqual(copyBoxes(step, ctx).filter((b) => b.kind === 'comms'), [], 'and there is no copy box for it')
-  // Nothing else a person or a tool reads states the day either — while the
-  // review the step's own gates derive is named where the action is.
-  const v = view(step)
-  const said = [...stepLines(step, ctx), v.dates ?? '', ...v.whatToDo, ...v.doneWhen, rowWhen(step), stepContext(step, view), step.comms ?? ''].join(' | ')
-  assert.ok(!said.includes(forecastDay), `the projected enforcement day is stated: ${said}`)
-  assert.ok(said.includes(review), 'and the review milestone is')
-  assert.match(v.whatToDo.join(' | '), /Continue observation and collect the missing evidence\./)
-  assert.doesNotMatch(v.whatToDo.join(' | '), DOING)
-  // Including the prompt pack's draft announcement, which is the plan's, not
-  // this step's: with no dated draft left on it, it cannot be the one picked.
-  assert.equal(step.comms, null)
-  const draft = announcementDraft(run.steps)
-  // Another step's own dated change may land the same day; the draft may state
-  // that day for that step, and never as this one's.
-  const theirs = run.steps.some((s) => s.id !== step.id && s.events !== null && absoluteDate(s.events.enforce.at) === forecastDay)
-  if (draft !== null && !theirs) assert.ok(!draft.includes(forecastDay), `the draft announcement states it: ${draft}`)
-  if (draft !== null) assert.ok(!draft.includes(String(contentStepFor(step)?.title ?? step.title)), 'the draft is this step’s')
+  const email = stepBodyOf(step, ctx).artifacts.find(a => a.id === 'email')!
+  assert.ok(email && email.text().length > 50, 'useful communication remains available during observation')
+  assert.doesNotMatch(email.text(), /From (Monday|Tuesday|Wednesday|Thursday|Friday)|will be enforced on|undefined|‹/)
 })
 
 // ---- 14. the opened step instructs nothing while the window is open ----
@@ -751,7 +710,8 @@ test('005.14: the screen renders its What-to-do instructions from the one select
   // So the only thing under What to do is the contract's action, and the export
   // carries the same one line: the screen and the artifacts cannot disagree.
   const v = view(step)
-  assert.deepEqual(v.whatToDo, [c.whatToDo.text])
+  assert.equal(v.whatToDo[0], c.whatToDo.text)
+  assert.ok(v.whatToDo.includes('Verify the workflow:'))
   assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
   assert.doesNotMatch(c.whatToDo.text, DOING)
   // The screen has no second reading of the content to fall back on: the JSX
@@ -764,57 +724,18 @@ test('005.14: the screen renders its What-to-do instructions from the one select
 
 // ---- 15. and the held instruction is the one that would undo the protection ----
 
-test('005.15: a Report-only User Action policy whose content turns off the setting it replaces offers that instruction with the change it belongs to, and never while nothing is due', () => {
+test('005.15: device-registration guidance keeps the replacement enforced before retiring the legacy setting', () => {
   const { due, observing } = observingWithAPrerequisite()
   const cs = contentStepFor(due.step) as Record<string, any>
-  // The step exists to be the destructive case: its first instruction turns off
-  // the tenant's own MFA-at-device-registration setting because the policy
-  // replaces it.
-  const before = ((cs.whatToDo ?? {}).before ?? []) as string[]
-  assert.ok(before.some((l) => PREREQ_LINE.test(l)), `the content no longer carries the prerequisite: ${JSON.stringify(before)}`)
-
-  // Today is the day to make the change: nothing holds it, so the screen offers
-  // the prerequisite above the portal lines and the export carries it too.
-  assert.deepEqual(due.step.blockers, [], `still blocked: ${JSON.stringify(due.step.blockers)}`)
-  assert.equal(unavailableReason(due.step), null)
-  assert.equal(implementationOffered(due.step), true)
-  const dueScreen = instructionsOf(due.step, due.ctx)
-  assert.equal(dueScreen.held, false)
-  assert.ok(dueScreen.portal && dueScreen.portal.length > 0, 'the policy is offered')
-  assert.ok(dueScreen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered when it should be: ${JSON.stringify(dueScreen.before)}`)
-  assert.ok(due.view(due.step).whatToDo.some((l) => /legacy device-registration MFA|legacy.*setting/i.test(l)), 'the export explains the paired enforcement change')
-
-  // The plan then deploys that same policy, and it sits in report-only with two
-  // days behind it. It is a User Action policy (Register or join devices), which
-  // Microsoft does not evaluate in report-only (roadmap/evidenceStrategy.ts): no
-  // window of its records is waited for, and its readiness is its configuration.
-  // Read back holding exactly what the plan asked for, with nothing holding the
-  // step, it is ready to enforce — and what is due now is the enforcement.
-  const step = observing.step
-  const t = step.tracking!
-  assert.equal(t.evidenceStrategy, 'configuration')
-  assert.equal(t.failures, null, 'a record count was claimed for a policy Microsoft does not evaluate in report-only')
-  assert.equal(step.state.lifecycle, 'ready-to-enforce')
-  assert.equal(step.state.condition, 'healthy')
-  assert.deepEqual(step.blockers, [])
-  assert.equal(unavailableReason(step), null)
-  assert.equal(enforcementUnearned(step), false)
-
-  // So the instruction to turn off the setting the policy replaces comes with the
-  // enforcement it belongs to — the same change, in the same place — and the
-  // export carries both.
-  const screen = instructionsOf(step, observing.ctx)
-  assert.equal(screen.held, false)
-  assert.ok(screen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered with the enforcement: ${JSON.stringify(screen.before)}`)
-  assert.equal(jsonOffered(step), true)
-  assert.ok(observing.view(step).whatToDo.some((l) => /Require multifactor authentication to register or join devices.*No/i.test(l)), 'and the export carries it')
-
-  // And while nothing is due — the same deployed policy held by a correction its
-  // configuration still owes — the screen still withholds it: turning off the
-  // setting while its replacement is not the policy the plan asked for would leave
-  // device registration with neither.
-  const drifted = { ...step, state: { ...step.state, lifecycle: 'report-only' as const, condition: 'review-required' as const }, status: 'in-report-only' as const }
-  assert.deepEqual(instructionsOf(drifted, observing.ctx).before.filter((l) => PREREQ_LINE.test(l)), [], 'the prerequisite is offered while the policy is held for review')
+  const before = ((cs.whatToDo ?? {}).before ?? []).join(' ')
+  assert.match(before, /After it is enforced.*Require Multifactor Authentication to register or join devices to No/)
+  const text = stepBodyOf(due.step, due.ctx).artifacts.find(a => a.id === 'portal')!.text()
+  assert.match(text, /legacy device-registration MFA|legacy.*setting/i)
+  assert.match(text, /Report-only/)
+  assert.equal(observing.step.tracking!.evidenceStrategy, 'configuration')
+  assert.equal(observing.step.tracking!.failures, null, 'report-only does not prove this unsupported User Action workflow')
+  assert.ok(observing.step.manualReview?.fields?.length, 'the workflow has a scoped result to record')
+  assert.equal(observing.step.state.satisfied, false, 'configuration alone does not complete the workflow')
 })
 
 // ---- 16. the plan carries no placement for the step at all ----

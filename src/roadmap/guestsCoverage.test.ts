@@ -17,7 +17,9 @@ test('the guests goal names its own coverage, and the row says so or nothing', (
   assert.ok(g.deliveredBy.some((d) => /Guests/i.test(d)), `names the guest policy: ${JSON.stringify(g.deliveredBy)}`)
   assert.ok(!g.deliveredBy.some((d) => /all users/i.test(d)), `not the all-users match: ${JSON.stringify(g.deliveredBy)}`)
   // Item 16: the tenant meets Policy A here (enforced), so the row states no gap.
-  assert.equal(g.status, 'done', 'the guests goal is in place for the decided default')
+  assert.equal(g.state.lifecycle, 'enforced', 'the guest configuration is enforced')
+  assert.notEqual(g.status, 'done', 'the representative guest workflow still needs a recorded result')
+  assert.equal(g.manualReview?.confirmedAt, null)
   assert.equal(g.gap, null, 'the row says nothing rather than a misleading unmet gap')
 })
 

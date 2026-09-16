@@ -72,14 +72,15 @@ test('an enforced policy whose exclusions differ from the plan plans the conditi
   const state = packageStateOf(step, c, f.snapshot)!
   const bindings = packageBindings(step, ctx, c)
   const { runtime } = packageRuntime(pkg, state, bindings, {})
-  const preview = planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projectSafely(pkg, state, bindings, runtime))
-  assert.ok(preview?.preview, 'the held correction shows no planned work')
+  const projection = projectSafely(pkg, state, bindings, runtime)
+  const preview = planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projection) ?? projection
+  assert.ok(preview.channels.length > 0, 'the correction has no copyable guidance')
   assert.equal(preview.state, 'partial')
   assert.deepEqual(preview.channels.find((x) => x.channel === 'json')?.blocks, ['json.correct-conditions'], 'a correction the changed fields do not ask for was composed')
   assert.equal(preview.channels.some((x) => x.blocks.some((b) => /grant|session|name/.test(b))), false)
 })
 
-test('a real enforced policy missing its exclusions projects an executable correction of those conditions only, and the Plan releases it only once emergency access is sorted (correction batch 2)', () => {
+test('a real enforced policy missing its exclusions projects an executable correction of those conditions only, while emergency access remains a readiness prerequisite', () => {
   // The demo tenant's own legacy-authentication block, enforced without the
   // canonical exclusions, with the baseline's unsettled source references answered
   // so the users the correction writes are settled.
@@ -118,19 +119,13 @@ test('a real enforced policy missing its exclusions projects an executable corre
   const next = nextSafeAction(step)
   assert.deepEqual([next.kind, next.executable], ['correct', false])
   assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
-  // Review 4 N1 (cycle 5): A1a task 6 had this read `partial` whatever held the step,
-  // and the screen then handed over an executable PATCH whose excluded groups drop the
-  // tenant's direct exclusion while the export and nextSafeAction held it. The
-  // correction replaces the excluded groups rather than only adding to them (not U19),
-  // so under the emergency-access wait it is planned, not handed over, as correction
-  // batch 2 read it. An add-only correction under the same wait stays `partial`
-  // (packageState.test.ts).
+  // The prerequisite still governs readiness; the resolved correction stays available to copy.
   assert.equal(step.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), true, 'the premise: the step waits on emergency access')
-  assert.equal(packageStateOf(step, c, f.snapshot), 'blocked')
+  assert.equal(packageStateOf(step, c, f.snapshot), 'partial', 'readiness does not hide a relevant resolved correction')
   assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial', 'the held correction is still planned')
 })
 
-test('an enforced policy that excludes one extra person, with emergency access sorted, is a Partial whose correction executes now and Copy copies exactly it (correction batch 2.1)', () => {
+test('an omitted source exception preserves the tenant’s existing excluded person instead of creating a removal correction', () => {
   // Week two, the baseline's unsettled source references answered: emergency access
   // is in place and the legacy-authentication block is enforced and correct. Then
   // someone excludes one ordinary person from it by hand.
@@ -152,34 +147,16 @@ test('an enforced policy that excludes one extra person, with emergency access s
   const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   const c = stepContract(step, ctx)
   assert.equal(r.steps.find((s) => s.id === 's-prereq-break-glass')?.state.satisfied, true, 'emergency access is not sorted: the premise failed')
-  assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeUsers'], 'one material mismatch')
-  // Partial, and executable now: nothing holds the correction.
-  assert.equal(packageStateOf(step, c, f.snapshot), 'partial')
-  assert.deepEqual(nextSafeAction(step), { kind: 'correct', executable: true, blockedBy: null, enforceable: false })
-  assert.equal(c.implementation.offered, true)
-  const pkg = implementationPackageFor(step)!
+  assert.deepEqual(correctionFieldsOf(step, f.snapshot), [], 'source omission must not create a removal of a tenant exception')
   const bindings = packageBindings(step, ctx, c)
-  const { runtime } = packageRuntime(pkg, 'partial', bindings, {})
-  const projection = projectSafely(pkg, 'partial', bindings, runtime)
-  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
-  assert.equal(projection.preview, undefined)
-  assert.equal(planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projection), null, 'the executable correction was replaced by a planning preview')
-  // Only the incorrect field projects, from the tenant's own policy and the plan.
-  const json = projection.channels.find((x) => x.channel === 'json')!
-  assert.deepEqual(json.blocks, ['json.correct-conditions'])
-  const body = JSON.parse(json.text) as { conditions: { users: { excludeUsers: string[]; excludeGroups: string[]; includeUsers: string[] } } } & Record<string, unknown>
-  assert.deepEqual(Object.keys(body), ['conditions'], 'grant, session or state was submitted beside the correction')
-  assert.deepEqual(body.conditions.users.excludeUsers, [], 'the extra person is still excluded')
-  assert.deepEqual(body.conditions.users.excludeGroups, (tenantUsers.excludeGroups as string[]), 'the exclusions group the tenant already had changed')
-  assert.deepEqual(body.conditions.users.includeUsers, ['All'])
-  assert.equal(projection.channels.some((x) => x.blocks.some((b) => /grant|session|name|report-only|lifecycle/.test(b))), false, 'an unrelated correction was composed')
+  assert.ok((bindings['policy.target.excludeUsers'] as string[]).includes(person), 'the target retains the existing excluded person')
+  assert.deepEqual(bindings['policy.target.excludeGroups'], tenantUsers.excludeGroups, 'existing excluded groups are retained')
   assert.deepEqual({ grantControls: row.grantControls, sessionControls: row.sessionControls ?? null, state: row.state }, untouched)
-  // Copy copies the executable artifact itself.
-  for (const ch of projection.channels) {
-    assert.equal(artifactText(ch, CONTRACT.implementation.aiWarning), ch.channel === 'aiInfo' ? artifactText(ch, CONTRACT.implementation.aiWarning) : ch.text, `${ch.channel}: Copy differs from the artifact`)
-    assert.equal(UNRESOLVED.test(ch.text), false, `${ch.channel} carries a placeholder`)
+  for (const operation of plannedOperationsOf(step)) {
+    const users = (operation.body.conditions as { users?: { excludeUsers?: string[] } } | undefined)?.users
+    if (users) assert.ok(users.excludeUsers?.includes(person), 'any conditions request preserves the existing excluded person')
   }
-  assert.equal(artifactText(json, CONTRACT.implementation.aiWarning), json.text)
+
 })
 
 test('a two-policy set corrects only the member that differs, creates only the member that is missing, and never touches the sibling that is right (correction batch 2)', () => {

@@ -229,9 +229,10 @@ export function reviewHeldCase(): Case | null {
     if (r.id !== target) return r
     const copy = structuredClone(r) as Record<string, unknown>
     // A change to what the policy MEANS, not to what it is called: somebody in
-    // the tenant narrowed the grant. This is the shape Foundation B holds for
+    // the tenant added an account exclusion. This is the shape Foundation B holds for
     // review; a rename is recorded and holds nothing.
-    copy.grantControls = { operator: 'OR', builtInControls: ['block'] }
+    const conditions = copy.conditions as Record<string, any>
+    conditions.users = { ...conditions.users, excludeUsers: [...(conditions.users?.excludeUsers ?? []), f.snapshot.users.find(u => !(conditions.users?.excludeUsers ?? []).includes(u.id))!.id] }
     return copy
   })
   const asOf = new Date(Date.parse(f.snapshot.asOf) + 3 * 86_400_000).toISOString()

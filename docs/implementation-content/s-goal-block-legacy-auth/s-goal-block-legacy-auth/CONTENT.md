@@ -139,7 +139,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find **Block Legacy Authentication** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from the client-app categories Exchange ActiveSync clients and Other clients, for all users except the resolved exclusions, with no session controls. A mail app or protocol name alone does not show which category a sign-in falls into; the client app recorded on the sign-in does.
 @@IAMAI-END
@@ -151,25 +150,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Legacy Authentication** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Would-be blocks can include mail clients, printers, scanners and scheduled jobs that still use older authentication. No events in the available records does not prove there are no dependencies, because some jobs run infrequently.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Legacy Authentication** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, legacy sign-ins from the observation period have been reviewed, owners of infrequent jobs have been asked, and required applications and devices have a supported sign-in path. Once On, Exchange ActiveSync clients and Other clients are blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Legacy Authentication** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI marks **Block Legacy Authentication** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END

@@ -253,7 +253,6 @@ switch ($Mode) {
 }
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.context","channel":"aiInfo","states":["contextMissing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The dedicated authentication context is missing or not published. This state prepares and publishes that context only; the Conditional Access policy and PIM role settings come later.
@@ -274,7 +273,6 @@ NEXT STEP
 Explain how to create or update and publish the context with the resolved ID and name, then rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state creates the dedicated Conditional Access policy in Report-only. PIM role settings are not changed yet.
@@ -295,7 +293,6 @@ NEXT STEP
 Explain the create action: the authentication context target, the resolved authentication strength, the exclusions and the Every time session control.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state corrects the authentication context or the dedicated Conditional Access policy where IAMAI found differences. Correct only those differences, on the same policy ID.
@@ -320,7 +317,6 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The dedicated Conditional Access policy is in Report-only. PIM role settings must not point at the context yet.
@@ -341,7 +337,6 @@ NEXT STEP
 Explain which configuration checks remain before the policy is turned On.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce-ca","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 This state turns the dedicated Conditional Access policy On. PIM role settings change only after the policy reads back On.
@@ -362,7 +357,6 @@ NEXT STEP
 Explain the enable step and the read-back check that must succeed before PIM is configured.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.configure-pim","channel":"aiInfo","states":["pimSettingsPending"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The dedicated Conditional Access policy is On. This state updates only the authentication-context rule in the selected PIM role settings; other role settings stay unchanged.
@@ -383,7 +377,6 @@ NEXT STEP
 Explain the PIM change and the controlled activation test that follows.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationPending"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 STATE
 The selected PIM role settings require the context. This state verifies the PIM rules and a controlled role activation.

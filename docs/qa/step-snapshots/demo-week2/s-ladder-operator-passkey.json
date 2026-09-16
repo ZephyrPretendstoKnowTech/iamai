@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
+  "lane": "Completed",
+  "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
-  "rail": "Aug 31, 2026",
+  "badge": "Completed",
+  "bar": "In place",
+  "rail": "Completed",
   "headings": [
     "Why",
     "Readiness",
@@ -17,5 +17,5 @@
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Already in place"
 }

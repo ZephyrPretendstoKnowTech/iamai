@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "reason": "after: Create or Correct Allowed Countries Location",
   "fact": null,
-  "badge": "On Hold · Baseline references an unmapped group",
-  "bar": "Baseline references an unmapped group",
+  "badge": "Up Next",
+  "bar": "After Create or Correct Allowed Countries Location",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -20,10 +20,6 @@
     {
       "label": "Prerequisite · To do",
       "state": "Create or Correct Allowed Countries Location"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
     }
   ],
   "channels": [

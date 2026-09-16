@@ -1,17 +1,15 @@
 @@IAMAI-BEGIN {"id":"ai.decision-context","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 {{tenant.displayName}} has not yet saved how phones and computers should access company data. Device evidence: {{device.evidence.summary}} Phones: {{device.phones.summary}} Computers: {{device.computers.summary}} Intune context: {{device.intune.summary}} Downstream steps that use this choice: {{dependencies.downstreamSteps}}.
 
-The phone options are Intune enrollment, app protection without enrollment, or no company data on phones. The computer options are Intune enrollment, Microsoft Entra hybrid join, or no management requirement. The evidence informs the choice but does not make it, and there is no default.
+Phone Management records Entra registration, Intune enrollment, or no management requirement. Phone App Protection separately records whether supported work apps need Intune app protection. Computer Management records Intune enrollment, Microsoft Entra hybrid join, or no management requirement. Entra registration creates a device identity; Intune enrollment adds device management; compliance is a separately evaluated state. App protection controls work data inside supported apps, including on devices that are not enrolled. The evidence informs the choice but does not make it, and there is no default.
 
 NEXT STEP: Explain what each option means for the people and devices in this evidence, and how it changes the downstream device-policy scope.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision-recorded","channel":"aiInfo","states":["decided"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
-The phone and computer choices are saved. Newer scan evidence does not change them; only a new saved choice does. The saved choice sets the scope of the downstream device policies. It does not enroll devices, configure Intune or show that devices meet the chosen requirement.
+The phone and computer choices are saved. A scan preserves the saved choices and reports relevant configuration changes separately. The saved choice sets the scope of the downstream device policies. It does not enroll devices, configure Intune or show that devices meet the chosen requirement.
 
 Downstream steps: {{dependencies.downstreamSteps}} [omit this line when unavailable]
 
@@ -19,7 +17,6 @@ NEXT STEP: Explain what the saved choices mean for the downstream device steps, 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI cannot currently show or use the device decision for this plan. Without a saved choice the downstream device policies have no scope to use, so do not suggest a default phone or computer choice to fill the gap.
 
@@ -33,7 +30,7 @@ Please choose how phones and computers should access company data. For phones, t
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["needsDecision","decided"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"evidence","label":"Observed device evidence","result":{{json:device.evidence.summary}},"line":"Save a choice for phones and computers. Current inventory informs the choice; it does not make it for you."},{"id":"phones","label":"Phones","result":{{json:device.phones.summary}},"line":"Choose enrollment, app-only protection, or no company data."},{"id":"computers","label":"Computers","result":{{json:device.computers.summary}},"line":"Choose Intune enrollment, hybrid join, or not managed."}],"whyIamaiSaysThis":"Downstream Conditional Access can require only the device posture the owner has explicitly chosen and the tenant can support."}
+{"tiles":[{"id":"evidence","label":"Observed device evidence","result":{{json:device.evidence.summary}},"line":"Save a choice for phones and computers. Current inventory informs the choice; it does not make it for you."},{"id":"phones","label":"Phones","result":{{json:device.phones.summary}},"line":"Registration, enrollment and app protection are separate requirements."},{"id":"computers","label":"Computers","result":{{json:device.computers.summary}},"line":"The device policy uses the selected platforms and its actual compliant-or-hybrid-joined grant."}],"whyIamaiSaysThis":"Downstream Conditional Access can require only the device posture the owner has explicitly chosen and the tenant can support."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["needsDecision","decided"],"format":"json","kind":"referenceOnly"}

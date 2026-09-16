@@ -196,7 +196,9 @@ export function adminsWithWorkloadOf(snapshot: TenantSnapshot, exclude: Readonly
   const office = snapshot.scenarioEvidence?.officeSignIns
   if (!office) return []
   const users = new Set(snapshot.users.map((u) => u.id))
-  return [...adminUserIds(snapshot.roles)].filter((id) => users.has(id) && !exclude.has(id) && (office.byPerson[id] ?? []).length > 0).map((id) => [id, office.byPerson[id]])
+  const active = adminUserIds(snapshot.roles)
+  const eligible = adminUserIds({ active: snapshot.roles.eligible ?? {} })
+  return [...new Set([...active, ...eligible])].filter((id) => users.has(id) && !exclude.has(id) && (office.byPerson[id] ?? []).length > 0).map((id) => [id, active.has(id) ? office.byPerson[id] : office.byPerson[id].map(app => `${app} (eligible administrator)`)] )
 }
 
 function upnOf(snapshot: TenantSnapshot, id: string): string | undefined {

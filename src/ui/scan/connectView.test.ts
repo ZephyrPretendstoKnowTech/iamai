@@ -76,7 +76,7 @@ test('tile 2, Baseline: the nested card carries name, size and version; the step
   assert.equal(none.state, 'none loaded')
   assert.equal(none.paragraphs.length, 3)
   const said = [...t.card.paragraphs, t.source?.text ?? ''].join(' ')
-  assert.match(t.card.paragraphs[0], /^A baseline is the identity-security standard IAMAI plans your tenant towards/, 'the term is explained before it is used')
+  assert.match(t.card.paragraphs[0], /^A baseline is a set of Conditional Access policies to measure your tenant against/, 'the term is explained before it is used')
   for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP', 'ConditionalAccess.Tech']) assert.ok(said.includes(fact), `the baseline stage names ${fact}`)
   assert.match(t.card.paragraphs[1], /^Its aim is layered protection for a small organisation: /)
   assert.equal(t.source?.summary, 'Source and version')

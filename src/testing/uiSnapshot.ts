@@ -65,7 +65,7 @@ export function fixtureSnapshot(): TenantSnapshot {
         reason: null,
         rows: [
           { '@odata.type': '#microsoft.graph.ipNamedLocation', id: 'l-1', displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] },
-          { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'l-2', displayName: 'Allowed countries', isTrusted: false, countriesAndRegions: ['AU', 'NZ'] },
+          { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'l-2', displayName: 'Allowed countries', isTrusted: false, countriesAndRegions: ['AU', 'NZ'], countryLookupMethod: 'clientIpAddress', includeUnknownCountriesAndRegions: false },
         ],
       },
       authStrengths: {
@@ -84,8 +84,8 @@ export function fixtureSnapshot(): TenantSnapshot {
             policyMigrationState: 'migrationComplete',
             registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } },
             authenticationMethodConfigurations: [
-              { id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] },
-              { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] },
+              { id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] },
+              { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: false } },
               { id: 'Sms', state: 'disabled', includeTargets: [] },
               { id: 'TemporaryAccessPass', state: 'enabled', includeTargets: [{ id: 'all_users' }] },
             ],

@@ -1,3 +1,4 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
 // Foundation A: one authoritative resolved tenant policy, and every
 // implementation channel reads it off the step. The author's four exclusion
 // groups on a policy are this tenant's one exclusions group, named once — in
@@ -112,6 +113,7 @@ function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<st
   // A case about the admins (or guests) policy meets the readiness prerequisite
   // the plan names for it first (roadmap/operations.ts readinessGate); otherwise
   // the hold is what it would be testing rather than the update boundary.
+  if (opts.adminsReady || opts.guestsReady) readyEvidence(f, snapshot)
   const guests = new Set(f.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
   const scored = opts.adminsReady || opts.guestsReady ? runFixture({ ...f, snapshot }, { snapshot } as never).viability : null
   const viability = scored ? withGuestsReady(opts.adminsReady ? withAdminsReady(scored) : scored, opts.guestsReady ? guests : new Set()) : undefined
@@ -119,8 +121,13 @@ function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<st
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const of = (goalId: string): { step: Step; portal: string[] | null } => {
-    const step = r.steps.find((x) => x.goalId === goalId && x.kind !== 'verify') as Step
+    let step = r.steps.find((x) => x.goalId === goalId && x.kind !== 'verify') as Step
     assert.ok(step, `${goalId} is on the plan`)
+    if (opts.guestsReady && goalId === 'guests-mfa') {
+      assert.equal(step.methodPreparation?.completeScope, false, 'external-type scope remains unknown in the real plan')
+      assert.ok(step.action.readinessGate, 'the real plan retains its method readiness hold')
+      step = { ...step, action: { ...step.action, readinessGate: undefined } }
+    }
     return { step, portal: stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) }
   }
   return { f, r, ctx, of, snapshot }
@@ -184,8 +191,8 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   // on a person's Baseline mapping (no step of the plan), and none of them is
   // the author's to leave out (`authorOnly` takes a settled reading and there is none).
   const others = authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort()
-  assert.deepEqual(impl.missing.map((m) => m.token.toLowerCase()).sort(), others, 'the three hold the policy')
-  assert.ok(impl.missing.every((m) => m.decision === true && m.stepId === null), 'each waits on a person’s answer, and on no step')
+  assert.deepEqual(impl.missing, [], 'approved optional exclusion assumptions do not hold the policy')
+  assert.deepEqual(impl.omitted.map(id => id.toLowerCase()).sort(), others, 'the explicit V1 assumption omits only the unexplained exclusions')
   assert.deepEqual(impl.authorOnly, [], 'and none of them is left out as the author’s own')
 })
 

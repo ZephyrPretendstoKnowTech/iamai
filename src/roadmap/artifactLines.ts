@@ -64,11 +64,12 @@ export function stepArtifactLines(v: ExportStep): string[] {
     section(SC.fixHeading, v.fix),
     v.dates === null ? null : `${HEAD.dates}: ${v.dates}`,
     section(HEAD.doneWhen, v.doneWhen),
+    section('Workflow Check', v.manualEvidence ?? []),
     v.ifWrong === null ? null : `${HEAD.ifWrong}: ${v.ifWrong}`,
   ].filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
 }
 
 /** A Cleanup row by the same rule: it has no stage, no reach and no rollback, so it states what it has. */
 export function cleanupArtifactLines(c: CleanupExport): string[] {
-  return [c.why, section(HEAD.whatToDo, c.whatToDo), section(HEAD.doneWhen, c.doneWhen)].filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+  return [c.why, section(HEAD.whatToDo, c.whatToDo), section(HEAD.doneWhen, c.doneWhen), section('Workflow Check', c.manualEvidence ?? [])].filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
 }

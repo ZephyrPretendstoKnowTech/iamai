@@ -144,7 +144,6 @@ The Medium-risk policy stays separate and uses built-in MFA. The exclusions grou
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Differences IAMAI found on the High-risk policy: {{policy.current.semanticMismatches}}. The correction updates the same policy ID toward the intended target: All users with the intended exclusions, All resources, High sign-in risk only, the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. The correction output follows the saved first-enforcement choice. If built-in MFA is selected, the baseline authentication strength remains a later hardening goal.
 
@@ -154,13 +153,11 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The High-risk policy is in Report-only. Risky sign-ins: {{evidence.riskySignIns}}. Method readiness: {{evidence.mfaReadiness}}. Readiness depends on affected users being able to satisfy the selected grant; a registered MFA method does not always satisfy an authentication strength. No recent risk events does not prove future readiness, and a risky sign-in should not be manufactured to test the policy. The High and Medium policies should each cover only their own risk level.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The High-risk policy is ready to enforce. Before it is set On, the same policy ID should still be Report-only with High sign-in risk only, All users with the intended exclusions, All resources, the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency, and the Medium-risk policy should remain separate. The enforcement operation changes only the policy state. Verify that the saved first-enforcement choice still matches these settings before enforcement.
 @@IAMAI-END

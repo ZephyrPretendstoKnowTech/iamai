@@ -3,7 +3,7 @@
   "substatus": null,
   "reason": "Baseline references an unmapped group",
   "fact": null,
-  "badge": "On Hold · Baseline references an unmapped group",
+  "badge": "On Hold",
   "bar": "Baseline references an unmapped group",
   "rail": "Not scheduled",
   "headings": [
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "13% MFA-ready"
+      "state": "not measured"
     },
     {
       "label": "Affected people",

@@ -126,7 +126,6 @@ The exclusions group is excluded, so accounts in that group, such as emergency a
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Differences IAMAI found on the Medium-risk policy: {{policy.current.semanticMismatches}}. The correction updates the same policy ID toward the intended target: All users with the intended exclusions, All resources, Medium sign-in risk only, built-in MFA and no session controls. Microsoft's current general guidance recommends Every time sign-in frequency for risk policies, but this baseline's Medium-risk policy has none, so adding it would change the baseline.
 
@@ -136,13 +135,11 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The Medium-risk policy is in Report-only. Medium-risk sign-ins: {{evidence.mediumRiskSignIns}}. MFA readiness: {{evidence.mfaReadiness}}. High-risk policy: {{evidence.highRiskPolicy}}. This policy should cover Medium sign-in risk only, and the separate High-risk policy High only. A registered MFA method is not proof that a person can complete MFA now, and no recent Medium-risk sign-ins does not show future readiness.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The Medium-risk policy is ready to enforce. Before it is set On, the same policy ID should still be Report-only with Medium sign-in risk only, All users with the intended exclusions, All resources, built-in MFA and no session controls, and the High-risk policy should remain separate. The enforcement operation changes only the policy state. After enforcement, a user who cannot complete MFA during a Medium-risk sign-in cannot complete that sign-in.
 @@IAMAI-END

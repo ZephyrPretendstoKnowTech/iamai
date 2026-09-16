@@ -1,3 +1,5 @@
+import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
+import { scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
 // The plan, computed and persisted, for the Plan surface (prompt 48 Part 2).
 // The same pipeline the Roadmap page used — coverage, generate, merge the
@@ -47,7 +49,7 @@ import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 import type { CleanupKind } from '../../roadmap/cleanup.ts'
-import { cleanupRecord, withCleanupDone, cleanupBasis } from '../../roadmap/cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis } from '../../roadmap/cleanupDone.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -69,6 +71,10 @@ export type PlanComputed = {
 
 export type PlanData = {
   recordForExport: PlanDecisions | null
+  persistence: 'idle' | 'saving' | 'saved' | 'failed'
+  retrySave: () => void
+  loadError: boolean
+  retryLoad: () => void
   ready: boolean
   computed: PlanComputed | null
   mapping: MappingState | null
@@ -107,7 +113,7 @@ export type PlanData = {
   /** Owner confirmations of the checks IAMAI cannot read, by step id then prerequisite id: in the plan record and the plan file. */
   confirmations: Record<string, Record<string, import('../../roadmap/decisions.ts').OwnerConfirmation>>
   /** Record confirmations for a step, each with the values it was given against. */
-  onConfirm: (stepId: string, confirmed: Record<string, Pick<import('../../roadmap/decisions.ts').OwnerConfirmation, 'basis'>>) => void
+  onConfirm: (stepId: string, confirmed: Record<string, import('../../roadmap/decisions.ts').ManualReviewInput>) => void
   /** Withdraw a step's confirmations of these prerequisites. */
   onUnconfirm: (stepId: string, prerequisites: string[]) => void
   /** The name every Tell your people box signs with (Plan settings); in the plan file. */
@@ -121,7 +127,7 @@ export type PlanData = {
   /** The plan's checkpoints as saved (the scan checkpoints a save writes, and each Cleanup row's Done); they travel in the plan file. */
   checkpoints: unknown[]
   /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
-  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[]) => void
+  markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'signInAtByAccount' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
   /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
@@ -142,7 +148,19 @@ export function usePlanData(
   const planId = snapshot ? planIdFor(snapshot.tenantId) : ''
   const [mapping, setMapping] = useState<MappingState | null>(null)
   const [saved, setSaved] = useState<PlanDecisions | null>(null)
+  const [persistence, setPersistence] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const persistQueue = useRef<Promise<void>>(Promise.resolve())
+  const [saveAttempt, setSaveAttempt] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [mappingFailed, setMappingFailed] = useState(false)
+  const pendingMapping = useRef<MappingState | null>(null)
+  const persistMapping = (next: MappingState): void => {
+    pendingMapping.current = next
+    setMappingFailed(false)
+    persistQueue.current = persistQueue.current.catch(() => {}).then(() => saveMappingState(next)).then(() => { if (pendingMapping.current === next) pendingMapping.current = null }).catch(() => { if (pendingMapping.current === next) setMappingFailed(true) })
+  }
   const [groups, setGroups] = useState<GroupMembers>(new Map())
   // What this scan's own reads said about each of those groups: present, gone,
   // or could not tell (Foundation C). Recomputed with the groups on every scan
@@ -180,6 +198,7 @@ export function usePlanData(
     // new snapshot and the previous mapping (the walk caught the old exclusions
     // step flashing on week two while the record was still loading).
     setLoaded(false)
+    setLoadError(false)
     let cancelled = false
     void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<LegacyOrDecisions>(snapshot.tenantId)]).then(([m, p]) => {
       if (cancelled) return
@@ -190,11 +209,11 @@ export function usePlanData(
       setSaved({ ...loadedRecord, planCreatedAt: loadedRecord.planCreatedAt ?? new Date().toISOString() })
       setMappingFor(snapshot)
       setLoaded(true)
-    })
+    }).catch(() => { if (!cancelled) setLoadError(true) })
     return () => {
       cancelled = true
     }
-  }, [snapshot, planId])
+  }, [snapshot, planId, loadAttempt])
 
   useEffect(() => {
     if (!snapshot || !mapping || mappingFor !== snapshot) return
@@ -370,15 +389,24 @@ export function usePlanData(
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
     if (saved.firstDeployment) decisions.firstDeployment = saved.firstDeployment
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    const key = JSON.stringify({ tenantId: snapshot.tenantId, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
-    void savePlanRecord(snapshot.tenantId, decisions)
+    setPersistence('saving')
+    persistQueue.current = persistQueue.current.catch(() => {}).then(() => savePlanRecord(snapshot.tenantId, decisions)).then(() => {
+      if (lastPersist.current === key) setPersistence('saved')
+    }).catch(() => {
+      if (lastPersist.current === key) { lastPersist.current = ''; setPersistence('failed') }
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [computed, snapshot, saved])
+  }, [computed, snapshot, saved, saveAttempt])
 
   const bump = (): void => setVersion((v) => v + 1)
   return {
+    persistence: mappingFailed ? 'failed' : persistence,
+    loadError,
+    retryLoad: () => setLoadAttempt(value => value + 1),
+    retrySave: () => { if (pendingMapping.current) persistMapping(pendingMapping.current); setSaveAttempt(value => value + 1) },
     recordForExport: saved ? { ...saved, observations: observationsOf(computed?.steps ?? [], saved.observations ?? null) } : null,
     ready: loaded && groupsLoaded,
     computed,
@@ -392,7 +420,7 @@ export function usePlanData(
     directory,
     saveMapping: (next) => {
       setMapping(next)
-      void saveMappingState(next)
+      persistMapping(next)
       bump()
     },
     firstDeployment,
@@ -441,7 +469,7 @@ export function usePlanData(
       if (!mapping) return
       const next = { ...mapping, displayTimeZone: tz }
       setMapping(next)
-      void saveMappingState(next)
+      persistMapping(next)
       bump()
     },
     setNotApplicable: (stepId, reason) => {
@@ -451,18 +479,18 @@ export function usePlanData(
       else delete notApplicable[stepId]
       const next = { ...mapping, notApplicable }
       setMapping(next)
-      void saveMappingState(next)
+      persistMapping(next)
       bump()
     },
     checkpoints: saved?.checkpoints ?? [],
-    markCleanupDone: (kind, date, accountIds = []) => {
+    markCleanupDone: (kind, date, accountIds = [], evidence = {}) => {
       const phase = computed?.schedule.cleanup
       const row = phase?.rows.find((r) => r.kind === kind)
       if (!row) return
       const basis = cleanupBasis(kind, row.lists, kind === 'drill' || kind === 'alerting' ? phase?.accountIds ?? [] : [])
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
-        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { basis, accountIds, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
+        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && (kind === 'drill' || kind === 'alerting') ? { accountBasis: recoveryAccountBasis(snapshot, accountIds) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
       })
       bump()
     },
@@ -473,7 +501,7 @@ export function usePlanData(
       else delete notAssessedNotes[policy]
       const next = { ...mapping, notAssessedNotes }
       setMapping(next)
-      void saveMappingState(next)
+      persistMapping(next)
       bump()
     },
     onSkip: (stepId, reason) => {
@@ -500,7 +528,7 @@ export function usePlanData(
       const prev = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
       const next = { ...mapping, breakGlassAnswers: { ...prev, [key]: done } }
       setMapping(next)
-      void saveMappingState(next)
+      persistMapping(next)
       bump()
     },
     stepDecisions: saved?.stepDecisions ?? {},
@@ -520,7 +548,7 @@ export function usePlanData(
       // prerequisiteBasis): it holds across scans while they hold, and the next
       // scan that finds them changed no longer counts it.
       const at = new Date().toISOString()
-      const stamped = Object.fromEntries(Object.entries(confirmed).map(([id, c]) => [id, { at, basis: c.basis }]))
+      const stamped = Object.fromEntries(Object.entries(confirmed).map(([id, c]) => [id, { ...c, basis: scopeManualBasis(c.basis, c), at }]))
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
         const all = base.confirmations ?? {}

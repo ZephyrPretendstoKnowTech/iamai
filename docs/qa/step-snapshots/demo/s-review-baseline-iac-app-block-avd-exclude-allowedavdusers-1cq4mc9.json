@@ -3,9 +3,9 @@
   "substatus": null,
   "reason": "after: Confirm the Services You Use",
   "fact": null,
-  "badge": "Up Next · After Confirm the Services You Use",
+  "badge": "Up Next",
   "bar": "After Confirm the Services You Use",
-  "rail": "Not scheduled",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
@@ -13,6 +13,10 @@
     "Done when"
   ],
   "tiles": [
+    {
+      "label": "Allowed AVD Users",
+      "state": "Source definition needs clarification"
+    },
     {
       "label": "Prerequisite · To do",
       "state": "Confirm the Services You Use"
@@ -22,5 +26,5 @@
     "Entra",
     "AI Info"
   ],
-  "when": "After prerequisites"
+  "when": "Aug 31, 2026"
 }

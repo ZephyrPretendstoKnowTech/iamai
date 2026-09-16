@@ -66,9 +66,9 @@ export const NEED_LABEL: Record<string, string> = {
 }
 
 export const UNKNOWN = {
-  needs: (labels: string[]): string => `could not be checked: ${list(labels)} could not be read on this scan`,
+  needs: (labels: string[]): string => `Missing scan evidence: ${list(labels)}`,
   /** The read succeeded; the answer was not in it (prompt 46 item 24). Never "could not be read". */
-  readWithout: (label: string, field: string): string => `could not be checked: ${label} was read but reports no ${field}`,
+  readWithout: (label: string, field: string): string => `${label} was read but reports no ${field}`,
   blocked: 'A check that cannot be run is treated as failed while it gates access.',
 }
 
@@ -276,15 +276,15 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   },
   // ---- trusted named location ----
   'loc.notWholeInternet': { what: 'No range covers the whole internet.', why: 'A location that trusts everything makes every policy that relaxes inside it unconditional.' },
-  'loc.notTooWide': { what: 'No range is wider than a /16 unless it was confirmed.', why: 'A wide range quietly includes networks nobody meant to trust.' },
+  'loc.notTooWide': { what: 'Review broad IPv4 ranges (shorter than /16) and IPv6 ranges (shorter than /48) with the network owner.', why: 'A wide range quietly includes networks nobody meant to trust.' },
   'loc.isTrusted': { what: 'The location is marked as trusted.', why: 'Policies that relax inside a trusted location do nothing until the flag is set.' },
   'loc.redundancy': { what: 'More than a single address.', why: 'One address means one broken link takes the office out of its own trusted location.' },
-  'loc.seenInSignIns': { what: 'The ranges appear in the sign-in records.', why: 'A range nobody has signed in from is usually an old office nobody removed.' },
+  'loc.seenInSignIns': { what: 'Sign-in records identify this named location.', why: 'Recorded location matches help confirm office usage; an unmatched window does not prove the location is unused.' },
   // ---- allowed countries ----
   'cty.atLeastOne': { what: 'At least one country is allowed.', why: 'An empty list blocks everyone, everywhere, including the person who set it.' },
   'cty.includesOperator': {
-    what: 'The countries the admins have recently signed in from are included.',
-    why: 'The first person locked out by a country policy is usually the person who wrote it.',
+    what: 'Review recent administrator sign-ins outside the approved work countries.',
+    why: 'Recent sign-ins can reflect travel or unexpected activity; they do not approve a country for permanent access.',
   },
   'cty.unknownCountries': { what: 'Sign-ins from unknown countries are not silently allowed.', why: 'Addresses that resolve to no country then pass a policy meant to name every country it allows.' },
   'cty.seenCountriesIncluded': { what: 'Countries with sign-in history are either allowed or deliberately left out.', why: 'A country people actually work from, left off the list, is a lockout on the first day.' },
@@ -303,12 +303,12 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'Without it, a person with no method yet has no way to register their first one.',
   },
   // ---- service accounts ----
-  'svc.noInteractive': { what: 'No confirmed service account has an interactive sign-in in the window.', why: 'An interactive sign-in means a person is using it, so treating it as unattended is wrong.' },
+  'svc.noInteractive': { what: 'Review recorded sign-ins by confirmed service accounts.', why: 'The retained account totals do not distinguish interactive from unattended sign-ins; inspect the client and workflow.' },
   'svc.noAdminRole': { what: 'No confirmed service account holds an admin role.', why: 'An unattended account with an admin role is a password with tenant-wide reach.' },
-  'svc.excludedFromBlocks': { what: 'Every service account a block step would catch has an exclusion.', why: 'The step that blocks legacy sign-in is the step that stops the scanner.' },
+  'svc.excludedFromBlocks': { what: 'Review legacy authentication used by confirmed service accounts.', why: 'Legacy usage identifies a dependency to migrate; it does not establish the account’s current policy exclusions.' },
   // ---- authentication strength ----
   'str.exists': { what: 'The strength the baseline names exists in the tenant.', why: 'A policy referring to a strength that is not there cannot be created.' },
-  'str.achievable': { what: 'Somebody in the target population has registered a method the strength accepts.', why: 'A strength nobody can satisfy is a lockout with a policy around it.' },
+  'str.achievable': { what: 'Targeted people have registered methods the strength accepts.', why: 'A strength nobody can satisfy is a lockout with a policy around it.' },
   'str.matchesBaseline': { what: 'The combinations match the ones the baseline expects.', why: 'A strength that allows more than the baseline intends quietly weakens the policy.' },
 }
 
@@ -367,7 +367,7 @@ export const FINDING = {
   xgMembers: (n: number, sampled: boolean): string => `${count(n, 'member')}${sampled ? ', estimated' : ''}`,
 
   locWholeInternet: (cidr: string): string => `${cidr} trusts the entire internet`,
-  locTooWide: (cidr: string): string => `${cidr} is wider than a /16`,
+  locTooWide: (cidr: string): string => `${cidr} covers a broad network range; verify its boundaries with the network owner`,
   locNotTrusted: 'not marked as trusted',
   locSingle: (cidr: string): string => `${cidr} is the only address in the location`,
   locUnseen: (cidrs: string[]): string => `no sign-in in the window came from ${list(cidrs)}`,
@@ -385,9 +385,9 @@ export const FINDING = {
   pilotMethodUntargeted: (method: string): string => `${method} is enabled but not pointed at this group`,
   pilotNotReady: (names: string[]): string => `${list(names)} ${names.length === 1 ? 'has' : 'have'} not proved MFA`,
 
-  svcInteractive: (names: string[]): string => `${list(names)} signed in interactively in the window`,
+  svcInteractive: (names: string[]): string => `${list(names)} have recorded sign-in activity in the window`,
   svcAdmin: (names: string[]): string => `${list(names)} hold admin roles`,
-  svcUnexcluded: (names: string[]): string => `${list(names)} would be caught by a block step with no exclusion`,
+  svcUnexcluded: (names: string[]): string => `${list(names)} used legacy authentication in the recorded window; review the dependency and its current policy coverage`,
 
   strMissing: 'the strength the baseline names is not in the tenant',
   strUnachievable: (combos: string[]): string => `nobody in scope has registered a method matching ${list(combos)}`,

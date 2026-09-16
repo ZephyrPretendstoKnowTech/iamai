@@ -417,7 +417,7 @@ test('whole path: pinned member to goal identity to classification to coverage t
   assert.ok(mfa, 'the fixture tenant has an all-users MFA policy')
   const before = runFixture(fixture('small'))
   assert.equal(before.coverage.results.find((r) => r.goal.id === 'mfa-all-users')?.status, 'enforced', 'the fixture starts with the goal in place')
-  assert.equal(before.steps.find((s) => s.goalId === 'mfa-all-users')?.status, 'done')
+  assert.equal(before.steps.find((s) => s.id === 's-goal-mfa-all-users')?.status, 'done')
 
   // One material change: the tenant's policy now leaves an application out.
   const apps = (mfa as { conditions: { applications: Record<string, unknown> } }).conditions.applications
@@ -428,7 +428,7 @@ test('whole path: pinned member to goal identity to classification to coverage t
   assert.ok(goal)
   assert.notEqual(goal.status, 'enforced', 'the exclusion travelled no further than the fact reader')
   assert.ok(goal.reasons.some((r) => r.kind === 'apps-excluded'), 'coverage did not state the dropped application')
-  const step = after.steps.find((s) => s.goalId === 'mfa-all-users')
+  const step = after.steps.find((s) => s.id === 's-goal-mfa-all-users')
   assert.ok(step, 'the step is still in the plan')
   assert.notEqual(step.status, 'done', 'the Plan still reads the goal as finished on a narrower policy')
 })

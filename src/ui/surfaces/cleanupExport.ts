@@ -39,13 +39,49 @@ export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, 
   return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done.slice(0, 10)) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
 }
 
+/** Recorded checks remain evidence, never a substitute for current completion. */
+export function cleanupEvidenceLines(phase: CleanupPhase, row: CleanupPhase['rows'][number]): string[] {
+  const record = row.record
+  if (!record) return []
+  const names = row.lists.emergencyAccounts ?? row.lists.emergencyAccountUpns ?? []
+  const account = (id: string): string => {
+    const index = phase.accountIds.indexOf(id)
+    const name = index >= 0 && names.length === phase.accountIds.length ? names[index] : null
+    return name && name !== id ? `${name} (${id})` : id
+  }
+  const policy = (id: string): string => {
+    const name = phase.policyOptions?.find(p => p.id === id)?.name ?? record.policyNames?.[id]
+    return name && name !== id ? `${name} (${id})` : id
+  }
+  const state = row.verification ?? (row.done ? 'current' : 'historical')
+  return [
+    `Evidence status: ${state}`,
+    row.verificationReason,
+    `Test date: ${record.date.slice(0, 10)}${record.timeZone ? ` (${record.timeZone})` : ''}`,
+    `Saved: ${record.at}`,
+    `Recorded outcome: ${record.consolidationDecision === 'retain-both' ? 'Retain Both' : record.outcome === 'passed' ? 'Passed' : record.outcome === 'failed' ? 'Failed' : 'Not recorded'}`,
+    record.accountIds?.length ? `Accounts: ${record.accountIds.map(account).join(', ')}` : null,
+    record.workflow ? `Workflow: ${record.workflow}` : null,
+    record.recipient ? `Alert recipient: ${record.recipient}` : null,
+    ...Object.entries(record.signInAtByAccount ?? {}).map(([id, at]) => `Recorded sign-in: ${account(id)} — ${at}`),
+    record.retainedPolicyIds?.length ? `Policies retained: ${record.retainedPolicyIds.map(policy).join(', ')}` : null,
+    record.rationale ? `Reason: ${record.rationale}` : null,
+    ...(record.namingChanges ?? []).map(p => `Name review: ${p.from} → ${p.to} (ID: ${p.id})`),
+    typeof record.toolingVerified === 'boolean' ? `Name-based tooling checked: ${record.toolingVerified ? 'Yes' : 'No'}` : null,
+    record.replacementPolicyId ? `Retained policy: ${policy(record.replacementPolicyId)}` : null,
+    record.retiredPolicyIds?.length ? `Retired policies: ${record.retiredPolicyIds.map(policy).join(', ')}` : null,
+    typeof record.coverageVerified === 'boolean' ? `Replacement coverage confirmed by administrator: ${record.coverageVerified ? 'Yes' : 'No'}` : null,
+    record.reference ? `Change record: ${record.reference}` : null,
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0)
+}
+
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */
 export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows'][number], notes: NotAssessedNotes = {}): CleanupExport | null {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
-  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, why: fillText(entry.why, ex), whatToDo: entry.whatToDo.filter(whole).map((l) => fillText(l, ex)), doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
+  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo: entry.whatToDo.filter(whole).map((l) => fillText(l, ex)), doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 
 /** Every Cleanup row as words, in render order; none when the phase has nothing to say. */

@@ -197,60 +197,29 @@ test("a step's handoff is that step's own gate over its own reach", () => {
         continue
       }
       assert.ok(hold, `${name}/${step.id}: an MFA-family step held on readiness names its people`)
-      // The people the step reaches, from the one authority that answers it
-      // (derive/population.ts). A reach that could not be settled is the only
-      // reason a measured step names nobody.
-      const of = reached(step)
-      if (of === null) {
-        assert.equal(hold.ids, null, `${name}/${step.id}: an unsettled reach is unknown, not a list`)
-        continue
-      }
-      if (hold.ids === null) {
-        assert.equal(step.readiness.unmeasured, 'unreadable', `${name}/${step.id}: only unreadable readiness makes a settled reach unknown`)
-        continue
-      }
-      const inScope = new Set(family === 'admin' ? of.ids : affectedIds(of))
-      for (const id of hold.ids) assert.ok(inScope.has(id), `${name}/${step.id}: only people the step reaches`)
-      if (family === 'admin') {
-        sawAdmin += 1
-        for (const id of hold.ids) assert.equal(adminReady(scored.find((s) => s.userId === id)!), false, `${name}/${step.id}/${id}: not Ready`)
-      } else {
-        sawMfa += 1
-        for (const id of hold.ids) assert.equal(mfaReady(scored.find((s) => s.userId === id)!), false, `${name}/${step.id}/${id}: not Ready`)
-        const ready = [...inScope].filter((id) => {
-          const s = scored.find((x) => x.userId === id)
-          return s !== undefined && mfaReady(s)
-        })
-        for (const id of ready) assert.ok(!hold.ids.includes(id), `${name}/${step.id}/${id}: Ready, so not held by this step`)
-        // The step never waits on more people than the page says are not Ready.
-        const target = [...inScope].filter((id) => notReady.has(id))
-        assert.ok(hold.ids.length <= target.length, `${name}/${step.id}: an MFA step never holds more people than MFA Readiness counts not Ready`)
-      }
+      const target = step.methodPreparation
+      assert.ok(target, `${name}/${step.id}: new plans store the actual target measurement`)
+      if (!target.completeScope) { assert.equal(hold.ids, null); continue }
+      assert.deepEqual(hold.ids, target.ids.filter(id => !target.readyIds.includes(id)), `${name}/${step.id}: handoff and percentage use identical evidence`)
+      if (family === 'admin') sawAdmin += 1
+      else sawMfa += 1
+
     }
   }
   assert.ok(sawMfa > 0 && sawAdmin > 0 && sawNonMfa > 0, `the sweep saw all three shapes: ${sawMfa} MFA, ${sawAdmin} admin, ${sawNonMfa} held on something else`)
 })
 
-test('the MFA gate asks for phishing-resistant readiness, never a passkey: Ready without one is not held, Authenticator only is', () => {
+test('the MFA handoff uses accepted target methods rather than generic phishing-resistant proof', () => {
   const f = fixture('demo')
   const run = runFixture(f)
+  const step = run.steps.find(s => s.goalId === 'register-info-protected')!
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
-  assert.equal(goalFamily(step.goalId), 'mfa')
-  const of = reached(step)
-  assert.ok(of !== null, 'the demo settles this policy scope')
-  const inScope = new Set(affectedIds(of))
+  const target = step.methodPreparation!
+  assert.ok(target.completeScope)
   const hold = stepMfaHold(step, scored)!
-  assert.ok(hold.ids)
-  // Somebody Ready with Windows Hello and no passkey meets the gate.
-  const readyWithout = v.rows.filter((r) => r.state === 'ready' && r.readiness?.hasPasskey === false && inScope.has(r.user.id))
-  assert.ok(readyWithout.length > 0, 'the demo has someone Ready without a passkey in this step\'s reach')
-  for (const r of readyWithout) assert.ok(!hold.ids.includes(r.user.id), `${r.user.id}: Ready without a passkey, so not held`)
-  // Somebody proven only with Authenticator does not: it is not phishing-resistant.
-  const appOnly = v.rows.filter((r) => r.state === 'needsSetup' && r.readiness?.methods?.includes('authenticator') && inScope.has(r.user.id))
-  assert.ok(appOnly.length > 0, 'the demo has Authenticator-only people in this step\'s reach')
-  for (const r of appOnly) assert.ok(hold.ids.includes(r.user.id), `${r.user.id}: Authenticator only, so held`)
+  assert.deepEqual(hold.ids, target.ids.filter(id => !target.readyIds.includes(id)))
+  const reversed = scored.map(v => ({ ...v, readiness: { ...v.readiness, state: 'ready' as const } }))
+  assert.deepEqual(stepMfaHold(step, reversed), hold, 'changing a generic page score cannot change an already assessed target requirement')
 })
 
 test('a step whose readiness this scan could not measure names nobody, and never zero people', () => {
@@ -262,49 +231,24 @@ test('a step whose readiness this scan could not measure names nobody, and never
     const hold = stepMfaHold(step, scored)
     if (!hold) continue
     assert.equal(step.readiness.unmeasured, 'unreadable', `${step.id}: the hostile tenant measures nothing`)
-    assert.equal(hold.ids, null, `${step.id}: unknown reach is not an empty list`)
+    assert.deepEqual(hold.ids, step.methodPreparation?.completeScope ? step.methodPreparation.ids : null, `${step.id}: known people with unread methods remain identifiable`)
     seen += 1
   }
   assert.ok(seen > 0, 'the hostile tenant holds MFA steps on readiness it could not measure')
 })
 
-test("the handoff names the people the policy reaches, not the people its goal handed the step", () => {
-  for (const name of ['demo', 'demo-week2'] as const) {
-    const f = fixture(name)
-    const run = runFixture(f)
-    const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-    const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
-    const of = reached(step)
-    assert.ok(of !== null)
-    const policy = affectedIds(of)
-    const hold = stepMfaHold(step, scored)!
-    assert.ok(hold.ids)
-    const cohort = new Set(policy)
-    for (const id of hold.ids) assert.ok(cohort.has(id), `${name}/${id}: named only because the policy reaches them`)
-    // And nobody the policy reaches, who is not Ready, is left out because the
-    // goal's population did not list them.
-    for (const id of policy) {
-      const v = scored.find((x) => x.userId === id)
-      if (v === undefined || v.activity !== 'active' || mfaReady(v)) continue
-      assert.ok(hold.ids.includes(id), `${name}/${id}: the policy reaches them and they are not Ready`)
-    }
-  }
-  // The two directions, on a cohort built to differ from the goal's population in both.
+test("the handoff names the actual method cohort, independently of the goal population", () => {
   const f = fixture('demo')
   const run = runFixture(f)
+  const step = run.steps.find(s => s.goalId === 'register-info-protected')!
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-  const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
-  const held = affectedIds(reached(step)!).filter((id) => {
-    const v = scored.find((x) => x.userId === id)
-    return v !== undefined && v.activity === 'active' && !mfaReady(v)
-  })
-  assert.ok(held.length > 2, 'the demo holds this step on several people')
-  const pop = (ids: string[]) => ({ total: ids.length, active: ids.length, admins: 0, guests: 0, ids, activeIds: ids })
-  const beyond = { ...step, population: pop(held.slice(1)) }
-  const sorted = (ids: readonly string[]) => [...ids].sort()
-  assert.deepEqual(sorted(stepMfaHold(beyond, scored)!.ids!), sorted(held), 'a person the policy reaches is named though the goal did not list them')
-  const narrow = { ...step, cohort: pop(held.slice(1)) }
-  assert.deepEqual(sorted(stepMfaHold(narrow, scored)!.ids!), sorted(held.slice(1)), 'a person outside the policy scope is not named')
+  const target = step.methodPreparation!
+  const held = target.ids.filter(id => !target.readyIds.includes(id))
+  assert.ok(held.length > 0)
+  const changedGoal = { ...step, population: { ...step.population, ids: [] } }
+  assert.deepEqual(stepMfaHold(changedGoal, scored)!.ids, held)
+  const narrowed = { ...step, methodPreparation: { ...target, ids: held.slice(1) } }
+  assert.deepEqual(stepMfaHold(narrowed, scored)!.ids, held.slice(1), 'removing a person from the actual target removes them from its handoff')
 })
 
 test("a policy scope this scan could not settle is an unknown reach, never the goal's people", () => {
@@ -315,7 +259,7 @@ test("a policy scope this scan could not settle is an unknown reach, never the g
     const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
     for (const step of run.steps) {
       const hold = stepMfaHold(step, scored)
-      if (!hold || reached(step) !== null) continue
+      if (!hold || step.methodPreparation?.completeScope !== false) continue
       assert.notEqual(step.population.ids.length, 0, `${name}/${step.id}: the goal did hand it people`)
       assert.equal(hold.ids, null, `${name}/${step.id}: an unsettled scope names nobody`)
       seen += 1
@@ -329,7 +273,7 @@ test('a reach this scan settled as empty stays an empty list, and is not unknown
   const run = runFixture(f)
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
   const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
-  const empty = { ...step, cohort: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [] } }
+  const empty = { ...step, methodPreparation: { ids: [], readyIds: [], unknownIds: [], completeScope: true }, cohort: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [] } }
   const hold = stepMfaHold(empty, scored)!
   assert.ok(hold, 'the step is still held on its own readiness')
   assert.deepEqual(hold.ids, [], 'nobody is waiting, and that is known')
@@ -357,7 +301,7 @@ test('an unknown reach keeps the step it came from, and never becomes a tenant-w
   const f = fixture('hostile')
   const run = runFixture(f)
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
-  const unknown = run.steps.filter((step) => stepMfaHold(step, scored)?.ids === null)
+  const unknown = run.steps.filter(step => stepMfaHold(step, scored)).map(step => ({ ...step, methodPreparation: { ids: [], readyIds: [], unknownIds: [], completeScope: false } }))
   assert.ok(unknown.length > 0, 'the hostile tenant holds MFA steps on readiness it could not measure')
   for (const step of unknown) {
     const href = readinessStepHref(step.id)

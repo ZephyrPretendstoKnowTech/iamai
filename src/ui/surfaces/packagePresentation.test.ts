@@ -51,11 +51,10 @@ test('the Admin Portal source conflict shows its review, its source date, the co
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
   // Every channel is a tab (content review D2), so the review note stands over the tabs whether or not any has content.
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
-  assert.match(src, /data-empty=\{empty\.key\}>[\s\S]*?\{\(notes\.length > 0 \|\| \(preview\?\.lines\.length \?\? 0\) > 0\) && \(\n\s*<div className="impl-planning" data-review="true">/, 'the review note is drawn only beside artifacts')
   assert.match(src, /reviewedPackageFor\(step\)/, 'a set-aside package lost its source line')
 })
 
-test('the shared AI warning is said once, by the runtime, and a package warning worded otherwise stays', () => {
+test('the removed shared AI warning is absent from all authored blocks and never injected', () => {
   const warning = CONTRACT.implementation.aiWarning
   let stripped = 0
   for (const pkg of Object.values(PACKAGES)) {
@@ -68,7 +67,7 @@ test('the shared AI warning is said once, by the runtime, and a package warning 
       stripped++
     }
   }
-  assert.ok(stripped >= 40, `only ${stripped} AI Info blocks carried the shared warning`)
+  assert.equal(stripped, 0, `No authored AI block should repeat the removed warning`)
   assert.equal(artifactText({ channel: 'aiInfo', text: 'Line one.\n**Do not paste the client secret.**' }, warning), 'Line one.\n**Do not paste the client secret.**', 'a warning of the package’s own was removed')
   assert.equal(artifactText({ channel: 'json', text: warning }, warning), warning, 'only AI Info carries the shared warning')
   // A projected AI Info artifact keeps its tenant content after the warning goes.

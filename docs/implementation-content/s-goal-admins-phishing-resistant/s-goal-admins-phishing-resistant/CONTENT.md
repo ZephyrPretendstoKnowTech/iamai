@@ -14,7 +14,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -139,7 +139,6 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This state creates the administrator policy for {{tenant.displayName}} in Report-only. It targets the exact built-in directory roles in the baseline, with the intended exclusions, All resources and all client apps. It requires the tenant's custom authentication strength and has no session controls.
 
@@ -151,7 +150,7 @@ Directory-role targeting does not reach custom roles or administrative-unit-scop
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk but do not make phishing impossible, and the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
 
-Unlike the "MFA for Everyone" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the MFA Registration Campaign step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.
+Unlike the "MFA for Everyone" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the Prepare Your Team for MFA step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.
 
 The correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name.
 
@@ -161,25 +160,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline. A Temporary Access Pass satisfies the strength but is temporary, so a sign-in with one does not show that the admin has a lasting accepted method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The administrator policy for {{tenant.displayName}} is ready to enforce. Before it is set On, the same policy ID should still be Report-only with the exact baseline built-in role list, the tenant's custom strength, no extra conditions and no session controls, and each affected admin should have a working accepted method. After enforcement, an admin sign-in with an accepted method and an emergency access sign-in still need to be verified.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The administrator authentication-strength policy cannot proceed yet. Blockers: {{dependencies.blockers}}. Resolving them should not add role exclusions or weaken the grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find the licensing this step needs. Conditional Access and authentication strengths require Microsoft Entra ID P1 or higher. No policy change is available until licensing is resolved.
 @@IAMAI-END

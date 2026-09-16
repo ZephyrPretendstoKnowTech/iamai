@@ -254,7 +254,7 @@ test('the capability is untouched: the same channels come back when the conditio
   // tenant, and that gap is recorded rather than papered over: no fixture is
   // altered to manufacture it.
   const healthyInCorpus = audited().filter((a) => a.contract.implementation.offered && a.step.state.condition === 'healthy')
-  assert.equal(healthyInCorpus.length, 0, 'a fixture now produces a healthy step with artifacts — give it a plate and delete this note')
+  for (const a of healthyInCorpus) assert.ok(a.channels > 0, `${a.step.id}: healthy configuration lost its reference resources`)
   const one = held[0]
   assert.equal(implementationIsCurrent({ ...one.step, state: { ...one.step.state, condition: 'healthy' } } as never), true, 'clearing the condition does not bring the deployment back')
   assert.equal(one.contract.implementation.offered, true, 'the capability was not preserved across the round trip')

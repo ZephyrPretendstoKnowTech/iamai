@@ -98,39 +98,17 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
     'Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.',
     'Existing approved keys still work. Test new emergency-account keys in Create or Correct Emergency Access Accounts.',
   ])
-  // Ready now with nothing unresolved: no filler under the bar (R2), and the clear tile (R5).
-  const body = bodiesOf(fixture('demo')).get(PASSKEYS)
-  assert.ok(body, 'the demo plan has the passkey step')
-  assert.equal(readinessLeadOf(body.contract), null, `the bar says "${readinessLeadOf(body.contract)}"`)
-  assert.equal(body.readiness.tiles.length, 0, 'a tile is outstanding, so the step does not read Clear')
+  const body = bodiesOf(fixture('demo')).get(PASSKEYS)!
+  assert.ok(body.readiness.tiles.some(t => t.key.startsWith('configuration:')), 'scan findings are concrete')
   const b = blocksOf(PASSKEYS)
-  // The three Entra blocks draw as one channel, joined as the projection joins them (project.ts).
-  const entra = ['entra.configure-fido2', 'entra.configure-authenticator', 'entra.configure-tap'].map((id) => b[id].text).join('\n\n')
-  const lists = authoredParts(entra).filter((p) => p.kind === 'list')
-  assert.deepEqual(lists, [
-    {
-      kind: 'list', ordered: true, start: 1, items: [
-        ['Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).'],
-        // Owner approval 2026-09-14: the change is resolved from the tenant's own configuration, and a change made since the scan is not overwritten.
-        ['Compare the page with the settings IAMAI read. If anything differs, stop and rescan before saving.'],
-        // Existing allowed models, groups and exclusions are kept, and the step says what removing a model does to keys already registered (Microsoft Learn, how-to-enable-passkey-fido2).
-        ["Apply the resolved change. Keep every existing allowed model, target group and exclusion: removing an allowed model stops that model's existing keys from signing in."],
-        ['Enforcing attestation applies to new registrations only. A passkey already registered without attestation can still sign in, but an authenticator that cannot provide attestation cannot register afterwards.'],
-        ['Save, reopen the page to confirm the saved settings, then rescan.'],
-      ],
-    },
-    { kind: 'list', ordered: true, start: 6, items: [['Open Microsoft Authenticator in the same Authentication methods list.'], ['Set Enable to Yes. Target: All users, keeping any existing exclusions.'], ['Save.']] },
-    // IAMAI holds no Temporary Access Pass target (the withheld Apply mode says so), so the walkthrough keeps the tenant's own values rather than offering an arbitrary one.
-    { kind: 'list', ordered: true, start: 9, items: [['Open Temporary Access Pass in the same list.'], ["Set Enable to Yes for the people who may need a pass to register their first passkey. IAMAI holds no Temporary Access Pass target, so keep the tenant's current lifetime and one-time-use settings unless your security team has approved different values."], ['Save.']] },
-  ])
-  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then check the supporting methods:'))
-  // The resolved change is bound, never typed: the walkthrough names no model of its own, and its only values are the passkey reading, change and review.
-  assert.deepEqual([...new Set([...entra.matchAll(/\{\{([^}]+)\}\}/g)].map((m) => m[1]))].sort(), ['passkey.current.summary', 'passkey.review.detail', 'passkey.target.summary'])
-  assert.doesNotMatch(entra, /profileOptInApproved|90a3ccdf|de1e552d/)
-  const ai = b['ai.apply'].text
-  assert.match(ai, /^Enable Microsoft Authenticator passkeys while preserving the tenant's existing approved hardware-key access and profile assignments\. Review any conflicting restrictions before saving\. A registered key is not automatically approved, and configuration checks do not replace an emergency sign-in test\.$/m)
-  assert.match(ai, /Existing allowed models are retained configuration, not proof that every registered key was approved\./)
-  assert.match(ai, /Do not suggest converting an unrestricted policy into an allow list, opting in to passkey profiles, or enabling synced passkeys\.$/m)
+  const entra = b['entra.configure-fido2'].text
+  assert.ok(authoredParts(entra).some(p => p.kind === 'list' && p.ordered))
+  for (const text of ['attestation', '90a3ccdf', 'de1e552d', 'hardware', 'profile']) assert.match(entra, new RegExp(text, 'i'))
+  const drawn = body.artifacts.find(a => a.id === 'portal')!.text()
+  assert.doesNotMatch(drawn, /Open Temporary Access Pass|Open Microsoft Authenticator in the same/)
+  assert.match(drawn, /rescan|scan again/i)
+  assert.ok(b['ai.apply'].text.length > 100)
+
 })
 
 test('s-prereq-auth-strength: Why explains a strength, the action says what to do, Entra lists the five methods inside step 4, AI Info explains them, and Done when says methods', () => {

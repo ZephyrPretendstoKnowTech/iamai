@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
+import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
@@ -117,10 +118,11 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   const names = missingObjects(without).map((m) => m.title)
   assert.ok(names.includes('Create or Correct Allowed Countries Location'), `names the step that creates it (${names.join(', ')})`)
   // The tenant's own countries location, matching the allowed list.
-  const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false }
+  const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false, countryLookupMethod: 'clientIpAddress' }
   const named = f.snapshot.config.namedLocations ?? { status: 'ok', reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, namedLocations: { ...named, rows: [...(named.rows ?? []), location] } } }
   assert.deepEqual(f.mapping.allowedCountries, ['AU'])
+  readyEvidence(f, snapshot)
   const withLocation = geo(runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>))
   assert.equal(jsonOffered(withLocation), true, 'the JSON is offered once the location exists')
   assert.deepEqual(JSON.parse(withLocation.action.json!).conditions.locations.excludeLocations, ['loc-au'])
@@ -204,7 +206,7 @@ test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only 
   const prompt = fillText(shared.doesntApplyPrompt, { tenant: 'GetIAMAI' })
   assert.equal(prompt, shared.doesntApplyPrompt.replace('{tenant}', 'GetIAMAI'), 'the prompt in full, the tenant filled')
   assert.ok(!/\{[a-zA-Z]+\}/.test(prompt))
-  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id), [], 'no answers: the group is empty')
+  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id), ['s-prereq-service-accounts-group'], 'the confirmed no-service-accounts prerequisite remains visible as not applicable; licence exclusions do not join it')
   // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).
   const licenceGoals = r.coverage.results.filter((x) => x.status === 'not-applicable' && x.applicability && / licence$/.test(x.applicability.reason) && goalInMap(PINNED_GOAL_MAP, x.goal.id)).map((x) => x.goal.id)
   assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)

@@ -47,7 +47,7 @@ function project({ step, ctx }: Placed) {
 
 test('the registry is the whole library compiled: every package for a Plan content step, nothing else, and no part the runtime cannot project', () => {
   assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
-  assert.equal(LIBRARY.registered.length, 44)
+  assert.equal(LIBRARY.registered.length, 45)
   // The two Cleanup rows are not content steps: the Plan draws them with CleanupBody.
   assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill', 'cleanup-notAssessed'])
   for (const id of REGISTERED_PACKAGE_STEP_IDS) assert.deepEqual(validatePackage(PACKAGES[id]), [], `${id} was registered with a part the runtime cannot project`)

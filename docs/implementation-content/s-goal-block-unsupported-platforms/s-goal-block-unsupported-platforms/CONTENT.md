@@ -117,13 +117,11 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find **Block Unsupported Device Platforms** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from any device platform except Android, iOS, Windows and macOS, for all users except the resolved exclusions, so Linux and unidentified platforms are blocked. That supported set is the baseline's choice, not a finding that other platforms are unsafe. Platform detection relies on information the client sends and is not a device-compliance check.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI found policy {{policy.current.id}} for **Block Unsupported Device Platforms**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks every device platform except Android, iOS, Windows and macOS, for all users except the resolved exclusions, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
@@ -131,25 +129,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Unsupported Device Platforms** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review Linux, unidentified and excluded-platform events together. A platform label does not establish device compliance, and no would-be blocks in the available records does not prove that no one uses an unsupported platform.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Unsupported Device Platforms** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, Linux and unidentified-platform sign-ins have been reviewed, required workflows on those platforms have an approved path, and emergency access remains available. Once On, sign-ins from platforms outside the supported set are blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Unsupported Device Platforms** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI marks **Block Unsupported Device Platforms** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END

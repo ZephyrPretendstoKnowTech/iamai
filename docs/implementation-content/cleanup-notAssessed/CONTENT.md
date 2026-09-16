@@ -31,7 +31,6 @@ This is a manual source-fidelity procedure. IAMAI does not claim equivalence for
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.review","channel":"aiInfo","states":["reviewRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
 Act as a second reviewer for IAMAI's unassessed pinned-baseline policies. Do not redesign the baseline or infer tenant facts.

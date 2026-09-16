@@ -448,7 +448,7 @@ test('the picker is one coherent combobox: the input keeps focus and names the o
 test('a decision names the question its options answer', () => {
   assert.match(contentStep, /role=\{radios \? 'radiogroup' : 'group'\} aria-labelledby=\{labelledBy\}/)
   assert.match(contentStep, /<h5 className="dlabel action-heading" id=\{`\$\{base\}-decision`\}>/)
-  assert.match(contentStep, /<div className="dlabel" id=\{`\$\{base\}-question`\}>/)
+  assert.match(contentStep, /<h5 className="dlabel" id=\{`\$\{base\}-question`\}>/)
   assert.match(picker, /role="group" aria-labelledby=\{labelledBy\}/)
 })
 
@@ -472,7 +472,7 @@ test('every expanded/collapsed state sits on a control a keyboard reaches, and n
   assert.match(readiness, /aria-haspopup="dialog"\s+aria-controls=\{DETAIL_ID\}/)
   assert.match(readiness, /id=\{DETAIL_ID\}/)
   assert.match(read('src/ui/surfaces/Plan.tsx'), /aria-expanded=\{showSettings\} aria-controls=\{PLAN_SETTINGS_ID\}/)
-  assert.match(read('src/ui/surfaces/Connect.tsx'), /aria-expanded=\{open\} aria-controls=\{BASELINE_CHOICES_ID\}/)
+  assert.match(read('src/ui/surfaces/Connect.tsx'), /false && open && !locked/, 'custom baseline controls remain hidden in V1')
 })
 
 test('the one Plan row says it is a control and whether the step under it is open', () => {
@@ -702,5 +702,5 @@ test('the accessibility repair left the step body deciding nothing', () => {
   assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>, laneView\)/)
   assert.match(contentStep, /<WhatToDoLead contract=\{contract\} \/>/)
   assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
-  assert.match(contentStep, /\{decides && <Decision/)
+  assert.match(contentStep, /decides && <Decision/)
 })

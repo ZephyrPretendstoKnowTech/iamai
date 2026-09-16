@@ -12,7 +12,7 @@
 This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).
+2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
 4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.
 @@IAMAI-END
@@ -139,13 +139,11 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
@@ -153,25 +151,21 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review both direct device-code sign-ins and sessions tracked by Original transfer method, including tools, shared devices, Teams devices and enrollment workflows. No events in the available records does not prove device code is unused.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, direct and transferred device-code activity has been reviewed, Teams-device and Device Registration Service impact is understood, and required workflows have a tested alternative or separately approved handling. Once On, device code sign-in is blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 **Block Device Code Sign-in** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 IAMAI marks **Block Device Code Sign-in** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END

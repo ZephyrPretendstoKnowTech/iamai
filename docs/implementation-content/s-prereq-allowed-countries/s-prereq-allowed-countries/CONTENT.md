@@ -2,7 +2,7 @@
 1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.
 2. Name it **{{location.target.displayName}}**.
 3. Use **Determine location by IP address**.
-4. Select exactly the owner-approved countries supplied by IAMAI.
+4. Select these Work Countries: **{{location.target.countryCodes}}**.
 5. Leave **Include unknown countries/regions** off.
 6. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.
 @@IAMAI-END
@@ -12,7 +12,7 @@ Open the named location IAMAI resolved, ID **{{location.current.id}}**. Before c
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.countries","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Replace the country selection with exactly the approved set. Sign-in history is not approval: do not keep an extra country only because it appears in past sign-ins.
+Set Work Countries to exactly **{{location.target.countryCodes}}**. Recurring travel destinations remain separate.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.unknown","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -81,31 +81,26 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The allowed-country list for {{tenant.displayName}} is waiting for an owner decision. Countries seen in sign-ins: {{evidence.signInCountries}}. Sign-in history and the operator's current location help the review but do not approve a country. Regular remote work, planned travel and network routes may be missing from this history. The named location is not created or changed until the approved list is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 The named location does not exist yet. The planned change creates one Countries named location called {{location.target.displayName}} that determines location by IP address, contains only the approved countries and leaves unknown countries/regions out. A rescan after creation lets the policies that need it reference its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 Named location {{location.current.id}} exists but differs from the intended settings. Its name, country list and unknown-countries setting can be corrected on the same object. A different lookup method (`countryLookupMethod` other than `clientIpAddress`) is not writable through the Graph v1.0 update, so it needs a replacement location and an update to the policies that reference it. A change to this location applies to every policy that uses it as soon as it is saved, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This step is waiting to confirm the named location before the country policy uses it: the same ID, exactly the approved countries, IP-based lookup and unknown countries/regions left out.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
 
 This prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Countries observed in sign-ins are not enough to create the location.
 @@IAMAI-END

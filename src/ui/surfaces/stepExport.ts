@@ -31,6 +31,7 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 
 export type { ExportStep }
@@ -147,6 +148,43 @@ function previewValueLines(step: Step, ctx: StepVarContext, contract: StepContra
   return previewNoteLines(step, contract, hold)
 }
 
+/** Administrator-recorded results remain visible even when a later scan makes them historical. */
+export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
+  const review = step.manualReview
+  const record = review?.record
+  if (!review) return []
+  const states = { current: 'Current', unread: 'Not verified by the latest scan', changed: 'Configuration changed; review needed', incomplete: 'Incomplete', historical: 'Historical' }
+  const lines = [`Evidence status: ${review.verification ? states[review.verification] : review.confirmedAt ? 'Recorded' : 'Not recorded'}.`]
+  if (review.staleReason) lines.push(review.staleReason)
+  if (!record) {
+    if (review.confirmedAt) lines.push(`Recorded on: ${review.confirmedAt}.`)
+    return lines
+  }
+  const clean = (value: string) => value.replace(/[\r\n]+/g, ' ').trim()
+  const person = (id: string) => { const name = ctx.nameOf(id); return name && name !== id ? `${clean(name)} (${id})` : id }
+  const outcomes = { passed: 'Successful', failed: 'Unsuccessful', retained: 'Access retained', revoked: 'Access revoked', investigate: 'Investigation needed' }
+  if (record.outcome) lines.push(`Outcome: ${outcomes[record.outcome]}.`)
+  if (record.accountIds?.length) lines.push(`Accounts: ${record.accountIds.map(person).join('; ')}.`)
+  if (record.workflow) lines.push(`Workflow: ${clean(record.workflow)}.`)
+  if (record.testedAt) lines.push(`Tested or reviewed on: ${record.testedAt}.`)
+  lines.push(`Record saved: ${record.at}.`)
+  if (record.replacementAccountId) lines.push(`Dedicated administrator account: ${person(record.replacementAccountId)}.`)
+  if (record.roleIds?.length) lines.push(`Required roles: ${record.roleIds.map(clean).join('; ')}.`)
+  if (record.exceptionRemoved !== undefined) lines.push(`Temporary exception removed: ${record.exceptionRemoved ? 'Yes' : 'No'}.`)
+  if (record.reference) lines.push(`Change record: ${clean(record.reference)}.`)
+  for (const field of review.fields ?? []) {
+    if (!['contextId', 'networkId', 'configurationVerified'].includes(field.key)) continue
+    const value = record[field.key]
+    if (value === undefined || value === null || value === '') continue
+    const named = field.options?.find(option => option.value === value)?.label
+    const detail = typeof value === 'boolean' ? value ? 'Yes' : 'No' : named && named !== value ? `${clean(named)} (${clean(String(value))})` : clean(String(value))
+    lines.push(`${clean(field.label)}: ${detail}.`)
+  }
+
+  if (review.pendingAccountIds?.length) lines.push(`Accounts still needing a result: ${review.pendingAccountIds.map(person).join('; ')}.`)
+  return lines
+}
+
 /**
  * The step as the screen says it, for an export.
  *
@@ -168,6 +206,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const contract = stepContract(step, ctx, undefined, laneView)
   const shell = {
     state: badgeLabel(contract),
+    manualEvidence: manualEvidenceLines(step, ctx),
     // The lane word alone; a step the person ruled out reads its own label (Doesn't apply).
     lane: laneView.tail === null ? laneView.label : laneWordOf(laneView.lane),
     substatus: laneView.substatus === null ? null : SUBSTATUS_WORD[laneView.substatus],
@@ -180,7 +219,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // Foundation A could not settle — the same steps the contract's `who` says
     // it does not know. An unknown reach is never written down as a number.
     population: stepPopulation(step)?.active ?? null,
-    fix: contract.fix.map((f) => f.text),
+    fix: [...new Set([...contract.fix.map((f) => f.text), ...(step.configurationFindings ?? []).filter(f => f.outcome !== 'pass').map(f => `${f.label}: ${f.value}. ${f.detail}`)])],
     implementation: contract.implementation.offered,
   }
   if (!cs) {
@@ -280,17 +319,22 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // object, an emergency account in reach) the guard below keeps it once.
   const pkg = implementationPackageFor(step)
   const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  let hasPackagePortal = false
   if (pkg && state && cs.kind === 'policy') {
     const bindings = packageBindings(step, ctx, contract)
     const { runtime } = packageRuntime(pkg, state, bindings, {})
     const projection = projectSafely(pkg, state, bindings, runtime)
     const preview = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
-    const entra = (preview?.channels ?? projection.channels).find(channel => channel.channel === 'entra')
-    if (entra && implementationIsCurrent(step) && !suppressed && !unearned) {
+    const projectedEntra = (preview?.channels ?? projection.channels).find(channel => channel.channel === 'entra')
+    const entra = projectedEntra ?? lifecycleResources(pkg, state, bindings, runtime, key => `‹${key.split('.').join(' ')}›`).find(channel => channel.channel === 'entra')
+    if (entra) {
+      hasPackagePortal = true
       lines.splice(0)
-      lines.push(...entraWithSettings(entra.text, step, ctx, contract, preview ?? projection).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
+      lines.push(...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
     }
   }
+  if (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  lines.push(...verificationResourceLines(step))
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
@@ -307,7 +351,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     title: contentTitle(step),
     why: typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
     ...shell,
-    whatToDo: lines,
+    whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,
     ifWrong: reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) ? fillText(ifWrongLineFor(step, cs), ex) : null,
     dates: reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,

@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Mail-sending devices",
-      "state": "Confirm"
+      "state": "Not confirmed"
     },
     {
       "label": "Prerequisite · To do",

@@ -106,6 +106,10 @@ export function currentAnswerText(answer: string): string {
 export function parseAnswer(answer: string | null | undefined, options: readonly string[]): { index: number; picked: string[] } | null {
   if (typeof answer !== 'string') return null
   answer = currentAnswerText(answer)
+  if (options.includes('No Recurring Destinations')) {
+    if (answer === 'Nobody' || answer.startsWith('Occasionally:')) answer = 'No Recurring Destinations'
+    if (answer.startsWith('Countries used regularly: ')) answer = answer.replace('Countries used regularly: ', 'Select Recurring Destinations ')
+  }
   const exact = options.indexOf(answer)
   if (exact >= 0) return { index: exact, picked: [] }
   for (const [index, o] of options.entries()) {
@@ -126,7 +130,10 @@ export type Answer = { index: number; picked: string[]; text: string }
 export function answerOf(mapping: Pick<MappingState, 'questionAnswers'>, stepId: string, kind: AnswerKind): Answer | null {
   const label = questionLabels(stepId)[kind]
   if (!label) return null
-  const text = mapping.questionAnswers?.[answerKey(stepId, label)]
+  const legacyLabels = stepId === PREREQ_STEP_ID.allowedCountries
+    ? kind === 'decision' ? ['Allowed countries', 'Work Countries'] : kind === 'question' ? ['People who travel or work abroad', 'Recurring Travel Countries'] : []
+    : []
+  const text = [label, ...legacyLabels].map(key => mapping.questionAnswers?.[answerKey(stepId, key)]).find(value => typeof value === 'string')
   const parsed = parseAnswer(text, questionOptions(stepId, kind))
   return parsed && typeof text === 'string' ? { ...parsed, text: currentAnswerText(text) } : null
 }
@@ -186,8 +193,8 @@ export const CARVE_OUT_STEP_ID = { travel: 's-question-travel', partner: 's-ques
 /** The carve-out steps the stored answers call for: a travel notice when anyone travels, the partner exclusion, the mail-sending devices' relay. */
 export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>): string[] {
   const out: string[] = []
-  const travel = answerOf(mapping, QUESTION_STEP.travel, 'question')
-  if (travel && travel.index > 0) out.push(CARVE_OUT_STEP_ID.travel)
+  // Operational trip management is hidden for V1. Retain its definition and
+  // saved answers so enabling it later does not destroy historical choices.
   if (serviceProvidersExcluded(mapping)) out.push(CARVE_OUT_STEP_ID.partner)
   if (mailDevicesOf(mapping).length > 0) out.push(CARVE_OUT_STEP_ID.mailDevices)
   return out
@@ -221,7 +228,7 @@ export function unsavedInputsOf(stepId: string, mapping: InputRecord): string[] 
   for (const input of CONDITIONAL_INPUTS) {
     if (input.stepId !== stepId) continue
     const label = questionLabels(stepId)[input.kind]
-    const saved = input.saved ? input.saved(mapping) : typeof mapping.questionAnswers?.[answerKey(stepId, label ?? '')] === 'string'
+    const saved = input.saved ? input.saved(mapping) : answerOf(mapping, stepId, input.kind) !== null
     if (label !== null && !saved) out.push(label)
   }
   return out
@@ -238,12 +245,35 @@ export type DevicePlan = {
   blockPhones: boolean
   phonesText: string
   computersText: string | null
+  phoneManagement?: 'enrolled' | 'registered' | 'unmanaged' | 'blocked'
+  phoneAppProtection?: 'required' | 'not-required'
+  noWorkPhones?: boolean
 }
+export const DEVICE_ANSWER_KEYS = { phoneManagement: 'phoneManagement', phoneAppProtection: 'phoneAppProtection', computers: 'computerManagement' } as const
 const PHONES = ['enrol', 'apps', 'none'] as const
 const COMPUTERS = ['enrol', 'hybrid', 'unmanaged'] as const
 
 /** The device decision as answered, or null while it is open. */
 export function devicePlanOf(mapping: Pick<MappingState, 'questionAnswers'>): DevicePlan | null {
+  const values = mapping.questionAnswers ?? {}
+  const read = (key: string) => values[answerKey(QUESTION_STEP.devices, key)]
+  const management = read(DEVICE_ANSWER_KEYS.phoneManagement)
+  if (management !== undefined) {
+    const apps = read(DEVICE_ANSWER_KEYS.phoneAppProtection)
+    const computer = read(DEVICE_ANSWER_KEYS.computers)
+    if (!['enrolled', 'registered', 'unmanaged', 'blocked'].includes(management) || !['required', 'not-required'].includes(apps ?? '') || !['enrolled', 'hybrid', 'unmanaged'].includes(computer ?? '')) return null
+    const phoneManagement = management as NonNullable<DevicePlan['phoneManagement']>
+    return {
+      phones: management === 'enrolled' ? 'enrol' : management === 'blocked' ? 'none' : 'apps',
+      computers: computer === 'enrolled' ? 'enrol' : computer as 'hybrid' | 'unmanaged',
+      blockPhones: false,
+      phoneManagement,
+      phoneAppProtection: apps as NonNullable<DevicePlan['phoneAppProtection']>,
+      noWorkPhones: management === 'blocked',
+      phonesText: ({ enrolled: 'Enrolled in Intune', registered: 'Registered in Entra', unmanaged: 'No device management', blocked: 'Keep company data off phones' })[phoneManagement],
+      computersText: ({ enrolled: 'Enrolled in Intune', hybrid: 'Hybrid-joined Windows computers', unmanaged: 'Unmanaged computers' })[computer as 'enrolled' | 'hybrid' | 'unmanaged'],
+    }
+  }
   const phones = answerOf(mapping, QUESTION_STEP.devices, 'decision')
   if (!phones) return null
   const computers = answerOf(mapping, QUESTION_STEP.devices, 'question')
@@ -254,7 +284,15 @@ export function devicePlanOf(mapping: Pick<MappingState, 'questionAnswers'>): De
     blockPhones: strict !== null,
     phonesText: phones.text,
     computersText: computers?.text ?? null,
+    phoneManagement: phones.index === 0 ? 'enrolled' : phones.index === 2 ? 'blocked' : undefined,
+    phoneAppProtection: phones.index === 1 ? 'required' : phones.index === 2 ? 'not-required' : undefined,
+    noWorkPhones: phones.index === 2,
   }
+}
+
+/** Legacy scope is preserved while newly split, previously unanswered choices remain open. */
+export function devicePlanComplete(plan: DevicePlan | null): boolean {
+  return !!plan && plan.computers !== null && plan.phoneManagement !== undefined && plan.phoneAppProtection !== undefined
 }
 
 /**

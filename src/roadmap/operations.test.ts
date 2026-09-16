@@ -1,3 +1,5 @@
+import { readyEvidence } from './fixtures/readyEvidence.ts'
+import { recoveryAccountBasis } from './cleanupDone.ts'
 // Foundation A: the step's operations are the authority. A channel that read
 // anything else — a body left over in `action.json`, a mode that disagrees with
 // its target — could describe a policy the operations do not, so none of them
@@ -200,6 +202,9 @@ function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<strin
   // A case about the admins (or guests) policy meets the readiness prerequisite
   // the plan names for it first; otherwise the hold is what it would be testing.
   const guests = new Set(f.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  if (opts.adminsReady || opts.guestsReady) readyEvidence(f, snapshot)
+  // This translation fixture assumes a successful recovery drill against its replaced policy set.
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const scored = opts.adminsReady || opts.guestsReady ? runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never).viability : null
   const viability = scored ? (opts.adminsReady ? withAdminsReady(scored) : scored).map((v) => (opts.guestsReady && guests.has(v.userId) ? { ...v, readiness: READY_ADMIN } : v)) : undefined
   const r = runFixture({ ...f, snapshot, mapping }, { snapshot, mapping, ...(viability ? { viability } : {}) } as never)
@@ -279,7 +284,7 @@ test('C: a policy waiting on an object exports only its next action — no lead,
   const view = stepExportView(step, ctx)
   for (const l of before) assert.ok(!view.whatToDo.some((x) => x.startsWith(l.split('{')[0].slice(0, 30))), `the before line does not leak: ${l.slice(0, 40)}`)
   assert.ok(!view.whatToDo.some((x) => /Conditional Access → Policies/.test(x)), 'no portal instruction leaks')
-  assert.equal(view.whatToDo.length, 1, `only the next action: ${view.whatToDo.join(' | ')}`)
+  assert.ok(view.whatToDo.slice(1).every(line => !/New-Mg|Update-Mg|enable the policy/i.test(line)), 'optional workflow verification is available without a premature mutation')
   assert.match(view.whatToDo[0], /first: this policy names an object/)
 })
 
@@ -318,7 +323,11 @@ test('E: report-only → enabled is enabled in the body, in the target, in the i
   // The tenant's guests are Ready first (Step 7): turning the policy on is an
   // enforcement, and the guest readiness gate would otherwise hold it.
   const { r, ctx } = demoRun([memberA], {}, () => ({}), { guestsReady: true })
-  const step = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+  const held = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+  assert.equal(implementationOffered(held), false, 'this fixture cannot settle the external-user subtype scope')
+  assert.equal(held.methodPreparation?.completeScope, false)
+  // Isolate translation from that independently asserted scope gate.
+  const step = { ...held, action: { ...held.action, readinessGate: undefined } }
   assert.equal(implementationOffered(step), true)
   const update = stepOperations(step).find((o) => o.mode === 'update')
   assert.ok(update, 'the half the tenant has is an update')
@@ -504,7 +513,8 @@ test('stale rings, events, dates and wave data on an unavailable step reach no c
   assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null)
   assert.equal(view.dates, null)
-  assert.equal(view.whatToDo.length, 1, view.whatToDo.join(' | '))
+  assert.match(view.whatToDo[0], /Scan .* again to rebuild/, 'the stale operation still needs a fresh scan')
+  assert.ok(view.whatToDo.some(line => line.includes('Conditional Access')), 'relevant authored guidance remains available even while the stale operation cannot run')
 })
 
 // ---- a done step with broken operations is not "already in place" ----

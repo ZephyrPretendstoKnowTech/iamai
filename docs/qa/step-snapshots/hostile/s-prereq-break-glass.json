@@ -24,6 +24,8 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info"
   ],
   "when": "Aug 31, 2026"

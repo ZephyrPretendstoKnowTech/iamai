@@ -69,7 +69,7 @@ test('readiness holds enforcement and not report-only creation; a missing object
   // A report-only policy mid-window: verifying is due now, enforcement is not.
   assert.deepEqual(nextSafeAction(find('demo-week2-answered', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
   // The same policy while a source reference it names is unanswered: nothing is due until it is.
-  assert.deepEqual(nextSafeAction(find('demo-week2', 's-goal-block-auth-transfer')), { kind: 'observe', executable: false, blockedBy: 'missing-object', enforceable: false })
+  assert.deepEqual(nextSafeAction(find('demo-week2', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
   // Watched to the point Foundation B grants it: enforcement is the action, and it can be taken.
   assert.deepEqual(nextSafeAction(find('demo-week2-answered', 's-goal-token-protection')), { kind: 'enforce', executable: true, blockedBy: null, enforceable: true })
 })

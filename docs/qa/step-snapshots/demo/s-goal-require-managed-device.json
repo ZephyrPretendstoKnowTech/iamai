@@ -1,10 +1,10 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "reason": "when device readiness reaches 80% (now 27%)",
   "fact": null,
-  "badge": "On Hold · Baseline references an unmapped group",
-  "bar": "Baseline references an unmapped group",
+  "badge": "On Hold",
+  "bar": "After Create or Correct Exclusions Group",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -16,14 +16,6 @@
     {
       "label": "Threshold",
       "state": "27% of devices compliant"
-    },
-    {
-      "label": "Affected people",
-      "state": "Not established"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
     },
     {
       "label": "Prerequisite · To do",

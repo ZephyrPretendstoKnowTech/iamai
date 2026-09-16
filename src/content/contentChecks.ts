@@ -140,7 +140,7 @@ const PLURALISED_CONTENT: [string, Record<string, unknown>, string][] = [
   [
     's-check-separate-admin-accounts',
     { n: 1, from: 'Aug 1' },
-    '1 person holds a directory role and uses that same account for mail or Teams since Aug 1:',
+    'Review the 1 administrator account for dedicated administration.',
   ],
 ]
 

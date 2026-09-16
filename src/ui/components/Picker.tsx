@@ -108,7 +108,8 @@ export function Picker({
           type="search"
           placeholder={placeholder}
           value={query}
-          aria-label={placeholder}
+          aria-label={labelledBy ? undefined : placeholder}
+          aria-labelledby={labelledBy}
           aria-expanded={showList}
           aria-controls={listId}
           aria-activedescendant={showList && list[at] ? optionId(at) : undefined}

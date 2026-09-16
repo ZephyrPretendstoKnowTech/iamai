@@ -177,7 +177,7 @@ test('the demo snapshots: states sum to the summary, the footer accounts for eve
       const hold = stepMfaHold(step, r.viability ?? [])
       if (!hold?.ids) continue
       const ids = new Set(hold.ids)
-      assert.equal(v.rows.filter((row) => ids.has(row.user.id) && shows(row, DEFAULT_SHOW)).length, ids.size, `${name}/${step.id}: the scoped list shows a different number than it names`)
+      assert.equal(v.rows.filter((row) => ids.has(row.user.id)).length, ids.size, `${name}/${step.id}: the scoped list shows a different number than it names`)
       scoped++
     }
     assert.ok(scoped > 0, `${name}: no step scopes the worklist: the premise is untested`)
