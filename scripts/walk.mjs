@@ -81,7 +81,7 @@ const CATALOGUE_TITLES = new Map(goalsData.goals.map((g) => [g.id, g.name]))
 const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGUE_TITLES.has(id) ? [CATALOGUE_TITLES.get(id)] : [])))
 const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed account', '168h', 'undefined', '[object Object]', 'NaN']
 // The steps an answered question adds to the plan (generate.ts carve-outs): each has a content entry.
-const CARVE_OUT_IDS = ['s-question-travel', 's-question-partner', 's-question-mail-devices']
+const CARVE_OUT_IDS = ['s-question-partner', 's-question-mail-devices'] // Travel management remains hidden in V1.
 // The policy steps whose content carries a "before" line (a setting to change
 // before the policy exists) that the step keeps above the translator's portal
 // lines. The list and the "every one of them has a line" check both live in
@@ -249,7 +249,7 @@ const LANE_LABEL_RE = /^(Ready|Up Next|On Hold|Completed|Deferred)( · \S.*)?$|^
 const COMPLETED_RE = /^Completed$/
 const READY_TO_ENFORCE_RE = /^Ready · Ready to enforce$/
 /** A day as the board prints it (copy/dates.ts absoluteDate). */
-const DAY_RE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+const DAY_RE = /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 /** The When column (A1b): a day or the placeholder, never a reason. */
 const ROW_WHEN_RE = new RegExp(`^(?:${DAY_RE.source.slice(1, -1)}|${WHEN_NONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`)
 const showLane = async (name) => {
@@ -688,12 +688,16 @@ async function walkFixture(fx) {
             const shown = await rowsShown()
             if (shown !== want) add('P0', `${label}: "${word}" shows ${shown} rows and the page counts ${want}`)
           }
-          // The Plan gate strip counts the same active people, and what is short is what the gate still needs.
-          const gateLine = text.match(/(\d+) of (\d+) must be Ready/)
-          if (active > 0 && !gateLine) add('P0', `${label}: the Plan gate strip does not say how many must be Ready`)
-          if (gateLine && Number(gateLine[2]) !== active) add('P0', `${label}: the Plan gate counts ${gateLine[2]} people and the summary ${active}`)
-          const more = text.match(/(\d+) more · /)
-          if (gateLine && more && Number(more[1]) !== Math.max(0, Number(gateLine[1]) - ready)) add('P0', `${label}: the gate says ${more[1]} more with ${ready} of ${gateLine[1]} Ready`)
+          // Tenant readiness reports observed proof; each policy uses its own
+          // preparation cohort. This strip must agree with the summary, not
+          // reintroduce the retired global 90% rollout requirement.
+          const gateLine = text.match(/(\d+) of (\d+) (?:has|have) qualifying sign-in proof/)
+          if (active > 0 && !gateLine) add('P0', `${label}: the Tenant readiness strip is missing its observed proof count`)
+          if (gateLine && (Number(gateLine[1]) !== ready || Number(gateLine[2]) !== active)) add('P0', `${label}: Tenant readiness says ${gateLine[1]} of ${gateLine[2]} and the summary says ${ready} of ${active}`)
+          const more = text.match(/(\d+) (?:need|needs) setup or proof/)
+          const remaining = active - ready
+          if (remaining > 0 && (!more || Number(more[1]) !== remaining)) add('P0', `${label}: setup/proof remainder must be ${remaining} for ${ready} of ${active} Ready`)
+          if (remaining === 0 && !text.includes('All active people have qualifying proof')) add('P0', `${label}: complete proof count lacks its completion statement`)
           // The passkey strip counts the same people, and its link shows exactly the people without one.
           const passkeys = text.match(/(\d+) of (\d+) (?:has|have) a passkey/)
           if (passkeys && Number(passkeys[2]) !== active) add('P0', `${label}: the passkey strip counts ${passkeys[2]} people and the summary ${active}`)
@@ -781,7 +785,7 @@ async function walkFixture(fx) {
         const lede = await evaluate(`((document.querySelector('main.page p.lede') || {}).textContent || '').trim()`)
         if (/Conditional Access/.test(`${h1} ${lede}`)) add('P0', `${label}: the heading or its line names Conditional Access before the baseline stage gives the term context`)
         // Every action is a button in one of three weights; nothing on Connect is a bare link.
-        const bare = await evaluate(`[...document.querySelectorAll('main.page .connect-step a[href]:not(.btn):not(.lnk), main.page .connect-destination a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
+        const bare = await evaluate(`[...document.querySelectorAll('main.page .connect-step a[href]:not(.btn):not(.lnk), main.page .connect-destination a[href]:not(.btn):not(.lnk)')].filter((a) => a.href !== 'https://conditionalaccess.tech/').map((a) => (a.textContent || '').trim())`)
         if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
         if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
         if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
@@ -918,8 +922,8 @@ async function walkFixture(fx) {
               }
             }
           }
-          if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
-          expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
+          if (!/Defense in Depth is maintained by Jon Hope, a Microsoft MVP at inforcer/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline attribution and purpose`)
+          if (t2.buttons.some((b) => /^Change baseline$/.test(b.t))) add('P0', `${label}: the deferred custom-baseline picker is publicly visible`)
         }
         // 3 Scan: the limitations in both states (no Reads / Compares / Writes beats, no read-only line),
         // then exactly one of its states (docs/design/connect-mockup.html); the
@@ -1308,6 +1312,7 @@ async function walkFixture(fx) {
         const rowCount = countOf(rowWho, { row: true })
         const leadCount = leadAt >= 0 ? countOf(bodyLines[leadAt + 1] || '') : null
         if (rowCount !== null && leadCount !== null && rowCount !== leadCount) add('P0', `${slabel}: the row says ${rowCount} and the step's lead says ${leadCount} (one population per step)`)
+        if (/Prepare Your Team for MFA/.test(slabel) && rowCount !== null && leadCount === null) add('P0', `${slabel}: the preparation cohort total is missing from Who this touches`)
         // The opened step's title is its header's, and the header is beside the
         // body rather than inside it since the shared step frame (StepSections.tsx
         // `.step-head`). Read where it is: this is the guard that catches the loop
@@ -1361,14 +1366,25 @@ async function walkFixture(fx) {
         if (fx.name.startsWith('demo')) {
           const week2 = fx.week2 === true
           if (/Allowed Countries Location/.test(title)) {
-            if (week2 && !/New Zealand/.test(bodyText)) add('P0', `${slabel}: the travellers answer (Regularly: add: NZ) did not put New Zealand on the allowed list`)
-            if (week2 && !/The selected countries are on your plan.s allowed list/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line is missing although its answer applied`)
-            if (!week2 && /The selected countries are on your plan.s allowed list/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
+            const choices = await evaluate(`(() => {
+              const r = document.querySelector('main.page .step-body .decision'); if (!r) return null
+              const group = (label) => [...r.querySelectorAll('[role=group][aria-labelledby]')].find(e => document.getElementById(e.getAttribute('aria-labelledby'))?.textContent.trim() === label)
+              const chips = label => [...(group(label)?.querySelectorAll('.chip-name') || [])].map(e => e.textContent.trim())
+              return { work: chips('Work Countries'), travel: chips('Recurring Travel Countries') }
+            })()`)
+            if (!choices) add('P0', `${slabel}: work and recurring-travel country controls are missing`)
+            else {
+              if (choices.work.includes('New Zealand')) add('P0', `${slabel}: recurring travel incorrectly widened normal-work countries`)
+              if (week2 && !choices.travel.includes('New Zealand')) add('P0', `${slabel}: the saved recurring destination New Zealand is missing`)
+              if (!week2 && choices.travel.length) add('P0', `${slabel}: recurring destinations are selected before an administrator answered`)
+            }
           }
-          if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
-            if (week2 && !cannotWriteYet && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the opened policy step`)
-            if (week2 && !cannotWriteYet && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
-            if (!week2 && /the baseline's version/.test(bodyText)) add('P0', `${slabel}: a deviation from the baseline shows before any answer`)
+          if (/^Require MFA for Guests$/.test(title)) {
+            const answer = await evaluate(`(() => { const s = [...document.querySelectorAll('main.page .step-body select')].find(e => [...e.options].some(o => /Exclude service providers/.test(o.textContent))); return s ? s.value : null })()`)
+            if (answer === null) add('P0', `${slabel}: the provider-access choice is not available`)
+            else if (week2 ? answer !== '1' : answer !== '') add('P0', `${slabel}: the provider-access choice does not reflect the saved answer`)
+            // A saved provider choice changes scope; it does not prove home-tenant MFA trust.
+            if (!/Trust must be configured and verified in Entra/.test(bodyText)) add('P0', `${slabel}: provider access does not distinguish the saved scope choice from verified trust`)
           }
           if (/^Block Legacy Authentication$/.test(title)) {
             if (week2 && !/in the service-accounts group now/.test(bodyText)) add('P0', `${slabel}: the mail-sending devices answer's effect line is missing (the printer is in the service-accounts group)`)
@@ -1400,40 +1416,44 @@ async function walkFixture(fx) {
             }
           }
           if (/Decide How Devices Are Managed/.test(title)) {
-            if (!/Needs a decision/i.test(bodyText) || !/Choose a policy for phones and for computers/i.test(bodyText)) add('P0', `${slabel}: the step does not explain that both device choices still need an answer`)
-            if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
+            const controls = await evaluate(`(() => { const r = document.querySelector('main.page .device-decision'); return r ? { labels: [...r.querySelectorAll('label .dlabel')].map(e => e.textContent.trim()), values: [...r.querySelectorAll('select')].map(e => e.value), disabled: [...r.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save Device Choices')?.disabled } : null })()`)
+            if (!controls || JSON.stringify(controls.labels) !== JSON.stringify(['Phone Management', 'Phone App Protection', 'Computer Management'])) add('P0', `${slabel}: the three separate device choices are not labelled consistently`)
+            if (controls && controls.values.every(v => !v) && !controls.disabled) add('P0', `${slabel}: incomplete device choices can be saved`)
             if (week2) {
-              // Decide here: phones protected by their apps, computers hybrid-joined.
-              // A decision whose options are all one-line labels draws as a dropdown
-              // rather than radios (archetype rule A1, S-DD-1 — ContentStep.tsx
-              // `Options` with `select`), so the answer is chosen in the select that
-              // offers it, not clicked as a label.
-              const a = await chooseOption('Protect company apps only')
-              const b = await chooseOption('Hybrid-joined Windows computers')
-              const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
-              if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
-              // Saved, the step is Completed and joins the board's Completed group;
-              // it opens there like any row, with its effect line. It is in the
-              // document only while `Show completed` is pressed.
-              if (c) await revealCompleted()
-              const moved = c ? await waitFor(`[...document.querySelectorAll('main.page #plan-group-complete .plan-row .step-title')].some((e) => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000) : false
-              if (c && !moved) add('P0', `${slabel}: the decided step did not join the Completed group`)
+              const expected = ['registered', 'required', 'hybrid']
+              let selected = true
+              for (let field = 0; field < expected.length; field++) {
+                selected = selected && await evaluate(`(() => { const s = document.querySelectorAll('main.page .device-decision select')[${field}]; const value = ${JSON.stringify(expected[field])}; if (!s || ![...s.options].some(o => o.value === value)) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, value); s.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+              }
+              const saved = selected && await clickText('button', /^Save Device Choices$/, 'main.page .device-decision')
+              if (!saved) add('P0', `${slabel}: the three device choices cannot be saved on this step`)
+              if (saved) await revealCompleted()
+              const moved = saved && await waitFor(`[...document.querySelectorAll('main.page #plan-group-complete .plan-row .step-title')].some(e => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000)
+              if (saved && !moved) add('P0', `${slabel}: saved device choices did not complete the decision`)
               if (moved) {
-                await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
-                // The step stays open as it moves (the page keeps the opened id); a click would close it, so click only when its body is not there.
-                await evaluate(`(() => { if (document.querySelector('main.page #plan-group-complete .step-body')) return; const r = [...document.querySelectorAll('main.page #plan-group-complete .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
-                const applied = await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page #plan-group-complete .step-body') || {}).innerText || '')`, 8000)
-                if (!applied) add('P0', `${slabel}: the phones answer's effect line does not show on the decided step`)
-                // Device readiness is measured against the answer from here: the numbers before the decision are not the numbers after it.
+                await evaluate(`(() => { if (document.querySelector('main.page #plan-group-complete .device-decision')) return; const r = [...document.querySelectorAll('main.page #plan-group-complete .plan-row')].find(e => /Decide How Devices Are Managed/.test(e.querySelector('.step-title')?.textContent || '')); r?.click() })()`)
+                const retained = await waitFor(`JSON.stringify([...document.querySelectorAll('main.page #plan-group-complete .device-decision select')].map(e => e.value)) === ${JSON.stringify(JSON.stringify(expected))}`, 8000)
+                if (!retained) add('P0', `${slabel}: completed device decision did not retain all three saved choices`)
                 readinessOf(currentFixture).delete('device')
                 decidedHere = true
               }
             }
           }
-          if (/Require a Managed Device/.test(title)) {
-            if (week2 && !cannotWriteYet && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
-            if (week2 && !cannotWriteYet && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
-            if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
+          if (/Require a Managed Device|Intune Enrollment/.test(title) && week2) {
+            const deviceStillBlocks = await evaluate(`[...document.querySelectorAll('main.page .step-body .readiness-tile')].some(tile => /Decide How Devices Are Managed/.test(tile.textContent || '') && !tile.classList.contains('readiness-tile-good'))`)
+            if (deviceStillBlocks) add('P0', `${slabel}: the saved device decision still appears as an unmet prerequisite`)
+          }
+          if (/Require a Managed Device/.test(title) && week2) {
+            // Inspect the actual copyable payload when resolved; authored prose need
+            // not repeat the translator's former punctuation or baseline annotation.
+            const opened = await clickText('[role=tab]', /^JSON$/, 'main.page .step-body')
+            if (opened) {
+              const payload = await evaluate(`document.querySelector('main.page .step-body .impl-preview pre')?.textContent || ''`)
+              let parsed = null; try { parsed = JSON.parse(payload) } catch {}
+              const policies = []; const visit = value => { if (!value || typeof value !== 'object') return; if (value.conditions) policies.push(value); for (const child of Object.values(value)) if (child && typeof child === 'object') visit(child) }; visit(parsed)
+              if (policies.length && !policies.every(p => ['android', 'ios'].every(os => (p.conditions.platforms?.excludePlatforms || []).map(v => v.toLowerCase()).includes(os)))) add('P0', `${slabel}: saved registered-phone choice is not reflected in the device policy platform exclusions`)
+              await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
+            }
           }
           // The admin-sessions email says how long a session lasts (the merge
           // follow-up: {wantedLong} was unfilled, and the email vanished whole).
@@ -1442,9 +1462,11 @@ async function walkFixture(fx) {
           // eventsFor): the check is about the sessions clause of an email that
           // is written, so it asks for one only where there is one to write.
           if (/^Shorten Admin Sessions$/.test(title) && !cannotWriteYet && !enforcementHeld) {
-            emailChecks.push({ title, slabel, run: (emailText) => {
-              if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
-            } })
+            const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
+            const emailText = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
+            if (!/reauthentication (?:after (?:\d+ hours|an hour|a day|a week|\d+ days)|every time)/.test(emailText)) add('P0', `${slabel}: the admin email omits the target reauthentication frequency`)
+            if (!/not kept signed in after the browser is closed/.test(emailText)) add('P0', `${slabel}: the admin email omits the nonpersistent browser behavior`)
+            await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
@@ -1508,17 +1530,14 @@ async function walkFixture(fx) {
             if (m && suffix && Number(suffix[1]) > Number(m[1])) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step says only ${m[1]} admins are not yet Ready`)
             else if (!m && suffix) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step names no admin who is not Ready`)
           }
-          // The email states the day the change lands ("From {enforceLong}, …"),
-          // so a step with no such day writes none: the plan cannot write the
-          // policy yet, or its enforcement is held behind a readiness threshold.
-          // Where the step does announce, the email says what a personal device
-          // can still do.
+          // Coordination remains useful while prerequisites are unresolved; inspect
+          // the actual Email channel rather than the legacy printed announcement.
           if (/Require a Managed Device/.test(title)) {
-            emailChecks.push({ title, slabel, run: (emailText) => {
-              if (!cannotWriteYet && !enforcementHeld && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
-              // A policy with no day to announce announces nothing at all.
-              if ((cannotWriteYet || enforcementHeld) && emailText.trim() !== '') add('P0', `${slabel}: it has no enforcement day (${cannotWriteYet ? 'it waits on an object' : 'its enforcement waits on a readiness threshold'}) and still announces a change`)
-            } })
+            const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
+            const email = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
+            if (!/Subject:/.test(email) || !/test or change window/.test(email)) add('P0', `${slabel}: managed-device coordination email is missing its actionable review and test request`)
+            if (/Personal devices are blocked\./.test(email)) add('P0', `${slabel}: managed-device email incorrectly equates personal ownership with failing the actual compliant-or-hybrid grant`)
+            await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           // Small engine items (E9), on the demo: the admin-portals step names the
@@ -1532,25 +1551,13 @@ async function walkFixture(fx) {
             if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
-          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title) && !cannotWriteYet && reachEstablished) {
-            // Work the plan cannot write proves nothing at all, least of all a
-            // zero (roadmap/timing.ts nobodyAffected): the records counted here
-            // were counted against the policy this step would run, and while
-            // there is no policy to run there is no count to report. So the
-            // clause is asked for only where the step can write. The manager's
-            // sentence is the printed plan's (emailChecks).
-            //
-            // The same rule for the other half of that answer, and the one the
-            // demo's day one turns on: a policy whose reach this scan could not
-            // settle might touch anyone, so no zero is claimed for it either
-            // (timing.ts nobodyAffected, `e.unknown.length > 0`). On the shipped
-            // demo the device-code block lacks the chosen exclusions group until
-            // week two carves it out (Step 3 correction, roadmap/engineItems.test.ts),
-            // and the step says so where a person reads it: Affected people is
-            // Not established, under the sentence read for `reachEstablished`.
-            emailChecks.push({ title, slabel, run: (_email, more) => {
-              if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
-            } })
+          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
+            // Quiet telemetry is not a successful replacement-workflow test. The
+            // useful instruction must identify the actual task and recorded result.
+            const workflowText = bodyText + '\n' + implText
+            if (/Device Code/.test(title) && !/run the actual task with a representative account/.test(workflowText)) add('P0', `${slabel}: device-code guidance omits the representative replacement-task test`)
+            if (/Authentication Transfer/.test(title) && !/Test direct sign-in on each destination app or device/.test(workflowText)) add('P0', `${slabel}: authentication-transfer guidance omits the destination sign-in test`)
+            if (!/Record the account, (?:tool\/task, replacement sign-in path|app\/device workflow), date and result/.test(workflowText)) add('P0', `${slabel}: workflow guidance omits the account, task, date or result to record`)
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
             emailChecks.push({ title, slabel, run: (_email, more) => {
@@ -1559,18 +1566,11 @@ async function walkFixture(fx) {
             if (!/carried no platform \(Outlook Mobile\)/.test(bodyText)) add('P0', `${slabel}: the step does not name the sign-in that carried no platform`)
           }
           if (/MFA Registration Campaign/.test(title)) {
-            // The rungs' people are the step's Readiness evidence (read into
-            // bodyText above) and the printed plan's More; the email is the printed
-            // plan's (emailChecks).
-            emailChecks.push({ title, slabel, run: (emailText, rungPeople) => {
-              const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
-              if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
-              // Check the actual printed email when offered. A date on another row
-              // does not make this held campaign's auxiliary email available.
-              const emailWritten = emailText.trim() !== ''
-              if (week2 && emailWritten && (!/use supported work apps/.test(emailText) || !/company app-protection instructions/.test(emailText) || !/hybrid join alone does not meet it/.test(emailText))) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
-              if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
-            } })
+            const openedEmail = await clickText('[role=tab]', /^Email$/, 'main.page .step-body')
+            const email = openedEmail ? await evaluate(`document.querySelector('main.page .step-body .impl-preview')?.innerText || ''`) : ''
+            if (!/aka.ms\/mfasetup/.test(email) || !/register an approved method/i.test(email) || !/test sign-in/.test(email)) add('P0', `${slabel}: MFA preparation email omits the registration route, approved method or sign-in test`)
+            if (!/Administrator Sign-In Method/.test(email) || !/Help Completing Your Sign-In Setup/.test(email)) add('P0', `${slabel}: MFA preparation email omits the administrator or assistance audience`)
+            await clickText('[role=tab]', /^Entra$/, 'main.page .step-body')
           }
         }
         // Cleanup completion (E3), on the demo. The emergency accounts signed in
@@ -1592,12 +1592,15 @@ async function walkFixture(fx) {
             if (fx.week2) {
               if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read Completed`)
             } else {
-              // The operator must explicitly select each account actually tested.
+              // A date/checkbox alone cannot claim a successful recovery drill.
+              const gated = await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .step-body .decision button')].find(b => b.textContent.trim() === 'Save Test Result'); return !!b && b.disabled })()`)
+              if (!gated) add('P0', `${slabel}: an unrecorded drill is not gated on test accounts and an explicit result`)
               await evaluate(`(() => { for (const box of document.querySelectorAll('main.page .step-body .decision input[type=checkbox]')) if (!box.checked) box.click() })()`)
+              const resultSelected = await evaluate(`(() => { const select = [...document.querySelectorAll('main.page .step-body .decision select')].find(s => [...s.options].some(o => o.value === 'passed') && [...s.options].some(o => o.value === 'failed')); if (!select) return false; const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(select, 'passed'); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
               await sleep(100)
-              const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
-              if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
-              else if (!(await doneOnRow())) add('P0', `${slabel}: Done did not put Completed on the row`)
+              const pressed = resultSelected && await clickText('button', /^Save Test Result$/, 'main.page .step-body .decision')
+              if (!pressed) add('P0', `${slabel}: the scoped successful drill result cannot be saved`)
+              else if (!(await doneOnRow())) add('P0', `${slabel}: the saved successful drill did not put Completed on the row`)
             }
           }
           if (/Did Not Assess/.test(title)) {
@@ -1784,7 +1787,7 @@ async function walkFixture(fx) {
   // Separate admin accounts (E6): the demo's plan carries the step while an admin reads mail or joins Teams on the admin account.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /^Use Separate Accounts for Admin Work$/.test(t))) add('P0', `${fx.name}: no Preparation row asks for separate admin accounts, although two admins use theirs for mail or Teams`)
   // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
-  if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Consolidate Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Consolidate Overlapping Policies row' : 'Cleanup has a Consolidate Overlapping Policies row but no step found existing coverage'}`)
+  if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Review Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Review Overlapping Policies row' : 'Cleanup has a Review Overlapping Policies row but no step found existing coverage'}`)
   if (campaignEmail !== null && /You already confirm sign-ins/.test(campaignEmail)) {
     const passkeyStep = 'Require Phishing-Resistant MFA for Admins'
     const named = new RegExp(`${passkeyStep} requires a passkey`).test(campaignEmail)
@@ -1845,24 +1848,17 @@ async function walkFixture(fx) {
   // (E1): each answered question's step is on the plan on week two and not before.
   if (fx.name.startsWith('demo')) {
     if (!rowTitles.some((t) => /Decide How Devices Are Managed/.test(t))) add('P0', `${fx.name}: no Preparation row decides how devices are managed, although phones and unjoined computers sign in and the tenant holds Intune`)
-    const reasonsOf = (titles, reasons, re) => titles.map((t, i) => (re.test(t) ? reasons[i] || '' : null)).filter((r) => r !== null)
     const DEVICE_STEPS = [/Require a Managed Device/, /Intune Enrollment/]
-    for (const [i, t] of rowTitlesOpen.entries()) if (/Decide How Devices Are Managed/.test(rowLabelsOpen[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
     if (fx.week2) {
-      // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
+      // Compact lane labels carry no prerequisite names. Check unresolved device
+      // work is not falsely complete, then verify the actual decision moved.
       for (const re of DEVICE_STEPS) {
-        // A device step something else holds says what holds it (roadmap/holds.ts)
-        // and sits in On Hold; one only sequenced after the open decision names
-        // the decision. Held on another step of the plan (the baseline's
-        // unanswered groups, a missing object) reads that step in its lane label
-        // (Up Next · After …) or as its reason. A report-only device policy reads
-        // Ready · Observing: its enforcement waits on the decision, which the opened
-        // step names as a Prerequisite tile (A4, docs/qa/step-snapshots).
-        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^Up Next · After /.test(rowLabelsOpen[k] || '') || /^Ready · Observing$/.test(rowLabelsOpen[k] || '')))
-        if (!heldOpen && !reasonsOf(rowTitlesOpen, rowLabelsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
-        if (reasonsOf(rowTitlesAfter, rowLabelsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
+        for (const [i, title] of rowTitlesOpen.entries()) if (re.test(title) && rowLabelsOpen[i] === 'Completed') add('P0', `${fx.name}: ${title} completed while required device choices were unanswered`)
       }
+      const chosen = rowTitlesAfter.findIndex(t => /Decide How Devices Are Managed/.test(t))
+      if (chosen < 0 || rowLabelsAfter[chosen] !== 'Completed') add('P0', `${fx.name}: saved device decision is not retained in Completed`)
     }
+    if (rowTitles.some(t => /^Arrange Access Before Travel$/.test(t))) add('P0', `${fx.name}: hidden operational travel management was reintroduced`)
     for (const id of CARVE_OUT_IDS) {
       const t = contentSteps.find((s) => s.id === id)?.title
       if (!t) add('P0', `content.json has no step ${id}: an answered question's step has no words`)

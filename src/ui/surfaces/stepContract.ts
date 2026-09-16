@@ -37,7 +37,7 @@ import { app, engine, pages, shared, stepById, schedulingWords } from '../../con
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { list } from '../../copy/statements.ts'
+import { list, plural } from '../../copy/statements.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -877,7 +877,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const members = membersOf(step)
   const found = foundOf(step, tenant, milestone.line)
   const inventory = inventoryOf(step, ctx)
-  if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest accounts. ${inventory.names.join('; ')}` })
+  if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
   return {
     id: step.id,
@@ -1377,7 +1377,7 @@ function implementationTile(c: StepContract): ReadinessTile | null {
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
   const configuration = (step as Step & { configurationFindings?: { key: string; label: string; value: string; detail: string; outcome: 'pass' | 'fail' | 'unknown' }[] }).configurationFindings ?? []
   const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
-  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} guests`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
+  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
   const facts = [...configuredTiles, ...emergencyTiles(step, c), ...(configuration.length ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
