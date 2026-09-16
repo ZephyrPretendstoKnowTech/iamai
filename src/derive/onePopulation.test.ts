@@ -36,7 +36,8 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   const who = affectedIds(campaign.population)
   const numbers = { strip: strip.active, lead: Number(ex.active), who: who.length, today: today.facts.active }
   assert.deepEqual(numbers, { strip: 2, lead: 2, who: 2, today: 2 }, JSON.stringify(numbers))
-  assert.ok(lead.startsWith('2 active people'), lead)
+  assert.equal(Number(ex.n), campaign.preparation!.ids.length, 'the lead counts the preparation cohort')
+  assert.equal(lead, '2 people are included in this preparation step.')
   assert.equal(today.facts.active + footerParts(today.facts).reduce((n, p) => n + Number(p.text.match(/^(\d+)/)?.[1]), 0), today.facts.accounts, 'the footer names everyone the 2 active people leave out')
   const whoText = rowWho(campaign)
   assert.match(whoText, /^2 people( · |$)/, 'the who column counts the two people')
