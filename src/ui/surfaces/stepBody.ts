@@ -1,7 +1,11 @@
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
-import { emergencyImplementation } from './emergencyImplementation.ts'
+import { emergencyAccountAiInfo, emergencyAccountPowerShell, emergencyImplementation } from './emergencyImplementation.ts'
+import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
+import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
+import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
+import { initialDomain } from '../../validation/rules.ts'
 // The opened step's body, worked out once (A3): everything ContentStep.tsx draws
 // that is not a React concern — the contract under the lane engine's reading,
 // the instructions, the implementation channels and artifacts, the package's
@@ -377,11 +381,22 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     const lines = portalLines.length ? portalLines : policyInspectionLines(step)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
   }
-  const emergencyPortal = emergencyImplementation(step, ctx)
+  const accountTasks = step.id === 's-prereq-break-glass' ? emergencyAccountTasksOf(step, ctx) : null
+  const emergencyAccountTasks = accountTasks
+    ?? (step.id === 's-prereq-exclusion-group' ? emergencyGroupTasksOf(step, ctx)
+      : step.id === 's-prereq-passkey-settings' ? emergencyPasskeyTasksOf(step, ctx)
+        : null)
+  const emergencyPortal = emergencyImplementation(step, ctx, accountTasks)
   if (emergencyPortal !== null) {
     for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
     supported.add('portal')
     produced.push({ id: 'portal', form: 'markdown', lines: [], text: () => emergencyPortal, note: null })
+  }
+  if (step.id === 's-prereq-break-glass' && accountTasks) {
+    const powershell = produced.find(a => a.id === 'ps')
+    if (powershell) powershell.text = () => emergencyAccountPowerShell(initialDomain(ctx.snapshot))
+    const ai = produced.find(a => a.id === 'ai')
+    if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
   const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step))
   const W = CONTRACT.implementation
@@ -459,6 +474,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     rail,
     eyebrow,
     artifacts,
+    emergencyAccountTasks,
     previewNote,
     notes,
     showImplementation,

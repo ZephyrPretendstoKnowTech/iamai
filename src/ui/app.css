@@ -4720,9 +4720,105 @@ th .th-sort:focus-visible,
 
 .step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-detail p { white-space: pre-line; }
 
+/* Prepare Emergency Access Accounts: Entra is an account-specific SOP. The
+   selector and actions occupy one toolbar, so the instruction body begins at
+   its normal inset instead of below the shared sticky-actions spacer. */
+.step .impl-preview[data-emergency-account-tasks='true'] {
+  min-height: 0;
+  background: var(--secondary-surface);
+}
+.step .emergency-channel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.step .emergency-channel-toolbar .impl-tabs { min-width: 0; }
+.step .emergency-channel-actions { display: flex; gap: 5px; flex: 0 0 auto; }
+.step .emergency-task-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--secondary-surface);
+}
+.emergency-task-select {
+  display: grid;
+  gap: 4px;
+  min-width: min(19rem, 100%);
+  font-family: var(--font-sans);
+  font-size: var(--t-micro);
+  color: var(--secondary-text);
+}
+.emergency-task-select select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  color: var(--primary-text);
+}
+.step .emergency-task-body {
+  font-family: var(--font-sans);
+  white-space: normal;
+}
+.step .emergency-task-body li + li { margin-top: 7px; }
+.emergency-readiness-extra { margin-top: 10px; }
+.emergency-readiness-actions {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.emergency-readiness-action { display: grid; gap: 3px; min-width: 0; }
+.emergency-readiness-action code { overflow-wrap: anywhere; }
+.emergency-readiness-action span { color: var(--secondary-text); }
+.emergency-readiness-action .inline-link { justify-self: start; }
+.emergency-finding-groups { display: grid; gap: 12px; margin-top: 8px; }
+.emergency-finding-group { min-width: 0; }
+.emergency-finding-group h5 { margin: 0 0 6px; overflow-wrap: anywhere; }
+.emergency-finding-group dl, .emergency-readiness-action dl { display: grid; gap: 5px; margin: 0; }
+.emergency-fact { display: grid; grid-template-columns: minmax(8rem, .7fr) minmax(0, 1.3fr); gap: 8px; min-width: 0; }
+.emergency-fact dt { color: var(--secondary-text); }
+.emergency-fact dd { margin: 0; overflow-wrap: anywhere; }
+.emergency-fact-action { margin-top: 4px; }
+.recovery-account-choice > .option-value { align-items: start; }
+.recovery-account-choice > .option-value input { margin-top: .2em; }
+.recovery-account-choice > .option-value span { min-width: 0; overflow-wrap: anywhere; }
+.approved-model-disclosure > summary { cursor: pointer; font-weight: var(--weight-strong); }
+.approved-model-list { display: grid; gap: 7px; margin: 7px 0 10px; padding: 0; list-style: none; }
+.approved-model-list li { display: grid; gap: 2px; min-width: 0; }
+.approved-model-list span { color: var(--secondary-text); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .step .emergency-channel-toolbar { align-items: flex-start; }
+  .step .emergency-task-toolbar { align-items: stretch; }
+  .emergency-task-select { min-width: 100%; }
+  .emergency-fact { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+}
+@media print {
+  .emergency-task-print .emergency-task-body { break-inside: avoid; }
+}
+
 .passkey-model-decision .decision-fields, .decision-fields:has([id$="-network-name"]) { display: grid; gap: 1rem; }
 .passkey-model-decision .decision-field, .decision-fields:has([id$="-network-name"]) .decision-field { display: grid; gap: .5rem; min-width: 0; }
 .passkey-model-decision input, .decision-fields:has([id$="-network-name"]) input, .decision-fields:has([id$="-network-name"]) textarea { width: 100%; }
 
 .step[data-step-id='cleanup-drill'] .emergency-recovery-procedure summary { cursor: pointer; }
 .step[data-step-id='cleanup-drill'] .emergency-recovery-procedure li + li { margin-top: .55rem; }
+
+.passkey-model-disclosure {
+  margin: 8px 24px 0 auto;
+  width: min(100% - 48px, 620px);
+  text-align: right;
+}
+.passkey-model-disclosure > summary { cursor: pointer; display: inline-block; font-weight: 600; padding: 8px 0; }
+.passkey-model-disclosure[open] > .passkey-model-decision { margin-top: 8px; text-align: left; }
+.passkey-model-disclosure .passkey-model-decision { border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 620px) {
+  .passkey-model-disclosure { margin-inline: 16px; width: calc(100% - 32px); }
+}
+@media print { .passkey-model-disclosure { display: none !important; } }

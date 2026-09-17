@@ -75,7 +75,7 @@ test('Blocked offers nothing executable; its planning text is visible and copyab
   assert.match(planned.channels.find((c) => c.channel === 'entra')!.text, /Create \*\*‹policy\.target\.displayName›\*\*/, 'the planned work is not visible with its stand-ins')
   // The page: Copy — inline and in the expanded viewer — copies every available artifact.
   assert.match(CONTENT_STEP, /const copyable = active !== null/)
-  assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2, 'the inline Copy and the viewer Copy do not both read the one rule')
+  assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 3, 'the normal preview, first-step channel toolbar and viewer do not share the one Copy rule')
   assert.match(CONTENT_STEP, /toolbar=\{/, 'the expanded viewer has no toolbar for its Copy')
 })
 
@@ -216,6 +216,6 @@ test('the expanded viewer is materially larger than the inline preview, keeps th
   assert.match(rule('.step-dialog.step-dialog-wide', narrow), /width: calc\(100vw - 16px\);/)
   // The inline preview is unchanged.
   assert.match(rule('.step .impl-preview'), /height: 112px;/)
-  // One `tab` state feeds both the preview's tabs and the dialog's, so the viewer opens on the channel the preview shows.
-  assert.equal((CONTENT_STEP.match(/active=\{tab\} onSelect=\{\(id\) => setChosen\(id as Channel\)\}/g) ?? []).length, 2)
+  // One `tab` state and one channel chooser feed both the preview's tabs and the dialog's.
+  assert.equal((CONTENT_STEP.match(/active=\{tab\} onSelect=\{\(id\) => chooseChannel\(id as Channel\)\}/g) ?? []).length, 3, 'the normal preview, first-step toolbar and dialog must share channel state')
 })

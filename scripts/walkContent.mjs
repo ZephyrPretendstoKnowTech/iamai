@@ -68,7 +68,7 @@ export const ACCEPTANCE = [
   { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
   // Per step, 1–10.
-  { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.mfa-method', must: 'register a hardware security key (FIDO2) and keep it with the passphrase', mustNot: 'see step 5 above' },
+  { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.mfa-method', must: 'register a passkey from the approved model list', mustNot: /hardware security key \(FIDO2\).*not a passkey in Authenticator/i },
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.recent-sign-in', must: '{name} signed in {ago}, not a recorded drill: confirm who signed in and why.', mustNot: 'run the drill' },
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.second-account-none', must: 'Create two accounts: one is a single point of failure.' },
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes', must: 'only the emergency accounts belong here', mustNot: 'each extra member is an account no policy applies to' },

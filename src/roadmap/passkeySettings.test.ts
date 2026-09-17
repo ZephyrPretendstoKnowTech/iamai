@@ -110,11 +110,11 @@ test('A5.2 the tenant reading against its resolved target: disabled is Missing, 
   assert.equal(passkeyReadingOf(null).state, 'unread')
 })
 
-test('A5.3 on the demo the step reads Ready · Correct, the campaign waits on it, and the bound target is the one resolved from the tenant', () => {
+test('A5.3 on the demo Step 3 is Up Next and the bound target is the one resolved from the tenant', () => {
   const demo = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false }))
   const { r, label } = plan(demo)
-  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Correct')
-  assert.equal(label(CAMPAIGN), 'Up Next')
+  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
+  assert.equal(label(CAMPAIGN), 'Ready · Create')
   const { state, bindings } = packageOf(demo, r)
   // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
   assert.equal(state, 'missing')
@@ -127,12 +127,12 @@ test('A5.3 on the demo the step reads Ready · Correct, the campaign waits on it
   assert.match(String(bindings['passkey.target.summary']), /allow list/i)
 })
 
-test('A5.4 the method off is Missing and still Ready · Correct; the campaign still waits', () => {
+test('A5.4 the method off is Missing and Step 3 remains Up Next', () => {
   const f = withFido2(fixture('demo'), legacy({ state: 'disabled' }))
   const { r, label } = plan(f)
-  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Correct')
+  assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Up Next')
   assert.equal(packageOf(f, r).state, 'missing')
-  assert.equal(label(CAMPAIGN), 'Up Next')
+  assert.equal(label(CAMPAIGN), 'Ready · Create')
 })
 
 test('A5.5 every field matching completes the step and releases the campaign from it', () => {
@@ -153,7 +153,7 @@ test('A5.6 a refused methods policy read holds the step on an unresolved fact, n
   assert.equal(reading?.lane, 'Ready')
   assert.equal(reading?.substatus, 'Review')
   assert.equal(reading?.reason, null)
-  assert.notEqual(lane(CAMPAIGN), 'Ready', `the campaign reads ${label(CAMPAIGN)}`)
+  assert.notEqual(step.status, 'done')
 })
 
 test('A5.7 the operator passkey step: generated where the operator\'s methods were read and hold no passkey, after the settings', () => {

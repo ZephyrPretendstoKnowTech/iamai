@@ -29,7 +29,7 @@ test('legacy drill dates remain history while ordinary cleanup completion still 
   assert.ok(!isRecordedDrill('2026-09-03T02:15:00.000Z', []))
 })
 
-test('an exact drill association exempts the matching emergency sign-in from the recent-sign-in check', () => {
+test('an exact drill association validates final recovery without reopening account preparation', () => {
   const f = fixture('demo')
   for (const [index, id] of f.mapping.breakGlassUserIds.entries()) {
     const eventAt = f.snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!
@@ -40,12 +40,7 @@ test('an exact drill association exempts the matching emergency sign-in from the
   const before = runFixture(f)
   const bg = before.steps.find((s) => s.id === 's-prereq-break-glass')!
   const recent = bg.checks!.items.filter((it) => it.fix === 'recent-sign-in')
-  assert.ok(recent.length > 0, 'an emergency account signed in inside the drill window with no recorded drill: the step asks who and why')
-  assert.match(String(recent[0].values.ago), /\d+ days ago/, 'the line says how long ago')
-  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => before.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  // The recent sign-in is resilience hardening, so its line is under the step's hardening, not its minimum (validation/emergencyTiers.ts).
-  const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][]; hardeningChecks: [string, Record<string, unknown>][] }
-  assert.ok([...ex.failingChecks, ...ex.hardeningChecks].some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
+  assert.equal(recent.length, 0, 'final recovery evidence does not appear as account-preparation work')
 
   const accountBasis = recoveryAccountBasis(f.snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups)
   const configurationObservedAt = new Date(Math.min(...f.mapping.breakGlassUserIds.map(id => Date.parse(f.snapshot.signInEvidence[id]!.recoveryCandidates![0].at))) - 3_600_000).toISOString()
@@ -58,7 +53,7 @@ test('an exact drill association exempts the matching emergency sign-in from the
   assert.equal(latestRecoveryTest(bgId, checkpoints as never[], f.snapshot.asOf, accountBasis[bgId], evidenceContext, 'pre-change'), null, 'final proof cannot satisfy the separate pre-change purpose')
   const drilled = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!
-  assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'a sign-in on a recorded drill day is the drill')
+  assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'final verification does not leak into account preparation after it is recorded')
   const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
   assert.equal(row.done, `${signIn.slice(0, 10)}T12:00:00.000Z`, 'the drill row carries its recorded date')
   assert.equal(cleanupWhen(row), `done ${absoluteDate(row.done!)}`, 'the row reads done <date>')

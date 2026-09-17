@@ -678,7 +678,7 @@ function withGroup(f: Fixture, change: (g: GroupEntry) => Partial<GroupEntry>): 
 test('G1-G3. a blocking exclusion-group check that has not passed holds the step, the gate and the policies', () => {
   const good = runFixture(healthy())
   const goodStep = good.steps.find((s) => s.id === EXCLUSIONS_STEP)!
-  assert.equal(goodStep.status, 'ready', 'the valid group still waits for the required pre-change recovery proof')
+  assert.equal(goodStep.status, 'done', 'the valid group completes without the removed pre-change recovery proof')
 
   const f = healthy()
   const bg = f.mapping.breakGlassUserIds
@@ -725,8 +725,8 @@ test('G4. a warning does not hold the step, and a failing warning does not hold 
   const f = withGroup(healthy(), () => ({ mailEnabled: true }))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
-  assert.equal(step.status, 'ready', 'the warning does not block, while the independent pre-change recovery proof is still required')
-  assert.ok(step.checks?.items.some(item => item.fix === 'not-mail-enabled'), 'the warning remains visible without completing the independent recovery gate')
+  assert.equal(step.status, 'done', 'the warning does not block the step')
+  assert.ok(step.checks?.items.some(item => item.fix === 'not-mail-enabled'), 'the warning remains visible after the blocking checks pass')
 })
 
 test('G5. the gate is the report’s, and no status can answer back to it', () => {

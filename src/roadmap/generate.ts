@@ -18,7 +18,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { emergencyAccountStanding, emergencyAccountStandingForStep, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
+import { EMERGENCY_ACCOUNT_RULES, emergencyAccountStanding, emergencyAccountStandingForStep, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
 import { stepById as contentStepById } from '../content/content.ts'
@@ -90,7 +90,7 @@ import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
-import { latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { answeredCarveOuts, devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
@@ -1289,16 +1289,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
   const bgStep = steps.find((s) => s.id === bgStepId)
   const recoveryBasis = recoveryAccountBasis(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
-  const preChangePreparedAt = Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryPreparation(id, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf, recoveryBasis[id], snapshot.tenantId, 'pre-change')?.configurationObservedAt ?? null]))
-  const preChangeCurrent = mapping.breakGlassUserIds.length > 0 && mapping.breakGlassUserIds.every(id => {
-    const readings = recoveryCandidateReadings(snapshot, id, input.reviewNow ?? snapshot.asOf, preChangePreparedAt[id])
-    return latestRecoveryTest(id, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf, recoveryBasis[id], { readings, tenantId: snapshot.tenantId, currentSnapshotObservedAt: snapshot.asOf }, 'pre-change') !== null
-  })
   let bgStanding: EmergencyStanding | null = null
   let bgAccountStanding: EmergencyStanding | null = null
   if (bgStep && bgReport) {
     const confirmed = mapping.breakGlassUserIds.length
-    bgStep.checks = stepChecks(bgReport, confirmed)
+    const accountReport = { ...bgReport, targets: bgReport.targets.map(target => ({ ...target, results: target.results.filter(result => EMERGENCY_ACCOUNT_RULES.has(result.id)) })) }
+    bgStep.checks = stepChecks(accountReport, confirmed)
     // Two tiers (owner, 2026-09-11): the minimum safety checks hold the rollout
     // and nothing defers them; the hardening holds it until it is fixed or the
     // operator defers it, and a deferral moves it to Cleanup (below).
@@ -1317,7 +1313,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const proposedKeys = emergencyProposedPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
     const compatibleKeys = [...currentKeys, ...proposedKeys].every(c => c.state === 'eligible')
     const results = bgReport.targets.flatMap((t) => t.results)
-    if (compatibleKeys && preChangeCurrent && confirmed > 0 && results.length > 0 && accountStanding.minimum.length === 0 && accountStanding.hardening.length === 0) {
+    if (compatibleKeys && confirmed > 0 && results.length > 0 && accountStanding.minimum.length === 0 && accountStanding.hardening.length === 0) {
       setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
@@ -1329,9 +1325,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (geStep && bgStep && mapping.breakGlassUserIds.length === 0) {
     if (!geStep.blockers.some(blocker => blocker.kind === 'step' && blocker.stepId === bgStep.id)) geStep.blockers.push({ kind: 'step', stepId: bgStep.id, label: 'select-emergency-accounts', held: true })
     setState(geStep, { satisfied: false, inPlace: false, condition: conditionFor(geStep.blockers) })
-  }
-  if (geStep && mapping.breakGlassUserIds.length > 0 && !preChangeCurrent) {
-    setState(geStep, { satisfied: false, inPlace: false })
   }
   // The gate is the validation reports' own verdict, and nothing downgrades it.
   // A line here used to clear a gate whenever the gating step's status read
@@ -1348,8 +1341,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
   attachConfigurationFindings(steps, validationReports)
-  if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers, preChangeCurrent)
-  if (geStep) geStep.configurationFindings = journeyGroupFindings(geReport, exclusions.actionableName ?? exclusions.suggested?.name ?? null, exclusions.actionableId !== null, snapshot, exclusions.actionableId, preChangeCurrent)
+  if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
+  if (geStep) geStep.configurationFindings = journeyGroupFindings(geReport, exclusions.actionableName ?? exclusions.suggested?.name ?? null, exclusions.actionableId !== null, snapshot, exclusions.actionableId, input.groupMembers)
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
 
@@ -2513,10 +2506,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     accountBasis: recoveryBasis,
     recoveryFindings: bgReport ? journeyRecoveryFindings(bgReport, snapshot, mapping, input.groupMembers, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf) : undefined,
     recoveryCandidates: Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryCandidateReadings(snapshot, id, input.reviewNow ?? snapshot.asOf, recoveryPreparedAt[id])])),
-    preChangeRecoveryCandidates: Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryCandidateReadings(snapshot, id, input.reviewNow ?? snapshot.asOf, preChangePreparedAt[id])])),
+    preChangeRecoveryCandidates: {},
     tenantId: snapshot.tenantId,
     configurationObservedAtByAccount: recoveryPreparedAt,
-    preChangeConfigurationObservedAtByAccount: preChangePreparedAt,
+    preChangeConfigurationObservedAtByAccount: {},
     snapshotObservedAt: snapshot.asOf,
     policies: snapshot.config.caPolicies.status === 'ok' ? snapshot.config.caPolicies.rows : null,
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),

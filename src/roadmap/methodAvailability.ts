@@ -9,6 +9,7 @@ const CONFIG_IDS: Record<string, string[]> = {
   microsoftauthenticatorpush: ['microsoftauthenticator'], microsoftauthenticatorpasswordless: ['microsoftauthenticator'],
   mobilephone: ['sms', 'voice'], alternatemobilephone: ['voice'], officephone: ['voice'],
   softwareonetimepasscode: ['softwareoath'], hardwareonetimepasscode: ['hardwareoath'],
+  temporaryaccesspass: ['temporaryaccesspass'],
 }
 const isPasskey = (method: string): boolean => method.toLowerCase() === 'fido2securitykey' || method.toLowerCase().startsWith('passkey')
 /** One scan-local reading of method policy targeting. A stored registration is

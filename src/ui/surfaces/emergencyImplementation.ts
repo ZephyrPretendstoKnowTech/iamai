@@ -4,7 +4,8 @@ import { oneLine } from '../../content/implementation/project.ts'
 import { approvedPasskeyModels, EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { assignedPasskeyProfiles, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
-import { initialDomain } from '../../validation/rules.ts'
+import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
+import type { EmergencyAccountTasks } from './emergencyAccountTasks.ts'
 
 const numbered = (lines: string[], offset = 0) => lines.map((line, index) => `${index + offset + 1}. ${line}`).join('\n')
 const bullets = (lines: string[]) => lines.map(line => '- ' + line).join('\n')
@@ -13,9 +14,132 @@ const groupLink = '[Exclusions Group](#/plan/s-prereq-exclusion-group)'
 const passkeyLink = '[Configure Passkey Authentication](#/plan/s-prereq-passkey-settings)'
 const drillLink = '[Verify Emergency Access](#/plan/cleanup-drill)'
 
+/** Step 1 keeps its machine channel bounded to account identity and role work.
+ * Passkey registration remains a deliberate interactive Entra task. */
+export function emergencyAccountPowerShell(observedInitialDomain: string | null): string {
+  const initialDomain = (observedInitialDomain ?? '').replace(/'/g, "''")
+  return [
+    'param(',
+    '  [Parameter(Mandatory=$true)]',
+    "  [ValidateSet('VerifyIdentityAndRole','EnsureRole')]",
+    '  [string]$Mode,',
+    '',
+    '  [Parameter(Mandatory=$true)]',
+    "  [ValidatePattern('^[0-9a-fA-F-]{36}$')]",
+    '  [string]$UserId,',
+    '',
+    '  [Parameter(Mandatory=$true)]',
+    '  [string]$ExpectedUpn',
+    ')',
+    '',
+    "$ErrorActionPreference = 'Stop'",
+    "$Graph = 'https://graph.microsoft.com/v1.0'",
+    "$GlobalAdminRoleId = '62e90394-69f5-4237-9190-012177145e10'",
+    `$ExpectedInitialDomain = '${initialDomain}'`,
+    '',
+    'function Invoke-Graph {',
+    '  param([string]$Method,[string]$Uri,[object]$Body=$null)',
+    '  if ($null -eq $Body) { return Invoke-MgGraphRequest -Method $Method -Uri $Uri -OutputType PSObject }',
+    "  return Invoke-MgGraphRequest -Method $Method -Uri $Uri -Body ($Body | ConvertTo-Json -Depth 10) -ContentType 'application/json' -OutputType PSObject",
+    '}',
+    '',
+    'function Get-Paged {',
+    '  param([string]$Uri,[string]$Label)',
+    '  $rows = @()',
+    '  $next = $Uri',
+    '  while ($next) {',
+    '    try { $page = Invoke-Graph GET $next } catch { throw "Verification incomplete: $Label could not be read. Use the existing Entra inspection instructions and rescan IAMAI." }',
+    "    if ($null -eq $page -or -not ($page.PSObject.Properties.Name -contains 'value')) { throw \"Verification incomplete: $Label returned an unreadable response. Use the existing Entra inspection instructions and rescan IAMAI.\" }",
+    '    $values = $page.value',
+    "    if ($null -eq $values -or $values -is [string] -or $values -is [System.Collections.IDictionary] -or -not ($values -is [System.Collections.IEnumerable])) { throw \"Verification incomplete: $Label returned an unreadable response. Use the existing Entra inspection instructions and rescan IAMAI.\" }",
+    '    $rows += @($values)',
+    "    $next = if ($page.PSObject.Properties.Name -contains '@odata.nextLink') { $page.'@odata.nextLink' } else { $null }",
+    '  }',
+    '  return @($rows)',
+    '}',
+    '',
+    'function Assert-Identity {',
+    "  if ([string]::IsNullOrWhiteSpace($ExpectedInitialDomain)) { throw 'Verification incomplete: the observed initial tenant domain was not available. Use the existing Entra inspection instructions and rescan IAMAI.' }",
+    '  try { $user = Invoke-Graph GET "${Graph}/users/${UserId}?`$select=id,userPrincipalName,accountEnabled,onPremisesSyncEnabled" } catch { throw "Verification incomplete: the selected identity could not be read. Use the existing Entra inspection instructions and rescan IAMAI." }',
+    "  if ($null -eq $user) { throw 'Verification incomplete: the selected identity returned no readable result. Use the existing Entra inspection instructions and rescan IAMAI.' }",
+    "  if ($user.id -ne $UserId) { throw 'Stable user identity mismatch.' }",
+    "  if ($user.userPrincipalName -ne $ExpectedUpn) { throw 'UPN does not match the selected emergency account.' }",
+    "  if ($null -eq $user.accountEnabled) { throw 'Verification incomplete: account-enabled state was not read. Use the existing Entra inspection instructions and rescan IAMAI.' }",
+    "  if ($user.accountEnabled -ne $true) { throw 'Emergency account is disabled.' }",
+    "  if ($user.onPremisesSyncEnabled -eq $true) { throw 'Emergency account is synchronized; expected cloud-only.' }",
+    '  $actualDomain = ($user.userPrincipalName -split \'@\', 2)[1]',
+    "  if (-not [string]::Equals($actualDomain, $ExpectedInitialDomain, [System.StringComparison]::OrdinalIgnoreCase)) { throw \"Emergency account is not using the observed initial tenant domain $ExpectedInitialDomain.\" }",
+    '}',
+    '',
+    'function Test-RoleRow {',
+    '  param([object]$Row)',
+    "  return $Row.principalId -and $Row.principalId.ToString().ToLowerInvariant() -eq $UserId.ToLowerInvariant() -and $Row.roleDefinitionId -and $Row.roleDefinitionId.ToString().ToLowerInvariant() -eq $GlobalAdminRoleId -and $Row.directoryScopeId -eq '/'",
+    '}',
+    '',
+    'function Get-RoleState {',
+    '  $roleFilter = [uri]::EscapeDataString("roleDefinitionId eq \'$GlobalAdminRoleId\'")',
+    '  $assignments = @(Get-Paged "${Graph}/roleManagement/directory/roleAssignments?`$filter=$roleFilter" \'active role assignments\')',
+    '  $schedules = @(Get-Paged "${Graph}/roleManagement/directory/roleAssignmentScheduleInstances?`$filter=$roleFilter" \'active role assignment schedules\')',
+    '  $activeRows = @($assignments | Where-Object { Test-RoleRow $_ })',
+    '  $scheduleRows = @($schedules | Where-Object { Test-RoleRow $_ })',
+    "  $permanentRows = @($scheduleRows | Where-Object { $kind = [string]($_.assignmentType ?? $_.memberType); $kind -match 'assigned|direct' -and $kind -notmatch 'activated' -and $null -eq $_.endDateTime -and ([string]::IsNullOrWhiteSpace([string]$_.status) -or [string]$_.status -notmatch 'revoked|canceled|expired') })",
+    "  if ($activeRows.Count -gt 0 -and $permanentRows.Count -gt 0) { return [pscustomobject]@{ Kind = 'PermanentActive'; Detail = 'Permanent active tenant-wide Global Administrator assignment verified.' } }",
+    '  if ($activeRows.Count -gt 0) {',
+    "    $temporary = @($scheduleRows | Where-Object { $kind = [string]($_.assignmentType ?? $_.memberType); $kind -match 'activated' -or $null -ne $_.endDateTime })",
+    "    if ($temporary.Count -gt 0) { return [pscustomobject]@{ Kind = 'TemporaryActive'; Detail = 'Global Administrator is active temporarily or has an expiration.' } }",
+    "    return [pscustomobject]@{ Kind = 'Incomplete'; Detail = 'Global Administrator is active, but permanent assigned schedule evidence is incomplete or ambiguous.' }",
+    '  }',
+    "  if ($scheduleRows.Count -gt 0) { return [pscustomobject]@{ Kind = 'Incomplete'; Detail = 'Role schedule evidence conflicts with the active assignment read.' } }",
+    '  $eligibilities = @(Get-Paged "${Graph}/roleManagement/directory/roleEligibilitySchedules?`$filter=$roleFilter" \'eligible role assignments\')',
+    '  $eligibleRows = @($eligibilities | Where-Object { Test-RoleRow $_ })',
+    "  if ($eligibleRows.Count -gt 0) { return [pscustomobject]@{ Kind = 'EligibleOnly'; Detail = 'Global Administrator is eligible, not permanently active.' } }",
+    "  return [pscustomobject]@{ Kind = 'Absent'; Detail = 'No tenant-wide Global Administrator assignment was found.' }",
+    '}',
+    '',
+    'Assert-Identity',
+    '$roleState = Get-RoleState',
+    "if ($roleState.Kind -eq 'PermanentActive') { [pscustomobject]@{ UserId = $UserId; Upn = $ExpectedUpn; InitialDomain = $ExpectedInitialDomain; PermanentActiveGlobalAdministrator = $true }; return }",
+    "if ($Mode -eq 'VerifyIdentityAndRole') { throw $roleState.Detail }",
+    "if ($roleState.Kind -ne 'Absent') { throw \"$($roleState.Detail) Use the existing Entra role-assignment instructions, then rescan IAMAI.\" }",
+    "if ($Mode -eq 'EnsureRole') {",
+    '  Invoke-Graph POST "$Graph/roleManagement/directory/roleAssignments" @{',
+    "    '@odata.type' = '#microsoft.graph.unifiedRoleAssignment'",
+    '    principalId = $UserId',
+    '    roleDefinitionId = $GlobalAdminRoleId',
+    "    directoryScopeId = '/'",
+    '  } | Out-Null',
+    '}',
+    '$roleState = Get-RoleState',
+    "if ($roleState.Kind -ne 'PermanentActive') { throw \"Role assignment was submitted, but permanent active verification did not succeed: $($roleState.Detail)\" }",
+    '[pscustomobject]@{ UserId = $UserId; Upn = $ExpectedUpn; InitialDomain = $ExpectedInitialDomain; PermanentActiveGlobalAdministrator = $true }',
+    '',
+    '# Passkey registration is interactive. Complete the selected Entra task, then rescan IAMAI.',
+  ].join('\n')
+}
+
+/** AI Info mirrors Step 1's owned work and current projected tasks without
+ * importing final-verification or next-step requirements. */
+export function emergencyAccountAiInfo(step: Step, ctx: StepVarContext, projected: EmergencyAccountTasks): string {
+  const accounts = ctx.mapping.breakGlassUserIds.map(id => oneLine(ctx.nameOf(id))).filter(Boolean)
+  const required = projected.tasks.filter(task => task.required)
+  const work = required.length
+    ? required.map(task => `- ${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}${task.evidence ? `: ${task.evidence}` : ''}`).join('\n')
+    : '- No account preparation action is currently projected. Rescan after any tenant change.'
+  const models = projected.approvedModels.map(model => `- ${model.name} — ${model.aaguid}`).join('\n')
+  return [
+    'Help me understand and carry out Prepare Emergency Access Accounts. Use only the observed account identity, role and registered-method evidence below. Distinguish observations from proposed changes, do not invent tenant values or completed work, and explain the next account-specific action first.',
+    `Selected emergency accounts: ${accounts.length ? accounts.join(', ') : 'none saved'}.`,
+    'Current preparation work:',
+    work,
+    projected.approvedModels.length ? `Approved passkey models:\n${models}` : 'No approved passkey model is currently saved.',
+    `Current step state: ${step.state.satisfied ? 'account preparation is satisfied by the latest scan' : 'one or more account preparation requirements remain'}.`,
+    'Use the Entra channel for the complete procedure and return to IAMAI to scan after the change.',
+  ].join('\n\n')
+}
+
 /** The Entra channel shares the existing findings and saved choices. Machine
  * artifacts still use their validated package bindings and operations. */
-export function emergencyImplementation(step: Step, ctx: StepVarContext): string | null {
+export function emergencyImplementation(step: Step, ctx: StepVarContext, projectedAccountTasks?: EmergencyAccountTasks | null): string | null {
   if (![EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS].includes(step.id)) return null
   const { snapshot, mapping } = ctx
   const name = (id: string) => oneLine(ctx.nameOf(id))
@@ -53,29 +177,7 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext): string
   }
 
   if (step.id === EMERGENCY_ACCOUNTS) {
-    const domain = initialDomain(snapshot)
-    const selected = mapping.breakGlassUserIds.map(id => {
-      const u = snapshot.users.find(u => u.id === id)
-      const corrections = (step.checks?.items ?? []).filter(i => i.target === id && ['cloud-only', 'onmicrosoft-domain', 'enabled', 'permanent-global-admin'].includes(i.fix)).map(i => ({
-        'cloud-only': 'Create a replacement cloud-only account; do not remove the current recovery account before the replacement works.',
-        'onmicrosoft-domain': `Use the tenant’s initial ${domain || '*.onmicrosoft.com'} domain for the replacement identity.`,
-        enabled: 'Enable sign-in for this account.',
-        'permanent-global-admin': 'Assign Global Administrator as permanent active, not only eligible through PIM.',
-      })[i.fix])
-      return `${name(id)}${u?.userPrincipalName ? ' (' + oneLine(u.userPrincipalName) + ')' : ''}${!u ? ' — Account was not read; resolve the account selection or scan before changing it.' : corrections.length ? ' — ' + corrections.join(' ') : ''}`
-    })
-    return [
-      ...(selected.length ? ['**Selected accounts**\n\n' + bullets(selected)] : []),
-      numbered([
-        accountNames.length ? `Confirm the saved dedicated accounts: ${accounts}. Add and save a second suitable account where Readiness recommends it; a suggestion is not a saved choice.` : 'Review the suggested identities and save the dedicated emergency accounts you intend to use. Prefer two suitable existing accounts; do not use an employee’s everyday account.',
-        `Create only a missing account in Entra ID → Users → New user, using the observed initial ${domain || '*.onmicrosoft.com'} domain. Keep it cloud-only and enabled, complete the supported bootstrap, rescan, then select it here. Never enter its password in IAMAI.`,
-        'Correct each named identity or role finding. Assign Global Administrator as permanent active through the applicable Entra/PIM flow; eligible or temporarily activated access is insufficient. If assignment schedule evidence is unavailable, restore that read before treating it as permanent.',
-        `Open ${passkeyLink} and confirm the approved destination model before registration. For a new shared recovery route, use an approved physical security key whose exact AAGUID matches; keep any working method until the replacement succeeds.`,
-        'Keep the normal administrator session open. In a separate browser session for the named emergency account, open Security info → Add sign-in method → Passkey and explicitly choose the hardware security-key destination. Complete the key interaction, name it recognizably, verify it appears on the intended account, then test a fresh sign-in.',
-        'If the fresh account cannot authenticate for registration, first check Temporary Access Pass availability and scoped inclusion. Where permitted, an Authentication Policy Administrator manages the policy and a Privileged Authentication Administrator issues a short, preferably single-use TAP for the privileged account. Enter it only in the separate Microsoft session, register and test the key, then remove the bootstrap credential. IAMAI never stores the TAP.',
-        `Store the credential through the approved independent recovery process and confirm custody here. Save and scan again, then continue to ${groupLink}; return to ${passkeyLink} for pending restrictions and use ${drillLink} only after the resulting configuration is ready.`,
-      ]),
-    ].join('\n\n')
+    return emergencyAccountTasksText(projectedAccountTasks ?? emergencyAccountTasksOf(step, ctx))
   }
 
   const group = groupName || oneLine(choice.suggested?.name || step.naming?.proposed || 'your dedicated emergency exclusions group')

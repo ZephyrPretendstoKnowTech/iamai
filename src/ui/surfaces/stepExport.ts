@@ -33,6 +33,8 @@ import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
+import { EMERGENCY_ACCOUNTS } from '../../roadmap/emergencyJourney.ts'
+import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 
 export type { ExportStep }
 
@@ -338,6 +340,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
+  if (step.id === EMERGENCY_ACCOUNTS) {
+    lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyAccountTasksOf(step, ctx)).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
+  }
   // The completion, from the contract, for every step. Nothing here implies the
   // policy can be rolled out while it cannot be written: where a reason holds
   // it, the contract's completion is what would *clear the reason*

@@ -34,7 +34,7 @@ import { ManualReviewForm } from './ManualReviewForm.tsx'
 // And it does not decide anything. What the step is, whether an implementation
 // is offered, what blocks it and what finishes it are the contract's answers,
 // asked once, below the UI.
-import { useId, useState, useMemo } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
@@ -70,8 +70,11 @@ import type { OwnerConfirmation, TroubleshootingScenario } from '../../content/i
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { RecoveryTestControl } from './RecoveryTestControl.tsx'
 import type { RecoveryDone } from './RecoveryTestControl.tsx'
+import { emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
+import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
+import { consolidateEmergencyReadiness } from './emergencyReadiness.ts'
+import { EXCLUSIONS_RECORD_KEY } from '../../mapping/safetyChoice.ts'
 
 type Ex = Record<string, unknown>
 
@@ -106,6 +109,60 @@ function T({ s, ex }: { s: unknown; ex: Ex }) {
   return <>{fillText(s, ex as Record<string, unknown>)}</>
 }
 
+export function EmergencyReadinessActions({ tile, projected, printing, onTask, onSelectAccounts, stepId }: {
+  tile: ReadinessTile
+  projected: EmergencyTaskProjection
+  printing: boolean
+  onTask: (id: string) => void
+  onSelectAccounts: () => void
+  stepId: string
+}) {
+  const key = tile.key.replace(/^configuration:/, '')
+  const tasks = projected.tasks.filter(item => item.readinessKey === key || item.readinessKeys?.includes(key))
+  const factsFor = (task: EmergencyAccountTask): { label: string; value: string }[] => {
+    const issueKeys = new Set(task.issueKeys ?? [])
+    const matched = (tile.items ?? []).filter(item => item.issueKeys?.some(issue => issueKeys.has(issue)))
+    const source = matched.length ? matched.map(item => item.factLabel === 'AAGUID' && item.subjectLabel
+      ? { label: item.subjectLabel, value: `AAGUID: ${item.value}` }
+      : { label: item.factLabel ?? item.label, value: item.value }) : task.facts ?? []
+    return source.filter((fact, index, rows) => rows.findIndex(other => other.label === fact.label && other.value === fact.value) === index)
+  }
+  const taskList = (rows: EmergencyAccountTask[]) => printing || rows.length === 0 ? null : (
+    <ul className="emergency-readiness-actions">
+      {rows.map(item => (
+        <li key={item.id} className="emergency-readiness-action">
+          <strong>{item.title}</strong>
+          {(item.targetUpn || item.targetLabel) && <code>{item.targetUpn ?? item.targetLabel}</code>}
+          {factsFor(item).length ? <dl>{factsFor(item).map(fact => <div key={`${fact.label}:${fact.value}`} className="emergency-fact"><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl> : item.evidence && <span>{item.evidence}</span>}
+          <button type="button" className="inline-link" onClick={() => onTask(item.id)}>{item.actionLabel}</button>
+        </li>
+      ))}
+    </ul>
+  )
+  if (stepId === 's-prereq-break-glass' && key === 'account-setup') {
+    const required = tasks.filter(item => item.required)
+    const create = tasks.find(item => item.id === 'create-account')
+    return <div className="emergency-readiness-extra">
+      {tile.tone !== 'good' && !printing && <button type="button" className="inline-link" onClick={onSelectAccounts}>Select emergency accounts</button>}
+      {taskList(required)}
+      {create && !printing && <p><button type="button" className="inline-link" onClick={() => onTask(create.id)}>Create an emergency account</button></p>}
+    </div>
+  }
+  if (stepId === 's-prereq-break-glass' && key === 'recovery-methods') {
+    const required = tasks.filter(item => item.required)
+    const tap = tasks.filter(item => item.id.startsWith('issue-tap:'))
+    return <div className="emergency-readiness-extra">
+      {taskList(required)}
+      {taskList(tap)}
+      {projected.tapAvailable !== true && tile.tone !== 'good' && <p>{projected.tapAvailable === null ? 'Temporary Access Pass availability could not be verified. ' : 'Temporary Access Pass is not available to every selected account. '}<a className="inline-link" href="https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass" target="_blank" rel="noopener noreferrer">Review optional bootstrap help</a></p>}
+      <details className="approved-model-disclosure"><summary>Approved passkey models</summary>
+        <ul className="approved-model-list">{(projected.approvedModels ?? []).map(model => <li key={model.aaguid}><strong>{model.name}</strong><span>{model.aaguid}{model.source === 'existing' ? ' · Existing tenant allowance retained during the transition' : ''}</span></li>)}</ul>
+      </details>
+    </div>
+  }
+  return taskList(tasks)
+}
+
 /** True when a content line has every variable it names — no hole (walk-51 item 2). */
 
 /** A content line as a paragraph, rendered only when it has no hole. */
@@ -135,7 +192,6 @@ export function ContentStep({
   blockers = NO_BLOCKERS,
   prerequisiteLabel = null,
   onOpenMappings,
-  onCredentialStorage,
   recoveryPhase = null,
   onRecoveryDone,
 }: {
@@ -194,10 +250,33 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit })
-  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
+  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
+  const isEmergencyAccounts = step.id === 's-prereq-break-glass'
+  const isEmergencyTaskStep = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'].includes(step.id)
   const hasPasskeyFindings = isPasskeySettings && !!step.configurationFindings?.length
-  const displayedReadiness = passkeyReadiness(step, readiness)
+  const baseReadiness = passkeyReadiness(step, readiness)
+  const emergencyAccountUpns = new Map(ctx.mapping.breakGlassUserIds.flatMap(id => {
+    const upn = ctx.snapshot.users.find(row => row.id.toLowerCase() === id.toLowerCase())?.userPrincipalName?.trim()
+    return upn ? [[id, upn] as const] : []
+  }))
+  const displayedReadiness = isEmergencyTaskStep ? consolidateEmergencyReadiness(baseReadiness, emergencyAccountTasks, emergencyAccountUpns, !printing) : baseReadiness
+  const exclusionsIntent = ctx.mapping.records?.[EXCLUSIONS_RECORD_KEY]
+  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: exclusionsIntent?.resolvedId ? `Selected exclusions group: ${exclusionsIntent.resolvedName || ctx.nameOf(exclusionsIntent.resolvedId)}.` : 'Choose and save the exclusions group.' } : rail
+  const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
+  const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(null)
+  const [taskFocusRequest, setTaskFocusRequest] = useState(0)
+  const accountDecisionRef = useRef<HTMLDivElement>(null)
+  const focusIn = (ref: { current: HTMLElement | null }): void => {
+    const target = ref.current?.querySelector<HTMLElement>('input, select, button') ?? ref.current
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target?.focus({ preventScroll: true })
+  }
+  const openEmergencyTask = (id: string): void => {
+    setImplementationChannel('portal')
+    setEmergencyTaskId(id)
+    setTaskFocusRequest(value => value + 1)
+  }
   const copied1500 = (id: string) => (ok: boolean): void => {
     setCopied(ok ? id : 'copy-failed')
     setTimeout(() => setCopied(null), ok ? 1500 : 6000)
@@ -248,7 +327,7 @@ export function ContentStep({
           cs.skip ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
           offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
         ].filter((x) => x !== null)
-  const partnerLink = partnerLinkOf(cs)
+  const partnerLink = step.id === 's-prereq-exclusion-group' ? null : partnerLinkOf(cs)
 
   return (
     // The opened step, as the approved Plan design draws it
@@ -304,18 +383,31 @@ export function ContentStep({
             onOpenMappings={null}
             printing={printing}
             extra={(t) => {
+              const taskBody = isEmergencyTaskStep && emergencyAccountTasks ? (
+                <EmergencyReadinessActions
+                  tile={t}
+                  projected={emergencyAccountTasks}
+                  printing={printing}
+                  onTask={openEmergencyTask}
+                  onSelectAccounts={() => focusIn(accountDecisionRef)}
+                  stepId={step.id}
+                />
+              ) : null
               const slot = t.key === 'configuration:credential-custody' && contract.hardening
                 ? { key: t.key, label: t.label, accountId: null, state: 'hardening' as const, minimum: [], hardening: [] }
                 : contract.emergencySlots.find((s) => s.key === t.key)
-              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return null
+              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return taskBody
               const deferralSlot = t.key === 'configuration:credential-custody' || contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
               return (
-                <EmergencySlotBody
-                  slot={slot}
-                  hardening={deferralSlot && contract.hardening ? { ...contract.hardening, ...(t.key === 'configuration:credential-custody' ? { unchecked: 0 } : {}) } : null}
-                  onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
-                  onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
-                />
+                <>
+                  <EmergencySlotBody
+                    slot={slot}
+                    hardening={deferralSlot && contract.hardening ? { ...contract.hardening, ...(t.key === 'configuration:credential-custody' ? { unchecked: 0 } : {}) } : null}
+                    onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
+                    onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
+                  />
+                  {taskBody}
+                </>
               )
             }}
           >
@@ -351,12 +443,10 @@ export function ContentStep({
             step takes in IAMAI. On a step that needs a decision the decision is
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
-        <StepActionColumn rail={rail}>
+        <StepActionColumn rail={displayRail}>
           {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
-          {isPasskeySettings ? <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} printing={printing} /> : step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
-          {step.id === 's-prereq-break-glass' && !printing && onCredentialStorage && ctx.mapping.breakGlassUserIds.length > 0 && <label className="choice"><input type="checkbox" checked={ctx.mapping.breakGlassAnswers?.credentialStorage === true} onChange={e => onCredentialStorage(e.currentTarget.checked)} />Credentials and recovery keys for the selected accounts are stored in approved locations accessible without this tenant.</label>}
-          {['s-prereq-exclusion-group', 's-prereq-passkey-settings'].includes(step.id) && <div className="selected-emergency-accounts"><strong>Selected emergency accounts</strong>{ctx.mapping.breakGlassUserIds.length ? <ul>{ctx.mapping.breakGlassUserIds.map(id => { const user = ctx.snapshot.users.find(item => item.id.toLowerCase() === id.toLowerCase()); const upn = user?.userPrincipalName; return <li key={id}>{ctx.nameOf(id)}{upn && upn !== ctx.nameOf(id) ? ` — ${upn}` : ''}</li> })}</ul> : <p className="reason">No accounts selected.</p>}<a href="#/plan/s-prereq-break-glass">Change accounts in Prepare Emergency Access Accounts</a></div>}
-          {!printing && recoveryPhase && onRecoveryDone && ['s-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id) && <RecoveryTestControl phase={recoveryPhase} purpose="pre-change" onDone={onRecoveryDone} />}
+          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && (isEmergencyAccounts || step.id === 's-prereq-exclusion-group' ? <div ref={accountDecisionRef}><Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} /></div> : <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />)}
+          {['s-prereq-exclusion-group', 's-prereq-passkey-settings'].includes(step.id) && <div className="selected-emergency-accounts"><strong>Selected emergency accounts</strong>{ctx.mapping.breakGlassUserIds.length ? <ul>{ctx.mapping.breakGlassUserIds.map(id => { const user = ctx.snapshot.users.find(item => item.id.toLowerCase() === id.toLowerCase()); return <li key={id}>{user?.userPrincipalName?.trim() || id}</li> })}</ul> : <p className="reason">No accounts selected.</p>}<a href="#/plan/s-prereq-break-glass">Change accounts</a></div>}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -376,6 +466,13 @@ export function ContentStep({
               onClose={closeDialog}
               copy={copyArtifact}
               copied={copied}
+              printing={printing}
+              tasks={emergencyAccountTasks}
+              chosenChannel={isEmergencyTaskStep ? implementationChannel : null}
+              onChooseChannel={isEmergencyTaskStep ? setImplementationChannel : null}
+              chosenTaskId={isEmergencyTaskStep ? emergencyTaskId : null}
+              onChooseTask={isEmergencyTaskStep ? setEmergencyTaskId : null}
+              taskFocusRequest={taskFocusRequest}
             />
           )}
 
@@ -433,6 +530,7 @@ export function ContentStep({
           )}
         </div>
       </div>
+      {isPasskeySettings && !printing && <details className="passkey-model-disclosure"><summary>Add additional AAGUIDs</summary><PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} /></details>}
       {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
@@ -545,7 +643,7 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskFocusRequest, emptyTaskText }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -565,12 +663,24 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   onClose: () => void
   copy: (id: string, text: string) => void
   copied: string | null
+  printing: boolean
+  tasks: EmergencyTaskProjection | null
+  chosenChannel: Channel | null
+  onChooseChannel: ((channel: Channel | null) => void) | null
+  chosenTaskId: string | null
+  onChooseTask: ((taskId: string | null) => void) | null
+  taskFocusRequest: number
+  emptyTaskText?: string
 }) {
-  const [chosen, setChosen] = useState<Channel | null>(null)
+  const [localChannel, setLocalChannel] = useState<Channel | null>(null)
+  const [variants, setVariants] = useState<Record<string, string>>({})
   const base = useId()
   const dialogBase = useId()
+  const taskHeading = useRef<HTMLHeadingElement>(null)
   const W = CONTRACT.implementation
   const ids = artifacts.map((a) => a.id)
+  const chosen = onChooseChannel ? chosenChannel : localChannel
+  const chooseChannel = (channel: Channel): void => onChooseChannel ? onChooseChannel(channel) : setLocalChannel(channel)
   // The chosen tab is clamped to what is available, so a step that offers only
   // some channels cannot be left showing another's panel — the frame is reused
   // across rows and the state is not.
@@ -578,8 +688,37 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   const tab: Channel = chosen !== null && ids.includes(chosen) ? chosen : (artifacts.find((a) => a.unavailable !== true)?.id ?? ids[0] ?? 'portal')
   const active = artifacts.find((a) => a.id === tab) ?? null
   const tabs = channelTabsOf(artifacts)
-  const body = (cls: string) =>
-    active === null ? null : active.form === 'list' ? (
+  const taskList = tasks?.tasks ?? []
+  const taskSignature = taskList.map(item => item.id).join('\n')
+  const activeTask = taskList.find(item => item.id === chosenTaskId) ?? taskList.find(item => item.required) ?? null
+  const activeVariant = activeTask?.variants?.find(item => item.id === variants[activeTask.id])?.id ?? activeTask?.defaultVariantId ?? activeTask?.variants?.[0]?.id ?? null
+  useEffect(() => {
+    if (tasks && onChooseTask && (activeTask?.id ?? null) !== chosenTaskId) onChooseTask(activeTask?.id ?? null)
+  }, [tasks, taskSignature, activeTask?.id, chosenTaskId, onChooseTask])
+  useEffect(() => {
+    if (taskFocusRequest > 0 && tab === 'portal' && activeTask) {
+      taskHeading.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      taskHeading.current?.focus({ preventScroll: true })
+    }
+  }, [taskFocusRequest, tab, activeTask?.id])
+  const renderTask = (item: EmergencyAccountTask, cls: string, focus = false) => {
+    const variant = item.variants?.find(row => row.id === variants[item.id])?.id ?? item.defaultVariantId ?? item.variants?.[0]?.id ?? null
+    return <section key={item.id} className={`${cls} emergency-task-body`} data-emergency-account-tasks="true">
+      <h5 ref={focus ? taskHeading : undefined} tabIndex={focus ? -1 : undefined}>{item.title}</h5>
+      {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
+      <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
+    </section>
+  }
+  const printableTasks = taskList.filter(item => item.required)
+  const body = (cls: string, dialog = false) =>
+    tasks && tab === 'portal' ? printing
+      ? printableTasks.length
+        ? <div className="emergency-task-print" data-emergency-account-tasks="true">{printableTasks.map(item => renderTask(item, cls))}</div>
+        : <div className={`${cls} emergency-task-empty`} data-emergency-account-tasks="true">{emptyTaskText ?? 'No Entra action is currently identified. Review Readiness.'}</div>
+      : activeTask
+        ? renderTask(activeTask, cls, !dialog)
+        : <div className={`${cls} emergency-task-empty`} data-emergency-account-tasks="true">{emptyTaskText ?? 'No Entra action is currently identified. Review Readiness.'}</div>
+    : active === null ? null : active.form === 'list' ? (
       <ol className={cls}>
         {active.lines.map((l, i) => (
           <li key={i}>{l}</li>
@@ -596,7 +735,10 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   const copyable = active !== null && active.unavailable !== true
   // Copying guidance is available even when the planned operation needs review.
   const copyReason = copyable ? W.copy : active?.unavailable ? active.text() : (preview?.lines.join(' ') ?? W.copy)
-  const copyControl = (
+  const selectedTaskText = activeTask ? emergencyTaskText(activeTask, activeVariant) : active?.text() ?? ''
+  const copyControl = tasks && tab === 'portal' ? (
+    <button type="button" className="icon-btn" aria-label="Copy task" title="Copy task" aria-disabled={!activeTask} onClick={() => activeTask && copy('emergency-task', selectedTaskText)}><Icon name={copied === 'emergency-task' ? 'check' : 'copy'} size={14} /></button>
+  ) : (
     <button
       type="button"
       className="icon-btn"
@@ -611,6 +753,14 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
       <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
     </button>
   )
+  const taskControls = tasks && tab === 'portal' && activeTask && !printing ? <>
+    <label className="emergency-task-select"><span>Task</span><select value={activeTask.id} onChange={event => onChooseTask?.(event.currentTarget.value)}>{taskList.map(item => <option key={item.id} value={item.id}>{item.title}{item.targetUpn ? ` — ${item.targetUpn}` : ''}</option>)}</select></label>
+    {activeTask.variants?.length && <label className="emergency-task-select"><span>Method</span><select value={activeVariant ?? ''} onChange={event => {
+      const taskId = activeTask.id
+      const variantId = event.currentTarget.value
+      setVariants(value => ({ ...value, [taskId]: variantId }))
+    }}>{activeTask.variants.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
+  </> : null
   return (
     <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
@@ -623,14 +773,9 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
         </div>
       )}
         <>
-          <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />
-          <div className="impl-preview" {...onePanelProps(base, tab)}>
-            <div className="preview-actions no-print">
-              {copyControl}
-              <button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}>
-                <Icon name="external-link" size={14} />
-              </button>
-            </div>
+          {tasks ? <div className="emergency-channel-toolbar no-print"><TabList base={base} tabs={tabs} active={tab} onSelect={(id) => chooseChannel(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs" />{tab !== 'portal' && <div className="emergency-channel-actions">{copyControl}<button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}><Icon name="external-link" size={14} /></button></div>}</div> : <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => chooseChannel(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />}
+          <div className="impl-preview" data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(base, tab)}>
+            {(!tasks || tab === 'portal') && <div className={`${tasks ? 'emergency-task-toolbar' : 'preview-actions'} no-print`}>{taskControls}{copyControl}<button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}><Icon name="external-link" size={14} /></button></div>}
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {body('preview-text')}
           </div>
@@ -647,14 +792,15 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
             wide
             toolbar={
               <>
-                <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+                <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => chooseChannel(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+                {taskControls}
                 {copyControl}
               </>
             }
           >
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
-            <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
+            <div data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(dialogBase, tab)}>{body('dialog-code', true)}</div>
           </StepDialog>
         </>
       {/* The support line (S6): Microsoft Learn · Troubleshooting on the left,
@@ -865,7 +1011,9 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
-      {decisionAnswer === null && !(stepId === 's-prereq-break-glass' && saved?.picked?.length) && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
+      {stepId === 's-prereq-break-glass'
+        ? <Line s={d.help} ex={ex} cls="reason" />
+        : decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         {/* Each label is an element the controls under it can name (task 017):
             the picker takes it as its group label, the radios as their

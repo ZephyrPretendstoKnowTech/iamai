@@ -9,6 +9,7 @@ import type { CleanupExport } from '../../roadmap/types.ts'
 import { app, cleanup as cleanupContent, pages, schedulingWords } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 
 export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
@@ -20,7 +21,7 @@ export const EMERGENCY_RECOVERY_PROCEDURE = [
   'Try the prepared emergency account with its intended credential in the documented recovery environment, and verify the tenant and account identity.',
   'If another authorized administrator or an existing properly permissioned delegated partner can access the tenant, use that established route.',
   'With sufficient access, inspect the actual failed sign-in and identify the responsible policy or authentication-method setting. Correct only the observed setting; do not disable all Conditional Access or remove all MFA.',
-  'Without working administrative access, use Microsoft business support or the applicable partner-support route. Prepare the tenant and domain, UTC error time, error and correlation details, and the known recent change. Never send passwords, Temporary Access Passes, tokens, PINs, or private keys.',
+  'Without working administrative access, use [Microsoft business support](https://support.microsoft.com/contactus/) or the applicable authorized partner-support route. Prepare the tenant and domain, UTC error time, error and correlation details, and the known recent change. Never send passwords, Temporary Access Passes, tokens, PINs, or private keys.',
   'After recovery, scan again and repeat the applicable emergency-access verification before resuming restrictive work.',
 ] as const
 
@@ -91,7 +92,10 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
   if (!entry) return null
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
-  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo: entry.whatToDo.filter(whole).map((l) => fillText(l, ex)), doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
+  const whatToDo = row.kind === 'drill'
+    ? [...emergencyVerificationTasksOf(phase).tasks.filter(task => task.required).flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE]
+    : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
+  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 
 /** Every Cleanup row as words, in render order; none when the phase has nothing to say. */

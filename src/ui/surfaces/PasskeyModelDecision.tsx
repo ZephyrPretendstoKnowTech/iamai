@@ -28,8 +28,6 @@ export function PasskeyModelDecision({ mapping, saved, onDecide, printing = fals
   const changed = JSON.stringify(models) !== acceptedKey
   const displayed = printing ? accepted : models
   return <section className="step-section passkey-model-decision">
-    <h4>Additional Authenticators</h4>
-    <p>Add approved hardware models before registering recovery keys. Add to List stages a model; Save Additional Authenticators applies the list to this plan.</p>
     {displayed.length > 0 && <ul>{displayed.map(model => <li key={model.aaguid}>
       <strong>{model.name}</strong><div className="reason" style={{ overflowWrap: 'anywhere' }}>{model.aaguid}</div>
       {!printing && <Button type="button" variant="tertiary" disabled={!onDecide} aria-label={`Remove ${model.name}`} onClick={() => { setModels(models.filter(item => item.aaguid !== model.aaguid)); setError(null) }}>Remove</Button>}

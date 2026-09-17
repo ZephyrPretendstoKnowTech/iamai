@@ -335,8 +335,29 @@ export type ConfigurationFinding = {
   value: string
   detail: string
   outcome: 'pass' | 'fail' | 'unknown'
-  items?: { label: string; value: string }[]
+  items?: ConfigurationFindingItem[]
   link?: { label: string; href: string }
+  /** Result of the existing mutation-safety authority, when a task projector needs it. */
+  taskSafe?: boolean
+}
+
+/** Optional presentation identity for one constituent finding. Consumers that
+ * do not consolidate actions continue to render label/value unchanged. */
+export type ConfigurationFindingItem = {
+  label: string
+  value: string
+  accountId?: string
+  /** Stable presentation subject. Labels are display only and never identity. */
+  subjectId?: string
+  subjectLabel?: string
+  /** Short label for a single observed fact within the subject. */
+  factLabel?: string
+  outcome?: 'pass' | 'fail' | 'unknown'
+  issueKeys?: string[]
+  /** Owning-step route for an issue resolved outside the current step. */
+  link?: { label: string; href: string }
+  /** Interactive readiness renders this fact inside its exact task action. */
+  actionCovered?: boolean
 }
 
 export type Step = {

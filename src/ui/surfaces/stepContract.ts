@@ -1155,7 +1155,9 @@ export type ReadinessTile = {
   value: string
   /** The tile's explanation, behind its disclosure; null where the value says it all. */
   note: string | null
-  items?: { label: string; value: string }[]
+  items?: import('../../roadmap/types.ts').ConfigurationFindingItem[]
+  /** Emergency-only short fact grouping; legacy consumers keep their old list. */
+  structuredItems?: boolean
   /**
    * A package gate a person confirms (content/implementation project.ts): the
    * prerequisites of the next transition its confirmation covers, and whether

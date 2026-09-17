@@ -44,20 +44,19 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
   return out
 }
 
-test('s-prereq-break-glass: Why names the tenant, Entra names the group and where keys go', () => {
-  // Editorial batch C: the register Why, and custody the authorized staff can reach without this tenant.
-  assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare dedicated accounts and recoverable credentials before relying on them to restore administrative access.')
+test('s-prereq-break-glass: preparation owns account identity, role and approved passkeys only', () => {
+  assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare dedicated accounts and approved passkeys that will work with the planned settings.')
   const cs = stepOf('s-prereq-break-glass')
   assert.equal(cs.partner, undefined)
   assert.deepEqual(cs.doneWhen, [
     "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
-    'Each account has a compatible approved hardware recovery method and confirmed credential custody in independent recovery locations.',
+    'Each selected account has an approved passkey compatible with the current and planned settings.',
   ])
-  const entra = blocksOf('s-prereq-break-glass')['entra.create-or-correct'].text
-  assert.match(entra, /^6\. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member\.$/m)
-  assert.match(entra, /^8\. Store credentials and recovery keys [^\n]*where authorized staff can retrieve them without this tenant \(for example, a safe or an independent vault\)\. Do not store them in IAMAI\.$/m)
-  assert.match(entra, /^10\. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access\. A passing configuration check does not prove the recovery path works\.$/m)
-  assert.doesNotMatch(entra, /IAMAI-resolved|outside IAMAI/)
+  const artifacts = bodiesOf(fixture('demo')).get('s-prereq-break-glass')!.artifacts
+  const entra = artifacts.find((artifact) => artifact.id === 'portal')!.text()
+  assert.doesNotMatch(entra, /exclusions group|controlled drill|confirmed credential custody/i)
+  assert.doesNotMatch(artifacts.find((artifact) => artifact.id === 'ps')!.text(), /exclusions group|group membership/i)
+  assert.doesNotMatch(artifacts.find((artifact) => artifact.id === 'ai')!.text(), /credential custody|controlled (?:sign-in|drill)|exclusions group/i)
 })
 
 test('s-prereq-exclusion-group: Why says what the group does, a match says what Save confirms, the note links its partner, and Entra has two paths', () => {
