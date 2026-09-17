@@ -10,19 +10,24 @@ import { validCompletionDate } from '../../roadmap/cleanupDone.ts'
 // It draws its sections with the step components and the one heading source
 // (task 011), so a Cleanup row reads as the same kind of thing as a step rather
 // than as a page that happens to sit under the same board.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { app } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import { DoneWhen, ReadinessSection, StepActionColumn, StepHead, StepSection } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, StepSection } from './StepSections.tsx'
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
 import { RecoveryTestControl } from './RecoveryTestControl.tsx'
+import { EmergencyReadinessActions, Implementation } from './ContentStep.tsx'
+import type { Artifact, Channel } from './stepBody.ts'
+import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationPowerShell, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { exportClipboard, unredactedFrom } from '../exportGuard.ts'
+import { consolidateEmergencyReadiness } from './emergencyReadiness.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 export type { CleanupEntry, NotAssessedNotes } from './cleanupExport.ts'
@@ -72,12 +77,27 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   const consolidationReady = allCandidatesCovered && (consolidationDecision === 'retain-both' ? retiredIds.length >= 2 && !!rationale.trim() && retiredIds.every(id => !!policyOptions.find(p => p.id === id)?.basis) : !!replacement?.basis && retiredIds.length > 0 && coverageVerified && !retiredIds.includes(replacementId))
   const [date, setDate] = useState(todayDate)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const [taskFocusRequest, setTaskFocusRequest] = useState(0)
+  const [implementationOpen, setImplementationOpen] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
   if (!entry) return null
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
   const doneWhen = entry.doneWhen.filter(whole)
   const policies: string[] = row.kind === 'notAssessed' ? row.lists.policies ?? [] : []
-  const recoveryTiles: ReadinessTile[] = (phase.recoveryFindings ?? []).map(f => ({ key: f.key, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  const verificationTasks = useMemo(() => emergencyVerificationTasksOf(phase), [phase])
+  const recoveryTiles: ReadinessTile[] = (phase.recoveryFindings ?? []).map(f => ({ key: f.key, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn', structuredItems: true }))
+  const recoveryReadiness = consolidateEmergencyReadiness({ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery verification recorded' : 'Complete the configuration findings, then verify recovery for each account.' } }, verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {})), !onDone)
+  const openVerificationTask = (id: string): void => { setImplementationChannel('portal'); setTaskId(id); setTaskFocusRequest(value => value + 1) }
+  const verificationArtifacts = useMemo<Artifact[]>(() => [
+    { id: 'portal', form: 'markdown', lines: [], text: () => '', note: null },
+    { id: 'ps', form: 'code', lines: [], text: () => emergencyVerificationPowerShell(phase), note: 'Read-only Microsoft Graph sign-in inspection.' },
+    { id: 'json', form: 'code', lines: [], text: () => emergencyVerificationJson(phase), note: 'Evidence and context only; not a Graph write payload.' },
+    { id: 'ai', form: 'markdown', lines: [], text: () => emergencyVerificationAiInfo(phase), note: null },
+  ], [phase])
+  const copyArtifact = (id: string, value: string): void => { void exportClipboard(value, unredactedFrom('implementation-artifact')).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
   return (
     // The same frame the Plan draws for a step (task 034): attached under the row
     // that opened it, its head above the body. A Cleanup row is not a policy,
@@ -102,13 +122,13 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       </StepSection>
-      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection readiness={{ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery tests recorded' : 'Complete the configuration findings, then verify recovery for each account.' } }} lead={null} showClosedCount={false} printing={!onDone} />}
+      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} extra={tile => <EmergencyReadinessActions tile={tile} projected={verificationTasks} printing={!onDone} onTask={openVerificationTask} onSelectAccounts={() => undefined} stepId="cleanup-drill" />} />}
       {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
           no step draws What to do, and the not-assessed notes below stay in this
           one column under it rather than in an action column. */}
-      <StepSection heading={CONTRACT.implementation.heading}>
+      {row.kind === 'drill' ? <Implementation artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} taskFocusRequest={taskFocusRequest} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
         <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
-      </StepSection>
+      </StepSection>}
       {onNote && policies.length > 0 && (
         <div className="decision">
           <div className="dlabel">{A.notAssessedLabel}</div>
@@ -122,7 +142,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
         </div>
       )}
       <DoneWhen heading={HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
-      {row.kind === 'drill' && <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? new Date(phase.snapshotObservedAt).toLocaleString() : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}>{line}</li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>}
+      {row.kind === 'drill' && <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? new Date(phase.snapshotObservedAt).toLocaleString() : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>}
       {row.record && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>}
       {onDone && row.kind !== 'hardening' && (
         <div className="decision">

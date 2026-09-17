@@ -37,6 +37,16 @@ test('passkey topics keep each approved AAGUID in one named row and never approv
   assert.notEqual(findings.find(t => t.key === 'recovery-methods')?.outcome, 'pass')
 })
 
+test('passkey topics use separate current and planned facts without a bare combined Disabled summary', () => {
+  const f = tenant()
+  const findings = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
+  const protection = findings.find(item => item.key === 'protection')!
+  const models = findings.find(item => item.key === 'models')!
+  assert.notEqual(protection.value, 'Disabled')
+  assert.ok(protection.items?.some(item => item.factLabel === 'Current attestation'))
+  assert.ok(models.items?.every(item => item.subjectLabel !== item.factLabel))
+})
+
 test('selected accounts drive method findings; unread methods do not become missing keys or passes', () => {
   const f = tenant()
   const [a, b] = f.mapping.breakGlassUserIds
@@ -46,7 +56,7 @@ test('selected accounts drive method findings; unread methods do not become miss
   const finding = emergencyMethodFinding(f.snapshot, f.mapping, f.groups)
   assert.equal(finding.outcome, 'unknown')
   assert.equal(finding.items?.length, 1)
-  assert.equal(finding.items?.[0].label, `${context(f).nameOf(b)} — ${f.snapshot.users.find(user => user.id === b)!.userPrincipalName}`)
+  assert.equal(finding.items?.[0].subjectLabel, f.snapshot.users.find(user => user.id === b)!.userPrincipalName)
   assert.doesNotMatch(JSON.stringify(finding.items), new RegExp(context(f).nameOf(a)))
   assert.match(finding.items![0].value, /not read/)
   f.mapping.breakGlassUserIds = []
@@ -58,7 +68,7 @@ test('partial passkey settings remain explicit inside Availability even when oth
   const policy = f.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, any>[] }
   const method = policy.authenticationMethodConfigurations.find(p => p.id === 'Fido2')!
   for (const target of method.includeTargets) delete target.allowedPasskeyProfiles
-  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'recovery-ready')!
+  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'availability')!
   assert.equal(availability.outcome, 'unknown')
   assert.match(JSON.stringify(availability.items), /allowedPasskeyProfiles/)
 })
@@ -72,11 +82,26 @@ test('a successful generic sign-in cannot satisfy observed passkey evidence or a
     [other]: { signInCount: 1, lastSignIn: f.snapshot.asOf, lastMfaSuccess: null, proofs: [{ at: f.snapshot.asOf, cls: 'passkey', os: null, method: 'FIDO2 security key' }], recoveryCandidates: [] },
   }
   const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Successful Sign-ins', 'Recovery Confirmation', 'Verification Status'])
-  assert.match(JSON.stringify(findings.find(t => t.key === 'recovery-configuration')?.items), /Account Preparation.*Policy Exclusions.*Emergency Recovery Methods/)
+  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence', 'Verification Results'])
+  const identity = findings.find(t => t.key === 'recovery-configuration')?.items?.find(item => item.factLabel === 'Account identity')
+  assert.equal(identity?.value, 'Verified')
+  assert.equal(identity?.link, undefined)
   assert.equal(findings.find(t => t.key === 'recovery-sign-ins')?.outcome, 'unknown')
-  assert.match(findings.find(t => t.key === 'recovery-sign-ins')!.items![1].value, /No qualifying interactive administrative passkey sign-in/)
+  assert.ok(findings.find(t => t.key === 'recovery-sign-ins')!.items!.filter(item => item.factLabel === 'Matching event').every(item => /No qualifying event observed/.test(item.value)))
   assert.notEqual(findings.find(t => t.key === 'recovery-confirmation')?.outcome, 'pass')
+})
+
+test('final configuration sends credential work to Step 1, policy exclusions to Step 2 and profile settings to Step 3', () => {
+  const f = tenant()
+  const first = f.mapping.breakGlassUserIds[0]
+  f.snapshot.authMethods[first] = []
+  const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
+  const configuration = findings.find(item => item.key === 'recovery-configuration')!
+  const missing = configuration.items?.find(item => item.accountId === first && item.factLabel === 'Registered passkey')
+  assert.equal(missing?.link?.href, '#/plan/s-prereq-break-glass')
+  assert.ok(configuration.items?.filter(item => item.factLabel?.includes('policy')).every(item => item.link?.href === '#/plan/s-prereq-exclusion-group'))
+  assert.ok(configuration.items?.filter(item => item.factLabel === 'Applicable profile').every(item => item.link?.href === '#/plan/s-prereq-passkey-settings'))
+  assert.equal(configuration.items?.find(item => item.factLabel === 'Account identity')?.link, undefined)
 })
 
 test('a failed read asks for evidence, and a later failure or relevant key change reopens a saved drill', () => {
@@ -89,20 +114,20 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   const record: CleanupCheckpoint = { cleanup: 'drill', date, at: now, outcome: 'passed', purpose: 'final', accountIds: f.mapping.breakGlassUserIds, accountBasis, recoveryEvidence: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1, purpose: 'final', tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })) }
   const read = (records: CleanupCheckpoint[]) => journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, records, now)
   assert.ok(read([preparation, record]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => i.value.startsWith('Passed')))
-  assert.ok(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => /failed/.test(i.value)))
+  assert.ok(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => /Failed/.test(i.value)))
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
   assert.doesNotMatch(read([preparation, record]).find(t => t.key === 'recovery-confirmation')!.items![0].value, /^Passed/)
   f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'error', reason: 'Read denied' }
   f.snapshot.signInEvidence = {}
-  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].value, /could not be fully read: Read denied/)
+  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].value, /Could not verify: Read denied/)
 })
 
-test('emergency-account finding rows identify both display name and UPN', () => {
+test('emergency-account finding rows use UPN identity without repeating display names', () => {
   const f = tenant()
-  const expected = f.mapping.breakGlassUserIds.map(id => { const user = f.snapshot.users.find(row => row.id === id)!; return `${user.displayName} — ${user.userPrincipalName}` })
-  assert.deepEqual(emergencyMethodFinding(f.snapshot, f.mapping, f.groups).items?.map(item => item.label), expected)
+  const expected = f.mapping.breakGlassUserIds.map(id => f.snapshot.users.find(row => row.id === id)!.userPrincipalName)
+  assert.deepEqual([...new Set(emergencyMethodFinding(f.snapshot, f.mapping, f.groups).items?.map(item => item.subjectLabel))], expected)
   const recovery = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  assert.deepEqual(recovery.find(item => item.key === 'recovery-sign-ins')?.items?.map(item => item.label), expected)
+  assert.deepEqual([...new Set(recovery.find(item => item.key === 'recovery-sign-ins')?.items?.map(item => item.subjectLabel))], expected)
 })
 
 test('all three setup steps offer complete copyable Entra instructions while unresolved', () => {
@@ -115,26 +140,26 @@ test('all three setup steps offer complete copyable Entra instructions while unr
     const portal = body.artifacts.find(a => a.id === 'portal')
     assert.ok(portal, id + ' has no Entra channel')
     const text = portal.text()
-    assert.match(text, /Entra/)
-    assert.match(text, /scan again|Scan again/)
-    assert.match(text, /#\/plan\/cleanup-drill/)
+    assert.match(text, /scan again|Scan again|Scan to update the plan/)
+    if (id !== 's-prereq-break-glass') assert.match(text, /#\/plan\/cleanup-drill/)
     assert.doesNotMatch(text, /\{[a-z]+\.[a-z]+\}/i)
   }
   const accounts = run.steps.find(s => s.id === 's-prereq-break-glass')!
   const text = stepBodyOf(accounts, ctx).artifacts.find(a => a.id === 'portal')!.text()
-  assert.ok(text.indexOf('approved recovery choices') < text.indexOf('Add sign-in method'))
+  assert.match(text, /Security info.*https:\/\/mysignins\.microsoft\.com\/security-info/)
+  assert.doesNotMatch(text, /test the prepared|pre-change|#\/plan\/cleanup-drill/i)
   const group = run.steps.find(s => s.id === 's-prereq-exclusion-group')!
   const groupText = stepBodyOf(group, ctx).artifacts.find(a => a.id === 'portal')!.text()
   const numbers = [...groupText.matchAll(/^(\d+)\./gm)].map(m => Number(m[1]))
   assert.deepEqual(numbers, numbers.map((_, i) => i + 1))
 })
 
-test('independent prerequisites and unsaved choices remain visible within four topics', () => {
+test('independent prerequisites and unsaved choices remain visible within the three group topics', () => {
   const f = tenant()
   const step = runFixture(f).steps.find(s => s.id === 's-prereq-exclusion-group')!
   step.unsavedInputs = ['Exclusions group']
   const ready = readinessOf(step, stepContract(step, context(f)), [{ kind: 'step', id: 's-prereq-break-glass', abnormal: false, label: 'Prerequisite', title: 'Emergency Access Accounts' }])
-  assert.equal(ready.tiles.length + ready.satisfied.length, 4)
+  assert.equal(ready.tiles.length + ready.satisfied.length, 3)
   assert.match(JSON.stringify(ready.tiles), /Emergency Access Accounts/)
   assert.match(JSON.stringify(ready.tiles), /Exclusions group/i)
 })
@@ -142,9 +167,10 @@ test('independent prerequisites and unsaved choices remain visible within four t
 test('policy exclusion rows state each policy mode without repeating the shared correction', () => {
   const f = tenant()
   const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]?.resolvedId as string
-  const policies = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId).find(t => t.key === 'group-policies')!
+  const policies = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups).find(t => t.key === 'group-policies')!
   assert.ok(policies.items?.length)
-  assert.ok(policies.items?.every(item => /^(On|Report-only|Mode not read)( · Group already excluded)?$/.test(item.value)))
+  assert.ok(policies.items?.filter(item => item.factLabel === 'Mode').every(item => /^(On|Report-only|Could not verify)$/.test(item.value)))
+  assert.ok(policies.items?.filter(item => item.factLabel === 'Group exclusion').every(item => /^(Present|Missing)$/.test(item.value)))
   assert.doesNotMatch(JSON.stringify(policies.items), /Add the group exclusion/)
 })
 

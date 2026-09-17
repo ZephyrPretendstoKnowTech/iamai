@@ -67,7 +67,7 @@ test('Copy stays available for every substantive resource without preview notes'
   assert.ok(group.artifacts.every(a => a.unavailable !== true && a.text().trim().length > 0))
   assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true/)
   assert.equal(CONTENT_STEP.includes('className="impl-planning"'), false)
-  assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2)
+  assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 3, 'the first-step channel toolbar adds one conditional inline placement')
 })
 
 test('machine resources follow supported step capability, including useful prerequisite inspection', () => {
@@ -101,8 +101,15 @@ test('P0-5: the viewer’s tabs and Copy are in its sticky head, and no dialog b
   const dialog = SECTIONS.slice(SECTIONS.indexOf('export function StepDialog('), SECTIONS.indexOf('export function PolicyMembers'))
   assert.match(dialog, /<header className="dialog-head">[\s\S]*<div className="dialog-head-actions">\s*\{toolbar\}\s*<button type="button" className="icon-btn" aria-label=\{closeLabel\} title=\{closeLabel\} onClick=\{onClose\}>\s*<Icon name="close" size=\{14\} \/>\s*<\/button>/)
   assert.doesNotMatch(dialog, /<Button /, 'a dialog control still carries text')
-  const viewer = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<StepDialog\n            open={open}'), CONTENT_STEP.indexOf('</StepDialog>', CONTENT_STEP.indexOf('<StepDialog\n            open={open}')))
-  assert.match(viewer, /toolbar=\{\s*<>\s*<TabList[^]*?\{copyControl\}\s*<\/>\s*\}/, 'the tabs and Copy are not the head’s toolbar')
+  const viewerStart = CONTENT_STEP.search(/<StepDialog\s+open=\{open\}/)
+  const viewer = CONTENT_STEP.slice(viewerStart, CONTENT_STEP.indexOf('</StepDialog>', viewerStart))
+  assert.ok(
+    viewerStart >= 0 &&
+      viewer.includes('<TabList') &&
+      viewer.indexOf('<TabList') < viewer.indexOf('{taskControls}') &&
+      viewer.indexOf('{taskControls}') < viewer.indexOf('{copyControl}'),
+    'the tabs, applicable task controls and Copy are not the head’s toolbar',
+  )
   assert.doesNotMatch(CONTENT_STEP, /dialog-toolbar/)
   assert.match(CSS, /\.step-dialog \.dialog-head \{\s*position: sticky;\s*top: 0;\s*z-index: 1;/)
   assert.equal(CONTRACT.implementation.close, 'Minimize')

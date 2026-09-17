@@ -424,6 +424,11 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // Authentication-method configuration already exists in Entra, even when
     // disabled. This action changes its settings rather than creating an object.
     if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // A saved exclusions-group choice is an existing object to inspect or
+    // correct. Keep the create label only while no group has been saved.
+    const savedExclusionsGroup = step.id === EXCLUSION_GROUP_STEP_ID
+      && step.configurationFindings?.find(finding => finding.key === 'group-choice')?.items?.some(item => item.factLabel === 'Selection' && item.value === 'Saved')
+    if (reading?.lane === 'Ready' && savedExclusionsGroup && reading.substatus === 'Create') reading.substatus = 'Correct'
     // Account checks ask for a review, not creation of a policy or object.
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))

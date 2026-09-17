@@ -58,19 +58,19 @@ test('two confirmed accounts, one hardened and one not: deferral releases rollou
     { id: b, minimum: 0, hardening: 1, assessed: true },
   ], JSON.stringify(step.checks?.items))
   assert.equal(step.emergency?.minimum, 0)
-  assert.equal(step.emergency?.hardening, 2, 'account-owned set findings and per-account findings are both counted')
+  assert.equal(step.emergency?.hardening, 1, 'removed custody ownership must not add account-step hardening')
   // Undeferred hardening holds the rollout until someone acknowledges it; a deferral releases it.
   assert.ok(waitingOnEmergency(r) > 0)
   assert.equal(c.hardening?.canDefer, true)
   const d = run(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: step.emergency!.basis } })
   assert.notEqual(d.step.status, 'done', 'deferral must not hide unfinished account preparation')
   assert.equal(waitingOnEmergency(d.r), 0, 'deferred hardening still blocked the rollout')
-  // Four topics retain the account-specific findings without one tile per account.
+  // The two owned topics retain the account-specific findings without one tile per account.
   const rd = readinessOf(step, c)
-  assert.equal(rd.tiles.length + rd.satisfied.length, 4)
+  assert.equal(rd.tiles.length + rd.satisfied.length, 2)
   const identity = rd.tiles.find(t => t.key === 'configuration:account-setup')!
-  assert.ok(identity.items?.some(i => i.label === ctx.nameOf(b)))
-  assert.equal(identity.items?.some(i => i.label === ctx.nameOf(a)), false, 'the hardened account does not borrow another account’s finding')
+  assert.ok(identity.items?.some(i => i.subjectId === b))
+  assert.equal(identity.items?.some(i => i.subjectId === a && i.outcome !== 'pass'), false, 'the hardened account does not borrow another account’s finding')
   // The package binds the whole set, and the one account whose own checks are outstanding.
   const bindings = packageBindings(step, ctx, c)
   assert.equal(bindings['emergency.target.userId'], b)
@@ -95,13 +95,13 @@ test('a minimum safety failure on one account holds the rollout, stays that acco
   assert.ok(waitingOnEmergency(d.r) > 0, 'a deferral released a missing way back in')
   // Only the failing account's slot is unresolved, and its minimum blockers are its own lines, without its name again.
   const setup = readinessOf(step, c).tiles.find(t => t.key === 'configuration:account-setup')!
-  assert.deepEqual(setup.items?.map(i => i.label), [ctx.nameOf(b)])
-  assert.match(setup.items![0].value, /Global Administrator/i)
+  const blockers = setup.items?.filter(item => item.subjectId === b && item.outcome !== 'pass') ?? []
+  assert.ok(blockers.some(item => item.factLabel === 'Global Administrator'))
   const bSlot = c.emergencySlots.find((s) => s.accountId === b)!
   assert.ok(bSlot.minimum.length > 0 && bSlot.minimum.every((l) => !l.startsWith(`${ctx.nameOf(b)}: `)), JSON.stringify(bSlot))
 })
 
-test('with no account selected, Readiness asks for a choice within the four topics without inventing accounts', () => {
+test('with no account selected, Readiness asks for a choice within the two owned topics without inventing accounts', () => {
   const { f } = tenant((t) => {
     t.mapping.breakGlassUserIds = []
   })
@@ -109,7 +109,7 @@ test('with no account selected, Readiness asks for a choice within the four topi
   assert.ok(step.emergency, 'the premise: the emergency step carries its standing with nobody selected')
   const r = readinessOf(step, c)
   assert.equal(r.tiles.find(t => t.key === 'configuration:recovery-methods')?.value, 'Select emergency accounts')
-  assert.equal(r.tiles.length + r.satisfied.length, 4)
+  assert.equal(r.tiles.length + r.satisfied.length, 2)
   assert.equal(r.tiles.some(t => t.key.startsWith('slot:')), false)
   assert.equal(r.tiles.some((t) => t.key.startsWith('check:') || t.key === 'emergency' || t.key === 'resilience'), false, r.tiles.map((t) => t.key).join(', '))
 })

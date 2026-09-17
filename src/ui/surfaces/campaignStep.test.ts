@@ -46,9 +46,10 @@ test('P0-9: the campaign offers Entra (the registration campaign setup) and AI I
   const ai = b.artifacts.find((a) => a.id === 'ai')!.text()
   for (const line of ['registered methods', 'who needs help', 'tested workflow', 'registration-campaign']) assert.ok(ai.includes(line), `AI Info is missing: ${line}`)
   assert.doesNotMatch(entra, /Target: All users|State: Enabled/, 'preparation must not invent an approved campaign target')
-  // S-MC-3: an in-app link in authored text renders as a link, and only an in-app one.
-  assert.match(SECTIONS, /const APP_LINK = \/\^\\\[\(\[\^\\\]\]\+\)\\\]\\\(\(#\\\/\[\^\)\\s\]\*\)\\\)\$\//)
-  assert.match(SECTIONS, /<a key=\{i\} className="inline-link" href=\{link\[2\]\}>/)
+  // Authored links accept in-app routes and fixed HTTPS destinations; other schemes remain text.
+  assert.match(SECTIONS, /const AUTHORED_LINK = \/\^\\\[/)
+  assert.match(SECTIONS, /\(\?:#\\\/\|https:/)
+  assert.match(SECTIONS, /target=\{external \? '_blank' : undefined\}/)
 })
 
 /** Every other step complete, every condition not applicable: the campaign's reading depends on itself. */

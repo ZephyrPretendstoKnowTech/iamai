@@ -347,6 +347,23 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
  * `extra` is evidence a tile carries beyond its sentence — the hardening's own
  * recommendations — handed in by the step, never read here.
  */
+function StructuredFindingItems({ items }: { items: NonNullable<ReadinessTile['items']> }) {
+  const groups = new Map<string, { label: string; rows: typeof items }>()
+  for (const item of items.filter(row => row.actionCovered !== true)) {
+    const key = item.subjectId ?? item.accountId ?? item.subjectLabel ?? item.label
+    const group = groups.get(key) ?? { label: item.subjectLabel ?? (item.accountId ? item.label : ''), rows: [] }
+    group.rows.push(item)
+    groups.set(key, group)
+  }
+  return <div className="emergency-finding-groups">{[...groups].map(([key, group]) => <section key={key} className="emergency-finding-group">
+    {group.label && <h5>{group.label}</h5>}
+    <dl>{group.rows.map((item, index) => <Fragment key={`${item.issueKeys?.join(':') ?? item.label}:${index}`}>
+      <div className="emergency-fact"><dt>{item.factLabel ?? item.label}</dt><dd>{item.value}</dd></div>
+      {item.link && <div className="emergency-fact-action"><a href={item.link.href}>{item.link.label}</a></div>}
+    </Fragment>)}</dl>
+  </section>)}</div>
+}
+
 function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMappings }: {
   tile: ReadinessTile
   open: boolean
@@ -388,7 +405,7 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
       {more && (
         <div id={detailId} className="tile-detail" hidden={!shown}>
           {t.note && <p>{t.note}</p>}
-          {!!t.items?.length && <ul className="sections">{t.items.map((item, index) => <li key={index}>{item.label && <strong>{item.label} — </strong>}{item.value}</li>)}</ul>}
+          {!!t.items?.length && (t.structuredItems ? <StructuredFindingItems items={t.items} /> : <ul className="sections">{t.items.map((item, index) => <li key={index}>{item.label && <strong>{item.label} — </strong>}{item.value}</li>)}</ul>)}
           {extra}
           {link && <p className="readiness-link">{link}</p>}
         </div>
@@ -402,19 +419,20 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
   )
 }
 
-/** An in-app link in authored text: `[words](#/route)`, never an external address (S-MC-3). */
-const APP_LINK = /^\[([^\]]+)\]\((#\/[^)\s]*)\)$/
+/** A route or fixed HTTPS source link in authored text: `[words](destination)`. */
+const AUTHORED_LINK = /^\[([^\]]+)\]\(((?:#\/|https:\/\/)[^)\s]*)\)$/
 
-/** `**bold**`, `` `code` `` and an in-app `[link](#/route)` inside one line of authored text. Nothing else is interpreted, and no HTML ever is. */
+/** `**bold**`, `` `code` `` and a safe authored link inside one line. Nothing else is interpreted, and no HTML ever is. */
 function inlineText(line: string): ReactNode[] {
-  return line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(#\/[^)\s]*\))/g).map((part, i) => {
-    const link = APP_LINK.exec(part)
+  return line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\((?:#\/|https:\/\/)[^)\s]*\))/g).map((part, i) => {
+    const link = AUTHORED_LINK.exec(part)
+    const external = link?.[2].startsWith('https://') === true
     return part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
       <strong key={i}>{part.slice(2, -2)}</strong>
     ) : part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
       <code key={i}>{part.slice(1, -1)}</code>
     ) : link ? (
-      <a key={i} className="inline-link" href={link[2]}>
+      <a key={i} className="inline-link" href={link[2]} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
         {link[1]}
       </a>
     ) : (

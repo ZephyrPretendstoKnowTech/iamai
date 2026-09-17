@@ -2244,17 +2244,17 @@
       },
       "why": "Verify that each selected account can recover administrative access using its approved credentials, with the account, passkey and exclusion settings now in place.",
       "whatToDo": [
-        "Review Account Preparation, Policy Exclusions and Emergency Recovery Methods in Readiness. Complete the listed corrections and scan again before recording a passing final test.",
-        "Choose Record configuration and begin test before signing in. This saves the current account, credential, role, passkey and exclusion basis; an event that predates this checkpoint cannot certify the final configuration.",
+        "Review Configuration, Sign-in evidence and Verification results in Readiness. Complete the listed corrections in their owning step and scan again before recording a passing final verification.",
+        "Choose Start verification before signing in. This saves the current account, credential, role, passkey and exclusion basis; an event that predates this checkpoint cannot certify the final configuration.",
         "For each selected account, review Observed Passkey Sign-ins after the checkpoint. A successful sign-in can support the drill only when it belongs to the intended recovery test and the relevant configuration has not changed. A generic last sign-in or previously satisfied MFA claim is insufficient.",
         "If no qualifying test exists, retrieve the approved recovery key and credentials through the authorized custody process. Keep a working administrator session available and use a separate fresh session in your approved recovery environment.",
-        "Sign in as the selected emergency account using its intended hardware recovery key. Confirm the account identity, then perform a non-destructive administrative check, such as opening Conditional Access and reading a policy. Sign out when finished.",
+        "Sign in as the selected emergency account using its approved prepared passkey. Confirm the account identity, then perform a non-destructive administrative check, such as opening Conditional Access and reading a policy. Sign out when finished.",
         "In Entra ID → Monitoring & health → Sign-in logs, locate that account’s successful event. Match the time, target resource and authentication details to your test; verify that the intended passkey was used. Review the relevant policy exclusions against the current group membership. An overall Conditional Access status alone does not prove the exclusion.",
         "Scan again to refresh the observed sign-in findings; newly written log details may take time to appear. A scan cannot establish physical key custody or the administrative task, so verify those through the drill itself. Check sign-in alert delivery in the separate monitoring step.",
-        "Select only the accounts tested with the same outcome on the chosen date and use Save Test Result. Record failures too, then correct and repeat the affected test. Repeat at least every 90 days and after a relevant recovery configuration change."
+        "For a passing result, select only the account and exact qualifying event, complete both confirmations, choose Passed and select Save verification. To retain a failure, choose Failed, enter the attempt date and select Record failed attempt. Repeat at least every 90 days and after a relevant recovery configuration change."
       ],
       "doneWhen": [
-        "Each selected account has a recorded passing drill within the last 90 days that matches its current readable recovery configuration; a later failed result reopens that account’s test."
+        "Each selected account has a recorded passing verification within the last 90 days that matches its current readable recovery configuration; a later failed result reopens that account’s verification."
       ]
     }
   },
@@ -2264,7 +2264,7 @@
       "kind": "blocker",
       "title": "Prepare Emergency Access Accounts",
       "changeLine": null,
-      "why": "Prepare dedicated accounts and recoverable credentials before relying on them to restore administrative access.",
+      "why": "Prepare dedicated accounts and approved passkeys that will work with the planned settings.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
@@ -2275,19 +2275,19 @@
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Review the suggested accounts, select every account dedicated to emergency access, and save. At least two are needed. Review the approved recovery-key models in Configure Passkey Authentication before registering a method.",
+        "help": "Select the accounts dedicated to emergency access, then save.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
       },
       "whatToDo": {
-        "lead": "Choose the emergency access accounts below and save, then clear what Readiness lists.",
+        "lead": "Select the accounts dedicated to emergency access, then save.",
         "create": [
-          "Entra admin center → Entra ID → Users → New user. Name it so the purpose is obvious ({exampleName}).",
-          "Sign-in address on the tenant's own onmicrosoft.com domain; cloud-only; no licence; no department, title or manager.",
-          "Roles → assign Global Administrator, active and permanent.",
-          "Set a passphrase of at least 20 random characters. Store it offline in two places that different people can reach without signing in to this tenant, for example a sealed envelope in a safe and a second copy with the business owner. Never in a mailbox, a chat, or a password manager that needs this tenant to sign in.",
-          "Register a hardware security key (FIDO2) for each account and keep it with the passphrase. Not a passkey in Authenticator: that lives on a person's phone. Do not share a key between accounts."
+          "Entra admin center → Entra ID → Users → New user → Create new user.",
+          "Enter a unique username, such as emergency-access-primary or emergency-access-secondary, or choose another account name. Select the observed initial domain from the domain list.",
+          "Keep the account cloud-only and enabled, then assign Global Administrator through the applicable direct-assignment or PIM route.",
+          "Store the initial password securely where authorized staff can retrieve it without signing in to this tenant.",
+          "Register an approved passkey, scan again, select the new account and Save."
         ],
         "checkFixes": {
           "second-account": "Create a second account: one account is a single point of failure.",
@@ -2298,13 +2298,13 @@
           "enabled": "{name}: enable the account.",
           "excluded-everywhere": "{name} is inside {list:policies}: add the exclusions group to each policy's Users → Exclude → Groups in Configure Emergency Exclusions. Do not exclude the account itself.",
           "no-dynamic-group": "{name} is a member of the dynamic group {group}, which a policy targets; remove it or change the rule.",
-          "mfa-method": "{name}: register a hardware security key (FIDO2) and keep it with the passphrase; not a passkey in Authenticator, which lives on a person's phone.",
-          "shared-authenticator": "{name} shares the Authenticator device {device} with {otherAccount}; move it to its own security key or passkey.",
+          "mfa-method": "{name}: register a passkey from the approved model list.",
+          "shared-authenticator": "{name} shares the Authenticator device {device} with {otherAccount}; register a separate approved recovery method.",
           "not-a-person": "{name} looks like a person's account (it has {attribute}); use a dedicated account instead.",
           "report-only-excluded": "The report-only policies {list:policies} do not exclude the exclusions group either; same fix, in Configure Emergency Exclusions.",
           "managed-policies-excluded": "The Microsoft-managed policies {list:policies} do not exclude the exclusions group; Microsoft turns these on itself. Same fix, in Configure Emergency Exclusions.",
-          "phishing-resistant": "{name}: register a hardware security key; text and call codes are taken by a swapped SIM.",
-          "method-diversity": "Both accounts depend on {method} alone; give one of them a different method type.",
+          "phishing-resistant": "{name}: register an approved passkey.",
+          "method-diversity": "Both accounts depend on {method} alone; prepare a separate approved recovery method.",
           "auth-methods-migration": "Finish migrating to the authentication methods policy (the per-user MFA setting can block a recovery sign-in): Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration complete.",
           "no-licence-no-mailbox": "{name} holds {licence}; remove it. An emergency account needs no mailbox.",
           "recent-sign-in": "{name} signed in {ago}, not a recorded drill: confirm who signed in and why.",
@@ -2317,7 +2317,7 @@
       "dates": null,
       "doneWhen": [
         "The selected dedicated accounts are enabled, cloud-only identities on the tenant's onmicrosoft.com domain with permanent active Global Administrator assignments.",
-        "Each account has a compatible approved hardware recovery method and confirmed credential custody in independent recovery locations."
+        "Each selected account has an approved passkey compatible with the current and planned settings."
       ],
       "ifWrong": null,
       "lockedOut": {
@@ -2394,7 +2394,7 @@
           "Breakglass · breakglass@contoso.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
         ]
       },
-      "aiFocus": "Explain configuration evidence separately from credential custody, monitoring and the last successful drill. Keep minimum safety and deferred hardening distinct."
+      "aiFocus": "Explain the selected accounts' identity, permanent role and approved passkey evidence. Lead with the next account-specific preparation action and keep unknown scan evidence explicit."
     },
     {
       "id": "s-prereq-exclusion-group",
@@ -2412,7 +2412,7 @@
         "members": "{list:members}",
         "unverified": "IAMAI could not check {list:unverifiedGroup} in this scan, so no policy here names it yet. Your choice is kept and stands again the moment a scan can read the group.",
         "missing": "{list:missingGroup} is not in {tenant} any more. Your choice is kept: IAMAI has not chosen another group and has not created one.",
-        "suggested": "IAMAI suggests {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. Nothing uses it until you choose it.",
+        "suggested": "Suggested: {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. This is not saved intent; nothing uses it until you choose it and select Save.",
         "several": "More than one group in {tenant} could be this one: {list:candidateGroups}. IAMAI does not choose between them.",
         "cannotTell": "IAMAI cannot say whether a group in {tenant} already does this: {list:detectionGap}. Nothing has been chosen and nothing has been created.",
         "none": "No exclusions group recognised in {tenant}."
@@ -2447,9 +2447,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The exclusions group is confirmed and contains only the selected emergency access accounts.",
-        "The next scan verifies assigned membership, the group settings and the required policy exclusions.",
-        "Each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan."
+        "The scan verifies the selected group's configuration, membership and required policy exclusions."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3023,7 +3021,7 @@
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
-      "why": "Choose which passkeys are approved before preparing the emergency accounts. Apply the intended settings after confirming that a working recovery method will remain available.",
+      "why": "Keep approved passkey registration available, protect existing working methods, and apply the intended passkey settings without guessing at unread configuration.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
@@ -3045,8 +3043,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.",
-        "Verify account-specific key compatibility and recovery in Prepare Emergency Access Accounts."
+        "The scan confirms that the applicable passkey settings match the intended configuration."
       ],
       "ifWrong": null,
       "comms": null,
