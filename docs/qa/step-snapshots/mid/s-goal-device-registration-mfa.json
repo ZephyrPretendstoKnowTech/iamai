@@ -18,10 +18,6 @@
       "state": "not measured"
     },
     {
-      "label": "Before enforcement",
-      "state": "Prepare Emergency Access Accounts"
-    },
-    {
       "label": "Enforcement checks",
       "state": "Review required"
     },

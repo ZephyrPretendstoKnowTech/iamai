@@ -12,7 +12,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Existing passkeys affected",
+      "state": "Could not verify"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",

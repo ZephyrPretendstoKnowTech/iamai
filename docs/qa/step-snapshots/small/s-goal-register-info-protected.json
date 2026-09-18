@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Create",
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": "when MFA readiness reaches 90% (now 68%)",
   "fact": null,
   "badge": "Ready · Create",
   "bar": "Ready now",
@@ -15,11 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "not measured"
-    },
-    {
-      "label": "Before enforcement",
-      "state": "Prepare Emergency Access Accounts"
+      "state": "68% MFA-ready"
     }
   ],
   "channels": [

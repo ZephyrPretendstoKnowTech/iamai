@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Review",
-  "reason": "Attestation: Disabled",
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": null,
   "fact": null,
-  "badge": "Ready · Review",
-  "bar": "Complete the review below",
-  "rail": "Review now",
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
@@ -14,16 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Storage and Attestation",
-      "state": "Disabled"
+      "label": "Passkey Registration",
+      "state": "Review required"
     },
     {
-      "label": "Approved Authenticators",
-      "state": "Unrestricted"
+      "label": "Existing passkeys affected",
+      "state": "Could not verify"
     },
     {
-      "label": "Emergency Recovery Methods",
-      "state": "Compatibility not established"
+      "label": "Passkey Protections",
+      "state": "Needs attention"
     }
   ],
   "channels": [
@@ -32,5 +32,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Review now"
+  "when": "Aug 31, 2026"
 }

@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "when admin readiness reaches 100% (now 33%)",
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "Observing",
@@ -18,8 +18,8 @@
       "state": "33% of admins phishing-resistant"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Prepare Emergency Access Accounts"
+      "label": "Prerequisites",
+      "state": "when 1 safe way in for the signed-in account exist (now 0)"
     }
   ],
   "channels": [
@@ -28,5 +28,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "After prerequisites"
+  "when": "Not scheduled"
 }

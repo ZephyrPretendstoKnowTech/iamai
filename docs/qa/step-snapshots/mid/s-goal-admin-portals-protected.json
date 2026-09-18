@@ -16,10 +16,6 @@
     {
       "label": "Threshold",
       "state": "not measured"
-    },
-    {
-      "label": "Before enforcement",
-      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [
