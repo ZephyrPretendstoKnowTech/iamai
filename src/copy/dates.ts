@@ -29,6 +29,11 @@ function formatter(key: string, locale: string | undefined, options: Intl.DateTi
   return made
 }
 
+/** The display time zone when the plan names none: the browser's own. */
+export function displayZone(tz: string | null | undefined): string {
+  return tz || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+}
+
 export function setDisplayTimeZone(tz: string | null): void {
   const next = tz ?? undefined
   if (next === displayTimeZone) return

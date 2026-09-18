@@ -4,6 +4,7 @@
 // worker keeps 168 UTC buckets on the snapshot; this converts and reads them.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { RHYTHM } from '../copy/timing.ts'
+import { displayZone } from '../copy/dates.ts'
 
 export type WeekdayHour = { weekday: number; hour: number }
 
@@ -86,7 +87,7 @@ export function localiseBuckets(utc: number[], timeZone: string, at: string): nu
 }
 
 export function tenantRhythm(snapshot: TenantSnapshot, timeZone: string | null): TenantRhythm {
-  const tz = timeZone ?? 'UTC'
+  const tz = displayZone(timeZone)
   const utc = snapshot.evidenceAggregates?.byWeekdayHour ?? null
   const covered = snapshot.sources.signInEvidence?.coveredWindow ?? null
   const coveredDays = covered ? (Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000 : 0
