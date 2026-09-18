@@ -1,5 +1,5 @@
 import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
+import { assignedPasskeyProfiles, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
@@ -9,7 +9,6 @@ import { tenantNameOf } from './stepVars.ts'
 
 const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const upnOf = (ctx: StepVarContext, id: string): string => clean(ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())?.userPrincipalName || ctx.nameOf(id) || id)
-const sameValue = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 const displayValue = (value: unknown): string => Array.isArray(value) ? value.map(String).join(', ') || 'None' : typeof value === 'boolean' ? value ? 'On' : 'Off' : String(value ?? 'Unavailable')
 const fieldValue = (label: string, value: unknown, modelNames: ReadonlyMap<string, string>): string => {
   if (label === 'Storage') {
@@ -51,14 +50,14 @@ function changedProfileFacts(currentRaw: unknown, targetRaw: unknown, modelNames
   const target = targetRaw as Record<string, any>
   const current = currentRaw && typeof currentRaw === 'object' && !Array.isArray(currentRaw) ? currentRaw as Record<string, any> : {}
   const name = clean(String(target.name || target.id || 'Passkey profile'))
-  const rows: { label: string; current: unknown; target: unknown }[] = [
-    { label: 'Storage', current: current.passkeyTypes, target: target.passkeyTypes },
+  const rows: { label: string; key?: string; current: unknown; target: unknown }[] = [
+    { label: 'Storage', key: 'passkeyTypes', current: current.passkeyTypes, target: target.passkeyTypes },
     { label: 'Attestation', current: current.attestationEnforcement, target: target.attestationEnforcement },
     { label: 'Restrictions', current: current.keyRestrictions?.isEnforced, target: target.keyRestrictions?.isEnforced },
     { label: 'Restriction mode', current: current.keyRestrictions?.enforcementType, target: target.keyRestrictions?.enforcementType },
     { label: 'Approved models', current: current.keyRestrictions?.aaGuids, target: target.keyRestrictions?.aaGuids },
   ]
-  return rows.filter(row => !sameValue(row.current, row.target)).map(row => ({ label: `${name} · ${row.label}`, value: `${fieldValue(row.label, row.current, modelNames)} → ${fieldValue(row.label, row.target, modelNames)}` }))
+  return rows.filter(row => !samePasskeyValue(row.current, row.target, row.key)).map(row => ({ label: `${name} · ${row.label}`, value: `${fieldValue(row.label, row.current, modelNames)} → ${fieldValue(row.label, row.target, modelNames)}` }))
 }
 
 const fieldAction = (field: string, value: unknown, modelNames: ReadonlyMap<string, string>): string => {
@@ -105,7 +104,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     ? resolution.target.passkeyProfiles.filter(raw => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false
         const id = String((raw as Record<string, unknown>).id ?? '')
-        return !sameValue(raw, currentProfiles.get(id))
+        return !samePasskeyValue(raw, currentProfiles.get(id))
       })
     : []
   const profileCorrections = changedProfiles.flatMap(raw => {

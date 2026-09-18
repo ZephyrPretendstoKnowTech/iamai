@@ -5,7 +5,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyTaskText } from './emergencyAccountTasks.ts'
-import { PASSKEY_TARGET_AAGUIDS } from '../../roadmap/passkeySettings.ts'
+import { PASSKEY_DEFAULT_MODELS, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 
 function project() {
   const value = structuredClone(fixture('demo-week2'))
@@ -15,20 +15,27 @@ function project() {
   return emergencyPasskeyTasksOf(step, ctx)
 }
 
-function projectProfileChange() {
+function projectProfile(profile: Record<string, unknown> = {}) {
   const value = structuredClone(fixture('demo'))
   const current = {
     id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true,
     defaultPasskeyProfile: 'authenticator',
     includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['authenticator'] }], excludeTargets: [],
-    passkeyProfiles: [{ id: 'authenticator', name: 'Authenticator', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] } }],
+    passkeyProfiles: [{ id: 'authenticator', name: 'Authenticator', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] }, ...profile }],
   }
   value.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [current] }] }
   const run = runFixture(value)
   const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
-  return emergencyPasskeyTasksOf(step, ctx)
+  return { projected: emergencyPasskeyTasksOf(step, ctx), reading: passkeyReadingOf(value.snapshot, value.mapping) }
 }
+const projectProfileChange = () => projectProfile().projected
+const protectionFacts = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.facts ?? []
+const allow = (aaGuids: string[]) => ({ keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids } })
+// Graph's order on the live tenant: Android, iOS, YubiKey 5 Series, YubiKey 5 Series with NFC.
+const GRAPH_ORDER = ['de1e552d-db1d-4423-a619-566b625cdc84', '90a3ccdf-635c-4729-a248-9b709135078f', '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b', 'a25342c0-3cdc-4414-8e46-f4807fca511c']
+const WINDOWS_HELLO = '9ddd1817-af5a-4672-a2b9-3e3dd95000a9'
+const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 function projectLegacyChange(change: (current: Record<string, any>) => void) {
   const value = structuredClone(fixture('demo'))
@@ -94,4 +101,47 @@ test('include-target changes render the resolved target list', () => {
   assert.ok(fact)
   assert.match(fact.value, /Included targets → None/i)
   assert.doesNotMatch(fact.value, /use the resolved target list/i)
+})
+
+test('the same approved models in a different order produce no Approved models row', () => {
+  assert.notDeepEqual(GRAPH_ORDER, [...PASSKEY_TARGET_AAGUIDS])
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Storage'])
+})
+
+test('the same approved models in different letter casing produce no Approved models row', () => {
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER.map(id => id.toUpperCase()))).map(row => row.label), ['Authenticator · Storage'])
+})
+
+test('a reordered, otherwise correct profile reads in place with no protection facts', () => {
+  const { projected, reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow(GRAPH_ORDER) })
+  assert.equal(reading.state, 'inPlace')
+  assert.deepEqual(reading.differs, [])
+  assert.deepEqual(projected.tasks.find(row => row.id === 'apply-passkey-settings')!.facts, [])
+})
+
+test('a genuinely different model set still produces a row naming the before and after entries', () => {
+  // A disabled list confers no approvals: its dormant Windows Hello entry is removed and the missing YubiKey 5 Series added.
+  const current = GRAPH_ORDER.filter(id => id !== '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b').concat(WINDOWS_HELLO)
+  const fact = protectionFacts({ keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: current } }).find(row => row.label === 'Authenticator · Approved models')
+  assert.ok(fact)
+  const [before, after] = fact.value.split(' → ')
+  assert.match(before, new RegExp(`AAGUID ${WINDOWS_HELLO}`))
+  assert.doesNotMatch(before, /19083c3d-8383-4b18-bc03-8f1c9ab2fd1b/)
+  assert.doesNotMatch(after, new RegExp(WINDOWS_HELLO))
+  for (const model of PASSKEY_DEFAULT_MODELS) assert.match(after, new RegExp(escape(`${model.name} (${model.aaguid})`)))
+})
+
+test('passkeyTypes equality ignores order and serialisation', () => {
+  assert.equal(samePasskeyValue('deviceBound,synced', 'synced, deviceBound', 'passkeyTypes'), true)
+  assert.equal(samePasskeyValue(['synced', 'deviceBound'], 'deviceBound,synced', 'passkeyTypes'), true)
+  assert.equal(samePasskeyValue(['DeviceBound'], 'deviceBound', 'passkeyTypes'), true)
+  assert.equal(samePasskeyValue('deviceBound', 'deviceBound,synced', 'passkeyTypes'), false)
+  assert.equal(samePasskeyValue({ passkeyTypes: 'synced,deviceBound' }, { passkeyTypes: ['deviceBound', 'synced'] }), true)
+  assert.deepEqual(protectionFacts({ passkeyTypes: ['deviceBound'], ...allow(GRAPH_ORDER) }).filter(row => row.label.endsWith('Storage')), [])
+})
+
+test('extra tenant models outside the required set do not by themselves produce a row', () => {
+  assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Storage'])
+  const { reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow([WINDOWS_HELLO, ...GRAPH_ORDER]) })
+  assert.equal(reading.state, 'inPlace')
 })

@@ -298,7 +298,22 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
   return { kind: 'target', target, restriction: 'allow', retained: distinct, added }
 }
 
-const sameSet = (a: unknown, b: unknown): boolean => JSON.stringify([...new Set(strings(a))]) === JSON.stringify([...new Set(strings(b))])
+// Set-valued settings (AAGUID allow lists, profile assignments, passkeyTypes
+// whether read as "deviceBound,synced" or as an array) are unordered: Graph
+// returns their members in any order. Entries compare lower-cased, trimmed,
+// de-duplicated and sorted, as recoveryAccountBasis reads approved models.
+// A list of objects (profiles, targets) is unordered too. Other values compare as read.
+const canonicalPasskeyValue = (value: unknown, key?: string): unknown => {
+  if (key === 'passkeyTypes' && typeof value === 'string') return canonicalPasskeyValue(value.split(','))
+  if (Array.isArray(value)) {
+    if (value.every(entry => entry === null || typeof entry !== 'object')) return [...new Set(value.map(entry => String(entry ?? '').trim().toLowerCase()).filter(Boolean))].sort()
+    return value.map(entry => JSON.stringify(canonicalPasskeyValue(entry))).sort()
+  }
+  const row = object(value)
+  return row ? Object.fromEntries(Object.entries(row).map(([k, v]) => [k, canonicalPasskeyValue(v, k)])) : value
+}
+/** Equality for passkey settings values; `key` names the field when a bare value is compared. */
+export const samePasskeyValue = (a: unknown, b: unknown, key?: string): boolean => JSON.stringify(canonicalPasskeyValue(a, key)) === JSON.stringify(canonicalPasskeyValue(b, key))
 
 function matches(field: PasskeyField, current: Fido2Configuration, t: Fido2Configuration): boolean {
   if (profileMode(t) && !['state', 'includeTargets', 'isSelfServiceRegistrationAllowed', 'passkeyProfiles'].includes(field)) return true
@@ -316,11 +331,11 @@ function matches(field: PasskeyField, current: Fido2Configuration, t: Fido2Confi
     case 'keyRestrictions.enforcementType':
       return current.keyRestrictions?.enforcementType === t.keyRestrictions?.enforcementType
     case 'keyRestrictions.aaGuids':
-      return sameSet(current.keyRestrictions?.aaGuids, t.keyRestrictions?.aaGuids)
+      return samePasskeyValue(current.keyRestrictions?.aaGuids, t.keyRestrictions?.aaGuids)
     case 'isSelfServiceRegistrationAllowed':
       return current.isSelfServiceRegistrationAllowed === t.isSelfServiceRegistrationAllowed
     case 'passkeyProfiles':
-      return JSON.stringify(current.passkeyProfiles) === JSON.stringify(t.passkeyProfiles)
+      return samePasskeyValue(current.passkeyProfiles, t.passkeyProfiles)
   }
 }
 
