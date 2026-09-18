@@ -25,6 +25,8 @@ export type EmergencyAccountTask = {
   targetUpn: string | null
   /** Non-account target shown once above its facts. */
   targetLabel?: string | null
+  /** The subject a Tasks Remaining tile names for this task (a passkey profile); never drawn in the task itself. */
+  subjectLabel?: string
   required: boolean
   readinessKey: string
   readinessKeys?: string[]

@@ -200,10 +200,9 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   ] : unresolved.flatMap(finding => finding.items?.filter(item => item.outcome !== 'pass').slice(0, 2).map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? [])
   const tasks: EmergencyAccountTask[] = [
     {
-      id: 'inspect-passkey-settings', accountId: null, title: `Review passkey settings — ${subject}`, targetUpn: null, required: false,
+      id: 'inspect-passkey-settings', accountId: null, title: 'Review passkey settings', subjectLabel: subject, targetUpn: null, required: false,
       readinessKey: unresolved[0]?.key ?? 'registration', readinessKeys: unresolved.map(finding => finding.key), evidence: null, actionLabel: 'Open review instructions', issueKeys: [],
-      facts: inspectionFacts,
-      steps: [`Open Microsoft Entra admin center and select **${tenant || 'the tenant shown in IAMAI'}**, then open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.`, ...(resolution && inspectionFacts.length ? ['Compare each current → intended value listed above.'] : ['Inspect **Enable and target** and the applicable profiles. Do not change a value in this inspection task.']), profileInstruction, 'Do not guess or save a value IAMAI did not establish.'],
+      steps: [`Open Microsoft Entra admin center and select **${tenant || 'the tenant shown in IAMAI'}**, then open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.`, profileInstruction, ...(inspectionFacts.length ? inspectionFacts.map(fact => `Check **${fact.label.replace(/^.* · /, '')}**: ${fact.value}.`) : ['Inspect **Enable and target** and the applicable profiles.']), 'Do not change a value in this review task.'],
     },
     {
       id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
@@ -219,7 +218,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       steps: ['Keep the existing working method available while preparing each affected account.', '**Compatible alternative**', 'Sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration — only if needed**', 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.'],
     },
     {
-      id: 'apply-passkey-settings', accountId: null, title: `Configure passkey protections — ${subject}`, targetUpn: null,
+      id: 'apply-passkey-settings', accountId: null, title: 'Configure passkey protections', subjectLabel: subject, targetUpn: null,
       required: protectionFields.length > 0, readinessKey: 'protection', readinessKeys: ['protection'], evidence: protectionFields.length ? protectionFields.join(', ') : null, actionLabel: 'Open protection instructions',
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.

@@ -222,19 +222,16 @@ function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
   </Fragment>)}</dl>
 }
 
-/** The Tasks Remaining tile standard, from Step 1's account tile: subject label, subject identity, the single highest-priority remaining action and its instruction, its finding per subject with the rest behind a disclosure, then Completed checks. */
-function EmergencyAccountStatusTile({ account, extra = null, printing = false }: { account: EmergencySubjectTile; extra?: ReactNode; printing?: boolean }) {
-  const facts = account.facts ?? []
-  const more = account.moreFacts ?? []
+/** The Tasks Remaining tile standard, from Step 1's account tile: subject label, the subject(s) of the next check, the remaining count, the next check and what is wrong, one action, then Completed checks. */
+function EmergencyAccountStatusTile({ account, printing = false }: { account: EmergencySubjectTile; printing?: boolean }) {
   return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
-    {account.upn && <p className="emergency-account-upn"><Breakable text={account.upn} /></p>}
+    {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
     {account.remainingCount !== null && account.remainingCount > 0 && <p className="emergency-account-count">{account.remainingCount} check{account.remainingCount === 1 ? '' : 's'} remaining</p>}
     <h5>{account.title}</h5>
+    {account.detail && <p><Breakable text={account.detail} /></p>}
     {account.instruction && <p>{account.instruction}</p>}
-    {facts.length > 0 && <div className="emergency-account-facts"><EmergencyFacts facts={facts} /></div>}
-    {more.length > 0 && <details className="emergency-account-more" open={printing || undefined}><summary>Show {more.length} more</summary><EmergencyFacts facts={more} /></details>}
-    {extra}
+    {account.link && <p><a href={account.link.href}>{account.link.label} →</a></p>}
     {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}
     {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || undefined}>
       <summary>Completed checks · {account.completed.length}</summary>
@@ -244,10 +241,10 @@ function EmergencyAccountStatusTile({ account, extra = null, printing = false }:
 }
 
 /** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N. */
-export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, extraFor = () => null }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; extraFor?: (subject: EmergencySubjectTile) => ReactNode }) {
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
-  const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} extra={extraFor(subject)} printing={printing} />
+  const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
   return <section className="step-section readiness-section emergency-account-readiness">
     <h4>Tasks Remaining</h4>
     {remaining.length > 0
@@ -496,7 +493,6 @@ export function ContentStep({
             printing={printing}
             barMain={displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
-            extraFor={subject => isPasskeySettings && subject.key === 'configuration:protection' ? <ApprovedAuthenticatorModels models={emergencyAccountTasks.approvedModels ?? []} /> : null}
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={isEmergencyJourneyStep ? 'Tasks Remaining' : undefined}
@@ -656,7 +652,7 @@ export function ContentStep({
         </div>
       </div>
       {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? 'Saving plan…' : 'Plan could not be saved. Use Retry Saving above.'}</p>}
-      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} auxiliary={isPasskeySettings && !printing ? <details className="passkey-model-disclosure"><summary>Add additional AAGUIDs</summary><PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} /></details> : null} />
+      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} auxiliary={isPasskeySettings && !printing ? <><ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} /><details className="passkey-model-disclosure"><summary>Add additional AAGUIDs</summary><PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} /></details></> : null} />
       {!printing && (
         <>
           <StepDialog open={dialog === 'readiness'} onClose={closeDialog} eyebrow={CONTRACT.readiness.dialogEyebrow} title={CONTRACT.readiness.dialogTitle} closeLabel={CONTRACT.readiness.close}>
@@ -826,10 +822,11 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   const renderTask = (item: EmergencyAccountTask, cls: string, focus = false) => {
     const variant = item.variants?.find(row => row.id === variants[item.id])?.id ?? item.defaultVariantId ?? item.variants?.[0]?.id ?? null
     const taskFacts = emergencyTaskFacts(item, variant)
+    // The Task selector already names the task on screen; printing lists every task, so it keeps the title.
     return <section key={item.id} className={`${cls} emergency-task-body`} data-emergency-account-tasks="true">
-      <h5 ref={focus ? taskHeading : undefined} tabIndex={focus ? -1 : undefined}>{item.title}</h5>
+      <h5 ref={focus ? taskHeading : undefined} tabIndex={focus ? -1 : undefined} className={printing ? undefined : 'sr-only'}>{item.title}</h5>
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
-      {!!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
+      {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
       <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
     </section>
   }
