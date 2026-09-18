@@ -95,3 +95,13 @@ test('Step 4: Configuration shows one next check, a confirmed failure, with its 
   assert.ok((configuration.remainingCount ?? 0) > 1)
   assert.ok(linesOf(configuration).length <= 6, 'one check, not every finding')
 })
+
+test('a finding that already states the action is not followed by the same action again', () => {
+  const tile = emergencySubjectsOf({ tiles: [{ key: 'recovery-sign-ins', label: 'Sign-in evidence', tone: 'warn', value: 'Evidence needed', note: null, items: [
+    { label: 'Sign in with the prepared passkey', factLabel: 'Sign in with the prepared passkey', value: 'Follow Verify emergency sign-in in Implementation Tasks. Then wait 5–10 minutes and scan to update the plan.', subjectLabel: 'a@contoso.onmicrosoft.com', accountId: 'a', outcome: 'fail' },
+  ] }], satisfied: [], bar: { key: 'x', main: '' } }, { tasks: [{ id: 'verify-emergency-sign-in', accountId: null, title: 'Verify emergency sign-in', targetUpn: null, required: true, readinessKey: 'recovery-sign-ins', evidence: null, actionLabel: '', steps: [] }] })[0]
+  assert.equal(tile.title, 'Sign in with the prepared passkey')
+  assert.equal(tile.instruction, '')
+  const lines = linesOf(tile)
+  assert.equal(lines.filter(line => line.includes('Follow Verify emergency sign-in')).length, 1)
+})
