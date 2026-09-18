@@ -202,3 +202,39 @@ test('with every selected account passing, the passkey procedure stays available
   assert.match(text, /No selected account currently needs an approved passkey\./)
   for (const account of projected.accounts) assert.ok(!text.includes(account.upn!), `${account.upn} is not named`)
 })
+
+/** Step 1's account tiles, Step 1's status and Step 4's findings for demo-week2, with an edit. */
+function dedicatedCase(edit: (value: Fixture, id: string) => void) {
+  const value = structuredClone(fixture('demo-week2'))
+  const id = value.mapping.breakGlassUserIds[0]
+  edit(value, id)
+  const run = runFixture(value)
+  const step = run.steps.find(item => item.id === STEP)!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: x => run.input.names!.label(x), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const recovery = (run.schedule.cleanup?.recoveryFindings ?? []).flatMap(finding => finding.items ?? []).filter(item => item.issueKeys?.some(key => key.startsWith('validation:bg.notPersonal:')))
+  return { id, step, accounts: emergencyAccountTasksOf(step, ctx).accounts, recovery }
+}
+
+test('Step 1 notes the dedicated-account signal where the selection is made, as a note that gates nothing', () => {
+  const plain = dedicatedCase(() => {})
+  const personal = dedicatedCase((value, id) => { value.snapshot.users.find(user => user.id === id)!.department = 'Finance' })
+  const account = personal.accounts.find(row => row.accountId === personal.id)!
+  assert.equal(account.notes?.length, 1)
+  // Today's wording, the same item Verify Emergency Access shows.
+  assert.match(account.notes![0].label, /These signals do not prove daily use\./)
+  assert.match(account.notes![0].value, /department Finance\. Profile fields alone do not establish daily use/)
+  assert.deepEqual(personal.recovery.map(item => [item.factLabel, item.value]), [[account.notes![0].label, account.notes![0].value]], 'Step 4 still shows it')
+  // Not a check: the tile, its counts and the step read as they do without it.
+  const strip = (rows: typeof plain.accounts) => rows.map(({ notes: _notes, ...row }) => row)
+  assert.deepEqual(strip(personal.accounts), strip(plain.accounts))
+  assert.equal(personal.step.status, plain.step.status)
+  assert.deepEqual(personal.step.state, plain.step.state)
+  assert.equal(plain.accounts.some(row => row.notes), false)
+})
+
+test('Step 1 notes an emergency account that is signed in to IAMAI now', () => {
+  // The signed-in operator is the scan's /me.
+  const signedIn = dedicatedCase((value, id) => { value.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id }] } })
+  const account = signedIn.accounts.find(row => row.accountId === signedIn.id)!
+  assert.match(account.notes?.[0]?.value ?? '', /signed in to IAMAI now/)
+})

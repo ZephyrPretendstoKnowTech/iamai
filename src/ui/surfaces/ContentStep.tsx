@@ -235,6 +235,7 @@ function EmergencyAccountStatusTile({ account, extra = null, printing = false }:
     {facts.length > 0 && <div className="emergency-account-facts"><EmergencyFacts facts={facts} /></div>}
     {more.length > 0 && <details className="emergency-account-more" open={printing || undefined}><summary>Show {more.length} more</summary><EmergencyFacts facts={more} /></details>}
     {extra}
+    {!!account.notes?.length && <div className="emergency-account-note"><EmergencyFacts facts={account.notes} /></div>}
     {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || undefined}>
       <summary>Completed checks · {account.completed.length}</summary>
       <ul>{account.completed.map(item => <li key={item}><Breakable text={item} /></li>)}</ul>

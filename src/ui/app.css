@@ -4822,6 +4822,8 @@ th .th-sort:focus-visible,
 .emergency-account-more > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
 .emergency-account-more > dl { margin-top: 8px; }
 .emergency-account-status .approved-model-disclosure { margin-top: 10px; }
+.emergency-account-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--t-0); }
+.emergency-account-note dl { display: grid; gap: 5px; margin: 0; }
 .emergency-account-completed { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .emergency-account-completed > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
 .emergency-account-completed ul { margin: 8px 0 0; padding-left: 18px; font-size: var(--t-0); }
