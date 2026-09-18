@@ -16,6 +16,7 @@ import { GENERIC_MFA, PLATFORMS, latestProofs, readSignIn } from '../../scoring/
 import type { ProofRecord } from '../../scoring/phishingResistant.ts'
 import type {
   BlockedTodayEntry,
+  DeviceSeen,
   EvidenceAggregates,
   PolicyAppliedResult,
   PolicyResultClass,
@@ -25,10 +26,10 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 9
+export const EVIDENCE_SCHEMA = 10
 /** Schema 9 invalidates normalized evidence produced before field-presence and
  * exact-credential reconciliation were corrected. */
-export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 9
+export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 10
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -148,14 +149,23 @@ export function normaliseTrustType(raw: unknown): StoredSignIn['trustType'] {
   return undefined
 }
 
-function deviceLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'os' | 'browser' | 'isCompliant' | 'isManaged' | 'trustType'> {
+/** The strongest join state wins when one platform family shows several devices. */
+const TRUST_RANK: Record<string, number> = { '': 0, none: 1, registered: 2, hybrid: 3, joined: 4 }
+
+function deviceLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'os' | 'browser' | 'isCompliant' | 'isManaged' | 'trustType' | 'deviceId' | 'deviceName' | 'osVersion'> {
   const d = (r.deviceDetail ?? null) as Record<string, unknown> | null
+  const text = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined)
   return {
     os: normaliseOs(d?.operatingSystem),
     browser: browserFamily(d?.browser),
     isCompliant: typeof d?.isCompliant === 'boolean' ? d.isCompliant : undefined,
     isManaged: typeof d?.isManaged === 'boolean' ? d.isManaged : undefined,
     trustType: normaliseTrustType(d?.trustType),
+    // The device's identity and version, for MFA Readiness's eligibility (prompt 62):
+    // a joined computer owned by another account cannot give this one Windows Hello.
+    deviceId: text(d?.deviceId),
+    deviceName: text(d?.displayName),
+    osVersion: text(d?.operatingSystem),
   }
 }
 
@@ -282,6 +292,10 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   // later Authenticator sign-in cannot hide an earlier passkey one.
   const proofs = new Map<string, ProofRecord[]>()
   const platforms = new Map<string, Map<string, string>>()
+  // Per person and platform family: the devices seen, for MFA Readiness (prompt 62).
+  const devices = new Map<string, Map<string, DeviceSeen>>()
+  const apps = new Map<string, Set<string>>()
+  const trusted = new Set<string>()
   const recovery = new Map<string, NonNullable<UserEvidence['recoveryCandidates']>>()
   // The latest record of each kind, kept apart while the rows are read: a
   // record that names a method is proof of that method, a generic one is
@@ -333,6 +347,23 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
       const seen = platforms.get(row.userId) ?? new Map<string, string>()
       if (!seen.has(read.platform) || at > (seen.get(read.platform) as string)) seen.set(read.platform, at)
       platforms.set(row.userId, seen)
+      const byOs = devices.get(row.userId) ?? new Map<string, DeviceSeen>()
+      const d = byOs.get(read.platform) ?? { os: read.platform, at, trust: null, managed: null, deviceIds: [], version: null }
+      if (at >= d.at) {
+        d.at = at
+        if (row.osVersion) d.version = row.osVersion
+      }
+      if (TRUST_RANK[row.trustType ?? ''] > TRUST_RANK[d.trust ?? '']) d.trust = row.trustType ?? null
+      if (typeof row.isManaged === 'boolean') d.managed = (d.managed ?? false) || row.isManaged
+      if (row.deviceId && !d.deviceIds.includes(row.deviceId) && d.deviceIds.length < 5) d.deviceIds.push(row.deviceId)
+      byOs.set(read.platform, d)
+      devices.set(row.userId, byOs)
+      if (row.trustedLocation) trusted.add(row.userId)
+    }
+    if (row.status?.errorCode === 0 && row.appDisplayName) {
+      const set = apps.get(row.userId) ?? new Set<string>()
+      if (set.size < 8) set.add(row.appDisplayName)
+      apps.set(row.userId, set)
     }
   }
   // The method the person proved outlives every later record that names none,
@@ -344,6 +375,10 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
     u.recoveryCandidates = (recovery.get(id) ?? []).sort((a, b) => b.at.localeCompare(a.at))
     const seen = platforms.get(id)
     u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
+    const byOs = devices.get(id)
+    u.devices = PLATFORMS.filter((os) => byOs?.has(os)).map((os) => byOs?.get(os) as DeviceSeen)
+    u.apps = [...(apps.get(id) ?? [])].sort()
+    u.trustedLocationSeen = trusted.has(id)
   }
   return perUser
 }

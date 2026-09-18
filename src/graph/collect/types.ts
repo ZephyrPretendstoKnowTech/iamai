@@ -87,6 +87,9 @@ export type DeviceRow = {
   trustType: string | null
   ownerIds: string[]
   operatingSystem?: string | null
+  /** The device's own id (deviceDetail.deviceId on a sign-in), distinct from the directory object id. */
+  deviceId?: string | null
+  operatingSystemVersion?: string | null
   approximateLastSignIn?: string | null
 }
 
@@ -129,6 +132,27 @@ export type UserEvidence = {
   recoveryCandidates?: RecoverySignInCandidate[]
   /** The platform families this account signed in from successfully, latest per family. */
   platforms?: PlatformSeen[]
+  /**
+   * The devices behind those platforms (MFA Readiness, prompt 62): per platform
+   * family, the latest successful sign-in, the strongest join state seen, the
+   * Entra device ids (at most five) and the latest OS version string. Absent on
+   * a snapshot taken before schema 10, which reads as device facts not read.
+   */
+  devices?: DeviceSeen[]
+  /** Distinct app names this account signed in to (at most eight), for the automated-account note. */
+  apps?: string[]
+  /** Whether any successful sign-in in the window matched a trusted named location. */
+  trustedLocationSeen?: boolean
+}
+
+/** One platform family a person signed in from, as MFA Readiness reads its eligibility. */
+export type DeviceSeen = {
+  os: PlatformSeen['os']
+  at: string
+  trust: 'joined' | 'hybrid' | 'registered' | 'none' | null
+  managed: boolean | null
+  deviceIds: string[]
+  version: string | null
 }
 
 export type RecoverySignInCandidate = {
@@ -181,6 +205,12 @@ export type StoredSignIn = {
   isCompliant?: boolean
   isManaged?: boolean
   trustType?: 'joined' | 'hybrid' | 'registered' | 'none'
+  /** deviceDetail.deviceId: the Entra device id, present only for a registered or joined device (schema 10). */
+  deviceId?: string
+  /** deviceDetail.displayName: the device's own name, where Entra knows the device (schema 10). */
+  deviceName?: string
+  /** deviceDetail.operatingSystem as Graph gave it, version included ("iOS 17.5") (schema 10). */
+  osVersion?: string
   crossTenantAccessType?: 'none' | 'b2bCollaboration' | 'b2bDirectConnect' | 'serviceProvider' | 'passthrough' | 'other'
   /** The signing-in account's home tenant, for counting partner tenants; stays in the worker and the cache. */
   homeTenantId?: string
@@ -256,6 +286,14 @@ export type BlockedTodayEntry = {
   userIds: string[]
 }
 
+/** What IAMAI could read of Intune's sign-in settings; anything but `read` leaves eligibility on the join state. */
+export type IntuneReading = {
+  status: 'read' | 'notGranted' | 'unlicensed' | 'error'
+  whfb: 'enabled' | 'disabled' | 'notConfigured' | 'unknown'
+  platformSso: 'configured' | 'none' | 'unknown'
+  reason: string | null
+}
+
 export type RecoveryDirectoryAudit = {
   id: string
   at: string
@@ -290,6 +328,12 @@ export type TenantSnapshot = {
   evidenceAggregates?: EvidenceAggregates | null
   /** The lockout-scenario derivations (prompt 48 item 3), from the rows; null until Lane B has run. */
   scenarioEvidence?: import('../../derive/evidence.ts').ScenarioEvidence | null
+  /**
+   * Intune's Windows Hello for Business and macOS Platform SSO settings, for MFA
+   * Readiness's device eligibility (prompt 62). Absent where the scan did not
+   * read them; `status` says why a read gave nothing.
+   */
+  intune?: IntuneReading | null
   /** What earlier scans established about each person's qualifying methods and proof (scoring/mfaHistory.ts), merged with this scan. */
   mfaHistory?: MfaHistory | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).

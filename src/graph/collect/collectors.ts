@@ -281,7 +281,7 @@ export async function collectUsers(
 }
 
 export async function collectDevices(ctx: Ctx): Promise<DeviceRow[]> {
-  const url = `${V1}/devices?$select=id,displayName,isCompliant,isManaged,trustType,operatingSystem,approximateLastSignInDateTime&$expand=${encodeURIComponent('registeredOwners($select=id)')}&$top=999`
+  const url = `${V1}/devices?$select=id,deviceId,displayName,isCompliant,isManaged,trustType,operatingSystem,operatingSystemVersion,approximateLastSignInDateTime&$expand=${encodeURIComponent('registeredOwners($select=id)')}&$top=999`
   const rows = await graphPaged(ctx.tokens, url, { signal: ctx.signal })
   return rows.map((raw) => {
     const d = raw as Record<string, unknown>
@@ -294,6 +294,8 @@ export async function collectDevices(ctx: Ctx): Promise<DeviceRow[]> {
       trustType: typeof d.trustType === 'string' ? d.trustType : null,
       ownerIds: owners.map((o) => String((o as Record<string, unknown>).id ?? '')).filter(Boolean),
       operatingSystem: typeof d.operatingSystem === 'string' ? d.operatingSystem : null,
+      deviceId: typeof d.deviceId === 'string' ? d.deviceId : null,
+      operatingSystemVersion: typeof d.operatingSystemVersion === 'string' ? d.operatingSystemVersion : null,
       approximateLastSignIn: typeof d.approximateLastSignInDateTime === 'string' ? d.approximateLastSignInDateTime : null,
     }
   })
