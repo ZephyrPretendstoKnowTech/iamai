@@ -131,6 +131,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     perUserMfa: {},
     appSignInSummary: [],
     signInEvidence: {},
+    recoveryDirectoryAudits: [],
     evidencePolicyResults: [],
     blockedToday: [],
     evidenceUsage: null,
@@ -336,6 +337,8 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     onSlow: () => post({ type: 'state', value: 'slow' }),
   }).then((evidence) => {
     snapshot.signInEvidence = evidence.perUser
+    snapshot.recoveryDirectoryAudits = evidence.recoveryAudits ?? []
+    snapshot.recoveryAuditSource = evidence.recoveryAuditSource
     snapshot.evidencePolicyResults = evidence.policyResults
     snapshot.blockedToday = evidence.blockedToday
     snapshot.evidenceUsage = evidence.usage

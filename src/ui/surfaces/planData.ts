@@ -49,7 +49,7 @@ import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 import type { CleanupKind } from '../../roadmap/cleanup.ts'
-import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryCredentialBasis, RECOVERY_PREPARATION_WORKFLOW } from '../../roadmap/cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCredentialBasis, reconcileAutomaticRecovery } from '../../roadmap/cleanupDone.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -179,6 +179,7 @@ export function usePlanData(
   // not even for one render (the walk caught the old exclusions step flashing).
   const [mappingFor, setMappingFor] = useState<TenantSnapshot | null>(null)
   const [groupsFor, setGroupsFor] = useState<TenantSnapshot | null>(null)
+  const [groupsCompletedAt, setGroupsCompletedAt] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
@@ -221,6 +222,7 @@ export function usePlanData(
     // this effect produces); every policy-referenced group is loaded regardless.
     const decided = appliedMapping({ snapshot, mapping, nameOf: (id) => id, now: snapshot.asOf }, saved?.stepDecisions)
     setGroupsLoaded(false)
+    setGroupsCompletedAt(null)
     let cancelled = false
     const ids = new Set<string>()
     for (const raw of snapshot.config.caPolicies?.rows ?? []) {
@@ -287,6 +289,7 @@ export function usePlanData(
         setGroups(map)
         setDirectory(directoryEvidenceOf(reads))
         setGroupsFor(snapshot)
+        setGroupsCompletedAt(new Date().toISOString())
         setGroupsLoaded(true)
       }
     })()
@@ -319,6 +322,9 @@ export function usePlanData(
   }, [mapping])
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
   const freeze = saved?.freeze ?? null
+  // The final on-demand group read completes after the scan. Capture its time
+  // at acquisition, never during render; an unchanged saved baseline survives.
+  const recoveryAcquisitionCompletedAt = snapshot && groupsLoaded && groupsFor === snapshot ? groupsCompletedAt : null
 
   const computed = useMemo<PlanComputed | null>(() => {
     if (!snapshot || !baseline || !applied || !groupsLoaded || !loaded || !startDate) return null
@@ -388,6 +394,28 @@ export function usePlanData(
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
+
+  // Step 4 records its baseline and qualifying sign-ins from the completed scan.
+  // It has no parallel manual result path: the same checkpoints drive the tile,
+  // milestone, cleanup completion and export.
+  useEffect(() => {
+    if (readOnly || !computed || !snapshot || !applied || !saved || !recoveryAcquisitionCompletedAt || mappingFor !== snapshot || groupsFor !== snapshot || !groupsLoaded) return
+    const phase = computed.schedule.cleanup
+    const accountIds = applied.breakGlassUserIds
+    if (!phase || accountIds.length === 0) return
+    setSaved(current => {
+      if (!current) return current
+      const checkpoints = reconcileAutomaticRecovery({
+        checkpoints: current.checkpoints ?? [],
+        snapshot,
+        mapping: applied,
+        groups,
+        accountIds,
+        acquisitionCompletedAt: recoveryAcquisitionCompletedAt,
+      })
+      return checkpoints === current.checkpoints ? current : { ...current, checkpoints }
+    })
+  }, [readOnly, computed, snapshot, applied, saved, mappingFor, groupsFor, groupsLoaded, groups, recoveryAcquisitionCompletedAt])
 
   // Persist the decisions only, so a Skip and the start/freeze survive a reload;
   // the plan itself is regenerated, never stored. Writing here also completes the
@@ -512,29 +540,17 @@ export function usePlanData(
     },
     checkpoints: saved?.checkpoints ?? [],
     markCleanupDone: (kind, date, accountIds = [], evidence = {}) => {
+      // Verify Emergency Access is machine-completed by the scan reconciler.
+      // Imported historical records remain readable, but no caller can create a
+      // new manual pass/fail result through this handler.
+      if (kind === 'drill') return
       const phase = computed?.schedule.cleanup
       const row = phase?.rows.find((r) => r.kind === kind)
       if (!phase || !row) return
-      const currentBasis = snapshot ? recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) : {}
-      if (kind === 'drill' && evidence.workflow === RECOVERY_PREPARATION_WORKFLOW) {
-        const configurationReady = phase.recoveryFindings?.find(finding => finding.key === 'recovery-configuration')?.outcome === 'pass'
-        if (!snapshot || !evidence.purpose || (evidence.purpose === 'final' && !configurationReady) || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id) || !currentBasis[id]) || evidence.tenantId !== snapshot.tenantId || evidence.configurationObservedAt !== snapshot.asOf) return
-      }
-      if (kind === 'drill' && evidence.outcome === 'passed') {
-        if (!snapshot || !evidence.purpose || accountIds.length === 0 || accountIds.some(id => !phase.accountIds.includes(id))) return
-        const valid = accountIds.every(id => {
-          const recorded = evidence.recoveryEvidence?.[id]
-          const preparation = recoveryPreparation(id, cleanupRecord(saved?.checkpoints ?? []).records ?? [], snapshot.asOf, currentBasis[id], snapshot.tenantId, evidence.purpose)
-          const configurationObservedAt = preparation?.configurationObservedAt ?? null
-          const observed = recoveryCandidateReadings(snapshot, id, snapshot.asOf, configurationObservedAt).find(reading => reading.qualifies && reading.candidate.eventId === recorded?.eventId)?.candidate
-          return !!recorded && recorded.purpose === evidence.purpose && !!observed && !!configurationObservedAt && recorded.schema === 1 && recorded.tenantId === snapshot.tenantId && recorded.accountId.toLowerCase() === id.toLowerCase() && recorded.eventAt === observed.at && recorded.appId === observed.appId && recorded.resourceId === observed.resourceId && recorded.method === observed.method && recorded.provenance === 'observed-sign-in' && recorded.configurationObservedAt === configurationObservedAt && Date.parse(recorded.eventAt) >= Date.parse(configurationObservedAt) && Date.parse(snapshot.asOf) >= Date.parse(recorded.eventAt) && recorded.recoveryConfirmed === true && recorded.credentialConfirmed === true && !!currentBasis[id]
-        })
-        if (!valid) return
-      }
-      const basis = cleanupBasis(kind, row.lists, kind === 'drill' || kind === 'alerting' ? phase?.accountIds ?? [] : [])
+      const basis = cleanupBasis(kind, row.lists, kind === 'alerting' ? phase?.accountIds ?? [] : [])
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
-        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && (kind === 'drill' || kind === 'alerting') ? { accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
+        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && kind === 'alerting' ? { accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
       })
       bump()
     },

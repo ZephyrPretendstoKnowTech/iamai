@@ -5,8 +5,9 @@ import { PAGE_ABORT_MS } from './constants.ts'
 import { BETA, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
-import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, runLaneB } from './laneBCore.ts'
+import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, mapRecoveryAudit, runLaneB } from './laneBCore.ts'
 import type { LaneBProgress, SignInEvidence } from './laneBCore.ts'
+import type { RecoveryDirectoryAudit } from './types.ts'
 
 export type { LaneBProgress, SignInEvidence }
 
@@ -20,7 +21,7 @@ export async function collectSignInEvidence(
   },
 ): Promise<SignInEvidence> {
   const lambda = encodeURIComponent("signInEventTypes/any(t: t eq 'interactiveUser')")
-  return runLaneB({
+  const evidence = await runLaneB({
     startUrl: `${BETA}/auditLogs/signIns?$filter=${lambda}&$top=200`,
     windowDays: opts.windowDays,
     nowMs: Date.now(),
@@ -37,4 +38,18 @@ export async function collectSignInEvidence(
     onPage: opts.onPage,
     onSlow: opts.onSlow,
   })
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString()
+  let next: string | null = `${BETA}/auditLogs/directoryAudits?$filter=${encodeURIComponent(`activityDateTime ge ${since}`)}&$select=id,activityDateTime,activityDisplayName,category,result,targetResources&$top=200`
+  const recoveryAudits: RecoveryDirectoryAudit[] = []
+  try {
+    while (next) {
+      const page: any = await graphRequest(ctx.tokens, next, { abortMs: PAGE_ABORT_MS, signal: ctx.signal })
+      if (!page || !Array.isArray(page.value)) throw new Error('Directory audit evidence returned an unreadable page.')
+      for (const raw of page.value as unknown[]) { const projected = mapRecoveryAudit(raw); if (projected) recoveryAudits.push(projected) }
+      next = typeof page['@odata.nextLink'] === 'string' ? page['@odata.nextLink'] : null
+    }
+  } catch (error) {
+    return { ...evidence, recoveryAudits: [], recoveryAuditSource: { status: 'error', reason: `Directory audit evidence could not be read: ${error instanceof Error ? error.message : String(error)}`, coveredWindow: null, asOf: new Date().toISOString() } }
+  }
+  return { ...evidence, recoveryAudits, recoveryAuditSource: { status: 'ok', reason: null, coveredWindow: { from: since, to: new Date().toISOString() }, asOf: new Date().toISOString() } }
 }

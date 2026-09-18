@@ -63,8 +63,10 @@ test('Step 4 task and machine projections remain read-only and identity-stable',
   } as unknown as CleanupPhase
   const tasks = emergencyVerificationTasksOf(phase).tasks
   assert.deepEqual(tasks.map(task => task.title), ['Verify emergency sign-in', 'Troubleshoot emergency sign-in'])
-  assert.ok(tasks[0].steps.some(line => line.includes('emergency@contoso.onmicrosoft.com')))
-  assert.ok(tasks[0].steps.some(line => line.includes('Save verification')))
+  assert.ok(tasks[0].facts?.some(fact => fact.label === 'emergency@contoso.onmicrosoft.com'))
+  assert.ok(tasks[0].steps.some(line => line.includes('Sign in as that emergency account using its prepared passkey.')))
+  assert.ok(tasks[0].steps.some(line => line.includes('Wait 5–10 minutes')))
+  assert.equal(tasks.flatMap(task => task.steps).some(line => /Start verification|Save verification|Passed|Failed/.test(line)), false)
   assert.ok(tasks[1].steps.some(line => line.includes('Sign-in logs')))
   const script = emergencyVerificationPowerShell(phase)
   assert.match(script, /while \(\$next\)/)
@@ -81,6 +83,7 @@ test('a current passing final result does not ask the operator to record it agai
     recoveryCandidates: { 'account-1': [{ qualifies: true, reason: null, candidate: { eventId: 'event-1', at: '2026-09-16T09:00:00.000Z' } }] },
     recoveryFindings: [
       { key: 'recovery-configuration', label: 'Configuration', value: 'Verified', detail: '', outcome: 'pass' },
+      { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: 'Verified', detail: '', outcome: 'pass', items: [{ accountId: 'account-1', subjectId: 'account-1', label: 'Passkey sign-in verified', value: 'Signed in after configuration: Sep 16, 2026', outcome: 'pass' }] },
       { key: 'recovery-confirmation', label: 'Verification', value: 'Passed', detail: '', outcome: 'pass', items: [{ accountId: 'account-1', subjectId: 'account-1', label: 'Result', value: 'Passed', outcome: 'pass' }] },
     ],
     tenantId: 'tenant-1', snapshotObservedAt: '2026-09-16T10:00:00.000Z', rows: [], start: '2026-09-16', end: '2026-09-16', convention: null,

@@ -256,6 +256,15 @@ export type BlockedTodayEntry = {
   userIds: string[]
 }
 
+export type RecoveryDirectoryAudit = {
+  id: string
+  at: string
+  activity: string
+  category: string | null
+  result: string | null
+  targets: { id: string; type: string | null }[]
+}
+
 export type TenantSnapshot = {
   schemaVersion: 1
   tenantId: string
@@ -271,6 +280,10 @@ export type TenantSnapshot = {
   perUserMfa?: PerUserMfaByUser
   appSignInSummary: unknown[]
   signInEvidence: Record<string, UserEvidence>
+  /** Narrow directory changes used to prevent a matching later snapshot from
+   * reviving recovery proof after an observed intervening mutation. */
+  recoveryDirectoryAudits?: RecoveryDirectoryAudit[]
+  recoveryAuditSource?: SourceState
   evidencePolicyResults: PolicyAppliedResult[]
   blockedToday: BlockedTodayEntry[]
   evidenceUsage: EvidenceUsage | null

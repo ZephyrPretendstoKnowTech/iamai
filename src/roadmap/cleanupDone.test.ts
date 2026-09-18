@@ -8,13 +8,46 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, latestRecoveryTest, recoveryCandidateReadings, withCleanupDone, recoveryAccountBasis, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, latestRecoveryTest, recoveryCandidateReadings, reconcileAutomaticRecovery, withCleanupDone, recoveryAccountBasis, RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_INVALIDATION_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { renameLine } from './cleanupPhase.ts'
 import { supersededPolicies } from './generate.ts'
 import { cleanupWhen } from '../ui/surfaces/cleanupExport.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
+import { recoveryEvidenceSource } from './cleanupDone.ts'
+
+test('audit read failure suspends recovery without poisoning unrelated sign-in evidence', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const input = { checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: f.snapshot.asOf }
+  f.snapshot.recoveryAuditSource = { status: 'error', reason: 'Audit read denied', coveredWindow: null, asOf: f.snapshot.asOf }
+  assert.equal(f.snapshot.sources.signInEvidence.status, 'ok')
+  assert.equal(recoveryEvidenceSource(f.snapshot).status, 'error')
+  assert.equal(reconcileAutomaticRecovery(input).length, 0)
+  delete f.snapshot.recoveryAuditSource
+  assert.equal(recoveryEvidenceSource(f.snapshot).status, 'error', 'old snapshots need a fresh recovery audit read')
+  f.snapshot.recoveryAuditSource = { status: 'ok', reason: null, coveredWindow: null, asOf: f.snapshot.asOf }
+  assert.equal(cleanupRecord(reconcileAutomaticRecovery(input)).records!.length, 2)
+})
+
+test('the completed group acquisition is the boundary for the next qualifying event', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const id = f.mapping.breakGlassUserIds[0]
+  const at = f.snapshot.asOf
+  const plus = (minutes: number): string => new Date(Date.parse(at) + minutes * 60000).toISOString()
+  const input = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id] }
+  const checkpoints = reconcileAutomaticRecovery({ ...input, checkpoints: [], acquisitionCompletedAt: plus(2) })
+  assert.equal(cleanupRecord(checkpoints).records![0].configurationObservedAt, plus(2))
+  const event = f.snapshot.signInEvidence[id].recoveryCandidates![0]
+  Object.assign(event, { eventId: 'during-acquisition', at: plus(1), authenticationAt: plus(1) })
+  f.snapshot.asOf = plus(5)
+  assert.equal(reconcileAutomaticRecovery({ ...input, checkpoints, acquisitionCompletedAt: plus(5) }), checkpoints)
+  Object.assign(event, { eventId: 'after-acquisition', at: plus(3), authenticationAt: plus(3) })
+  const verified = reconcileAutomaticRecovery({ ...input, checkpoints, acquisitionCompletedAt: plus(5) })
+  assert.equal(cleanupRecord(verified).records!.at(-1)?.outcome, 'passed')
+})
 
 test('legacy drill dates remain history while ordinary cleanup completion still records the latest date', () => {
   let cps: unknown[] = [{ at: '2026-09-01T00:00:00.000Z', coverage: [] }]
@@ -22,18 +55,18 @@ test('legacy drill dates remain history while ordinary cleanup completion still 
   cps = withCleanupDone(cps, 'naming', '2026-09-04', '2026-09-04T10:00:00.000Z')
   cps = withCleanupDone(cps, 'drill', '2026-12-01', '2026-12-01T10:00:00.000Z')
   assert.equal(cps.length, 4, 'the scan checkpoint stays beside the Cleanup records')
-  assert.deepEqual(cleanupDoneDates(cps), { drill: '2026-12-01T12:00:00.000Z', naming: '2026-09-04T12:00:00.000Z' }, 'legacy completion dates remain visible as history')
+  assert.deepEqual(cleanupDoneDates(cps), { naming: '2026-09-04T12:00:00.000Z' }, 'legacy drill dates remain history rather than current completion')
   assert.deepEqual(drillDates(cps), [], 'untyped drill dates cannot become current recovery proof')
   assert.equal(isRecordedDrill('2026-09-03T02:15:00.000Z', drillDates(cps)), false, 'a legacy date does not identify the tested account')
   assert.ok(!isRecordedDrill('2026-09-05T02:15:00.000Z', drillDates(cps)))
   assert.ok(!isRecordedDrill('2026-09-03T02:15:00.000Z', []))
 })
 
-test('an exact drill association validates final recovery without reopening account preparation', () => {
+test('legacy manually confirmed recovery remains history and cannot complete automatic verification', () => {
   const f = fixture('demo')
   for (const [index, id] of f.mapping.breakGlassUserIds.entries()) {
     const eventAt = f.snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!
-    f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `observed-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Microsoft Azure portal', resource: 'Microsoft Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
+    f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `observed-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', app: 'Microsoft Entra admin center', resource: 'Microsoft Graph', method: 'Passkey (FIDO2)', authenticationAt: eventAt, resourceTenantId: f.snapshot.tenantId, freshMethod: true }] }
   }
   const bgId = f.mapping.breakGlassUserIds[0]
   const signIn = f.snapshot.users.find((u) => u.id === bgId)!.lastSuccessfulSignIn!
@@ -49,14 +82,13 @@ test('an exact drill association validates final recovery without reopening acco
   checkpoints = withCleanupDone(checkpoints, 'drill', signIn.slice(0, 10), f.snapshot.asOf, { accountIds: f.mapping.breakGlassUserIds, outcome: 'passed', purpose: 'final', accountBasis, recoveryEvidence, signInAtByAccount: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => [id, f.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!])), timeZone: 'UTC' })
   const readings = recoveryCandidateReadings(f.snapshot, bgId, f.snapshot.asOf, configurationObservedAt)
   const evidenceContext = { readings, tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf }
-  assert.ok(latestRecoveryTest(bgId, checkpoints as never[], f.snapshot.asOf, accountBasis[bgId], evidenceContext, 'final'))
+  assert.equal(latestRecoveryTest(bgId, checkpoints as never[], f.snapshot.asOf, accountBasis[bgId], evidenceContext, 'final'), null)
   assert.equal(latestRecoveryTest(bgId, checkpoints as never[], f.snapshot.asOf, accountBasis[bgId], evidenceContext, 'pre-change'), null, 'final proof cannot satisfy the separate pre-change purpose')
   const drilled = runFixture(f, { cleanupRecord: cleanupRecord(checkpoints) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!
   assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'final verification does not leak into account preparation after it is recorded')
   const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
-  assert.equal(row.done, `${signIn.slice(0, 10)}T12:00:00.000Z`, 'the drill row carries its recorded date')
-  assert.equal(cleanupWhen(row), `done ${absoluteDate(row.done!)}`, 'the row reads done <date>')
+  assert.equal(row.done, null, 'legacy manual assurance does not complete automatic verification')
   assert.equal(cleanupWhen(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!), absoluteDate(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!.day.slice(0, 10)), 'undone, the row reads its planned day')
 })
 
@@ -77,13 +109,16 @@ test('fabricated or imported recovery event ids never complete the drill', () =>
 test('recovery basis changes with effective exclusions membership and saved approved-model intent', () => {
   const f = fixture('demo-week2')
   const id = f.mapping.breakGlassUserIds[0]
+  f.mapping.passkeyApprovedModels = [{ name: 'Approved recovery model', aaguid: '11111111-2222-4333-8444-555555555555' }]
   const original = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
   const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]?.resolvedId
   assert.ok(original && groupId)
   f.groups.get(groupId!)!.memberIds.push('unexpected-member')
   assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], original)
   f.groups.get(groupId!)!.memberIds.pop()
-  f.mapping.passkeyApprovedModels = [{ name: 'Approved recovery model', aaguid: '11111111-2222-4333-8444-555555555555' }]
+  f.mapping.passkeyApprovedModels = [{ name: 'Renamed model label', aaguid: '11111111-2222-4333-8444-555555555555' }]
+  assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], original, 'a model label rename is not a security change')
+  f.mapping.passkeyApprovedModels = [{ name: 'Renamed model label', aaguid: '22222222-2222-4333-8444-555555555555' }]
   assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], original)
 })
 
@@ -171,6 +206,18 @@ test('recovery basis invalidates identity and direct group shape changes without
   assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], next)
 })
 
+test('recovery basis ignores an unrelated group-targeted policy edit', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const groupTemplate = structuredClone([...f.groups.values()][0])
+  f.groups.set('unrelated-group', { ...groupTemplate, memberIds: [], memberCount: 0, directMemberIds: [] })
+  const policies = f.snapshot.config.caPolicies.rows as Record<string, any>[]
+  policies.push({ id: 'unrelated-policy', displayName: 'Unrelated policy', state: 'enabled', conditions: { users: { includeUsers: [], includeGroups: ['unrelated-group'], excludeUsers: [], excludeGroups: [] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null })
+  const before = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  policies.at(-1)!.sessionControls = { signInFrequency: { value: 1, type: 'hours' } }
+  assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before)
+})
+
 test('an imported automatic assurance marker cannot replace observed event evidence', () => {
   const f = fixture('demo-week2')
   const id = f.mapping.breakGlassUserIds[0]
@@ -195,4 +242,137 @@ test('a confirmed failure cannot be cleared by recording an older successful eve
   checkpoints = [...checkpoints, { ...oldPass, at: f.snapshot.asOf }]
   const context = { readings: recoveryCandidateReadings(f.snapshot, id), tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf }
   assert.equal(latestRecoveryTest(id, cleanupRecord(checkpoints).records!, f.snapshot.asOf, basis, context), null)
+})
+
+test('automatic recovery establishes a baseline, verifies accounts independently, and keeps retained proof', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const plus = (iso: string, minutes: number): string => new Date(Date.parse(iso) + minutes * 60_000).toISOString()
+  const baselineAt = f.snapshot.asOf
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: baselineAt })
+  let records = cleanupRecord(checkpoints).records!
+  assert.equal(records.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW).length, ids.length)
+  assert.equal(records.some(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW), false, 'an event from before the baseline cannot pass on the baseline scan')
+
+  const firstEventAt = plus(baselineAt, 5)
+  f.snapshot.asOf = plus(baselineAt, 10)
+  f.snapshot.sources.signInEvidence = { status: 'ok', reason: null, coveredWindow: { from: plus(baselineAt, -30), to: f.snapshot.asOf }, asOf: f.snapshot.asOf }
+  f.snapshot.signInEvidence[ids[0]]!.recoveryCandidates = [{ ...f.snapshot.signInEvidence[ids[0]]!.recoveryCandidates![0], eventId: 'automatic-first', at: firstEventAt, authenticationAt: firstEventAt, resourceTenantId: f.snapshot.tenantId }]
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: f.snapshot.asOf })
+  records = cleanupRecord(checkpoints).records!
+  assert.equal(records.filter(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW).length, 1)
+
+  const secondEventAt = plus(baselineAt, 15)
+  f.snapshot.asOf = plus(baselineAt, 20)
+  f.snapshot.sources.signInEvidence = { status: 'ok', reason: null, coveredWindow: { from: plus(baselineAt, -30), to: f.snapshot.asOf }, asOf: f.snapshot.asOf }
+  f.snapshot.signInEvidence[ids[1]]!.recoveryCandidates = [{ ...f.snapshot.signInEvidence[ids[1]]!.recoveryCandidates![0], eventId: 'automatic-second', at: secondEventAt, authenticationAt: secondEventAt, resourceTenantId: f.snapshot.tenantId }]
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: f.snapshot.asOf })
+  records = cleanupRecord(checkpoints).records!
+  assert.equal(records.filter(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW).length, 2)
+  const unchanged = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: f.snapshot.asOf })
+  assert.equal(unchanged, checkpoints, 'an unchanged scan does not append duplicate checkpoints')
+
+  for (const id of ids) {
+    const set = recoveryPasskeyCandidateSet(f.snapshot, id, f.mapping, f.groups)
+    const preparation = records.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(id)).at(-1)!
+    const context = { readings: recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, preparation.configurationObservedAt), tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf, signInSource: f.snapshot.sources.signInEvidence, candidateSetBasis: set.state === 'complete' ? JSON.stringify([...set.ids].sort()) : undefined }
+    assert.ok(latestRecoveryTest(id, records, f.snapshot.asOf, recoveryAccountBasis(f.snapshot, ids, f.mapping, f.groups)[id], context))
+  }
+
+  const firstProof = records.find(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW && record.accountIds?.includes(ids[0]))!.recoveryEvidence![ids[0]]
+  f.snapshot.signInEvidence[ids[0]]!.recoveryCandidates = []
+  f.snapshot.asOf = plus(baselineAt, 30)
+  f.snapshot.sources.signInEvidence = { status: 'ok', reason: null, coveredWindow: { from: plus(firstProof.eventAt, 1), to: f.snapshot.asOf }, asOf: f.snapshot.asOf }
+  const firstSet = recoveryPasskeyCandidateSet(f.snapshot, ids[0], f.mapping, f.groups)
+  assert.ok(latestRecoveryTest(ids[0], records, f.snapshot.asOf, recoveryAccountBasis(f.snapshot, ids, f.mapping, f.groups)[ids[0]], { readings: [], tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf, signInSource: f.snapshot.sources.signInEvidence, candidateSetBasis: firstSet.state === 'complete' ? JSON.stringify([...firstSet.ids].sort()) : undefined }), 'proof remains current after the provider retention window moves past its event')
+  assert.equal(latestRecoveryTest(ids[0], records, plus(firstProof.eventAt, 91 * 24 * 60), recoveryAccountBasis(f.snapshot, ids, f.mapping, f.groups)[ids[0]], { readings: [], tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: plus(firstProof.eventAt, 91 * 24 * 60), signInSource: f.snapshot.sources.signInEvidence, candidateSetBasis: firstSet.state === 'complete' ? JSON.stringify([...firstSet.ids].sort()) : undefined }), null, 'proof expires after 90 days')
+})
+
+test('automatic recovery refuses incomplete passkey evidence and resets after configuration drift', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const id = ids[0]
+  const baselineAt = f.snapshot.asOf
+  const originalMethods = structuredClone(f.snapshot.authMethods[id])
+  f.snapshot.authMethods[id] = 'unknown'
+  const none = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: baselineAt })
+  assert.equal(cleanupRecord(none).records!.length, 0)
+
+  f.snapshot.authMethods[id] = originalMethods
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: baselineAt })
+  const methods = f.snapshot.authMethods[id]
+  if (!Array.isArray(methods)) throw new Error('fixture passkeys unavailable')
+  const passkey = methods.find(method => method.kind === 'fido2' || method.kind === 'passkey')!
+  const originalAaguid = passkey.aaGuid
+  passkey.aaGuid = '11111111-2222-4333-8444-555555555555'
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: new Date(Date.parse(baselineAt) + 60_000).toISOString() })
+  assert.equal(cleanupRecord(checkpoints).records!.at(-1)?.workflow, RECOVERY_INVALIDATION_WORKFLOW)
+  passkey.aaGuid = originalAaguid
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: new Date(Date.parse(baselineAt) + 120_000).toISOString() })
+  assert.equal(cleanupRecord(checkpoints).records!.at(-1)?.workflow, RECOVERY_PREPARATION_WORKFLOW, 'change-and-revert creates a new baseline rather than reviving old proof')
+})
+
+test('automatic recovery waits for the final policy and keeps account generations independent', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const at = f.snapshot.asOf
+  const policy = f.snapshot.config.authMethodsPolicy.rows[0] as Record<string, any>
+  const fido = policy.fido2Configuration ?? policy.authenticationMethodConfigurations.find((row: Record<string, unknown>) => String(row.id).toLowerCase() === 'fido2')
+  const restrictions = structuredClone(fido.keyRestrictions)
+  fido.keyRestrictions = { isEnforced: false, enforcementType: 'allow', aaGuids: [] }
+  assert.equal(cleanupRecord(reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })).records!.length, 0, 'unfinished Step 3 cannot establish a baseline')
+  fido.keyRestrictions = restrictions
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW).length, 2)
+
+  f.snapshot.users.find(user => user.id === ids[0])!.accountEnabled = false
+  const later = new Date(Date.parse(at) + 60_000).toISOString()
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: later })
+  const invalidated = cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW)
+  assert.deepEqual(invalidated.map(record => record.accountIds?.[0]), [ids[0]], 'an account-only change invalidates only that account')
+})
+
+test('unread evidence suspends current proof without destroying its generation', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const id = f.mapping.breakGlassUserIds[0]
+  const at = f.snapshot.asOf
+  const plus = (minutes: number): string => new Date(Date.parse(at) + minutes * 60_000).toISOString()
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: at })
+  const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  Object.assign(event, { eventId: 'post-baseline', at: plus(5), authenticationAt: plus(5), resourceTenantId: f.snapshot.tenantId })
+  f.snapshot.asOf = plus(10)
+  f.snapshot.sources.signInEvidence = { status: 'ok', reason: null, coveredWindow: { from: plus(-30), to: plus(10) }, asOf: plus(10) }
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: plus(10) })
+  const records = cleanupRecord(checkpoints).records!
+  const basis = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const set = recoveryPasskeyCandidateSet(f.snapshot, id, f.mapping, f.groups)
+  const context = () => ({ readings: recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, at), tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf, signInSource: f.snapshot.sources.signInEvidence, candidateSetBasis: set.state === 'complete' ? JSON.stringify([...set.ids].sort()) : undefined })
+  assert.ok(latestRecoveryTest(id, records, f.snapshot.asOf, basis, context()))
+
+  f.snapshot.sources.signInEvidence = { status: 'error', reason: 'temporary read failure', coveredWindow: null, asOf: plus(11) }
+  assert.equal(latestRecoveryTest(id, records, plus(11), basis, context()), null, 'cached evidence cannot stay green while the source read failed')
+  const methods = f.snapshot.authMethods[id]
+  f.snapshot.authMethods[id] = 'unknown'
+  const suspended = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: plus(11) })
+  assert.equal(suspended, checkpoints, 'an unread required source preserves history without writing an invalidation')
+  f.snapshot.authMethods[id] = methods
+})
+
+test('observed relevant audit changes create new generations without resetting unrelated accounts', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const at = f.snapshot.asOf
+  const plus = (seconds: number): string => new Date(Date.parse(at) + seconds * 1000).toISOString()
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  f.snapshot.recoveryDirectoryAudits = [{ id: 'audit-account-a', at: plus(30), activity: 'Update user', category: 'UserManagement', result: 'success', targets: [{ id: ids[0], type: 'User' }] }]
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(60) })
+  let records = cleanupRecord(checkpoints).records!
+  assert.equal(records.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[0])).length, 1)
+  assert.equal(records.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[1])).length, 0)
+
+  const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]!.resolvedId!
+  f.snapshot.recoveryDirectoryAudits.push({ id: 'audit-shared-group', at: plus(90), activity: 'Update group', category: 'GroupManagement', result: 'success', targets: [{ id: groupId, type: 'Group' }] })
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(120) })
+  records = cleanupRecord(checkpoints).records!
+  assert.equal(records.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[1])).length, 1, 'a shared group change resets the other account too')
 })

@@ -3,12 +3,17 @@
 // derived table. All I/O is injected — no fetch, no IndexedDB.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRow, runLaneB } from './laneBCore.ts'
+import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRecoveryAudit, mapRow, runLaneB } from './laneBCore.ts'
 import type { LaneBDeps } from './laneBCore.ts'
 import type { StoredSignIn } from './types.ts'
 
 const NOW = Date.parse('2026-08-26T00:00:00Z')
 const iso = (hoursAgo: number) => new Date(NOW - hoursAgo * 3_600_000).toISOString()
+
+test('recovery directory-audit projection keeps stable mutation identity and targets', () => {
+  assert.deepEqual(mapRecoveryAudit({ id: 'audit-1', activityDateTime: iso(1), activityDisplayName: 'Update group', category: 'GroupManagement', result: 'success', targetResources: [{ id: 'group-1', type: 'Group', displayName: 'Private name' }] }), { id: 'audit-1', at: iso(1), activity: 'Update group', category: 'GroupManagement', result: 'success', targets: [{ id: 'group-1', type: 'Group' }] })
+  assert.equal(mapRecoveryAudit({ activityDateTime: iso(1) }), null)
+})
 
 let seq = 0
 function row(over: Partial<StoredSignIn> & { hoursAgo: number }): StoredSignIn {
@@ -197,9 +202,12 @@ test('omitted and future device facts stay unreported while explicit false is re
 })
 
 
-test('recovery projection preserves provider authentication time and resource tenant', () => {
-  const row = mapRow({ id: 'recovery-event', userId: 'account', createdDateTime: '2026-09-16T10:02:00Z', resourceTenantId: 'tenant', status: { errorCode: 0 }, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'FIDO2 security key', authenticationStepDateTime: '2026-09-16T10:01:00Z', authenticationStepResultDetail: 'Success' }] })!
+test('recovery projection preserves the real-shaped target, authentication time and resource tenant', () => {
+  const row = mapRow({ id: 'recovery-event', userId: 'account', createdDateTime: '2026-09-16T10:02:00Z', appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', resourceTenantId: 'tenant', status: { errorCode: 0 }, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'FIDO2 security key', authenticationStepDateTime: '2026-09-16T10:01:00Z', authenticationStepResultDetail: 'Success' }] })!
   const event = aggregate([row]).account.recoveryCandidates![0]
+  assert.equal(event.appId, '74658136-14ec-4630-ad9b-26e160ff0fc6')
+  assert.equal(event.resourceId, '00000003-0000-0000-c000-000000000000')
   assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
   assert.equal(event.resourceTenantId, 'tenant')
+  assert.equal(event.freshMethod, true)
 })

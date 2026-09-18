@@ -90,7 +90,8 @@ import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
-import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
+import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
 import { answeredCarveOuts, devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
@@ -1289,6 +1290,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
   const bgStep = steps.find((s) => s.id === bgStepId)
   const recoveryBasis = recoveryAccountBasis(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
+  const recoveryCandidateSetBasis = Object.fromEntries(mapping.breakGlassUserIds.flatMap(id => {
+    const candidateSet = recoveryPasskeyCandidateSet(snapshot, id, mapping, input.groupMembers)
+    return candidateSet.state === 'complete' ? [[id, JSON.stringify([...candidateSet.ids].sort())]] : []
+  }))
   let bgStanding: EmergencyStanding | null = null
   let bgAccountStanding: EmergencyStanding | null = null
   if (bgStep && bgReport) {
@@ -2510,6 +2515,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     rhythm,
     emergencyAccountIds: mapping.breakGlassUserIds,
     accountBasis: recoveryBasis,
+    recoveryCandidateSetBasis,
+    signInEvidenceSource: recoveryEvidenceSource(snapshot),
     recoveryFindings: bgReport ? journeyRecoveryFindings(bgReport, snapshot, mapping, input.groupMembers, input.cleanupRecord?.records ?? [], input.reviewNow ?? snapshot.asOf) : undefined,
     recoveryCandidates: Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryCandidateReadings(snapshot, id, input.reviewNow ?? snapshot.asOf, recoveryPreparedAt[id])])),
     preChangeRecoveryCandidates: {},

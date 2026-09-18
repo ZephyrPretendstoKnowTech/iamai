@@ -13,12 +13,15 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
 import { requiredModels } from './passkeySettings.ts'
+import { passkeyReadingOf } from './passkeySettings.ts'
+import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
+import { emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import type { CleanupKind } from './cleanup.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 
 export type RecoveryPurpose = 'pre-change' | 'final'
 export type VerifiedRecoveryEvidence = {
-  schema: 1
+  schema: 1 | 2
   tenantId: string
   accountId: string
   eventId: string
@@ -31,8 +34,13 @@ export type VerifiedRecoveryEvidence = {
   credentialConfirmed?: true
   configurationObservedAt: string
   purpose?: RecoveryPurpose
+  authenticationAt?: string
+  resourceTenantId?: string
+  recoveryGeneration?: string
+  candidateSetBasis?: string
+  source?: 'microsoft-graph-signin'
 }
-export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; purpose?: RecoveryPurpose; tenantId?: string; configurationObservedAt?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
+export type CleanupCheckpoint = { at: string; cleanup: CleanupKind; date: string; basis?: string; accountIds?: string[]; timeZone?: string; outcome?: 'passed' | 'failed'; workflow?: string; purpose?: RecoveryPurpose; tenantId?: string; configurationObservedAt?: string; recipient?: string; signInAtByAccount?: Record<string, string>; accountBasis?: Record<string, string>; recoveryEvidence?: Record<string, VerifiedRecoveryEvidence>; recoveryGeneration?: string; candidateSetBasis?: Record<string, string>; replacementPolicyId?: string; retiredPolicyIds?: string[]; coverageVerified?: boolean; replacementBasis?: string; reference?: string; policyNames?: Record<string, string>; consolidationDecision?: 'retire' | 'retain-both'; retainedPolicyIds?: string[]; retainedPolicyBases?: Record<string, string>; rationale?: string; namingChanges?: { id: string; from: string; to: string }[]; toolingVerified?: boolean }
 /** The latest recorded completion per row, as an ISO instant. */
 export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
@@ -70,7 +78,7 @@ export function cleanupDoneDates(checkpoints: readonly unknown[]): CleanupDone {
   const seenAt: Partial<Record<CleanupKind, string>> = {}
   for (const c of checkpoints) {
     if (!isCleanupCheckpoint(c)) continue
-    if (c.cleanup === 'drill' && (c.workflow === RECOVERY_PREPARATION_WORKFLOW && c.outcome === undefined || c.purpose === 'pre-change')) continue
+    if (c.cleanup === 'drill' && (c.outcome !== 'passed' || c.purpose === 'pre-change')) continue
     const prev = seenAt[c.cleanup]
     if (prev !== undefined && prev > c.at) continue
     seenAt[c.cleanup] = c.at
@@ -81,7 +89,7 @@ export function cleanupDoneDates(checkpoints: readonly unknown[]): CleanupDone {
 
 /** Every drill date ever recorded: an older sign-in matches an older drill. */
 export function drillDates(checkpoints: readonly unknown[]): string[] {
-  return checkpoints.filter(isCleanupCheckpoint).filter((c) => c.cleanup === 'drill' && c.workflow !== RECOVERY_PREPARATION_WORKFLOW && c.purpose === 'final').map((c) => c.date)
+  return checkpoints.filter(isCleanupCheckpoint).filter((c) => c.cleanup === 'drill' && c.outcome === 'passed' && c.purpose === 'final').map((c) => c.date)
 }
 
 export function cleanupRecord(checkpoints: readonly unknown[]): CleanupRecord {
@@ -110,27 +118,44 @@ export type RecoveryEvidenceContext = {
   readings: readonly RecoveryCandidateReading[]
   tenantId: string
   currentSnapshotObservedAt: string
+  signInSource?: TenantSnapshot['sources']['signInEvidence']
+  candidateSetBasis?: string
 }
 
 export const RECOVERY_PREPARATION_WORKFLOW = 'Emergency recovery configuration prepared'
+export const RECOVERY_INVALIDATION_WORKFLOW = 'Emergency recovery configuration invalidated'
+export const RECOVERY_AUTOMATIC_WORKFLOW = 'Emergency passkey sign-in observed'
+
+/** Audit failures affect recovery verification, never unrelated sign-in uses. */
+export function recoveryEvidenceSource(snapshot: TenantSnapshot): TenantSnapshot['sources']['signInEvidence'] {
+  if (snapshot.sources.signInEvidence.status !== 'ok') return snapshot.sources.signInEvidence
+  return snapshot.recoveryAuditSource?.status === 'ok' ? snapshot.sources.signInEvidence
+    : { status: 'error', reason: snapshot.recoveryAuditSource?.reason ?? 'Recovery change evidence requires a new scan.', coveredWindow: null, asOf: snapshot.asOf }
+}
 
 export function recoveryPreparation(accountId: string, records: readonly CleanupCheckpoint[], now: string, expectedBasis: string | undefined, tenantId: string, purpose: RecoveryPurpose = 'final'): CleanupCheckpoint | null {
-  return records.filter(record => record.cleanup === 'drill' && record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.outcome === undefined && record.purpose === purpose && record.tenantId === tenantId && record.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && typeof record.configurationObservedAt === 'string' && Number.isFinite(Date.parse(record.configurationObservedAt)) && Date.parse(record.configurationObservedAt) <= Date.parse(now) && Date.parse(record.at) <= Date.parse(now) && (expectedBasis === undefined || record.accountBasis?.[accountId] === expectedBasis)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1) ?? null
+  const boundary = records.filter(record => record.cleanup === 'drill' && (record.workflow === RECOVERY_PREPARATION_WORKFLOW || record.workflow === RECOVERY_INVALIDATION_WORKFLOW) && record.outcome === undefined && record.purpose === purpose && record.tenantId === tenantId && record.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && Date.parse(record.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
+  if (!boundary || boundary.workflow !== RECOVERY_PREPARATION_WORKFLOW || typeof boundary.configurationObservedAt !== 'string' || !Number.isFinite(Date.parse(boundary.configurationObservedAt)) || Date.parse(boundary.configurationObservedAt) > Date.parse(now)) return null
+  return expectedBasis === undefined || boundary.accountBasis?.[accountId] === expectedBasis ? boundary : null
 }
 
 function evidenceMatchesCurrentCandidate(evidence: VerifiedRecoveryEvidence | undefined, accountId: string, context: RecoveryEvidenceContext | undefined, preparation: CleanupCheckpoint | null, purpose: RecoveryPurpose): boolean {
-  if (!context || !evidence || evidence.tenantId !== context.tenantId || evidence.schema !== 1 || evidence.provenance !== 'observed-sign-in' || evidence.method !== 'Passkey (FIDO2)') return false
+  if (!context || context.signInSource?.status !== 'ok' || !evidence || evidence.schema !== 2 || evidence.tenantId !== context.tenantId || evidence.provenance !== 'observed-sign-in' || evidence.method !== 'Passkey (FIDO2)') return false
   if (evidence.purpose !== purpose || preparation?.purpose !== purpose) return false
   if (!preparation?.configurationObservedAt || evidence.configurationObservedAt !== preparation.configurationObservedAt) return false
   if (!Number.isFinite(Date.parse(evidence.configurationObservedAt)) || Date.parse(evidence.eventAt) <= Date.parse(evidence.configurationObservedAt)) return false
   if (Date.parse(context.currentSnapshotObservedAt) < Date.parse(evidence.eventAt)) return false
-  return context.readings.some(({ candidate, qualifies }) => qualifies &&
+  if (!evidence.authenticationAt || !Number.isFinite(Date.parse(evidence.authenticationAt)) || !evidence.resourceTenantId || evidence.resourceTenantId.toLowerCase() !== context.tenantId.toLowerCase() || !evidence.recoveryGeneration || evidence.recoveryGeneration !== preparation.recoveryGeneration || !evidence.candidateSetBasis || evidence.candidateSetBasis !== context.candidateSetBasis) return false
+  const observed = context.readings.some(({ candidate, qualifies }) => qualifies &&
     candidate.userId.toLowerCase() === accountId.toLowerCase() &&
     candidate.eventId === evidence.eventId &&
     Date.parse(candidate.at) === Date.parse(evidence.eventAt) &&
     candidate.method === evidence.method &&
     candidate.appId === evidence.appId &&
     candidate.resourceId === evidence.resourceId)
+  if (observed) return true
+  const retainedFrom = context.signInSource.coveredWindow?.from
+  return !!retainedFrom && Number.isFinite(Date.parse(retainedFrom)) && Date.parse(retainedFrom) > Date.parse(evidence.eventAt)
 }
 
 export function isRecordedDrill(signInIso: string, _legacyDates: readonly string[], accountId?: string, records: readonly CleanupCheckpoint[] = [], context?: RecoveryEvidenceContext): boolean {
@@ -151,17 +176,17 @@ export function latestRecoveryTest(accountId: string, records: readonly CleanupC
   const latest = records.filter(r => r.cleanup === 'drill' && r.purpose === purpose && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
   const evidence = latest ? Object.entries(latest.recoveryEvidence ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1] : undefined
   const preparation = latest && context ? recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(latest.at)), latest.at, expectedBasis, context.tenantId, purpose) : null
-  const assured = evidence?.recoveryConfirmed === true && evidence?.credentialConfirmed === true
-  if (!latest || latest.outcome !== 'passed' || !evidence || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, purpose) || !assured || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  if (!latest || latest.outcome !== 'passed' || evidence?.schema !== 2 || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, purpose) || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  if (Date.parse(now) - Date.parse(evidence.eventAt) > BREAK_GLASS_DRILL_DAYS * 86_400_000) return null
   const failure = records.filter(r => r.cleanup === 'drill' && r.purpose === purpose && r.outcome === 'failed' && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && Date.parse(r.at) <= Date.parse(latest.at)).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
   if (failure && Date.parse(evidence.eventAt) <= Date.parse(failure.at)) return null
-  return latest.date
+  return evidence.schema === 2 ? evidence.eventAt : latest.date
 }
 
-export const SUPPORTED_RECOVERY_RESOURCE_IDS = new Set([
-  '797f4846-ba00-4fd7-ba43-dac1f8f63013', // Microsoft Azure management / portal
-  '00000003-0000-0000-c000-000000000000', // Microsoft Graph
-])
+export const ENTRA_ADMIN_TARGET = {
+  appId: '74658136-14ec-4630-ad9b-26e160ff0fc6',
+  resourceId: '00000003-0000-0000-c000-000000000000',
+} as const
 
 export type RecoveryCandidateReading = { candidate: RecoverySignInCandidate; qualifies: boolean; reason: string | null }
 
@@ -187,15 +212,141 @@ export function recoveryCandidateReadings(snapshot: TenantSnapshot, accountId: s
     else if (candidate.success !== true) reason = 'The sign-in did not succeed.'
     else if (candidate.isInteractive !== true) reason = candidate.isInteractive === null ? 'Interactive sign-in evidence was not returned.' : 'The sign-in was not interactive.'
     else if (candidate.freshMethod !== true || candidate.method !== 'Passkey (FIDO2)') reason = candidate.freshMethod === null ? 'Fresh passkey authentication details are not available yet.' : 'The event does not show a fresh successful passkey authentication.'
-    else if (!candidate.resourceId || !SUPPORTED_RECOVERY_RESOURCE_IDS.has(candidate.resourceId.toLowerCase())) reason = 'The event is not tied to a supported administrative resource.'
-    else if (candidate.resourceTenantId && candidate.resourceTenantId.toLowerCase() !== snapshot.tenantId.toLowerCase()) reason = 'The event belongs to a different resource tenant.'
-    else if (candidate.authenticationAt && (!Number.isFinite(Date.parse(candidate.authenticationAt)) || Date.parse(candidate.authenticationAt) > Date.parse(now))) reason = 'The authentication time is invalid or in the future.'
-    else if (configurationObservedAt && candidate.authenticationAt && Date.parse(candidate.authenticationAt) <= Date.parse(configurationObservedAt)) reason = 'The passkey authentication predates the current recovery configuration.'
+    else if (candidate.appId?.toLowerCase() !== ENTRA_ADMIN_TARGET.appId.toLowerCase() || candidate.resourceId?.toLowerCase() !== ENTRA_ADMIN_TARGET.resourceId.toLowerCase()) reason = 'The event is not the observed Entra admin-center application and resource.'
+    else if (!candidate.resourceTenantId || candidate.resourceTenantId.toLowerCase() !== snapshot.tenantId.toLowerCase()) reason = candidate.resourceTenantId ? 'The event belongs to a different resource tenant.' : 'The resource tenant was not returned.'
+    else if (!candidate.authenticationAt || !Number.isFinite(Date.parse(candidate.authenticationAt)) || Date.parse(candidate.authenticationAt) > Date.parse(now)) reason = 'A valid fresh authentication time was not returned.'
+    else if (configurationObservedAt && Date.parse(candidate.authenticationAt) <= Date.parse(configurationObservedAt)) reason = 'The passkey authentication predates the current recovery configuration.'
     else if (configurationObservedAt && Date.parse(candidate.at) <= Date.parse(configurationObservedAt)) reason = 'The sign-in did not occur after the current recovery configuration was observed.'
     else if (Date.parse(candidate.at) > Date.parse(now)) reason = 'The event time is in the future.'
     else if (Date.parse(now) - Date.parse(candidate.at) > BREAK_GLASS_DRILL_DAYS * 86_400_000) reason = 'The event is older than the recovery-test interval.'
     return { candidate, qualifies: reason === null, reason }
   })
+}
+
+export type AutomaticRecoveryInput = {
+  checkpoints: readonly unknown[]
+  snapshot: TenantSnapshot
+  mapping: MappingState
+  groups: GroupMembers
+  accountIds: readonly string[]
+  acquisitionCompletedAt: string
+}
+
+export type RecoveryPreparationState = 'ready' | 'incorrect' | 'unread'
+
+const lowerSet = (values: readonly string[]): string[] => [...new Set(values.map(value => value.toLowerCase()))].sort()
+const sameMembers = (a: readonly string[], b: readonly string[]): boolean => JSON.stringify(lowerSet(a)) === JSON.stringify(lowerSet(b))
+
+function relevantRecoveryAuditObserved(snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers, accountId: string, after: string, through: string): boolean {
+  const decision = operatorExclusionsDecision(mapping)
+  const activeRoles = snapshot.roles.active[accountId] ?? []
+  const inGroup = (groupId: string): boolean => {
+    const group = [...groups].find(([id]) => id.toLowerCase() === groupId.toLowerCase())?.[1]
+    return !!group?.memberIds.some(id => id.toLowerCase() === accountId.toLowerCase())
+  }
+  const policyIds = new Set((snapshot.config.caPolicies?.rows ?? []).flatMap(raw => {
+    const policy = raw as Record<string, any>
+    const users = policy.conditions?.users ?? {}
+    const applies = (users.includeUsers ?? []).some((id: string) => id === 'All' || id.toLowerCase() === accountId.toLowerCase()) || (users.includeGroups ?? []).some(inGroup) || (users.includeRoles ?? []).some((role: string) => activeRoles.some(active => active.toLowerCase() === role.toLowerCase()))
+    return applies && typeof policy.id === 'string' ? [policy.id.toLowerCase()] : []
+  }))
+  return (snapshot.recoveryDirectoryAudits ?? []).some(audit => {
+    const auditAt = Date.parse(audit.at)
+    if (!Number.isFinite(auditAt) || auditAt <= Date.parse(after) || auditAt > Date.parse(through) || audit.result?.toLowerCase() === 'failure') return false
+    const targets = audit.targets.map(target => target.id.toLowerCase())
+    if (targets.includes(accountId.toLowerCase()) || (!!decision && targets.includes(decision.id.toLowerCase())) || targets.some(target => policyIds.has(target))) return true
+    return /passkey|fido|authentication methods? policy/i.test(`${audit.activity} ${audit.category ?? ''}`)
+  })
+}
+
+/** Readiness for the automatic recovery baseline. Shared controls are evaluated
+ * once, while account-only evidence remains independent. */
+export function automaticRecoveryPreparationStates(snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers): Record<string, RecoveryPreparationState> {
+  const ids = mapping.breakGlassUserIds
+  const decision = operatorExclusionsDecision(mapping)
+  const selected = decision ? ([...groups].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
+  const passkey = passkeyReadingOf(snapshot, mapping)
+  const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
+  const activePolicies = snapshot.config.caPolicies?.status === 'ok' ? (snapshot.config.caPolicies.rows as Record<string, any>[]).filter(policy => policy.state !== 'disabled') : []
+  const targetState = (policy: Record<string, any>): boolean | null => {
+    const users = policy.conditions?.users ?? {}
+    if ((users.includeUsers ?? []).some((value: string) => value === 'All' || ids.some(id => id.toLowerCase() === value.toLowerCase()))) return true
+    if ((users.includeRoles ?? []).some((role: string) => ids.some(id => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === role.toLowerCase())))) return true
+    let unknown = false
+    for (const groupId of users.includeGroups ?? []) {
+      const group = [...groups].find(([id]) => id.toLowerCase() === String(groupId).toLowerCase())?.[1]
+      if (!group || group.sampled === true) { unknown = true; continue }
+      if (group.memberIds.some(member => ids.some(id => id.toLowerCase() === member.toLowerCase()))) return true
+    }
+    return unknown ? null : false
+  }
+  const targetStates = activePolicies.map(targetState)
+  const applicablePolicies = activePolicies.filter((_policy, index) => targetStates[index] === true)
+  const sharedUnread = !decision || !selected || typeof selected.securityEnabled !== 'boolean' || typeof selected.mailEnabled !== 'boolean' || selected.directMembers !== 'complete' || !Array.isArray(selected.directMemberIds) || !Array.isArray(selected.groupTypes) || !Array.isArray(selected.assignedLicenseSkuIds) || snapshot.config.caPolicies?.status !== 'ok' || targetStates.includes(null) || passkey.state === 'unread' || passkey.state === 'review'
+  const exclusionsCorrect = !!decision && applicablePolicies.every(policy => Array.isArray(policy.conditions?.users?.excludeGroups) && policy.conditions.users.excludeGroups.some((id: string) => id.toLowerCase() === decision.id.toLowerCase()))
+  const sharedIncorrect = !sharedUnread && (securityDefaults || selected!.securityEnabled !== true || selected!.mailEnabled === true || !!selected!.membershipRule || selected!.groupTypes!.some(type => type.toLowerCase() === 'dynamicmembership') || selected!.assignedLicenseSkuIds!.length > 0 || !sameMembers(selected!.directMemberIds!, ids) || !exclusionsCorrect || passkey.state !== 'inPlace')
+  const shared: RecoveryPreparationState = sharedUnread ? 'unread' : sharedIncorrect ? 'incorrect' : 'ready'
+  const preparations = new Map(emergencyAccountPreparationOf(snapshot, mapping, groups).map(row => [row.accountId.toLowerCase(), row]))
+  return Object.fromEntries(ids.map(id => {
+    const row = preparations.get(id.toLowerCase())
+    const checks = row ? Object.values(row.checks) : [null]
+    const candidates = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups)
+    const own: RecoveryPreparationState = checks.includes(null) || candidates.state === 'unknown' ? 'unread' : checks.includes(false) || candidates.state !== 'complete' ? 'incorrect' : 'ready'
+    return [id, shared === 'incorrect' || own === 'incorrect' ? 'incorrect' : shared === 'unread' || own === 'unread' ? 'unread' : 'ready']
+  }))
+}
+
+/** Reconcile one complete scan into an automatic per-account recovery baseline
+ * and, on a later scan, its exact observed Entra passkey event. */
+export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unknown[] {
+  const records = input.checkpoints.filter(isCleanupCheckpoint)
+  const next: unknown[] = [...input.checkpoints]
+  const basis = recoveryAccountBasis(input.snapshot, input.accountIds, input.mapping, input.groups)
+  const preparationStates = automaticRecoveryPreparationStates(input.snapshot, input.mapping, input.groups)
+  const source = recoveryEvidenceSource(input.snapshot)
+  const at = input.acquisitionCompletedAt
+  if (!Number.isFinite(Date.parse(at))) return input.checkpoints as unknown[]
+  let changed = false
+  const append = (record: CleanupCheckpoint): void => { changed = true; next.push(record); records.push(record) }
+  for (const id of input.accountIds) {
+    const currentBasis = basis[id]
+    const candidates = recoveryPasskeyCandidateSet(input.snapshot, id, input.mapping, input.groups)
+    const candidateSetBasis = candidates.state === 'complete' ? JSON.stringify([...candidates.ids].sort()) : null
+    const preparationState = preparationStates[id] ?? 'unread'
+    const prepared = preparationState === 'ready' && !!currentBasis && !!candidateSetBasis
+    const boundary = records.filter(record => record.cleanup === 'drill' && record.purpose === 'final' && record.tenantId === input.snapshot.tenantId && record.accountIds?.some(accountId => accountId.toLowerCase() === id.toLowerCase()) && (record.workflow === RECOVERY_PREPARATION_WORKFLOW || record.workflow === RECOVERY_INVALIDATION_WORKFLOW)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
+    if (!prepared) {
+      if (preparationState === 'incorrect' && boundary?.workflow === RECOVERY_PREPARATION_WORKFLOW) append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
+      continue
+    }
+    if (source.status !== 'ok') continue
+    let preparation = recoveryPreparation(id, records, at, currentBasis, input.snapshot.tenantId, 'final')
+    if (!preparation || preparation.candidateSetBasis?.[id] !== candidateSetBasis) {
+      if (boundary?.workflow === RECOVERY_PREPARATION_WORKFLOW) append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
+      const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
+      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
+      append(preparation)
+      continue
+    }
+    if (preparation.configurationObservedAt && relevantRecoveryAuditObserved(input.snapshot, input.mapping, input.groups, id, preparation.configurationObservedAt, at)) {
+      append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
+      const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
+      append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation })
+      continue
+    }
+    if (source.status !== 'ok') continue
+    const reading = recoveryCandidateReadings(input.snapshot, id, at, preparation.configurationObservedAt).filter(item => item.qualifies).sort((a,b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
+    if (!reading || !preparation.configurationObservedAt || !preparation.recoveryGeneration) continue
+    const candidate = reading.candidate
+    const already = records.some(record => {
+      const prior = record.recoveryEvidence?.[id]
+      return record.cleanup === 'drill' && record.workflow === RECOVERY_AUTOMATIC_WORKFLOW && record.purpose === 'final' && prior?.eventId === candidate.eventId && prior.recoveryGeneration === preparation!.recoveryGeneration
+    })
+    if (already) continue
+    const evidence: VerifiedRecoveryEvidence = { schema: 2, purpose: 'final', tenantId: input.snapshot.tenantId, accountId: id, eventId: candidate.eventId, eventAt: candidate.at, appId: candidate.appId, resourceId: candidate.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', configurationObservedAt: preparation.configurationObservedAt, authenticationAt: candidate.authenticationAt!, resourceTenantId: candidate.resourceTenantId!, recoveryGeneration: preparation.recoveryGeneration, candidateSetBasis, source: 'microsoft-graph-signin' }
+    append({ at, cleanup: 'drill', date: cleanupDateToIso(candidate.at), workflow: RECOVERY_AUTOMATIC_WORKFLOW, outcome: 'passed', purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: preparation.configurationObservedAt, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: preparation.recoveryGeneration, recoveryEvidence: { [id]: evidence }, signInAtByAccount: { [id]: candidate.at } })
+  }
+  return changed ? next : input.checkpoints as unknown[]
 }
 
 /** A dated scoped successful result completes cleanup. An older monitoring
@@ -213,7 +364,8 @@ export function cleanupComplete(
 /** Configuration relevant to a recorded emergency-account test. An unavailable
  * read yields no current fingerprint, preserving history without false drift. */
 export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: readonly string[], mapping?: MappingState, groups?: GroupMembers): Record<string, string> {
-  const canonical = (v: unknown): unknown => Array.isArray(v) ? v.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !['displayName', 'description', 'modifiedDateTime', '@odata.context'].includes(k)).sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, canonical(value)])) : v
+  const ignored = new Set(['displayName', 'description', 'modifiedDateTime', 'createdDateTime', '@odata.context', 'name', 'sourceVersion'])
+  const canonical = (v: unknown): unknown => Array.isArray(v) ? v.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !ignored.has(k) && !k.startsWith('@odata.')).sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, canonical(value)])) : v
   const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
   if (snapshot.sources.users?.status !== 'ok' || (!securityDefaults && snapshot.config.caPolicies?.status !== 'ok') || snapshot.config.authMethodsPolicy?.status !== 'ok' || snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.roleAssignmentSchedules?.status !== 'ok') return {}
   const methodPolicy = snapshot.config.authMethodsPolicy.rows[0] as Record<string, any> | undefined
@@ -221,31 +373,45 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
   const decision = mapping ? operatorExclusionsDecision(mapping) : null
   const selectedGroup = decision && groups ? ([...groups.entries()].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
   const exclusionsIntent = decision ? [decision.id.toLowerCase(), selectedGroup ? { sampled: selectedGroup.sampled, memberIds: selectedGroup.memberIds.map(id => id.toLowerCase()).sort(), directMembers: selectedGroup.directMembers, directMemberIds: selectedGroup.directMemberIds, securityEnabled: selectedGroup.securityEnabled, mailEnabled: selectedGroup.mailEnabled, groupTypes: selectedGroup.groupTypes, membershipRule: selectedGroup.membershipRule, assignedLicenseSkuIds: selectedGroup.assignedLicenseSkuIds } : 'membership-unread'] : null
-  const approvedModelIntent = mapping ? requiredModels(mapping).map(model => [model.name, model.aaguid]).sort((a,b) => a[1].localeCompare(b[1])) : null
+  const approvedModelIntent = mapping ? requiredModels(mapping).map(model => model.aaguid.toLowerCase()).sort() : null
+  const membership = (groupId: string, accountId: string): boolean | null => {
+    const group = groups ? [...groups].find(([id]) => id.toLowerCase() === groupId.toLowerCase())?.[1] : null
+    if (!group) return null
+    if (group.memberIds.some(id => id.toLowerCase() === accountId.toLowerCase())) return true
+    return group.sampled === true ? null : false
+  }
   const out: Record<string, string> = {}
   for (const id of accountIds) {
     const u = snapshot.users.find(u => u.id === id)
     const methods = snapshot.authMethods[id]
     if (!u || !methods || methods === 'unknown' || snapshot.config.authMethodsPolicy.fido2Read?.status === 'error') continue
+    let unresolvedTarget = false
     const policies = (snapshot.config.caPolicies?.rows ?? []).filter(raw => {
       const p = raw as Record<string, any>
       const targets = p.conditions?.users ?? {}
-      if ((targets.excludeUsers ?? []).includes(id)) return false
-      return (targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).includes(id) || (targets.includeGroups ?? []).length > 0 || (targets.includeRoles ?? []).some((r: string) => (snapshot.roles.active[id] ?? []).includes(r))
+      const direct = (targets.includeUsers ?? []).some((value: string) => value === 'All' || value.toLowerCase() === id.toLowerCase())
+      const role = (targets.includeRoles ?? []).some((value: string) => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === value.toLowerCase()))
+      const groupStates = (targets.includeGroups ?? []).map((groupId: string) => membership(groupId, id))
+      if (!direct && !role && !groupStates.includes(true) && groupStates.includes(null)) unresolvedTarget = true
+      return direct || role || groupStates.includes(true)
     }).map(raw => {
       const p = raw as Record<string, any>
       const users = p.conditions?.users ?? {}
-      // A change to another account's direct inclusion or exclusion does not
-      // change this emergency account's recovery path. Group and role targeting
-      // remain material because this read may not resolve their membership.
+      const relevantGroups = (values: unknown): string[] => Array.isArray(values) ? values.filter((groupId): groupId is string => typeof groupId === 'string' && membership(groupId, id) === true) : []
       const scopedUsers = { ...users,
-        includeUsers: (users.includeUsers ?? []).filter((v: string) => v === id || v === 'All' || v === 'GuestsOrExternalUsers'),
-        excludeUsers: (users.excludeUsers ?? []).filter((v: string) => v === id || v === 'GuestsOrExternalUsers'),
+        includeUsers: (users.includeUsers ?? []).filter((v: string) => v.toLowerCase() === id.toLowerCase() || v === 'All' || v === 'GuestsOrExternalUsers'),
+        excludeUsers: (users.excludeUsers ?? []).filter((v: string) => v.toLowerCase() === id.toLowerCase() || v === 'GuestsOrExternalUsers'),
+        includeGroups: relevantGroups(users.includeGroups),
+        excludeGroups: relevantGroups(users.excludeGroups),
+        includeRoles: (users.includeRoles ?? []).filter((role: string) => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === role.toLowerCase())),
+        excludeRoles: (users.excludeRoles ?? []).filter((role: string) => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === role.toLowerCase())),
       }
       return [p.id, p.state, { ...p.conditions, users: scopedUsers }, p.grantControls, p.sessionControls]
     })
-    const roleSchedules = (snapshot.config.roleAssignmentSchedules.rows as Record<string, unknown>[]).filter(row => String(row.principalId).toLowerCase() === id.toLowerCase())
-    out[id] = JSON.stringify(canonical([id, u.userPrincipalName, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, methods, fido ?? null, policies, (snapshot.config.authStrengths?.rows ?? []).filter(raw => policies.some(policy => (policy[3] as Record<string, any> | undefined)?.authenticationStrength?.id === (raw as Record<string, unknown>).id)), securityDefaults, exclusionsIntent, approvedModelIntent]))
+    if (unresolvedTarget) continue
+    const roleSchedules = (snapshot.config.roleAssignmentSchedules.rows as Record<string, any>[]).filter(row => String(row.principalId).toLowerCase() === id.toLowerCase()).map(row => ({ roleDefinitionId: row.roleDefinitionId, directoryScopeId: row.directoryScopeId, assignmentType: row.assignmentType, memberType: row.memberType, status: row.status, startDateTime: row.startDateTime, endDateTime: row.endDateTime }))
+    const passkeys = methods.filter(method => method.kind === 'passkey' || method.kind === 'fido2').map(method => ({ id: method.id, kind: method.kind, aaGuid: method.aaGuid?.toLowerCase() ?? null, passkeyType: method.passkeyType ?? null, attestationLevel: method.attestationLevel ?? null, passkeyProfileId: (method as Record<string, unknown>).passkeyProfileId ?? null }))
+    out[id] = JSON.stringify(canonical([id, u.userPrincipalName, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, passkeys, fido ?? null, policies, (snapshot.config.authStrengths?.rows ?? []).filter(raw => policies.some(policy => (policy[3] as Record<string, any> | undefined)?.authenticationStrength?.id === (raw as Record<string, unknown>).id)), securityDefaults, exclusionsIntent, approvedModelIntent]))
   }
   return out
 }
