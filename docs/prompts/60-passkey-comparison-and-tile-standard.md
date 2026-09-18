@@ -120,7 +120,7 @@ the reference implementation.
   summary and again as expanded body content.
 - Long identifiers wrap at sensible boundaries. Apply `overflow-wrap: anywhere`
   or the equivalent to UPN and identifier cells so a value like
-  `Breakglass@GoldenTestIAMAI.onmicrosoft.com` does not break mid-word across
+  `<emergency-account>@<tenant>.onmicrosoft.com` does not break mid-word across
   three lines in a narrow column.
 - A tile does not repeat a list that is already rendered elsewhere on the same
   screen.
