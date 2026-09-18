@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { PASSKEY_TARGET_AAGUIDS, passkeyFindingsOf, passkeyReadingOf, resolvePasskeyTarget, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { collectConfigSection } from '../graph/collect/collectors.ts'
+import { journeyPasskeyFindings } from './emergencyJourney.ts'
 
 const HARDWARE = 'cb69481e-8ff7-4039-93ec-0a2729a154a8'
 const profile = (id: string, aaGuids: string[] = [...PASSKEY_TARGET_AAGUIDS]) => ({ id, name: id, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids } })
@@ -12,6 +14,77 @@ function scan(current: unknown) {
   snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [current] }] }
   return snapshot
 }
+
+test('single unrestricted device-bound profile is collected accurately and compared with the approved plan', async () => {
+  const profileId = '00000000-0000-0000-0000-000000000001'
+  const current = {
+    id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true,
+    isAttestationEnforced: false,
+    keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] },
+    includeTargets: [{ targetType: 'group', id: 'all_users', allowedPasskeyProfiles: [profileId] }],
+    excludeTargets: [],
+    passkeyProfiles: [{
+      id: profileId, name: 'Default passkey profile', passkeyTypes: 'deviceBound',
+      attestationEnforcement: 'registrationOnly',
+      keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [HARDWARE] },
+    }],
+  }
+  const original = structuredClone(current)
+  const f = structuredClone(fixture('demo-week2'))
+  f.mapping.passkeyApprovedModels = [{ name: 'Additional approved key', aaguid: HARDWARE }]
+  const before = globalThis.fetch
+  globalThis.fetch = async input => {
+    const url = String(input)
+    const body = url.includes('/authenticationMethodConfigurations/Fido2')
+      ? current
+      : { policyMigrationState: 'migrationComplete', authenticationMethodConfigurations: [{
+        ...current, passkeyProfiles: [{ ...current.passkeyProfiles[0], passkeyTypes: 'deviceBound,synced' }],
+      }] }
+    return new Response(JSON.stringify(body), { status: 200 })
+  }
+  try {
+    f.snapshot.config.authMethodsPolicy = await collectConfigSection({
+      tokens: { get: () => 'synthetic', refresh: async () => 'synthetic' },
+      signal: new AbortController().signal,
+    }, 'authMethodsPolicy')
+  } finally { globalThis.fetch = before }
+  // Methods exercise both affected and unaffected outcomes, not an empty population.
+  f.snapshot.authMethods = Object.fromEntries(f.snapshot.users.map(user => [user.id, []]))
+  const [a, b] = f.mapping.breakGlassUserIds
+  f.snapshot.authMethods[a] = [{ kind: 'fido2', id: 'approved-key', aaGuid: HARDWARE, passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+  f.snapshot.authMethods[b] = [{ kind: 'fido2', id: 'unapproved-key', aaGuid: '11111111-2222-4333-8444-555555555555', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+  const reading = passkeyReadingOf(f.snapshot, f.mapping)
+  assert.equal(reading.state, 'partial', 'known change, not unread evidence')
+  assert.equal(reading.resolution?.kind, 'target')
+  if (reading.resolution?.kind === 'target') {
+    const profiles = reading.resolution.target.passkeyProfiles as typeof current.passkeyProfiles
+    assert.deepEqual(profiles[0].keyRestrictions.aaGuids.sort(), [...PASSKEY_TARGET_AAGUIDS, HARDWARE].sort())
+    assert.equal(profiles[0].keyRestrictions.isEnforced, true)
+  }
+  const findings = passkeyFindingsOf(f.snapshot, f.mapping)
+  assert.ok(findings.some(row => row.value === 'Device-bound only'))
+  assert.ok(findings.some(row => row.value === 'Required' && row.key.endsWith('.attestation')))
+  assert.equal(findings.some(row => row.value === 'Synced passkeys allowed' || row.outcome === 'unknown'), false)
+  const impact = affectedPasskeysByProposedChange(f.snapshot, f.mapping, f.groups)
+  assert.equal(impact.state, 'known')
+  assert.deepEqual(impact.users.map(row => row.accountId), [b])
+  const tiles = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
+  assert.equal(tiles.some(row => row.outcome === 'unknown'), false)
+  assert.deepEqual(current, original, 'proposal must not mutate observed tenant settings')
+  // The live API can retain both type flags while the portal shows
+  // Device-bound because attestation blocks synced registration.
+  const observed = structuredClone(current)
+  observed.passkeyProfiles[0].passkeyTypes = 'deviceBound,synced'
+  const observedSnapshot = scan(observed)
+  const storage = passkeyFindingsOf(observedSnapshot).find(row => row.key.endsWith('.types'))!
+  assert.equal(storage.value, 'Device-bound registration only; stored types include synced')
+  assert.equal(passkeyReadingOf(observedSnapshot).resolution?.kind, 'target')
+  const syncedId = observedSnapshot.users[0].id
+  observedSnapshot.authMethods = Object.fromEntries(observedSnapshot.users.map(user => [user.id, []]))
+  observedSnapshot.authMethods[syncedId] = [{ kind: 'fido2', id: 'existing-synced', aaGuid: PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'synced', attestationLevel: 'notAttested' }]
+  assert.deepEqual(affectedPasskeysByProposedChange(observedSnapshot).users.map(user => user.accountId), [syncedId],
+    'registration-only attestation must not pretend an existing synced key is already denied at sign-in')
+})
 
 test('assigned attested device-bound profiles jointly support Authenticator and retained hardware', () => {
   const current = policy()
@@ -63,9 +136,14 @@ test('failed dedicated read preserves its reason and cannot become disabled or c
   assert.ok(snapshot.config.authMethodsPolicy.rows.length, 'the parent response remains available with provenance')
 })
 
-test('unrestricted legacy policy requires model selection without manufacturing an allow list', () => {
+test('unrestricted legacy policy compares against approved plan models while preserving current access', () => {
   const current = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: true, includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: [] }], excludeTargets: [], keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }
-  assert.deepEqual(resolvePasskeyTarget(current), { kind: 'review', review: 'modelSelection', subjects: ['unrestricted'] })
+  const proposed = resolvePasskeyTarget(current)
+  assert.equal(proposed.kind, 'target')
+  if (proposed.kind === 'target') {
+    assert.deepEqual(proposed.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
+    assert.deepEqual(proposed.retained, [])
+  }
   assert.ok(passkeyFindingsOf(scan(current)).some(f => f.value === 'Unrestricted' && f.outcome === 'fail'))
   const snapshot = scan(current)
   snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE, attestationLevel: 'attested' }] }

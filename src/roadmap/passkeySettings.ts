@@ -114,7 +114,8 @@ function findingsFor(current: Fido2Configuration | null, mapping?: MappingState)
     if (profile) {
       const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.split(',').map(x => x.trim().toLowerCase()) : []
       const known = types.length > 0 && types.every(t => t === 'devicebound' || t === 'synced')
-      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : types.length === 1 && types[0] === 'devicebound' ? 'pass' : 'fail', !known ? 'Not read' : types.includes('synced') ? 'Synced passkeys allowed' : 'Device-bound only', `${name}: the plan uses device-bound Authenticator passkeys and approved hardware keys.`)
+      const registrationDeviceBound = known && types.includes('devicebound') && attestation === true
+      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : types.length === 1 && types[0] === 'devicebound' ? 'pass' : 'fail', !known ? 'Not read' : types.includes('synced') ? registrationDeviceBound ? 'Device-bound registration only; stored types include synced' : 'Synced passkeys allowed' : 'Device-bound only', `${name}: attestation restricts registration. The stored type setting is checked separately for existing passkeys.`)
     }
     const known = restrictions && typeof restrictions.isEnforced === 'boolean' && (restrictions.enforcementType === 'allow' || restrictions.enforcementType === 'block') && Array.isArray(restrictions.aaGuids) && restrictions.aaGuids.every(id => typeof id === 'string' && GUID.test(id))
     const strict = known && restrictions.isEnforced && restrictions.enforcementType === 'allow'
@@ -233,7 +234,13 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
       const values = restrictions && Array.isArray(restrictions.aaGuids) ? restrictions.aaGuids : null
       if (!restrictions || typeof restrictions.isEnforced !== 'boolean' || !['allow', 'block'].includes(String(restrictions.enforcementType)) || !values || values.some(value => typeof value !== 'string' || !GUID.test(value))) return null
       const currentIds = strings(values)
-      if (restrictions.isEnforced !== true) return { review: 'modelSelection' as const, subjects: [profile.id] }
+      // The plan's approved models define the proposed allow list. An
+      // unrestricted current profile is known evidence, not a missing choice.
+      // Disabled lists confer no approvals; never retain their dormant entries.
+      if (restrictions.isEnforced !== true) {
+        requiredIds.forEach(id => added.add(id))
+        return { ...structuredClone(profile), passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...requiredIds] } }
+      }
       if (restrictions.enforcementType === 'block') {
         const conflict = currentIds.filter(id => requiredIds.includes(id))
         return conflict.length ? { review: 'blockListConflict' as const, subjects: conflict } : { review: 'modelSelection' as const, subjects: [profile.id] }
@@ -268,27 +275,27 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
     const blocked = models.filter((g) => requiredIds.includes(g.toLowerCase()))
     if (blocked.length > 0) return { kind: 'review', review: 'blockListConflict', subjects: blocked }
   }
-  if (restriction !== 'allow') return { kind: 'review', review: 'modelSelection', subjects: [restriction] }
+  if (restriction === 'block') return { kind: 'review', review: 'modelSelection', subjects: [restriction] }
   // An allow list: its models once each, as Graph returned them, then the approved models it lacks.
   const seen = new Set<string>()
-  const distinct = models.filter((g) => {
+  const distinct = (restriction === 'allow' ? models : []).filter((g) => {
     const key = g.toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
     return true
   })
-  const added = restriction === 'allow' ? requiredIds.filter((a) => !seen.has(a)) : []
+  const added = requiredIds.filter((a) => !seen.has(a))
   const target: Fido2Configuration = {
     '@odata.type': PASSKEY_TARGET['@odata.type'],
     id: 'Fido2',
     state: 'enabled',
     isSelfServiceRegistrationAllowed: PASSKEY_TARGET.isSelfServiceRegistrationAllowed,
     isAttestationEnforced: PASSKEY_TARGET.isAttestationEnforced,
-    keyRestrictions: { isEnforced: kr.isEnforced, enforcementType: kr.enforcementType, aaGuids: restriction === 'allow' ? [...distinct, ...added] : [...models] },
+    keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...distinct, ...added] },
     includeTargets: structuredClone(includes),
     ...(Array.isArray(current.excludeTargets) ? { excludeTargets: structuredClone(current.excludeTargets) } : {}),
   }
-  return { kind: 'target', target, restriction, retained: restriction === 'allow' ? distinct : [], added }
+  return { kind: 'target', target, restriction: 'allow', retained: distinct, added }
 }
 
 const sameSet = (a: unknown, b: unknown): boolean => JSON.stringify([...new Set(strings(a))]) === JSON.stringify([...new Set(strings(b))])

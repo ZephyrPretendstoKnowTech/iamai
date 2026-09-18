@@ -655,7 +655,7 @@ export function buildFixture(spec: Spec): Fixture {
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
       deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),
       roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
-      roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null, status: 'Provisioned' }))),
+      roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null }))),
       pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : 'needs Entra ID P2'),
       subscribedSkus: section([
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),
