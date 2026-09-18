@@ -185,7 +185,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
         </p>
       )}
         </div>
-        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: 'Verify every selected account after the final configuration is observed.' }} />}
+        {row.kind === 'drill' && <StepActionColumn rail={{ metric: status.word, sub: row.done ? 'Every selected account is verified.' : 'Verify every selected account after the final configuration is observed.' }} />}
       </div>
     </article>
   )
