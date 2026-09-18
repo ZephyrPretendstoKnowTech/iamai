@@ -5,7 +5,7 @@ import { PAGE_ABORT_MS } from './constants.ts'
 import { BETA, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
-import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, mapRecoveryAudit, runLaneB } from './laneBCore.ts'
+import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, mapRecoveryAudit, recoveryAuditRequest, runLaneB } from './laneBCore.ts'
 import type { LaneBProgress, SignInEvidence } from './laneBCore.ts'
 import type { RecoveryDirectoryAudit } from './types.ts'
 
@@ -38,8 +38,8 @@ export async function collectSignInEvidence(
     onPage: opts.onPage,
     onSlow: opts.onSlow,
   })
-  const since = new Date(Date.now() - 90 * 86_400_000).toISOString()
-  let next: string | null = `${BETA}/auditLogs/directoryAudits?$filter=${encodeURIComponent(`activityDateTime ge ${since}`)}&$select=id,activityDateTime,activityDisplayName,category,result,targetResources&$top=200`
+  const { since, url } = recoveryAuditRequest(BETA, Date.now())
+  let next: string | null = url
   const recoveryAudits: RecoveryDirectoryAudit[] = []
   try {
     while (next) {

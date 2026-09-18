@@ -53,6 +53,19 @@ export type SignInEvidence = {
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
 
+/**
+ * Microsoft Entra keeps directory audit logs for 30 days on P1/P2; Graph rejects
+ * an earlier activityDateTime with a 400 ("Minimum allowed time for
+ * activityDateTime is …"), which suspended every recovery verification.
+ */
+export const RECOVERY_AUDIT_LOOKBACK_DAYS = 30
+
+/** The directory-audit read for recovery change evidence, inside Entra's retention. */
+export function recoveryAuditRequest(base: string, nowMs: number): { since: string; url: string } {
+  const since = new Date(nowMs - RECOVERY_AUDIT_LOOKBACK_DAYS * 86_400_000).toISOString()
+  return { since, url: `${base}/auditLogs/directoryAudits?$filter=${encodeURIComponent(`activityDateTime ge ${since}`)}&$select=id,activityDateTime,activityDisplayName,category,result,targetResources&$top=200` }
+}
+
 export function mapRecoveryAudit(raw: unknown): RecoveryDirectoryAudit | null {
   const row = raw as Record<string, any>
   if (typeof row?.id !== 'string' || typeof row.activityDateTime !== 'string' || typeof row.activityDisplayName !== 'string') return null

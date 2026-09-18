@@ -3,7 +3,7 @@
 // derived table. All I/O is injected — no fetch, no IndexedDB.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRecoveryAudit, mapRow, runLaneB } from './laneBCore.ts'
+import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRecoveryAudit, mapRow, recoveryAuditRequest, runLaneB } from './laneBCore.ts'
 import type { LaneBDeps } from './laneBCore.ts'
 import type { StoredSignIn } from './types.ts'
 
@@ -210,4 +210,14 @@ test('recovery projection preserves the real-shaped target, authentication time 
   assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
   assert.equal(event.resourceTenantId, 'tenant')
   assert.equal(event.freshMethod, true)
+})
+
+test('the recovery audit read stays inside Entra directory-audit retention (30 days)', () => {
+  const now = Date.parse('2026-09-18T18:00:00.000Z')
+  const { since, url } = recoveryAuditRequest('https://graph.microsoft.com/beta', now)
+  // Graph refused the old 90-day request: "Minimum allowed time for activityDateTime is 8/18/2026".
+  assert.ok(Date.parse(since) >= Date.parse('2026-08-18T00:00:00.000Z'))
+  assert.equal(since, '2026-08-19T18:00:00.000Z')
+  assert.ok(url.startsWith('https://graph.microsoft.com/beta/auditLogs/directoryAudits?$filter='))
+  assert.ok(decodeURIComponent(url).includes(`activityDateTime ge ${since}`))
 })

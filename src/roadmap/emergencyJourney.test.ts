@@ -161,7 +161,7 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = originalMethods
   f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'error', reason: 'Read denied' }
   f.snapshot.signInEvidence = {}
-  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].label, /IAMAI could not read the sign-in evidence/)
+  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].label, /IAMAI could not read the verification evidence/)
   assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].value, /Read denied/)
 })
 
