@@ -22,5 +22,14 @@ export function consolidateEmergencyReadiness(
     })
     return { ...tile, items, structuredItems: structured, ...(tile.key === 'configuration:recovery-methods' ? { link: undefined } : {}) }
   }
-  return { ...readiness, tiles: readiness.tiles.map(project), satisfied: readiness.satisfied.map(project) }
+  const tiles = readiness.tiles.map(project)
+  const satisfied = readiness.satisfied.map(project)
+  if (tiles.some(tile => tile.key.startsWith('configuration:group-'))) {
+    const outcomes = tiles.flatMap(tile => tile.items?.map(item => item.outcome) ?? [])
+    const confirmed = outcomes.includes('fail')
+    const incomplete = outcomes.includes('unknown') || tiles.some(tile => /could not verify|not verified/i.test(`${tile.value} ${tile.note ?? ''}`))
+    const main = confirmed ? (incomplete ? 'Changes needed; other checks incomplete' : 'Changes needed') : incomplete ? 'Checks incomplete' : readiness.bar.main
+    return { ...readiness, tiles, satisfied, bar: { ...readiness.bar, main } }
+  }
+  return { ...readiness, tiles, satisfied }
 }

@@ -51,6 +51,7 @@ const METHOD_REASON: Record<string, string> = {
   notTargeted: 'The account is not included in the Passkey (FIDO2) method.',
   newKey: 'No registered passkey was found. Register a passkey from the approved models.',
   modelRestricted: 'No readable registered key is allowed by the applicable passkey settings.',
+  attestationRequired: 'The registered passkey does not have the attestation required by the applicable settings.',
   proposedModelRestricted: 'The registered key does not meet the intended device-bound model restrictions. Prepare an approved replacement before tightening restrictions.',
   membershipUnread: 'Group membership was not fully read; the applicable passkey settings are unknown.',
   methodsUnread: 'Registered authentication methods were not read.',
@@ -96,7 +97,7 @@ export function emergencyMethodFinding(snapshot: TenantSnapshot, mapping: Mappin
         factLabel: reason === 'newKey' ? 'Registered passkey' : reason === 'methodsUnread' ? 'Registered methods' : reason === 'modelsUnread' ? 'Passkey evidence' : 'Applicable profile',
         value: reason === 'newKey' ? 'Missing' : issue.value.replace(/[.]$/, ''),
         accountId: id, subjectId: id, subjectLabel: label,
-        outcome: reason === 'newKey' || reason === 'modelRestricted' || reason === 'proposedModelRestricted' ? 'fail' as const : 'unknown' as const,
+        outcome: reason === 'newKey' || reason === 'modelRestricted' || reason === 'proposedModelRestricted' || reason === 'attestationRequired' ? 'fail' as const : 'unknown' as const,
         issueKeys: issue.issueKeys,
       })),
       ...(ready && keys.length === 0 ? [{ label: 'Compatibility', factLabel: 'Compatibility', value: 'Verified', accountId: id, subjectId: id, subjectLabel: label, outcome: 'pass' as const }] : []),
@@ -158,8 +159,8 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   ]
   const availabilityRows = raw.filter(f => ['method', 'selfService', 'targets', 'exclusions', 'read'].includes(f.key) || f.key.startsWith('profiles.unread'))
   const availability: ConfigurationFinding = {
-    key: 'availability',
-    label: 'Method Availability',
+    key: 'registration',
+    label: 'Passkey Registration',
     value: availabilityRows.length && availabilityRows.every(f => f.outcome === 'pass') ? 'Configured' : availabilityRows.some(f => f.outcome === 'fail') ? 'Correction required' : 'Not fully verified',
     outcome: !availabilityRows.length ? 'unknown' : availabilityRows.some(f => f.outcome === 'fail') ? 'fail' : availabilityRows.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass',
     detail: '',
@@ -181,16 +182,27 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   }
   const protection = grouped('protection', 'Storage and Attestation', f => f.key.endsWith('.types') || f.key.endsWith('.attestation'))
   protection.items = (protection.items ?? []).map(item => ({ ...item, factLabel: item.factLabel === 'Passkey Attestation' ? 'Current attestation' : item.factLabel === 'Passkey Storage' ? 'Current storage' : item.factLabel }))
-  if (reading.resolution?.kind === 'target') protection.items.push({ label: 'Planned attestation', factLabel: 'Planned attestation', value: reading.resolution.target.isAttestationEnforced === true ? 'Required' : reading.resolution.target.isAttestationEnforced === false ? 'Off' : 'Could not verify', subjectId: 'planned-attestation', outcome: typeof reading.resolution.target.isAttestationEnforced === 'boolean' ? 'pass' : 'unknown' })
+  const restrictionProblems = raw.filter(f => (f.key.endsWith('.restrictions') || f.key.startsWith('authenticator.') || f.key.startsWith('target.')) && f.outcome !== 'pass')
+  protection.items.push(...restrictionProblems.map(f => ({ label: f.label, factLabel: f.label, value: f.value === 'AAGUID missing' ? 'Add the approved AAGUID to the allow list' : f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })))
+  if (reading.resolution?.kind === 'target') {
+    const profiles = Array.isArray(reading.resolution.target.passkeyProfiles) ? reading.resolution.target.passkeyProfiles as Record<string, unknown>[] : []
+    const profileAttestationKnown = profiles.length > 0 && profiles.every(profile => profile?.attestationEnforcement === 'registrationOnly')
+    const planned = typeof reading.resolution.target.isAttestationEnforced === 'boolean' ? reading.resolution.target.isAttestationEnforced : profileAttestationKnown ? true : null
+    protection.items.push({ label: 'Planned attestation', factLabel: 'Planned attestation', value: planned === true ? 'Required' : planned === false ? 'Off' : 'Could not verify', subjectId: 'planned-attestation', outcome: typeof planned === 'boolean' ? 'pass' : 'unknown' })
+  }
   const protectionProblems = (protection.items ?? []).filter(item => item.outcome !== 'pass')
   protection.value = protectionProblems.length === 0 ? 'Configured'
     : protectionProblems.every(item => item.factLabel === 'Current attestation' && item.value === 'Disabled') ? 'Attestation off'
       : protectionProblems.every(item => item.outcome === 'unknown') ? 'Could not verify'
         : 'Needs attention'
+  protection.label = 'Passkey Protections'
+  const protectionOutcomes = [protection.outcome, models.outcome, ...restrictionProblems.map(row => row.outcome)]
+  protection.outcome = protectionOutcomes.includes('fail') ? 'fail' : protectionOutcomes.includes('unknown') ? 'unknown' : 'pass'
+  protection.value = protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? 'Needs attention' : 'Could not verify'
   const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
   const affectedFinding: ConfigurationFinding = {
     key: 'affected-passkeys',
-    label: 'Existing Passkeys Affected',
+    label: 'Existing passkeys affected',
     value: affected.users.length
       ? `${affected.users.length} ${affected.users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
       : affected.state === 'known'
@@ -206,9 +218,8 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   }
   return [
     availability,
-    protection,
-    models,
     affectedFinding,
+    protection,
   ]
 }
 
@@ -289,20 +300,24 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
 }
 
 export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers): ConfigurationFinding[] {
-  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Group Configuration', value: selected ? 'Verified' : 'Choose a group', detail: selected ? '' : 'A detected group is a suggestion until it is selected and saved.', outcome: selected ? 'pass' : 'unknown', items: name ? [{ label: 'Selection', factLabel: 'Selection', value: selected ? 'Saved' : 'Suggested', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: selected ? 'pass' : 'unknown', issueKeys: ['group:choice'] }] : [], taskSafe: false }
-  if (!report) return [choice, { key: 'group-members', label: 'Emergency Account Membership', value: 'Not verified', detail: 'Save the group choice and select the emergency accounts so the scan can verify its membership.', outcome: 'unknown', link: link(EMERGENCY_ACCOUNTS, 'Open Emergency Access Accounts') }, { key: 'group-policies', label: 'Policy Exclusions', value: 'Not verified', detail: 'Scan the tenant to verify every applicable policy excludes the selected group.', outcome: 'unknown' }]
+  const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions group', value: selected ? 'Verified' : 'Choose an exclusions group', detail: selected ? '' : 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.', outcome: selected ? 'pass' : 'unknown', items: selected && name ? [{ label: 'Selection', factLabel: 'Selection', value: 'Saved', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: 'pass', issueKeys: ['group:choice'] }] : [], taskSafe: false }
+  if (!report) {
+    if (selected) { choice.outcome = 'unknown'; choice.value = 'Could not verify'; choice.detail = 'IAMAI could not read the saved group for this scan. The saved selection has been kept.' }
+    return [choice, { key: 'group-members', label: 'Emergency account membership', value: 'Not verified', detail: 'IAMAI could not read the selected group’s direct members. Membership has not been verified.', outcome: 'unknown' }, { key: 'group-policies', label: 'Policy exclusions', value: 'Not verified', detail: 'IAMAI could not verify the applicable policy exclusions for this scan.', outcome: 'unknown' }]
+  }
   const results = report.targets.flatMap(target => target.results)
   const groupSubject = groupId ?? 'group-choice'
   const groupReading = groupId ? groups?.get(groupId) ?? [...(groups ?? [])].find(([id]) => id.toLowerCase() === groupId.toLowerCase())?.[1] : undefined
-  const settingLabels: Record<string, string> = { 'xg.notDynamic': 'Membership type', 'xg.notMailEnabled': 'Mail enabled' }
+  const settingLabels: Record<string, string> = { 'xg.notDynamic': 'Dynamic membership', 'xg.notMailEnabled': 'Mail enabled' }
   const settings = reportFinding(report, 'group-settings', 'Group Settings', r => ['xg.notDynamic', 'xg.notMailEnabled'].includes(r.id), 'Verified')
   choice.items = [
     ...(choice.items ?? []),
-    { label: 'Group type', factLabel: 'Group type', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.securityEnabled === true ? 'Security' : groupReading?.securityEnabled === false ? 'Microsoft 365' : 'Could not verify', outcome: groupReading?.securityEnabled === true ? 'pass' as const : groupReading?.securityEnabled === false ? 'fail' as const : 'unknown' as const, issueKeys: ['group:securityEnabled'] },
-    { label: 'Security enabled', factLabel: 'Security enabled', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.securityEnabled === true ? 'Yes' : groupReading?.securityEnabled === false ? 'No' : 'Could not verify', outcome: groupReading?.securityEnabled === true ? 'pass' as const : groupReading?.securityEnabled === false ? 'fail' as const : 'unknown' as const, issueKeys: ['group:securityEnabled'] },
-    ...results.filter(result => ['xg.notDynamic', 'xg.notMailEnabled'].includes(result.id)).map(result => ({
+    { label: 'Security group', factLabel: 'Security group', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.securityEnabled === true ? 'Verified' : groupReading?.securityEnabled === false ? 'Required' : 'Could not verify', outcome: groupReading?.securityEnabled === true ? 'pass' as const : groupReading?.securityEnabled === false ? 'fail' as const : 'unknown' as const, issueKeys: ['group:securityEnabled'] },
+    { label: 'Assigned membership', factLabel: 'Assigned membership', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: !groupReading || !Array.isArray(groupReading.groupTypes) ? 'Could not verify' : groupReading.membershipRule || groupReading.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership') ? 'Dynamic membership configured' : 'Verified', outcome: !groupReading || !Array.isArray(groupReading.groupTypes) ? 'unknown' as const : groupReading.membershipRule || groupReading.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership') ? 'fail' as const : 'pass' as const, issueKeys: ['group:membershipRuleProcessingState'] },
+    { label: 'Assigned licenses', factLabel: 'Assigned licenses', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: Array.isArray(groupReading?.assignedLicenseSkuIds) ? (groupReading!.assignedLicenseSkuIds!.length === 0 ? 'None' : String(groupReading!.assignedLicenseSkuIds!.length)) : 'Could not verify', outcome: Array.isArray(groupReading?.assignedLicenseSkuIds) ? (groupReading!.assignedLicenseSkuIds!.length === 0 ? 'pass' as const : 'fail' as const) : 'unknown' as const, issueKeys: ['group:assignedLicenses'] },
+    ...results.filter(result => result.id === 'xg.notMailEnabled' && result.outcome !== 'pass').map(result => ({
       label: settingLabels[result.id], factLabel: settingLabels[result.id], subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group',
-      value: result.outcome === 'pass' ? result.id === 'xg.notDynamic' ? 'Assigned security group' : 'No' : result.outcome === 'unknown' ? 'Could not verify' : result.finding || 'Needs a change',
+      value: result.outcome === 'pass' ? result.id === 'xg.notDynamic' ? 'Assigned security group · no licenses' : 'No' : result.outcome === 'unknown' ? 'Could not verify' : result.finding || 'Needs a change',
       outcome: result.outcome, issueKeys: [`group:${result.id}`],
     })),
   ]
@@ -313,26 +328,34 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
   const memberLabels: Record<string, string> = { 'xg.containsEmergency': 'Selected emergency accounts', 'xg.membersApproved': 'Other members', 'xg.noExtraAdmins': 'Other active administrators', 'xg.sizeReasonable': 'Members' }
   const memberPending = memberResults.filter(result => result.outcome !== 'pass')
   const members: ConfigurationFinding = {
-    key: 'group-members', label: 'Emergency Account Membership', value: memberPending.some(result => result.outcome === 'fail') ? 'Needs attention' : memberPending.length ? 'Could not verify' : 'Membership verified',
+    key: 'group-members', label: 'Emergency account membership', value: memberPending.some(result => result.outcome === 'fail') ? 'Needs attention' : memberPending.length ? 'Could not verify' : 'Membership verified',
     outcome: memberPending.some(result => result.outcome === 'fail') ? 'fail' : memberPending.length ? 'unknown' : 'pass', detail: '',
     items: [
-      { label: 'Member count', factLabel: 'Member count', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading && Number.isFinite(groupReading.memberCount) ? String(groupReading.memberCount) : 'Could not verify', outcome: groupReading && Number.isFinite(groupReading.memberCount) ? 'pass' as const : 'unknown' as const, issueKeys: ['group:memberCount'] },
+      { label: 'Direct member count', factLabel: 'Direct member count', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.directMembers === 'complete' ? String(groupReading.directMemberIds?.length ?? 0) : 'Could not verify', outcome: groupReading?.directMembers === 'complete' ? 'pass' as const : 'unknown' as const, issueKeys: ['group:memberCount'] },
       ...memberResults.map(result => ({ label: memberLabels[result.id], factLabel: memberLabels[result.id], subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: result.outcome === 'pass' ? result.id === 'xg.containsEmergency' ? 'All present' : result.id === 'xg.sizeReasonable' ? result.finding || 'Verified' : 'None' : result.outcome === 'unknown' ? 'Could not verify' : result.finding || 'Needs a change', outcome: result.outcome, issueKeys: [`group:${result.id}`] })),
     ],
   }
-  const policies = reportFinding(report, 'group-policies', 'Policy Exclusions', r => r.id === 'xg.usedConsistently', 'Required references present', true)
+  const policies = reportFinding(report, 'group-policies', 'Policy exclusions', r => r.id === 'xg.usedConsistently', 'Required references present', true)
   policies.detail = ''
   if (groupId && snapshot?.config.caPolicies.status === 'ok') {
     const rows = snapshot.config.caPolicies.rows as { displayName?: string; id?: string; state?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]
-    policies.items = rows.filter(p => p.state !== 'disabled').flatMap(p => [{
+    policies.items = rows.filter(p => p.state !== 'disabled').flatMap(p => {
+      const excluded = p.conditions?.users?.excludeGroups
+      const exclusionKnown = Array.isArray(excluded)
+      const present = exclusionKnown && excluded.some(id => id.toLowerCase() === groupId.toLowerCase())
+      return [{
       label: 'Mode', factLabel: 'Mode', subjectId: p.id || p.displayName || 'unknown-policy', subjectLabel: p.displayName || p.id || 'Unnamed policy',
       value: p.state === 'enabled' ? 'On' : p.state === 'enabledForReportingButNotEnforced' ? 'Report-only' : 'Could not verify', outcome: p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced' ? 'pass' as const : 'unknown' as const,
       issueKeys: [`group-policy:${p.id || 'unknown'}:mode`],
     }, {
       label: 'Group exclusion', factLabel: 'Group exclusion', subjectId: p.id || p.displayName || 'unknown-policy', subjectLabel: p.displayName || p.id || 'Unnamed policy',
-      value: p.conditions?.users?.excludeGroups?.some(id => id.toLowerCase() === groupId.toLowerCase()) ? 'Present' : 'Missing', outcome: p.conditions?.users?.excludeGroups?.some(id => id.toLowerCase() === groupId.toLowerCase()) ? 'pass' as const : 'fail' as const,
+      value: !exclusionKnown ? 'Could not verify' : present ? 'Present' : 'Missing', outcome: !exclusionKnown ? 'unknown' as const : present ? 'pass' as const : 'fail' as const,
       issueKeys: [`group-policy:${p.id || 'unknown'}:exclusion`],
-    }])
+    }]
+    })
+    const pending = policies.items.filter(item => item.outcome !== 'pass')
+    policies.outcome = pending.some(item => item.outcome === 'fail') ? 'fail' : pending.length ? 'unknown' : 'pass'
+    policies.value = policies.outcome === 'fail' ? 'Needs attention' : policies.outcome === 'unknown' ? 'Could not verify' : 'Required references present'
   }
   return [choice, members, policies]
 }
@@ -381,13 +404,12 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
             : 'Not recorded'
     return { label: accountLabel(snapshot, id), value, current }
   })
-  const custody = report.targets.flatMap(t => t.results).find(r => r.id === 'bg.credentialStorage')
   const configurationParts = [accounts, exclusions, method]
   const configurationOutcome = configurationParts.some(f => f.outcome === 'fail') ? 'fail' : configurationParts.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass'
-  const confirmationPassed = ids.length > 0 && tests.every(r => r.current) && custody?.outcome === 'pass'
+  const confirmationPassed = ids.length > 0 && tests.every(r => r.current)
   const signInsPassed = ids.length > 0 && signIns.every(r => r.observed)
   const ownerRows = configurationParts.flatMap<ConfigurationFindingItem>(finding => {
-    if (finding.outcome === 'pass') return finding === accounts ? [{ label: 'Account identity', factLabel: 'Account identity', value: 'Verified', outcome: 'pass' as const }] : []
+    if (finding.outcome === 'pass') return []
     const rows = (finding.items ?? []).filter(item => item.outcome !== 'pass')
     return (rows.length ? rows : [{ label: finding.label, value: finding.value, outcome: finding.outcome }]).map(item => {
       const owner = finding === accounts ? link(EMERGENCY_ACCOUNTS, 'Review account preparation')
@@ -397,18 +419,26 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
       return { ...item, ...(item.accountId ? { subjectLabel: accountLabel(snapshot, item.accountId) } : {}), link: owner }
     })
   })
+  const seenOwnerLinks = new Set<string>()
+  const pendingOwnerRows = ownerRows.map(item => {
+    if (!item.link) return item
+    const key = `${item.accountId ?? 'shared'}:${item.link.href}`
+    if (seenOwnerLinks.has(key)) { const { link: _link, ...rest } = item; return rest }
+    seenOwnerLinks.add(key)
+    return item
+  })
   const configuration: ConfigurationFinding = {
     key: 'recovery-configuration', label: 'Configuration',
     value: configurationOutcome === 'pass' ? 'Verified' : configurationOutcome === 'fail' ? 'Correction required' : 'Not fully verified',
     outcome: configurationOutcome,
     detail: '',
-    items: ownerRows,
+    items: pendingOwnerRows,
   }
   const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : signInsPassed ? 'Qualifying events available' : 'Evidence needed', outcome: signInsPassed ? 'pass' : 'unknown', detail: '', items: signIns.flatMap(({label, value, coverage, observed}, index) => [
     { label: 'Matching event', factLabel: 'Matching event', value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: observed ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] },
     { label: 'Logs checked', factLabel: 'Logs checked', value: coverage, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: coverage === 'Could not verify' ? 'unknown' as const : 'pass' as const },
   ]) }
-  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification Results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: [...tests.map(({label, value, current}, index) => ({ label: 'Result', factLabel: 'Result', value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-result:${ids[index].toLowerCase()}`] })), { label: 'Credential storage', factLabel: 'Credential storage', value: custody?.outcome === 'pass' ? 'Recorded' : 'Not recorded', outcome: custody?.outcome === 'pass' ? 'pass' as const : 'unknown' as const }] }
+  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification Results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: tests.map(({label, value, current}, index) => ({ label: 'Result', factLabel: 'Result', value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-result:${ids[index].toLowerCase()}`] })) }
   const verified = configurationOutcome === 'pass' && signInsPassed && confirmationPassed
   confirmation.value = verified ? 'Passed' : confirmation.value
   return [

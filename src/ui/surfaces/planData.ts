@@ -267,10 +267,10 @@ export function usePlanData(
         // (readGroup): a group Graph says is gone is absent, a request that
         // failed leaves it unknown, and a group that exists whose members would
         // not enumerate is present with no member count invented for it.
-        const r = await readGroup(snapshot.tenantId, id, { since: snapshot.asOf })
+        const r = await readGroup(snapshot.tenantId, id, { since: snapshot.asOf, directEvidence: !!ge && id.toLowerCase() === ge.toLowerCase() })
         reads.push(r)
-        if (r.presence === 'present' && r.members !== 'unknown' && r.memberCount !== null) {
-          map.set(id, { memberIds: r.memberIds, memberCount: r.memberCount, sampled: r.members === 'sampled', displayName: r.object?.displayName ?? null, membershipRule: r.object?.membershipRule ?? null, mailEnabled: r.object?.mailEnabled, securityEnabled: r.object?.securityEnabled ?? null, groupTypes: r.object?.groupTypes ?? null, isAssignableToRole: r.object?.isAssignableToRole ?? null })
+        if (r.presence === 'present' && ((r.members !== 'unknown' && r.memberCount !== null) || r.directMembers === 'complete')) {
+          map.set(id, { memberIds: r.members === 'unknown' ? [] : r.memberIds, memberCount: r.memberCount ?? 0, sampled: r.members !== 'complete', displayName: r.object?.displayName ?? null, membershipRule: r.object?.membershipRule ?? null, membershipRuleProcessingState: r.object?.membershipRuleProcessingState ?? null, mailEnabled: r.object?.mailEnabled, securityEnabled: r.object?.securityEnabled ?? null, groupTypes: r.object?.groupTypes ?? null, isAssignableToRole: r.object?.isAssignableToRole ?? null, assignedLicenseSkuIds: r.object?.assignedLicenseSkuIds ?? null, directMembers: r.directMembers, directMemberIds: r.directMemberIds, directMemberObjects: r.directMemberObjects, owners: r.owners, ownerObjects: r.ownerObjects })
         }
       }
       if (reads.some(read => read.members === 'sampled' || read.members === 'unknown')) {

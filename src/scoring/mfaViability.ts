@@ -39,6 +39,9 @@ export type AuthMethodSummary = {
   aaGuid?: string
   attestationLevel?: string
   passkeyType?: string
+  lastUsedDateTime?: string
+  lastUsedSourceVersion?: 'beta'
+  sourceVersion?: 'v1.0' | 'beta'
   phoneType?: 'mobile' | 'alternateMobile' | 'office'
   isUsable?: boolean
 }
@@ -58,9 +61,12 @@ export type MfaViabilityInput = {
     userPreferredMethodForSecondaryAuthentication: string | null
     isAdmin: boolean
     userType: 'member' | 'guest'
+    complete?: boolean
   } | null
   methods: AuthMethodSummary[] | 'unknown'
   lastSuccessfulSignIn: string | null
+  /** False when the directory read could not return signInActivity. */
+  successfulActivityAvailable?: boolean
   accountCreated: string | null
   evidence: {
     status: EvidenceStatus
@@ -79,7 +85,7 @@ export type MfaViabilityInput = {
   }
 }
 
-export type ActivityState = 'active' | 'dormant' | 'neverSignedIn'
+export type ActivityState = 'active' | 'dormant' | 'neverSignedIn' | 'unknown'
 export type MfaState = 'none' | 'verified' | 'likelyViable' | 'notChallenged' | 'unverified'
 
 // Method tiers from userRegistrationDetails.methodsRegistered, strongest
@@ -171,7 +177,9 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   const { strongestMethod, methodTiers } = methodTiersOf(registration?.methodsRegistered ?? [])
 
   const activity: ActivityState =
-    lastSuccessfulSignIn === null
+    input.successfulActivityAvailable === false
+      ? 'unknown'
+      : lastSuccessfulSignIn === null
       ? 'neverSignedIn'
       : daysBetween(lastSuccessfulSignIn, tenant.now) > INACTIVE_DAYS
         ? 'dormant'
@@ -217,7 +225,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   }
 
   // 2 — none.
-  if (!(registration?.isMfaCapable ?? false) && (methodsUnknown || capable.length === 0)) {
+  if (registration?.complete !== false && !(registration?.isMfaCapable ?? false) && !methodsUnknown && capable.length === 0) {
     const reasons: string[] = []
     if (registration === null) reasons.push('no registration data')
     const tap = list.find((m) => m.kind === 'temporaryAccessPass' && m.isUsable)
@@ -354,7 +362,7 @@ const EMPTY_MFA_COUNTS = (): Record<MfaState, number> => ({
 export function summarizeTenant(rows: MfaViability[]): TenantMfaSummary {
   const counts = EMPTY_MFA_COUNTS()
   const adminCounts = EMPTY_MFA_COUNTS()
-  const activityCounts: Record<ActivityState, number> = { active: 0, dormant: 0, neverSignedIn: 0 }
+  const activityCounts: Record<ActivityState, number> = { active: 0, dormant: 0, neverSignedIn: 0, unknown: 0 }
   const rollout: RolloutSummary = { active: 0, proven: 0, noMethod: 0, unproven: 0, toSetUp: 0 }
   for (const r of rows) {
     const bucket = rolloutBucket(r)
@@ -378,7 +386,7 @@ export function summarizeTenant(rows: MfaViability[]): TenantMfaSummary {
 // Admin rows sort first everywhere (§10.6); then by how much attention the
 // MFA state needs, then active before dormant/never, then stable by userId.
 const MFA_ORDER: MfaState[] = ['none', 'unverified', 'notChallenged', 'likelyViable', 'verified']
-const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn']
+const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn', 'unknown']
 
 export function sortViability(rows: MfaViability[]): MfaViability[] {
   return [...rows].sort((a, b) => {

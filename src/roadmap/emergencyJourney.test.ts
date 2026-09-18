@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { approvedPasskeyModels, emergencyMethodFinding, journeyGroupFindings, journeyPasskeyFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { buildContext, breakGlassReport } from '../validation/report.ts'
@@ -9,13 +9,21 @@ import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { readinessOf, stepContract } from '../ui/surfaces/stepContract.ts'
 import { PASSKEY_DEFAULT_MODELS } from './passkeySettings.ts'
-import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupIdToVerify } from '../mapping/safetyChoice.ts'
 
 const HARDWARE = PASSKEY_DEFAULT_MODELS[2].aaguid
 const UNAPPROVED = '11111111-2222-4333-8444-555555555555'
 function tenant() {
   const f = structuredClone(fixture('demo-week2'))
-  for (const id of f.mapping.breakGlassUserIds) f.snapshot.authMethods[id] = [{ kind: 'fido2', displayName: 'Recovery key', aaGuid: HARDWARE, passkeyType: 'deviceBound' }]
+  for (const id of f.mapping.breakGlassUserIds) f.snapshot.authMethods[id] = [{
+    kind: 'fido2',
+    id: `recovery-key-${id}`,
+    displayName: 'Recovery key',
+    aaGuid: HARDWARE,
+    passkeyType: 'deviceBound',
+    attestationLevel: 'attested',
+    sourceVersion: 'v1.0',
+  }]
   return f
 }
 const reportOf = (f: ReturnType<typeof tenant>) => breakGlassReport(buildContext({ snapshot: f.snapshot, state: f.mapping }))
@@ -23,17 +31,20 @@ function context(f: ReturnType<typeof tenant>) {
   return { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => f.snapshot.users.find(u => u.id === id)?.displayName || id, now: f.snapshot.asOf, signature: 'IT', operatorId: f.operatorId }
 }
 
-test('passkey topics keep each approved AAGUID in one named row and never approve a registered unknown model', () => {
+test('passkey topics stay compact while the approved-model disclosure remains complete', () => {
   const f = tenant()
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
   const findings = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
-  assert.equal(findings.length, 4)
-  const models = findings.find(t => t.key === 'models')!
+  assert.equal(findings.length, 3)
+  assert.deepEqual(findings.map(finding => finding.label), ['Passkey Registration', 'Existing passkeys affected', 'Passkey Protections'])
+  const models = findings.find(t => t.key === 'protection')!
+  const approved = approvedPasskeyModels(f.snapshot, f.mapping)
   for (const model of PASSKEY_DEFAULT_MODELS) {
-    assert.equal(models.items?.filter(i => i.value.includes(model.aaguid)).length, 1)
-    assert.ok(models.items?.some(i => i.label === model.name))
+    assert.equal(models.items?.filter(i => i.value.includes(model.aaguid)).length, 0)
+    assert.equal(approved.filter(item => item.aaguid === model.aaguid).length, 1)
+    assert.ok(approved.some(item => item.name === model.name))
   }
-  assert.equal(approvedPasskeyModels(f.snapshot, f.mapping).some(m => m.aaguid === UNAPPROVED), false)
+  assert.equal(approved.some(m => m.aaguid === UNAPPROVED), false)
   assert.notEqual(findings.find(t => t.key === 'recovery-methods')?.outcome, 'pass')
 })
 
@@ -41,10 +52,9 @@ test('passkey topics use separate current and planned facts without a bare combi
   const f = tenant()
   const findings = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
   const protection = findings.find(item => item.key === 'protection')!
-  const models = findings.find(item => item.key === 'models')!
   assert.notEqual(protection.value, 'Disabled')
   assert.ok(protection.items?.some(item => item.factLabel === 'Current attestation'))
-  assert.ok(models.items?.every(item => item.subjectLabel !== item.factLabel))
+  assert.ok(protection.items?.every(item => item.subjectLabel !== item.factLabel))
 })
 
 test('selected accounts drive method findings; unread methods do not become missing keys or passes', () => {
@@ -63,14 +73,44 @@ test('selected accounts drive method findings; unread methods do not become miss
   assert.equal(emergencyMethodFinding(f.snapshot, f.mapping, f.groups).value, 'Select emergency accounts')
 })
 
-test('partial passkey settings remain explicit inside Availability even when other settings pass', () => {
+test('partial passkey settings remain explicit inside Passkey registration even when other settings pass', () => {
   const f = tenant()
   const policy = f.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, any>[] }
   const method = policy.authenticationMethodConfigurations.find(p => p.id === 'Fido2')!
   for (const target of method.includeTargets) delete target.allowedPasskeyProfiles
-  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'availability')!
+  const availability = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(t => t.key === 'registration')!
   assert.equal(availability.outcome, 'unknown')
   assert.match(JSON.stringify(availability.items), /allowedPasskeyProfiles/)
+})
+
+test('a model-only mismatch remains visible as an actionable protection correction', () => {
+  const f = tenant()
+  const config = ((f.snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations as any[]).find(row => row.id === 'Fido2')
+  const restrictions = config.passkeyProfiles?.[0]?.keyRestrictions ?? config.keyRestrictions
+  restrictions.aaGuids = restrictions.aaGuids.filter((id: string) => id !== PASSKEY_DEFAULT_MODELS[0].aaguid)
+  const protection = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(row => row.key === 'protection')!
+  assert.equal(protection.outcome, 'fail')
+  assert.ok(protection.items?.some(item => item.outcome === 'fail' && /AAGUID|Authenticator/i.test(`${item.factLabel} ${item.value}`)))
+})
+
+test('an unsaved exclusions choice exposes only the actionable group-selection topic', () => {
+  const f = noExclusionsAnswer(structuredClone(fixture('demo')))
+  const run = runFixture(f)
+  const step = run.steps.find(item => item.id === 's-prereq-exclusion-group')!
+  const ready = readinessOf(step, stepContract(step, context(f)))
+  assert.deepEqual([...ready.tiles, ...ready.satisfied].map(tile => tile.key), ['configuration:group-choice'])
+  assert.doesNotMatch(JSON.stringify([...ready.tiles, ...ready.satisfied]), /Membership|Policy Exclusions/)
+})
+
+test('a policy without readable excludeGroups is unknown rather than a confirmed missing exclusion', () => {
+  const f = fixture('small')
+  const groupId = exclusionsGroupIdToVerify(f.mapping)!
+  const rows = f.snapshot.config.caPolicies.rows as Record<string, any>[]
+  if (rows[0]) delete rows[0].conditions.users.excludeGroups
+  const finding = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups).find(row => row.key === 'group-policies')!
+  const item = finding.items?.find(row => row.subjectId === rows[0]?.id && row.factLabel === 'Group exclusion')
+  assert.equal(item?.outcome, 'unknown')
+  assert.equal(item?.value, 'Could not verify')
 })
 
 test('a successful generic sign-in cannot satisfy observed passkey evidence or a recorded recovery test', () => {
@@ -84,8 +124,7 @@ test('a successful generic sign-in cannot satisfy observed passkey evidence or a
   const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
   assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence', 'Verification Results'])
   const identity = findings.find(t => t.key === 'recovery-configuration')?.items?.find(item => item.factLabel === 'Account identity')
-  assert.equal(identity?.value, 'Verified')
-  assert.equal(identity?.link, undefined)
+  assert.equal(identity, undefined)
   assert.equal(findings.find(t => t.key === 'recovery-sign-ins')?.outcome, 'unknown')
   assert.ok(findings.find(t => t.key === 'recovery-sign-ins')!.items!.filter(item => item.factLabel === 'Matching event').every(item => /No qualifying event observed/.test(item.value)))
   assert.notEqual(findings.find(t => t.key === 'recovery-confirmation')?.outcome, 'pass')
@@ -99,7 +138,8 @@ test('final configuration sends credential work to Step 1, policy exclusions to 
   const configuration = findings.find(item => item.key === 'recovery-configuration')!
   const missing = configuration.items?.find(item => item.accountId === first && item.factLabel === 'Registered passkey')
   assert.equal(missing?.link?.href, '#/plan/s-prereq-break-glass')
-  assert.ok(configuration.items?.filter(item => item.factLabel?.includes('policy')).every(item => item.link?.href === '#/plan/s-prereq-exclusion-group'))
+  assert.ok(configuration.items?.filter(item => item.factLabel?.includes('policy') && item.link).every(item => item.link?.href === '#/plan/s-prereq-exclusion-group'))
+  assert.ok((configuration.items?.filter(item => item.factLabel?.includes('policy') && item.link).length ?? 0) <= f.mapping.breakGlassUserIds.length)
   assert.ok(configuration.items?.filter(item => item.factLabel === 'Applicable profile').every(item => item.link?.href === '#/plan/s-prereq-passkey-settings'))
   assert.equal(configuration.items?.find(item => item.factLabel === 'Account identity')?.link, undefined)
 })

@@ -112,7 +112,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           (StepSections.tsx, stepHeadings.ts). A Cleanup row is not a policy and
           has no lifecycle to be at, so it activates fewer of them; it does not
           get its own layout for the ones it does. */}
-      <StepSection heading={HEAD.why}>
+      <StepSection heading={row.kind === 'drill' ? 'About this Step' : HEAD.why}>
         <p>
           {fillText(entry.why, ex)}{' '}
           {entry.learn?.url && (
@@ -122,11 +122,11 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       </StepSection>
-      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} extra={tile => <EmergencyReadinessActions tile={tile} projected={verificationTasks} printing={!onDone} onTask={openVerificationTask} onSelectAccounts={() => undefined} stepId="cleanup-drill" />} />}
+      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection heading="Tasks Remaining" readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} extra={tile => <EmergencyReadinessActions tile={tile} projected={verificationTasks} printing={!onDone} onTask={openVerificationTask} onSelectAccounts={() => undefined} stepId="cleanup-drill" />} />}
       {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
           no step draws What to do, and the not-assessed notes below stay in this
           one column under it rather than in an action column. */}
-      {row.kind === 'drill' ? <Implementation artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} taskFocusRequest={taskFocusRequest} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
+      {row.kind === 'drill' ? <Implementation heading="Implementation Tasks" artifacts={verificationArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={null} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={verificationTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} taskFocusRequest={taskFocusRequest} emptyTaskText={row.done ? 'Verification is current. No Entra action is required.' : 'Complete the highlighted configuration tasks before starting verification.'} /> : <StepSection heading={CONTRACT.implementation.heading}>
         <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
       </StepSection>}
       {onNote && policies.length > 0 && (
@@ -141,7 +141,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           ))}
         </div>
       )}
-      <DoneWhen heading={HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
+      <DoneWhen heading={row.kind === 'drill' ? 'Completion Criteria' : HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
       {row.kind === 'drill' && <details className="step-section emergency-recovery-procedure" open={!onDone || undefined}><summary><strong>Emergency recovery procedure</strong></summary><p className="reason">Keep the exported plan available independently of this tenant. Scan-specific facts reflect the scan at {phase.snapshotObservedAt ? new Date(phase.snapshotObservedAt).toLocaleString() : 'an unavailable time'} and may differ during an incident.</p><ol>{EMERGENCY_RECOVERY_PROCEDURE.map(line => <li key={line}><AuthoredText text={line} /></li>)}</ol><p className="reason">Conditional Access exclusions do not disable Security Defaults or authentication-method policy. Temporary Access Pass does not bypass Conditional Access, and no recovery route or timeframe is guaranteed.</p></details>}
       {row.record && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>}
       {onDone && row.kind !== 'hardening' && (

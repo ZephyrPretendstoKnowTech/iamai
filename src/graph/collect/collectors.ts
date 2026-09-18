@@ -82,6 +82,23 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
       return { status: 'ok', reason: null, rows, ...how() }
     }
     const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
+    if (key === 'crossTenantAccess') {
+      const rows: unknown[] = [{ ...(body as Record<string, unknown>), relationship: 'policy' }]
+      const failures: string[] = []
+      try {
+        const defaults = await graphRequest(ctx.tokens, `${V1}/policies/crossTenantAccessPolicy/default`, { signal: ctx.signal })
+        rows.push({ ...(defaults as Record<string, unknown>), relationship: 'default' })
+      } catch (error) {
+        failures.push(`default relationship unavailable: ${error instanceof Error ? error.message : String(error)}`)
+      }
+      try {
+        const partners = await graphPaged(ctx.tokens, `${V1}/policies/crossTenantAccessPolicy/partners`, { signal: ctx.signal })
+        rows.push(...partners.map(partner => ({ ...(partner as Record<string, unknown>), relationship: 'partner' })))
+      } catch (error) {
+        failures.push(`partner relationships unavailable: ${error instanceof Error ? error.message : String(error)}`)
+      }
+      return { status: failures.length ? 'partial' : 'ok', reason: failures.length ? failures.join('; ') : null, rows, ...how() }
+    }
     const fallback = key === 'authMethodsPolicy' ? await migrationStateFallback(ctx, body as Record<string, unknown>) : null
     const fido2Read = key === 'authMethodsPolicy' ? await readFido2Configuration(ctx, body as Record<string, unknown>) : undefined
     return { status: 'ok', reason: null, rows: [body], ...how(), ...(fallback ? { fallback } : {}), ...(fido2Read ? { fido2Read } : {}) }
@@ -182,6 +199,7 @@ export async function collectRegistrationDetails(ctx: Ctx): Promise<Registration
           : null,
       isAdmin: r.isAdmin === true,
       userType: r.userType === 'guest' ? 'guest' : 'member',
+      complete: typeof r.isMfaCapable === 'boolean' && typeof r.isMfaRegistered === 'boolean' && typeof r.isPasswordlessCapable === 'boolean' && Array.isArray(r.methodsRegistered),
     }
   })
 }
@@ -189,10 +207,10 @@ export async function collectRegistrationDetails(ctx: Ctx): Promise<Registration
 function mapUser(raw: unknown): UserRow {
   const u = raw as Record<string, unknown>
   const activity = (u.signInActivity ?? null) as Record<string, unknown> | null
-  const last =
-    (typeof activity?.lastSuccessfulSignInDateTime === 'string' && activity.lastSuccessfulSignInDateTime) ||
-    (typeof activity?.lastSignInDateTime === 'string' && activity.lastSignInDateTime) ||
-    null
+  const successfulSignInActivityRead = Object.prototype.hasOwnProperty.call(u, 'signInActivity')
+  const onPremisesSyncEnabledRead = Object.prototype.hasOwnProperty.call(u, 'onPremisesSyncEnabled')
+  const lastSuccessful = typeof activity?.lastSuccessfulSignInDateTime === 'string' ? activity.lastSuccessfulSignInDateTime : null
+  const lastAttempt = typeof activity?.lastSignInDateTime === 'string' ? activity.lastSignInDateTime : null
   const plans = Array.isArray(u.assignedPlans) ? u.assignedPlans : []
   const licences = Array.isArray(u.assignedLicenses) ? u.assignedLicenses : []
   return {
@@ -203,7 +221,9 @@ function mapUser(raw: unknown): UserRow {
     userType: u.userType === 'Guest' || u.userType === 'guest' ? 'guest' : 'member',
     usageLocation: typeof u.usageLocation === 'string' ? u.usageLocation : null,
     createdDateTime: typeof u.createdDateTime === 'string' ? u.createdDateTime : null,
-    lastSuccessfulSignIn: last,
+    lastSignInAttempt: lastAttempt,
+    lastSuccessfulSignIn: lastSuccessful,
+    successfulSignInActivityRead,
     accountEnabled: typeof u.accountEnabled === 'boolean' ? u.accountEnabled : null,
     mail: typeof u.mail === 'string' && u.mail.length > 0 ? u.mail : null,
     assignedPlans: plans
@@ -214,6 +234,7 @@ function mapUser(raw: unknown): UserRow {
         capabilityStatus: typeof p.capabilityStatus === 'string' ? p.capabilityStatus : '',
       })),
     onPremisesSyncEnabled: typeof u.onPremisesSyncEnabled === 'boolean' ? u.onPremisesSyncEnabled : null,
+    onPremisesSyncEnabledRead,
     externalUserState: typeof u.externalUserState === 'string' ? u.externalUserState : null,
     department: typeof u.department === 'string' ? u.department : null,
     jobTitle: typeof u.jobTitle === 'string' ? u.jobTitle : null,
@@ -302,7 +323,7 @@ const KIND_BY_TYPE: Record<string, MethodKind> = {
 
 // Strips method values (phone numbers, email addresses) at the fetch layer —
 // they never enter the snapshot (§10.2, §11).
-function mapMethod(raw: unknown): AuthMethodSummary {
+function mapMethod(raw: unknown, sourceVersion: 'v1.0' | 'beta' = 'v1.0'): AuthMethodSummary {
   const m = raw as Record<string, unknown>
   const type = String(m['@odata.type'] ?? '').replace('#microsoft.graph.', '')
   const kind = KIND_BY_TYPE[type] ?? 'other'
@@ -328,6 +349,8 @@ function mapMethod(raw: unknown): AuthMethodSummary {
     if (typeof m.aaGuid === 'string') out.aaGuid = m.aaGuid
     if (typeof m.attestationLevel === 'string') out.attestationLevel = m.attestationLevel
     if (typeof m.passkeyType === 'string') out.passkeyType = m.passkeyType
+    if (typeof m.lastUsedDateTime === 'string') out.lastUsedDateTime = m.lastUsedDateTime
+    out.sourceVersion = sourceVersion
   }
   if (kind === 'phone' && typeof m.phoneType === 'string') {
     out.phoneType = m.phoneType as AuthMethodSummary['phoneType']
@@ -356,11 +379,79 @@ export async function collectMethodsForUsers(ctx: Ctx, userIds: string[]): Promi
     for (const r of Array.isArray(body.responses) ? body.responses : []) {
       const userId = chunk[Number(r?.id)]
       if (!userId) continue
-      const value = (r.body as { value?: unknown[] } | undefined)?.value
-      out[userId] = r.status === 200 && Array.isArray(value) ? value.map(mapMethod) : 'unknown'
+      const responseBody = r.body as { value?: unknown[]; '@odata.nextLink'?: unknown } | undefined
+      let value = responseBody?.value
+      if (r.status === 200 && Array.isArray(value) && typeof responseBody?.['@odata.nextLink'] === 'string') {
+        try {
+          value = [...value, ...await graphPaged(ctx.tokens, responseBody['@odata.nextLink'], { signal: ctx.signal })]
+        } catch {
+          value = undefined
+        }
+      }
+      out[userId] = r.status === 200 && Array.isArray(value) ? value.map(item => mapMethod(item)) : 'unknown'
     }
     // A user the batch answered nothing for is unread, never a person with no methods.
     for (const id of chunk) out[id] ??= 'unknown'
+  }
+  // Read the concrete FIDO2 collection from v1.0 for every user. The generic
+  // authentication-method list remains the complete inventory; this dedicated
+  // read supplies the credential fields used for exact compatibility without
+  // turning one failed subrequest into an empty credential list.
+  for (let i = 0; i < userIds.length; i += 20) {
+    const chunk = userIds.slice(i, i + 20)
+    try {
+      const body = await graphRequest(ctx.tokens, `${V1}/$batch`, {
+        signal: ctx.signal,
+        method: 'POST',
+        jsonBody: { requests: chunk.map((id, n) => ({ id: String(n), method: 'GET', url: `/users/${encodeURIComponent(id)}/authentication/fido2Methods` })) },
+      })
+      for (const response of Array.isArray(body.responses) ? body.responses : []) {
+        const userId = chunk[Number(response?.id)]
+        const responseBody = response?.body as { value?: unknown[]; '@odata.nextLink'?: unknown } | undefined
+        let values = responseBody?.value
+        if (response?.status === 200 && Array.isArray(values) && typeof responseBody?.['@odata.nextLink'] === 'string') {
+          try {
+            values = [...values, ...await graphPaged(ctx.tokens, responseBody['@odata.nextLink'], { signal: ctx.signal })]
+          } catch {
+            values = undefined
+          }
+        }
+        if (!userId || response?.status !== 200 || !Array.isArray(values) || !Array.isArray(out[userId])) continue
+        const detailed = values.map(value => mapMethod(value, 'v1.0'))
+        const byId = new Map(detailed.filter(method => method.id).map(method => [method.id!, method]))
+        const merged = out[userId].map(method => method.id && byId.has(method.id) ? { ...method, ...byId.get(method.id)! } : method)
+        const seen = new Set(merged.flatMap(method => method.id ? [method.id] : []))
+        out[userId] = [...merged, ...detailed.filter(method => !method.id || !seen.has(method.id))]
+      }
+    } catch {
+      // Keep the generic inventory. A failed detail read is unresolved detail,
+      // never proof that the user has no registered passkey.
+    }
+  }
+  // Enrich only observed FIDO2 methods with beta's optional last-use timestamp.
+  // Failure leaves the complete v1.0 inventory intact and the timestamp unknown.
+  const candidates = userIds.filter(id => Array.isArray(out[id]) && out[id].some(method => method.kind === 'fido2' || method.kind === 'passkey'))
+  for (let i = 0; i < candidates.length; i += 20) {
+    const chunk = candidates.slice(i, i + 20)
+    try {
+      const body = await graphRequest(ctx.tokens, `${BETA}/$batch`, {
+        signal: ctx.signal,
+        method: 'POST',
+        jsonBody: { requests: chunk.map((id, n) => ({ id: String(n), method: 'GET', url: `/users/${encodeURIComponent(id)}/authentication/fido2Methods` })) },
+      })
+      for (const response of Array.isArray(body.responses) ? body.responses : []) {
+        const userId = chunk[Number(response?.id)]
+        const values = (response?.body as { value?: unknown[] } | undefined)?.value
+        if (!userId || response?.status !== 200 || !Array.isArray(values) || !Array.isArray(out[userId])) continue
+        const detailed = new Map(values.map(value => mapMethod(value, 'beta')).filter(method => method.id).map(method => [method.id!, method]))
+        out[userId] = out[userId].map(method => {
+          const beta = method.id ? detailed.get(method.id) : undefined
+          return beta?.lastUsedDateTime ? { ...method, lastUsedDateTime: beta.lastUsedDateTime, lastUsedSourceVersion: 'beta' as const } : method
+        })
+      }
+    } catch {
+      // Optional beta enrichment; absence is not evidence that a credential was never used.
+    }
   }
   return out
 }

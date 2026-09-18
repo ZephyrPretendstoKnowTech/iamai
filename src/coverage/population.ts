@@ -4,6 +4,7 @@
 import { adminUserIds } from '../roles.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { PolicyFacts, PopulationSpec, ResolvedPopulation } from './types.ts'
+import type { DirectoryMemberEvidence, MemberEvidence } from '../graph/collect/presence.ts'
 
 export type GroupMembers = Map<
   string,
@@ -14,10 +15,17 @@ export type GroupMembers = Map<
     displayName?: string | null
     /** Carried from the group cache: the validation rules need both. */
     membershipRule?: string | null
-    mailEnabled?: boolean
+    mailEnabled?: boolean | null
     securityEnabled?: boolean | null
     groupTypes?: string[] | null
     isAssignableToRole?: boolean | null
+    membershipRuleProcessingState?: string | null
+    assignedLicenseSkuIds?: string[] | null
+    directMembers?: MemberEvidence
+    directMemberIds?: string[]
+    directMemberObjects?: DirectoryMemberEvidence[]
+    owners?: MemberEvidence
+    ownerObjects?: DirectoryMemberEvidence[]
   }
 >
 

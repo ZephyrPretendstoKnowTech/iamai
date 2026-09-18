@@ -25,6 +25,13 @@ test('passkey configuration removes only its duplicate prerequisite and keeps co
   assert.equal(readiness.tiles.length, 3, 'source evidence is not mutated')
 })
 
+test('unknown passkey evidence is not counted as a confirmed correction', () => {
+  const step = { id: 's-prereq-passkey-settings', configurationFindings: [{ ...findings[0], outcome: 'unknown' as const }] } as Step
+  assert.equal(passkeyReadiness(step, readiness).bar.main, 'Checks incomplete')
+  const mixed = { id: 's-prereq-passkey-settings', configurationFindings: [findings[0], { ...findings[0], key: 'coverage', outcome: 'unknown' as const }] } as Step
+  assert.equal(passkeyReadiness(mixed, readiness).bar.main, '1 setting needs attention; other checks incomplete')
+})
+
 test('emergency access and passkey steps without concrete findings keep their existing evidence', () => {
   assert.equal(passkeyReadiness({ id: 's-prereq-break-glass', configurationFindings: findings } as Step, readiness), readiness)
   assert.equal(passkeyReadiness({ id: 's-prereq-passkey-settings' } as Step, readiness), readiness)

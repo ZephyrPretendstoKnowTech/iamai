@@ -660,12 +660,6 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
   if (step.id === PASSKEY_SETTINGS_STEP_ID) {
     for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot, ctx.mapping))) out[key] = value
-    const target = out['passkey.target.fido2Configuration'] as Record<string, unknown> | undefined
-    // An already-correct profile is evidence, not a writable property of this
-    // method patch. Only the two resolved global switches need changing.
-    if (target && (Array.isArray(target.passkeyProfiles) && target.passkeyProfiles.length > 0 || typeof target?.defaultPasskeyProfile === 'string' && target.defaultPasskeyProfile.length > 0)) {
-      out['passkey.target.fido2Configuration'] = { '@odata.type': '#microsoft.graph.fido2AuthenticationMethodConfiguration', id: 'Fido2', state: target.state, isSelfServiceRegistrationAllowed: target.isSelfServiceRegistrationAllowed }
-    }
   }
   // Why the workload restriction is not counted as protection: the sync identity's
   // support is unknown, or known to be outside workload Conditional Access

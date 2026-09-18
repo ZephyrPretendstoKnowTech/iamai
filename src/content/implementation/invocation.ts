@@ -157,7 +157,11 @@ export function renderInvocation(script: string, spec: InvocationSpec, runs: Scr
         continue
       }
       // A preview's stand-in ("‹policy conditions›") is drawn as it reads; a preview is never copied.
-      args.push(`-${name} ${standIns.has(p.binding!) ? `'${String(value).replace(/'/g, "''")}'` : literal(value, p.binding!.endsWith('.json'))}`)
+      // Structured bindings are JSON parameters even when the binding's semantic
+      // name is not suffixed `.json`. String(value) would emit `[object Object]`
+      // and silently discard the operation the JSON channel carries.
+      const structured = value !== null && typeof value === 'object' && !Array.isArray(value)
+      args.push(`-${name} ${standIns.has(p.binding!) ? `'${String(value).replace(/'/g, "''")}'` : literal(structured ? JSON.stringify(value) : value, p.binding!.endsWith('.json') || structured)}`)
     }
     return `${fn} ${args.join(' ')}`
   })

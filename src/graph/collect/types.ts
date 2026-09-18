@@ -40,7 +40,7 @@ export type ConfigSectionKey =
   | 'meMemberOf'
 
 export type ConfigSection = {
-  status: 'ok' | 'disabled' | 'error'
+  status: 'ok' | 'partial' | 'disabled' | 'error'
   reason: string | null
   rows: unknown[]
   /** How the read went (prompt 46 item 24): the last response's HTTP status and body length; null before a scan records them. */
@@ -59,7 +59,11 @@ export type UserRow = {
   userType: 'member' | 'guest'
   usageLocation: string | null
   createdDateTime: string | null
+  /** Latest interactive attempt. This can be a failure and must never be used as successful activity. */
+  lastSignInAttempt?: string | null
   lastSuccessfulSignIn: string | null
+  /** True only when signInActivity itself was returned for this user. */
+  successfulSignInActivityRead?: boolean
   accountEnabled: boolean | null
   /** The primary SMTP address; a mailbox with no plans and no sign-in is a shared mailbox, not a person (prompt 46 §8.1). */
   mail: string | null
@@ -67,6 +71,8 @@ export type UserRow = {
   /** Licence SKUs assigned directly or by group (prompt 48 item 4): a Teams Shared Devices licence has no service plan of its own. */
   skuIds?: string[]
   onPremisesSyncEnabled: boolean | null
+  /** Distinguishes Graph's documented explicit null from an omitted field. */
+  onPremisesSyncEnabledRead?: boolean
   externalUserState: string | null
   department: string | null
   jobTitle: string | null
@@ -95,6 +101,8 @@ export type RegistrationRow = {
   userPreferredMethodForSecondaryAuthentication: string | null
   isAdmin: boolean
   userType: 'member' | 'guest'
+  /** True only when the report returned every field used to assert absence. */
+  complete?: boolean
 }
 
 export type PerUserMfaReading = { state: 'disabled' | 'enabled' | 'enforced' | 'unknown'; reason: string | null }
@@ -136,6 +144,10 @@ export type RecoverySignInCandidate = {
   resource: string | null
   method: string | null
   freshMethod: boolean | null
+  authenticationAt?: string | null
+  resourceTenantId?: string | null
+  /** Present only when the provider explicitly associates the event with a registered credential. */
+  credentialId?: string | null
 }
 
 // The raw sign-in subset Lane B keeps: lives only in the worker and the
@@ -153,6 +165,7 @@ export type StoredSignIn = {
   clientAppUsed?: string
   appId?: string
   resourceId?: string
+  resourceTenantId?: string
   isInteractive?: boolean
   authenticationProtocol?: string
   originalTransferMethod?: string

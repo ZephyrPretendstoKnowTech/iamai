@@ -1,92 +1,144 @@
 import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels } from '../../roadmap/passkeySettings.ts'
-import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
-import { emergencyRegistrationVariants } from './emergencyAccountTasks.ts'
+import { assignedPasskeyProfiles, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
+import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
+import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
+import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { tenantNameOf } from './stepVars.ts'
 
 const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const upnOf = (ctx: StepVarContext, id: string): string => clean(ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())?.userPrincipalName || ctx.nameOf(id) || id)
+const sameValue = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+const displayValue = (value: unknown): string => Array.isArray(value) ? value.map(String).join(', ') || 'None' : typeof value === 'boolean' ? value ? 'On' : 'Off' : String(value ?? 'Unavailable')
+const displayTargets = (value: unknown): string => {
+  if (!Array.isArray(value)) return ''
+  return value.flatMap(raw => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+    const row = raw as Record<string, unknown>
+    if (typeof row.id !== 'string' || !row.id.trim()) return []
+    const name = row.id.toLowerCase() === 'all_users' ? 'All users' : row.id
+    const profiles = Array.isArray(row.allowedPasskeyProfiles) ? row.allowedPasskeyProfiles.filter((id): id is string => typeof id === 'string' && !!id.trim()) : []
+    return [`${name}${profiles.length ? ` (profiles: ${profiles.join(', ')})` : ''}`]
+  }).join(', ') || 'None'
+}
+const fieldLabel = (field: string): string => ({
+  state: 'Enable',
+  includeTargets: 'Included targets',
+  isSelfServiceRegistrationAllowed: 'Self-service set up',
+  isAttestationEnforced: 'Attestation',
+  'keyRestrictions.isEnforced': 'Authenticator restrictions',
+  'keyRestrictions.enforcementType': 'Restriction mode',
+  'keyRestrictions.aaGuids': 'Approved models',
+  passkeyProfiles: 'Applicable passkey profiles',
+} as Record<string, string>)[field] ?? field
+
+function changedProfileFacts(currentRaw: unknown, targetRaw: unknown): { label: string; value: string }[] {
+  if (!targetRaw || typeof targetRaw !== 'object' || Array.isArray(targetRaw)) return []
+  const target = targetRaw as Record<string, any>
+  const current = currentRaw && typeof currentRaw === 'object' && !Array.isArray(currentRaw) ? currentRaw as Record<string, any> : {}
+  const name = clean(String(target.name || target.id || 'Passkey profile'))
+  const rows: { label: string; current: unknown; target: unknown }[] = [
+    { label: 'Storage', current: current.passkeyTypes, target: target.passkeyTypes },
+    { label: 'Attestation', current: current.attestationEnforcement, target: target.attestationEnforcement },
+    { label: 'Restrictions', current: current.keyRestrictions?.isEnforced, target: target.keyRestrictions?.isEnforced },
+    { label: 'Restriction mode', current: current.keyRestrictions?.enforcementType, target: target.keyRestrictions?.enforcementType },
+    { label: 'Approved models', current: current.keyRestrictions?.aaGuids, target: target.keyRestrictions?.aaGuids },
+  ]
+  return rows.filter(row => !sameValue(row.current, row.target)).map(row => ({ label: `${name} · ${row.label}`, value: `${displayValue(row.current)} → ${displayValue(row.target)}` }))
+}
 
 const fieldAction = (field: string, value: unknown): string => {
   switch (field) {
-    case 'state': return 'Set **Enable** to **On**.'
-    case 'isSelfServiceRegistrationAllowed': return 'Set **Allow self-service set up** to **Yes**.'
-    case 'isAttestationEnforced': return 'Set **Enforce attestation** to **Yes**.'
-    case 'keyRestrictions.isEnforced': return `Set authenticator restrictions to **${value === true ? 'On' : 'Off'}**.`
-    case 'keyRestrictions.enforcementType': return `Set restriction mode to **${String(value)}**.`
-    case 'includeTargets': return 'Apply the resolved target groups shown in Readiness while preserving the existing exclusions.'
+    case 'state': return value === 'enabled' || value === 'disabled' ? `Enable → **${value === 'enabled' ? 'On' : 'Off'}**` : ''
+    case 'isSelfServiceRegistrationAllowed': return typeof value === 'boolean' ? `Allow self-service set up → **${value ? 'Yes' : 'No'}**` : ''
+    case 'isAttestationEnforced': return typeof value === 'boolean' ? `Attestation → **${value ? 'Required' : 'Off'}**` : ''
+    case 'keyRestrictions.isEnforced': return typeof value === 'boolean' ? `Authenticator restrictions → **${value ? 'On' : 'Off'}**` : ''
+    case 'keyRestrictions.enforcementType': return typeof value === 'string' ? `Restriction mode → **${value}**` : ''
+    case 'includeTargets': return Array.isArray(value) ? `Included targets → **${displayTargets(value)}**` : ''
+    case 'keyRestrictions.aaGuids': return Array.isArray(value) ? `Approved models → **${displayValue(value)}**` : ''
+    case 'passkeyProfiles': return 'Applicable passkey profiles → use the resolved values below'
     default: return ''
   }
 }
 
+function normalRegistrationVariants(): EmergencyAccountTaskVariant[] {
+  return emergencyRegistrationVariants('the affected account').map(variant => ({
+    ...variant,
+    steps: variant.steps.filter(line => !/Store the|Secure the recovery device/.test(line)).map(line => line.replace('Microsoft Entra admin center', 'a normal work resource')),
+  }))
+}
+
+/** Four persistent, outcome-sized Entra procedures for Configure Passkey Authentication. */
 export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskProjection {
   const reading = passkeyReadingOf(ctx.snapshot, ctx.mapping)
-  const tasks: EmergencyAccountTask[] = []
   const current = reading.current
   const profiles = current ? assignedPasskeyProfiles(current) : null
   const profileNames = profiles?.profiles.map(profile => clean(profile.name || profile.id)) ?? []
   const subject = profileNames.length === 1 ? profileNames[0] : profileNames.length > 1 ? 'Applicable passkey profiles' : 'Passkey (FIDO2) policy'
-  const profileInstruction = profileNames.length === 1 ? `Open **${profileNames[0]}**.` : profileNames.length > 1 ? `Review each applicable profile separately: ${profileNames.map(name => `**${name}**`).join(', ')}.` : null
-
-  if (reading.state === 'unread' || reading.resolution?.kind === 'review') {
-    const unresolved = (step.configurationFindings ?? []).filter(finding => finding.outcome !== 'pass')
-    const keys = unresolved.map(finding => finding.key)
-    const issueKeys = unresolved.flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? [])
-    const tenant = clean(tenantNameOf(ctx.snapshot))
-    tasks.push({
-    id: 'inspect-passkey-settings', accountId: null, title: `Inspect passkey settings — ${subject}`, targetUpn: null, required: true,
-    readinessKey: keys[0] ?? 'availability', readinessKeys: keys,
-    evidence: reading.resolution?.kind === 'review' ? reading.resolution.subjects.join(' ') : 'The Passkey (FIDO2) configuration was not read.', actionLabel: 'Open inspection instructions', issueKeys,
-    facts: unresolved.flatMap(finding => finding.items?.filter(item => item.outcome !== 'pass').slice(0, 2).map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? []),
-    steps: [`Open **Microsoft Entra admin center** and select **${tenant || 'the tenant shown in IAMAI'}**.`, 'Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...(profileInstruction ? [profileInstruction] : []), 'Inspect its target groups, passkey type, attestation setting and authenticator restrictions.', 'Return to IAMAI and select **Scan to update the plan**. If the source remains unread, keep the limitation unresolved; this inspection is not a manual override.'],
-  })
-  }
-
+  const profileInstruction = profileNames.length === 1 ? `Open **${profileNames[0]}**.` : profileNames.length > 1 ? `Review each applicable profile separately: ${profileNames.map(name => `**${name}**`).join(', ')}.` : 'For a legacy configuration, open **Configure**.'
+  const unresolved = (step.configurationFindings ?? []).filter(finding => finding.outcome !== 'pass')
   const resolution = reading.resolution?.kind === 'target' ? reading.resolution : null
-  if (resolution) {
-    const availability = reading.differs.filter(field => ['state', 'includeTargets', 'isSelfServiceRegistrationAllowed'].includes(field))
-    if (availability.length) tasks.push({
-      id: 'make-passkey-registration-available', accountId: null, title: 'Make approved passkey registration available', targetUpn: null, required: true,
-      readinessKey: 'availability', evidence: availability.join(', '), actionLabel: 'Open availability instructions',
-      issueKeys: availability.map(field => `passkey:${field === 'state' ? 'method' : field === 'isSelfServiceRegistrationAllowed' ? 'selfService' : 'targets'}`),
-      steps: ['Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...availability.map(field => fieldAction(field, field === 'state' ? resolution.target.state : field === 'includeTargets' ? resolution.target.includeTargets : resolution.target.isSelfServiceRegistrationAllowed)).filter(Boolean), 'Preserve existing unrelated included and excluded groups and working model allowances.', 'Select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
-    })
-  }
-
-  const affected = affectedPasskeysByProposedChange(ctx.snapshot, ctx.mapping, ctx.groups)
-  for (const user of affected.users) {
-    const upn = upnOf(ctx, user.accountId)
-    const method = user.methods.map(item => `${item.displayName}${item.aaguid ? ` (${item.aaguid})` : ''}`).join(', ')
-    if (user.hasCompatibleAlternative) tasks.push({
-      id: `check-compatible-passkey:${user.accountId}`, accountId: user.accountId, title: 'Check the compatible passkey', targetUpn: upn, required: true,
-      readinessKey: 'affected-passkeys', evidence: `${method} loses access; another compatible passkey is registered.`, actionLabel: 'Open sign-in check',
-      issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`], facts: [{ label: 'Affected passkey', value: method }, { label: 'Compatible alternative', value: 'Observed' }],
-      steps: ['Keep your working administrator session open.', `Have **${upn}** open their normal work resource in a separate fresh browser session.`, 'Have the user sign in using the identified compatible passkey.', 'Confirm the sign-in completes for that user without changing administrative settings.', 'Return to IAMAI and select **Scan to update the plan**.'],
-    })
-    else {
-      const variants = emergencyRegistrationVariants(upn).map(variant => ({ ...variant, steps: variant.id === 'yubikey'
-        ? [...variant.steps.slice(0, -1), 'Have the user sign in with the new passkey in a fresh session.', 'Return to IAMAI and select **Scan to update the plan**.']
-        : ['Keep your working administrator session open.', `Have **${upn}** open **Security info** in a separate browser session.`, ...variant.steps.slice(0, -1), 'Have the user sign in with the new passkey in a fresh session.', 'Return to IAMAI and select **Scan to update the plan**.'] }))
-      tasks.push({
-        id: `prepare-replacement-passkey:${user.accountId}`, accountId: user.accountId, title: 'Prepare a replacement passkey', targetUpn: upn, required: true,
-        readinessKey: 'affected-passkeys', evidence: `${method} loses access under the intended settings.`, actionLabel: 'Open replacement instructions', variants, defaultVariantId: variants[0].id,
-        issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`], facts: [{ label: 'Affected passkey', value: method }, { label: 'Compatible alternative', value: 'Not observed' }],
-        steps: variants[0].steps,
+  const intendedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
+  const availabilityFields = resolution ? reading.differs.filter(field => ['state', 'includeTargets', 'isSelfServiceRegistrationAllowed'].includes(field)) : []
+  const protectionFields = resolution ? reading.differs.filter(field => !['state', 'includeTargets', 'isSelfServiceRegistrationAllowed'].includes(field)) : []
+  const currentProfiles = new Map((Array.isArray(current?.passkeyProfiles) ? current.passkeyProfiles : []).flatMap(raw => raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as Record<string, unknown>).id === 'string' ? [[String((raw as Record<string, unknown>).id), raw]] : []))
+  const changedProfiles = protectionFields.includes('passkeyProfiles') && Array.isArray(resolution?.target.passkeyProfiles)
+    ? resolution.target.passkeyProfiles.filter(raw => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false
+        const id = String((raw as Record<string, unknown>).id ?? '')
+        return !sameValue(raw, currentProfiles.get(id))
       })
-    }
-  }
-
-  if (resolution && reading.differs.some(field => !['state', 'includeTargets', 'isSelfServiceRegistrationAllowed'].includes(field))) {
-    const target = resolution.target
-    const settingActions = reading.differs.map(field => fieldAction(field, field === 'isAttestationEnforced' ? target.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? target.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? target.keyRestrictions?.enforcementType : undefined)).filter(Boolean)
-    tasks.push({
-      id: 'apply-passkey-settings', accountId: null, title: `Apply passkey settings — ${subject}`, targetUpn: null, required: true,
-      readinessKey: reading.differs.includes('isAttestationEnforced') ? 'protection' : 'models', evidence: reading.differs.join(', '), actionLabel: 'Open settings instructions',
-      readinessKeys: ['protection', 'models'], issueKeys: (step.configurationFindings ?? []).filter(finding => ['protection', 'models'].includes(finding.key)).flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
-      steps: ['Keep your working administrator session open.', 'Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...(profileInstruction ? [profileInstruction] : []), ...settingActions, `Enter these exact AAGUID additions while retaining existing explicit allowances: ${resolution.added.length ? resolution.added.map(value => `**${value}**`).join(', ') : 'no new AAGUIDs are required'}.`, 'Preserve unrelated assignments and settings, then select **Save**.', 'Return to IAMAI and select **Scan to update the plan**.'],
-    })
-  }
-  return { tasks, approvedModels: requiredModels(ctx.mapping).map(model => ({ ...model, source: 'plan' as const, recovery: true })) }
+    : []
+  const profileCorrections = changedProfiles.flatMap(raw => {
+    const id = String((raw as Record<string, unknown>).id ?? '')
+    return changedProfileFacts(currentProfiles.get(id), raw)
+  })
+  const changedProfileNames = changedProfiles.map(raw => clean(String((raw as Record<string, unknown>).name || (raw as Record<string, unknown>).id || 'Passkey profile')))
+  const correctionProfileInstruction = changedProfileNames.length === 1 ? `Open **${changedProfileNames[0]}**.` : changedProfileNames.length > 1 ? `Open only these profiles: ${changedProfileNames.map(name => `**${name}**`).join(', ')}.` : profileInstruction
+  const affected = affectedPasskeysByProposedChange(ctx.snapshot, ctx.mapping, ctx.groups)
+  const affectedFacts = affected.users.flatMap(user => user.methods.map(method => ({
+    label: upnOf(ctx, user.accountId),
+    value: `${method.displayName}${method.aaguid ? ` · ${method.aaguid}` : ''}${method.passkeyType ? ` · ${method.passkeyType}` : ''}${user.hasCompatibleAlternative ? ' · Compatible alternative registered' : ' · Replacement needed'}`,
+  })))
+  const variants = normalRegistrationVariants()
+  const customHardware = intendedModels.filter(model => model.source === 'plan' && model.recovery && !/yubikey/i.test(model.name))
+  if (customHardware.length) variants.push({
+    id: 'approved-hardware',
+    label: 'Additional approved hardware key',
+    facts: [...affectedFacts, ...customHardware.map(model => ({ label: model.name, value: `Replacement AAGUID: ${model.aaguid}` }))],
+    steps: yubiKeySteps('the affected account', `approved hardware security key (${customHardware.map(model => `${model.name}, AAGUID ${model.aaguid}`).join('; ')})`).filter(line => !/Store the|Return to IAMAI/i.test(line)).map(line => line.replace('Microsoft Entra admin center', 'a normal work resource')),
+  })
+  const tenant = clean(tenantNameOf(ctx.snapshot))
+  const targetValue = (field: string): unknown => field === 'state' ? resolution?.target.state : field === 'includeTargets' ? resolution?.target.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? resolution?.target.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? resolution?.target.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? resolution?.target.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? resolution?.target.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? resolution?.target.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? resolution?.target.passkeyProfiles : undefined
+  const inspectionFacts = unresolved.flatMap(finding => finding.items?.filter(item => item.outcome !== 'pass').slice(0, 2).map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? [])
+  const tasks: EmergencyAccountTask[] = [
+    {
+      id: 'inspect-passkey-settings', accountId: null, title: `Review passkey settings — ${subject}`, targetUpn: null, required: false,
+      readinessKey: unresolved[0]?.key ?? 'registration', readinessKeys: unresolved.map(finding => finding.key), evidence: null, actionLabel: 'Open review instructions', issueKeys: [],
+      facts: inspectionFacts,
+      steps: [`Open Microsoft Entra admin center and select **${tenant || 'the tenant shown in IAMAI'}**, then open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.`, ...(inspectionFacts.length ? ['Compare the current values with the intended values listed above in this task.'] : ['Inspect **Enable and target** and the applicable profiles. Do not change a value in this inspection task.']), profileInstruction, 'Do not guess or save a value IAMAI did not establish.'],
+    },
+    {
+      id: 'make-passkey-registration-available', accountId: null, title: 'Configure passkey registration', targetUpn: null,
+      required: availabilityFields.length > 0, readinessKey: 'registration', evidence: availabilityFields.length ? availabilityFields.join(', ') : null, actionLabel: 'Open registration instructions',
+      issueKeys: availabilityFields.map(field => `passkey:${field === 'state' ? 'method' : field === 'isSelfServiceRegistrationAllowed' ? 'selfService' : 'targets'}`),
+      facts: resolution ? availabilityFields.flatMap(field => { const value = fieldAction(field, targetValue(field)).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] }) : [],
+      steps: ['Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable and target**.', ...(resolution && availabilityFields.length ? ['Apply only the values above. Preserve unrelated inclusions and exclusions.', 'Save the changes. Return to IAMAI and select **Scan to update the plan**.'] : resolution ? ['Review the current availability, targeting, exclusions, and self-service registration settings. No save is required.', 'Return to IAMAI and select **Scan to update the plan**.'] : ['Review the current availability and targeting. IAMAI has not established the change values for this scan; do not save guessed values.'])],
+    },
+    {
+      id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
+      required: affected.users.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
+      issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
+      steps: ['Keep the existing working method available while preparing each affected account.', '**Compatible alternative**', 'Sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration — only if needed**', 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.'],
+    },
+    {
+      id: 'apply-passkey-settings', accountId: null, title: `Configure passkey protections — ${subject}`, targetUpn: null,
+      required: protectionFields.length > 0, readinessKey: 'protection', readinessKeys: ['protection'], evidence: protectionFields.length ? protectionFields.join(', ') : null, actionLabel: 'Open protection instructions',
+      issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
+      facts: resolution ? (profileCorrections.length ? profileCorrections : protectionFields.flatMap(field => { const value = fieldAction(field, targetValue(field)).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] })) : [],
+      steps: ['Keep your working administrator session open. Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', protectionFields.length ? correctionProfileInstruction : profileInstruction, ...(resolution && protectionFields.length ? ['Apply only the changed values above. Preserve unrelated targeting and settings.', ...(changedProfileNames.length > 1 ? ['Save the change and repeat only for the named profiles.'] : ['Save the change.']), 'Return to IAMAI and select **Scan to update the plan**.'] : resolution ? ['Review storage type, attestation, authenticator restrictions, restriction mode, and approved models. No save is required.', 'Return to IAMAI and select **Scan to update the plan**.'] : ['Review the applicable profile. IAMAI has not established the change values for this scan; do not save guessed values.'])],
+    },
+  ]
+  return { tasks, printAll: true, approvedModels: intendedModels }
 }

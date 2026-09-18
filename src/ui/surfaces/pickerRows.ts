@@ -42,6 +42,13 @@ const lc = (s: string): string => s.toLowerCase()
 /** The separator between a row's segments, as content.json writes its pickerRow shapes. */
 const SEP = ' · '
 
+export function exclusionsPickerLabel(mapping: Pick<MappingState, 'records'>, groups: GroupMembers | null | undefined, id: string): string {
+  const decision = operatorExclusionsDecision(mapping)
+  if (decision && lc(decision.id) === lc(id) && decision.name?.trim()) return decision.name.trim()
+  const group = groups?.get(id) ?? [...(groups ?? [])].find(([groupId]) => lc(groupId) === lc(id))?.[1]
+  return group?.displayName?.trim() || id
+}
+
 /**
  * The content row shape, filled a segment at a time: a segment naming a value
  * the scan does not hold (sign-ins per country) is left out, never a hole.
@@ -164,13 +171,9 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })
     })
-    // The one group the detection puts forward, where nobody has answered, opens in
-    // the picker as a chip (U24). It is not ticked and not written: Save is the
-    // operator's answer, and until then the step waits on it. Two that qualify are
-    // a question (`ambiguous`), and nothing opens.
-    const suggested = stored === null ? choice.suggested : null
-    const matched = suggested === null ? [] : ids.filter((id) => lc(id) === lc(suggested.id))
-    return vars('groups', rows, ids, ids.filter((id) => isStored(id) === 1), matched)
+    // Detected candidates are suggestions in the focused picker list. They do
+    // not open as selected chips; only an explicit saved operator answer does.
+    return vars('groups', rows, ids, ids.filter((id) => isStored(id) === 1))
   }
 
   // Allowed countries: every country the sign-in records or a usage location

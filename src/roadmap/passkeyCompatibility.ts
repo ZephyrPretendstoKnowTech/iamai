@@ -9,10 +9,20 @@ export type PasskeyCompatibility = { accountId: string; state: 'excluded' | 'unk
 export type AffectedPasskeyMethod = { methodId: string | null; displayName: string; model: string | null; aaguid: string | null; passkeyType: string | null; reason: string }
 export type AffectedPasskeyUser = { accountId: string; methods: AffectedPasskeyMethod[]; hasCompatibleAlternative: boolean }
 export type AffectedPasskeyProjection = { state: 'known' | 'unknown'; users: AffectedPasskeyUser[]; coverage: string[] }
+export type RecoveryPasskeyCandidateSet = { state: 'complete' | 'incompatible' | 'unknown'; ids: string[]; reason: string }
 
 const isPasskey = (method: AuthMethodSummary): boolean => method.kind === 'fido2' || method.kind === 'passkey'
+const attestationMatch = (method: AuthMethodSummary, required: boolean): boolean | null => {
+  if (!required) return true
+  if (method.attestationLevel === 'attested') return true
+  if (method.attestationLevel === 'notAttested') return false
+  return null
+}
 
-function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], policy: Fido2Configuration | null, groups: GroupMembers, unreadReason = 'policyUnread'): PasskeyCompatibility[] {
+const profileAttestationRequirement = (value: unknown): boolean | null =>
+  value === 'registrationOnly' ? true : value === 'disabled' ? false : null
+
+function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], policy: Fido2Configuration | null, groups: GroupMembers, unreadReason = 'policyUnread', purpose: 'approval' | 'runtime' = 'approval'): PasskeyCompatibility[] {
   return ids.map(accountId => {
     const result = (state: PasskeyCompatibility['state'], reason: string): PasskeyCompatibility => ({ accountId, state, reason })
     if (!policy) return result('unknown', unreadReason)
@@ -47,11 +57,19 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
       const profileIds = new Set(matching.flatMap(t => t.profileIds))
       const profiles = assigned.profiles.filter(p => profileIds.has(p.id.toLowerCase()))
       let unknown = unknownMembership
+      let attestationRejected = false
       for (const key of keys) for (const profile of profiles) {
         const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.toLowerCase().split(',').map(t => t.trim()) : []
         const keyType = key.passkeyType?.toLowerCase()
         if (!keyType || !types.length || types.some(t => t !== 'devicebound' && t !== 'synced')) { unknown = true; continue }
         if (!types.includes(keyType)) continue
+        if (purpose === 'approval') {
+          const attestationRequired = profileAttestationRequirement(profile.attestationEnforcement)
+          if (attestationRequired === null) { unknown = true; continue }
+          const attestation = attestationMatch(key, attestationRequired)
+          if (attestation === null) { unknown = true; continue }
+          if (!attestation) { attestationRejected = true; continue }
+        }
         const restriction = profile.keyRestrictions
         if (!restriction || typeof restriction.isEnforced !== 'boolean') { unknown = true; continue }
         if (!restriction.isEnforced) return result('eligible', 'eligible')
@@ -59,17 +77,25 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
         const listed = restriction.aaGuids.some(id => String(id).toLowerCase() === key.aaGuid!.toLowerCase())
         if (restriction.enforcementType === 'allow' ? listed : !listed) return result('eligible', 'eligible')
       }
-      return result(unknown ? 'unknown' : 'review', unknown ? 'modelsUnread' : 'modelRestricted')
+      return result(unknown ? 'unknown' : 'review', unknown ? 'modelsUnread' : attestationRejected ? 'attestationRequired' : 'modelRestricted')
     }
     const restrictions = policy.keyRestrictions
     if (typeof restrictions?.isEnforced !== 'boolean') return result('unknown', 'modelsUnread')
+    if (purpose === 'approval' && typeof policy.isAttestationEnforced !== 'boolean') return result('unknown', 'modelsUnread')
+    const eligibleKeys = purpose === 'runtime' ? keys : (() => {
+      const states = keys.map(key => attestationMatch(key, policy.isAttestationEnforced === true))
+      if (states.some(state => state === null)) return null
+      return keys.filter((_, index) => states[index] === true)
+    })()
+    if (eligibleKeys === null) return result('unknown', 'modelsUnread')
+    if (!eligibleKeys.length) return result('review', 'attestationRequired')
     if (restrictions.isEnforced === false) return result('eligible', 'eligible')
     const models = Array.isArray(restrictions.aaGuids) ? restrictions.aaGuids.map(x => String(x).toLowerCase()) : null
     if (!models || !['allow', 'block'].includes(String(restrictions.enforcementType))) return result('unknown', 'modelsUnread')
-    const known = keys.filter(key => typeof key.aaGuid === 'string')
+    const known = eligibleKeys.filter(key => typeof key.aaGuid === 'string')
     const allowed = known.some(key => restrictions.enforcementType === 'allow' ? models.includes(key.aaGuid!.toLowerCase()) : !models.includes(key.aaGuid!.toLowerCase()))
     if (allowed) return result('eligible', 'eligible')
-    return known.length === keys.length ? result('review', 'modelRestricted') : result('unknown', 'modelsUnread')
+    return known.length === eligibleKeys.length ? result('review', 'modelRestricted') : result('unknown', 'modelsUnread')
   })
 }
 
@@ -86,6 +112,51 @@ export function emergencyProposedPasskeyCompatibility(snapshot: TenantSnapshot, 
   return policyCompatibility(snapshot, ids, reading.resolution.target, groups)
 }
 
+/** Registered credential ids that are usable under both the observed and exact
+ * planned configuration. Unknown means at least one relevant method, policy,
+ * profile, or membership fact could not be evaluated. */
+export function compatiblePasskeyMethodIds(snapshot: TenantSnapshot, accountId: string, mapping?: MappingState, groups: GroupMembers = new Map()): { state: 'known' | 'unknown'; ids: string[] } {
+  const current = passkeyReadingOf(snapshot)
+  const planned = passkeyReadingOf(snapshot, mapping)
+  const methods = snapshot.authMethods[accountId]
+  if (current.state === 'unread' || !current.current || planned.resolution?.kind !== 'target' || !Array.isArray(methods)) return { state: 'unknown', ids: [] }
+  let unknown = false
+  const ids: string[] = []
+  for (const method of methods.filter(isPasskey)) {
+    const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+    const now = policyCompatibility(one, [accountId], current.current, groups)[0]
+    const next = policyCompatibility(one, [accountId], planned.resolution.target, groups)[0]
+    if (now.state === 'unknown' || next.state === 'unknown' || !method.id) unknown = true
+    else if (now.state === 'eligible' && next.state === 'eligible') ids.push(method.id)
+  }
+  return { state: unknown ? 'unknown' : 'known', ids }
+}
+
+/** Every registered credential that can authenticate under the observed
+ * configuration must also be completely assessable and approved by the exact
+ * intended configuration. This is the conservative substitute for a physical
+ * credential id, which Entra sign-in logs do not expose. */
+export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId: string, mapping?: MappingState, groups: GroupMembers = new Map()): RecoveryPasskeyCandidateSet {
+  const current = passkeyReadingOf(snapshot)
+  const planned = passkeyReadingOf(snapshot, mapping)
+  const methods = snapshot.authMethods[accountId]
+  if (current.state === 'unread' || !current.current || planned.resolution?.kind !== 'target' || !Array.isArray(methods)) return { state: 'unknown', ids: [], reason: 'Passkey methods or the applicable passkey configuration could not be read completely.' }
+  const candidates = methods.filter(isPasskey)
+  if (!candidates.length) return { state: 'incompatible', ids: [], reason: 'No registered passkey can be used for recovery.' }
+  const ids: string[] = []
+  for (const method of candidates) {
+    const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+    const runtime = policyCompatibility(one, [accountId], current.current, groups, 'policyUnread', 'runtime')[0]
+    if (runtime.state === 'unknown') return { state: 'unknown', ids: [], reason: 'A potentially usable registered passkey could not be evaluated completely.' }
+    if (runtime.state !== 'eligible') continue
+    const approval = policyCompatibility(one, [accountId], planned.resolution.target, groups, 'policyUnread', 'approval')[0]
+    if (approval.state === 'unknown' || !method.id) return { state: 'unknown', ids: [], reason: 'A potentially usable registered passkey is missing exact model, attestation, profile, or identity evidence.' }
+    if (approval.state !== 'eligible') return { state: 'incompatible', ids: [], reason: 'A potentially usable registered passkey does not meet the intended configuration.' }
+    ids.push(method.id)
+  }
+  return ids.length ? { state: 'complete', ids, reason: 'Every potentially usable registered passkey is known and compliant.' } : { state: 'incompatible', ids: [], reason: 'No registered passkey is usable under the current and intended configuration.' }
+}
+
 /** Registered methods that are usable now and not under the exact proposed target. */
 export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
@@ -93,13 +164,15 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
   const target = reading.resolution.target
   const users: AffectedPasskeyUser[] = []
   const coverage = new Set<string>()
-  for (const [accountId, methods] of Object.entries(snapshot.authMethods)) {
+  for (const user of snapshot.users) {
+    const accountId = user.id
+    const methods = snapshot.authMethods[accountId]
     if (!Array.isArray(methods)) { coverage.add('Some users’ registered authentication methods were not readable.'); continue }
     const keys = methods.filter(isPasskey)
     if (!keys.length) continue
     const states = keys.map(method => {
       const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
-      return { method, current: policyCompatibility(one, [accountId], reading.current, groups)[0], future: policyCompatibility(one, [accountId], target, groups)[0] }
+      return { method, current: policyCompatibility(one, [accountId], reading.current, groups, 'policyUnread', 'runtime')[0], future: policyCompatibility(one, [accountId], target, groups, 'policyUnread', 'runtime')[0] }
     })
     if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
     const affected = states.filter(state => state.current.state === 'eligible' && state.future.state !== 'eligible' && state.future.state !== 'unknown')

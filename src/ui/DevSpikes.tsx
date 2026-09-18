@@ -7,6 +7,7 @@ import { runSpike1, runSpike1Followup, runSpike1Paging, runSpike1Retest } from '
 import type { Spike1Results, Spike1RetestResults } from '../graph/spikes/spike1.ts'
 import { runAuthRequirementsSpike, runDevicesSpike, runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
 import { downloadSavedScanDiagnostics } from './diagnosticsDownload.ts'
+import { downloadEmergencyDiagnosticPair, runEmergencyDiagnosticEntry } from './emergencyDiagnosticDev.ts'
 
 // Dev-only spike harness. Rendered only in DEV builds with ?dev=1.
 export function DevSpikes({ tenantId }: { tenantId: string }) {
@@ -95,6 +96,15 @@ export function DevSpikes({ tenantId }: { tenantId: string }) {
         <Button size="sm" onClick={() => void downloadSavedScanDiagnostics(tenantId)}>
           Download scan diagnostics (last saved scan)
         </Button>
+        <Button size="sm" onClick={() => void runEmergencyDiagnosticEntry(tenantId, 'baseline').then(() => setSummary('Emergency diagnostic baseline captured in memory. Perform the approved private-session sign-in, then run the confirming capture.')).catch(error => setSummary(error instanceof Error ? error.message : String(error)))}>
+          Capture emergency baseline
+        </Button>{' '}
+        <Button size="sm" onClick={() => void runEmergencyDiagnosticEntry(tenantId, 'confirming').then(result => setSummary(`Emergency confirming capture complete. Logical contract: ${result.evaluation?.logicalSupported ? 'passed' : 'did not pass'}. Provider assurance: unvalidated.`)).catch(error => setSummary(error instanceof Error ? error.message : String(error)))}>
+          Capture emergency confirmation
+        </Button>{' '}
+        <Button size="sm" onClick={() => void downloadEmergencyDiagnosticPair(tenantId).catch(error => setSummary(error instanceof Error ? error.message : String(error)))}>
+          Download sanitized emergency pair
+        </Button>{' '}
         {buttons.map((b) => (
           <span key={b.key}>
             <Button size="sm" onClick={() => void run(b.key)} disabled={spike === 'running'}>

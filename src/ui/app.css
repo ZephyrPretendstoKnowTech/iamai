@@ -2218,6 +2218,18 @@ footer.app a {
 .step-main-rest {
   padding-top: 0;
 }
+.step[data-step-id='s-prereq-break-glass'] .step-main-rest,
+.step[data-step-id='s-prereq-exclusion-group'] .step-main-rest,
+.step[data-step-id='s-prereq-passkey-settings'] .step-main-rest,
+.step[data-step-id='cleanup-drill'] .step-main {
+  padding-bottom: 4px;
+}
+.step[data-step-id='s-prereq-break-glass'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
+.step[data-step-id='s-prereq-exclusion-group'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
+.step[data-step-id='s-prereq-passkey-settings'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
+.step[data-step-id='cleanup-drill'] .step-main > .step-section:last-of-type .done-line:last-child {
+  margin-bottom: 0;
+}
 /* The lead's last section keeps its rule: the rest continues the column under it. */
 .step-main-lead > .step-section:last-child {
   border-bottom: 1px solid var(--line);
@@ -2466,9 +2478,7 @@ footer.app a {
   border-top: 1px solid var(--line);
   background: var(--secondary-surface);
 }
-.step-footer .step-footer-scan {
-  margin-left: auto;
-}
+.step-footer-end { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: auto; }
 
 /* ---- Readiness: the approved `.readiness-strip` over `.readiness-bar` ----
    The one prerequisite surface (A1 §16.1): one tile per unresolved
@@ -4765,7 +4775,53 @@ th .th-sort:focus-visible,
   font-family: var(--font-sans);
   white-space: normal;
 }
+.step .impl-preview .preview-text.emergency-task-body {
+  font-family: var(--font-sans);
+}
 .step .emergency-task-body li + li { margin-top: 7px; }
+.emergency-account-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+}
+.emergency-account-status {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+}
+.emergency-account-status > *:first-child { margin-top: 0; }
+.emergency-account-status > *:last-child { margin-bottom: 0; }
+.emergency-account-label {
+  margin: 0 0 8px;
+  color: var(--secondary-text);
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
+}
+.emergency-account-upn {
+  margin: 0 0 8px;
+  color: var(--primary-text);
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
+}
+.emergency-account-count {
+  margin: 0 0 8px !important;
+  color: var(--secondary-text);
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+}
+.emergency-account-status h5 { margin: 0 0 6px; font-size: var(--t-2); }
+.emergency-account-status > p:not(.emergency-account-label) { margin: 0; color: var(--secondary-text); }
+.emergency-account-completed { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.emergency-account-completed > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
+.emergency-account-completed ul { margin: 8px 0 0; padding-left: 18px; font-size: var(--t-0); }
+.emergency-account-completed li + li { margin-top: 4px; }
+.emergency-account-readiness .readiness-satisfied .emergency-account-status-grid { margin-top: 8px; }
+.emergency-account-scan-note { margin: 12px 0 0; color: var(--secondary-text); font-size: var(--t-0); }
 .emergency-readiness-extra { margin-top: 10px; }
 .emergency-readiness-actions {
   display: grid;
@@ -4798,6 +4854,7 @@ th .th-sort:focus-visible,
   .step .emergency-task-toolbar { align-items: stretch; }
   .emergency-task-select { min-width: 100%; }
   .emergency-fact { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .emergency-account-status-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media print {
   .emergency-task-print .emergency-task-body { break-inside: avoid; }
@@ -4811,14 +4868,23 @@ th .th-sort:focus-visible,
 .step[data-step-id='cleanup-drill'] .emergency-recovery-procedure li + li { margin-top: .55rem; }
 
 .passkey-model-disclosure {
-  margin: 8px 24px 0 auto;
-  width: min(100% - 48px, 620px);
-  text-align: right;
+  margin: 0;
+  width: min(100%, 620px);
+  text-align: center;
 }
-.passkey-model-disclosure > summary { cursor: pointer; display: inline-block; font-weight: 600; padding: 8px 0; }
+.passkey-model-disclosure > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-0); font-weight: 600; list-style: none; padding: 4px 0; }
+.passkey-model-disclosure > summary::-webkit-details-marker { display: none; }
+.passkey-model-disclosure > summary::before { content: '›'; display: inline-block; font-size: 1.1em; line-height: 1; transform: rotate(0deg); transition: transform 120ms ease; }
+.passkey-model-disclosure[open] > summary::before { transform: rotate(90deg); }
 .passkey-model-disclosure[open] > .passkey-model-decision { margin-top: 8px; text-align: left; }
-.passkey-model-disclosure .passkey-model-decision { border-top: 1px solid var(--line); padding-top: 14px; }
+.passkey-model-disclosure .passkey-model-decision { padding-top: 8px; }
 @media (max-width: 620px) {
-  .passkey-model-disclosure { margin-inline: 16px; width: calc(100% - 32px); }
+  .step-footer-end { width: 100%; }
+  .passkey-model-disclosure { width: 100%; }
 }
 @media print { .passkey-model-disclosure { display: none !important; } }
+.emergency-task-facts { margin: .75rem 0 1rem; display: grid; gap: .4rem; }
+.emergency-task-facts div { display: grid; grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr); gap: .75rem; }
+.emergency-task-facts dt { font-weight: 700; }
+.emergency-task-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 44rem) { .emergency-task-facts div { grid-template-columns: 1fr; gap: .1rem; } }

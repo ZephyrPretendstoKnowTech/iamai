@@ -263,3 +263,17 @@ test('T17: strongestMethod flows into the scored row', () => {
   assert.equal(r.strongestMethod, 'otp')
   assert.deepEqual(r.methodTiers, ['otp', 'smsVoice'])
 })
+
+test('missing sign-in activity remains unknown rather than never signed in', () => {
+  const result = scoreMfaViability(input({ successfulActivityAvailable: false, lastSuccessfulSignIn: null }))
+  assert.equal(result.activity, 'unknown')
+})
+
+test('unknown method inventory cannot produce a definite no-MFA result', () => {
+  const result = scoreMfaViability(input({
+    registration: { ...input().registration!, isMfaCapable: false, isMfaRegistered: false, methodsRegistered: [], complete: false },
+    methods: 'unknown',
+  }))
+  assert.notEqual(result.mfa, 'none')
+  assert.equal(result.signals.methodsUnknown, true)
+})

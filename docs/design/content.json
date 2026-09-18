@@ -2264,7 +2264,7 @@
       "kind": "blocker",
       "title": "Prepare Emergency Access Accounts",
       "changeLine": null,
-      "why": "Prepare dedicated accounts and approved passkeys that will work with the planned settings.",
+      "why": "Prepare at least two dedicated emergency access accounts with approved passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },

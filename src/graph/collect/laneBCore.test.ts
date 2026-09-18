@@ -165,7 +165,7 @@ test('derived: blocked today uses only the most recent sign-in per user', () => 
 
 // Prompt 47 item 6: the risk verdicts ride along with the sign-in, and the
 // usage signals count the people a risk policy would touch.
-test('risk: the higher of the two verdicts decides the level; hidden and unknown read as none', () => {
+test('risk: the higher verdict decides the level; hidden and unknown remain outside known-risk counts', () => {
   const rows = [
     { id: 'a', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', riskLevelDuringSignIn: 'high', riskLevelAggregated: 'none' },
     { id: 'b', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'none', riskLevelAggregated: 'medium' },
@@ -183,4 +183,23 @@ test('risk: the higher of the two verdicts decides the level; hidden and unknown
   assert.deepEqual(usage.riskMedium.userIds, ['u2'])
   assert.deepEqual(usage.riskMedium.byDetail, { aggregated: 1, 'during sign-in': 1 })
   assert.equal(usage.legacyAuth.count, 0)
+})
+
+test('omitted and future device facts stay unreported while explicit false is retained', () => {
+  const missing = mapRow({ id: 'device-missing', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: {} })!
+  assert.equal(missing.isCompliant, undefined)
+  assert.equal(missing.isManaged, undefined)
+  assert.equal(missing.trustType, undefined)
+  const explicit = mapRow({ id: 'device-explicit', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', deviceDetail: { isCompliant: false, isManaged: false, trustType: 'futureTrustValue' } })!
+  assert.equal(explicit.isCompliant, false)
+  assert.equal(explicit.isManaged, false)
+  assert.equal(explicit.trustType, undefined)
+})
+
+
+test('recovery projection preserves provider authentication time and resource tenant', () => {
+  const row = mapRow({ id: 'recovery-event', userId: 'account', createdDateTime: '2026-09-16T10:02:00Z', resourceTenantId: 'tenant', status: { errorCode: 0 }, isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'FIDO2 security key', authenticationStepDateTime: '2026-09-16T10:01:00Z', authenticationStepResultDetail: 'Success' }] })!
+  const event = aggregate([row]).account.recoveryCandidates![0]
+  assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
+  assert.equal(event.resourceTenantId, 'tenant')
 })

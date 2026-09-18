@@ -3,6 +3,7 @@
 // exclusions group still waits on Create or Correct Exclusions Group.
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -10,7 +11,7 @@ import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directoryEvidenceFromGroups, exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { laneReadings } from './planLanes.ts'
-import { initialPicked, pickerVars } from './pickerRows.ts'
+import { exclusionsPickerLabel, initialPicked, pickerVars } from './pickerRows.ts'
 
 const STEP = PREREQ_STEP_ID.exclusionsGroup
 const LEGACY = 's-goal-block-legacy-auth'
@@ -44,31 +45,35 @@ function oneGroup(): { f: Fixture; id: string } {
   return { f, id: only.id }
 }
 
-test('U24: the exclusions picker opens on the one group the scan matched, and the step still reads Decision', () => {
+test('the exclusions picker keeps a detected group unselected until the operator chooses it', () => {
   const { f, id } = oneGroup()
   const ex = pickerOf(f)
   assert.ok(ex, 'the exclusions step has a picker')
   assert.deepEqual(ex.groupsTicked, [], 'nothing is ticked that nobody ticked')
-  assert.deepEqual(ex.groupsMatched, [id], 'the scan matched the one group')
-  assert.deepEqual(initialPicked(ex, 'groups', null, ex.groupsIds as string[], true), { picked: [id], matched: [id] }, 'the picker shows it as a matched chip')
-  // The pre-fill writes nothing: the record is empty and the step waits on the answer.
+  assert.equal(ex.groupsMatched, undefined, 'the scan suggestion is not a selected chip')
+  assert.deepEqual(initialPicked(ex, 'groups', null, ex.groupsIds as string[], true), { picked: [], matched: [] })
+  assert.ok((ex.groupsIds as string[]).includes(id), 'the candidate remains available after focus or search')
   assert.equal(operatorExclusionsDecision(f.mapping), null)
   const lane = laneReadings(runFixture(f).steps).get(STEP)
   assert.deepEqual([lane?.lane, lane?.substatus], ['Ready', 'Decision'])
 })
 
-test('U24: Save writes the matched group, and the step stops waiting on the decision', () => {
+test('Save writes the selected group and its confirmed chip uses the saved group name', () => {
   const { f, id } = oneGroup()
-  const ex = pickerOf(f)!
-  const { picked } = initialPicked(ex, 'groups', null, ex.groupsIds as string[], true)
-  const saved = saveGroup(f, picked[0], 'mid-b6-one-group-saved')
+  const saved = saveGroup(f, id, 'mid-b6-one-group-saved')
   assert.equal(operatorExclusionsDecision(saved.mapping)?.id, id, 'Save records the group as the operator’s answer')
+  assert.equal(exclusionsPickerLabel(saved.mapping, saved.groups, id), 'Core - Exclusions')
   const run = runFixture(saved)
   const step = run.steps.find((s) => s.id === STEP)
   assert.ok(step)
   assert.equal(step.blockers.some((b) => b.label === 'exclusions-decision'), false, 'no decision is waited on')
   assert.notEqual(laneReadings(run.steps).get(STEP)?.substatus, 'Decision')
   assert.equal(pickerOf(saved)!.groupsMatched, undefined, 'a saved answer is ticked, not matched')
+})
+
+test('decision picker state remounts when navigation changes the step', () => {
+  const source = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
+  assert.equal(source.match(/<Decision key=\{step\.id\}/g)?.length, 2)
 })
 
 test('U24: where two groups qualify nothing opens pre-filled, and a saved decision always wins', () => {

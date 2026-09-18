@@ -117,7 +117,7 @@ export function App() {
         // tenant id, so it cannot land on a real tenant's keys.
         await Promise.all(
           [...d.groups].map(([groupId, g]) =>
-            saveGroupMembersCache({ tenantId: DEMO_TENANT_ID, groupId, displayName: g.displayName ?? null, membershipRule: null, mailEnabled: false, memberCount: g.memberCount, memberIds: g.memberIds, sampled: g.sampled, asOf: d.snapshot.asOf }),
+            saveGroupMembersCache({ schema: 2, tenantId: DEMO_TENANT_ID, groupId, displayName: g.displayName ?? null, membershipRule: g.membershipRule ?? null, membershipRuleProcessingState: g.membershipRuleProcessingState ?? null, mailEnabled: g.mailEnabled ?? false, securityEnabled: g.securityEnabled ?? null, groupTypes: g.groupTypes ?? null, isAssignableToRole: g.isAssignableToRole ?? null, assignedLicenseSkuIds: g.assignedLicenseSkuIds ?? null, memberCount: g.memberCount, memberIds: g.memberIds, sampled: g.sampled, directMembers: g.directMembers, directMemberIds: g.directMemberIds, directMemberObjects: g.directMemberObjects, owners: g.owners, ownerObjects: g.ownerObjects, asOf: d.snapshot.asOf }),
           ),
         )
         // The plan record for the snapshot being shown (demo.ts nextDemoRecord):
@@ -184,7 +184,7 @@ export function App() {
         // through the one writer of that record. Without both, no policy the plan
         // writes has a carve-out and the surfaces these mocks check are empty.
         const xg = FIXTURE_EXCLUSIONS_GROUP
-        await saveGroupMembersCache({ tenantId: snapshot.tenantId, groupId: xg.id, displayName: xg.displayName, membershipRule: null, mailEnabled: false, memberCount: xg.memberIds.length, memberIds: [...xg.memberIds], sampled: false, asOf: snapshot.asOf })
+        await saveGroupMembersCache({ schema: 2, tenantId: snapshot.tenantId, groupId: xg.id, displayName: xg.displayName, membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [], memberCount: xg.memberIds.length, memberIds: [...xg.memberIds], sampled: false, directMembers: 'complete', directMemberIds: [...xg.memberIds], directMemberObjects: xg.memberIds.map(id => ({ id, displayName: null, userPrincipalName: null, kind: 'user' })), asOf: snapshot.asOf })
         const stored = await loadMappingState(snapshot.tenantId)
         // And the operator's emergency-access answer, through the writer a Save
         // uses (roadmap/decisions.ts): a scan recommends these accounts and may

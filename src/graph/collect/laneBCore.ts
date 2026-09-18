@@ -24,10 +24,10 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 8
-/** Schema 8 adds exact recovery-event identity and interaction/resource facts.
- * Older rows must be refreshed: a missing interactive flag is never true. */
-export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 8
+export const EVIDENCE_SCHEMA = 9
+/** Schema 9 invalidates normalized evidence produced before field-presence and
+ * exact-credential reconciliation were corrected. */
+export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 9
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -78,6 +78,7 @@ export function mapRow(raw: unknown): StoredSignIn | null {
     clientAppUsed: typeof r.clientAppUsed === 'string' ? r.clientAppUsed : undefined,
     appId: typeof r.appId === 'string' ? r.appId : undefined,
     resourceId: typeof r.resourceId === 'string' ? r.resourceId : undefined,
+    resourceTenantId: typeof r.resourceTenantId === 'string' ? r.resourceTenantId : undefined,
     isInteractive: typeof r.isInteractive === 'boolean' ? r.isInteractive : undefined,
     authenticationProtocol: typeof r.authenticationProtocol === 'string' ? r.authenticationProtocol : undefined,
     originalTransferMethod: typeof r.originalTransferMethod === 'string' ? r.originalTransferMethod : undefined,
@@ -115,12 +116,14 @@ export function browserFamily(raw: unknown): string {
   return s.replace(/\s*[\d.]+.*$/, '').trim()
 }
 
-export function normaliseTrustType(raw: unknown): NonNullable<StoredSignIn['trustType']> {
-  const s = typeof raw === 'string' ? raw.toLowerCase() : ''
+export function normaliseTrustType(raw: unknown): StoredSignIn['trustType'] {
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined
+  const s = raw.toLowerCase()
   if (s.includes('hybrid')) return 'hybrid'
   if (s.includes('registered')) return 'registered'
   if (s.includes('joined')) return 'joined'
-  return 'none'
+  if (s === 'none') return 'none'
+  return undefined
 }
 
 function deviceLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'os' | 'browser' | 'isCompliant' | 'isManaged' | 'trustType'> {
@@ -128,16 +131,17 @@ function deviceLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'os' | 'br
   return {
     os: normaliseOs(d?.operatingSystem),
     browser: browserFamily(d?.browser),
-    isCompliant: d?.isCompliant === true,
-    isManaged: d?.isManaged === true,
+    isCompliant: typeof d?.isCompliant === 'boolean' ? d.isCompliant : undefined,
+    isManaged: typeof d?.isManaged === 'boolean' ? d.isManaged : undefined,
     trustType: normaliseTrustType(d?.trustType),
   }
 }
 
 function crossTenantType(raw: unknown): StoredSignIn['crossTenantAccessType'] {
-  const s = typeof raw === 'string' ? raw : ''
+  if (typeof raw !== 'string' || raw === '') return undefined
+  const s = raw
   if (s === 'none' || s === 'b2bCollaboration' || s === 'b2bDirectConnect' || s === 'serviceProvider' || s === 'passthrough') return s
-  return s === '' ? 'none' : 'other'
+  return 'other'
 }
 
 function networkLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'namedLocations' | 'trustedLocation'> {
@@ -232,10 +236,12 @@ export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./type
 }
 
 const RISK_RANK: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 }
-/** The higher of the two risk verdicts; 'hidden' and unknown values read as no risk. */
-export function riskLevelOf(row: StoredSignIn): 'none' | 'low' | 'medium' | 'high' {
-  const a = RISK_RANK[(row.riskLevelDuringSignIn ?? '').toLowerCase()] ?? 0
-  const b = RISK_RANK[(row.riskLevelAggregated ?? '').toLowerCase()] ?? 0
+/** The higher readable verdict. Hidden or future values remain unknown. */
+export function riskLevelOf(row: StoredSignIn): 'none' | 'low' | 'medium' | 'high' | 'unknown' {
+  const raw = [row.riskLevelDuringSignIn, row.riskLevelAggregated].filter((value): value is string => typeof value === 'string')
+  if (raw.length === 0 || raw.some(value => value.toLowerCase() === 'hidden' || !(value.toLowerCase() in RISK_RANK))) return 'unknown'
+  const a = RISK_RANK[(row.riskLevelDuringSignIn ?? 'none').toLowerCase()] ?? 0
+  const b = RISK_RANK[(row.riskLevelAggregated ?? 'none').toLowerCase()] ?? 0
   const top = Math.max(a, b)
   return top === 3 ? 'high' : top === 2 ? 'medium' : top === 1 ? 'low' : 'none'
 }
@@ -289,6 +295,8 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
         app: row.appDisplayName ?? null,
         resource: row.resourceDisplayName ?? null,
         method: 'Passkey (FIDO2)',
+        authenticationAt: freshStep?.authenticationStepDateTime ?? null,
+        resourceTenantId: row.resourceTenantId ?? null,
         freshMethod: freshStep ? true : (Array.isArray(row.authenticationDetails) ? false : null),
       }
       recovery.set(row.userId, [...(recovery.get(row.userId) ?? []), candidate])

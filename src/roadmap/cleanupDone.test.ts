@@ -134,3 +134,65 @@ test('unassessed baseline policies become individual reviews, with no catch-all 
   assert.ok(r.steps.some(s => s.id === 's-goal-inforcer-mfa'), 'Inforcer uses its ordinary application-scoped goal')
   assert.ok(!reviews.some(s => /inforcer/i.test(s.id)), 'the old Inforcer review is not duplicated')
 })
+
+
+test('recovery rejects wrong resource tenant, pre-baseline authentication, reused claims and client-only target matches', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const original = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  const baseline = new Date(Date.parse(original.at) - 60_000).toISOString()
+  for (const change of [
+    { resourceTenantId: 'another-tenant' },
+    { authenticationAt: baseline },
+    { authenticationAt: 'invalid' },
+    { at: baseline },
+    { freshMethod: false },
+    { resourceId: 'wrong-resource', appId: '00000003-0000-0000-c000-000000000000' },
+  ]) {
+    f.snapshot.signInEvidence[id]!.recoveryCandidates = [{ ...original, ...change }]
+    assert.equal(recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, baseline)[0].qualifies, false, JSON.stringify(change))
+  }
+  f.snapshot.signInEvidence[id]!.recoveryCandidates = [{ ...original, resourceTenantId: f.snapshot.tenantId, authenticationAt: original.at }]
+  assert.equal(recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, baseline)[0].qualifies, true)
+})
+
+test('recovery basis invalidates identity and direct group shape changes without treating a display rename as drift', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const before = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const user = f.snapshot.users.find(user => user.id === id)!
+  user.displayName = 'Display-only rename'
+  assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before)
+  user.userPrincipalName = 'changed@demo-fixture.onmicrosoft.com'
+  assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before)
+  const next = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]!.resolvedId!
+  f.groups.get(groupId)!.directMemberIds = ['unexpected-nested-group']
+  assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], next)
+})
+
+test('an imported automatic assurance marker cannot replace observed event evidence', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  const baseline = new Date(Date.parse(event.at) - 60_000).toISOString()
+  const basis = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)
+  const evidence = { schema: 1 as const, purpose: 'final' as const, tenantId: f.snapshot.tenantId, accountId: id, eventId: 'forged', eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, assurance: 'automatic-complete-candidates', configurationObservedAt: baseline }
+  let checkpoints = withCleanupDone([], 'drill', baseline.slice(0,10), baseline, { accountIds: [id], purpose: 'final', tenantId: f.snapshot.tenantId, workflow: RECOVERY_PREPARATION_WORKFLOW, configurationObservedAt: baseline, accountBasis: basis })
+  checkpoints = withCleanupDone(checkpoints, 'drill', event.at.slice(0,10), f.snapshot.asOf, { accountIds: [id], purpose: 'final', outcome: 'passed', accountBasis: basis, recoveryEvidence: { [id]: evidence } })
+  assert.equal(latestRecoveryTest(id, cleanupRecord(checkpoints).records!, f.snapshot.asOf, basis[id], { readings: [], tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf }), null)
+})
+
+
+test('a confirmed failure cannot be cleared by recording an older successful event again', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  const basis = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const failureAt = new Date(Date.parse(event.at) + 60_000).toISOString()
+  let checkpoints = withCleanupDone(f.checkpoints ?? [], 'drill', failureAt.slice(0,10), failureAt, { purpose: 'final', outcome: 'failed', accountIds: [id] })
+  const oldPass = cleanupRecord(f.checkpoints ?? []).records!.find(r => r.outcome === 'passed')!
+  checkpoints = [...checkpoints, { ...oldPass, at: f.snapshot.asOf }]
+  const context = { readings: recoveryCandidateReadings(f.snapshot, id), tenantId: f.snapshot.tenantId, currentSnapshotObservedAt: f.snapshot.asOf }
+  assert.equal(latestRecoveryTest(id, cleanupRecord(checkpoints).records!, f.snapshot.asOf, basis, context), null)
+})

@@ -2,12 +2,13 @@
 // baseline selection, driven by the references the chosen baseline uses.
 // Main-thread friendly — small, single-purpose calls.
 import { getGraphToken } from '../msal.ts'
-import { GraphResponseShapeError, graphPaged, graphRequest, V1 } from './http.ts'
+import { BETA, GraphResponseShapeError, graphPaged, graphRequest, V1 } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadGroupMembersCache, saveGroupMembersCache } from './cache.ts'
 import { presenceOfError } from './presence.ts'
-import type { GroupRead, MemberEvidence } from './presence.ts'
+import type { DirectoryMemberEvidence, GroupRead, MemberEvidence } from './presence.ts'
 import type { GroupMembersCacheEntry } from './cache.ts'
+import { assignedLicenseSkuIdsOf, directMemberObjectsOf, directoryMemberEvidenceOf } from './groupShape.ts'
 
 // Above this, membership is stored as count-and-sample, not the full id list.
 export const GROUP_MEMBER_FULL_LIST_CEILING = 20_000
@@ -32,6 +33,11 @@ async function msalTokens(): Promise<TokenSource> {
       return token
     },
   }
+}
+
+/** Existing in-memory authenticated transport for development-only diagnostics. */
+export async function onDemandTokenSource(): Promise<TokenSource> {
+  return msalTokens()
 }
 
 // Resolve leftover GUIDs to display names so the UI never shows a bare id.
@@ -125,7 +131,7 @@ export async function searchGroups(query: string): Promise<{ id: string; display
 export async function readGroup(
   tenantId: string,
   groupId: string,
-  opts: { forceRefresh?: boolean; since?: string | null } = {},
+  opts: { forceRefresh?: boolean; since?: string | null; directEvidence?: boolean } = {},
 ): Promise<GroupRead> {
   const asOf = new Date().toISOString()
   const unread = (e: unknown): GroupRead => ({
@@ -141,15 +147,20 @@ export async function readGroup(
 
   if (!opts.forceRefresh && opts.since) {
     const cached = await loadGroupMembersCache(tenantId, groupId)
-    if (cached && cached.asOf >= opts.since) {
+    if (cached && cached.asOf >= opts.since && (!opts.directEvidence || cached.directMembers === 'complete')) {
       return {
         groupId,
         presence: 'present',
         reason: null,
-        object: { displayName: cached.displayName, membershipRule: cached.membershipRule, mailEnabled: cached.mailEnabled === true, securityEnabled: cached.securityEnabled ?? null, groupTypes: cached.groupTypes ?? null, isAssignableToRole: cached.isAssignableToRole ?? null },
+        object: { displayName: cached.displayName, membershipRule: cached.membershipRule, membershipRuleProcessingState: cached.membershipRuleProcessingState ?? null, mailEnabled: typeof cached.mailEnabled === 'boolean' ? cached.mailEnabled : null, securityEnabled: cached.securityEnabled ?? null, groupTypes: cached.groupTypes ?? null, isAssignableToRole: cached.isAssignableToRole ?? null, assignedLicenseSkuIds: cached.assignedLicenseSkuIds ?? null },
         members: cached.sampled ? 'sampled' : 'complete',
         memberIds: cached.memberIds,
         memberCount: cached.memberCount,
+        directMembers: cached.directMembers,
+        directMemberIds: cached.directMemberIds,
+        directMemberObjects: cached.directMemberObjects,
+        owners: cached.owners,
+        ownerObjects: cached.ownerObjects,
         asOf: cached.asOf,
       }
     }
@@ -165,20 +176,42 @@ export async function readGroup(
   // 1. Does the object exist? This request, and only this request, answers that.
   let g: Record<string, unknown>
   try {
-    const group = await graphRequest(tokens, `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,mailEnabled,securityEnabled,groupTypes,isAssignableToRole`)
+    const group = await graphRequest(tokens, `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,membershipRuleProcessingState,mailEnabled,securityEnabled,groupTypes,isAssignableToRole,assignedLicenses`)
     g = group as unknown as Record<string, unknown>
   } catch (e) {
     return unread(e)
   }
+  const licenses = assignedLicenseSkuIdsOf(g.assignedLicenses)
   const object = {
     displayName: typeof g.displayName === 'string' ? g.displayName : null,
     membershipRule: typeof g.membershipRule === 'string' ? g.membershipRule : null,
-    mailEnabled: g.mailEnabled === true,
+    membershipRuleProcessingState: typeof g.membershipRuleProcessingState === 'string' ? g.membershipRuleProcessingState : null,
+    mailEnabled: typeof g.mailEnabled === 'boolean' ? g.mailEnabled : null,
     securityEnabled: typeof g.securityEnabled === 'boolean' ? g.securityEnabled : null,
     groupTypes: Array.isArray(g.groupTypes) && g.groupTypes.every(value => typeof value === 'string') ? g.groupTypes as string[] : null,
     isAssignableToRole: typeof g.isAssignableToRole === 'boolean' ? g.isAssignableToRole : null,
+    assignedLicenseSkuIds: licenses,
   }
-  const present = (members: MemberEvidence, memberIds: string[], memberCount: number | null): GroupRead => ({ groupId, presence: 'present', reason: null, object, members, memberIds, memberCount, asOf })
+  let direct: Pick<GroupRead, 'directMembers' | 'directMemberIds' | 'directMemberObjects' | 'owners' | 'ownerObjects'> = {}
+  if (opts.directEvidence) {
+    try {
+      // v1.0 /members can omit service principals; the beta relationship is
+      // used only for this bounded, read-only completeness proof.
+      const rows = await graphPaged(tokens, `${BETA}/groups/${groupId}/members?$select=id,displayName,userPrincipalName&$top=999`)
+      const objects = directMemberObjectsOf(rows)
+      direct = { ...direct, directMembers: 'complete', directMemberIds: objects.map(row => row.id), directMemberObjects: objects }
+    } catch { direct = { ...direct, directMembers: 'unknown', directMemberIds: [], directMemberObjects: [] } }
+    try {
+      const rows = await graphPaged(tokens, `${V1}/groups/${groupId}/owners?$select=id,displayName,userPrincipalName&$top=999`)
+      // v1.0 owner enumeration can omit service principals. Owners are an
+      // optional diagnostic here, so preserve the returned objects while
+      // labelling coverage as sampled rather than certifying completeness.
+      direct = { ...direct, owners: 'sampled', ownerObjects: rows.map(row => {
+        try { return directoryMemberEvidenceOf(row as Record<string, unknown>) } catch { return null }
+      }).filter((row): row is DirectoryMemberEvidence => row !== null) }
+    } catch { direct = { ...direct, owners: 'unknown', ownerObjects: [] } }
+  }
+  const present = (members: MemberEvidence, memberIds: string[], memberCount: number | null): GroupRead => ({ groupId, presence: 'present', reason: null, object, members, memberIds, memberCount, asOf, ...direct })
 
   // 2. Who is in it? A separate request and a separate fact: the group exists
   //    whatever this one answers, and a count nobody read stays null.
@@ -207,13 +240,16 @@ export async function readGroup(
       groupId,
       displayName: object.displayName,
       membershipRule: object.membershipRule,
+      membershipRuleProcessingState: object.membershipRuleProcessingState,
       mailEnabled: object.mailEnabled,
       securityEnabled: object.securityEnabled,
       groupTypes: object.groupTypes,
       isAssignableToRole: object.isAssignableToRole,
+      assignedLicenseSkuIds: object.assignedLicenseSkuIds,
       memberCount: sampled ? memberCount : memberIds.length,
       memberIds,
       sampled,
+      ...direct,
       asOf,
     }
     await saveGroupMembersCache(entry)
@@ -247,13 +283,20 @@ export async function getGroupMembers(
     groupId,
     displayName: r.object?.displayName ?? null,
     membershipRule: r.object?.membershipRule ?? null,
-    mailEnabled: r.object?.mailEnabled === true,
+    membershipRuleProcessingState: r.object?.membershipRuleProcessingState ?? null,
+    mailEnabled: r.object?.mailEnabled ?? null,
     securityEnabled: r.object?.securityEnabled ?? null,
     groupTypes: r.object?.groupTypes ?? null,
     isAssignableToRole: r.object?.isAssignableToRole ?? null,
+    assignedLicenseSkuIds: r.object?.assignedLicenseSkuIds ?? null,
     memberCount: r.memberCount,
     memberIds: r.memberIds,
     sampled: r.members === 'sampled',
+    directMembers: r.directMembers,
+    directMemberIds: r.directMemberIds,
+    directMemberObjects: r.directMemberObjects,
+    owners: r.owners,
+    ownerObjects: r.ownerObjects,
     asOf: r.asOf,
   }
 }

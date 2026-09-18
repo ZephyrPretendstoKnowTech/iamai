@@ -23,14 +23,21 @@ export type GroupMembersCacheEntry = {
   groupId: string
   displayName: string | null
   membershipRule: string | null
+  membershipRuleProcessingState?: string | null
   /** A mail-enabled exclusions group is a target that also delivers mail. */
-  mailEnabled?: boolean
+  mailEnabled?: boolean | null
   securityEnabled?: boolean | null
   groupTypes?: string[] | null
   isAssignableToRole?: boolean | null
+  assignedLicenseSkuIds?: string[] | null
   memberCount: number
   memberIds: string[]
   sampled: boolean
+  directMembers?: import('./presence.ts').MemberEvidence
+  directMemberIds?: string[]
+  directMemberObjects?: import('./presence.ts').DirectoryMemberEvidence[]
+  owners?: import('./presence.ts').MemberEvidence
+  ownerObjects?: import('./presence.ts').DirectoryMemberEvidence[]
   asOf: string
 }
 

@@ -291,21 +291,21 @@ const CASES: Record<string, Case> = {
   // is unapproved — and which leaves the other account inside every policy the
   // group is excluded from.
   'xg.containsEmergency': {
-    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),
+    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds] }),
     unknown: 'target',
-    fail: (b) => ({ ...exclusionGroup(b), memberIds: [b.state.breakGlassUserIds[0]], memberCount: 1 }),
+    fail: (b) => ({ ...exclusionGroup(b), memberIds: [b.state.breakGlassUserIds[0]], memberCount: 1, directMembers: 'complete', directMemberIds: [b.state.breakGlassUserIds[0]] }),
   },
   'xg.membersApproved': {
-    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),
+    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds] }),
     unknown: 'target',
-    fail: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds, b.snapshot.users[0].id], memberCount: 3 }),
+    fail: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds, b.snapshot.users[0].id], memberCount: 3, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds, b.snapshot.users[0].id] }),
   },
   'xg.noExtraAdmins': {
-    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds] }),
+    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds] }),
     unknown: 'target',
     fail: (b) => {
       const admin = Object.keys(b.snapshot.roles.active).find((id) => !b.state.breakGlassUserIds.includes(id))!
-      return { ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds, admin] }
+      return { ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds, admin], directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds, admin] }
     },
   },
   'xg.notDynamic': {
@@ -336,9 +336,9 @@ const CASES: Record<string, Case> = {
     },
   },
   'xg.sizeReasonable': {
-    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),
+    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds] }),
     unknown: 'target',
-    fail: (b) => ({ ...exclusionGroup(b), memberCount: 12 }),
+    fail: (b) => ({ ...exclusionGroup(b), memberCount: 3, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds, b.snapshot.users[0].id] }),
   },
   'xg.notMailEnabled': {
     target: (b) => ({ ...exclusionGroup(b), mailEnabled: false }),
@@ -567,13 +567,21 @@ test('worst-state emergency access: every blocker fires, each naming its fact', 
 test('worst-state exclusions group: every blocker fires', () => {
   const b = base()
   const admin = Object.keys(b.snapshot.roles.active).find((id) => !b.state.breakGlassUserIds.includes(id))!
-  const entry: GroupFacts = { groupId: 'g-x', displayName: 'Exclusions', membershipRule: 'user.jobTitle -eq "IT"', securityEnabled: true, groupTypes: ['DynamicMembership'], isAssignableToRole: false, mailEnabled: true, memberIds: [...b.state.breakGlassUserIds, admin], memberCount: 12, sampled: false }
+  const entry: GroupFacts = { groupId: 'g-x', displayName: 'Exclusions', membershipRule: 'user.jobTitle -eq "IT"', securityEnabled: true, groupTypes: ['DynamicMembership'], isAssignableToRole: false, mailEnabled: true, assignedLicenseSkuIds: [], memberIds: [...b.state.breakGlassUserIds, admin], memberCount: 3, sampled: false, directMembers: 'complete', directMemberIds: [...b.state.breakGlassUserIds, admin] }
   b.snapshot.config.caPolicies.rows.push({ id: 'p-y', displayName: 'Another policy', state: 'enabled', conditions: { users: { includeUsers: ['All'] } } })
   const results = evaluateSubject('exclusionGroup', entry, ctxOf(b))
   const failed = new Set(results.filter((r) => r.outcome === 'fail').map((r) => r.id))
   for (const ruleId of ['xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.sizeReasonable', 'xg.notMailEnabled']) {
     assert.ok(failed.has(ruleId), `${ruleId} did not fire`)
   }
+})
+
+test('omitted mail-enabled evidence cannot satisfy the saved-group check', () => {
+  const b = base()
+  const entry = { ...exclusionGroup(b), mailEnabled: undefined }
+  const result = run('xg.notMailEnabled', entry, b)
+  assert.equal(result.outcome, 'unknown')
+  assert.match(result.finding ?? '', /not fully read/i)
 })
 
 test('worst-state trusted location: the whole internet, untrusted, one address', () => {
