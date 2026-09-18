@@ -55,14 +55,14 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     {
       id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
       readinessTitle: 'Choose an exclusions group', readinessDirection: 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
-      steps: ['Open Microsoft Entra admin center in the intended tenant, then **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the exact group IAMAI discovered under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
+      steps: ['Keep your working administrator session open.', 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the new group under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
     },
     {
       id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
       readinessTitle: unsuitableGroup ? 'Use a suitable exclusions group' : 'Choose an exclusions group', readinessDirection: unsuitableGroup ? 'Choose a dedicated assigned security group, or follow Create an emergency exclusions group in Implementation Tasks.' : 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
       issueKeys: groupFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: unsuitableGroup ? groupMismatchFacts : [],
-      steps: ['Open **Entra ID → Groups → All groups** and open the intended exclusions group.', 'Check its name and object ID. Confirm **Security** group type and **Assigned** membership.', 'In IAMAI, select that group under **Exclusions group**, then **Save**.', 'Select **Scan to update the plan**.'],
+      steps: ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups** and open the intended exclusions group.', 'Check its name and object ID. Confirm **Security** group type and **Assigned** membership.', 'In IAMAI, select that group under **Exclusions group**, then **Save**.', 'Select **Scan to update the plan**.'],
     },
     {
       id: 'manage-emergency-membership', accountId: null, title: 'Manage emergency account membership', targetUpn: null, required: !!groupId && completeMembers && (missing.length > 0 || extra.length > 0), readinessKey: 'group-members', evidence: !groupId || !completeMembers ? null : missing.length ? `${missing.length} selected account${missing.length === 1 ? ' is' : 's are'} missing.` : extra.length ? `${extra.length} additional direct member${extra.length === 1 ? '' : 's'} require review.` : null, actionLabel: 'Open membership instructions',
@@ -72,18 +72,26 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
         ...extra.map(id => ({ label: 'Remove', value: directObject(id) })),
         ...missing.map(id => ({ label: 'Add', value: upnOf(ctx, id) })),
       ],
-      steps: [...(groupId ? [`Open **Entra ID → Groups → All groups → ${groupName} → Members**. Check object ID **${groupId}**.`] : ['Select and save an exclusions group in IAMAI first.']), ...(missing.length ? [`Select **Add members**, choose ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}, then select **Select** to confirm.`] : [`For an identified missing account, select **Add members**, choose the intended emergency account, then select **Select** to confirm.`]), `Confirm ${accounts} appear as direct members. Preserve a working administrator session while changing exclusions membership.`, ...(extra.length ? [`Verify the intended recovery accounts work before removal. Select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, then confirm.`] : ['For an identified unwanted direct member, verify the intended recovery accounts work first, select that member, choose **Remove**, then confirm.']), 'Reopen **Members** and verify the intended list. Return to IAMAI and select **Scan to update the plan**.'],
+      steps: [
+        'Keep your working administrator session open.',
+        ...(groupId ? [`Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → ${groupName} → Members**. Check object ID **${groupId}**.`] : ['Select and save an exclusions group in IAMAI first.']),
+        ...(missing.length ? [`Select **Add members**, choose ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}, then select **Select** to confirm.`] : []),
+        ...(extra.length ? [`Verify the intended recovery accounts work before removal. Select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, then confirm.`] : []),
+        ...(groupId && completeMembers && !missing.length && !extra.length ? ['No membership change is needed.'] : []),
+        `Confirm ${accounts} appear as direct members.`,
+        'Reopen **Members** and verify the intended list. Return to IAMAI and select **Scan to update the plan**.',
+      ],
     },
     {
       id: 'configure-policy-exclusions', accountId: null, title: 'Configure Conditional Access exclusions', targetUpn: null, required: !!actionableGroupId && missingPolicies.length > 0, readinessKey: 'group-policies', evidence: missingPolicies.length ? `${missingPolicies.length} policy exclusion${missingPolicies.length === 1 ? '' : 's'} need attention.` : null, actionLabel: 'Open exclusion instructions',
       readinessTitle: 'Add the group to the listed policy exclusions', readinessDirection: 'Follow Configure Conditional Access exclusions in Implementation Tasks.',
       issueKeys: policyFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
       facts: missingPolicies.map(policy => ({ label: policy.name, value: `${policy.mode} · ${policy.id}` })),
-      steps: ['Keep your working administrator session open. Open **Entra ID → Conditional Access → Policies**.', ...(missingPolicies.length ? missingPolicies.flatMap(policy => [`Open **${policy.name}** and verify policy ID **${policy.id}**.`, `Open **Assignments → Users → Exclude → Users and groups**, add **${groupName}**, then select **Select**.`, `Retain the policy’s current mode **${policy.mode}**, other exclusions and other settings. Select **Save**, then reopen the policy and confirm the group remains excluded.`]) : [
-        ...(!actionableGroupId || groupFinding?.taskSafe !== true ? ['IAMAI has not established the policy or group change values for this scan. Use the remaining steps as a reference; do not save guessed changes.'] : []),
-        'Open the intended policy, then open **Assignments → Users → Exclude → Users and groups**.',
-        'Select the intended emergency exclusions group, then select **Select**. Preserve the policy mode, other exclusions and all unrelated settings.',
-        'When an established correction is required, select **Save**, reopen the policy and confirm the intended group remains excluded.',
+      steps: ['Keep your working administrator session open.', 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Conditional Access → Policies**.', ...(missingPolicies.length ? missingPolicies.flatMap(policy => [`Open **${policy.name}** and verify policy ID **${policy.id}**.`, `Open **Assignments → Users → Exclude → Users and groups**, add **${groupName}**, then select **Select**.`, `Retain the policy’s current mode **${policy.mode}**, other exclusions and other settings. Select **Save**, then reopen the policy and confirm the group remains excluded.`]) : [
+        ...(!actionableGroupId || groupFinding?.taskSafe !== true ? ['IAMAI has not established the policy or group change values for this scan. Use the remaining steps as a reference; do not save guessed changes.'] : [`Every policy that must exclude **${groupName}** already does. To add it to another policy:`]),
+        'Open the policy, then open **Assignments → Users → Exclude → Users and groups**.',
+        `Add **${groupName}**, then select **Select**. Preserve the policy mode, other exclusions and all unrelated settings.`,
+        'Select **Save**, then reopen the policy and confirm the group remains excluded.',
       ]), 'Return to IAMAI and select **Scan to update the plan**.'],
     },
   ]
