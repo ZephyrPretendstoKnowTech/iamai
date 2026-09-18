@@ -4098,6 +4098,13 @@ td .not-person {
 .readiness-sub > summary::-webkit-details-marker {
   display: none;
 }
+/* The shared disclosure caret (details > summary::before) is replaced here by
+   the group's own chevron at the end of the row. */
+.readiness-group > summary::before,
+.readiness-sub > summary::before {
+  content: none;
+  display: none;
+}
 .readiness-group .group-title {
   font-weight: var(--weight-strong);
 }

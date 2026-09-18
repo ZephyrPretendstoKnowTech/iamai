@@ -129,6 +129,9 @@ const Icon = ({ k }: { k: 'computer' | 'phone' | 'key' | 'chev' }): ReactNode =>
   </svg>
 )
 
+/** The bar's and the legend's order: the done states first, then the work, as the pack draws it. */
+const LEGEND_ORDER: readonly ReadinessState[] = ['seamless', 'ready', 'confirm', 'device', 'method', 'blocked', 'unknown']
+
 const dotStyle = (s: ReadinessState | 'unread'): CSSProperties => ({ ['--c' as string]: `var(--s-${s})` })
 
 function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnapshot | null; context: PlanContext | null; planSteps: ReadonlySet<string> }) {
@@ -244,6 +247,9 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
               {(pages.readiness as unknown as { chip: { noPhone: string } }).chip.noPhone}
             </span>
           )}
+          {chips.chips.length === 0 && r.state !== null && (
+            <span className="dev off">{T.sub.noDevices}</span>
+          )}
         </div>
         <div className="methods">
           {m.main}
@@ -346,7 +352,7 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
             <p>{G.body}</p>
             {setupStep && (
               <div className="next-actions">
-                <a className="btn primary" href={stepHref(setupStep)}>{T.groupAction}</a>
+                <a className="btn btn-primary" href={stepHref(setupStep)}>{T.groupAction}</a>
               </div>
             )}
           </div>
@@ -449,12 +455,12 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
         {active > 0 && (
           <>
             <div className="readiness-bar" aria-hidden="true">
-              {GROUP_ORDER.slice().reverse().filter((s) => counts[s] > 0).map((s) => (
+              {LEGEND_ORDER.filter((s) => counts[s] > 0).map((s) => (
                 <span key={s} style={{ flex: counts[s], ...dotStyle(s) }} />
               ))}
             </div>
             <ul className="readiness-legend" aria-label={T.legendLabel}>
-              {GROUP_ORDER.slice().reverse().filter((s) => counts[s] > 0).map((s) => (
+              {LEGEND_ORDER.filter((s) => counts[s] > 0).map((s) => (
                 <li key={s}>
                   <span className="state-dot" style={dotStyle(s)} />
                   {stateTitle(s)} <b>{counts[s]}</b>
@@ -495,7 +501,7 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
               <p>{checkWords(setupNext).text}</p>
               {setupStepOf(setupNext) && (
                 <div className="next-actions">
-                  <a className="btn primary" href={stepHref(setupStepOf(setupNext) as string)}>{T.checks.link}</a>
+                  <a className="btn btn-primary" href={stepHref(setupStepOf(setupNext) as string)}>{T.checks.link}</a>
                 </div>
               )}
             </section>
@@ -581,7 +587,7 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
               ) : (
                 <div style={{ display: 'contents' }}>
                   <dt>0</dt>
-                  <dd>{T.evidence.none}</dd>
+                  <dd>{source?.reason && source.status !== 'ok' ? fillText(app.readiness.lineNoRecordsReason, { reason: source.reason }) : T.evidence.none}</dd>
                 </div>
               )}
               {notCovered > 0 && (
