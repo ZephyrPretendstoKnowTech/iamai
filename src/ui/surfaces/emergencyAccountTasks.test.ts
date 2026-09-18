@@ -118,10 +118,9 @@ test('approved passkey setup keeps the three understandable methods in one task'
   assert.match(ios, /confirm the account and tenant/i)
   assert.match(ios, /Troubleshooting → Temporary Access Pass/)
   assert.doesNotMatch(ios, /FEITIAN|TOKEN2/i)
-  assert.match(yubikey, /YubiKey 5 Series/i)
-  assert.match(yubikey, /AAGUID:/i)
-  assert.match(ios, /Microsoft Authenticator.*iOS/i)
-  assert.match(ios, /AAGUID:/i)
+  // The AAGUIDs are Step 3's and the approved-models disclosure's; the setup procedure does not repeat them.
+  for (const text of [ios, yubikey]) assert.doesNotMatch(text, /AAGUID/i)
+  assert.equal(setup.variants?.every(variant => !variant.facts?.length), true)
 })
 
 test('the three preparation procedures remain complete when no account is selected', () => {
@@ -174,4 +173,32 @@ test('initial task recommendation follows the highest-priority confirmed account
     const id = value.mapping.breakGlassUserIds[0]
     value.snapshot.users.find(user => user.id === id)!.onPremisesSyncEnabled = true
   }).projected.recommendedTaskId, 'create-account')
+})
+
+/** The passkey procedure of a fixture as it is, with the accounts it names. */
+function passkeyTaskOf(name: 'demo' | 'demo-week2') {
+  const value = structuredClone(fixture(name))
+  const run = runFixture(value)
+  const step = run.steps.find(item => item.id === STEP)!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const projected = emergencyAccountTasksOf(step, ctx)
+  return { projected, text: emergencyTaskText(projected.tasks.find(item => item.id === 'set-up-passkey')!) }
+}
+
+test('the passkey procedure names only the selected accounts whose passkey check fails', () => {
+  const { projected, text } = passkeyTaskOf('demo')
+  const failing = projected.accounts.filter(account => /Approved passkey needed|Passkey does not meet planned settings/.test(account.title))
+  const others = projected.accounts.filter(account => account.upn && !failing.includes(account))
+  assert.ok(failing.length === 1 && others.length === 1, 'the demo has one account needing a passkey and one not')
+  assert.ok(text.includes(failing[0].upn!))
+  assert.ok(!text.includes(others[0].upn!), `${others[0].upn} is not named`)
+  assert.doesNotMatch(text, /Repeat this procedure separately for each account/)
+})
+
+test('with every selected account passing, the passkey procedure stays available and says no account needs it', () => {
+  const { projected, text } = passkeyTaskOf('demo-week2')
+  assert.ok(projected.accounts.every(account => account.satisfied))
+  assert.ok(projected.tasks.some(item => item.id === 'set-up-passkey'))
+  assert.match(text, /No selected account currently needs an approved passkey\./)
+  for (const account of projected.accounts) assert.ok(!text.includes(account.upn!), `${account.upn} is not named`)
 })

@@ -30,7 +30,7 @@ function projectProfile(profile: Record<string, unknown> = {}) {
   return { projected: emergencyPasskeyTasksOf(step, ctx), reading: passkeyReadingOf(value.snapshot, value.mapping) }
 }
 const projectProfileChange = () => projectProfile().projected
-const protectionFacts = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.facts ?? []
+const protectionFacts = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.readinessFacts ?? []
 const allow = (aaGuids: string[]) => ({ keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids } })
 // Graph's order on the live tenant: Android, iOS, YubiKey 5 Series, YubiKey 5 Series with NFC.
 const GRAPH_ORDER = ['de1e552d-db1d-4423-a619-566b625cdc84', '90a3ccdf-635c-4729-a248-9b709135078f', '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b', 'a25342c0-3cdc-4414-8e46-f4807fca511c']
@@ -73,7 +73,8 @@ test('affected-passkey task keeps users as facts and one method selector', () =>
 
 test('profile corrections expose only changed fields and do not repeat fact values in the SOP', () => {
   const task = projectProfileChange().tasks.find(row => row.id === 'apply-passkey-settings')!
-  const facts = task.facts ?? []
+  assert.equal(task.facts, undefined, 'the changes are the tile’s facts, not a block above the procedure')
+  const facts = task.readinessFacts ?? []
   assert.deepEqual(facts.map(row => row.label), ['Authenticator · Storage'])
   assert.match(facts[0].value, /Device-bound passkeys, Synced passkeys.*→.*Device-bound passkeys/)
   assert.doesNotMatch(facts[0].value, /deviceBound|deviceBound,synced/)
@@ -89,7 +90,7 @@ test('inspection instructions do not refer to facts when no facts are projected'
 
 test('legacy approved-model changes expose exact nonblank AAGUID values', () => {
   const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
-  const fact = task.facts?.find(row => row.label === 'Approved models')
+  const fact = task.readinessFacts?.find(row => row.label === 'Approved models')
   assert.ok(fact)
   assert.ok(fact.value.trim().length > 0)
   for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.match(fact.value, new RegExp(aaguid, 'i'))
@@ -116,7 +117,7 @@ test('a reordered, otherwise correct profile reads in place with no protection f
   const { projected, reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow(GRAPH_ORDER) })
   assert.equal(reading.state, 'inPlace')
   assert.deepEqual(reading.differs, [])
-  assert.deepEqual(projected.tasks.find(row => row.id === 'apply-passkey-settings')!.facts, [])
+  assert.deepEqual(projected.tasks.find(row => row.id === 'apply-passkey-settings')!.readinessFacts, [])
 })
 
 test('a genuinely different model set still produces a row naming the before and after entries', () => {
@@ -144,4 +145,42 @@ test('extra tenant models outside the required set do not by themselves produce 
   assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Storage'])
   const { reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow([WINDOWS_HELLO, ...GRAPH_ORDER]) })
   assert.equal(reading.state, 'inPlace')
+})
+
+const protectionSteps = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.steps
+
+test('protections: navigate first, then apply each value inline, one Save per Add AAGUID entry', () => {
+  // The live GetIAMAI profile: synced storage allowed, no restrictions.
+  const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
+  assert.deepEqual(steps, [
+    'Keep your working administrator session open. Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
+    'Open **Default passkey profile**.',
+    'Set **Passkey types** to **Device-bound**.',
+    'Select **Target specific AAGUIDs** and set **Behavior** to **Allow**.',
+    'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.',
+    'Select **+ Add AAGUID → Enter AAGUID**, enter **19083c3d-8383-4b18-bc03-8f1c9ab2fd1b** (YubiKey 5 Series), then **Save**.',
+    'Select **+ Add AAGUID → Enter AAGUID**, enter **a25342c0-3cdc-4414-8e46-f4807fca511c** (YubiKey 5 Series with NFC), then **Save**.',
+    'Return to IAMAI and select **Scan to update the plan**.',
+  ])
+})
+
+test('protections: a satisfied value produces no step, and an AAGUID is never a header block', () => {
+  // Only the Android model is missing; storage and restrictions already match.
+  const steps = protectionSteps({ passkeyTypes: 'deviceBound', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
+  const text = steps.join('\n')
+  assert.doesNotMatch(text, /Passkey types|Target specific AAGUIDs|Enforce attestation|Apply only the changed values/)
+  assert.deepEqual(steps.slice(1, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
+  const task = projectProfile({ passkeyTypes: 'deviceBound', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
+  for (const line of task.steps) if (/19083c3d|a25342c0/.test(line)) assert.match(line, /^Select \*\*\+ Add AAGUID → Enter AAGUID\*\*, enter/)
+  assert.equal(task.facts, undefined)
+})
+
+test('protections: a legacy configuration is changed on Configure, each AAGUID entered where it is typed', () => {
+  const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
+  const [, open, ...rest] = task.steps
+  assert.equal(open, 'Open **Configure**.')
+  assert.equal(rest.at(-1), 'Return to IAMAI and select **Scan to update the plan**.')
+  const entered = rest.filter(line => line.startsWith('Select **Add AAGUID** and enter'))
+  assert.equal(entered.length, PASSKEY_TARGET_AAGUIDS.length - 1)
+  assert.equal(rest.at(-2), 'Select **Save**.')
 })
