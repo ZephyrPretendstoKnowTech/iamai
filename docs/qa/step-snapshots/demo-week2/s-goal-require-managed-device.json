@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when device readiness reaches 80% (now 27%)",
+  "reason": "when device readiness reaches 80% (now 29%)",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Confirm the Services You Use",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "27% of devices compliant"
+      "state": "29% of devices compliant"
     },
     {
       "label": "Prerequisite · To do",

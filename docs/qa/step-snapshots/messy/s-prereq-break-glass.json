@@ -14,12 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Emergency Recovery Methods",
-      "state": "Replacement or settings correction needed"
-    },
-    {
-      "label": "Credential Custody",
-      "state": "Correction required"
+      "label": "Prepared Passkeys",
+      "state": "Needs attention"
     }
   ],
   "channels": [

@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Create",
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": null,
   "fact": null,
   "badge": "Ready · Create",
   "bar": "Ready now",
@@ -12,12 +12,7 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Before enforcement",
-      "state": "Prepare Emergency Access Accounts"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",

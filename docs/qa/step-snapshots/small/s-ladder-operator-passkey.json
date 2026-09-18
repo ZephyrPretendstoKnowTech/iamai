@@ -4,7 +4,7 @@
   "reason": null,
   "fact": null,
   "badge": "On Hold",
-  "bar": "Prerequisite on hold: Configure Passkey Authentication",
+  "bar": "After prerequisites",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · To do",
-      "state": "Configure Passkey Authentication"
+      "label": "Prerequisite · Waiting",
+      "state": "cleanup-drill"
     }
   ],
   "channels": [

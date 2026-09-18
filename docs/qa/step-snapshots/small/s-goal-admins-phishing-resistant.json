@@ -16,10 +16,6 @@
     {
       "label": "Threshold",
       "state": "0% of admins phishing-resistant"
-    },
-    {
-      "label": "Before enforcement",
-      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Emergency Recovery Methods",
-      "state": "Compatibility not established"
+      "label": "Prepared Passkeys",
+      "state": "Could not verify"
     }
   ],
   "channels": [

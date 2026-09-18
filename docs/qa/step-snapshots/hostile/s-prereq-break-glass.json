@@ -14,12 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Emergency Recovery Methods",
-      "state": "Compatibility not established"
-    },
-    {
-      "label": "Credential Custody",
-      "state": "Correction required"
+      "label": "Prepared Passkeys",
+      "state": "Could not verify"
     }
   ],
   "channels": [
