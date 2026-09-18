@@ -14,6 +14,7 @@ import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryAccount
 import type { CleanupCheckpoint, RecoveryCandidateReading } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
+import { displayZone } from '../copy/dates.ts'
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -21,7 +22,7 @@ export const PASSKEY_SETTINGS = 's-prereq-passkey-settings'
 
 function recoveryTime(iso: string, timeZone: string | null | undefined): string {
   const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
-  try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: timeZone || 'UTC' }).format(new Date(iso)) }
+  try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
 /** What Step 4 is waiting on for one account: a passkey sign-in after the

@@ -240,3 +240,10 @@ test('Step 4 says what it is waiting on: a sign-in after the configuration start
   assert.equal(recoveryWaitingLine(start, [], 'UTC'), 'Sign in with this account’s passkey after Sep 18, 2026, 6:37 PM UTC.')
   assert.equal(recoveryWaitingLine(null, [], 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
 })
+
+test('with no display time zone set, Step 4 times read in the browser’s zone, not UTC', () => {
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const start = '2026-09-18T16:37:21.751Z'
+  assert.equal(recoveryWaitingLine(start, [], null), recoveryWaitingLine(start, [], browser))
+  assert.equal(recoveryWaitingLine(start, [], 'Australia/Sydney'), 'Sign in with this account’s passkey after Sep 19, 2026, 2:37 AM GMT+10.')
+})

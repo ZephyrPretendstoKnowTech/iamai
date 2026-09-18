@@ -71,7 +71,7 @@ import { rolloutBucket } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { collidingGuestIds } from '../names.ts'
 import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
-import { absoluteDate } from '../copy/dates.ts'
+import { absoluteDate, displayZone } from '../copy/dates.ts'
 import { detectHighCare } from '../derive/highCare.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
@@ -2552,7 +2552,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
     // A change to an existing policy has no ring of its own: its dates come from where the schedule placed it.
-    s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
+    s.events = eventsFor(s, { rhythm, timeZone: displayZone(mapping.displayTimeZone) }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
     // The report-only deployment day, off the schedule and onto the step: the
     // Dates line, the calendar entry and the step's values all read this one.
     s.reportOnlyAt = schedule.reportOnlyAt[s.id] ?? null
