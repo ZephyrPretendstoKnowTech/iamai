@@ -334,7 +334,7 @@ export const ROUTE_WIDTHS = {
   connect: 1040,
   /** docs/design/approved/anatomy/plan-step-v1.html — min(1240px, 100% - 44px). */
   plan: 1240,
-  /** docs/design/approved/anatomy/mfa-readiness-v2.html — min(1200px, 100% - 40px). */
+  /** docs/design/approved/anatomy/mfa-readiness-v3.html — min(1200px, 100% - 32px). */
   readiness: 1200,
   // The three surfaces no approved pack governs. Task 030 left them on the
   // generic prose page and the generic table cap; task 040 gives each one a

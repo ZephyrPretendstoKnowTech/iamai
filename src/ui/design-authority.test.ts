@@ -40,6 +40,8 @@ const SUPERSEDED_COPIES = [
   'iamai-connect-design-pack-v3.html',
   'iamai-plan-step-design-pack.html',
   'iamai-mfa-readiness-design-pack-v2.html',
+  // Prompt 62: v3 replaced v2, which now lives in docs/design/superseded/ as a record.
+  'mfa-readiness-v2.html',
 ] as const
 
 /**
@@ -70,10 +72,12 @@ const APPROVED = [
     sha256: '43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39',
   },
   {
+    // Approved by the owner on 2026-09-18 (prompt 62): the v3 layout proposal,
+    // promoted byte for byte from docs/design/proposals/.
     surface: 'mfa-readiness',
-    file: 'mfa-readiness-v2.html',
-    sourceName: 'iamai-mfa-readiness-design-pack-v2.html',
-    sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512',
+    file: 'mfa-readiness-v3.html',
+    sourceName: 'docs/design/proposals/mfa-readiness-v3.html',
+    sha256: '39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4',
   },
 ] as const
 

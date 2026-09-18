@@ -123,7 +123,7 @@ const SURFACES = {
     ],
   },
   readiness: {
-    canonical: 'docs/design/approved/anatomy/mfa-readiness-v2.html',
+    canonical: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
     route: { hash: '#/readiness' },
     breakpoints: [900, 620],
     probes: [

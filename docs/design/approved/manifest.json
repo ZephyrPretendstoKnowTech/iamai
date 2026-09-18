@@ -102,16 +102,16 @@
       "surface": "mfa-readiness",
       "name": "MFA Readiness",
       "produces": "#/readiness",
-      "ownerApprovedSourceName": "iamai-mfa-readiness-design-pack-v2.html",
-      "path": "docs/design/approved/anatomy/mfa-readiness-v2.html",
-      "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512",
-      "declaredTitle": "IAMAI MFA Readiness Design Pack v2",
+      "ownerApprovedSourceName": "docs/design/proposals/mfa-readiness-v3.html",
+      "path": "docs/design/approved/anatomy/mfa-readiness-v3.html",
+      "sha256": "39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4",
+      "declaredTitle": "MFA Readiness v3 proposal",
       "observed": {
-        "desktopWidthCss": "min(1200px, calc(100% - 40px))",
+        "desktopWidthCss": "min(1200px, 100% - 32px)",
         "desktopWidthPx": 1200,
         "displayFamily": "serif",
         "displayPx": 38,
-        "breakpointsPx": [900, 620]
+        "breakpointsPx": [1040, 760]
       },
       "authorityRole": "application visual/interaction/hierarchy/density/responsive",
       "copyAuthority": false,
@@ -119,7 +119,7 @@
       "approvalState": "current",
       "implementationState": "restored",
       "productionAssumedConformant": false,
-      "restorationPack": "037"
+      "restorationPack": "062"
     }
   ],
   "brand": {
