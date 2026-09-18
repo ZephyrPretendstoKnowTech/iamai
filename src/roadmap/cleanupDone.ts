@@ -237,25 +237,17 @@ export type RecoveryPreparationState = 'ready' | 'incorrect' | 'unread'
 const lowerSet = (values: readonly string[]): string[] => [...new Set(values.map(value => value.toLowerCase()))].sort()
 const sameMembers = (a: readonly string[], b: readonly string[]): boolean => JSON.stringify(lowerSet(a)) === JSON.stringify(lowerSet(b))
 
-function relevantRecoveryAuditObserved(snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers, accountId: string, after: string, through: string): boolean {
+function relevantRecoveryAuditObserved(snapshot: TenantSnapshot, mapping: MappingState, accountId: string, after: string, through: string): boolean {
   const decision = operatorExclusionsDecision(mapping)
-  const activeRoles = snapshot.roles.active[accountId] ?? []
-  const inGroup = (groupId: string): boolean => {
-    const group = [...groups].find(([id]) => id.toLowerCase() === groupId.toLowerCase())?.[1]
-    return !!group?.memberIds.some(id => id.toLowerCase() === accountId.toLowerCase())
-  }
-  const policyIds = new Set((snapshot.config.caPolicies?.rows ?? []).flatMap(raw => {
-    const policy = raw as Record<string, any>
-    const users = policy.conditions?.users ?? {}
-    const applies = (users.includeUsers ?? []).some((id: string) => id === 'All' || id.toLowerCase() === accountId.toLowerCase()) || (users.includeGroups ?? []).some(inGroup) || (users.includeRoles ?? []).some((role: string) => activeRoles.some(active => active.toLowerCase() === role.toLowerCase()))
-    return applies && typeof policy.id === 'string' ? [policy.id.toLowerCase()] : []
-  }))
+  // Only the emergency accounts and their exclusions group reset proof on an
+  // observed change: nothing else should touch them. Policy and passkey-policy
+  // changes are judged by their outcome for the account (recoveryAccountBasis),
+  // so routine Conditional Access rollout does not reset proof that still holds.
   return (snapshot.recoveryDirectoryAudits ?? []).some(audit => {
     const auditAt = Date.parse(audit.at)
     if (!Number.isFinite(auditAt) || auditAt <= Date.parse(after) || auditAt > Date.parse(through) || audit.result?.toLowerCase() === 'failure') return false
     const targets = audit.targets.map(target => target.id.toLowerCase())
-    if (targets.includes(accountId.toLowerCase()) || (!!decision && targets.includes(decision.id.toLowerCase())) || targets.some(target => policyIds.has(target))) return true
-    return /passkey|fido|authentication methods? policy/i.test(`${audit.activity} ${audit.category ?? ''}`)
+    return targets.includes(accountId.toLowerCase()) || (!!decision && targets.includes(decision.id.toLowerCase()))
   })
 }
 
@@ -328,7 +320,7 @@ export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unkno
       append(preparation)
       continue
     }
-    if (preparation.configurationObservedAt && relevantRecoveryAuditObserved(input.snapshot, input.mapping, input.groups, id, preparation.configurationObservedAt, at)) {
+    if (preparation.configurationObservedAt && relevantRecoveryAuditObserved(input.snapshot, input.mapping, id, preparation.configurationObservedAt, at)) {
       append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
       const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
       append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation })
@@ -368,8 +360,6 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
   const canonical = (v: unknown): unknown => Array.isArray(v) ? v.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !ignored.has(k) && !k.startsWith('@odata.')).sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, canonical(value)])) : v
   const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
   if (snapshot.sources.users?.status !== 'ok' || (!securityDefaults && snapshot.config.caPolicies?.status !== 'ok') || snapshot.config.authMethodsPolicy?.status !== 'ok' || snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.roleAssignmentSchedules?.status !== 'ok') return {}
-  const methodPolicy = snapshot.config.authMethodsPolicy.rows[0] as Record<string, any> | undefined
-  const fido = methodPolicy?.fido2Configuration ?? methodPolicy?.authenticationMethodConfigurations?.find((p: Record<string, unknown>) => String(p.id).toLowerCase() === 'fido2')
   const decision = mapping ? operatorExclusionsDecision(mapping) : null
   const selectedGroup = decision && groups ? ([...groups.entries()].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
   const exclusionsIntent = decision ? [decision.id.toLowerCase(), selectedGroup ? { sampled: selectedGroup.sampled, memberIds: selectedGroup.memberIds.map(id => id.toLowerCase()).sort(), directMembers: selectedGroup.directMembers, directMemberIds: selectedGroup.directMemberIds, securityEnabled: selectedGroup.securityEnabled, mailEnabled: selectedGroup.mailEnabled, groupTypes: selectedGroup.groupTypes, membershipRule: selectedGroup.membershipRule, assignedLicenseSkuIds: selectedGroup.assignedLicenseSkuIds } : 'membership-unread'] : null
@@ -393,7 +383,14 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
       const role = (targets.includeRoles ?? []).some((value: string) => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === value.toLowerCase()))
       const groupStates = (targets.includeGroups ?? []).map((groupId: string) => membership(groupId, id))
       if (!direct && !role && !groupStates.includes(true) && groupStates.includes(null)) unresolvedTarget = true
-      return direct || role || groupStates.includes(true)
+      if (!(direct || role || groupStates.includes(true))) return false
+      // An excluded account is outside the policy whatever else the policy says:
+      // editing, enabling or creating a policy that excludes it changes nothing
+      // about recovery. Unread exclusion membership stays in, conservatively.
+      const excludedDirect = (targets.excludeUsers ?? []).some((value: string) => value.toLowerCase() === id.toLowerCase())
+      const excludedRole = (targets.excludeRoles ?? []).some((value: string) => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === value.toLowerCase()))
+      const excludedGroup = (targets.excludeGroups ?? []).some((groupId: string) => membership(groupId, id) === true)
+      return !(excludedDirect || excludedRole || excludedGroup)
     }).map(raw => {
       const p = raw as Record<string, any>
       const users = p.conditions?.users ?? {}
@@ -411,7 +408,11 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
     if (unresolvedTarget) continue
     const roleSchedules = (snapshot.config.roleAssignmentSchedules.rows as Record<string, any>[]).filter(row => String(row.principalId).toLowerCase() === id.toLowerCase()).map(row => ({ roleDefinitionId: row.roleDefinitionId, directoryScopeId: row.directoryScopeId, assignmentType: row.assignmentType, memberType: row.memberType, status: row.status, startDateTime: row.startDateTime, endDateTime: row.endDateTime }))
     const passkeys = methods.filter(method => method.kind === 'passkey' || method.kind === 'fido2').map(method => ({ id: method.id, kind: method.kind, aaGuid: method.aaGuid?.toLowerCase() ?? null, passkeyType: method.passkeyType ?? null, attestationLevel: method.attestationLevel ?? null, passkeyProfileId: (method as Record<string, unknown>).passkeyProfileId ?? null }))
-    out[id] = JSON.stringify(canonical([id, u.userPrincipalName, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, passkeys, fido ?? null, policies, (snapshot.config.authStrengths?.rows ?? []).filter(raw => policies.some(policy => (policy[3] as Record<string, any> | undefined)?.authenticationStrength?.id === (raw as Record<string, unknown>).id)), securityDefaults, exclusionsIntent, approvedModelIntent]))
+    // The passkey configuration as it bears on this account: which of its registered
+    // credentials can authenticate and are approved. A change for other users (a
+    // model added, a group targeted) leaves it unchanged.
+    const usable = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups ?? new Map())
+    out[id] = JSON.stringify(canonical([id, u.userPrincipalName, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, passkeys, [usable.state, [...usable.ids].sort()], policies, (snapshot.config.authStrengths?.rows ?? []).filter(raw => policies.some(policy => (policy[3] as Record<string, any> | undefined)?.authenticationStrength?.id === (raw as Record<string, unknown>).id)), securityDefaults, exclusionsIntent, approvedModelIntent]))
   }
   return out
 }

@@ -376,3 +376,50 @@ test('observed relevant audit changes create new generations without resetting u
   records = cleanupRecord(checkpoints).records!
   assert.equal(records.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[1])).length, 1, 'a shared group change resets the other account too')
 })
+
+test('recovery basis follows the outcome for the account: an excluded policy is no change, losing the exclusion is', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]!.resolvedId!
+  const policies = f.snapshot.config.caPolicies.rows as Record<string, any>[]
+  policies.push({ id: 'rollout-policy', displayName: 'Rollout policy', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'], includeGroups: [], excludeUsers: [], excludeGroups: [groupId] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null })
+  const before = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const rollout = policies.at(-1)!
+  // Routine rollout of a policy that excludes the emergency accounts: enable it, change its controls.
+  rollout.state = 'enabled'
+  rollout.grantControls = { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } }
+  assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before)
+  // The same policy no longer excluding them is a recovery change.
+  rollout.conditions.users.excludeGroups = []
+  assert.notEqual(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before)
+})
+
+test('recovery basis ignores a passkey-policy change for other users', () => {
+  const f = fixture('demo-week2')
+  const id = f.mapping.breakGlassUserIds[0]
+  const before = recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id]
+  const row = f.snapshot.config.authMethodsPolicy.rows[0] as Record<string, any>
+  const fido = row.fido2Configuration ?? row.authenticationMethodConfigurations.find((c: Record<string, unknown>) => String(c.id).toLowerCase() === 'fido2')
+  const lists = [fido.keyRestrictions, ...(fido.passkeyProfiles ?? []).map((p: Record<string, any>) => p.keyRestrictions)].filter((kr: any) => Array.isArray(kr?.aaGuids))
+  assert.ok(lists.length > 0)
+  for (const kr of lists) kr.aaGuids.push('2fc0579f-8113-47ea-b116-bb5a8db9202a')
+  assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before, 'the account keeps the same usable approved passkeys')
+})
+
+test('a Conditional Access policy audit event does not reset recovery proof; an account event does', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const at = f.snapshot.asOf
+  const plus = (seconds: number): string => new Date(Date.parse(at) + seconds * 1000).toISOString()
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  const policyId = String((f.snapshot.config.caPolicies.rows[0] as Record<string, unknown>).id)
+  f.snapshot.recoveryDirectoryAudits = [
+    { id: 'audit-policy', at: plus(30), activity: 'Update conditional access policy', category: 'Policy', result: 'success', targets: [{ id: policyId, type: 'Policy' }] },
+    { id: 'audit-passkey-policy', at: plus(31), activity: 'Update authentication methods policy', category: 'Policy', result: 'success', targets: [{ id: 'Fido2', type: 'Policy' }] },
+  ]
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(60) })
+  assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW).length, 0)
+  f.snapshot.recoveryDirectoryAudits.push({ id: 'audit-account', at: plus(90), activity: 'Update user', category: 'UserManagement', result: 'success', targets: [{ id: ids[0], type: 'User' }] })
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(120) })
+  assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[0])).length, 1)
+})
