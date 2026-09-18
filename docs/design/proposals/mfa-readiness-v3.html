@@ -76,9 +76,6 @@ h1{font:700 38px/1.1 var(--font-serif);margin:4px 0 10px;letter-spacing:-.01em}
 .answer-top{display:flex;gap:32px;justify-content:space-between;align-items:flex-start}
 .answer h2{font:600 30px/1.2 var(--font-serif);margin:0;max-width:24ch;letter-spacing:-.01em}
 .answer .goal{margin:8px 0 0;font-size:15px;color:var(--secondary-text)}
-.lapse{flex:0 0 250px;padding:12px 14px;border-left:2px solid var(--s-confirm);background:var(--secondary-surface);border-radius:0 var(--radius-control) var(--radius-control) 0;font-size:13px;color:var(--secondary-text)}
-.lapse strong{display:block;color:var(--primary-text);font-weight:600;margin-bottom:2px}
-.lapse button{margin-top:6px;padding:0;border:0;background:none;color:var(--brand-primary);text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:13px}
 .ribbon{display:flex;gap:3px;height:14px;margin:24px 0 12px}
 .ribbon span{border-radius:3px;min-width:6px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font-size:13px}
@@ -92,10 +89,6 @@ h1{font:700 38px/1.1 var(--font-serif);margin:4px 0 10px;letter-spacing:-.01em}
 .rail{display:grid;gap:14px;position:sticky;top:16px}
 
 /* ---- next check ---- */
-.next{padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--brand-primary);border-radius:var(--radius-control);background:var(--tint)}
-.next .label{font-size:12px;color:var(--brand-primary);font-weight:600;margin:0 0 4px}
-.next h3{font:600 20px/1.3 var(--font-serif);margin:0 0 6px}
-.next p{margin:0;max-width:70ch;color:var(--secondary-text)}
 .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .btn{height:32px;padding:0 13px;border-radius:var(--radius-control);border:1px solid var(--strong-line);background:var(--surface);font-size:13px;font-weight:500;cursor:pointer}
 .btn.primary{background:var(--brand-primary);border-color:var(--brand-primary);color:var(--on-brand)}
@@ -131,6 +124,43 @@ h1{font:700 38px/1.1 var(--font-serif);margin:4px 0 10px;letter-spacing:-.01em}
 .open{height:28px;padding:0 10px;border-radius:var(--radius-control);border:1px solid var(--line);background:none;font-size:12px;cursor:pointer;color:var(--secondary-text)}
 .open:hover{border-color:var(--brand-primary);color:var(--primary-text)}
 .more{padding:10px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted-text)}
+.more button{padding:0;border:0;background:none;color:var(--brand-primary);text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:13px}
+
+/* ---- the next check is the first group, not a card above it ---- */
+.group.next{border-color:color-mix(in srgb,var(--brand-primary) 55%,var(--line));border-left:3px solid var(--brand-primary)}
+.group.next>summary{background:var(--tint)}
+.group.next>summary .title{font:600 20px/1.3 var(--font-serif)}
+.next-label{display:block;font-size:12px;font-weight:600;color:var(--brand-primary);margin-bottom:2px}
+.next-body{padding:0 16px 16px;background:var(--tint)}
+.next-body p{margin:0;max-width:72ch;color:var(--secondary-text)}
+.next-body .actions{margin-top:12px}
+.admin-next{padding:16px;border:1px solid color-mix(in srgb,var(--brand-primary) 55%,var(--line));border-left:3px solid var(--brand-primary);border-radius:var(--radius-control);background:var(--tint);margin-bottom:10px}
+.admin-next .who{display:inline-block;font-size:12px;color:var(--secondary-text);margin-left:8px}
+.admin-next h3{font:600 20px/1.3 var(--font-serif);margin:2px 0 6px}
+.admin-next p{margin:0;max-width:72ch;color:var(--secondary-text)}
+
+/* ---- sub-groups: how a group of thousands stays workable ---- */
+.subbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted-text)}
+.subbar select{height:28px;border-radius:var(--radius-control);border:1px solid var(--strong-line);background:var(--secondary-surface);color:var(--primary-text);font:inherit;font-size:13px;padding:0 6px}
+.sub{border-top:1px solid var(--line)}
+.sub>summary{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:10px 16px 10px 36px;cursor:pointer;list-style:none;background:var(--secondary-surface)}
+.sub>summary::-webkit-details-marker{display:none}
+.sub>summary .title{font-weight:600;font-size:13px}
+.sub>summary .why{display:block;font-size:12px;color:var(--muted-text)}
+.sub[open] .chev{transform:rotate(90deg)}
+
+/* ---- progress since the last scan ---- */
+.change{flex:0 0 270px;padding:12px 14px;border-left:2px solid var(--brand-primary);background:var(--secondary-surface);border-radius:0 var(--radius-control) var(--radius-control) 0;font-size:13px;color:var(--secondary-text)}
+.change strong{display:block;color:var(--primary-text);font-weight:600;margin-bottom:6px}
+.change ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.change b{font-variant-numeric:tabular-nums;color:var(--primary-text)}
+.change .up{color:var(--success)}
+.change button{padding:0;border:0;background:none;color:var(--brand-primary);text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:13px}
+
+/* ---- proposal-only: preview switch ---- */
+.scenarios{display:inline-flex;gap:6px;margin-left:10px;flex-wrap:wrap}
+.scenarios button{height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--secondary-text);font-size:12px;cursor:pointer}
+.scenarios button[aria-pressed='true']{border-color:var(--brand-primary);color:var(--primary-text);background:var(--tint)}
 
 /* ---- the device pair ---- */
 .devices{display:flex;flex-wrap:wrap;gap:6px}
@@ -191,7 +221,7 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
   h1{font-size:31px}
   .answer{padding:20px 18px}
   .answer-top{flex-direction:column;gap:16px}
-  .lapse{flex:none;width:100%}
+  .change{flex:none;width:100%}
   .answer h2{font-size:24px}
   .row.head{display:none}
   .row{grid-template-columns:1fr auto;gap:6px 12px}
@@ -217,7 +247,13 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
   <nav class="nav" aria-label="Sections"><span>Connect</span><span>Plan</span><span aria-current="page">MFA Readiness</span><span>Export</span><span>How</span></nav>
   <button class="theme" type="button" id="theme">Light theme</button>
 </header>
-<div class="proposal">Layout proposal v3 for owner review. Sample data: nothing here is from a real tenant.</div>
+<div class="proposal">Layout proposal v3 for owner review. Sample data: nothing here is from a real tenant.
+  <span class="scenarios" role="group" aria-label="Preview">
+    <button type="button" data-scenario="sample" aria-pressed="true">Small tenant (30 people)</button>
+    <button type="button" data-scenario="large" aria-pressed="false">Large tenant (4,169 people)</button>
+    <button type="button" data-scenario="blocked" aria-pressed="false">Tenant setup blocks passkeys</button>
+  </span>
+</div>
 
 <main class="page">
   <p class="kicker">Tenant evidence</p>
@@ -228,14 +264,10 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
   <section class="answer" aria-labelledby="answer">
     <div class="answer-top">
       <div>
-        <h2 id="answer">18 of 30 people are ready for phishing-resistant sign-in.</h2>
-        <p class="goal">7 are seamless: every device they use signs them in on its own.</p>
+        <h2 id="answer"></h2>
+        <p class="goal" id="goal"></p>
       </div>
-      <div class="lapse">
-        <strong>3 lapse in the next 7 days</strong>
-        Their last confirmed sign-in is leaving the 30-day window.
-        <br><button type="button" data-filter="lapsing">Show the 3 people</button>
-      </div>
+      <div class="change" id="change"></div>
     </div>
     <div class="ribbon" id="ribbon" aria-hidden="true"></div>
     <ul class="legend" id="legend" aria-label="People by state"></ul>
@@ -244,20 +276,10 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
 
   <div class="layout">
     <div>
-      <section class="next" aria-labelledby="next-title">
-        <p class="label">Next check</p>
-        <h3 id="next-title">5 people have no phishing-resistant method</h3>
-        <p>Each sets up a passkey in Microsoft Authenticator on their phone. It signs them in on the phone and from any computer. On a joined Windows computer, Windows Hello for Business is offered at their next sign-in.</p>
-        <div class="actions">
-          <button class="btn primary" type="button">Copy the setup email</button>
-          <button class="btn" type="button">Registration campaign steps</button>
-        </div>
-      </section>
-
       <div class="toolbar">
-        <h2>People</h2>
+        <h2>What to do</h2>
         <input class="search" type="search" placeholder="Search people or devices" aria-label="Search people or devices">
-        <button class="pill" type="button" aria-pressed="true" data-filter="action">Needs action · 12</button>
+        <button class="pill" type="button" aria-pressed="true" data-filter="action" id="pill-action">Needs action</button>
         <button class="pill" type="button" aria-pressed="false" data-filter="admins">Admins</button>
         <button class="pill" type="button" aria-pressed="false" data-filter="all">Everyone</button>
         <button class="btn" type="button">Export CSV</button>
@@ -266,25 +288,7 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
     </div>
 
     <aside class="rail" aria-label="Tenant setup and evidence">
-      <section class="tile" aria-labelledby="setup">
-        <h3 id="setup">Tenant setup</h3>
-        <p class="remain">1 check remaining</p>
-        <p class="check">Registration only works from the office</p>
-        <p>The security-info registration policy requires the Head Office network. Drew Ivanova works remotely and can't set up a passkey.</p>
-        <p>Issue Drew a Temporary Access Pass, or let people register from anywhere after MFA.</p>
-        <details>
-          <summary>Completed checks · 7</summary>
-          <ul>
-            <li><span class="ok">✓</span>Passkey registration is on for everyone</li>
-            <li><span class="ok">✓</span>Phones can hold a passkey (both Authenticator models allowed)</li>
-            <li><span class="ok">✓</span>Windows Hello for Business is provisioned by Intune</li>
-            <li><span class="ok">✓</span>Temporary Access Pass is enabled</li>
-            <li><span class="ok">✓</span>The authentication-methods migration is complete</li>
-            <li><span class="ok">✓</span>Passkey models checked against Emergency Access Step 3</li>
-            <li><span class="ok">✓</span>Attestation is on. Synced and Windows Hello passkeys can't register, so contractors use a phone passkey or a security key.</li>
-          </ul>
-        </details>
-      </section>
+      <section class="tile" id="setup-tile" aria-label="Tenant setup"></section>
 
       <section class="tile" aria-labelledby="models">
         <h3 id="models">Approved passkey models</h3>
@@ -292,31 +296,14 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
         <p class="models">Microsoft Authenticator (iOS, Android), YubiKey 5 Series, YubiKey 5 Series with NFC</p>
       </section>
 
-      <section class="tile" aria-labelledby="counted">
-        <h3 id="counted">Not counted</h3>
-        <dl class="ledger">
-          <dt>2</dt><dd>Never signed in, no methods. <a href="#">Confirm or disable in the Plan</a></dd>
-          <dt>1</dt><dd>Looks retired: last sign-in May 30, still enabled. <a href="#">Same step</a></dd>
-          <dt>1</dt><dd>New this month, hasn't signed in yet</dd>
-          <dt>2</dt><dd>Emergency access accounts</dd>
-          <dt>2</dt><dd>Service accounts</dd>
-          <dt>1</dt><dd>Shared device</dd>
-        </dl>
-      </section>
+      <section class="tile" id="counted-tile" aria-label="Not counted"></section>
 
-      <section class="tile" aria-labelledby="evidence">
-        <h3 id="evidence">Evidence read</h3>
-        <dl class="ledger">
-          <dt>30</dt><dd>days of sign-ins, Aug 19 to Sep 18</dd>
-          <dt>3</dt><dd>people read individually (older sign-ins)</dd>
-          <dt>1</dt><dd>method list couldn't be read. Scan again.</dd>
-        </dl>
-      </section>
+      <section class="tile" id="evidence-tile" aria-label="Evidence read"></section>
     </aside>
   </div>
 
   <footer class="note">
-    <span>Counted: the 30 people who signed in during the last 90 days.</span>
+    <span id="counted-line"></span>
     <span>The Plan's MFA steps follow their own policy requirements. This page holds the higher bar.</span>
     <a href="#">Every account and policy the scan read</a>
   </footer>
@@ -336,6 +323,7 @@ footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);fo
   <section><h3>Phishing-resistant methods</h3><div id="p-methods"></div></section>
 </aside>
 
+
 <script>
 const STATES = {
   seamless:{word:'Seamless',c:'var(--s-seamless)'},
@@ -346,72 +334,151 @@ const STATES = {
   blocked:{word:'Blocked by setup',c:'var(--s-blocked)'},
   unknown:{word:'Unknown',c:'var(--s-unknown)'},
 }
-const COUNTS = {seamless:7,ready:11,confirm:4,device:1,method:5,blocked:1,unknown:1}
-
-// Groups, in the order the worklist works them. The action is the group's heading.
+// The worklist's order. Each group's heading is its action. The first group
+// with people in it is the next check, unless a tenant setup check outranks it.
 const GROUPS = [
-  {state:'method',title:'Set up a passkey on their phone',why:'No phishing-resistant method yet',open:true},
-  {state:'confirm',title:'Confirm the method still exists',why:'Registered, but no confirmed sign-in in 30 days'},
+  {state:'blocked',title:'Waiting on tenant setup',why:'They can’t act until an admin change lands'},
+  {state:'method',title:'Set up a passkey on their phone',why:'No phishing-resistant method yet',
+    body:'Each sets up a passkey in Microsoft Authenticator on their phone. It signs them in on the phone and from any computer. On a joined Windows computer, Windows Hello for Business is offered at their next sign-in.',
+    actions:['Copy the setup email for these people','Open the registration campaign steps']},
+  {state:'confirm',title:'Confirm the method still exists',why:'Registered, but no confirmed sign-in in 30 days',
+    body:'Ask each person to sign in once with the method named on their row. If the phone or computer was replaced, they remove the old method and register again.',
+    actions:['Copy the confirmation email']},
   {state:'device',title:'Add a passkey to the phone they use',why:'Confirmed on the computer, but the phone signs in without it'},
-  {state:'blocked',title:'Waiting on tenant setup',why:'The person can’t act until an admin change lands'},
-  {state:'unknown',title:'Scan again',why:'IAMAI couldn’t read this person’s evidence'},
-  {state:'ready',title:'Could be seamless',why:'Ready. A built-in credential would remove the extra device',quiet:true,more:8},
-  {state:'seamless',title:'Seamless',why:'Nothing to do',quiet:true,more:4},
+  {state:'unknown',title:'IAMAI couldn’t read these people',why:'Each row says what was missing. The next scan retries.'},
+  {state:'ready',title:'Could be seamless',why:'Ready. A built-in credential would remove the extra device',quiet:true},
+  {state:'seamless',title:'Seamless',why:'Nothing to do',quiet:true},
 ]
 
 const D = (kind,os,state,note) => ({kind,os,state,note})
 const PEOPLE = [
-  {n:'Jamie Walker',e:'jamie.walker@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator',
+  {n:'Rowan Kim',admin:true,dept:'IT',e:'rowan.kim@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 17')],m:'Authenticator push only',last:'None',next:'Set up a passkey or a security key'},
+  {n:'Jamie Walker',dept:'Sales',e:'jamie.walker@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator',
     detail:{next:['Set up a passkey in Microsoft Authenticator','On the iPhone: Authenticator, add account, then Passkey. Then sign in once. Windows Hello for Business is offered on the laptop at the next Windows sign-in.'],
       devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business (offered at next sign-in)','No phishing-resistant sign-in'],['phone','iPhone, iOS 18','Last seen Sep 17.','Passkey in Microsoft Authenticator','Signs in with Authenticator push']],
       methods:[]}},
-  {n:'Priya Chen',e:'priya.chen@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','Android','method','Android 15')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator'},
-  {n:'Rowan Kim',admin:true,e:'rowan.kim@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 17')],m:'Authenticator push only',last:'None',next:'Set up a passkey or a security key'},
-  {n:'Kai Patel',e:'kai.patel@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined')],m:'Text message only',last:'None',next:'Set up Windows Hello on the laptop'},
-  {n:'Riley Garcia',e:'riley.garcia@contoso.example',s:'method',dev:[D('computer','macOS','method','Personal'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Phone passkey, used from the Mac'},
+  {n:'Priya Chen',dept:'Support',e:'priya.chen@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','Android','method','Android 15')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator'},
+  {n:'Kai Patel',dept:'Operations',e:'kai.patel@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined')],m:'Text message only',last:'None',next:'Set up Windows Hello on the laptop'},
+  {n:'Riley Garcia',dept:'Marketing',e:'riley.garcia@contoso.example',s:'method',dev:[D('computer','macOS','method','Personal'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Phone passkey, used from the Mac'},
 
-  {n:'Morgan Lee',e:'morgan.lee@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','iPhone','confirm','iOS 18')],m:'Passkey (Authenticator)',last:'Jun 2, before the window',next:'Sign in once with the passkey',
+  {n:'Morgan Lee',dept:'Finance',e:'morgan.lee@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','iPhone','confirm','iOS 18')],m:'Passkey (Authenticator)',last:'Jun 2, before the window',next:'Sign in once with the passkey',
     detail:{next:['Sign in once with the passkey on the iPhone','The passkey was registered in March and last confirmed on Jun 2. If Morgan replaced the phone, the passkey went with it: remove the old one in Security info and register again.'],
       devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Not set up. Signs in with Authenticator push.'],['phone','iPhone, iOS 18','Last seen Sep 16.','Passkey in Microsoft Authenticator','Registered, not confirmed in 30 days']],
       methods:[['phone','Passkey','Microsoft Authenticator (iOS)','Allowed now and by Step 3','Last confirmed Jun 2, on iOS. May no longer exist.']]}},
-  {n:'Sasha Okafor',e:'sasha.okafor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined')],m:'Windows Hello',last:'Aug 9, before the window',next:'Sign in with Windows Hello'},
-  {n:'Quinn Taylor',e:'quinn.taylor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','Android','ready','Android 14')],m:'Security key (unlisted model)',last:'Never',next:'Use the key once; replace it before Step 3',
-    detail:{next:['Sign in once with the security key, and plan a replacement','The key works today, but its model is not on the approved list in Emergency Access Step 3. It stops working when you apply those settings. Replace it with an approved model, or add this model under Step 3’s Additional AAGUIDs.'],
+  {n:'Sasha Okafor',dept:'Engineering',e:'sasha.okafor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined')],m:'Windows Hello',last:'Aug 9, before the window',next:'Sign in with Windows Hello'},
+  {n:'Quinn Taylor',dept:'Engineering',e:'quinn.taylor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','Android','ready','Android 14')],m:'Security key (unlisted model)',last:'Never',next:'Replace the key with an approved model',
+    detail:{next:['Replace the security key with an approved model','The key works today, but its model is not on the approved list in Emergency Access Step 3, so it stops working when you apply those settings. Or add this model under Step 3’s Additional AAGUIDs.'],
       devices:[['computer','Windows desktop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Not set up'],['phone','Android 14','Last seen Sep 15.','Passkey in Microsoft Authenticator','Confirmed Sep 15']],
       methods:[['key','Security key','Unlisted model <code>cb69481e…</code>','Allowed now. Blocked by Step 3’s approved list.','Never seen in a sign-in'],['phone','Passkey','Microsoft Authenticator (Android)','Allowed now and by Step 3','Confirmed Sep 15, on Android']]}},
-  {n:'Noor Haddad',e:'noor.haddad@contoso.example',s:'confirm',dev:[D('computer','Windows','idle','Joined'),D('phone','iPhone','idle','iOS 17')],m:'Passkey (Authenticator)',last:'Jul 28 · on leave',next:'Confirm on return'},
+  {n:'Noor Haddad',dept:'Legal',e:'noor.haddad@contoso.example',s:'confirm',dev:[D('computer','Windows','idle','Joined'),D('phone','iPhone','idle','iOS 17')],m:'Passkey (Authenticator)',last:'Jul 28, on leave',next:'Confirm on return'},
 
-  {n:'Avery Brown',e:'avery.brown@contoso.example',s:'device',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','device','iOS 18')],m:'Windows Hello',last:'Sep 16 on Windows',next:'Add a passkey on the iPhone',
+  {n:'Avery Brown',dept:'Sales',e:'avery.brown@contoso.example',s:'device',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','device','iOS 18')],m:'Windows Hello',last:'Sep 16 on Windows',next:'Add a passkey on the iPhone',
     detail:{next:['Add a passkey in Microsoft Authenticator on the iPhone','Windows Hello covers the laptop. The iPhone signed in 14 times this month with Authenticator push, which isn’t phishing-resistant and would be blocked once it’s required.'],
       devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Confirmed Sep 16. Seamless.'],['phone','iPhone, iOS 18','Last seen Sep 18.','Passkey in Microsoft Authenticator','Signs in with Authenticator push']],
       methods:[['computer','Windows Hello for Business','LAPTOP-AB12','Allowed','Confirmed Sep 16, on Windows']]}},
 
-  {n:'Drew Ivanova',e:'drew.ivanova@contoso.example',s:'blocked',dev:[D('computer','Windows','blocked','Personal'),D('phone','Android','blocked','Android 15')],m:'Authenticator push only',last:'None',next:'Waiting: registration location',
+  {n:'Drew Ivanova',dept:'Contractor',e:'drew.ivanova@contoso.example',s:'blocked',dev:[D('computer','Windows','blocked','Personal'),D('phone','Android','blocked','Android 15')],m:'Authenticator push only',last:'None',next:'Waiting: registration location',
     detail:{next:['Waiting on tenant setup','Drew works remotely, and the security-info registration policy only allows registration from Head Office. Once an admin issues a Temporary Access Pass or relaxes the policy, Drew sets up a passkey in Authenticator. The personal Windows PC can’t use Windows Hello for Business, so the phone passkey signs Drew in on both devices.'],
       devices:[['computer','Windows PC (personal)','Not joined or registered. Last seen Sep 17.','Phone passkey, used from the PC','Windows Hello for Business isn’t possible on this PC'],['phone','Android 15','Last seen Sep 17.','Passkey in Microsoft Authenticator','Can’t register from outside the office']],
       methods:[]}},
 
-  {n:'Casey Singh',e:'casey.singh@contoso.example',s:'unknown',dev:[D('computer','Windows','idle','Joined')],m:'Couldn’t be read',last:'—',next:'Scan again (the method read was throttled)'},
+  {n:'Casey Singh',dept:'Support',e:'casey.singh@contoso.example',s:'unknown',dev:[D('computer','Windows','idle','Joined')],m:'Method list not read',last:'—',next:'Nothing to do: the next scan retries'},
 
-  {n:'Alex Morgan',e:'alex.morgan@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Passkey (Authenticator)',last:'Sep 17',next:'Windows Hello on the laptop'},
-  {n:'Sam Nair',admin:true,e:'sam.nair@contoso.example',s:'ready',dev:[D('computer','macOS','ready','Managed'),D('phone','Android','seamless','Android 15')],m:'Passkey, security key',last:'Sep 18',next:'Platform SSO on the Mac'},
-  {n:'Taylor Nguyen',e:'taylor.nguyen@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined')],m:'Security key',last:'Sep 12 · lapses Oct 12',next:'Windows Hello on the desktop'},
+  {n:'Alex Morgan',dept:'Sales',e:'alex.morgan@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Passkey (Authenticator)',last:'Aug 20, lapses Sep 19',next:'Windows Hello on the laptop'},
+  {n:'Sam Nair',admin:true,dept:'IT',e:'sam.nair@contoso.example',s:'ready',dev:[D('computer','macOS','ready','Managed'),D('phone','Android','seamless','Android 15')],m:'Passkey, security key',last:'Aug 24, lapses Sep 23',next:'Platform SSO on the Mac'},
+  {n:'Taylor Nguyen',dept:'Finance',e:'taylor.nguyen@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined')],m:'Security key',last:'Aug 22, lapses Sep 21',next:'Windows Hello on the desktop'},
 
-  {n:'Jordan Wilson',e:'jordan.wilson@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Windows Hello, passkey',last:'Sep 18',next:''},
-  {n:'Quinn Nguyen',e:'quinn.nguyen@contoso.example',s:'seamless',dev:[D('computer','Linux','seamless','Best available'),D('phone','Android','seamless','Android 14')],m:'Passkey, security key',last:'Sep 17',next:''},
-  {n:'Morgan Chen',e:'morgan.chen@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined')],m:'Windows Hello',last:'Sep 18',next:''},
+  {n:'Jordan Wilson',dept:'Operations',e:'jordan.wilson@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Windows Hello, passkey',last:'Sep 18',next:''},
+  {n:'Quinn Nguyen',dept:'Engineering',e:'quinn.nguyen@contoso.example',s:'seamless',dev:[D('computer','Linux','seamless','Best available'),D('phone','Android','seamless','Android 14')],m:'Passkey, security key',last:'Sep 17',next:''},
+  {n:'Morgan Chen',dept:'Finance',e:'morgan.chen@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined')],m:'Windows Hello',last:'Sep 18',next:''},
 ]
-const LAPSING = ['Taylor Nguyen','Alex Morgan','Sam Nair']
+const LAPSING = ['Alex Morgan','Taylor Nguyen','Sam Nair']
+const EXTRA_ADMINS = [
+  {n:'Hana Brooks',admin:true,dept:'IT',e:'hana.brooks@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','Android','method','Android 15')],m:'Authenticator push only',last:'None',next:'Set up a passkey or a security key'},
+  {n:'Omar Reyes',admin:true,dept:'Finance',e:'omar.reyes@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined')],m:'Text message only',last:'None',next:'Set up Windows Hello and a security key'},
+]
 
+const DONE_CHECKS = ['Passkey registration is on for everyone','Windows Hello for Business is provisioned by Intune','Temporary Access Pass is enabled','The authentication-methods migration is complete','Passkey models checked against Emergency Access Step 3','Attestation is on. Synced and Windows Hello passkeys can’t register, so contractors use a phone passkey or a security key.']
+
+// Three previews of one layout: what changes is data, never anatomy.
+const SCENARIOS = {
+  sample:{
+    counts:{seamless:7,ready:11,confirm:4,device:1,method:5,blocked:1,unknown:1},
+    active:30,seamlessLine:'7 are seamless: every device they use signs them in on its own.',
+    change:{since:'Sep 11',ready:4,seamless:2,lapse:3},
+    setup:{remaining:1,check:'Registration only works from the office',text:['The security-info registration policy requires the Head Office network. Drew Ivanova works remotely and can’t set up a passkey.','Issue Drew a Temporary Access Pass, or let people register from anywhere after MFA.'],done:['Phones can hold a passkey (both Authenticator models allowed)',...DONE_CHECKS]},
+    counted:[[2,'Never signed in, no methods. <a href="#">Confirm or disable in the Plan</a>'],[1,'Looks retired: last sign-in May 30, still enabled. <a href="#">Same step</a>'],[1,'New this month, hasn’t signed in yet. <a href="#">Issue a Temporary Access Pass</a>'],[2,'Emergency access accounts'],[2,'Service accounts'],[1,'Shared device']],
+    evidence:[['30','days of sign-ins, Aug 19 to Sep 18'],['3','people read individually for older sign-ins'],['1','method list couldn’t be read (throttled). The next scan retries.']],
+  },
+  large:{
+    counts:{seamless:612,ready:1187,confirm:402,device:233,method:1588,blocked:0,unknown:147},
+    active:4169,seamlessLine:'612 are seamless: every device they use signs them in on its own.',
+    change:{since:'Sep 11',ready:212,seamless:96,lapse:58},
+    setup:{remaining:0,done:['Registration works from anywhere after MFA','Phones can hold a passkey (both Authenticator models allowed)',...DONE_CHECKS]},
+    counted:[[212,'Never signed in, no methods. <a href="#">Confirm or disable in the Plan</a>'],[96,'Look retired: no sign-in in 90 days, still enabled. <a href="#">Same step</a>'],[41,'New this month, haven’t signed in yet. <a href="#">Issue Temporary Access Passes</a>'],[2,'Emergency access accounts'],[14,'Service accounts'],[9,'Shared devices']],
+    evidence:[['10','days of sign-ins read in bulk (50,000 rows, Sep 9 to Sep 18)'],['1,204','people read individually for Aug 19 to Sep 8'],['131','not read yet: the individual reads ran out of time. The next scan continues.'],['16','method lists couldn’t be read (throttled). The next scan retries.']],
+    subs:{
+      method:{admins:23,by:{
+        devices:[['Windows and iPhone',702,'Passkey in Authenticator. Windows Hello at the next Windows sign-in.'],['Windows and Android',511,'Passkey in Authenticator. Windows Hello at the next Windows sign-in.'],['Windows only',204,'Windows Hello on the computer. No phone sign-ins seen.'],['Mac and iPhone',118,'Passkey in Authenticator, used from the Mac.'],['Other combinations',30,'Each row names its best option.']],
+        department:[['Sales',402],['Operations',311],['Support',287],['Engineering',244],['Finance',131],['Marketing',102],['Legal',61],['People',27]]}},
+      confirm:{admins:4,by:{devices:[['Passkey not used in 30 days',188,'Sign in once with the passkey.'],['Windows Hello not used in 30 days',121,'Sign in to Windows with Windows Hello.'],['On leave: no sign-in in 30 days',64,'Confirm on return.'],['Security key never used',25,'Use the key once.']]}},
+      device:{admins:0,by:{devices:[['iPhone signs in with push',141,'Passkey in Authenticator on the iPhone.'],['Android signs in with push',92,'Passkey in Authenticator on the Android phone.']]}},
+      unknown:{admins:0,by:{devices:[['Sign-ins not read yet',131,'The next scan continues the individual reads.'],['Method list couldn’t be read',16,'The next scan retries.']]}},
+      ready:{admins:11,by:{devices:[['Could add Windows Hello',802,'Joined Windows computers.'],['Could add a phone passkey',385,'Phone sign-ins use a security key.']]}},
+      seamless:{admins:9,by:{devices:[['Built in on every device',574],['Best available on their devices',38,'Linux, or personal computers where nothing is built in.']]}},
+    },
+  },
+  blocked:{
+    counts:{seamless:7,ready:11,confirm:4,device:1,method:0,blocked:6,unknown:1},
+    active:30,seamlessLine:'7 are seamless: every device they use signs them in on its own.',
+    change:{since:'Sep 11',ready:0,seamless:0,lapse:3},
+    adminNext:{title:'Allow passkeys in Microsoft Authenticator',affects:6,
+      body:'Your approved passkey list doesn’t include the two Microsoft Authenticator models, so nobody can register a passkey on their phone. Add both in Entra: Authentication methods, then Passkey (FIDO2), then Configure, then the approved models list. The 6 people waiting below can start once it’s saved.',
+      actions:['Open the Entra steps','Review in Emergency Access Step 3']},
+    setup:{remaining:2,check:'Phones can’t hold a passkey',text:['Shown above as the next check. It’s the setup change that unblocks the most people.'],done:DONE_CHECKS},
+    counted:[[2,'Never signed in, no methods. <a href="#">Confirm or disable in the Plan</a>'],[1,'Looks retired: last sign-in May 30, still enabled. <a href="#">Same step</a>'],[1,'New this month, hasn’t signed in yet. <a href="#">Issue a Temporary Access Pass</a>'],[2,'Emergency access accounts'],[2,'Service accounts'],[1,'Shared device']],
+    evidence:[['30','days of sign-ins, Aug 19 to Sep 18'],['3','people read individually for older sign-ins'],['1','method list couldn’t be read (throttled). The next scan retries.']],
+  },
+}
+
+let scenario = 'sample', filter = 'action', groupBy = 'devices'
+const fmt = n => n.toLocaleString('en-US')
 const icon = k => `<svg aria-hidden="true"><use href="#i-${k}"/></svg>`
-const esc = s => String(s)
-const devWord = {seamless:'Seamless',ready:'Ready',confirm:'Confirm',device:'Needs it',method:'None',blocked:'Blocked',idle:'Not read',unknown:'Unknown'}
+const chev = '<svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg>'
+const devWord = {seamless:'Seamless',ready:'Confirmed',confirm:'Not confirmed',device:'No passkey',method:'Not set up',blocked:'Blocked',idle:'Not read'}
 const devColor = {seamless:'var(--s-seamless)',ready:'var(--s-ready)',confirm:'var(--s-confirm)',device:'var(--s-device)',method:'var(--s-method)',blocked:'var(--s-blocked)',idle:'var(--s-unknown)'}
 
-// ribbon + legend
-const total = Object.values(COUNTS).reduce((a,b)=>a+b,0)
-document.getElementById('ribbon').innerHTML = Object.entries(COUNTS).map(([k,n])=>`<span style="flex:${n};background:${STATES[k].c}"></span>`).join('')
-document.getElementById('legend').innerHTML = Object.entries(COUNTS).map(([k,n])=>`<li><span class="dot" style="--c:${STATES[k].c}"></span>${STATES[k].word} <b>${n}</b></li>`).join('')
+function peopleFor(sc){
+  if (sc!=='blocked') return PEOPLE
+  // the same people, with the method group waiting on the tenant
+  return PEOPLE.map(p=>p.s==='method' ? {...p,s:'blocked',dev:p.dev.map(d=>({...d,state:'blocked'})),next:'Waiting: Authenticator not allowed'} : p)
+}
+
+function renderHero(S){
+  const ready = S.counts.seamless + S.counts.ready
+  document.getElementById('answer').textContent = `${fmt(ready)} of ${fmt(S.active)} people are ready for phishing-resistant sign-in.`
+  document.getElementById('goal').textContent = S.seamlessLine
+  const c = S.change
+  document.getElementById('change').innerHTML = `<strong>Since the ${c.since} scan</strong><ul>
+    <li><b class="${c.ready?'up':''}">${c.ready?'+'+fmt(c.ready):'No change'}</b> Ready</li>
+    <li><b class="${c.seamless?'up':''}">${c.seamless?'+'+fmt(c.seamless):'No change'}</b> Seamless</li>
+    <li><b>${fmt(c.lapse)}</b> lapse in the next 7 days${scenario==='large'?'':` <button type="button" data-filter="lapsing">Show them</button>`}</li></ul>`
+  document.getElementById('ribbon').innerHTML = Object.entries(S.counts).filter(([,n])=>n).map(([k,n])=>`<span style="flex:${n};background:${STATES[k].c}"></span>`).join('')
+  document.getElementById('legend').innerHTML = Object.entries(S.counts).filter(([,n])=>n).map(([k,n])=>`<li><span class="dot" style="--c:${STATES[k].c}"></span>${STATES[k].word} <b>${fmt(n)}</b></li>`).join('')
+  const action = Object.entries(S.counts).filter(([k])=>k!=='ready'&&k!=='seamless').reduce((a,[,n])=>a+n,0)
+  document.getElementById('pill-action').textContent = `Needs action · ${fmt(action)}`
+}
+
+function renderRail(S){
+  const s = S.setup
+  document.getElementById('setup-tile').innerHTML = `<h3>Tenant setup</h3>
+    <p class="remain">${s.remaining ? `${s.remaining} check${s.remaining>1?'s':''} remaining` : 'Nothing remaining'}</p>
+    ${s.check ? `<p class="check">${s.check}</p>${s.text.map(t=>`<p>${t}</p>`).join('')}` : ''}
+    <details${s.remaining?'':' open'}><summary>Completed checks · ${s.done.length}</summary><ul>${s.done.map(d=>`<li><span class="ok">✓</span>${d}</li>`).join('')}</ul></details>`
+  document.getElementById('counted-tile').innerHTML = `<h3>Not counted</h3><dl class="ledger">${S.counted.map(([n,t])=>`<dt>${fmt(n)}</dt><dd>${t}</dd>`).join('')}</dl>`
+  document.getElementById('evidence-tile').innerHTML = `<h3>Evidence read</h3><dl class="ledger">${S.evidence.map(([n,t])=>`<dt>${n}</dt><dd>${t}</dd>`).join('')}</dl>`
+  document.getElementById('counted-line').textContent = `Counted: the ${fmt(S.active)} people who signed in during the last 90 days. Ready looks at the last 30.`
+}
 
 function deviceChips(p){
   const chips = p.dev.map(d=>`<span class="dev" title="${d.note}">${icon(d.kind)}${d.os}<i style="--c:${devColor[d.state]}">${devWord[d.state]}</i></span>`)
@@ -419,7 +486,7 @@ function deviceChips(p){
   return `<div class="devices">${chips.join('')}</div>`
 }
 function row(p){
-  return `<div class="row" data-name="${p.n}" data-admin="${!!p.admin}">
+  return `<div class="row">
     <div class="person"><strong>${p.n}${p.admin?'<span class="tag">Admin</span>':''}</strong><span>${p.e}</span></div>
     ${deviceChips(p)}
     <div class="methods">${p.m}${p.last && p.last !== 'None' ? `<div class="cell-note">Last confirmed: ${p.last}</div>` : ''}</div>
@@ -427,38 +494,77 @@ function row(p){
     <button class="open" type="button" data-open="${p.n}" aria-controls="panel">Details</button>
   </div>`
 }
-function render(filter){
-  const g = document.getElementById('groups')
-  g.innerHTML = GROUPS.map(gr=>{
-    let people = PEOPLE.filter(p=>p.s===gr.state)
-    if (filter==='admins') people = people.filter(p=>p.admin)
-    if (filter==='lapsing') people = people.filter(p=>LAPSING.includes(p.n))
-    if (filter==='action' && (gr.state==='ready'||gr.state==='seamless')) return ''
-    if (!people.length) return ''
-    const n = filter==='all'||filter==='action' ? COUNTS[gr.state] : people.length
-    const open = gr.open || filter==='lapsing' || filter==='admins'
-    return `<details class="group${gr.quiet?' quiet':''}"${open?' open':''}>
-      <summary><span class="dot" style="--c:${STATES[gr.state].c}"></span>
-        <span><span class="title">${gr.title}</span><span class="why">${gr.why}</span></span>
-        <span class="count">${n}</span><svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg></summary>
-      <div class="rows"><div class="row head"><span>Person</span><span>Devices seen</span><span>Methods</span><span>Next step</span><span class="sr">Details</span></div>
-      ${people.map(row).join('')}
-      ${gr.more && filter!=='lapsing' && filter!=='admins' ? `<div class="more">and ${gr.more} more</div>`:''}</div>
-    </details>`
-  }).join('')
+const HEAD = '<div class="row head"><span>Person</span><span>Devices seen</span><span>Methods</span><span>Next step</span><span class="sr">Details</span></div>'
+// Admins first, always: they are the accounts a lockout hurts most.
+const byAdmin = list => [...list].sort((a,b)=>(b.admin?1:0)-(a.admin?1:0))
+
+function subGroups(gr, S, people){
+  const sub = S.subs[gr.state]; if (!sub) return ''
+  const admins = byAdmin([...people.filter(p=>p.admin), ...(gr.state==='method'?EXTRA_ADMINS:[])])
+  const lists = sub.by[groupBy] ?? sub.by.devices
+  const adminBlock = sub.admins ? `<details class="sub" open><summary><span><span class="title">Admins</span><span class="why">First, because a lockout hurts most here</span></span><span class="count">${fmt(sub.admins)}</span>${chev}</summary>
+      <div class="rows">${HEAD}${admins.slice(0,3).map(row).join('')}${sub.admins>3?`<div class="more">Showing ${Math.min(3,admins.length)} of ${sub.admins}. <button type="button">Show all ${sub.admins}</button></div>`:''}</div></details>` : ''
+  const choose = sub.by.department ? `<div class="subbar"><span>${fmt(S.counts[gr.state])} people, split so each part shares one set of instructions</span><label>Group by <select data-groupby><option value="devices"${groupBy==='devices'?' selected':''}>Devices</option><option value="department"${groupBy==='department'?' selected':''}>Department</option></select></label></div>` : ''
+  return choose + adminBlock + lists.map(([t,n,why])=>`<details class="sub"><summary><span><span class="title">${t}</span>${why?`<span class="why">${why}</span>`:''}</span><span class="count">${fmt(n)}</span>${chev}</summary><div class="more">Rows load 50 at a time, admins first.</div></details>`).join('')
 }
-render('action')
+
+function render(){
+  const S = SCENARIOS[scenario]
+  renderHero(S); renderRail(S)
+  const people = peopleFor(scenario)
+  let nextTaken = !!S.adminNext
+  let html = ''
+  if (S.adminNext && (filter==='action' || filter==='all')){
+    const a = S.adminNext
+    html += `<section class="admin-next" aria-labelledby="admin-next"><span class="next-label">Next check<span class="who">Tenant setup, unblocks ${a.affects} people</span></span>
+      <h3 id="admin-next">${a.title}</h3><p>${a.body}</p>
+      <div class="actions">${a.actions.map((x,i)=>`<button class="btn${i?'':' primary'}" type="button">${x}</button>`).join('')}</div></section>`
+  }
+  // The next check leads; the other groups keep their order below it.
+  const eligible = g => !!g.body && people.some(p=>p.s===g.state) && filter!=='lapsing' && filter!=='admins'
+  const lead = nextTaken ? null : GROUPS.find(eligible)
+  const ordered = lead ? [lead, ...GROUPS.filter(g=>g!==lead)] : GROUPS
+  for (const gr of ordered){
+    let list = people.filter(p=>p.s===gr.state)
+    if (filter==='admins') list = list.filter(p=>p.admin)
+    if (filter==='lapsing') list = list.filter(p=>LAPSING.includes(p.n))
+    if (filter==='action' && (gr.state==='ready'||gr.state==='seamless')) continue
+    const large = scenario==='large' && filter!=='lapsing' && filter!=='admins'
+    const n = large ? S.counts[gr.state] : list.length
+    if (!n) continue
+    const isNext = gr === lead
+    const open = isNext || filter==='lapsing' || filter==='admins'
+    const inner = large ? subGroups(gr, S, list) : `<div class="rows">${HEAD}${byAdmin(list).map(row).join('')}</div>`
+    html += `<details class="group${gr.quiet?' quiet':''}${isNext?' next':''}"${open?' open':''}>
+      <summary><span class="dot" style="--c:${STATES[gr.state].c}"></span>
+        <span>${isNext?'<span class="next-label">Next check</span>':''}<span class="title">${gr.title}</span><span class="why">${gr.why}</span></span>
+        <span class="count">${fmt(n)}</span>${chev}</summary>
+      ${isNext ? `<div class="next-body"><p>${gr.body}</p><div class="actions">${gr.actions.map((x,i)=>`<button class="btn${i?'':' primary'}" type="button">${x}</button>`).join('')}</div></div>` : ''}
+      ${inner}
+    </details>`
+  }
+  document.getElementById('groups').innerHTML = html
+}
+render()
 
 document.addEventListener('click', e=>{
+  const sc = e.target.closest('[data-scenario]')
+  if (sc){
+    scenario = sc.dataset.scenario; filter = 'action'
+    document.querySelectorAll('[data-scenario]').forEach(b=>b.setAttribute('aria-pressed', String(b===sc)))
+    document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-pressed', String(p.dataset.filter==='action')))
+    render(); return
+  }
   const f = e.target.closest('[data-filter]')
   if (f){
-    const key = f.dataset.filter
-    document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-pressed', String(p.dataset.filter===key)))
-    render(key); if (key==='lapsing') document.getElementById('groups').scrollIntoView({behavior:'smooth',block:'start'})
+    filter = f.dataset.filter
+    document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-pressed', String(p.dataset.filter===filter)))
+    render(); if (filter==='lapsing') document.getElementById('groups').scrollIntoView({behavior:'smooth',block:'start'})
   }
   const o = e.target.closest('[data-open]')
   if (o) openPanel(o.dataset.open, o)
 })
+document.addEventListener('change', e=>{ if (e.target.matches('[data-groupby]')){ groupBy = e.target.value; render() } })
 
 // the person panel
 const panel = document.getElementById('panel'); let from = null
@@ -467,11 +573,11 @@ function item(k,name,sub,facts){
     <dl class="facts">${facts.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></div>`
 }
 function openPanel(name, trigger){
-  const p = PEOPLE.find(x=>x.n===name); from = trigger
-  const d = p.detail || {next:[p.next||'Nothing to do', 'Open the full detail in the built page. This proposal fills in five people: Jamie Walker, Morgan Lee, Quinn Taylor, Avery Brown and Drew Ivanova.'],
+  const p = [...peopleFor(scenario), ...EXTRA_ADMINS].find(x=>x.n===name); from = trigger
+  const d = p.detail || {next:[p.next||'Nothing to do', 'This proposal fills in five people: Jamie Walker, Morgan Lee, Quinn Taylor, Avery Brown and Drew Ivanova.'],
     devices:p.dev.map(v=>[v.kind, v.os, v.note, '—', devWord[v.state]]), methods:[]}
   document.getElementById('p-name').textContent = p.n
-  document.getElementById('p-sub').textContent = p.e + (p.admin ? ' · Admin' : '')
+  document.getElementById('p-sub').textContent = `${p.e}${p.admin ? ', Admin' : ''}, ${p.dept}`
   document.getElementById('p-state').innerHTML = `<span class="dot" style="--c:${STATES[p.s].c}"></span>${STATES[p.s].word}`
   document.getElementById('p-next').innerHTML = `<strong>${d.next[0]}</strong><p>${d.next[1]}</p>`
   document.getElementById('p-devices').innerHTML = d.devices.map(([k,n,sub,best,now])=>item(k,n,sub,[['Best option',best],['Now',now]])).join('')
