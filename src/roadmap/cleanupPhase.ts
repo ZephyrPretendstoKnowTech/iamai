@@ -19,6 +19,7 @@ import type { RecoveryCandidateReading } from './cleanupDone.ts'
 import { addWorkingDays } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import type { OrganisationReport } from '../coverage/types.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { proposeName, usable } from './convention.ts'
 
 export type CleanupPhase = {
@@ -40,6 +41,8 @@ export type CleanupPhase = {
   preChangeRecoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   snapshotObservedAt?: string
   accountBasis?: Record<string, string>
+  recoveryCandidateSetBasis?: Record<string, string>
+  signInEvidenceSource?: TenantSnapshot['sources']['signInEvidence']
   consolidationCandidateIds?: string[]
   namingProposals?: { id: string; from: string; to: string; collision: boolean }[]
   policyOptions?: { id: string; name: string; basis: string | null; state: string }[]
@@ -53,6 +56,8 @@ export type CleanupPhaseInput = {
   rhythm: TenantRhythm | null
   emergencyAccountIds: string[]
   accountBasis?: Record<string, string>
+  recoveryCandidateSetBasis?: Record<string, string>
+  signInEvidenceSource?: TenantSnapshot['sources']['signInEvidence']
   recoveryFindings?: ConfigurationFinding[]
   recoveryCandidates?: Record<string, RecoveryCandidateReading[]>
   tenantId?: string
@@ -154,7 +159,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     const records = input.records ?? []
     const record = records.filter((c) => c.cleanup === r.kind && c.basis === basis && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a, b) => a.at.localeCompare(b.at)).at(-1)
     // Each current account needs its own recent recovery test. They may be tested on different days.
-    const tests = accounts.map((id) => input.accountBasis && !input.accountBasis[id] ? null : latestRecoveryTest(id, records, now, input.accountBasis?.[id], { readings: input.recoveryCandidates?.[id] ?? [], tenantId: input.tenantId ?? '', currentSnapshotObservedAt: input.snapshotObservedAt ?? now }))
+    const tests = accounts.map((id) => input.accountBasis && !input.accountBasis[id] ? null : latestRecoveryTest(id, records, now, input.accountBasis?.[id], { readings: input.recoveryCandidates?.[id] ?? [], tenantId: input.tenantId ?? '', currentSnapshotObservedAt: input.snapshotObservedAt ?? now, signInSource: input.signInEvidenceSource, candidateSetBasis: input.recoveryCandidateSetBasis?.[id] }))
     const tested = accounts.length > 0 && tests.every((date) => date !== null && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86_400_000)
     const latestConsolidation = r.kind === 'consolidation' ? records.filter(c => c.cleanup === 'consolidation' && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
     const latestNaming = r.kind === 'naming' ? records.filter(c => c.cleanup === 'naming' && validCompletionDate(c.date, now, c.timeZone) && c.at <= now).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
@@ -173,5 +178,5 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   }
   dated.sort((a, b) => a.day.localeCompare(b.day))
   const latestFailedAtByAccount = Object.fromEntries(input.emergencyAccountIds.map(id => [id, (input.records ?? []).filter(record => record.cleanup === 'drill' && record.purpose === 'final' && record.outcome === 'failed' && record.accountIds?.some(accountId => accountId.toLowerCase() === id.toLowerCase())).sort((a, b) => a.at.localeCompare(b.at)).at(-1)?.at ?? null]))
-  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, namingProposals: [...new Map([...namingProposals, ...((input.records ?? []).filter(r => r.cleanup === 'naming').sort((a,b) => a.at.localeCompare(b.at)).at(-1)?.namingChanges ?? []).map(p => ({ ...p, collision: false }))].map(p => [p.id, p])).values()], accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
+  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, namingProposals: [...new Map([...namingProposals, ...((input.records ?? []).filter(r => r.cleanup === 'naming').sort((a,b) => a.at.localeCompare(b.at)).at(-1)?.namingChanges ?? []).map(p => ({ ...p, collision: false }))].map(p => [p.id, p])).values()], accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryCandidateSetBasis: input.recoveryCandidateSetBasis, signInEvidenceSource: input.signInEvidenceSource, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
 }

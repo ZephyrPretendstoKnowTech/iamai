@@ -9,8 +9,8 @@ import { ruleText } from '../validation/rules.ts'
 import type { RuleResult } from '../validation/rules.ts'
 import type { ConfigurationFinding, ConfigurationFindingItem } from './types.ts'
 import { assignedPasskeyProfiles, passkeyFindingsOf, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
-import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
-import { latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
+import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility, recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
+import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
@@ -18,6 +18,12 @@ import { exclusionGroupPolicySafety } from '../validation/report.ts'
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
 export const PASSKEY_SETTINGS = 's-prereq-passkey-settings'
+
+function recoveryTime(iso: string, timeZone: string | null | undefined): string {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
+  try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: timeZone || 'UTC' }).format(new Date(iso)) }
+  catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
+}
 export const RECOVERY_DRILL = 'cleanup-drill'
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
@@ -379,45 +385,52 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
     return { ...item, factLabel: exclusionLabels[issue] ?? item.factLabel, value }
   })
   const method = emergencyMethodFinding(snapshot, mapping, groups)
+  const finalPolicy = journeyPasskeyFindings(snapshot, mapping, groups).filter(finding => finding.key === 'registration' || finding.key === 'protection')
   const ids = mapping.breakGlassUserIds
   const basis = recoveryAccountBasis(snapshot, ids, mapping, groups)
-  const signIns = ids.map(id => {
-    const configuredAt = recoveryPreparation(id, records, now, basis[id], snapshot.tenantId)?.configurationObservedAt ?? null
-    const readings = recoveryCandidateReadings(snapshot, id, now, configuredAt)
-    const qualifying = readings.filter(reading => reading.qualifies)
-    const source = snapshot.sources.signInEvidence
-    const unavailable = source?.status !== 'ok'
-    const coveredWindow = source?.coveredWindow
-    const candidateReason = (readings[0]?.reason ?? '').replace(/[.]$/, '') || 'No qualifying event observed'
-    return { label: accountLabel(snapshot, id), value: qualifying.length ? `${qualifying.length} qualifying event${qualifying.length === 1 ? '' : 's'} available` : unavailable ? `Could not verify: ${source?.reason ?? source?.status ?? 'sign-in logs unread'}` : candidateReason, coverage: coveredWindow?.from && coveredWindow.to ? `${coveredWindow.from.slice(0, 10)} to ${coveredWindow.to.slice(0, 10)}` : 'Could not verify', observed: qualifying.length > 0 }
-  })
+  const candidateSetBasis = Object.fromEntries(ids.flatMap(id => {
+    const candidateSet = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups)
+    return candidateSet.state === 'complete' ? [[id, JSON.stringify([...candidateSet.ids].sort())]] : []
+  }))
   const tests = ids.map(id => {
     const configuredAt = recoveryPreparation(id, records, now, basis[id], snapshot.tenantId)?.configurationObservedAt ?? null
     const readings = recoveryCandidateReadings(snapshot, id, now, configuredAt)
-    const date = basis[id] ? latestRecoveryTest(id, records, now, basis[id], { readings, tenantId: snapshot.tenantId, currentSnapshotObservedAt: snapshot.asOf }) : null
+    const source = recoveryEvidenceSource(snapshot)
+    const date = basis[id] ? latestRecoveryTest(id, records, now, basis[id], { readings, tenantId: snapshot.tenantId, currentSnapshotObservedAt: snapshot.asOf, signInSource: source, candidateSetBasis: candidateSetBasis[id] }) : null
     const current = !!date && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86400000
-    const latest = records.filter(r => r.cleanup === 'drill' && r.accountIds?.includes(id)).sort((a,b) => b.at.localeCompare(a.at))[0]
-    const value = current ? `Passed · ${date!.slice(0, 10)}`
-      : !basis[id] ? 'Unavailable: current configuration could not be verified'
-        : latest?.outcome === 'failed' ? `Failed${latest.date ? ` · ${latest.date.slice(0, 10)}` : ''}`
-          : latest?.outcome === 'passed' ? (latest.date && Date.parse(now) - Date.parse(latest.date) > BREAK_GLASS_DRILL_DAYS * 86400000 ? `Expired · ${latest.date.slice(0, 10)}` : 'No longer current: evidence or configuration changed')
-            : 'Not recorded'
-    return { label: accountLabel(snapshot, id), value, current }
+    const verifiedAt = current ? recoveryTime(date!, mapping.displayTimeZone) : null
+    const sourceFailure = source.status !== 'ok'
+    const action = current ? 'Passkey sign-in verified'
+      : sourceFailure ? 'IAMAI could not read the sign-in evidence'
+        : 'Sign in with the prepared passkey'
+    const value = current ? `Signed in after configuration: ${verifiedAt}`
+      : sourceFailure ? source.reason ?? String(source.status)
+        : 'Follow Verify emergency sign-in in Implementation Tasks. Then wait 5–10 minutes and scan to update the plan.'
+    return { label: accountLabel(snapshot, id), action, value, current }
   })
-  const configurationParts = [accounts, exclusions, method]
-  const configurationOutcome = configurationParts.some(f => f.outcome === 'fail') ? 'fail' : configurationParts.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass'
+  const configurationParts = [accounts, exclusions, method, ...finalPolicy]
+  const preparationStates = automaticRecoveryPreparationStates(snapshot, mapping, groups ?? new Map())
+  const stateValues = ids.map(id => preparationStates[id] ?? 'unread')
+  const visibleConfigurationOutcome = configurationParts.some(f => f.outcome === 'fail') ? 'fail' : configurationParts.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass'
+  const configurationOutcome = visibleConfigurationOutcome === 'fail' || stateValues.includes('incorrect') ? 'fail' : visibleConfigurationOutcome === 'unknown' || stateValues.includes('unread') ? 'unknown' : 'pass'
   const confirmationPassed = ids.length > 0 && tests.every(r => r.current)
-  const signInsPassed = ids.length > 0 && signIns.every(r => r.observed)
+  const signInsPassed = ids.length > 0 && tests.every(r => r.current)
   const ownerRows = configurationParts.flatMap<ConfigurationFindingItem>(finding => {
     if (finding.outcome === 'pass') return []
     const rows = (finding.items ?? []).filter(item => item.outcome !== 'pass')
     return (rows.length ? rows : [{ label: finding.label, value: finding.value, outcome: finding.outcome }]).map(item => {
       const owner = finding === accounts ? link(EMERGENCY_ACCOUNTS, 'Review account preparation')
         : finding === exclusions ? link(EMERGENCY_GROUP, 'Review emergency exclusions')
+          : finalPolicy.includes(finding) ? link(PASSKEY_SETTINGS, 'Review intended passkey settings')
           : item.factLabel === 'Applicable profile' ? link(PASSKEY_SETTINGS, 'Review intended passkey settings')
             : link(EMERGENCY_ACCOUNTS, 'Review prepared passkeys')
       return { ...item, ...(item.accountId ? { subjectLabel: accountLabel(snapshot, item.accountId) } : {}), link: owner }
     })
+  })
+  if (visibleConfigurationOutcome === 'pass' && configurationOutcome !== 'pass') ownerRows.push({
+    label: 'Emergency exclusions group', factLabel: 'Emergency exclusions group',
+    value: configurationOutcome === 'fail' ? 'The saved group or its membership is not suitable for emergency exclusions.' : 'The saved group or its membership could not be read completely.',
+    outcome: configurationOutcome, link: link(EMERGENCY_GROUP, 'Review emergency exclusions'),
   })
   const seenOwnerLinks = new Set<string>()
   const pendingOwnerRows = ownerRows.map(item => {
@@ -434,11 +447,9 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
     detail: '',
     items: pendingOwnerRows,
   }
-  const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : signInsPassed ? 'Qualifying events available' : 'Evidence needed', outcome: signInsPassed ? 'pass' : 'unknown', detail: '', items: signIns.flatMap(({label, value, coverage, observed}, index) => [
-    { label: 'Matching event', factLabel: 'Matching event', value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: observed ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] },
-    { label: 'Logs checked', factLabel: 'Logs checked', value: coverage, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: coverage === 'Could not verify' ? 'unknown' as const : 'pass' as const },
-  ]) }
-  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification Results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: tests.map(({label, value, current}, index) => ({ label: 'Result', factLabel: 'Result', value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-result:${ids[index].toLowerCase()}`] })) }
+  const showSignInRows = configurationOutcome === 'pass' || snapshot.sources.signInEvidence?.status !== 'ok'
+  const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : signInsPassed ? 'Verified' : 'Evidence needed', outcome: signInsPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
+  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification Results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: [] }
   const verified = configurationOutcome === 'pass' && signInsPassed && confirmationPassed
   confirmation.value = verified ? 'Passed' : confirmation.value
   return [

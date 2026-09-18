@@ -69,8 +69,6 @@ import { prerequisiteBasis } from '../../content/implementation/project.ts'
 import type { OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import type { RecoveryDone } from './RecoveryTestControl.tsx'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountStatus, EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness } from './emergencyReadiness.ts'
@@ -267,8 +265,6 @@ export function ContentStep({
   blockers = NO_BLOCKERS,
   prerequisiteLabel = null,
   onOpenMappings,
-  recoveryPhase = null,
-  onRecoveryDone,
 }: {
   step: Step
   ctx: StepVarContext
@@ -285,8 +281,6 @@ export function ContentStep({
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings?: () => void
   onCredentialStorage?: (done: boolean) => void
-  recoveryPhase?: CleanupPhase | null
-  onRecoveryDone?: RecoveryDone
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void

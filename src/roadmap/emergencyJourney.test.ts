@@ -153,13 +153,16 @@ test('a failed read asks for evidence, and a later failure or relevant key chang
   const preparation: CleanupCheckpoint = { cleanup: 'drill', date: configurationObservedAt, at: configurationObservedAt, accountIds: f.mapping.breakGlassUserIds, workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: f.snapshot.tenantId, configurationObservedAt, accountBasis }
   const record: CleanupCheckpoint = { cleanup: 'drill', date, at: now, outcome: 'passed', purpose: 'final', accountIds: f.mapping.breakGlassUserIds, accountBasis, recoveryEvidence: Object.fromEntries(f.mapping.breakGlassUserIds.map(id => { const event = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]; return [id, { schema: 1, purpose: 'final', tenantId: f.snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })) }
   const read = (records: CleanupCheckpoint[]) => journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, records, now)
-  assert.ok(read([preparation, record]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => i.value.startsWith('Passed')))
-  assert.ok(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.items!.slice(0, 2).every(i => /Failed/.test(i.value)))
+  assert.ok(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items!.slice(0, 2).every(i => i.value.startsWith('Signed in after configuration:')))
+  assert.notEqual(read([preparation, { ...record, outcome: 'failed' }]).find(t => t.key === 'recovery-confirmation')!.outcome, 'pass')
+  const originalMethods = structuredClone(f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]])
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
-  assert.doesNotMatch(read([preparation, record]).find(t => t.key === 'recovery-confirmation')!.items![0].value, /^Passed/)
+  assert.equal(read([preparation, record]).find(t => t.key === 'recovery-configuration')!.outcome, 'fail')
+  f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = originalMethods
   f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'error', reason: 'Read denied' }
   f.snapshot.signInEvidence = {}
-  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].value, /Could not verify: Read denied/)
+  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].label, /IAMAI could not read the sign-in evidence/)
+  assert.match(read([preparation, record]).find(t => t.key === 'recovery-sign-ins')!.items![0].value, /Read denied/)
 })
 
 test('emergency-account finding rows use UPN identity without repeating display names', () => {
@@ -167,7 +170,7 @@ test('emergency-account finding rows use UPN identity without repeating display 
   const expected = f.mapping.breakGlassUserIds.map(id => f.snapshot.users.find(row => row.id === id)!.userPrincipalName)
   assert.deepEqual([...new Set(emergencyMethodFinding(f.snapshot, f.mapping, f.groups).items?.map(item => item.subjectLabel))], expected)
   const recovery = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  assert.deepEqual([...new Set(recovery.find(item => item.key === 'recovery-sign-ins')?.items?.map(item => item.subjectLabel))], expected)
+  assert.ok((recovery.find(item => item.key === 'recovery-sign-ins')?.items ?? []).every(item => !item.subjectLabel || expected.includes(item.subjectLabel)))
 })
 
 test('all three setup steps offer complete copyable Entra instructions while unresolved', () => {

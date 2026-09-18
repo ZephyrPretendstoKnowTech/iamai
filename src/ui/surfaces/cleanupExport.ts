@@ -93,7 +93,7 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
   const whatToDo = row.kind === 'drill'
-    ? [...emergencyVerificationTasksOf(phase).tasks.filter(task => task.required).flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE]
+    ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE]
     : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
   return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }

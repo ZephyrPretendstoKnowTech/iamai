@@ -19,6 +19,7 @@ import type {
   EvidenceAggregates,
   PolicyAppliedResult,
   PolicyResultClass,
+  RecoveryDirectoryAudit,
   StoredSignIn,
   UserEvidence,
 } from './types.ts'
@@ -46,9 +47,17 @@ export type SignInEvidence = {
   aggregates: EvidenceAggregates
   /** Prompt 48 item 3: the scenario derivations; browserWithoutClaims is narrowed to compliant-device owners by the worker. */
   scenarios: ScenarioEvidence
+  recoveryAudits?: import('./types.ts').RecoveryDirectoryAudit[]
+  recoveryAuditSource?: import('./types.ts').SourceState
 }
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
+
+export function mapRecoveryAudit(raw: unknown): RecoveryDirectoryAudit | null {
+  const row = raw as Record<string, any>
+  if (typeof row?.id !== 'string' || typeof row.activityDateTime !== 'string' || typeof row.activityDisplayName !== 'string') return null
+  return { id: row.id, at: row.activityDateTime, activity: row.activityDisplayName, category: typeof row.category === 'string' ? row.category : null, result: typeof row.result === 'string' ? row.result : null, targets: Array.isArray(row.targetResources) ? row.targetResources.flatMap((target: Record<string, unknown>) => typeof target.id === 'string' ? [{ id: target.id, type: typeof target.type === 'string' ? target.type : null }] : []) : [] }
+}
 
 export function mapRow(raw: unknown): StoredSignIn | null {
   const r = raw as Record<string, unknown>

@@ -2242,19 +2242,14 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "Verify that each selected account can recover administrative access using its approved credentials, with the account, passkey and exclusion settings now in place.",
+      "why": "Verify each selected account with a successful passkey sign-in observed after the final account, exclusion and passkey configuration.",
       "whatToDo": [
-        "Review Configuration, Sign-in evidence and Verification results in Readiness. Complete the listed corrections in their owning step and scan again before recording a passing final verification.",
-        "Choose Start verification before signing in. This saves the current account, credential, role, passkey and exclusion basis; an event that predates this checkpoint cannot certify the final configuration.",
-        "For each selected account, review Observed Passkey Sign-ins after the checkpoint. A successful sign-in can support the drill only when it belongs to the intended recovery test and the relevant configuration has not changed. A generic last sign-in or previously satisfied MFA claim is insufficient.",
-        "If no qualifying test exists, retrieve the approved recovery key and credentials through the authorized custody process. Keep a working administrator session available and use a separate fresh session in your approved recovery environment.",
-        "Sign in as the selected emergency account using its approved prepared passkey. Confirm the account identity, then perform a non-destructive administrative check, such as opening Conditional Access and reading a policy. Sign out when finished.",
-        "In Entra ID → Monitoring & health → Sign-in logs, locate that account’s successful event. Match the time, target resource and authentication details to your test; verify that the intended passkey was used. Review the relevant policy exclusions against the current group membership. An overall Conditional Access status alone does not prove the exclusion.",
-        "Scan again to refresh the observed sign-in findings; newly written log details may take time to appear. A scan cannot establish physical key custody or the administrative task, so verify those through the drill itself. Check sign-in alert delivery in the separate monitoring step.",
-        "For a passing result, select only the account and exact qualifying event, complete both confirmations, choose Passed and select Save verification. To retain a failure, choose Failed, enter the attempt date and select Record failed attempt. Repeat at least every 90 days and after a relevant recovery configuration change."
+        "Follow Verify emergency sign-in in Implementation Tasks for each account named in Tasks Remaining.",
+        "Wait 5–10 minutes, then scan to update the plan.",
+        "Use Troubleshoot emergency sign-in if a sign-in fails or its evidence does not appear."
       ],
       "doneWhen": [
-        "Each selected account has a recorded passing verification within the last 90 days that matches its current readable recovery configuration; a later failed result reopens that account’s verification."
+        "Each selected account has a qualifying passkey sign-in observed after its current verified recovery configuration and within the last 90 days."
       ]
     }
   },

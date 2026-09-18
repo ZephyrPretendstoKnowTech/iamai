@@ -68,6 +68,8 @@ test('profile corrections expose only changed fields and do not repeat fact valu
   const task = projectProfileChange().tasks.find(row => row.id === 'apply-passkey-settings')!
   const facts = task.facts ?? []
   assert.deepEqual(facts.map(row => row.label), ['Authenticator · Storage'])
+  assert.match(facts[0].value, /Device-bound passkeys, Synced passkeys.*→.*Device-bound passkeys/)
+  assert.doesNotMatch(facts[0].value, /deviceBound|deviceBound,synced/)
   const text = task.steps.join('\n')
   for (const fact of facts) assert.doesNotMatch(text, new RegExp(fact.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
   assert.doesNotMatch(text, /Add only:|Remove only:|Use these approved authenticator models:/i)

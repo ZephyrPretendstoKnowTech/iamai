@@ -635,6 +635,8 @@ export function buildFixture(spec: Spec): Fixture {
     schemaVersion: 1,
     tenantId,
     asOf: NOW,
+    recoveryDirectoryAudits: [],
+    recoveryAuditSource: ok(),
     sources: {
       config: ok(),
       registrationDetails: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : ok(),
@@ -747,7 +749,7 @@ export function buildFixture(spec: Spec): Fixture {
     for (const [index, id] of bgIds.entries()) snapshot.authMethods[id] = [...(Array.isArray(snapshot.authMethods[id]) ? snapshot.authMethods[id] : []).filter(m => m.kind !== 'fido2'), {kind: 'fido2', id: `demo-emergency-passkey-${index + 1}`, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound', attestationLevel: 'attested'}]
     for (const [index, id] of bgIds.entries()) {
       const at = users.find(user => user.id === id)?.lastSuccessfulSignIn ?? daysAgo(10)
-      signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }), recoveryCandidates: [{ schema: 1, eventId: `demo-recovery-${index + 1}`, userId: id, at, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Microsoft Azure portal', resource: 'Microsoft Azure management', method: 'Passkey (FIDO2)', freshMethod: true, credentialId: `demo-emergency-passkey-${index + 1}` }] }
+      signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }), recoveryCandidates: [{ schema: 1, eventId: `demo-recovery-${index + 1}`, userId: id, at, success: true, isInteractive: true, appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', app: 'Microsoft Entra admin center', resource: 'Microsoft Graph', method: 'Passkey (FIDO2)', authenticationAt: at, resourceTenantId: tenantId, freshMethod: true, credentialId: `demo-emergency-passkey-${index + 1}` }] }
       snapshot.signInEvidence[id] = signInEvidence[id]
     }
     for (const [id, methods] of Object.entries(snapshot.authMethods)) {
