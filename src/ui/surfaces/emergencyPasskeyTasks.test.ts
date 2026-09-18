@@ -75,8 +75,8 @@ test('profile corrections expose only changed fields and do not repeat fact valu
   const task = projectProfileChange().tasks.find(row => row.id === 'apply-passkey-settings')!
   assert.equal(task.facts, undefined, 'the changes are the tile’s facts, not a block above the procedure')
   const facts = task.readinessFacts ?? []
-  assert.deepEqual(facts.map(row => row.label), ['Authenticator · Attestation'])
-  assert.equal(facts[0].value, 'Off → Required')
+  assert.deepEqual(facts.map(row => row.label), ['Authenticator · Enforce attestation'])
+  assert.equal(facts[0].value, 'No → Yes')
   assert.doesNotMatch(facts[0].value, /registrationOnly|disabled/)
   const text = task.steps.join('\n')
   for (const fact of facts) assert.doesNotMatch(text, new RegExp(fact.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
@@ -96,21 +96,20 @@ test('legacy approved-model changes expose exact nonblank AAGUID values', () => 
   for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.match(fact.value, new RegExp(aaguid, 'i'))
 })
 
-test('include-target changes render the resolved target list', () => {
+test('include-target changes are set in the step, never "None"', () => {
   const task = projectLegacyChange(current => { current.includeTargets = [] }).tasks.find(row => row.id === 'make-passkey-registration-available')!
-  const fact = task.facts?.find(row => row.label === 'Included targets')
-  assert.ok(fact)
-  assert.match(fact.value, /Included targets → None/i)
-  assert.doesNotMatch(fact.value, /use the resolved target list/i)
+  assert.equal(task.facts, undefined)
+  assert.ok(task.steps.includes('Under **Include**, add the users or groups who register passkeys, including the emergency accounts.'), task.steps.join('\n'))
+  assert.doesNotMatch(task.steps.join('\n'), /target \*\*None\*\*|use the resolved target list/i)
 })
 
 test('the same approved models in a different order produce no Approved models row', () => {
   assert.notDeepEqual(GRAPH_ORDER, [...PASSKEY_TARGET_AAGUIDS])
-  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Attestation'])
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Enforce attestation'])
 })
 
 test('the same approved models in different letter casing produce no Approved models row', () => {
-  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER.map(id => id.toUpperCase()))).map(row => row.label), ['Authenticator · Attestation'])
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER.map(id => id.toUpperCase()))).map(row => row.label), ['Authenticator · Enforce attestation'])
 })
 
 test('a reordered, otherwise correct profile reads in place with no protection facts', () => {
@@ -123,7 +122,7 @@ test('a reordered, otherwise correct profile reads in place with no protection f
 test('a genuinely different model set still produces a row naming the before and after entries', () => {
   // A disabled list confers no approvals: its dormant Windows Hello entry is removed and the missing YubiKey 5 Series added.
   const current = GRAPH_ORDER.filter(id => id !== '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b').concat(WINDOWS_HELLO)
-  const fact = protectionFacts({ keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: current } }).find(row => row.label === 'Authenticator · Approved models')
+  const fact = protectionFacts({ keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: current } }).find(row => row.label === 'Authenticator · Model/Provider AAGUIDs')
   assert.ok(fact)
   const [before, after] = fact.value.split(' → ')
   assert.match(before, new RegExp(`AAGUID ${WINDOWS_HELLO}`))
@@ -142,7 +141,7 @@ test('passkeyTypes equality ignores order and serialisation', () => {
 })
 
 test('extra tenant models outside the required set do not by themselves produce a row', () => {
-  assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Attestation'])
+  assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Enforce attestation'])
   const { reading } = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', ...allow([WINDOWS_HELLO, ...GRAPH_ORDER]) })
   assert.equal(reading.state, 'inPlace')
 })
@@ -155,7 +154,8 @@ test('protections: navigate first, then apply each value inline, one Save per Ad
   // limits registration to device-bound passkeys, so Passkey types is no step.
   const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
   assert.deepEqual(steps, [
-    'Keep your working administrator session open. Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
+    'Keep your working administrator session open.',
+    'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
     'Open **Default passkey profile**.',
     'Select **Target specific AAGUIDs** and set **Behavior** to **Allow**.',
     'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.',
@@ -170,7 +170,7 @@ test('protections: a satisfied value produces no step, and an AAGUID is never a 
   const steps = protectionSteps({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
   const text = steps.join('\n')
   assert.doesNotMatch(text, /Passkey types|Target specific AAGUIDs|Enforce attestation|Apply only the changed values/)
-  assert.deepEqual(steps.slice(1, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
+  assert.deepEqual(steps.slice(2, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
   const task = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
   for (const line of task.steps) if (/19083c3d|a25342c0/.test(line)) assert.match(line, /^Select \*\*\+ Add AAGUID → Enter AAGUID\*\*, enter/)
   assert.equal(task.facts, undefined)
@@ -178,7 +178,7 @@ test('protections: a satisfied value produces no step, and an AAGUID is never a 
 
 test('protections: a legacy configuration is changed on Configure, each AAGUID entered where it is typed', () => {
   const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
-  const [, open, ...rest] = task.steps
+  const [, , open, ...rest] = task.steps
   assert.equal(open, 'Open **Configure**.')
   assert.equal(rest.at(-1), 'Return to IAMAI and select **Scan to update the plan**.')
   const entered = rest.filter(line => line.startsWith('Select **Add AAGUID** and enter'))

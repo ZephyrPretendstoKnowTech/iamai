@@ -229,8 +229,6 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const domain = initialDomain(ctx.snapshot)
   const selected = ctx.mapping.breakGlassUserIds
   const preparations: Preparations = new Map(emergencyAccountPreparationOf(ctx.snapshot, ctx.mapping, ctx.groups).map(row => [row.accountId, row]))
-  const targets = selected.map(id => targetOf(ctx, id))
-  const targetLine = targets.length ? targets.join(', ') : 'the emergency account'
   // The passkey procedure names only the selected accounts whose approved-passkey
   // check fails; it stays available when none does, and says so.
   const passkeyChecks = selected.map(id => preparations.get(id)?.checks.approvedPasskey ?? null)
@@ -243,6 +241,11 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       : selected.length
         ? ['Keep your working administrator session open.', passkeyChecks.every(check => check === true) ? 'No selected account currently needs an approved passkey.' : 'No selected account is confirmed to need an approved passkey.']
         : ['Keep your working administrator session open.']
+  // The existing-account procedure names only the accounts whose check fails.
+  type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
+  const needs = (check: ConfigureCheck): string[] => selected.filter(id => preparations.get(id)?.checks.cloudOnly !== false && preparations.get(id)?.checks[check] === false).map(id => targetOf(ctx, id))
+  const named = (upns: string[]): string => upns.map(upn => `**${upn}**`).join(', ')
+  const configureNeeded = (['initialDomain', 'enabled', 'permanentGlobalAdministrator'] as const).some(check => needs(check).length > 0)
   const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
   const variants = emergencyRegistrationVariants(registrationTarget).map(variant => ({
     ...variant,
@@ -263,11 +266,16 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.'] }),
     task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
       'Keep your working administrator session open.',
-      `Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users** and open the account named in **Tasks Remaining**. Selected accounts: **${targetLine}**.`,
-      `If the tile requests a sign-in-address change, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`,
-      'If the tile says the account is disabled, open **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.',
-      'For a direct role assignment, open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select the account, and complete the assignment.',
-      'If Privileged Identity Management manages the role, open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**. Choose **Assignment type: Active** and **Permanently assigned**.',
+      'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
+      // Each change names the selected accounts that need it; with none needing
+      // any, every change stays available as a reference.
+      ...(configureNeeded ? [] : ['No selected account currently needs configuration.']),
+      ...(!configureNeeded || needs('initialDomain').length ? [`${needs('initialDomain').length ? `Open ${named(needs('initialDomain'))}` : 'To change a sign-in address, open the account'}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`] : []),
+      ...(!configureNeeded || needs('enabled').length ? [`${needs('enabled').length ? `Open ${named(needs('enabled'))}` : 'To enable an account, open the account'}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
+      ...(!configureNeeded || needs('permanentGlobalAdministrator').length ? [
+        `For a direct role assignment, open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select ${needs('permanentGlobalAdministrator').length ? named(needs('permanentGlobalAdministrator')) : 'the account'}, and complete the assignment.`,
+        'If Privileged Identity Management manages the role, open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**. Choose **Assignment type: Active** and **Permanently assigned**.',
+      ] : []),
       'Save the changes, reopen the account, and confirm the sign-in address, enabled state, cloud-only identity, and permanent active role.',
       'Return to IAMAI and select **Scan to update the plan**.',
     ] }),
