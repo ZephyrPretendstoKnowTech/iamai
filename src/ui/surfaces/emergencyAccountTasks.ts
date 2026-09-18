@@ -136,10 +136,11 @@ export function emergencyRegistrationVariants(upn: string): EmergencyAccountTask
   ]
 }
 
-function accountStatuses(ctx: StepVarContext): EmergencyAccountStatus[] {
+type Preparations = ReadonlyMap<string, ReturnType<typeof emergencyAccountPreparationOf>[number]>
+
+function accountStatuses(ctx: StepVarContext, preparations: Preparations): EmergencyAccountStatus[] {
   const selected = ctx.mapping.breakGlassUserIds
   const domain = initialDomain(ctx.snapshot)
-  const preparations = new Map(emergencyAccountPreparationOf(ctx.snapshot, ctx.mapping, ctx.groups).map(row => [row.accountId, row]))
   const rows: EmergencyAccountStatus[] = selected.map((id, index) => {
     const user = userOf(ctx, id)
     const upn = user?.userPrincipalName ? targetOf(ctx, id) : null
@@ -206,24 +207,30 @@ const fixSet = (step: Step, id: string): Set<string> => new Set((step.checks?.it
 export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): EmergencyAccountTasks {
   const domain = initialDomain(ctx.snapshot)
   const selected = ctx.mapping.breakGlassUserIds
+  const preparations: Preparations = new Map(emergencyAccountPreparationOf(ctx.snapshot, ctx.mapping, ctx.groups).map(row => [row.accountId, row]))
   const targets = selected.map(id => targetOf(ctx, id))
   const targetLine = targets.length ? targets.join(', ') : 'the emergency account'
-  const registrationTarget = targets.length === 1 ? targets[0] : 'the account you are preparing'
-  const repeatLead = targets.length
-    ? [`Keep your working administrator session open. Accounts: **${targets.join('**, **')}**.`, 'Repeat this procedure separately for each account listed above.']
-    : ['Keep your working administrator session open.']
+  // The passkey procedure names only the selected accounts whose approved-passkey
+  // check fails; it stays available when none does, and says so.
+  const passkeyChecks = selected.map(id => preparations.get(id)?.checks.approvedPasskey ?? null)
+  const needing = selected.filter((_, index) => passkeyChecks[index] === false).map(id => targetOf(ctx, id))
+  const registrationTarget = needing.length === 1 ? needing[0] : 'the account you are preparing'
+  const repeatLead = needing.length > 1
+    ? [`Keep your working administrator session open. Accounts: **${needing.join('**, **')}**.`, 'Repeat this procedure separately for each account listed above.']
+    : needing.length === 1
+      ? ['Keep your working administrator session open.']
+      : selected.length
+        ? ['Keep your working administrator session open.', passkeyChecks.every(check => check === true) ? 'No selected account currently needs an approved passkey.' : 'No selected account is confirmed to need an approved passkey.']
+        : ['Keep your working administrator session open.']
   const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
-  const modelFacts = (models: ApprovedModel[]) => models.map(model => ({ label: model.name, value: `AAGUID: ${model.aaguid}` }))
   const variants = emergencyRegistrationVariants(registrationTarget).map(variant => ({
     ...variant,
-    facts: modelFacts(approvedModels.filter(model => variant.id === 'yubikey' ? /yubikey/i.test(model.name) : variant.id === 'authenticator-ios' ? /authenticator.*ios/i.test(model.name) : /authenticator.*android/i.test(model.name))),
     steps: [...repeatLead, ...variant.steps.slice(0, -1), 'Cannot complete registration sign-in? Use **Troubleshooting → Temporary Access Pass**.', variant.steps.at(-1)!],
   }))
   const customHardware = approvedModels.filter(model => model.source === 'plan' && model.recovery && !/yubikey/i.test(model.name))
   if (customHardware.length) variants.push({
     id: 'approved-hardware',
     label: 'Additional approved hardware key',
-    facts: modelFacts(customHardware),
     steps: [
       ...repeatLead,
       ...yubiKeySteps(registrationTarget, `approved hardware security key (${customHardware.map(model => `${model.name}, AAGUID ${model.aaguid}`).join('; ')})`).slice(0, -1),
@@ -245,7 +252,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
-  const accounts = accountStatuses(ctx)
+  const accounts = accountStatuses(ctx, preparations)
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2
