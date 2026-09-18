@@ -139,6 +139,7 @@ Do these in order. No UI redesign or added permissions is authorized by this han
 4. **Bounded audit hardening.** Measure the directory-audit read on the real tenant. It currently requests a tenant-wide 90-day lookback and projects a small record; it does not guarantee 90 days of provider retention. Do not claim no unobserved mutation. Relevance is conservative: broad account/group audit updates may reset proof even if a property was cosmetic. Improve this only with observed provider fields plus tests; do not suppress security changes to reduce noise.
 5. **Presentation follow-up, only after owner review.** Step 4's configuration tile can still grow tall with many genuine prerequisite failures; Step 3 can repeat prerequisite rows alongside passing registration details. Capture a real example and propose a bounded simplification before changing tile design.
 6. Once these results are understood, move to the requested MFA Readiness review using the same evidence and presentation rules.
+7. **Windows Hello model names.** `PASSKEY_DEFAULT_MODELS` has no Windows Hello entry, so a tenant that allow-lists a Windows Hello AAGUID renders it as `AAGUID 9ddd1817-…` / an unnamed existing model. Do not add Windows Hello to the default set without an owner decision: the portal warns attestation is not supported for Windows Hello passkeys.
 
 ## Verification and release procedure
 
