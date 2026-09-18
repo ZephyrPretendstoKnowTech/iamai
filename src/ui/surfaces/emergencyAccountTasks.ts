@@ -3,7 +3,7 @@
 // is deliberately presentation-only: it does not decide readiness, persist a
 // choice, or change tenant state.
 import type { Step } from '../../roadmap/types.ts'
-import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
+import { approvedPasskeyModels, emergencyValidationIssueKey } from '../../roadmap/emergencyJourney.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
@@ -63,6 +63,8 @@ export type EmergencyAccountStatus = {
   completed: string[]
   remainingCount: number | null
   satisfied: boolean
+  /** Signals shown beside the account that are not checks: they count toward nothing and gate nothing. */
+  notes?: { label: string; value: string }[]
 }
 
 /** Shared task projection used by the connected emergency-access steps. */
@@ -138,7 +140,23 @@ export function emergencyRegistrationVariants(upn: string): EmergencyAccountTask
 
 type Preparations = ReadonlyMap<string, ReturnType<typeof emergencyAccountPreparationOf>[number]>
 
-function accountStatuses(ctx: StepVarContext, preparations: Preparations): EmergencyAccountStatus[] {
+/**
+ * The dedicated-account signal (validation rule bg.notPersonal: populated
+ * personal profile fields, or the account signed in to IAMAI), read from the
+ * step's own findings — the same item Verify Emergency Access shows — so the
+ * selection step states it where the selection is made. A note, never a check.
+ */
+function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string; value: string }[]> {
+  const notes = new Map<string, { label: string; value: string }[]>()
+  for (const item of (step.configurationFindings ?? []).flatMap(finding => finding.items ?? [])) {
+    if (item.outcome !== 'fail' || !item.accountId || !item.issueKeys?.includes(emergencyValidationIssueKey('bg.notPersonal', item.accountId))) continue
+    const id = item.accountId.toLowerCase()
+    notes.set(id, [...(notes.get(id) ?? []), { label: item.factLabel ?? item.label, value: item.value }])
+  }
+  return notes
+}
+
+function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes: ReadonlyMap<string, { label: string; value: string }[]> = new Map()): EmergencyAccountStatus[] {
   const selected = ctx.mapping.breakGlassUserIds
   const domain = initialDomain(ctx.snapshot)
   const rows: EmergencyAccountStatus[] = selected.map((id, index) => {
@@ -192,7 +210,8 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations): Emerg
       instruction = 'IAMAI could not fully check this account. Review the scan coverage details; no account change is established.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
-    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true) }
+    const note = notes.get(id.toLowerCase())
+    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true), ...(note ? { notes: note } : {}) }
   })
   while (rows.length < 2) {
     const slot = rows.length + 1
@@ -252,7 +271,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
-  const accounts = accountStatuses(ctx, preparations)
+  const accounts = accountStatuses(ctx, preparations, dedicatedAccountNotes(step))
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2
