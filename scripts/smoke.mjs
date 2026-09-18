@@ -41,15 +41,14 @@ const STEP_FORBID = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step')
 const MORE_HEADINGS = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step.more')?.allow?.headings ?? []
 const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_HEADINGS.includes(f))]
 
-// MFA Readiness's summary sentence (pages.readiness.summary), matched in either
-// tense: content/render.ts pluralise may bend the verb to the count.
-const SUMMARY_LINE = /(\d+) of (\d+) (?:is|are) Ready\./
+// MFA Readiness's answer (pages.readiness.summary), matched in either tense:
+// content/render.ts pluralise may bend the noun and the verb to the count.
+const SUMMARY_LINE = /(\d+) of (\d+) (?:people|person) (?:is|are) ready for phishing-resistant sign-in\./
 
-// The worklist's six zones and the three summary counts, read from the words the
-// page ships rather than copied here (Step 7).
+// The states the bar and the groups name, read from the words the page ships
+// rather than copied here (prompt 62).
 const CONTENT_PAGES = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).pages
-const READINESS_COLUMNS = CONTENT_PAGES.readiness.columns
-const STAT_TITLES = ['needsProof', 'needsSetup', 'unknown'].map((k) => CONTENT_PAGES.readiness.states[k].stat)
+const STATE_TITLES = Object.values(CONTENT_PAGES.readiness.states).map((s) => s.title)
 
 const PORT = Number(process.env.SMOKE_PORT ?? 5199)
 const CDP_PORT = Number(process.env.SMOKE_CDP_PORT ?? 9444)
@@ -345,86 +344,58 @@ try {
   check('Connect (scanned): the plan state counts the steps and how many are completed', await waitFor(`/ready · \\d+ steps, \\d+ completed · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ completed[^\n]*/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
   check('Connect (scanned): custom baseline controls stay hidden', await evaluate(`![...document.querySelectorAll('button')].some(b => /Change baseline/.test(b.textContent)) && !document.querySelector('input[type=file]')`))
-  // MFA Readiness (Step 7): who can meet phishing-resistant MFA, what IAMAI can prove, and what each person needs next.
+  // MFA Readiness (prompt 62): phishing-resistant sign-in for everyone, seamless on every device.
   await go('readiness')
-  check('MFA Readiness: the summary renders', await waitFor(`document.querySelectorAll('main.page .readiness-summary .summary-stat').length === 3`))
+  check('MFA Readiness: the answer renders', await waitFor(`!!document.querySelector('main.page .readiness-answer .headline')`))
   t = await text()
-  check('MFA Readiness: the heading and its one opening sentence', /MFA Readiness/.test(t) && /See who can meet phishing-resistant MFA/.test(t))
-  // The answer over the active people, then the three counts beside it; Ready and the three sum to the active people.
+  check('MFA Readiness: the heading and its one opening sentence', /MFA Readiness/.test(t) && /Phishing-resistant sign-in for everyone/.test(t))
   const summaryLine = t.match(SUMMARY_LINE)
-  const statCounts = await evaluate(`[...document.querySelectorAll('main.page .readiness-summary .summary-stat')].map((b) => ({ title: ((b.querySelector('.stat-k') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.stat-n') || {}).textContent || '').trim()) }))`)
-  check('MFA Readiness: the summary says how many active people are Ready', !!summaryLine, (t.match(/[^\n]*(?:is|are) Ready\.[^\n]*/) ?? [''])[0])
+  check('MFA Readiness: the answer says how many active people are ready', !!summaryLine, (t.match(/[^\n]*ready for phishing-resistant[^\n]*/) ?? [''])[0])
+  // The bar's legend names each state with its count; the counts partition the active people.
+  // The legend's text is flattened here rather than in the page: a regex inside an evaluated template literal loses its escapes.
+  const flat = (x) => String(x ?? '').split(/\s+/).join(' ').trim()
+  const legend = (await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].map((li) => li.textContent)`)).map((x) => { const m = flat(x).match(/^(.*) (\d+)$/); return m ? { title: m[1], n: Number(m[2]) } : { title: flat(x), n: NaN } })
   check(
-    'MFA Readiness: one summary panel — the answer and three counts that are buttons — and no second boxed count',
-    (await evaluate(`(() => { const p = document.querySelector('main.page .readiness-summary'); if (!p) return false; return p.classList.contains('panel') && p.querySelectorAll(':scope > .summary-main').length === 1 && p.querySelectorAll(':scope > button.summary-stat').length === 3 && document.querySelectorAll('main.page .group-tile, main.page .group-counts').length === 0 })()`)),
+    'MFA Readiness: the legend names states by their words and sums to the active people',
+    legend.length > 0 && legend.every((g) => STATE_TITLES.includes(g.title)) && !!summaryLine && legend.reduce((a, g) => a + g.n, 0) === Number(summaryLine[2]),
+    legend.map((g) => `${g.title} ${g.n}`).join(' | '),
   )
+  check('MFA Readiness: no stat tiles, no progress strip, no dialog, no ladder', (await evaluate(`document.querySelectorAll('main.page .summary-stat, main.page .progress-strip, main.page dialog, main.page .ladder, main.page .rung-badge').length`)) === 0)
+  const pressedWord = async () => flat(await evaluate(`((document.querySelector('main.page .toolbar .btn.pill[aria-pressed="true"]') || {}).textContent || '')`))
   check(
-    'MFA Readiness: Need proof, Need setup and Unknown beside Ready, summing to the active people',
-    statCounts.map((g) => g.title).join(' | ') === STAT_TITLES.join(' | ') && !!summaryLine && Number(summaryLine[1]) + statCounts.reduce((x, g) => x + g.n, 0) === Number(summaryLine[2]),
-    statCounts.map((g) => `${g.title} ${g.n}`).join(' | '),
+    'MFA Readiness: the toolbar — a search box, then the filters as pills, Needs action pressed by default',
+    (await evaluate(`!!document.querySelector('main.page .toolbar input[type=search]')`)) &&
+      (await evaluate(`document.querySelectorAll('main.page .toolbar .btn.pill[aria-pressed]').length`)) >= 3 &&
+      /^Needs action/.test(await pressedWord()),
   )
-  check('MFA Readiness: no ladder and no rung badge on the page', (await evaluate(`document.querySelectorAll('main.page .ladder, main.page .ladder-row, main.page .rung-tile, main.page .rung-badge').length`)) === 0)
-  check(
-    'MFA Readiness: one strip for tenant evidence and the passkey rollout',
-    (await evaluate(`document.querySelectorAll('main.page .progress-strip .progress-item').length`)) === 2 && /Tenant readiness/.test(t) && /\d+ of \d+ have qualifying sign-in proof/.test(t) && /Passkey rollout/.test(t) && /\d+ of \d+ (?:has|have) a passkey/.test(t),
-  )
-  check('MFA Readiness: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
-  check(
-    'MFA Readiness: the toolbar — a search box, then the filters as pills, Needs action pressed by default, and no dropdown',
-    (await evaluate(`document.querySelectorAll('main.page select').length`)) === 0 &&
-      (await evaluate(`!!document.querySelector('main.page .toolbar input[type=search]')`)) &&
-      (await evaluate(`document.querySelectorAll('main.page .toolbar .btn.pill[aria-pressed]').length`)) >= 5 &&
-      (await evaluate(`((document.querySelector('main.page .toolbar .btn.pill[aria-pressed="true"]') || {}).textContent || '').trim()`)) === 'Needs action' &&
-      /No passkey/.test(t),
-  )
+  // The worklist is grouped by next action: each group names its action and its count, and the counts are the people who need action.
+  const groups = await evaluate(`[...document.querySelectorAll('main.page details.readiness-group')].map((d) => ({ state: d.dataset.state, next: d.classList.contains('next'), open: d.open, n: Number(((d.querySelector('.group-count') || {}).textContent || '').trim()), title: ((d.querySelector('.group-title') || {}).textContent || '').trim() }))`)
+  const needsAction = Number(((await pressedWord()).match(/(\d+)$/) ?? [])[1] ?? NaN)
+  check('MFA Readiness: the groups name their action and count the people who need action', groups.every((g) => g.title.length > 0 && Number.isFinite(g.n)) && (groups.length === 0 || groups.reduce((a, g) => a + g.n, 0) === needsAction), JSON.stringify(groups))
+  check('MFA Readiness: the next check is the first group, and it is open', groups.length === 0 || (await evaluate(`!!document.querySelector('main.page .readiness-setup-next')`)) || (groups[0].next && groups[0].open), JSON.stringify(groups[0] ?? null))
+  check('MFA Readiness: the rail holds tenant setup, approved models, the uncounted and the evidence read', (await evaluate(`document.querySelectorAll('main.page .readiness-rail .readiness-tile').length`)) === 4 && /Tenant setup/.test(t) && /Evidence read/.test(t))
   check('MFA Readiness: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
-  // A summary count is a filter: its hash lands on it pressed, and the worklist shows exactly the rows it counts.
-  const setupStat = statCounts[1]
-  await go('readiness/needsSetup')
+  // A state's hash filters the worklist to that state alone, and says so on a pressed pill.
+  await go('readiness/method')
   await sleep(500)
-  const setupRows = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
-  const setupPressed = await evaluate(`((document.querySelectorAll('main.page .readiness-summary .summary-stat')[1] || null) || { getAttribute: () => null }).getAttribute('aria-pressed')`)
-  check("MFA Readiness: a count's hash filters the worklist to exactly the rows it counts, and the count says it is pressed", setupPressed === 'true' && setupRows === (setupStat?.n ?? -1), `${setupPressed}: ${setupRows} of ${setupStat?.n}`)
+  const methodGroups = await evaluate(`[...document.querySelectorAll('main.page details.readiness-group')].map((d) => d.dataset.state)`)
+  check("MFA Readiness: a state's hash filters the worklist to that state and says so", methodGroups.every((s) => s === 'method') && /Needs a method/.test(await pressedWord()), methodGroups.join(','))
   // The old name still reaches the one surface, and the app rewrites the hash.
   await go('today')
   check('The old Today hash reaches MFA Readiness', await waitFor(`location.hash === '#/readiness'`))
   await go('readiness/all')
   await sleep(400)
-  // Walk fixes (prompt 47.1 Part 2): markers stand off the name; no inner scroll; a hairline header, not a band.
-  // The approved table's six person zones, in its order, with the role a word of
-  // its own rather than a marker beside the name (task 037).
-  check(
-    'MFA Readiness: the worklist has the six zones in order — Person, Role, Methods, Proof, Readiness, Action — and the role is a word',
-    (await evaluate(`(() => { const h = [...document.querySelectorAll('main.page table.datatable thead th')].map((x) => x.textContent.trim()); return JSON.stringify(h) })()`)) ===
-      JSON.stringify(READINESS_COLUMNS) &&
-      (await evaluate(`(() => { const r = document.querySelector('main.page td .role'); return !!r && r.textContent.trim().length > 0 })()`)),
-  )
-  check('MFA Readiness: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
-  // The approved pack draws the head as a small uppercase key on the inset
-  // surface inside the table's own panel (task 037).
-  check(
-    'MFA Readiness: the approved table panel, with the head as an uppercase key on the inset surface',
-    await evaluate(`(() => { const w = getComputedStyle(document.querySelector('main.page .datatable-wrap')); const th = getComputedStyle(document.querySelector('main.page table.datatable th')); return w.borderTopWidth === '1px' && parseFloat(w.borderTopLeftRadius) >= 12 && th.textTransform === 'uppercase' && th.position === 'static' && th.backgroundColor !== 'rgba(0, 0, 0, 0)' })()`),
-  )
-  // The detail is one level deep (Step 7): closed until a person's action is
-  // pressed, then Why and Next for that person and nothing else; Close puts it away.
-  check('MFA Readiness: no detail open until a person is chosen', (await evaluate(`document.querySelectorAll('main.page dialog[open]').length`)) === 0)
-  // The detail's text as one line, flattened here rather than in the page: a
-  // regex inside an evaluated template literal loses its escapes.
-  const flat = (x) => String(x ?? '').split(/\s+/).join(' ')
-  const actionLabels = await evaluate(`[...document.querySelectorAll('main.page table.datatable tbody tr button.row-action')].map((b) => b.textContent.trim())`)
-  await evaluate(`(() => { const b = document.querySelector('main.page table.datatable tbody tr button.row-action'); if (b) { b.scrollIntoView({ block: 'center' }); b.click() } })()`)
+  check('MFA Readiness: every row names its devices, its methods and its next step', await evaluate(`(() => { const rows = [...document.querySelectorAll('main.page .readiness-row:not(.head)')]; return rows.length > 0 && rows.every((r) => r.querySelector('.devices') && r.querySelector('.methods') && r.querySelector('.next-step') && r.querySelector('button.open')) })()`))
+  // The person panel is one level deep and never a modal over the page: closed until Details is pressed, then that person; Close puts it away.
+  check('MFA Readiness: no panel open until a person is chosen', (await evaluate(`document.querySelectorAll('main.page .readiness-panel').length`)) === 0)
+  await evaluate(`(() => { const b = document.querySelector('main.page .readiness-row button.open'); if (b) { b.scrollIntoView({ block: 'center' }); b.click() } })()`)
   await sleep(300)
-  const detail = flat(await evaluate(`(() => { const d = document.querySelector('main.page dialog.readiness-detail[open]'); return d ? d.innerText : '' })()`))
-  check(
-    "MFA Readiness: a person's action opens the detail for them, with Why and Next and nothing else",
-    actionLabels.length > 0 && /why/i.test(detail) && /next/i.test(detail) && (await evaluate(`document.querySelectorAll('main.page dialog.readiness-detail[open] .detail-block').length`)) === 2,
-    detail.slice(0, 160),
-  )
-  check('MFA Readiness: no raw identifier in the detail', !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(detail))
-  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page dialog.readiness-detail button')].find((x) => x.textContent.trim() === 'Close'); if (b) b.click() })()`)
+  const panel = flat(await evaluate(`(() => { const d = document.querySelector('main.page .readiness-panel'); return d ? d.innerText : '' })()`))
+  check("MFA Readiness: Details opens the person's panel: next step, devices and methods", /Next step/.test(panel) && /Devices seen/.test(panel) && /Phishing-resistant methods/.test(panel) && (await evaluate(`(() => { const d = document.querySelector('main.page .readiness-panel'); return !!d && d.getAttribute('aria-modal') === 'false' })()`)), panel.slice(0, 160))
+  check('MFA Readiness: no raw identifier in the panel', !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(panel))
+  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .readiness-panel button')].find((x) => x.textContent.trim() === 'Close'); if (b) b.click() })()`)
   await sleep(250)
-  check('MFA Readiness: Close puts the detail away', (await evaluate(`document.querySelectorAll('main.page dialog[open]').length`)) === 0)
+  check('MFA Readiness: Close puts the panel away', (await evaluate(`document.querySelectorAll('main.page .readiness-panel').length`)) === 0)
   await go('readiness')
   await sleep(400)
   // Inventory and Licensing reachable
@@ -606,14 +577,11 @@ try {
     const scopeLoaded = await waitFor(`location.hash === ${JSON.stringify(handoff.href)} && /Filtered to the \\d+ (people|person)\\b/.test(document.querySelector('main.page')?.innerText ?? '')`)
     check('MFA Readiness: the scoped destination finishes loading', scopeLoaded,
       scopeLoaded ? '' : await evaluate(`location.href + ' | ' + (document.querySelector('main.page')?.innerText ?? 'No main content').slice(0, 300)`))
-    const scoped = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
     const t2 = await text()
-    // The count bends its noun (pluralise): one person, or n people.
-    check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ (people|person)\b/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
+    const scopedAnswer = t2.match(SUMMARY_LINE)
+    // The count bends its noun (pluralise): one person, or n people. The answer is taken over exactly the step's people.
+    check('MFA Readiness: opened from a step, it says which step and counts its people', /Filtered to the \d+ (people|person)\b/.test(t2) && (Number.isNaN(wanted) || (!!scopedAnswer && Number(scopedAnswer[2]) === wanted)), `${scopedAnswer?.[0]}, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
     check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
-    // The summary covers this step's complete cohort; the table lists its remaining work.
-    const scopedSummary = t2.match(/(\d+) of (\d+) people have a method ready for this step/)
-    check('MFA Readiness: the scoped summary and remaining-method rows describe the same cohort', !!scopedSummary && Number(scopedSummary[2]) - Number(scopedSummary[1]) === scoped, `${scopedSummary?.[0]}: ${scoped} remaining rows`)
     await go('plan')
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   }
@@ -725,9 +693,8 @@ try {
   await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && /no sign-in records/.test(document.body.innerText)`)
   t = await text()
   check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
-  // The Show list carries the content file's state names, "Proven" included (walk-51 item 10),
-  // so the check reads the table's state chips, not the page text.
-  check('Unlicensed tenant: nobody is Proven without records', !(await evaluate(`[...document.querySelectorAll('main.page td .status, main.page td .chip')].some((e) => /^Proven$/.test((e.textContent || '').trim()))`)))
+  // Without sign-in records nobody can be confirmed: the legend names no Ready or Seamless people.
+  check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
   check('Unlicensed tenant: the plan still generates', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
@@ -1055,7 +1022,7 @@ try {
 
   // MFA Readiness renders over the sample people.
   await demoGo('readiness')
-  check('Demo: MFA Readiness renders over the sample people', await waitFor(`document.querySelectorAll('main.page table.datatable tbody tr').length >= 4`))
+  check('Demo: MFA Readiness renders over the sample people', await waitFor(`document.querySelectorAll('main.page .readiness-row:not(.head)').length >= 4`))
 
   // Export: print page 1 is the posture summary (item 8).
   await demoGo('export')
