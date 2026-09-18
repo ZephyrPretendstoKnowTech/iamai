@@ -22,7 +22,6 @@ const HEAD = C.pages.app.plan.stepContract.headings as Record<string, string>
 // calls renderStep (ContentStep renders a policy step from the baseline via
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
-import { COMPAT_SHOW_KEYS, SHOW_KEYS } from '../derive/mfaReadiness.ts'
 // The MFA method guidance, resolved (shared references expanded) exactly as the
 // product resolves it, so the review page shows the words the panel shows.
 import { METHOD_GUIDES, PASSKEY_TARGET, GUIDE_POINTER, TENANT_PREREQUISITE, USER_INSTRUCTION } from './methodGuides.ts'
@@ -818,52 +817,19 @@ export function renderPages(): string {
       ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT),
   )
   const td = P.readiness
-  // MFA Readiness (Step 7): the summary and its three counts, the strip, the
-  // filters, the worklist's words and the detail's Why and Next.
-  const stateRows = ['ready', 'needsProof', 'needsSetup', 'unknown']
-    .map((k) => `<li><b>${esc(td.states[k].title)}</b>${td.states[k].stat ? ` — ${esc(td.states[k].stat)} — ${esc(td.states[k].hint)} <span class="sub">(${esc(td.states[k].aria)})</span>` : ''}</li>`)
-    .join('')
-  const showWords = [...SHOW_KEYS, ...COMPAT_SHOW_KEYS].map((k) => td.show[k])
-  const ledgerParts = ['notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
-  const dt = td.detail as Record<string, string>
-  const sampleVars = { proof: 'Passkey on iOS', name: 'Shallan Davar', missing: 'Windows', methods: 'passkey', method: 'passkey', platform: 'Windows', date: 'Sep 2' }
+  // MFA Readiness (prompt 62): every word the page, its panel and its rail can
+  // show, section by section, each filled with sample values.
+  const readinessVars = { ready: 18, active: 30, seamless: 7, date: 'Sep 11', n: 6, shown: 3, step: 'Require MFA for Everyone', option: 'a passkey in Microsoft Authenticator', os: 'iPhone', device: 'the iPhone', method: 'passkey', from: 'Aug 19', to: 'Sep 18', aaguid: 'cb69481e…' }
+  const leaves = (v: unknown): string[] => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap(leaves) : v && typeof v === 'object' ? Object.entries(v as Record<string, unknown>).filter(([k]) => k !== '$comment').flatMap(([, x]) => leaves(x)) : [])
   sec(
     'MFA Readiness',
     `<p class="sub">${esc(td.eyebrow)}</p>` +
       `<h2 class="h1">${esc(td.h1)}</h2>` +
       p(td.lead, {}) +
-      h('The summary') +
-      `<p class="sub">${esc(td.summaryEyebrow)} · ${esc(td.summaryLabel)}</p>` +
-      p(fill(td.summary, { ready: 7, active: 18 }), {}) +
-      p(td.summarySub, {}) +
-      p(td.summaryNone, {}) +
-      `<ul>${stateRows}</ul>` +
-      h('The Plan gate and passkey rollout strip') +
-      ul([td.strip.label, td.strip.gate, fill(td.strip.gateLine, { required: 17, active: 18 }), fill(td.strip.gateMore, { n: 10 }), td.strip.gateMet, td.strip.gateNotMeasured, td.strip.gateLink, td.strip.rollout, fill(td.strip.rolloutLine, { have: 9, active: 18 }), fill(td.strip.rolloutWithout, { n: 9 }), td.strip.rolloutNone], {}) +
-      h('Opened from a Plan step') +
-      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back], {}) +
-      `<p class="sub">${esc(td.search)} · Filters: ${showWords.map(esc).join(' · ')}</p>` +
-      `<p class="sub">Columns: ${(td.columns as string[]).join(' · ')} · ${esc(td.signInAddress)}</p>` +
-      h('Methods') +
-      `<p class="sub">${['passkey', 'windowsHello', 'certificate', 'authenticator', 'oath', 'phone', 'none', 'unknown'].map((k) => esc(td.methods[k])).join(` ${esc(td.methods.join)} `)}</p>` +
-      `<p class="sub">${Object.values(td.methodsInSentence as Record<string, string>).map(esc).join(' · ')}</p>` +
-      ul(Object.values(td.methodNotes as Record<string, string>), { method: 'Passkey' }) +
-      h('Proof lines') +
-      ul(Object.values(td.proof as Record<string, string>), { method: 'Passkey', platform: 'iOS', date: 'Sep 2' }) +
-      h('Actions') +
-      ul(Object.values(td.actions as Record<string, string>), { platform: 'Windows', method: 'passkey' }) +
-      h('The detail: Why and Next') +
-      ul([dt.eyebrow, fill(dt.title, { name: 'Shallan Davar', state: td.states.needsProof.title }), dt.why, dt.next, dt.close, dt.scanAgain, dt.and], {}) +
-      ul(Object.entries(dt).filter(([k]) => /^(why|next)[A-Z]/.test(k)).map(([, v]) => v), sampleVars) +
-      h('Under the table') +
-      p(`${fill(td.footerLead, { active: 18 })} ${ledgerParts}`, {}) +
-      `<p><a>${esc(td.inventory)}</a></p>` +
-      `<p class="sub">${esc(td.empty)}</p>` +
-      h('Roles, and kinds (an account that is not a person)') +
-      `<p class="sub">${esc(td.roles.admin)} · ${esc(td.roles.person)} · ${esc(td.guest)}</p>` +
-      '<ul>' +
-      Object.values(td.kinds as Record<string, string>).map((v) => `<li>${esc(v)} — ${esc(td.notAPerson)}</li>`).join('') +
-      '</ul>',
+      Object.entries(td as Record<string, unknown>)
+        .filter(([k]) => !['$comment', 'h1', 'eyebrow', 'lead'].includes(k))
+        .map(([k, v]) => h(k) + ul(leaves(v), readinessVars))
+        .join(''),
   )
   // The method guidance (task 014), one source and not four: the text the help
   // desk copies and the campaign step's pointer are these lines. Drawn here so

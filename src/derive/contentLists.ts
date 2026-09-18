@@ -8,7 +8,7 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { READINESS_STATES } from '../scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
@@ -60,9 +60,12 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // once. Needs setup splits in two, because somebody with no method at all
   // needs a way in before they can register anything.
   const inState = (s: ReadinessState): MfaViability[] => l.states[s].map((p) => p.viability)
-  const noMethod = active.filter((v) => v.readiness.state === 'needsSetup' && !v.mfaCapable)
-  const needsSetup = inState('needsSetup').filter((v) => v.mfaCapable)
-  const needsProof = inState('needsProof')
+  // Prompt 62: no usable phishing-resistant method (Needs a method, or blocked by a
+  // tenant setting) is the old Needs setup; a method not confirmed everywhere they
+  // sign in (Confirm it, Needs a device) is the old Needs proof.
+  const noMethod = active.filter((v) => (v.readiness.state === 'method' || v.readiness.state === 'blocked') && !v.mfaCapable)
+  const needsSetup = [...inState('method'), ...inState('blocked')].filter((v) => v.mfaCapable)
+  const needsProof = [...inState('confirm'), ...inState('device')]
   const readinessUnknown = inState('unknown')
   // Ordinary MFA, for the policy that requires it: a method, and no MFA sign-in
   // in the records. With Require MFA for Everyone in place every sign-in
@@ -104,7 +107,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const notYetAtTopRung = (ids: readonly string[]): { names: string[]; count: number | undefined; total: number } => {
     const below = ids.filter((id) => {
       const v = byId.get(id)
-      return v !== undefined && v.activity === 'active' && !bg.has(id) && v.readiness.state !== 'ready'
+      return v !== undefined && v.activity === 'active' && !bg.has(id) && !isReady(v.readiness.state)
     })
     return { names: below.length <= NAMES_UP_TO ? names(below) : [], count: below.length > NAMES_UP_TO ? below.length : undefined, total: below.length }
   }
@@ -152,6 +155,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // service principal holds a role but is never a person; the emergency accounts
     // are not people (sets.ts notPeopleIds); byId holds the person accounts.
     adminNames: names([...adminUserIds(snapshot.roles)].filter((id) => byId.has(id))),
+    // The admins the campaign still waits on (prompt 62): active, not an emergency account, and not Ready.
+    adminsNotReady: names([...admins].filter((id) => { const v = byId.get(id); return v !== undefined && v.activity === 'active' && !bg.has(id) && !isReady(v.readiness.state) })),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
     eligible: names(Object.keys(snapshot.roles.eligible).filter((id) => byId.has(id))),
     // The special-care picker rows ("name · state"), and their ids.

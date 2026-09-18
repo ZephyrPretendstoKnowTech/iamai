@@ -5,8 +5,8 @@
 // (active / dormant / neverSignedIn) and MFA state — evidence rules apply only
 // to active users.
 import { releasesBehind } from './platform.ts'
-import { personReadiness } from './phishingResistant.ts'
-import type { PersonHistory, PersonReadiness, PlatformSeen, ProofRecord } from './phishingResistant.ts'
+import { emptyReadinessContext, personReadiness } from './phishingResistant.ts'
+import type { DeviceSeen, PersonHistory, PersonReadiness, PlatformSeen, ProofRecord, ReadinessContext } from './phishingResistant.ts'
 
 // §10.1 constants
 export const INACTIVE_DAYS = 90
@@ -76,9 +76,15 @@ export type MfaViabilityInput = {
     proofs?: ProofRecord[] | null
     /** The platform families the records show the person signing in from. */
     platforms?: PlatformSeen[]
+    /** The devices behind those platforms (schema 10); null on an older snapshot. */
+    devices?: DeviceSeen[] | null
+    apps?: string[]
+    trustedLocationSeen?: boolean
   }
   /** What earlier scans kept about this person (scoring/mfaHistory.ts). */
   history?: PersonHistory | null
+  /** The tenant's readiness context (derive/readinessContext.ts): the window and settings every person is judged against. */
+  readinessContext?: ReadinessContext | null
   tenant: {
     now: string
     newestAuthenticatorVersionByPlatform: Record<string, string>
@@ -176,12 +182,16 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   const isAdmin = registration?.isAdmin ?? false
   const { strongestMethod, methodTiers } = methodTiersOf(registration?.methodsRegistered ?? [])
 
+  // The later of the directory's date and the records' (prompt 62): signInActivity
+  // lags, and an account seen signing in today is not "never signed in".
+  const recordsLast = (evidence.platforms ?? []).map((p) => p.at).sort().pop() ?? null
+  const lastSuccess = [input.lastSuccessfulSignIn, recordsLast].filter((x): x is string => !!x).sort().pop() ?? null
   const activity: ActivityState =
-    input.successfulActivityAvailable === false
+    input.successfulActivityAvailable === false && recordsLast === null
       ? 'unknown'
-      : lastSuccessfulSignIn === null
+      : lastSuccess === null
       ? 'neverSignedIn'
-      : daysBetween(lastSuccessfulSignIn, tenant.now) > INACTIVE_DAYS
+      : daysBetween(lastSuccess, tenant.now) > INACTIVE_DAYS
         ? 'dormant'
         : 'active'
 
@@ -213,8 +223,11 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     readiness: personReadiness({
       methods,
       registered: registration?.methodsRegistered ?? null,
-      signIns: { read: evidenceUsable, proofs: evidence.proofs === undefined ? [] : evidence.proofs, platforms: evidence.platforms ?? [] },
+      signIns: { read: evidenceUsable, proofs: evidence.proofs === undefined ? [] : evidence.proofs, platforms: evidence.platforms ?? [], devices: evidence.devices ?? null, apps: evidence.apps ?? [], trustedLocationSeen: evidence.trustedLocationSeen },
+      lastSuccessfulSignIn: lastSuccess,
       history: input.history ?? null,
+      userId: input.userId,
+      context: input.readinessContext ?? emptyReadinessContext(tenant.now),
     }),
     signals,
   }

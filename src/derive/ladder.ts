@@ -53,7 +53,7 @@ export type LadderMapping = { readonly [K in 'breakGlassUserIds' | 'serviceAccou
 export function ladder(snapshot: TenantSnapshot, mapping: LadderMapping, now: string): Ladder {
   // The emergency and service accounts are not people (sets.ts notPeopleIds): one population with the campaign.
   const notPeople = notPeopleIds(mapping)
-  const scored = sortViability(buildViabilityInputs(snapshot, now, notPeople).map(scoreMfaViability))
+  const scored = sortViability(buildViabilityInputs(snapshot, now, notPeople, mapping as Partial<MappingState>).map(scoreMfaViability))
   const viability = new Map(scored.map((v) => [v.userId, v]))
   const pop = new Set(campaignIds(scored, snapshot, mapping))
   const admins = adminUserIds(snapshot.roles ?? { active: {} })

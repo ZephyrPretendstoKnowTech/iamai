@@ -103,8 +103,8 @@ export function whoBlocks(who: Record<string, unknown>, ex: Ex): { inline: WhoBl
   if (groups && who.overlap && whole(who.overlap, ex)) (held.length > 0 ? held : inline).push({ key: 'overlap', lead: fillText(who.overlap, ex), names: [] })
   // The admins line names them inside its sentence rather than after it, so the
   // whole line moves once there are more of them than can be read at a glance.
-  if (who.adminsNote && truthy(ex.adminNames) && whole(who.adminsNote, ex)) {
-    const many = Array.isArray(ex.adminNames) && (ex.adminNames as unknown[]).length > NAMES_INLINE
+  if (who.adminsNote && truthy(ex.adminsNotReady) && whole(who.adminsNote, ex)) {
+    const many = Array.isArray(ex.adminsNotReady) && (ex.adminsNotReady as unknown[]).length > NAMES_INLINE
     ;(many ? held : inline).push({ key: 'admins', lead: fillText(who.adminsNote, ex), names: [] })
   }
   return { inline, held }

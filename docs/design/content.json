@@ -83,7 +83,7 @@
       "$comment": "The one source of MFA remediation guidance (task 014). MFA Readiness's person panel, its copy-for-the-help-desk box, the campaign step's pointer and the campaign email all read from here; nothing writes a second version. A guide's steps may name a shared line as \"@key\" into `common`, so a sentence two platforms share is written once (src/content/methodGuides.ts resolves them). Which guide applies to a person is decided by the evidence, not here.",
       "target": "The target is phishing-resistant MFA the person has been seen signing in with: a passkey, Windows Hello for Business or a certificate.",
       "prereq": "Passkey (FIDO2) has to be on in the tenant first; Configure Passkey Authentication turns it on.",
-      "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs setup and Needs proof lists there.",
+      "pointer": "MFA Readiness lists each person’s next step, grouped by what to do; start with its next check.",
       "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
       "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
       "common": {
@@ -817,90 +817,148 @@
       "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
     },
     "readiness": {
-      "$comment": "MFA Readiness (task 012; Step 7, docs/design/approved/reference/iamai-mfa-readiness-final.html): who can meet phishing-resistant MFA, what IAMAI can actually prove, and what each person needs next. Every state, method, proof line and action is scoring/phishingResistant.ts personReadiness; these are only its words (surfaces/readinessCells.ts).",
+      "$comment": "MFA Readiness (prompt 62, docs/design/approved/anatomy/mfa-readiness-v3.html): phishing-resistant sign-in for everyone, seamless on every device. Every state, device reading, credential and next action is scoring/phishingResistant.ts personReadiness; the groups, the setup checks and the progress are derive/mfaReadiness.ts, derive/readinessSetup.ts and derive/readinessProgress.ts. These are only their words (surfaces/readinessCells.ts).",
       "h1": "MFA Readiness",
       "eyebrow": "Tenant evidence",
-      "lead": "See who can meet phishing-resistant MFA and what each person needs next.",
-      "summaryLabel": "MFA readiness summary",
-      "summaryEyebrow": "Active people",
-      "summary": "{ready} of {active} are Ready.",
+      "lead": "Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone, Windows Hello on the computer, and nothing to reach for.",
+      "summaryLabel": "Readiness answer",
+      "summary": "{ready} of {active} people are ready for phishing-resistant sign-in.",
       "summaryNone": "No active people to count.",
-      "summarySub": "Ready = qualifying proof on every platform IAMAI has seen them use.",
+      "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof.",
+      "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
+      "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
+      "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device the person uses. Seamless means that sign-in is built into each device.",
+      "change": {
+        "title": "Since the {date} scan",
+        "ready": "Ready",
+        "seamless": "Seamless",
+        "none": "No change",
+        "lapse": "lapse in the next 7 days",
+        "show": "Show them"
+      },
+      "legendLabel": "People by state",
       "states": {
+        "seamless": {
+          "title": "Seamless"
+        },
         "ready": {
           "title": "Ready"
         },
-        "needsProof": {
-          "title": "Needs proof",
-          "stat": "Need proof",
-          "hint": "Qualifying method, incomplete proof",
-          "aria": "Show people who need proof"
+        "confirm": {
+          "title": "Confirm it"
         },
-        "needsSetup": {
-          "title": "Needs setup",
-          "stat": "Need setup",
-          "hint": "No current qualifying method",
-          "aria": "Show people who need setup"
+        "device": {
+          "title": "Needs a device"
+        },
+        "method": {
+          "title": "Needs a method"
+        },
+        "blocked": {
+          "title": "Blocked by setup"
         },
         "unknown": {
-          "title": "Unknown",
-          "stat": "Unknown",
-          "hint": "Evidence is incomplete",
-          "aria": "Show people with unknown readiness"
+          "title": "Unknown"
         }
       },
-      "strip": {
-        "label": "Plan and passkey progress",
-        "gate": "Tenant readiness",
-        "gateLine": "{ready} of {active} have qualifying sign-in proof",
-        "gateMore": "{n} need setup or proof",
-        "gateMet": "All active people have qualifying proof",
-        "gateNotMeasured": "Not measured",
-        "gateLink": "Open the preparation step →",
-        "rollout": "Passkey rollout",
-        "rolloutLine": "{have} of {active} have a passkey",
-        "rolloutWithout": "Show {n} without →",
-        "rolloutNone": "None without",
-        "rolloutUnread": "{n} unread"
-      },
-      "search": "Search people or methods",
+      "worklist": "What to do",
+      "search": "Search people or devices",
       "show": {
         "needsAction": "Needs action",
         "admins": "Admins",
-        "noPasskey": "No passkey",
+        "all": "Everyone",
+        "lapsing": "Lapsing this week",
+        "seamless": "Seamless",
         "ready": "Ready",
-        "all": "All",
-        "needsProof": "Needs proof",
-        "needsSetup": "Needs setup",
+        "confirm": "Confirm it",
+        "device": "Needs a device",
+        "method": "Needs a method",
+        "blocked": "Blocked by setup",
         "unknown": "Unknown",
-        "notActive": "Not active",
+        "notActive": "Not counted",
         "emergency": "Emergency access",
         "service": "Service accounts",
         "shared": "Shared devices",
         "disabled": "Sign-in disabled",
         "guests": "Guests"
       },
+      "exportCsv": "Export CSV",
+      "nextLabel": "Next check",
+      "nextSetupWho": "Tenant setup, unblocks {n} people",
+      "groups": {
+        "blocked": {
+          "title": "Waiting on tenant setup",
+          "why": "They can’t act until an admin change lands"
+        },
+        "method": {
+          "title": "Set up a phishing-resistant method",
+          "why": "No passkey, security key or Windows Hello yet",
+          "body": "Each sets up the option named on their row. A passkey in Microsoft Authenticator signs them in on their phone and from any computer; on their own joined Windows computer, Windows Hello for Business signs them in with nothing to carry."
+        },
+        "confirm": {
+          "title": "Confirm the method still exists",
+          "why": "Registered, but no confirmed sign-in in 30 days",
+          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer was replaced, they remove the old method and register again."
+        },
+        "device": {
+          "title": "Add a passkey to the device they use",
+          "why": "Confirmed on one device, but another signs in without it",
+          "body": "Each sets up the option named on their row on the device that still signs in without it: a passkey in Microsoft Authenticator on a phone, Windows Hello for Business on a joined computer."
+        },
+        "unknown": {
+          "title": "IAMAI couldn’t read these people",
+          "why": "Each row says what was missing. The next scan retries."
+        },
+        "ready": {
+          "title": "Could be seamless",
+          "why": "Ready. A built-in credential would remove the extra device"
+        },
+        "seamless": {
+          "title": "Seamless",
+          "why": "Nothing to do"
+        }
+      },
+      "groupAction": "Open the setup steps in the Plan",
+      "sub": {
+        "admins": "Admins",
+        "adminsWhy": "First, because a lockout hurts most here",
+        "intro": "{n} people, split so each part shares one set of instructions",
+        "groupBy": "Group by",
+        "byDevices": "Devices",
+        "byDepartment": "Department",
+        "noDepartment": "No department recorded",
+        "noDevices": "No sign-in seen in 30 days",
+        "showing": "Showing {shown} of {n}.",
+        "showMore": "Show the next {n}"
+      },
       "columns": [
         "Person",
-        "Role",
+        "Devices seen",
         "Methods",
-        "Proof",
-        "Readiness",
-        "Action"
+        "Next step"
       ],
-      "signInAddress": "Sign-in address",
-      "roles": {
-        "admin": "Admin",
-        "person": "Person"
-      },
+      "csvColumns": [
+        "Person",
+        "Sign-in name",
+        "Role",
+        "Devices seen",
+        "Methods",
+        "Readiness",
+        "Next step"
+      ],
+      "details": "Details",
+      "admin": "Admin",
       "guest": "Guest",
-      "kinds": {
-        "emergency": "Emergency access",
-        "service": "Service account",
-        "shared": "Shared device",
-        "disabled": "Sign-in disabled"
+      "and": "and",
+      "chip": {
+        "seamless": "Seamless",
+        "confirmed": "Confirmed",
+        "notConfirmed": "Not confirmed",
+        "notSetUp": "Not set up",
+        "noPasskey": "No passkey",
+        "blocked": "Blocked",
+        "unread": "Not read",
+        "noPhone": "No phone sign-ins"
       },
-      "notAPerson": "not a person",
       "methods": {
         "passkey": "Passkey",
         "windowsHello": "Windows Hello",
@@ -908,99 +966,193 @@
         "authenticator": "Authenticator",
         "oath": "One-time code",
         "phone": "Text or call",
-        "none": "None",
-        "unknown": "Unknown",
-        "join": "+"
+        "none": "No phishing-resistant method",
+        "unread": "Methods not read",
+        "only": "{method} only"
       },
-      "methodsInSentence": {
-        "passkey": "passkey",
-        "windowsHello": "Windows Hello",
-        "certificate": "certificate",
-        "authenticator": "Authenticator",
-        "oath": "one-time code",
-        "phone": "text or call"
+      "lastConfirmed": "Last confirmed {date}",
+      "beforeWindow": "Last confirmed {date}, before the window",
+      "readyUntil": "Ready until {date}",
+      "options": {
+        "windowsHello": "Windows Hello for Business",
+        "windowsHelloPasskey": "a Windows Hello passkey",
+        "platformSso": "Platform SSO",
+        "syncedPasskey": "a synced passkey",
+        "authenticatorPasskey": "a passkey in Microsoft Authenticator",
+        "phonePasskey": "a phone passkey, used from the computer",
+        "securityKey": "a security key"
       },
-      "methodNotes": {
-        "registered": "Registered",
-        "noPasskey": "No passkey",
-        "noQualifying": "No phishing-resistant method",
-        "lost": "{method} no longer present",
-        "unread": "Method read incomplete",
-        "signInsUnread": "Sign-in records not read"
-      },
-      "proof": {
-        "line": "{method} · {platform}",
-        "lineRetained": "{method} · {platform} · seen {date}",
-        "anyPlatform": "{method}",
-        "onPlatform": "{method} on {platform}",
-        "missing": "{platform}",
-        "notYetSeen": "No sign-in with it seen",
-        "notQualifying": "{method} · not phishing-resistant",
-        "noQualifying": "No qualifying method",
-        "lost": "{method} last seen {date}",
-        "unknown": "Not enough evidence",
-        "signInsUnread": "Sign-in records not read",
-        "marks": {
-          "good": "Verified",
-          "warn": "Proof missing",
-          "bad": "Does not qualify",
-          "unknown": "Unknown",
-          "history": "Earlier evidence"
+      "next": {
+        "none": "Nothing to do",
+        "seamless": "Add {option} on {device}",
+        "setUp": "Set up {option}",
+        "restore": "Restore the {method}",
+        "confirm": "Sign in once with the {method}",
+        "returnConfirm": "Confirm on return",
+        "addDevice": "Add {option} on {device}",
+        "replaceKey": "Replace the key with an approved model",
+        "waitSetup": {
+          "passkeyOff": "Waiting: passkeys are off",
+          "authenticatorNotAllowed": "Waiting: phone passkeys not allowed",
+          "registrationLocation": "Waiting: registration location"
+        },
+        "rescan": {
+          "methods": "Nothing to do: the next scan retries the method list",
+          "signIns": "Nothing to do: the next scan retries the sign-in records",
+          "notCovered": "Nothing to do: the next scan reads their sign-ins"
         }
       },
-      "actions": {
-        "addPasskey": "Add passkey",
-        "recommended": "Recommended",
-        "test": "Test {platform}",
-        "prove": "Sign in with {method}",
-        "setUp": "Set up passkey",
-        "restore": "Restore {method}",
-        "rescan": "Retry scan"
+      "notes": {
+        "automated": "Looks like a script or service: confirm it as a service account.",
+        "onLeave": "No sign-in in 30 days"
       },
-      "empty": "No people match this view.",
-      "footerLead": "Not counted toward the {active} active people:",
-      "inventory": "Every account and policy the scan read →",
-      "ledger": {
-        "notActive": "{n} not active",
-        "emergency": "{n} emergency access",
-        "service": "{n} service accounts",
-        "shared": "{n} shared devices",
-        "disabled": "{n} sign-in disabled"
-      },
-      "detail": {
-        "eyebrow": "Readiness detail",
-        "title": "{name} · {state}",
-        "why": "Why",
-        "next": "Next",
+      "panel": {
         "close": "Close",
-        "scanAgain": "Scan again",
-        "and": "and",
-        "whyReady": "Phishing-resistant proof: {proof}. That covers every platform IAMAI has seen {name} use.",
-        "whyReadyNoPlatform": "Phishing-resistant proof: {proof}. IAMAI has not seen {name} sign in from a platform without it.",
-        "whyRetained": "Proof kept from an earlier scan: {proof}.",
-        "whyProofMissing": "Phishing-resistant proof: {proof}. IAMAI has also seen {name} use {missing}, with no phishing-resistant proof there.",
-        "whyNoProof": "Registered: {methods}. No phishing-resistant sign-in is in the records IAMAI holds.",
-        "whySetUp": "Registered: {methods}. Nothing registered meets the phishing-resistant target.",
-        "whySetUpOther": "The last MFA sign-in IAMAI saw used {method}, which is not phishing-resistant.",
-        "whyNoMethod": "IAMAI does not see a registered method that meets the phishing-resistant target.",
-        "whyLost": "A {method} was registered on an earlier scan, last seen {date}, and is not registered now.",
-        "whyUnknownMethods": "The method read for {name} is incomplete, so IAMAI cannot make a readiness decision.",
-        "whyUnknownSignIns": "The sign-in records could not be read, so IAMAI cannot see a phishing-resistant sign-in with {methods}.",
-        "nextNone": "No baseline action.",
-        "nextAddPasskey": "Recommended, not required: add a passkey for portable sign-in.",
-        "nextTest": "Complete one phishing-resistant sign-in from {platform}, then scan again.",
-        "nextProve": "Sign in once with {method}, then scan again.",
-        "nextSetUp": "Set up a passkey, use it once, then scan again.",
-        "nextRestore": "Restore the {method}, use it once, then scan again.",
-        "nextRescan": "Scan the tenant again."
+        "next": "Next step",
+        "devices": "Devices seen in the last 30 days",
+        "methods": "Phishing-resistant methods",
+        "best": "Best option",
+        "now": "Now",
+        "allowed": "Allowed",
+        "afterStep3": "After Step 3",
+        "lastConfirmed": "Last confirmed",
+        "noneRegistered": "None registered yet.",
+        "noDevices": "No sign-in in the last 30 days.",
+        "lastSeen": "Last seen {date}.",
+        "trust": {
+          "joined": "Joined to Entra ID.",
+          "hybrid": "Hybrid joined.",
+          "registered": "Registered, a personal device.",
+          "none": "Not joined or registered.",
+          "unknown": "Join state not read."
+        },
+        "whyNot": {
+          "notJoined": "Windows Hello for Business needs a joined computer.",
+          "otherAccount": "This computer belongs to another account, so its Windows Hello can’t sign this one in.",
+          "notProvisioned": "Windows Hello for Business is turned off in Intune.",
+          "attestation": "Attestation blocks synced passkeys here.",
+          "osTooOld": "A passkey in Authenticator needs iOS 17 or Android 14.",
+          "notAllowed": "Your passkey settings don’t allow this model."
+        },
+        "proofNow": {
+          "seamless": "Confirmed {date}. Seamless.",
+          "confirmed": "Confirmed {date} with {method}.",
+          "none": "No phishing-resistant sign-in in 30 days."
+        },
+        "verdict": {
+          "yes": "Allowed now",
+          "no": "Not allowed now",
+          "unknown": "Settings not read"
+        },
+        "step3": {
+          "yes": "Allowed by Step 3",
+          "no": "Blocked by Step 3’s approved list",
+          "unknown": "Model not reported"
+        },
+        "never": "Never seen in a sign-in",
+        "retained": "kept from an earlier scan",
+        "unlisted": "Unlisted model ({aaguid})",
+        "why": {
+          "seamless": "Every device they use signs them in on its own.",
+          "ready": "Phishing-resistant sign-in is confirmed on every device they use in the last 30 days.",
+          "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
+          "onLeave": "They haven’t signed in during the last 30 days. Confirm the method when they return.",
+          "device": "Confirmed on one device, but {device} signs in without it.",
+          "method": "No phishing-resistant method they can use.",
+          "blocked": "A tenant setting stops them from setting one up.",
+          "unknown": "IAMAI couldn’t read what the answer depends on.",
+          "replaceKey": "The key works today, but its model isn’t on Emergency Access Step 3’s approved list, so it stops working when you apply those settings."
+        }
       },
+      "rail": {
+        "setup": "Tenant setup",
+        "remaining": "{n} checks remaining",
+        "nothing": "Nothing remaining",
+        "completed": "Completed checks · {n}",
+        "shownAbove": "Shown above as the next check.",
+        "models": "Approved passkey models",
+        "modelsFrom": "From Establish Emergency Access Step 3. Keys outside this list are flagged before they stop working.",
+        "counted": "Not counted",
+        "evidence": "Evidence read"
+      },
+      "checks": {
+        "passkeyOn": {
+          "pass": "Passkey registration is on",
+          "fail": "Passkey registration is off",
+          "failText": "Turn on Passkey (FIDO2) in Authentication methods and allow self-service setup.",
+          "unknown": "Passkey settings weren’t read. Scan again."
+        },
+        "phonePasskey": {
+          "pass": "Phones can hold a passkey (both Authenticator models allowed)",
+          "fail": "Phones can’t hold a passkey",
+          "failText": "Add the two Microsoft Authenticator models to the approved list in Passkey (FIDO2) settings, or in Establish Emergency Access Step 3.",
+          "unknown": "Passkey models weren’t read. Scan again."
+        },
+        "registration": {
+          "pass": "People can register from anywhere after MFA",
+          "fail": "Registration only works from trusted places",
+          "failText": "A Conditional Access policy limits security-info registration. Issue a Temporary Access Pass to people working remotely, or allow registration after MFA from anywhere.",
+          "unknown": "Conditional Access policies weren’t read. Scan again."
+        },
+        "windowsHello": {
+          "pass": "Windows Hello for Business is provisioned",
+          "fail": "Windows Hello for Business is turned off in Intune",
+          "failText": "Turn it on in Intune: Devices, Enrollment, Windows Hello for Business.",
+          "unknown": "IAMAI can’t see Windows Hello for Business settings. Check Intune: Devices, Enrollment, Windows Hello for Business."
+        },
+        "tap": {
+          "pass": "Temporary Access Pass is enabled",
+          "fail": "Temporary Access Pass is off",
+          "failText": "People with no method need one to register. Turn it on in Authentication methods.",
+          "unknown": "Authentication methods weren’t read. Scan again."
+        },
+        "migration": {
+          "pass": "The authentication-methods migration is complete",
+          "fail": "The authentication-methods migration isn’t complete",
+          "failText": "Legacy MFA and self-service password reset settings still govern some methods. Finish the migration in Authentication methods.",
+          "unknown": "Authentication methods weren’t read. Scan again."
+        },
+        "step3": {
+          "pass": "Passkey models checked against Emergency Access Step 3",
+          "note": "Configure your passkey settings in Establish Emergency Access Step 3 so IAMAI can check keys against the models you intend to allow."
+        },
+        "attestation": {
+          "pass": "Attestation is off: synced and Windows Hello passkeys can register",
+          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so contractors use a phone passkey or a security key."
+        },
+        "link": "Open the related step"
+      },
+      "counted": {
+        "never": "Never signed in.",
+        "retired": "Looks retired: no sign-in in 90 days, still enabled.",
+        "new": "New this month, hasn’t signed in yet.",
+        "unread": "Activity not read.",
+        "emergency": "Emergency access accounts",
+        "service": "Service accounts",
+        "shared": "Shared devices",
+        "disabled": "Sign-in disabled",
+        "dormantLink": "Confirm or disable in the Plan"
+      },
+      "evidence": {
+        "full": "days of sign-ins, {from} to {to}",
+        "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
+        "none": "No sign-in records were read.",
+        "unreadMethods": "method lists couldn’t be read. The next scan retries.",
+        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues."
+      },
+      "footer": {
+        "counted": "Counted: the {active} people who signed in during the last 90 days. Ready looks at the last 30.",
+        "plan": "The Plan’s MFA steps follow their own policy requirements. This page holds the higher bar."
+      },
+      "inventory": "Every account and policy the scan read →",
+      "empty": "Nobody needs action: everyone counted is Ready.",
+      "emptyFilter": "No people match this view.",
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step"
-      },
-      "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof."
+      }
     },
     "export": {
       "h1": "Export",
@@ -1880,6 +2032,15 @@
           "admin": "Check which admins don't have a phishing-resistant method yet:"
         },
         "mfaReadinessLink": "See them in MFA Readiness →",
+        "mfaPreview": {
+          "$comment": "The Plan step's preview of the people its own gate names (prompt 62): worded in the step's own requirement, never MFA Readiness's higher bar.",
+          "has": "Has",
+          "needs": "Needs",
+          "noMethods": "No sign-in method",
+          "needsMethod": "A method this step accepts",
+          "checkCompat": "Compatibility not yet established",
+          "higherBar": "MFA Readiness holds the higher bar: phishing-resistant on every device."
+        },
         "mfaReadinessLinkUnknown": {
           "mfa": "Check MFA Readiness →",
           "guest": "Open MFA Readiness →",
@@ -3432,12 +3593,12 @@
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
           "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
-          "needsProof": "{n} people with a phishing-resistant method not yet proven on every platform they use; ask each to sign in with it from each one:",
+          "needsProof": "{n} people with a phishing-resistant method not confirmed in the last 30 days on every device they use; ask each to sign in with it once on each:",
           "readinessUnknown": "{n} people with incomplete method or sign-in data; scan again before assessing readiness:",
           "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
-        "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
+        "adminsNote": "Admins not yet ready: {list:adminsNotReady}. Each registers a passkey or security key.",
         "devices": "{deviceIntro} {list:deviceLines}"
       },
       "decision": {

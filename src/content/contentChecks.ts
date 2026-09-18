@@ -49,9 +49,9 @@ export const AUTHORITIES = [
   'pages.readiness.summary',
   'pages.readiness.summaryNone',
   'pages.readiness.states.ready.title',
-  'pages.readiness.states.needsProof.stat',
-  'pages.readiness.states.needsSetup.stat',
-  'pages.readiness.states.unknown.stat',
+  'pages.readiness.states.seamless.title',
+  'pages.readiness.states.confirm.title',
+  'pages.readiness.states.method.title',
   // The two completion gates a report-only policy renders under Done when.
   'shared.policyDoneWhenTracked[]',
   'shared.engine.tracking.windowCloses',
@@ -76,8 +76,8 @@ export const RE = {
   gateWindowClosed: /the window closed \S.*\d{4}\./,
   /** The Done when of a row reading Ready · Ready to enforce: the evidence gate says ready now. */
   gateReadyNow: /ready now: 0 failures in \d+ days/,
-  /** The readiness summary, in either tense: pluralise() may bend the verb to the count. */
-  readinessSummary: /(\d+) of (\d+) (?:is|are) Ready\./,
+  /** The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count. */
+  readinessSummary: /(\d+) of (\d+) (?:people|person) (?:is|are) ready for phishing-resistant sign-in\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
 }
@@ -97,9 +97,9 @@ export function headerTabsLine(): string {
   return HEADER_TAB_KEYS.map((k) => textAt(`pages.app.shell.tabs.${k}`)).join(' · ')
 }
 
-/** The three counts MFA Readiness's summary shows beside Ready, in page order (derive/mfaReadiness.ts SUMMARY_STATES). */
+/** The states MFA Readiness's bar and groups name, in the worklist's order (derive/mfaReadiness.ts GROUP_ORDER). */
 export function readinessStatTitles(): string[] {
-  return (readinessModel.SUMMARY_STATES ?? []).map((k) => textAt(`pages.readiness.states.${k}.stat`))
+  return (readinessModel.GROUP_ORDER ?? []).map((k) => textAt(`pages.readiness.states.${k}.title`))
 }
 
 /** The word on MFA Readiness's every-active-person filter, so the walk can clear one it pressed. */
@@ -176,10 +176,10 @@ export function staticFindings(): Finding[] {
   const tabs = headerTabsLine()
   if (tabs.split(' · ').filter(Boolean).length !== HEADER_TAB_KEYS.length) add(`content pages.app.shell.tabs: the header line reads "${tabs}"; ${HEADER_TAB_KEYS.length} tabs are named`)
 
-  // MFA Readiness's summary counts three states beside Ready, all distinct.
+  // MFA Readiness names seven states, all distinct.
   const groups = readinessStatTitles()
-  if (groups.length !== 3 || groups.some((t) => !t) || new Set(groups).size !== 3) {
-    add(`content pages.readiness.states: the summary counts read ${JSON.stringify(groups)}; three distinct titles are named`)
+  if (groups.length !== 7 || groups.some((t) => !t) || new Set(groups).size !== 7) {
+    add(`content pages.readiness.states: the states read ${JSON.stringify(groups)}; seven distinct titles are named`)
   }
 
   // The readiness summary reads in either tense, and its empty and unknown forms

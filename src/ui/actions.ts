@@ -12,7 +12,9 @@ import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
 import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
-import { mergeMfaHistory } from '../scoring/mfaHistory.ts'
+import { mergeMfaHistory, withScanStates } from '../scoring/mfaHistory.ts'
+import { scanStates } from '../derive/readinessProgress.ts'
+import { loadMappingState } from '../mapping/store.ts'
 import * as auth from '../graph/auth.ts'
 import { app } from '../content/content.ts'
 import { isDemo } from './demoMode.ts'
@@ -117,6 +119,10 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     const prior = await storeLib.loadSnapshotRecord<ScanRecord>(account.tenantId).catch(() => null)
     if (!stillThisTurn(turn)) return
     result.mfaHistory = mergeMfaHistory(prior?.snapshot?.mfaHistory ?? null, result)
+    // This scan's readiness per person (prompt 62), so the next scan can say what changed.
+    const mapping = await loadMappingState(account.tenantId).catch(() => null)
+    if (!stillThisTurn(turn)) return
+    result.mfaHistory = withScanStates(result.mfaHistory, result.asOf, scanStates(result, mapping))
     const record: ScanRecord = { snapshot: result, at: new Date().toISOString() }
     setSession({ lastScan: record })
     void storeLib.saveSnapshotRecord(account.tenantId, record)

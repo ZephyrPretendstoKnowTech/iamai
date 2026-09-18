@@ -6,6 +6,8 @@ import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { personAccounts } from '../derive/sets.ts'
 import { adminUserIds } from '../roles.ts'
+import { readinessContextOf } from '../derive/readinessContext.ts'
+import type { MappingState } from '../mapping/types.ts'
 
 /**
  * Whether the snapshot's sign-in records carry proof per method and platform,
@@ -46,6 +48,8 @@ export function buildViabilityInputs(
   snapshot: TenantSnapshot,
   now: string,
   confirmedServiceAccountIds: ReadonlySet<string> = new Set(),
+  /** The mapping, for Emergency Access Step 3's intended passkey models (prompt 62); absent reads Step 3's defaults. */
+  mapping?: Partial<MappingState> | null,
 ): MfaViabilityInput[] {
   const allMethods = Object.values(snapshot.authMethods).flatMap((m) => (m === 'unknown' ? [] : m))
   const newestAuthenticatorVersionByPlatform = computeAuthenticatorBaseline(allMethods)
@@ -64,6 +68,8 @@ export function buildViabilityInputs(
   // schedule and over Microsoft's role list, so Today's line and its Admin tags
   // disagreed (E5); the tag and the count read the roles.
   const admins = adminUserIds(snapshot.roles ?? { active: {} })
+  // One context per tenant: every person is judged against the same window and settings.
+  const readinessContext = readinessContextOf(snapshot, mapping ?? null, now)
 
   return personAccounts(snapshot, confirmedServiceAccountIds).map((u) => {
     const reg = registrationById.get(u.id) ?? null
@@ -75,6 +81,9 @@ export function buildViabilityInputs(
       lastMfaSuccess: userEvidence?.lastMfaSuccess ?? null,
       proofs: proofsRecorded ? (userEvidence?.proofs ?? []) : null,
       platforms: userEvidence?.platforms ?? [],
+      devices: userEvidence?.devices ?? null,
+      apps: userEvidence?.apps ?? [],
+      trustedLocationSeen: userEvidence?.trustedLocationSeen,
     }
     return {
       userId: u.id,
@@ -100,6 +109,7 @@ export function buildViabilityInputs(
       accountCreated: u.createdDateTime,
       evidence,
       history: snapshot.mfaHistory?.people?.[u.id] ?? null,
+      readinessContext,
       tenant: { now, newestAuthenticatorVersionByPlatform },
     }
   })

@@ -3909,308 +3909,589 @@ td .not-person {
   content: '\2713';
 }
 
-/* ================= MFA Readiness — the final reference (Step 7) ================
+/* ================= MFA Readiness — v3 (prompt 62) ================
 
-   `docs/design/approved/reference/iamai-mfa-readiness-final.html` owns the
-   composition and belongs to this surface alone: one summary panel (the answer,
-   and three counts that are filters), the Plan gate and passkey rollout strip,
-   the search and the filter pills, the six-zone person worklist, the footer note
-   and the detail one level deep. What IS shared it composes rather than
-   re-declares — `.panel`, `.eyebrow`, `.key-label`, `.pill`, `.status` (task 031).
-   The reference's colours and faces arrive through the tokens (task 030). */
+   `docs/design/approved/anatomy/mfa-readiness-v3.html` owns the composition and
+   belongs to this surface alone: the answer (one sentence, the Seamless goal and
+   the progress since the last scan) over one bar of people by state; the
+   worklist grouped by next action, the next check first and open, large groups
+   split admins first; a rail of tenant setup, approved models, the uncounted and
+   the evidence read; a non-modal person panel. What IS shared it composes rather
+   than re-declares — `.panel`, `.eyebrow`, `.pill`, `.btn` (task 031). Every
+   colour is a token; every state carries its word beside its colour (WCAG 1.4.1). */
 
-/* The heading: serif 38, one step down at the narrow breakpoint. */
+.surface.readiness {
+  --s-seamless: var(--brand-primary);
+  --s-ready: var(--success-text);
+  --s-confirm: var(--attention-text);
+  --s-device: var(--unproven-text);
+  --s-method: var(--danger-text);
+  --s-blocked: var(--admin-text);
+  --s-unknown: var(--idle);
+  --s-unread: var(--idle);
+}
 .surface.readiness .display {
   --display-size: var(--d-5);
 }
+.surface.readiness > .eyebrow {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--t-1);
+  color: var(--muted-text);
+}
 .surface.readiness .line.intro {
-  font-size: var(--t-4);
-  max-width: var(--page);
+  max-width: 66ch;
+  font-size: var(--t-lead);
   color: var(--secondary-text);
 }
-.surface.readiness > .eyebrow {
+.surface.readiness .scope-line {
+  margin: 12px 0 0;
+  color: var(--secondary-text);
+}
+
+/* The answer: the one bold element. */
+.readiness-answer {
+  margin-top: 26px;
+  padding: 24px 26px 20px;
+}
+.readiness-answer .answer-top {
+  display: flex;
+  gap: 32px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.readiness-answer .headline {
+  font: 600 var(--d-9) / 1.2 var(--font-serif);
+  margin: 0;
+  max-width: 24ch;
+  letter-spacing: -0.01em;
+  color: var(--primary-text);
+}
+.readiness-answer .goal {
+  margin: 8px 0 0;
+  font-size: var(--t-4);
+  color: var(--secondary-text);
+}
+.readiness-change {
+  flex: 0 0 270px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--brand-primary);
+  background: var(--secondary-surface);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  font-size: var(--t-2);
+  color: var(--secondary-text);
+}
+.readiness-change strong {
+  display: block;
+  color: var(--primary-text);
+  font-weight: var(--weight-strong);
   margin-bottom: 6px;
 }
-
-/* The summary: one panel with one border and one radius, a dominant cell and
-   three counts divided by its own hairlines — never four cards. */
-.readiness-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(135px, 0.65fr));
-  overflow: hidden;
-  margin: 28px 0 0;
-}
-.readiness-summary .summary-main,
-.readiness-summary .summary-stat {
-  padding: 18px 20px;
-  min-width: 0;
-}
-.readiness-summary .summary-main {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.readiness-summary .summary-main .headline {
-  --display-size: var(--d-14);
-  margin: 2px 0 5px;
-  max-width: none;
-}
-.readiness-summary .summary-main .sub {
-  margin: 0;
-  color: var(--secondary-text);
-  font-size: var(--t-2);
-}
-/* A count is a filter into the worklist: a button with a hairline beside it. The
-   pressed one is underlined in the accent and says so with `aria-pressed`. */
-.readiness-summary .summary-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  border: 0;
-  border-left: 1px solid var(--line);
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.readiness-summary .summary-stat:hover {
-  background: var(--secondary-surface);
-}
-.readiness-summary .summary-stat[aria-pressed='true'] {
-  border-bottom-color: var(--brand-primary);
-  background: var(--brand-soft);
-}
-.readiness-summary .stat-n {
-  font-family: var(--font-serif);
-  font-size: var(--d-11);
-  font-weight: var(--weight-display);
-  line-height: var(--lh-display);
-  margin-bottom: 7px;
-}
-.readiness-summary .stat-k {
-  font-size: var(--t-1);
-  font-weight: var(--weight-strong);
-  color: var(--primary-text);
-}
-.readiness-summary .stat-hint {
-  margin-top: 3px;
-  font-size: var(--t-0);
-  color: var(--quiet-text);
-}
-
-/* The one strip that does two jobs: the Plan gate and the passkey rollout. */
-.progress-strip {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 13px;
-  padding: 11px 13px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  background: var(--secondary-surface);
-}
-.progress-strip .progress-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-}
-.progress-strip .progress-item + .progress-item {
-  border-left: 1px solid var(--line);
-  padding-left: 16px;
-  margin-left: 16px;
-}
-.progress-strip .progress-label {
-  min-width: 0;
-}
-.progress-strip .progress-label strong {
-  display: block;
-  font-size: var(--t-1);
-}
-.progress-strip .progress-label span {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--t-0);
-  color: var(--quiet-text);
-}
-.progress-strip .progress-value {
-  font-size: var(--t-1);
-  font-weight: var(--weight-strong);
-  white-space: nowrap;
-}
-
-/* A page scoped to one Plan step says so, above the toolbar. */
-.surface.readiness .scope-line {
-  margin: 16px 0 0;
-}
-
-/* The toolbar: the search, then the filters as pills. */
-.surface.readiness .toolbar {
-  margin-top: 24px;
-}
-.surface.readiness .toolbar input[type='search'] {
-  flex: 1;
-  min-width: 260px;
-}
-.surface.readiness .toolbar .btn.pill {
-  height: var(--control);
-}
-
-/* The worklist takes the shared panel-table role; what stays here is the cells. */
-.surface.readiness .person-name {
-  display: block;
-  font-weight: var(--weight-strong);
-}
-.surface.readiness .person-upn {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--t-2);
-  color: var(--quiet-text);
-}
-/* The Role cell is understated: a word, and no colour of its own. */
-.surface.readiness .role {
-  font-size: var(--t-2);
-  color: var(--quiet-text);
-}
-.surface.readiness .methods-main {
-  display: block;
-  font-size: var(--t-2);
-  font-weight: var(--weight-strong);
-}
-.surface.readiness .methods-note {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--t-1);
-  color: var(--quiet-text);
-}
-.surface.readiness .proof-lines {
-  list-style: none;
+.readiness-change ul {
   margin: 0;
   padding: 0;
-  font-size: var(--t-2);
-  color: var(--secondary-text);
+  list-style: none;
+  display: grid;
+  gap: 4px;
 }
-.surface.readiness .proof-line {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin: 2px 0 0;
+.readiness-change b {
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text);
 }
-.surface.readiness .proof-line:first-child {
-  margin-top: 0;
-}
-.surface.readiness .proof-mark {
-  width: 13px;
-  flex: none;
-  font-weight: var(--weight-strong);
-  color: var(--quiet-text);
-}
-.surface.readiness .proof-mark-good {
+.readiness-change b.up {
   color: var(--success-text);
 }
-.surface.readiness .proof-mark-warn {
-  color: var(--attention-text);
-}
-.surface.readiness .proof-mark-bad,
-.surface.readiness .proof-mark-history {
-  color: var(--danger-text);
-}
-.surface.readiness td .status {
-  white-space: nowrap;
-  font-weight: var(--weight-strong);
-}
-.surface.readiness .no-action {
-  color: var(--quiet-text);
-}
-.surface.readiness .row-action {
-  white-space: nowrap;
-}
-.surface.readiness .row-action.recommended {
-  color: var(--secondary-text);
-}
-.surface.readiness .rec-label {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--t-0);
-  color: var(--quiet-text);
-}
-.surface.readiness .footer-note {
+.readiness-bar {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  gap: 3px;
+  height: 14px;
+  margin: 22px 0 12px;
 }
-.surface.readiness .footer-note .ledger,
-.surface.readiness .footer-note .footer-link {
+.readiness-bar span {
+  border-radius: 3px;
+  min-width: 6px;
+  background: var(--c);
+}
+.readiness-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
   margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: var(--t-2);
 }
+.readiness-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--secondary-text);
+}
+.readiness-legend b {
+  color: var(--primary-text);
+  font-weight: var(--weight-strong);
+  font-variant-numeric: tabular-nums;
+}
+.surface.readiness .state-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--c);
+}
+.readiness-answer .define {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-1);
+  color: var(--muted-text);
+}
 
-/* A stacked row's cell key. It is a real element with real text, hidden at the
-   widths where the column header is on screen and shown where it is not — the
-   pack labels its stacked cells with `::before`, which no screen reader reads
-   (src/ui/accessibility.test.ts), so production draws the same label out of the
-   DOM instead. */
-.cell-key {
+/* The worklist and its rail. */
+.readiness-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  margin-top: 24px;
+  align-items: start;
+}
+.readiness-rail {
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 16px;
+}
+.surface.readiness .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+}
+.surface.readiness .toolbar h2 {
+  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+  margin: 0 auto 0 0;
+}
+.surface.readiness .toolbar input[type='search'] {
+  width: 220px;
+}
+
+/* A group: its action is its heading. */
+.readiness-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.readiness-group > summary,
+.readiness-sub > summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.readiness-group > summary::-webkit-details-marker,
+.readiness-sub > summary::-webkit-details-marker {
   display: none;
+}
+.readiness-group .group-title {
+  font-weight: var(--weight-strong);
+}
+.readiness-group .group-why {
+  display: block;
+  font-size: var(--t-2);
+  color: var(--muted-text);
+  font-weight: var(--weight-body);
+}
+.readiness-group .group-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-strong);
+  color: var(--secondary-text);
+}
+.readiness-group .chev {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-text);
+  transition: transform var(--motion-disclosure);
+}
+.readiness-group[open] > summary .chev,
+.readiness-sub[open] > summary .chev {
+  transform: rotate(90deg);
+}
+.readiness-group.quiet .group-title {
+  color: var(--secondary-text);
+}
+.readiness-group.next {
+  border-color: color-mix(in srgb, var(--brand-primary) 55%, var(--line));
+  border-left: 3px solid var(--brand-primary);
+}
+.readiness-group.next > summary,
+.readiness-group.next .next-body {
+  background: var(--brand-tint);
+}
+.readiness-group.next .group-title {
+  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+}
+.surface.readiness .next-label {
+  display: block;
+  font-size: var(--t-1);
+  font-weight: var(--weight-strong);
+  color: var(--brand-primary);
   margin-bottom: 2px;
 }
-
-/* The detail: one level deep, Why and Next, and nothing else. `.panel` supplies
-   the surface, the border and the radius. */
-.readiness-detail.panel {
-  width: min(620px, calc(100% - 28px));
-  padding: 0;
-  color: var(--primary-text);
+.surface.readiness .next-label .who {
+  margin-left: 8px;
+  font-weight: var(--weight-body);
+  color: var(--secondary-text);
 }
-.readiness-detail .dialog-head {
+.readiness-group .next-body {
+  padding: 0 16px 16px;
+}
+.readiness-group .next-body p,
+.readiness-setup-next p {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--secondary-text);
+}
+.surface.readiness .next-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.readiness-setup-next {
+  padding: 16px;
+  margin-bottom: 10px;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 55%, var(--line));
+  border-left: 3px solid var(--brand-primary);
+  border-radius: var(--radius-control);
+  background: var(--brand-tint);
+}
+.readiness-setup-next h3 {
+  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+  margin: 2px 0 6px;
+}
+
+/* Sub-groups: how a group of thousands stays workable. */
+.readiness-subbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 17px 18px 15px;
-  border-bottom: 1px solid var(--line);
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-2);
+  color: var(--muted-text);
 }
-.readiness-detail .dialog-head h2 {
-  margin: 3px 0 0;
-  font-family: var(--font-serif);
-  font-size: var(--d-14);
-  font-weight: var(--weight-display);
-  line-height: var(--lh-display);
-}
-.readiness-detail .dialog-body {
-  padding: 17px 18px 18px;
-}
-.readiness-detail .detail-block + .detail-block {
-  margin-top: 15px;
-  padding-top: 15px;
+.readiness-sub {
   border-top: 1px solid var(--line);
 }
-.readiness-detail .detail-block h3 {
-  margin: 0 0 5px;
+.readiness-sub > summary {
+  grid-template-columns: 1fr auto auto;
+  padding: 10px 16px 10px 36px;
+  background: var(--secondary-surface);
 }
-.readiness-detail .detail-block p {
+.readiness-sub .group-title {
+  font-size: var(--t-2);
+}
+.readiness-more {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-2);
+  color: var(--muted-text);
+}
+
+/* The rows. */
+.readiness-rows {
+  border-top: 1px solid var(--line);
+}
+.readiness-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(200px, 1.3fr) minmax(130px, 1fr) minmax(160px, 1.2fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 11px 16px;
+  border-top: 1px solid var(--line);
+}
+.readiness-row:first-child {
+  border-top: 0;
+}
+.readiness-row.head {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  font-size: var(--t-1);
+  color: var(--muted-text);
+  background: var(--secondary-surface);
+}
+.readiness-row:not(.head):hover {
+  background: var(--secondary-surface);
+}
+.readiness-row .person-name {
+  display: block;
+  font-weight: var(--weight-strong);
+}
+.readiness-row .person-upn {
+  font-size: var(--t-1);
+  color: var(--muted-text);
+  overflow-wrap: anywhere;
+}
+.surface.readiness .tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  color: var(--admin-text);
+  border: 1px solid color-mix(in srgb, var(--admin) 45%, var(--line));
+  vertical-align: 1px;
+}
+.readiness-row .cell-note {
+  display: block;
+  font-size: var(--t-1);
+  color: var(--muted-text);
+}
+.readiness-row .next-step {
+  font-size: var(--t-2);
+}
+.readiness-row .open {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--t-1);
+}
+
+/* The device pair: each device the person uses, and where it stands. */
+.surface.readiness .devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.surface.readiness .dev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--secondary-surface);
+  font-size: var(--t-1);
+  color: var(--secondary-text);
+  white-space: nowrap;
+}
+.surface.readiness .dev svg {
+  width: 15px;
+  height: 15px;
+  color: var(--muted-text);
+}
+.surface.readiness .dev .dev-word {
+  font-weight: var(--weight-strong);
+  color: var(--c);
+}
+.surface.readiness .dev.off {
+  border-style: dashed;
+  background: none;
+  color: var(--muted-text);
+}
+
+/* The rail: the Tasks Remaining tile standard. */
+.readiness-tile {
+  padding: 16px;
+}
+.readiness-tile h3 {
+  margin: 0 0 2px;
+  font-size: var(--t-2);
+  font-weight: var(--weight-strong);
+  color: var(--secondary-text);
+}
+.readiness-tile .remain {
+  margin: 0 0 10px;
+  font-size: var(--t-1);
+  color: var(--muted-text);
+}
+.readiness-tile .check {
+  margin: 0 0 4px;
+  font-weight: var(--weight-strong);
+}
+.readiness-tile p {
+  margin: 0 0 8px;
+  font-size: var(--t-2);
+  color: var(--secondary-text);
+}
+.readiness-tile details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-2);
+}
+.readiness-tile summary {
+  cursor: pointer;
+  color: var(--secondary-text);
+}
+.readiness-tile ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.readiness-tile li {
+  display: flex;
+  gap: 8px;
+  color: var(--secondary-text);
+}
+.readiness-tile li .ok {
+  color: var(--success-text);
+}
+.readiness-tile .models {
+  font-size: var(--t-1);
+  color: var(--muted-text);
+}
+.readiness-tile .ledger-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 10px;
+  font-size: var(--t-2);
+}
+.readiness-tile .ledger-list dt {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-strong);
+  text-align: right;
+}
+.readiness-tile .ledger-list dd {
+  margin: 0;
+  color: var(--secondary-text);
+}
+
+/* The person panel: non-modal, beside the list rather than over it. */
+.readiness-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(460px, 100%);
+  background: var(--surface);
+  border-left: 1px solid var(--strong-line);
+  box-shadow: var(--shadow-panel);
+  overflow: auto;
+  z-index: 20;
+}
+.readiness-panel .panel-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.readiness-panel .panel-head h2 {
+  font: 600 var(--t-6) / 1.2 var(--font-serif);
+  margin: 0;
+}
+.readiness-panel .panel-head p {
+  margin: 4px 0 0;
+  font-size: var(--t-1);
+  color: var(--muted-text);
+  overflow-wrap: anywhere;
+}
+.readiness-panel .panel-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: var(--t-1);
+  font-weight: 500;
+  margin-top: 8px;
+}
+.readiness-panel section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.readiness-panel h3 {
+  margin: 0 0 10px;
+  font-size: var(--t-2);
+  font-weight: var(--weight-strong);
+  color: var(--secondary-text);
+}
+.readiness-panel .todo {
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: var(--brand-tint);
+  border-left: 3px solid var(--brand-primary);
+}
+.readiness-panel .todo strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.readiness-panel .todo p {
   margin: 0;
   font-size: var(--t-2);
   color: var(--secondary-text);
 }
-.readiness-detail .detail-block p + p {
-  margin-top: 6px;
+.readiness-panel .item {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
 }
-.readiness-detail .detail-action {
-  border-left: 2px solid var(--brand-primary);
-  padding-left: 10px;
+.readiness-panel .item:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.readiness-panel .item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--muted-text);
+  margin-top: 2px;
+}
+.readiness-panel .item-name {
   font-weight: var(--weight-strong);
 }
-.readiness-detail .detail-block p.detail-action {
-  color: var(--primary-text);
+.readiness-panel .item-sub {
+  font-size: var(--t-1);
+  color: var(--muted-text);
 }
+.readiness-panel .facts {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: var(--t-1);
+  margin: 4px 0 0;
+}
+.readiness-panel .facts dt {
+  color: var(--muted-text);
+}
+.readiness-panel .facts dd {
+  margin: 0;
+  color: var(--secondary-text);
+}
+
+.surface.readiness .footer-note {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-1);
+  color: var(--muted-text);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}
+
+
 /* The Plan step's line to MFA Readiness: a sentence and a link, nothing boxed. */
 .surface .mfa-handoff {
   margin: 12px 0;
@@ -4435,32 +4716,20 @@ td .not-person {
     line-height: var(--lh-body);
   }
 }
-/* MFA Readiness's first breakpoint (the final reference, 940px): the summary
-   becomes `1fr 1fr` with the answer spanning both, the strip keeps its two
-   halves, and the worklist drops its Action column — the action is one tap into
-   the stacked row below 720, and the Readiness word still says what is needed. */
-@media (max-width: 940px) {
-  .readiness-summary {
-    grid-template-columns: 1fr 1fr;
+/* MFA Readiness's breakpoints (v3): the rail stacks under the worklist below
+   1040px; below 760px the answer stacks, the progress block takes the full
+   width, and each row becomes one column with its devices, methods and next step
+   under the person. */
+@media (max-width: 1040px) {
+  .readiness-layout {
+    grid-template-columns: 1fr;
   }
-  .readiness-summary .summary-main {
-    grid-column: 1 / -1;
-  }
-  .readiness-summary .summary-stat {
-    border-top: 1px solid var(--line);
-  }
-  .surface.readiness table.datatable th:nth-child(6),
-  .surface.readiness table.datatable td:nth-child(6) {
-    display: none;
+  .readiness-rail {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   }
 }
-/* The reference's second breakpoint (720px): the summary and the strip become
-   one column and the worklist becomes stacked rows, every cell under its own key.
-   Production keeps a real `<table>` through the change — the element, the
-   `<th scope="col">` heads and the explicit ARIA roles that survive the display
-   swap (components/DataTable.tsx) — and shows the key that was already in the
-   DOM. The head is hidden from sight and stays in the accessibility tree. */
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .surface.readiness .display {
     --display-size: var(--d-8);
   }
@@ -4470,78 +4739,49 @@ td .not-person {
     padding-left: 12px;
     padding-right: 12px;
   }
-  .readiness-summary {
-    grid-template-columns: 1fr;
+  .readiness-answer {
+    padding: 20px 18px;
   }
-  .readiness-summary .summary-main {
-    grid-column: auto;
+  .readiness-answer .answer-top {
+    flex-direction: column;
+    gap: 16px;
   }
-  .readiness-summary .summary-stat {
-    border-left: 0;
-    border-top: 1px solid var(--line);
+  .readiness-answer .headline {
+    font-size: var(--d-14);
   }
-  .progress-strip {
-    grid-template-columns: 1fr;
+  .readiness-change {
+    flex: none;
+    width: 100%;
   }
-  .progress-strip .progress-item + .progress-item {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding-left: 0;
-    padding-top: 10px;
-    margin-left: 0;
-    margin-top: 10px;
+  .readiness-row.head {
+    display: none;
+  }
+  .readiness-row {
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+  }
+  .readiness-row > .devices,
+  .readiness-row > .methods,
+  .readiness-row > .next-step {
+    grid-column: 1 / -1;
+  }
+  .readiness-row > .open {
+    grid-row: 1;
+    grid-column: 2;
   }
   .surface.readiness .toolbar input[type='search'] {
-    min-width: 0;
+    width: 100%;
+  }
+  .surface.readiness .toolbar h2 {
     flex-basis: 100%;
   }
-  /* The head goes off screen and stays in the accessibility tree: `clip` rather
-     than `display: none`, which would take the column header a stacked cell is
-     still associated with out of it. */
-  .surface.readiness table.datatable thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .surface.readiness .datatable-wrap.panel {
-    overflow-x: visible;
-  }
-  .surface.readiness table.datatable,
-  .surface.readiness table.datatable tbody,
-  .surface.readiness table.datatable tr,
-  .surface.readiness table.datatable td {
-    display: block;
-  }
-  .surface.readiness table.datatable tr {
-    padding: 14px 16px;
-    border-top: 1px solid var(--line);
-  }
-  .surface.readiness table.datatable tbody tr:first-child {
-    border-top: 0;
-  }
-  /* The panel table rules a hairline above every cell; a stacked row keeps one
-     hairline, above the row, so its cells are not divided from each other. */
-  .surface.readiness .datatable-wrap.panel table.datatable td {
-    padding: 0;
-    border-top: 0;
-  }
-  .surface.readiness table.datatable td + td {
-    margin-top: 8px;
-  }
-  .surface.readiness table.datatable td:nth-child(6) {
-    display: block;
-  }
-  .surface.readiness .cell-key {
-    display: block;
-  }
-  .surface.readiness .footer-note {
-    flex-direction: column;
-    align-items: flex-start;
+}
+@media (prefers-reduced-motion: reduce) {
+  .readiness-group .chev {
+    transition: none;
   }
 }
+
 
 /* ================= focus, after every reset ================= */
 

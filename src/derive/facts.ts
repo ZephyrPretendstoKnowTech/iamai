@@ -72,5 +72,5 @@ export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null |
  * "to set up").
  */
 export function notReady(f: Facts): number {
-  return f.active - f.states.ready
+  return f.active - f.states.ready - f.states.seamless
 }
