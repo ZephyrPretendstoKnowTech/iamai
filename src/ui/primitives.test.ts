@@ -33,6 +33,15 @@ const PACKS = {
   mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
 } as const
 
+/**
+ * The evidence the shared roles were established on (task 031): the four packs
+ * as they stood, with MFA Readiness's v2. The v3 pack (prompt 62) draws its own
+ * sentence-case kicker and grouped rows rather than v2's eyebrow, key head,
+ * status pill and callout; the superseded v2 remains the record those roles were
+ * drawn from, and production's other surfaces still use them.
+ */
+const ROLE_EVIDENCE = { ...PACKS, mfa: 'docs/design/superseded/mfa-readiness-v2.html' } as const
+
 const APP = 'src/ui/app.css'
 
 /**
@@ -75,7 +84,7 @@ function allRuleBodies(css: string, selector: string): string[] {
 // ------------------------------------------------- what the evidence shares
 
 test('the eyebrow is shared because all four packs declare it, and they declare it identically', () => {
-  const declared = Object.entries(PACKS).map(([surface, path]) => ({ surface, body: ruleBody(read(path), '.eyebrow', { solo: true }) }))
+  const declared = Object.entries(ROLE_EVIDENCE).map(([surface, path]) => ({ surface, body: ruleBody(read(path), '.eyebrow', { solo: true }) }))
   for (const { surface, body } of declared) assert.ok(body, `${surface} no longer declares .eyebrow — the shared role has lost its evidence`)
   const [first, ...rest] = declared
   for (const other of rest) assert.equal(other.body, first.body, `${other.surface} and ${first.surface} draw .eyebrow differently`)
@@ -98,7 +107,7 @@ test('the eyebrow is shared because all four packs declare it, and they declare 
 
 test('the key label is shared by the two packs that draw a field key, at the smaller step', () => {
   const plan = read(PACKS.plan)
-  const mfa = read(PACKS.mfa)
+  const mfa = read(ROLE_EVIDENCE.mfa)
   // The Plan's side-block label and readiness tile label, and MFA's person-table head.
   for (const [where, body] of [
     ['plan .side-label', ruleBody(plan, '.side-label', { solo: true })],
@@ -119,7 +128,7 @@ test('the key label is shared by the two packs that draw a field key, at the sma
 
 test('the pill is shape only: two packs draw the same geometry, and neither the shape nor this role chooses a state', () => {
   const badge = ruleBody(read(PACKS.plan), '.badge', { solo: true })
-  const cell = ruleBody(read(PACKS.mfa), '.status', { solo: true })
+  const cell = ruleBody(read(ROLE_EVIDENCE.mfa), '.status', { solo: true })
   assert.ok(badge && cell, 'the Plan state badge or the MFA readiness cell is gone')
   for (const [where, body] of [
     ['plan .badge', badge],
@@ -150,7 +159,7 @@ test('the attention panel is shared by the two packs that draw it, and it is now
   // The Plan calls it .attention and MFA calls it .callout; both are a 1px
   // tone border over a tone tint at a control radius.
   const planAttention = ruleBody(read(PACKS.plan), '.attention', { solo: true })
-  const mfaCallout = ruleBody(read(PACKS.mfa), '.callout', { solo: true })
+  const mfaCallout = ruleBody(read(ROLE_EVIDENCE.mfa), '.callout', { solo: true })
   assert.ok(planAttention && mfaCallout, 'a pack stopped drawing the attention panel')
   for (const [where, body] of [
     ['plan .attention', planAttention],
@@ -215,8 +224,9 @@ test('a pattern only one pack draws did not become a global role', () => {
     ['the Plan action tab strip', plan, '.action-tab'],
     ['the Plan roadmap row', plan, '.roadmap-row'],
     ['the Plan lifecycle stage', plan, '.stage'],
-    ['the MFA summary stat', mfa, '.summary-stat'],
-    ['the MFA filter pill', mfa, '.filter'],
+    // MFA Readiness v3 (prompt 62): the device chip and the state ribbon are its own.
+    ['the MFA device chip', mfa, '.dev'],
+    ['the MFA state ribbon', mfa, '.ribbon'],
   ] as const) {
     assert.ok(ruleBody(packCss, selector), `${name} is no longer in its pack`)
     assert.equal(ruleBody(app, selector), undefined, `${name} became a global role in app.css — one pack is not evidence of sharing`)
@@ -278,7 +288,7 @@ test('the packs decide which headings are editorial, and they say some are not',
   // Every page h1 in every pack is serif, which is why production's h1 is.
   for (const [surface, path] of Object.entries(PACKS)) {
     const css = read(path)
-    assert.match(css, /h1\{font:\s*700 \d+px\/[\d.]+ Georgia/, `${surface} no longer sets its h1 in the display face`)
+    assert.match(css, /h1\{font:\s*700 \d+px\/[\d.]+ (Georgia|var\(--font-serif\))/, `${surface} no longer sets its h1 in the display face`)
   }
   // And the opened Plan step's title is deliberately NOT: 21px in the
   // interface face. That is why h3 and h4 stay sans, and why a later pack must

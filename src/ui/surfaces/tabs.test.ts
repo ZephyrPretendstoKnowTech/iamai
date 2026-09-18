@@ -1,4 +1,4 @@
-// Today as CSV says what the Today table says; the PowerShell tab renders the
+// MFA Readiness as CSV says what its worklist says; the PowerShell tab renders the
 // JSON tab's body; the How page's check rows carry no forbidden string.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -8,7 +8,7 @@ import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { actionOf, methodsCell, proofLines, proofLabel, readinessWord, roleWord, rowCells } from './readinessCells.ts'
+import { deviceChips, methodsCell, nextCell, roleWord, rowCells, stateTitle } from './readinessCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
@@ -32,21 +32,22 @@ import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
-test('MFA Readiness as CSV writes the role, the methods, the proof lines, the readiness word and the action the worklist renders', () => {
+test('MFA Readiness as CSV writes the role, the devices, the methods, the state word and the next step the worklist renders', () => {
   for (const name of FIXTURES) {
     const f = fixture(name)
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const table = readinessTable(f.snapshot, f.mapping)
-    // The final reference's six zones, in its order (Step 7).
-    assert.deepEqual(table.header, ['Person', 'Sign-in name', 'Role', 'Methods', 'Proof', 'Readiness', 'Action'])
+    // The v3 row's zones in its order (prompt 62), with the sign-in name, role and state spelled out.
+    assert.deepEqual(table.header, ['Person', 'Sign-in name', 'Role', 'Devices seen', 'Methods', 'Readiness', 'Next step'])
     assert.equal(table.csvName, 'iamai-mfa-readiness.csv')
-    assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per table row`)
+    assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per account`)
     view.rows.forEach((r, i) => {
       assert.equal(table.rows[i][2], roleWord(r), `${name} row ${i}: the role word`)
-      assert.equal(table.rows[i][3], methodsCell(r).main, `${name} row ${i}: the methods`)
-      assert.equal(table.rows[i][4], proofLines(r).map(proofLabel).join('; '), `${name} row ${i}: the proof lines`)
-      assert.equal(table.rows[i][5], readinessWord(r), `${name} row ${i}: the readiness word`)
-      assert.equal(table.rows[i][6], actionOf(r)?.text ?? '', `${name} row ${i}: the action`)
+      assert.ok(String(table.rows[i][3]).startsWith(deviceChips(r).chips.map((c) => `${c.os}: ${c.word}`).join('; ')), `${name} row ${i}: the device chips, then any quiet chip the screen shows`)
+      assert.equal(table.rows[i][4], methodsCell(r).main, `${name} row ${i}: the methods`)
+      if (r.state !== null) assert.equal(table.rows[i][5], stateTitle(r.state), `${name} row ${i}: the state word`)
+      else assert.match(String(table.rows[i][5]), /\S/, `${name} row ${i}: an uncounted account says why`)
+      assert.equal(table.rows[i][6], nextCell(r), `${name} row ${i}: the next step`)
       assert.deepEqual(table.rows[i].slice(2), rowCells(r), `${name} row ${i}: one set of cells`)
     })
   }

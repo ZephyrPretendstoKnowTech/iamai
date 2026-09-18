@@ -1,4 +1,4 @@
-// MFA Readiness, the surface that replaced Today (task 012; Step 7), and its one
+// MFA Readiness, the surface that replaced Today (task 012; Step 7; prompt 62), and its one
 // link to the Plan.
 //
 // The page is a consumer. Everything it shows is a view over evidence other
@@ -12,7 +12,7 @@
 //   C  the states are true of the evidence, and unknown stays unknown
 //   D  admins come from directory roles
 //   E  a filter narrows the rows and moves no number
-//   F  a step's handoff is that step's own gate, and a passkey is never it
+//   F  a step's handoff is that step's own gate, and this page's Ready is never it
 //   G  one surface, and the old route reaches it, and the checks read its words
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -20,16 +20,17 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { COMPAT_SHOW_KEYS, SHOW_KEYS, readinessView, scoredPeople, showKeyOf, shows } from './mfaReadiness.ts'
+import { EXPLAINED, SHOW_KEYS, readinessView, scoredPeople, showKeyOf, shows } from './mfaReadiness.ts'
+import type { ShowKey } from './mfaReadiness.ts'
 import { stepMfaHold } from './stepMfaReadiness.ts'
-import { ladder, methodClassesOf } from './ladder.ts'
-import { READINESS_STATES, isQualifying } from '../scoring/phishingResistant.ts'
+import { KINDS, ladder, methodClassesOf } from './ladder.ts'
+import { READINESS_STATES, isQualifying, isReady } from '../scoring/phishingResistant.ts'
 import { adminUserIds } from '../roles.ts'
 import { adminReady, goalFamily, mfaReady } from '../roadmap/readiness.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
 import { affectedIds } from './whoLine.ts'
 import { reached } from './population.ts'
-import { actionOf, readinessWord, stateTitle } from '../ui/surfaces/readinessCells.ts'
+import { nextCell, rowCells, stateTitle } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
@@ -54,32 +55,41 @@ test('the page reads the one readiness authority, not a second reading of the sa
       for (const p of l.states[state]) {
         const row = v.rows.find((x) => x.user.id === p.id)!
         assert.equal(row.state, state, `${name}/${p.id}: ${state}`)
-        assert.equal(mfaReady(p.viability), state === 'ready', `${name}/${p.id}: only Ready is ready for the gate`)
+        assert.equal(mfaReady(p.viability), isReady(state), `${name}/${p.id}: only Ready and Seamless are ready for the gate`)
       }
     }
   }
 })
 
-test('Needs proof reads a qualifying method the inventory holds, and Needs setup means none is held: a record never suggests one', () => {
+test('Confirm it, Needs a device and Ready read a phishing-resistant method the inventory holds, and Needs a method means none usable is held: a record never suggests one', () => {
   for (const name of TENANTS) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const r of v.rows) {
-      if (r.state !== 'needsProof' && r.state !== 'needsSetup' && r.state !== 'ready') continue
+      if (r.state === null || r.state === 'unknown') continue
       // Read the inventory independently of the row: the method rows, or the registration report.
       const held = (methodClassesOf(f.snapshot, r.user.id) ?? []).some(isQualifying) || f.snapshot.registrationDetails.some((x) => x.id === r.user.id && x.methodsRegistered.includes('x509Certificate'))
-      if (r.state === 'needsSetup') assert.equal(held, false, `${name}/${r.user.id}: needs setup means no qualifying method was observed`)
-      else assert.equal(held, true, `${name}/${r.user.id}: ${r.state} only over an observed qualifying method`)
+      const usable = (r.readiness?.credentials ?? []).filter((c) => c.allowedNow !== 'no')
+      if (r.state === 'method' || r.state === 'blocked') {
+        assert.equal(usable.length, 0, `${name}/${r.user.id}: ${r.state} means no usable phishing-resistant method`)
+        if (!held) assert.deepEqual(r.readiness?.credentials, [], `${name}/${r.user.id}: nothing held, nothing claimed`)
+      } else {
+        assert.equal(held, true, `${name}/${r.user.id}: ${r.state} only over an observed phishing-resistant method`)
+        assert.ok(usable.length > 0, `${name}/${r.user.id}: ${r.state} only over a usable one`)
+      }
     }
   }
 })
 
-test('a method inventory nobody could read leaves readiness unknown, never Needs setup', () => {
+test('a method inventory nobody could read leaves readiness unknown, never Needs a method', () => {
   const f = fixture('hostile')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  assert.equal(v.counts.needsSetup, 0, 'nothing is claimed about a method nobody could look for')
+  assert.equal(v.counts.method + v.counts.blocked, 0, 'nothing is claimed about a method nobody could look for')
   assert.equal(v.counts.unknown, v.facts.active, 'every active person is explicitly Unknown')
-  for (const r of v.rows) if (r.active) assert.equal(r.readiness?.unknown, 'methods', `${r.user.id}: unknown because the methods were not read`)
+  for (const r of v.rows) if (r.active) {
+    assert.equal(r.readiness?.unknown, 'methods', `${r.user.id}: unknown because the methods were not read`)
+    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, `${r.user.id}: the fix is the next scan, never a finding`)
+  }
   // The demo, read: the only Unknown is the one person whose own read failed.
   const read = fixture('demo')
   const dv = readinessView(read.snapshot, read.snapshot.asOf, read.mapping)
@@ -102,7 +112,7 @@ test('Ready plus the rest is the active people, and no emergency or service acco
       if (!row) continue
       assert.equal(row.active, false, `${name}: a confirmed emergency account is not in the denominator`)
       assert.equal(row.state, null, `${name}: and is never an end-user remediation target`)
-      assert.equal(actionOf(row), null, `${name}: nothing is asked of it here`)
+      assert.equal(nextCell(row), '', `${name}: nothing is asked of it here`)
     }
     for (const id of f.mapping.serviceAccountUserIds) {
       const row = v.rows.find((r) => r.user.id === id)
@@ -116,20 +126,23 @@ test('Ready plus the rest is the active people, and no emergency or service acco
 
 // ---- C. the states, in words ---------------------------------------------------
 
-test('the readiness cell says the state, and the action is the next action or nothing', () => {
+test('the readiness cell says the state, and the next step is the one action or nothing', () => {
   const f = fixture('demo')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const W = pages.readiness as unknown as { states: Record<string, { title: string }>; notAPerson: string }
-  assert.deepEqual(['ready', 'needsProof', 'needsSetup', 'unknown'].map((s) => W.states[s].title), ['Ready', 'Needs proof', 'Needs setup', 'Unknown'])
+  const W = pages.readiness as unknown as { states: Record<string, { title: string }>; show: Record<string, string>; counted: Record<string, string> }
+  assert.deepEqual(READINESS_STATES.map((s) => W.states[s].title), ['Blocked by setup', 'Needs a method', 'Confirm it', 'Needs a device', 'Unknown', 'Ready', 'Seamless'])
   for (const r of v.rows) {
     if (r.state !== null) {
-      assert.equal(readinessWord(r), stateTitle(r.state), `${r.user.id}: the cell is the state's word`)
-      const a = actionOf(r)
-      // Somebody Ready is asked for nothing the baseline needs; at most a passkey is recommended.
-      if (r.state === 'ready') assert.ok(a === null || a.recommended, `${r.user.id}: a Ready person has no required action`)
-      else assert.ok(a !== null && !a.recommended, `${r.user.id}: somebody not Ready has a required action`)
+      assert.equal(rowCells(r)[3], stateTitle(r.state), `${r.user.id}: the cell is the state's word`)
+      const next = r.readiness!.next
+      // Somebody Ready is asked for nothing; at most the Seamless upgrade is recommended.
+      if (isReady(r.state)) assert.equal(next.kind, 'none', `${r.user.id}: a Ready person has no required action`)
+      else assert.notEqual(next.kind, 'none', `${r.user.id}: somebody not Ready has one next action`)
+      assert.ok(nextCell(r).length > 0)
     } else if (r.kind !== 'person') {
-      assert.equal(readinessWord(r), W.notAPerson)
+      assert.equal(rowCells(r)[3], W.show[r.kind])
+    } else {
+      assert.equal(rowCells(r)[3], W.counted[r.explained!])
     }
   }
   // The surface carries no hand-written setup instruction or Microsoft link.
@@ -160,16 +173,19 @@ test('the admin filter is the directory role authority, and it returns those peo
 test('a filter narrows the rows and changes no number', () => {
   const f = fixture('mid')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const before = JSON.stringify({ facts: v.facts, counts: v.counts, passkeys: v.passkeys })
-  for (const key of [...SHOW_KEYS, ...COMPAT_SHOW_KEYS]) {
-    const shown = v.rows.filter((r) => shows(r, key))
+  const numbers = (x: typeof v) => JSON.stringify({ facts: x.facts, counts: x.counts, explained: x.explained, lapsing: x.lapsing, admins: x.admins })
+  const before = numbers(v)
+  const keys: ShowKey[] = [...SHOW_KEYS, 'lapsing', ...READINESS_STATES, 'notActive', ...KINDS, 'guests']
+  for (const key of keys) {
+    const shown = v.rows.filter((r) => shows(r, key, v.lapsing))
     assert.ok(shown.length <= v.rows.length, `${key}: a filter only removes rows`)
     for (const r of shown) assert.ok(v.rows.includes(r), `${key}: every shown row is one of the page's own`)
   }
   const after = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  assert.equal(JSON.stringify({ facts: after.facts, counts: after.counts, passkeys: after.passkeys }), before, 'the counts above the table are the whole tenant, filtered or not')
-  // Every key the URL can carry has a word, so the control always says what is on screen.
-  for (const key of [...SHOW_KEYS, ...COMPAT_SHOW_KEYS]) assert.equal(showKeyOf(key), key, `${key} resolves`)
+  assert.equal(numbers(after), before, 'the counts above the table are the whole tenant, filtered or not')
+  // Every key the URL can carry resolves, so the control always says what is on screen.
+  for (const key of keys) assert.equal(showKeyOf(key), key, `${key} resolves`)
+  for (const e of EXPLAINED) assert.equal(showKeyOf(e), null, `${e} is a reason, reached through Not counted`)
   assert.equal(showKeyOf('rung-5'), null)
   assert.equal(showKeyOf(''), null)
 })
@@ -185,7 +201,6 @@ test("a step's handoff is that step's own gate over its own reach", () => {
     const run = runFixture(f)
     const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const notReady = new Set(v.rows.filter((r) => r.state !== null && r.state !== 'ready').map((r) => r.user.id))
     for (const step of run.steps) {
       const hold = stepMfaHold(step, scored)
       const family = goalFamily(step.goalId)
@@ -323,13 +338,13 @@ test('an unknown reach keeps the step it came from, and never becomes a tenant-w
 test('there is one MFA Readiness surface, and the old Today route reaches it', () => {
   assert.equal(readinessHref('needsAction'), '#/readiness', 'the bare page is the default filter')
   assert.equal(readinessHref('all'), '#/readiness/all')
-  assert.equal(readinessHref('needsProof'), '#/readiness/needsProof')
+  assert.equal(readinessHref('confirm'), '#/readiness/confirm')
   assert.deepEqual(resolveHash('#/readiness'), { route: 'readiness', redirect: null })
-  assert.deepEqual(resolveHash('#/readiness/needsProof'), { route: 'readiness', redirect: null })
+  assert.deepEqual(resolveHash('#/readiness/confirm'), { route: 'readiness', redirect: null })
   // The old name resolves to the same route and rewrites to the new hash, filter kept.
   assert.deepEqual(resolveHash('#/today'), { route: 'readiness', redirect: '#/readiness' })
   assert.deepEqual(resolveHash('#/today/needsProof'), { route: 'readiness', redirect: '#/readiness/needsProof' })
-  assert.equal(showFromReadinessHash('#/today/needsProof'), 'needsProof', 'and the filter it carried still applies')
+  assert.equal(showKeyOf(showFromReadinessHash('#/today/needsProof')), 'confirm', 'and the filter it carried still lands on its successor')
   const app = readFileSync('src/ui/App.tsx', 'utf8')
   assert.match(app, /<MfaReadiness scan=\{lastScan\} baseline=\{baseline\} \/>/)
   assert.equal((app.match(/<MfaReadiness/g) ?? []).length, 1, 'rendered once')
@@ -360,8 +375,8 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   const many = fillText(T.summary, { ready: 4, active: 30 })
   assert.match(one, RE.readinessSummary, 'the walk reads the summary at a count of one')
   assert.match(many, RE.readinessSummary, 'the walk reads it above one')
-  assert.doesNotMatch(walk, /\/\(\\d\+\) of [^\n]*? Ready\\\.\//, 'and holds no copy of the sentence')
-  const lit = (smoke.match(/\/\(\\d\+\) of [^\n]*? Ready\\\.\//) ?? [])[0]
+  assert.doesNotMatch(walk, /ready for phishing-resistant sign-in\\\./, 'and holds no copy of the sentence')
+  const lit = (smoke.match(/\/\(\\d\+\) of [^\n]*?ready for phishing-resistant sign-in\\\.\//) ?? [])[0]
   assert.ok(lit, 'the smoke still checks the summary sentence')
   const re = new RegExp(lit.slice(1, -1))
   assert.match(one, re, 'the smoke reads the summary at a count of one')

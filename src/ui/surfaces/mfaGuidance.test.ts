@@ -14,8 +14,8 @@
 // (scoring/phishingResistant.ts, worded by surfaces/readinessCells.ts) and
 // nothing else: somebody with a qualifying method is asked to prove it, never
 // to register another; somebody whose evidence could not be read is asked to
-// scan again; somebody Ready with Windows Hello is only recommended a passkey;
-// and no guidance moves a state, a proof, a count or an emergency-access
+// scan again; somebody Ready is only recommended the seamless option; and no
+// guidance moves a state, a proof, a count or an emergency-access
 // classification.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -25,13 +25,13 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import type { ReadinessState } from '../../scoring/phishingResistant.ts'
-import { classOfKind } from '../../scoring/phishingResistant.ts'
-import { content, shared } from '../../content/content.ts'
+import { classOfKind, isReady } from '../../scoring/phishingResistant.ts'
+import { content, pages, shared } from '../../content/content.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { GUIDE_POINTER, METHOD_GUIDES, PASSKEY_TARGET, TENANT_PREREQUISITE, USER_INSTRUCTION, guideText, methodGuide, reachesTarget } from '../../content/methodGuides.ts'
 import type { MethodGuideId } from '../../content/methodGuides.ts'
-import { actionOf, detailOf, methodsCell } from './readinessCells.ts'
+import { classWord, deviceChips, methodsCell, nextCell, panelDevices, panelMethods, whyLine } from './readinessCells.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -54,7 +54,7 @@ const ctxFor = (name: FixtureName): StepVarContext => {
   return { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) }
 }
 const campaignOf = (name: FixtureName) => runFixture(fixture(name)).steps.find((s) => s.id === CAMPAIGN)!
-const SURFACE = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+const SURFACE = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\r\n/g, '\n')
 
 // ---- A. one content source ----------------------------------------------------
 
@@ -118,87 +118,95 @@ test('the Plan and the campaign email reference the shared lines rather than rep
   assert.ok(box.text.includes(USER_INSTRUCTION), 'and the copy box carries the same sentence')
 })
 
-// ---- B. the action follows the evidence ---------------------------------------
+// ---- B. the next step follows the evidence ------------------------------------
 
-test('the action a person is offered follows their readiness, the detail agrees with it, and nothing else decides it', () => {
+test('the next step a person is offered follows their readiness, the panel agrees with it, and nothing else decides it', () => {
+  const N = (pages.readiness as unknown as { next: { none: string } }).next
   const seen = new Set<ReadinessState>()
   for (const name of TENANTS) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const row of v.rows) {
-      const a = actionOf(row)
       const where = `${name}/${row.user.id}`
       if (row.state === null) {
-        assert.equal(a, null, `${where}: an account the page does not count is asked for nothing`)
+        assert.equal(nextCell(row), '', `${where}: an account the page does not count is asked for nothing`)
+        assert.equal(whyLine(row), '', `${where}: and told no reason`)
         continue
       }
       seen.add(row.state)
       const rd = row.readiness!
-      const d = detailOf(row)!
-      if (row.state === 'ready') {
-        assert.ok(rd.qualifying.length > 0 && rd.proof.length > 0, `${where}: Ready holds a qualifying method and its proof`)
-        if (rd.hasPasskey) assert.equal(a, null, `${where}: nothing to do`)
-        else assert.deepEqual([a?.text, a?.recommended], ['Add passkey', true], `${where}: a passkey is only recommended`)
-        assert.equal(d.next[0], 'No baseline action.', `${where}: the baseline asks for nothing`)
-      } else if (row.state === 'needsProof') {
-        // A qualifying method is registered. The action is to prove it, never to register another one.
+      const next = nextCell(row)
+      assert.match(next, /\S/, `${where}: a counted person with no next step`)
+      assert.match(whyLine(row), /\S/, `${where}: a counted person with no reason`)
+      if (isReady(row.state)) {
+        assert.ok(rd.qualifying.length > 0, `${where}: Ready holds a qualifying method`)
+        assert.ok(rd.devices.length > 0 && rd.devices.every((d) => d.proof !== null), `${where}: Ready is confirmed on every device used`)
+        assert.equal(rd.next.kind, 'none', `${where}: the baseline asks nothing more of somebody Ready`)
+        // Seamless is a recommendation for somebody Ready, never a requirement.
+        if (row.state === 'seamless') assert.equal(next, N.none, `${where}: nothing to do`)
+        else assert.ok(rd.recommended === null || rd.recommended.kind === 'seamless', `${where}: Ready is only recommended the seamless option`)
+      } else if (row.state === 'confirm') {
+        // A qualifying method is registered. The next step is to confirm it, never to register another one.
         assert.ok(rd.qualifying.length > 0, `${where}: the method is registered`)
-        assert.notEqual(a?.text, 'Set up passkey', `${where}: prove, not register`)
-        if (rd.missing.length > 0) {
-          assert.equal(a?.text, `Test ${rd.missing[0]}`, `${where}: test the platform in use`)
-          // The detail's Next is the same action as the row's, with or without proof elsewhere.
-          assert.match(d.next[0], new RegExp(`from ${rd.missing[0]}`), `${where}: the detail's Next disagrees with the row ("${d.next[0]}")`)
-        } else {
-          assert.match(a?.text ?? '', /^Sign in with /, `${where}: use it once`)
-          assert.match(d.next[0], /^Sign in once with /, `${where}: the detail's Next disagrees with the row`)
-        }
-      } else if (row.state === 'needsSetup') {
+        assert.ok(['confirm', 'returnConfirm', 'replaceKey'].includes(rd.next.kind), `${where}: confirm, not register (${rd.next.kind})`)
+        assert.doesNotMatch(next, /^Set up/, `${where}: confirm, not register`)
+      } else if (row.state === 'device') {
+        assert.ok(rd.qualifying.length > 0, `${where}: confirmed on one device`)
+        assert.equal(rd.next.kind, 'addDevice', `${where}: the next step is the device that signs in without it`)
+        assert.ok(rd.devices.some((d) => d.proof !== null) && rd.devices.some((d) => d.proof === null), `${where}: confirmed on one device and not another`)
+      } else if (row.state === 'method') {
         assert.equal(rd.qualifying.length, 0, `${where}: no qualifying method`)
-        assert.match(a?.text ?? '', /^(Set up passkey|Restore )/, `${where}: set up, or restore what disappeared`)
+        assert.match(next, /^(Set up|Restore) /, `${where}: set up, or restore what disappeared`)
+      } else if (row.state === 'blocked') {
+        assert.equal(rd.next.kind, 'waitSetup', `${where}: waits on the tenant`)
       } else {
-        // The evidence could not be read: no setup path is guessed at; the action is to read it.
-        assert.equal(a?.text, 'Retry scan', `${where}: unknown stays unknown`)
-        assert.equal(d.rescan, true)
+        // The evidence could not be read: no setup path is guessed at; the next scan reads it.
+        assert.equal(rd.next.kind, 'rescan', `${where}: unknown stays unknown`)
+        assert.doesNotMatch(next, /^Set up/, `${where}: an unread person is told to set nothing up`)
       }
     }
   }
-  assert.deepEqual([...seen].sort(), ['needsProof', 'needsSetup', 'ready', 'unknown'], 'the sweep saw all four states')
+  // Blocked by setup needs a tenant setting none of these fixtures carries; the scoring's own tests hold it.
+  assert.deepEqual([...seen].sort(), ['confirm', 'device', 'method', 'ready', 'seamless', 'unknown'], 'the sweep saw every state the fixtures hold')
 })
 
-test('a qualifying method with platforms in use and no proof anywhere is asked to test a platform, in the row and in the detail', () => {
+test('a registered method with no confirmed sign-in is asked to be confirmed, on the row and in the panel', () => {
+  const P = (pages.readiness as unknown as { panel: { proofNow: { none: string }; now: string } }).panel
   let seen = 0
   for (const name of TENANTS) {
     const f = fixture(name)
     for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
       const rd = row.readiness
-      if (row.state !== 'needsProof' || !rd || rd.proof.length > 0 || rd.missing.length === 0) continue
+      if (row.state !== 'confirm' || !rd || rd.next.kind !== 'confirm') continue
       seen++
-      assert.equal(actionOf(row)?.text, `Test ${rd.missing[0]}`)
-      const d = detailOf(row)!
-      assert.match(d.why[0], /No phishing-resistant sign-in is in the records IAMAI holds/)
-      assert.match(d.next[0], /^Complete one phishing-resistant sign-in from /, `the detail says "${d.next[0]}"`)
+      assert.equal(nextCell(row), fillText((pages.readiness as unknown as { next: { confirm: string } }).next.confirm, { method: classWord(rd.next.cls).toLowerCase() }))
+      // Every device in use reads Not confirmed, on the chip and in the panel's Now.
+      for (const c of deviceChips(row).chips) assert.equal(c.word, (pages.readiness as unknown as { chip: { notConfirmed: string } }).chip.notConfirmed)
+      for (const d of panelDevices(row)) assert.deepEqual(d.facts.find(([k]) => k === P.now)?.[1], P.proofNow.none)
     }
   }
-  assert.ok(seen > 0, 'the fixtures hold somebody with a qualifying method, platforms in use and no proof')
+  assert.ok(seen > 0, 'the fixtures hold somebody with a registered method and no confirmed sign-in')
 })
 
-test('a row holding two qualifying methods names both the way the reference does', () => {
+test('a row holding two qualifying methods names both', () => {
   const f = fixture('demo')
   const both = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.readiness?.qualifying.includes('passkey') && r.readiness.qualifying.includes('windowsHello'))
   assert.ok(both, 'the demo has somebody with a passkey and Windows Hello')
-  assert.equal(methodsCell(both).main, 'Passkey + Windows Hello')
+  assert.equal(methodsCell(both).main, 'Passkey and Windows Hello')
 })
 
-test('the surface offers the action only where readiness earns one, and the detail reads the same row', () => {
-  assert.match(SURFACE, /const a = actionOf\(r\)/, 'the row control reads the one action authority')
-  assert.match(SURFACE, /if \(!a\) return <span className="no-action" aria-hidden="true">&mdash;<\/span>/, 'nothing to do is a mark, not a control')
-  assert.match(SURFACE, /useState<string \| null>\(null\)/, 'the detail is closed by default')
-  assert.match(SURFACE, /const detail = openRow \? detailOf\(openRow\) : null/, 'the detail reads the same row the action was on')
+test('the surface offers the next step the readiness gives, and the panel reads the same row', () => {
+  assert.match(SURFACE, /<div className="next-step">\s*\{nextCell\(r\)\}/, 'the row reads the one next-step authority')
+  // Only counted people are in a group; an account the page does not count is in the rail, asked for nothing.
+  assert.match(SURFACE, /rows: view\.rows\.filter\(\(r\) => r\.state === s && matches\(r\)\)/)
+  assert.match(SURFACE, /useState<string \| null>\(null\)/, 'the panel is closed by default')
+  assert.match(SURFACE, /const openRow = openId === null \? null : \(view\?\.rows\.find\(\(r\) => r\.user\.id === openId\) \?\? null\)/, 'the panel reads the same row the Details was on')
+  assert.match(SURFACE, /<strong>\{nextCell\(openRow\)\}<\/strong>\s*<p>\{whyLine\(openRow\)\}<\/p>/, "the panel's next step is not the row's")
 })
 
-// ---- C. Windows Hello is phishing-resistant; the passkey stays a recommendation
+// ---- C. Windows Hello is phishing-resistant, where it signs in -----------------
 
-test('Windows Hello satisfies the baseline where it was proven, and the passkey guide and recommendation are unchanged', () => {
+test('Windows Hello satisfies the baseline on the computer it signs in on, and the passkey guide is unchanged', () => {
   // The guide's own target is the portable passkey, which Windows Hello is not.
   assert.equal(reachesTarget('windows-hello'), false)
   const hello = methodGuide('windows-hello')
@@ -206,17 +214,22 @@ test('Windows Hello satisfies the baseline where it was proven, and the passkey 
   assert.ok(hello.lines.some((l) => /does not reach the passkey target/.test(l)), 'the guide says so in words')
   const f = fixture('demo')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  // Ready with Windows Hello and no passkey: nothing required, a passkey recommended.
-  const helloReady = v.rows.filter((r) => r.state === 'ready' && r.readiness?.hasPasskey === false && r.readiness.qualifying.includes('windowsHello'))
-  assert.ok(helloReady.length > 0, 'the demo has somebody Ready with Windows Hello and no passkey')
+  // Windows Hello alone, and only a Windows computer in use: Ready, nothing required.
+  const helloOnly = v.rows.filter((r) => r.state !== null && r.readiness?.qualifying.length === 1 && r.readiness.qualifying[0] === 'windowsHello')
+  const helloReady = helloOnly.filter((r) => isReady(r.state!))
+  assert.ok(helloReady.length > 0, 'the demo has somebody Ready with Windows Hello alone')
   for (const row of helloReady) {
-    assert.equal(actionOf(row)?.recommended, true)
-    assert.equal(detailOf(row)?.next[0], 'No baseline action.')
+    assert.equal(row.readiness!.next.kind, 'none')
+    assert.ok(row.readiness!.devices.every((d) => d.os === 'Windows'), `${row.user.id}: Windows Hello is Ready only where Windows is all they use`)
   }
-  // Windows Hello proven on Windows and a phone in use: asked to prove the phone, never told they hold nothing.
-  const helloElsewhere = v.rows.filter((r) => r.state === 'needsProof' && r.readiness?.qualifying.length === 1 && r.readiness.qualifying[0] === 'windowsHello' && r.readiness.missing.length > 0)
-  assert.ok(helloElsewhere.length > 0, 'the demo has a Windows Hello person seen on another platform')
-  for (const row of helloElsewhere) assert.match(actionOf(row)?.text ?? '', /^Test /)
+  // Windows Hello confirmed on Windows and a phone in use: asked to add the phone, never told they hold nothing.
+  const helloElsewhere = helloOnly.filter((r) => r.state === 'device')
+  assert.ok(helloElsewhere.length > 0, 'the demo has a Windows Hello person who also signs in on a phone')
+  for (const row of helloElsewhere) {
+    assert.equal(row.readiness!.next.kind, 'addDevice')
+    assert.match(nextCell(row), /^Add /)
+    assert.doesNotMatch(nextCell(row), /^Set up/)
+  }
 })
 
 // ---- D. a Temporary Access Pass is a way in, not the end state ----------------
@@ -259,13 +272,17 @@ test('a guest is told, in one shared sentence, why this tenant issues them no Te
   assert.ok(risks.some((r) => r.text === '{guestNoTap}'), 'the campaign references the shared sentence rather than retyping it')
   assert.equal(fillText('{guestNoTap}', {}), MG.guest, 'and it fills to that sentence')
   assert.ok(whole('{guestNoTap}', {}), 'a shared reference is not a hole')
-  // A guest who needs a method is asked for a passkey, never handed a pass.
+  // A guest who needs a method is asked to set one up, never handed a pass.
+  let guests = 0
   for (const name of TENANTS) {
     const f = fixture(name)
     for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-      if (row.guest && row.state === 'needsSetup') assert.doesNotMatch(actionOf(row)?.text ?? '', /Temporary Access Pass/, `${name}/${row.user.id}: a guest is offered no pass`)
+      if (!row.guest || row.state === null) continue
+      guests++
+      assert.doesNotMatch(nextCell(row), /Temporary Access Pass/, `${name}/${row.user.id}: a guest is offered no pass`)
     }
   }
+  assert.ok(guests > 0, 'the fixtures hold a counted guest')
 })
 
 // ---- E / F. the platforms, and the security key --------------------------------
@@ -375,7 +392,7 @@ test('every guide ends on one official Microsoft page, and the page renders no g
     assert.match(g.learn.url, /^https:\/\/learn\.microsoft\.com\//, `${g.id}: an official Microsoft page`)
     assert.doesNotMatch(g.learn.url, /blog|medium|github\.io/, `${g.id}: not a vendor blog`)
   }
-  // MFA Readiness's detail is Why and Next (Step 7): no bibliography, no guide panel.
+  // MFA Readiness's person panel is the next step, the devices and the methods (prompt 62): no bibliography, no guide panel.
   assert.doesNotMatch(SURFACE, /methodGuide\(|guideText\(|learn\.url|RemediationPanel/, 'the page renders a guide of its own')
 })
 
@@ -385,11 +402,13 @@ test('guidance changes no readiness, no count and no emergency-access classifica
   for (const name of TENANTS) {
     const f = fixture(name)
     const before = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    // Ask for every action, every detail and every guide: none of it touches the
-    // evidence, because none of it is evidence.
+    // Ask for every next step, every reason, every panel and every guide: none
+    // of it touches the evidence, because none of it is evidence.
     for (const row of before.rows) {
-      actionOf(row)
-      detailOf(row)
+      nextCell(row)
+      whyLine(row)
+      panelDevices(row)
+      panelMethods(row)
     }
     for (const g of METHOD_GUIDES) guideText(g.id)
     const after = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
@@ -406,7 +425,7 @@ test('guidance changes no readiness, no count and no emergency-access classifica
       if (!row) continue
       assert.equal(row.kind, 'emergency', `${name}/${id}: still classified emergency access`)
       assert.equal(row.state, null)
-      assert.equal(actionOf(row), null, `${name}/${id}: no campaign action attached`)
+      assert.equal(nextCell(row), '', `${name}/${id}: no campaign action attached`)
     }
   }
 })
@@ -432,7 +451,7 @@ test('the target and the tenant prerequisite are said once, outside every guide'
   }
   // The target is phishing-resistant MFA, not a passkey (Step 7).
   assert.match(MG.target, /phishing-resistant/)
-  // MFA Readiness's page carries neither: its summary sub-line says what Ready means.
+  // MFA Readiness's page carries neither: the answer's definition line says what Ready means.
   assert.doesNotMatch(SURFACE, /PASSKEY_TARGET|TENANT_PREREQUISITE/)
 })
 

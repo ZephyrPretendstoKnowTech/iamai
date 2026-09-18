@@ -58,12 +58,15 @@ test('the readiness summary reads in the shape the walk reads, at a count of one
   const many = fillText(textAt('pages.readiness.summary'), { ready: 2, active: 3 })
   assert.match(one, RE.readinessSummary)
   assert.match(many, RE.readinessSummary)
-  assert.match(many, /^2 of 3 are Ready\.$/)
+  assert.match(one, /^1 of 1 person is ready for phishing-resistant sign-in\.$/)
+  assert.match(many, /^2 of 3 people are ready for phishing-resistant sign-in\.$/)
   assert.match(textAt('pages.readiness.summaryNone'), RE.readinessSummaryNone)
 })
 
-test('the three readiness counts beside Ready are named', () => {
-  assert.deepEqual(readinessStatTitles(), ['Need proof', 'Need setup', 'Unknown'], `the counts read ${JSON.stringify(readinessStatTitles())}`)
+test('the seven readiness states are named, in the worklist order', () => {
+  const titles = readinessStatTitles()
+  assert.deepEqual(titles, ['Blocked by setup', 'Needs a method', 'Confirm it', 'Needs a device', 'Unknown', 'Ready', 'Seamless'], `the states read ${JSON.stringify(titles)}`)
+  assert.equal(new Set(titles).size, titles.length, 'every state has its own word')
 })
 
 test("a report-only step's two gates render in the shape the walk reads", () => {

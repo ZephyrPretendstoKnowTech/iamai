@@ -20,10 +20,10 @@ import { readinessView } from './mfaReadiness.ts'
 import { contentLists } from './contentLists.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../scoring/mfaViability.ts'
-import { personReadiness } from '../scoring/phishingResistant.ts'
+import { READINESS_STATES, emptyReadinessContext, isReady, personReadiness } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { adminReady, readinessFor } from '../roadmap/readiness.ts'
-import { actionOf, methodsCell, proofLines, readinessWord } from '../ui/surfaces/readinessCells.ts'
+import { methodsCell, nextCell, panelDevices, panelMethods, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
 import { adminUserIds } from '../roles.ts'
 
 const AT = '2026-08-27T09:00:00.000Z'
@@ -46,24 +46,27 @@ const named = (id: string, userId: string, at: string, method: string, os?: Stor
 /** A record that says MFA was required and satisfied, and names no method. */
 const generic = (id: string, userId: string, at: string, os?: StoredSignIn['os']): StoredSignIn => signIn({ id, userId, createdDateTime: at, ...(os ? { os } : {}) })
 
-const signIns = (e: { proofs?: TenantSnapshot['signInEvidence'][string]['proofs']; platforms?: TenantSnapshot['signInEvidence'][string]['platforms'] }) => ({ read: true, proofs: e.proofs ?? [], platforms: e.platforms ?? [] })
+const signIns = (e: { proofs?: TenantSnapshot['signInEvidence'][string]['proofs']; platforms?: TenantSnapshot['signInEvidence'][string]['platforms']; devices?: TenantSnapshot['signInEvidence'][string]['devices'] }) => ({ read: true, proofs: e.proofs ?? [], platforms: e.platforms ?? [], devices: e.devices ?? null })
+/** The window the records above sit in: the scan is the day after the last of them. */
+const context = emptyReadinessContext('2026-08-29T09:00:00.000Z')
 
 test('a generic MFA record proves MFA happened and never which method was used', () => {
   const u = aggregate([generic('r1', 'u1', AT)]).u1
   assert.deepEqual(u.lastMfaSuccess, { at: AT, method: 'MFA' }, 'the MFA occurrence is kept as evidence')
   assert.deepEqual(u.proofs, [], 'a record naming no method proves no method')
-  // A passkey on the registration report plus that record needs proof; it is not Ready.
-  const holder = personReadiness({ methods: [{ kind: 'passkey' }, { kind: 'microsoftAuthenticator' }], registered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], signIns: signIns(u), history: null })
-  assert.equal(holder.state, 'needsProof', 'a record naming no method does not prove the passkey')
+  // A passkey on the registration report plus that record is Confirm it; it is not Ready.
+  const holder = personReadiness({ methods: [{ kind: 'passkey' }, { kind: 'microsoftAuthenticator' }], registered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], signIns: signIns(u), history: null, context })
+  assert.equal(holder.state, 'confirm', 'a record naming no method does not prove the passkey')
+  assert.equal(holder.lastConfirmed, null)
   assert.deepEqual(holder.methods, ['passkey', 'authenticator'], 'the registered methods are still named')
   // And the same record beside an Authenticator registration is not read as an Authenticator sign-in either.
-  const app = personReadiness({ methods: [{ kind: 'microsoftAuthenticator' }], registered: ['microsoftAuthenticatorPush'], signIns: signIns(u), history: null })
-  assert.equal(app.state, 'needsSetup')
+  const app = personReadiness({ methods: [{ kind: 'microsoftAuthenticator' }], registered: ['microsoftAuthenticatorPush'], signIns: signIns(u), history: null, context })
+  assert.equal(app.state, 'method')
   assert.equal(app.other, null)
 })
 
 test('the method a record names outlives every later record that names none, in either order', () => {
-  const key = named('r-key', 'u1', '2026-08-20T09:00:00.000Z', 'FIDO2 security key')
+  const key = named('r-key', 'u1', '2026-08-20T09:00:00.000Z', 'FIDO2 security key', 'Windows')
   const later = generic('r-generic', 'u1', '2026-08-27T09:00:00.000Z')
   // Graph returns the newest row first; the cache merge can hand them over in
   // any order. Neither may cost the person the method they proved.
@@ -71,7 +74,7 @@ test('the method a record names outlives every later record that names none, in 
     const u = aggregate(rows).u1
     assert.deepEqual(u.lastMfaSuccess, { at: '2026-08-20T09:00:00.000Z', method: 'FIDO2 security key' }, 'the named method is the proof')
     assert.deepEqual(u.proofs?.map((p) => [p.cls, p.at]), [['passkey', '2026-08-20T09:00:00.000Z']], 'the proof is the key, kept')
-    assert.equal(personReadiness({ methods: [{ kind: 'fido2' }], registered: ['fido2SecurityKey'], signIns: signIns(u), history: null }).state, 'ready')
+    assert.equal(isReady(personReadiness({ methods: [{ kind: 'fido2' }], registered: ['fido2SecurityKey'], signIns: signIns(u), history: null, context }).state), true)
   }
   // A newer named record replaces the latest MFA success, and takes no proof away.
   const newerApp = named('r-app', 'u1', '2026-08-28T09:00:00.000Z', 'Mobile app notification')
@@ -173,13 +176,15 @@ function tenant(over: { evidenceStatus?: 'ok' | 'insufficient' } = {}) {
 
 type Person = Exclude<keyof ReturnType<typeof tenant>['ids'], 'emergency'>
 const EXPECTED: Record<Person, ReadinessState> = {
+  // A security key on a computer whose Windows Hello for Business was not read: Ready, not Seamless.
   ready: 'ready',
-  authOnly: 'needsSetup',
-  helloOnly: 'ready',
-  helloPhone: 'needsProof',
-  passkeyGeneric: 'needsProof',
-  silent: 'needsSetup',
-  none: 'needsSetup',
+  authOnly: 'method',
+  // Windows Hello is the computer's own credential.
+  helloOnly: 'seamless',
+  helloPhone: 'device',
+  passkeyGeneric: 'confirm',
+  silent: 'method',
+  none: 'method',
 }
 
 test('every state, from the sign-in rows to the partition, MFA Readiness and the campaign, reads the one readiness authority', () => {
@@ -201,7 +206,7 @@ test('every state, from the sign-in rows to the partition, MFA Readiness and the
   // The campaign's groups are those states, by name.
   assert.ok(cl.noMethod.includes(ids.none), 'no sign-in method: the account with nothing registered')
   for (const id of [ids.authOnly, ids.silent]) assert.ok(cl.needsSetup.includes(id), 'no phishing-resistant method: both Authenticator-only accounts')
-  for (const id of [ids.passkeyGeneric, ids.helloPhone]) assert.ok(cl.needsProof.includes(id), 'not yet proven everywhere: both')
+  for (const id of [ids.passkeyGeneric, ids.helloPhone]) assert.ok(cl.needsProof.includes(id), 'not yet confirmed everywhere: both')
   for (const id of [ids.ready, ids.helloOnly]) {
     for (const list of [cl.noMethod, cl.needsSetup, cl.needsProof, cl.readinessUnknown]) assert.ok(!list.includes(id), 'a Ready person is asked for nothing')
   }
@@ -216,54 +221,57 @@ test('every state, from the sign-in rows to the partition, MFA Readiness and the
   assert.ok(ready > 0)
 })
 
-test('the account with a generic record says a method is registered and no method is proven; the account with no record needs setup', () => {
+test('the account with a generic record says a method is held and none is confirmed; the account with no record needs a method', () => {
   const { f, s, ids } = tenant()
   const view = readinessView(s, s.asOf, f.mapping)
   const row = view.rows.find((r) => r.user.id === ids.passkeyGeneric)
   assert.ok(row)
-  assert.equal(row.state, 'needsProof', 'a registered passkey with no proof needs proof')
+  assert.equal(row.state, 'confirm', 'a registered passkey with no confirmed use is Confirm it')
   assert.equal(methodsCell(row).main, 'Passkey', 'the registered method is still named')
   assert.deepEqual(s.signInEvidence[ids.passkeyGeneric].lastMfaSuccess, { at: AT, method: 'MFA' }, 'the MFA occurrence is kept')
-  assert.deepEqual(row.readiness?.proof, [], 'and it proves no method')
-  const lines = proofLines(row)
-  assert.ok(lines.length > 0 && lines.every((l) => l.mark !== 'good'), 'no proof line claims the passkey')
-  for (const l of lines) assert.doesNotMatch(l.text, /passkey|security key|Authenticator/i, `"${l.text}" attributes the record to a method`)
-  assert.equal(readinessWord(row), 'Needs proof')
-  for (const text of [...lines.map((l) => l.text), readinessWord(row)]) {
-    assert.doesNotMatch(text, /never used|never prompted|no MFA|no sign-in record/i, `"${text}" must not deny a sign-in that happened`)
-  }
-  // No passkey registered and no record at all: needs setup, and a generic record never suggests a passkey.
+  assert.equal(row.readiness?.lastConfirmed, null, 'and it confirms no method')
+  assert.ok(row.readiness?.devices.every((d) => d.proof === null), 'no device claims the passkey')
+  assert.deepEqual(row.readiness?.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
+  assert.equal(stateTitle(row.state), 'Confirm it')
+  const deviceTexts = panelDevices(row).flatMap((i) => i.facts.map((x) => x[1]))
+  for (const text of deviceTexts) assert.doesNotMatch(text, /passkey|security key|Authenticator/i, `"${text}" attributes the record to a method`)
+  const texts = [nextCell(row), whyLine(row), methodsCell(row).note, ...deviceTexts, ...panelMethods(row).flatMap((i) => i.facts.map((x) => x[1]))]
+  for (const text of texts) assert.doesNotMatch(text, /never used|never prompted|no MFA|no sign-in record/i, `"${text}" must not deny a sign-in that happened`)
+  // No passkey registered and no record at all: needs a method, and a generic record never suggests one is held.
   const silent = view.rows.find((r) => r.user.id === ids.silent)
   assert.ok(silent)
-  assert.equal(silent.state, 'needsSetup')
-  assert.equal(readinessWord(silent), 'Needs setup')
-  assert.deepEqual(proofLines(silent), [{ mark: 'bad', text: 'No qualifying method' }])
+  assert.equal(silent.state, 'method')
+  assert.equal(stateTitle('method'), 'Needs a method')
+  assert.equal(methodsCell(silent).main, 'Authenticator only')
+  assert.equal(silent.readiness?.next.kind, 'setUp')
 })
 
-test('a generic record never invents a registered method: nothing set up needs setup', () => {
+test('a generic record never invents a registered method: nothing set up needs a method', () => {
   const { f, s, ids } = tenant()
   const row = readinessView(s, s.asOf, f.mapping).rows.find((r) => r.user.id === ids.none)
   assert.ok(row)
-  assert.equal(row.state, 'needsSetup', 'MFA happened and nothing usable is registered')
+  assert.equal(row.state, 'method', 'MFA happened and nothing usable is registered')
   assert.deepEqual(row.readiness?.methods, [])
-  assert.equal(methodsCell(row).main, 'None')
+  assert.equal(methodsCell(row).main, 'No phishing-resistant method')
   assert.equal(row.readiness?.other, null, 'the record proves no method, so none is named as not phishing-resistant')
-  assert.equal(actionOf(row)?.text, 'Set up passkey')
+  assert.equal(row.readiness?.next.kind, 'setUp')
+  assert.match(nextCell(row), /^Set up /)
 })
 
-test('Windows Hello proven on the only platform in use is Ready without a passkey; a phone in use without proof is not', () => {
+test('Windows Hello proven on the only device in use is Ready without a passkey; a phone in use without proof is Needs a device', () => {
   const { f, s, ids } = tenant()
   const view = readinessView(s, s.asOf, f.mapping)
   const hello = view.rows.find((r) => r.user.id === ids.helloOnly)
   assert.ok(hello)
-  assert.equal(hello.state, 'ready')
+  assert.equal(hello.state, 'seamless')
+  assert.equal(isReady(hello.state), true)
   assert.equal(hello.readiness?.hasPasskey, false)
-  assert.equal(actionOf(hello)?.recommended, true, 'a passkey is recommended, and only recommended')
+  assert.deepEqual(hello.readiness?.next, { kind: 'none' }, 'nothing more is asked')
   const phone = view.rows.find((r) => r.user.id === ids.helloPhone)
   assert.ok(phone)
-  assert.equal(phone.state, 'needsProof')
-  assert.deepEqual(phone.readiness?.missing, ['iOS'], 'the phone the records show in use has no phishing-resistant proof')
-  assert.deepEqual(phone.readiness?.proof.map((p) => [p.cls, p.os]), [['windowsHello', 'Windows']], 'Windows Hello is proven where it was used, and nowhere else')
+  assert.equal(phone.state, 'device')
+  assert.deepEqual(phone.readiness?.devices.map((d) => [d.os, d.proof?.cls ?? null]), [['Windows', 'windowsHello'], ['iOS', null]], 'Windows Hello is proven where it was used, and nowhere else')
+  assert.deepEqual(phone.readiness?.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' }, 'the phone the records show in use gets its own passkey')
   assert.equal(phone.readiness?.other?.cls, 'authenticator', 'the phone approval is named, as not phishing-resistant')
 })
 
@@ -276,11 +284,11 @@ test('evidence the scan could not read is not proof: nobody is Ready, and readin
     assert.equal(rowById.get(ids[key])?.state, 'unknown', `${key}: a qualifying method with unreadable records is Unknown`)
     assert.equal(rowById.get(ids[key])?.readiness?.unknown, 'signIns')
   }
-  // Without a qualifying method there is nothing to prove: setup is needed whatever the records say.
-  for (const key of ['authOnly', 'silent', 'none'] as const) assert.equal(rowById.get(ids[key])?.state, 'needsSetup', key)
+  // Without a phishing-resistant method there is nothing to confirm: a method is needed whatever the records say.
+  for (const key of ['authOnly', 'silent', 'none'] as const) assert.equal(rowById.get(ids[key])?.state, 'method', key)
   // The scored rows agree: nobody is verified from records nobody could read.
   for (const v of l.viability.values()) assert.notEqual(v.mfa, 'verified', 'no account is verified without readable records')
-  assert.equal(l.states.ready.length, 0, 'nobody is Ready')
+  assert.equal(l.states.ready.length + l.states.seamless.length, 0, 'nobody is Ready')
   const admins = [...adminUserIds(s.roles)].filter((id) => l.viability.has(id))
   const r = readinessFor('admins-phishing-resistant', admins, [...l.viability.values()], s)
   assert.equal(r.percent, null, 'admin readiness is not stated, never a measured 0%')
@@ -293,7 +301,7 @@ test('a confirmed emergency account keeps its methods and its records outside th
   const id = ids.emergency
   // Task 001: a confirmed emergency account is not a person; the campaign never counts it.
   assert.ok(l.kinds.emergency.some((u) => u.id === id), 'listed as emergency access')
-  for (const state of ['ready', 'needsProof', 'needsSetup', 'unknown'] as const) assert.ok(!l.states[state].some((p) => p.id === id), 'never counted in a state')
+  for (const state of READINESS_STATES) assert.ok(!l.states[state].some((p) => p.id === id), 'never counted in a state')
   const cl = contentLists({ snapshot: s, mapping: f.mapping, nameOf: (x) => x, now: s.asOf })
   for (const list of [cl.unproven, cl.noMethod, cl.needsSetup, cl.needsProof, cl.readinessUnknown, cl.specialCareIds]) assert.ok(!list.includes(id), 'and never in a campaign group')
   // Its own methods and records are still readable, for the lockout and

@@ -92,11 +92,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The completion of a User Action policy, whose readiness is its configuration
   // because Microsoft does not evaluate it in report-only (roadmap/evidenceStrategy.ts,
   // doneWhen.ts): the review page's example plans create no User Action policy.
-  // Connect's note and MFA Readiness's headline for a scan that holds no sign-in
-  // proof (scoring/fromSnapshot.ts signInProofRead): the review page's example
-  // scan read its proof.
+  // Connect's note for a scan that holds no sign-in proof (scoring/fromSnapshot.ts
+  // signInProofRead): the review page's example scan read its proof. (MFA
+  // Readiness's unmeasured headline renders now: the review page draws every
+  // pages.readiness leaf, prompt 62.)
   '.pages.connect.scan.complete.degraded',
-  '.pages.readiness.summaryUnmeasured',
   '.shared.enforceIfWrong',
   // The Dates line of a policy already in report-only with nothing left to
   // submit but the enforcement its window has not earned (stepExport.ts
@@ -197,7 +197,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[16].who.groups.needsSetup',
   '.steps[16].who.groups.readinessUnknown',
   '.steps[16].who.groups.holdouts',
-  '.steps[16].who.adminsNote',
   '.steps[17].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists
@@ -263,7 +262,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // steps[].aiFocus is the step's own request to the assistant, read by AI Info's
 // briefing (aiGrounding.ts) and never by the review page.
 // These fields are consumed by Plan.tsx, stepContract.ts, stepResources.ts and aiGrounding.ts, not the static content-review renderer.
-const isAppOnly = (p: string): boolean => p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote$/.test(p) || /\.whatToDo\.verification\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.registrationScope.') || p.startsWith('.pages.readiness.proof.marks.')
+const isAppOnly = (p: string): boolean => p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote$/.test(p) || /\.whatToDo\.verification\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

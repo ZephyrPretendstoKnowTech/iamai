@@ -9,14 +9,16 @@
 // Inventory 1240 — and made the page and the footer read one `--route-width`
 // declared on the shell, so the frame and the content cannot end up on two
 // different columns. It replaced a boolean `page-wide` class that could only
-// say "the wide one". MFA Readiness's ladder and counts keep their own,
-// narrower measure and sit above the wider table.
+// say "the wide one". MFA Readiness's opening sentence keeps the pack's
+// reading measure above the answer panel, which takes the page's full column.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { app, pages } from '../../content/content.ts'
 
-const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+// Line endings normalised: a Windows checkout writes the working copy with CRLF.
+const text = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
+const shell = text('src/ui/shell/AppShell.tsx')
 
 test("the scan's line renders under the header on every page but Connect, from the session's scan state, with Stop and the paused notice", () => {
   const line = shell.slice(shell.indexOf('function ScanLine'), shell.indexOf('export function AppShell'))
@@ -45,7 +47,7 @@ const specificity = (selector: string): number => {
 
 test('each surface reads at its approved width; the diagnostic above the table keeps the page column instead of stretching to it', () => {
   assert.match(shell, /<main className="page" data-route=\{route\}>/, 'the width is decided by the route, in CSS')
-  const widths = readFileSync('src/ui/app.css', 'utf8')
+  const widths = text('src/ui/app.css')
   // Task 040 moved the width from the page element to the shell, so the page
   // and the footer read one value per route (`--route-width`). The routes and
   // the columns they resolve to are the fact; where the variable is declared is
@@ -59,38 +61,34 @@ test('each surface reads at its approved width; the diagnostic above the table k
   for (const [route, token] of [['inventory', 'w-inventory'], ['how', 'w-how'], ['export', 'w-export']]) {
     assert.match(widths, new RegExp(`\\.shell\\[data-route='${route}'\\] \\{\\s*\\n\\s*--route-width: var\\(--${token}\\);`), `${route} has no column of its own`)
   }
-  const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  // The final reference (Step 7) puts nothing beside the heading; the scan the
-  // evidence asks for is the Next of a person whose evidence could not be read.
+  const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\r\n/g, '\n')
+  // The v3 pack (prompt 62) puts nothing beside the heading; the scan the
+  // evidence asks for sits in the Evidence read tile, where the unread people are counted.
   assert.match(today, /<h1 className="display">\{T\.h1\}<\/h1>/, 'the heading')
   assert.doesNotMatch(today, /className="page-head"/, 'no control beside the heading')
-  assert.match(today, /detail\.rescan && \([\s\S]{0,200}again\.run\(scan\(readinessHref\(show\)\)\)/, 'Scan again is where a person needs it, in the detail')
-  // The three counts are the summary panel's stats, not three cards and not
-  // five equal rung tiles.
-  assert.match(today, /<section className="readiness-summary panel"/, 'the three readiness counts sit in one panel')
-  assert.match(today, /className="summary-stat"/, 'and each count is a cell of it')
-  const css = readFileSync('src/ui/app.css', 'utf8')
+  assert.match(today, /\(notCovered > 0 \|\| unreadMethods > 0\) && \([\s\S]{0,200}again\.run\(scan\(readinessHref\(show\)\)\)/, 'Scan again is where the evidence needs it, in the Evidence read tile')
+  // The counts are the answer panel's legend, not three cards and not five equal
+  // rung tiles.
+  assert.match(today, /<section className="readiness-answer panel"/, 'the readiness counts sit in one panel')
+  assert.match(today, /<ul className="readiness-legend"[\s\S]{0,300}<b>\{counts\[s\]\}<\/b>/, 'and each count is a word and a number in its legend')
+  const css = text('src/ui/app.css')
   assert.match(css, /\.surface \.page-head \{[^}]*justify-content: space-between/)
   assert.match(css, /\.scan-line \{/)
-  // The approved pack gives the summary panel the full table column and caps the
-  // sentence above it, which is the opposite way round from the tiles it
-  // replaced: the panel IS the diagnostic, and the intro is the prose.
-  assert.match(css, /\.surface\.readiness \.line\.intro \{[^}]*max-width: var\(--page\)/, 'the opening sentence is capped to the page width, not the wide table width')
+  // The pack caps the opening sentence at a reading measure (`.pitch{max-width:66ch}`)
+  // while the answer panel under it takes the page's full column: the panel IS
+  // the diagnostic, and the intro is the prose.
+  assert.match(readFileSync('docs/design/approved/anatomy/mfa-readiness-v3.html', 'utf8'), /\.pitch\{margin:0;max-width:66ch;/)
+  assert.match(css, /\.surface\.readiness \.line\.intro \{[^}]*max-width: 66ch/, 'the opening sentence is not capped to the pack\'s measure')
 
-  // The generic .surface p rule (prose) sets a prose max-width that would
-  // otherwise cap the summary line below the page column the counts under it
-  // sit at. The .surface.readiness override carries a strictly higher
-  // specificity than that generic rule, or the line and the counts go out of
-  // line the moment the table widens.
+  // The generic .surface p rule (prose) sets a prose max-width of its own. The
+  // .surface.readiness override carries a strictly higher specificity than that
+  // generic rule, or the intro takes the generic measure instead of the pack's.
   const proseRule = /\.surface p,\s*\n\.surface ul,\s*\n\.surface ol \{[^}]*max-width: var\(--measure\)/
   assert.match(css, proseRule, 'the generic prose cap this override must beat is still the one in force')
   assert.ok(specificity('.surface.readiness .line.intro') > specificity('.surface p'), 'the override must win the cascade against .surface p, not just exist in the file')
-  // And the summary panel's headline is not capped by the prose measure at all:
-  // it is the panel's own cell, at the panel's width.
-  assert.ok(
-    specificity('.readiness-summary .summary-main .headline') > specificity('.surface p'),
-    'the summary headline must beat the prose cap, or it wraps short inside a cell that is not prose',
-  )
+  // The answer's sentence is a heading, capped by the pack's own 24ch, never by the prose measure.
+  assert.match(css, /\.readiness-answer \.headline \{[^}]*max-width: 24ch/, 'the answer sentence is not capped at the pack\'s 24ch')
+  assert.ok(specificity('.readiness-answer .headline') > specificity('.surface p'), 'the answer sentence must beat the prose cap')
   // The five boxed rung rows the page used to draw are gone with the page they
   // were on: nothing renders them, so nothing styles them.
   assert.doesNotMatch(css, /\.ladder-row|\.ladder-divider|\.ladder-wrap/, 'the old ladder rows left no dead rules behind')

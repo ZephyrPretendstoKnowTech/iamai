@@ -172,16 +172,17 @@ test('no step names an unresolvable account: every holder resolves', async () =>
   }
 })
 
-// Prompt 48.1 item 6 (Step 7): the campaign's needs-proof line fires wherever
-// MFA Readiness counts active, non-break-glass people who Need proof — a
-// phishing-resistant method not yet proven on every platform they use.
-test('the campaign shows a needs-proof line exactly when MFA Readiness has active people who Need proof', () => {
+// Prompt 48.1 item 6 (Step 7, prompt 62): the campaign's needs-proof line fires
+// wherever MFA Readiness counts active, non-break-glass people who are Confirm it
+// or Needs a device — a phishing-resistant method not yet confirmed in the window
+// on every device they use.
+test('the campaign shows a needs-proof line exactly when MFA Readiness has active people to Confirm or who Need a device', () => {
   for (const f of allFixtures()) {
     const r = runFixture(f)
     const verify = r.steps.find((s) => s.kind === 'verify')
     if (!verify) continue
     const bg = new Set(f.mapping.breakGlassUserIds)
-    const unproven = r.viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state === 'needsProof' && !bg.has(v.userId)).length
+    const unproven = r.viability.filter((v) => rolloutBucket(v) !== null && (v.readiness.state === 'confirm' || v.readiness.state === 'device') && !bg.has(v.userId)).length
     const line = (verify.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
     assert.equal(Boolean(line), unproven > 0, `${f.name}: unproven line ${Boolean(line)} but ${unproven} unproven`)
     if (line) assert.equal(line.people.length, unproven, `${f.name}: unproven line names ${line.people.length} of ${unproven}`)

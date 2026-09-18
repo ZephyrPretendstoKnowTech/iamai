@@ -64,10 +64,10 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
-  // MFA Readiness over the same people: the campaign's groups are its states (Step 7).
+  // MFA Readiness over the same people: the campaign's groups are its states (Step 7, prompt 62).
   const tv = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  assert.equal(cl.noMethod.length + cl.needsSetup.length, tv.counts.needsSetup, 'Needs setup matches MFA Readiness')
-  assert.equal(cl.needsProof.length, tv.counts.needsProof, 'Needs proof matches MFA Readiness')
+  assert.equal(cl.noMethod.length + cl.needsSetup.length, tv.counts.method + tv.counts.blocked, 'Needs setup is Needs a method and Blocked by setup on MFA Readiness')
+  assert.equal(cl.needsProof.length, tv.counts.confirm + tv.counts.device, 'Needs proof is Confirm it and Needs a device on MFA Readiness')
   assert.equal(cl.readinessUnknown.length, tv.counts.unknown, 'Unknown matches MFA Readiness')
   assert.ok(cl.noMethod.length > 0 && cl.needsProof.length > 0, 'the demo has people in these buckets')
   assert.ok(cl.specialCare.length > 0, 'the special-care picker has people')

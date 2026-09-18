@@ -28,6 +28,7 @@ import { floorRows, floorGroupIds } from './surfaces/planRows.ts'
 import { FLOOR_GOAL_IDS } from '../roadmap/floor.ts'
 import { ladder, stateIds } from '../derive/ladder.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
+import { isQualifying, isReady } from '../scoring/phishingResistant.ts'
 import { scoredPeople } from '../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../derive/stepMfaReadiness.ts'
 import { notPeopleIds } from '../derive/sets.ts'
@@ -249,13 +250,16 @@ test('C: the sample people are scored by readiness, with the mix MFA Readiness i
   const f = fixture('demo')
   const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
   assert.ok(l.active >= 20, `the sample has ${l.active} active people`)
-  // Ready, and an administrator: the top of the page.
-  assert.ok(stateIds(l, 'ready').length >= 1, 'no sample person is Ready for phishing-resistant MFA')
-  assert.ok(l.states.ready.some((p) => p.admin), 'no sample administrator is Ready')
-  // A qualifying method proven on one platform family and not on another the person uses.
-  assert.ok(l.states.needsProof.some((p) => p.viability.readiness.missing.length > 0), 'no sample person needs proof on a platform they use')
-  // People who still need a qualifying method.
-  assert.ok(stateIds(l, 'needsSetup').length >= 1, 'every sample person already has a qualifying method')
+  // Ready (Seamless counts as Ready), and an administrator among them: the done end of the page.
+  const ready = [...l.states.ready, ...l.states.seamless]
+  assert.ok(ready.length >= 1, 'no sample person is Ready for phishing-resistant sign-in')
+  assert.ok(ready.some((p) => p.admin), 'no sample administrator is Ready')
+  assert.ok(stateIds(l, 'seamless').length >= 1, 'no sample person is Seamless')
+  // Confirmed on one device and not on another the person uses.
+  assert.ok(l.states.device.some((p) => p.viability.readiness.devices.some((d) => d.proof !== null) && p.viability.readiness.devices.some((d) => d.proof === null)), 'no sample person needs a device they use')
+  // A registered method with no confirmed sign-in, and people who still need a qualifying method.
+  assert.ok(stateIds(l, 'confirm').length >= 1, 'no sample person needs to confirm a method')
+  assert.ok(stateIds(l, 'method').length >= 1, 'every sample person already has a qualifying method')
   // Emergency access and the non-person accounts are beside the denominator, never in it.
   const notPeople = notPeopleIds(f.mapping)
   assert.ok(l.kinds.emergency.length >= 1 && l.kinds.service.length >= 1)
@@ -270,13 +274,21 @@ test('C: generic MFA evidence proves no qualifying method, and Windows Hello pro
   // not a second rule about what a method proves.
   for (const [id, v] of l.viability) {
     const rd = v.readiness
-    if (rd.state === 'ready') assert.ok(rd.qualifying.length > 0 && rd.proof.length > 0, `${id} is Ready without a qualifying method and its proof`)
-    assert.ok(rd.proof.every((p) => rd.qualifying.includes(p.cls)), `${id} carries proof for a method it does not hold`)
+    if (isReady(rd.state)) assert.ok(rd.qualifying.length > 0 && rd.devices.length > 0 && rd.devices.every((d) => d.proof !== null), `${id} is Ready without a qualifying method confirmed on every device used`)
+    for (const d of rd.devices) {
+      if (!d.proof) continue
+      assert.ok(isQualifying(d.proof.cls), `${id}: ${d.os} is confirmed by a method that is not phishing-resistant`)
+      assert.ok(rd.qualifying.includes(d.proof.cls), `${id} carries proof for a method it does not hold`)
+    }
   }
   // Windows Hello alone does not travel: a Hello-only person seen on another platform is not Ready.
   const helloOnly = [...l.viability.values()].filter((v) => v.readiness.qualifying.length === 1 && v.readiness.qualifying[0] === 'windowsHello')
   assert.ok(helloOnly.length >= 1, 'the sample has nobody holding Windows Hello alone')
-  for (const v of helloOnly) if (v.readiness.platforms.some((os) => os !== 'Windows')) assert.notEqual(v.readiness.state, 'ready', `${v.userId} holds Windows Hello alone, uses another platform and reads as Ready`)
+  assert.ok(helloOnly.some((v) => v.readiness.devices.some((d) => d.os !== 'Windows')), 'the sample has no Hello-only person on another platform')
+  for (const v of helloOnly) {
+    if (v.readiness.devices.some((d) => d.os !== 'Windows')) assert.equal(isReady(v.readiness.state), false, `${v.userId} holds Windows Hello alone, uses another platform and reads as Ready`)
+    for (const d of v.readiness.devices) if (d.os !== 'Windows') assert.equal(d.proof, null, `${v.userId}: Windows Hello confirmed on ${d.os}`)
+  }
 })
 
 test('C: a sample Plan step hands off to MFA Readiness by step id, and the people come from the same scoring', () => {
@@ -542,22 +554,29 @@ test('a person\'s readiness rises on the follow-up scan only because new proof a
   const b = fixture('demo-week2')
   const before = ladder(a.snapshot, a.mapping, a.snapshot.asOf)
   const after = ladder(b.snapshot, b.mapping, b.snapshot.asOf)
-  // Needs setup, then Needs proof, then Ready; Unknown is not a step on the way.
-  const RANK: Record<ReadinessState, number> = { unknown: 0, needsSetup: 1, needsProof: 2, ready: 3 }
+  // Needs a method, then Confirm it, then Needs a device, then Ready, then
+  // Seamless; Blocked waits where Needs a method does, and Unknown is not a step on the way.
+  const RANK: Record<ReadinessState, number> = { unknown: 0, blocked: 1, method: 1, confirm: 2, device: 3, ready: 4, seamless: 5 }
+  const stateOf = (l: typeof before, id: string): ReadinessState | undefined => (Object.entries(l.states) as [ReadinessState, { id: string }[]][]).find(([, ps]) => ps.some((p) => p.id === id))?.[0]
   const rankOf = (l: typeof before, id: string): number => {
-    const state = (Object.entries(l.states) as [ReadinessState, { id: string }[]][]).find(([, ps]) => ps.some((p) => p.id === id))?.[0]
+    const state = stateOf(l, id)
     return state === undefined ? -1 : RANK[state]
   }
+  const evidenceChanged = (id: string): boolean => JSON.stringify(a.snapshot.signInEvidence[id] ?? null) !== JSON.stringify(b.snapshot.signInEvidence[id] ?? null)
+  const methodsChanged = (id: string): boolean => JSON.stringify(a.snapshot.authMethods?.[id] ?? []) !== JSON.stringify(b.snapshot.authMethods?.[id] ?? [])
+  // The tenant's own passkey settings judge a held key: a key the settings stop allowing is a change in the facts too.
+  const verdictsChanged = (id: string): boolean => JSON.stringify(before.viability.get(id)?.readiness.credentials.map((c) => c.allowedNow) ?? []) !== JSON.stringify(after.viability.get(id)?.readiness.credentials.map((c) => c.allowedNow) ?? [])
   const moved = [...before.viability.keys()].filter((id) => rankOf(after, id) > rankOf(before, id))
   assert.ok(moved.length >= 1, 'nobody improved on the follow-up scan')
   for (const id of moved) {
     const proofChanged = JSON.stringify(a.snapshot.signInEvidence[id]?.proofs ?? []) !== JSON.stringify(b.snapshot.signInEvidence[id]?.proofs ?? [])
-    const methodsChanged = JSON.stringify(a.snapshot.authMethods?.[id] ?? []) !== JSON.stringify(b.snapshot.authMethods?.[id] ?? [])
-    assert.ok(proofChanged || methodsChanged, `${id} became more ready with no new method and no new proof`)
+    assert.ok(proofChanged || methodsChanged(id), `${id} became more ready with no new method and no new proof`)
   }
   // And the people whose facts did not move did not move either.
-  const still = [...before.viability.keys()].filter((id) => !moved.includes(id))
-  for (const id of still) assert.equal(rankOf(after, id), rankOf(before, id), `${id} changed readiness with no change in its facts`)
+  for (const id of before.viability.keys()) {
+    if (stateOf(after, id) === stateOf(before, id)) continue
+    assert.ok(evidenceChanged(id) || methodsChanged(id) || verdictsChanged(id), `${id} changed readiness (${stateOf(before, id)} to ${stateOf(after, id)}) with no change in its facts`)
+  }
 })
 
 test('a policy advances on the follow-up scan only where the evidence the product asks for is there', () => {

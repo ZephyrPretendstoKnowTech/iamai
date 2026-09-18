@@ -10,7 +10,7 @@ import { resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
 import { addWorkflowSteps, WORKFLOW_STEP } from '../../roadmap/workflows.ts'
 import { currentAnswerText, devicePlanOf, deviceScopeOf, parseAnswer, questionOptions, QUESTION_STEP } from '../../roadmap/answers.ts'
 import { redactText } from '../../redactSnapshot.ts'
-import { proofLabel } from './readinessCells.ts'
+import { deviceChip } from './readinessCells.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from '../../roadmap/manualWork.ts'
@@ -87,6 +87,6 @@ test('passkey exclusion wins over All users, and incomplete membership stays unk
  config.excludeTargets=[];f.snapshot.authMethods[id]=[{kind:'fido2',aaGuid:'11111111-1111-4111-8111-111111111111'}]
  assert.equal(emergencyPasskeyCompatibility(f.snapshot,[id])[0].state,'eligible')
 })
-test('proof text survives export without relying on a symbol',()=>{assert.equal(proofLabel({mark:'warn',text:'Windows'}),'Proof missing: Windows');assert.equal(proofLabel({mark:'good',text:'Windows'}),'Verified: Windows')})
+test('a device chip survives export as words, never a symbol',()=>{const d={os:'Windows' as const,type:'computer' as const,lastSeen:'2026-09-01T00:00:00Z',trust:'joined' as const,version:null,best:'windowsHello' as const,builtIn:true,possible:'yes' as const,whyNot:null,proof:{cls:'windowsHello' as const,at:'2026-09-01T00:00:00Z'},seamless:true};assert.equal(deviceChip(d,'seamless').word,'Seamless');assert.equal(deviceChip({...d,proof:null,seamless:false},'confirm').word,'Not confirmed')})
 test('masking retains ordinary counts while masking a department value and avoiding substrings',()=>{const v=new Map([['people','[a department 1]'],['it','[a department 2]']]);assert.equal(redactText('30 people need a security check',v),'30 people need a security check');assert.equal(redactText('People',v),'[a department 1]');assert.equal(redactText('Identity',v),'Identity')})
 test('packaged Entra instructions are present in the export for the same current action',()=>{const {run,ctx}=setup();const s=run.steps.find(s=>s.goalId==='register-info-protected')!;const body=stepBodyOf(s,ctx);const portal=body.artifacts.find(a=>a.id==='portal');assert.ok(portal&&!portal.unavailable);const text=stepExportView(s,ctx).whatToDo.join('\n');for(const line of portal.text().replace(/\*\*(.*?)\*\*/g,'$1').split(/\r?\n/).map(x=>x.trim()).filter(Boolean))assert.ok(text.includes(line),line)})

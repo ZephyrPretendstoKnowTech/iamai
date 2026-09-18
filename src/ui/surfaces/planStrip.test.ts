@@ -5,7 +5,7 @@
 // The MFA readiness ladder was a tenant-wide diagnostic on a page whose job is
 // the rollout; it answered a question no step on the Plan asks. Task 011 took it
 // off the Plan and task 016 took it off Connect. Step 7 replaced the rungs with
-// the four readiness states (scoring/phishingResistant.ts): MFA Readiness counts
+// readiness states (scoring/phishingResistant.ts; seven since prompt 62): MFA Readiness counts
 // them, and no surface draws a ladder at all.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
-import { SUMMARY_STATES, readinessView } from '../../derive/mfaReadiness.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
 import { READINESS_STATES } from '../../scoring/phishingResistant.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { pages } from '../../content/content.ts'
@@ -26,9 +26,9 @@ test('the readiness numbers are one set, on the demo and GetIAMAI, wherever they
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     assert.deepEqual(strip, view.facts, `${name}: the facts and MFA Readiness`)
     for (const s of READINESS_STATES) assert.equal(view.counts[s], strip.states[s], `${name}: ${s} is counted once`)
-    assert.equal(READINESS_STATES.reduce((n, s) => n + strip.states[s], 0), strip.active, `${name}: the four states sum to the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + strip.states[s], 0), strip.active, `${name}: the seven states sum to the active people`)
   }
-  for (const s of SUMMARY_STATES) assert.equal(readinessHref(s), `#/readiness/${s}`, 'each count links to MFA Readiness filtered to its state')
+  for (const s of READINESS_STATES) assert.equal(readinessHref(s), `#/readiness/${s}`, 'each state links to MFA Readiness filtered to it')
 })
 
 test('the strip, the lists and the two note lines are gone from the Plan, with their words; the start keeps its date, its button and its settings link', () => {
@@ -56,9 +56,11 @@ test('no rollout surface draws a readiness ladder, and MFA Readiness counts stat
   // The component the two surfaces shared is gone, and so are its rules.
   assert.equal(existsSync('src/ui/surfaces/LadderTiles.tsx'), false, 'the tiles component was deleted with its last caller')
   assert.doesNotMatch(readFileSync('src/ui/app.css', 'utf8'), /\.rung-tiles|\.rung-tile\b|\.rung-badge/, 'the tiles and the badge left their rules behind')
-  const readiness = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  const readiness = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\r\n/g, '\n')
   assert.doesNotMatch(readiness, /LadderTiles|LadderHead|className="ladder"|RungBadge|rung-badge/, 'the page draws no ladder and no rung badge')
-  assert.match(readiness, /SUMMARY_STATES\.map/, 'the three counts beside Ready')
+  // The page counts the scoring's states over the counted people, and its legend draws each one it holds.
+  assert.match(readiness, /READINESS_STATES\.map\(\(s\) => \[s, counted\.filter\(\(r\) => r\.state === s\)\.length\]\)/, 'the page counts states of its own')
+  assert.match(readiness, /\.filter\(\(s\) => counts\[s\] > 0\)\.map\(\(s\) => \(\s*<li key=\{s\}>/, 'the legend is not one entry per counted state')
 })
 
 // The evidence itself is untouched by where it is drawn: a state that no longer
