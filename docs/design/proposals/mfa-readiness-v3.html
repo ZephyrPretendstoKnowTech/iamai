@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MFA Readiness v3 proposal</title>
+<!--
+  MFA Readiness, layout proposal v3 (prompt 62). NOT an approved pack.
+  It becomes the anatomy authority only after the owner approves it and it is
+  promoted to docs/design/approved/anatomy/ with its manifest hash.
+  Sample data only: every person, address and device here is fictional.
+  Colours and type are the production tokens (src/ui/tokens.css).
+-->
+<style>
+@font-face{font-family:'IBM Plex Serif';src:url('../../../public/fonts/IBMPlexSerif-Regular-Latin1.woff2') format('woff2');font-weight:400}
+@font-face{font-family:'IBM Plex Serif';src:url('../../../public/fonts/IBMPlexSerif-SemiBold-Latin1.woff2') format('woff2');font-weight:600}
+@font-face{font-family:'IBM Plex Serif';src:url('../../../public/fonts/IBMPlexSerif-Bold-Latin1.woff2') format('woff2');font-weight:700}
+@font-face{font-family:'IBM Plex Sans';src:url('../../../public/fonts/IBMPlexSans-Regular-Latin1.woff2') format('woff2');font-weight:400}
+@font-face{font-family:'IBM Plex Sans';src:url('../../../public/fonts/IBMPlexSans-Medium-Latin1.woff2') format('woff2');font-weight:500}
+@font-face{font-family:'IBM Plex Sans';src:url('../../../public/fonts/IBMPlexSans-SemiBold-Latin1.woff2') format('woff2');font-weight:600}
+@font-face{font-family:'IBM Plex Mono';src:url('../../../public/fonts/IBMPlexMono-Regular-Latin1.woff2') format('woff2');font-weight:400}
+
+:root{
+  --font-serif:'IBM Plex Serif',Georgia,serif;
+  --font-sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --radius:4px;--radius-control:8px;--radius-panel:12px;
+  --w:1200px;
+  /* dark is canonical */
+  --canvas:#0d1117;--surface:#151c25;--secondary-surface:#111821;--line:#2b3745;--strong-line:#39495a;
+  --primary-text:#f2f5f7;--secondary-text:#c7d0d8;--muted-text:#8f9aa6;
+  --brand-primary:#58c8bc;--brand-soft:#173a3d;--brand-soft-text:#dffff9;--on-brand:#0d1117;
+  --success:#79d7a6;--attention:#e3b35b;--danger:#e88a8a;--admin:#b9a7ff;--idle:#8f9aa6;--unproven:#c98a2e;
+  --shadow-panel:0 18px 45px rgba(0,0,0,.32);
+}
+:root[data-theme='light']{
+  --canvas:#f7f4ee;--surface:#fffdf9;--secondary-surface:#f0ece5;--line:#d8d3c9;--strong-line:#c1bcb3;
+  --primary-text:#1d2528;--secondary-text:#4e5b5d;--muted-text:#6b7575;
+  --brand-primary:#0c6a64;--brand-soft:#ddefea;--brand-soft-text:#07534f;--on-brand:#fffdf9;
+  --success:#2a7456;--attention:#895b17;--danger:#a74646;--admin:#6658a4;--idle:#6b7575;--unproven:#9e5014;
+  --shadow-panel:0 10px 30px rgba(29,37,40,.08);
+}
+:root{
+  --tint:color-mix(in srgb,var(--brand-primary) 10%,var(--surface));
+  /* one colour per state; the word always travels with it */
+  --s-seamless:var(--brand-primary);--s-ready:var(--success);--s-confirm:var(--attention);
+  --s-device:var(--unproven);--s-method:var(--danger);--s-blocked:var(--admin);--s-unknown:var(--idle);
+}
+
+*{box-sizing:border-box}
+html{background:var(--canvas)}
+body{margin:0;color:var(--primary-text);background:var(--canvas);font:14px/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--brand-primary);text-underline-offset:2px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand-primary);outline-offset:2px;border-radius:var(--radius)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- app chrome (as production) ---- */
+.bar{display:flex;align-items:center;gap:22px;height:48px;padding:0 24px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.02em}
+.logo svg{color:var(--brand-primary)}
+.nav{display:flex;gap:18px;font-size:13px;color:var(--muted-text)}
+.nav span[aria-current]{color:var(--primary-text);box-shadow:inset 0 -2px var(--brand-primary);padding-bottom:13px;margin-bottom:-15px}
+.bar .theme{margin-left:auto;background:none;border:0;color:var(--secondary-text);font-size:13px;cursor:pointer}
+.proposal{padding:7px 24px;font-size:12px;color:var(--secondary-text);border-bottom:1px solid var(--line);background:var(--secondary-surface)}
+
+/* ---- page ---- */
+.page{width:min(var(--w),100% - 32px);margin:0 auto;padding:34px 0 64px}
+.kicker{margin:0;font-size:12px;color:var(--muted-text)}
+h1{font:700 38px/1.1 var(--font-serif);margin:4px 0 10px;letter-spacing:-.01em}
+.pitch{margin:0;max-width:66ch;font-size:17px;color:var(--secondary-text)}
+.meta{margin:10px 0 0;font-size:12px;color:var(--muted-text)}
+
+/* ---- the answer: the one bold element ---- */
+.answer{margin-top:28px;padding:26px 28px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel)}
+.answer-top{display:flex;gap:32px;justify-content:space-between;align-items:flex-start}
+.answer h2{font:600 30px/1.2 var(--font-serif);margin:0;max-width:24ch;letter-spacing:-.01em}
+.answer .goal{margin:8px 0 0;font-size:15px;color:var(--secondary-text)}
+.lapse{flex:0 0 250px;padding:12px 14px;border-left:2px solid var(--s-confirm);background:var(--secondary-surface);border-radius:0 var(--radius-control) var(--radius-control) 0;font-size:13px;color:var(--secondary-text)}
+.lapse strong{display:block;color:var(--primary-text);font-weight:600;margin-bottom:2px}
+.lapse button{margin-top:6px;padding:0;border:0;background:none;color:var(--brand-primary);text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:13px}
+.ribbon{display:flex;gap:3px;height:14px;margin:24px 0 12px}
+.ribbon span{border-radius:3px;min-width:6px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font-size:13px}
+.legend li{display:flex;align-items:center;gap:7px;color:var(--secondary-text)}
+.legend b{color:var(--primary-text);font-weight:600;font-variant-numeric:tabular-nums}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--c)}
+.define{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted-text)}
+
+/* ---- layout ---- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;margin-top:24px;align-items:start}
+.rail{display:grid;gap:14px;position:sticky;top:16px}
+
+/* ---- next check ---- */
+.next{padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--brand-primary);border-radius:var(--radius-control);background:var(--tint)}
+.next .label{font-size:12px;color:var(--brand-primary);font-weight:600;margin:0 0 4px}
+.next h3{font:600 20px/1.3 var(--font-serif);margin:0 0 6px}
+.next p{margin:0;max-width:70ch;color:var(--secondary-text)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{height:32px;padding:0 13px;border-radius:var(--radius-control);border:1px solid var(--strong-line);background:var(--surface);font-size:13px;font-weight:500;cursor:pointer}
+.btn.primary{background:var(--brand-primary);border-color:var(--brand-primary);color:var(--on-brand)}
+.btn:hover{border-color:var(--brand-primary)}
+
+/* ---- toolbar ---- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:26px 0 12px}
+.toolbar h2{font:600 20px/1.3 var(--font-serif);margin:0 auto 0 0}
+.search{height:32px;width:220px;padding:0 10px;border:1px solid var(--strong-line);border-radius:var(--radius-control);background:var(--secondary-surface);color:var(--primary-text)}
+.pill{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--secondary-text);font-size:13px;cursor:pointer}
+.pill[aria-pressed='true']{color:var(--primary-text);border-color:var(--brand-primary);background:var(--tint)}
+
+/* ---- groups ---- */
+.group{border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);margin-bottom:10px;overflow:hidden}
+.group>summary{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:14px 16px;cursor:pointer;list-style:none}
+.group>summary::-webkit-details-marker{display:none}
+.group>summary .title{font-weight:600}
+.group>summary .why{display:block;font-size:13px;color:var(--muted-text);font-weight:400}
+.count{font-variant-numeric:tabular-nums;font-weight:600;color:var(--secondary-text)}
+.chev{width:16px;height:16px;color:var(--muted-text);transition:transform 200ms}
+.group[open] .chev{transform:rotate(90deg)}
+.group.quiet>summary .title{color:var(--secondary-text)}
+.rows{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(210px,1.3fr) minmax(130px,1fr) minmax(170px,1.2fr) auto;gap:14px;align-items:center;padding:11px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row.head{padding-top:9px;padding-bottom:9px;font-size:12px;color:var(--muted-text);background:var(--secondary-surface)}
+.row:not(.head):hover{background:var(--secondary-surface)}
+.person strong{display:block;font-weight:600}
+.person span{font-size:12px;color:var(--muted-text)}
+.tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:11px;font-weight:600;color:var(--admin);border:1px solid color-mix(in srgb,var(--admin) 45%,var(--line));vertical-align:1px}
+.cell-note{font-size:12px;color:var(--muted-text)}
+.next-step{font-size:13px}
+.open{height:28px;padding:0 10px;border-radius:var(--radius-control);border:1px solid var(--line);background:none;font-size:12px;cursor:pointer;color:var(--secondary-text)}
+.open:hover{border-color:var(--brand-primary);color:var(--primary-text)}
+.more{padding:10px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted-text)}
+
+/* ---- the device pair ---- */
+.devices{display:flex;flex-wrap:wrap;gap:6px}
+.dev{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px 0 6px;border-radius:6px;border:1px solid var(--line);background:var(--secondary-surface);font-size:12px;color:var(--secondary-text);white-space:nowrap}
+.dev svg{width:15px;height:15px;color:var(--muted-text)}
+.dev i{font-style:normal;font-weight:600;color:var(--c)}
+.dev.off{border-style:dashed;background:none;color:var(--muted-text)}
+
+/* ---- rail tiles (the Tasks Remaining standard) ---- */
+.tile{padding:16px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface)}
+.tile h3{margin:0 0 2px;font-size:13px;font-weight:600;color:var(--secondary-text)}
+.tile .remain{margin:0 0 10px;font-size:12px;color:var(--muted-text)}
+.tile .check{margin:0 0 4px;font-weight:600}
+.tile p{margin:0 0 8px;font-size:13px;color:var(--secondary-text)}
+.tile details{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px}
+.tile summary{cursor:pointer;color:var(--secondary-text)}
+.tile ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.tile li{display:flex;gap:8px;color:var(--secondary-text)}
+.tile li .ok{color:var(--success)}
+.ledger{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:13px}
+.ledger dt{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.ledger dd{margin:0;color:var(--secondary-text)}
+.ledger a{font-size:12px}
+.models{font-size:12px;color:var(--muted-text)}
+
+/* ---- person panel: non-modal, never covers the list ---- */
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--strong-line);box-shadow:var(--shadow-panel);overflow:auto;transform:translateX(100%);transition:transform 200ms ease;z-index:10;visibility:hidden}
+.panel.on{transform:none;visibility:visible}
+.panel-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:18px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.panel-head h2{font:600 22px/1.2 var(--font-serif);margin:0}
+.panel-head p{margin:4px 0 0;font-size:12px;color:var(--muted-text)}
+.state{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--line);font-size:12px;font-weight:500;margin-top:8px}
+.panel section{padding:16px 20px;border-bottom:1px solid var(--line)}
+.panel h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--secondary-text)}
+.panel .todo{padding:12px 14px;border-radius:var(--radius-control);background:var(--tint);border-left:3px solid var(--brand-primary)}
+.panel .todo strong{display:block;margin-bottom:3px}
+.panel .todo p{margin:0;font-size:13px;color:var(--secondary-text)}
+.item{display:grid;grid-template-columns:22px 1fr;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0;padding-top:0}
+.item svg{width:18px;height:18px;color:var(--muted-text);margin-top:2px}
+.item .name{font-weight:600}
+.item .facts{grid-column:2;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;margin:4px 0 0}
+.item .facts dt{color:var(--muted-text)}
+.item .facts dd{margin:0;color:var(--secondary-text)}
+.good{color:var(--success)}.warn{color:var(--attention)}.bad{color:var(--danger)}
+code{font:12px var(--font-mono);color:var(--secondary-text)}
+.close{height:30px;padding:0 10px;border-radius:var(--radius-control);border:1px solid var(--strong-line);background:none;cursor:pointer;font-size:13px}
+
+footer.note{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted-text);display:flex;flex-wrap:wrap;gap:6px 24px}
+
+/* ---- responsive ---- */
+@media (max-width:1040px){
+  .layout{grid-template-columns:1fr}
+  .rail{position:static;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+}
+@media (max-width:760px){
+  .nav{display:none}
+  h1{font-size:31px}
+  .answer{padding:20px 18px}
+  .answer-top{flex-direction:column;gap:16px}
+  .lapse{flex:none;width:100%}
+  .answer h2{font-size:24px}
+  .row.head{display:none}
+  .row{grid-template-columns:1fr auto;gap:6px 12px}
+  .row>.devices,.row>.methods,.row>.next-step{grid-column:1/-1}
+  .row>.open{grid-row:1;grid-column:2}
+  .search{width:100%}
+  .toolbar h2{flex-basis:100%}
+}
+@media (prefers-reduced-motion:reduce){.panel,.chev{transition:none}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-computer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
+
+<header class="bar">
+  <span class="logo"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h4v16H4zM10 8h4v12h-4zM16 12h4v8h-4z"/></svg>IAMAI</span>
+  <nav class="nav" aria-label="Sections"><span>Connect</span><span>Plan</span><span aria-current="page">MFA Readiness</span><span>Export</span><span>How</span></nav>
+  <button class="theme" type="button" id="theme">Light theme</button>
+</header>
+<div class="proposal">Layout proposal v3 for owner review. Sample data: nothing here is from a real tenant.</div>
+
+<main class="page">
+  <p class="kicker">Tenant evidence</p>
+  <h1>MFA Readiness</h1>
+  <p class="pitch">Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone, Windows Hello on the computer, and nothing to reach for.</p>
+  <p class="meta">Contoso Pty Ltd, scanned Sep 18, 2026 at 3:37 PM. Sign-ins read for the full 30 days.</p>
+
+  <section class="answer" aria-labelledby="answer">
+    <div class="answer-top">
+      <div>
+        <h2 id="answer">18 of 30 people are ready for phishing-resistant sign-in.</h2>
+        <p class="goal">7 are seamless: every device they use signs them in on its own.</p>
+      </div>
+      <div class="lapse">
+        <strong>3 lapse in the next 7 days</strong>
+        Their last confirmed sign-in is leaving the 30-day window.
+        <br><button type="button" data-filter="lapsing">Show the 3 people</button>
+      </div>
+    </div>
+    <div class="ribbon" id="ribbon" aria-hidden="true"></div>
+    <ul class="legend" id="legend" aria-label="People by state"></ul>
+    <p class="define">Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device the person uses. Seamless means that sign-in is built into each device.</p>
+  </section>
+
+  <div class="layout">
+    <div>
+      <section class="next" aria-labelledby="next-title">
+        <p class="label">Next check</p>
+        <h3 id="next-title">5 people have no phishing-resistant method</h3>
+        <p>Each sets up a passkey in Microsoft Authenticator on their phone. It signs them in on the phone and from any computer. On a joined Windows computer, Windows Hello for Business is offered at their next sign-in.</p>
+        <div class="actions">
+          <button class="btn primary" type="button">Copy the setup email</button>
+          <button class="btn" type="button">Registration campaign steps</button>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <h2>People</h2>
+        <input class="search" type="search" placeholder="Search people or devices" aria-label="Search people or devices">
+        <button class="pill" type="button" aria-pressed="true" data-filter="action">Needs action · 12</button>
+        <button class="pill" type="button" aria-pressed="false" data-filter="admins">Admins</button>
+        <button class="pill" type="button" aria-pressed="false" data-filter="all">Everyone</button>
+        <button class="btn" type="button">Export CSV</button>
+      </div>
+      <div id="groups"></div>
+    </div>
+
+    <aside class="rail" aria-label="Tenant setup and evidence">
+      <section class="tile" aria-labelledby="setup">
+        <h3 id="setup">Tenant setup</h3>
+        <p class="remain">1 check remaining</p>
+        <p class="check">Registration only works from the office</p>
+        <p>The security-info registration policy requires the Head Office network. Drew Ivanova works remotely and can't set up a passkey.</p>
+        <p>Issue Drew a Temporary Access Pass, or let people register from anywhere after MFA.</p>
+        <details>
+          <summary>Completed checks · 7</summary>
+          <ul>
+            <li><span class="ok">✓</span>Passkey registration is on for everyone</li>
+            <li><span class="ok">✓</span>Phones can hold a passkey (both Authenticator models allowed)</li>
+            <li><span class="ok">✓</span>Windows Hello for Business is provisioned by Intune</li>
+            <li><span class="ok">✓</span>Temporary Access Pass is enabled</li>
+            <li><span class="ok">✓</span>The authentication-methods migration is complete</li>
+            <li><span class="ok">✓</span>Passkey models checked against Emergency Access Step 3</li>
+            <li><span class="ok">✓</span>Attestation is on. Synced and Windows Hello passkeys can't register, so contractors use a phone passkey or a security key.</li>
+          </ul>
+        </details>
+      </section>
+
+      <section class="tile" aria-labelledby="models">
+        <h3 id="models">Approved passkey models</h3>
+        <p>From Establish Emergency Access Step 3. Keys outside this list are flagged before they stop working.</p>
+        <p class="models">Microsoft Authenticator (iOS, Android), YubiKey 5 Series, YubiKey 5 Series with NFC</p>
+      </section>
+
+      <section class="tile" aria-labelledby="counted">
+        <h3 id="counted">Not counted</h3>
+        <dl class="ledger">
+          <dt>2</dt><dd>Never signed in, no methods. <a href="#">Confirm or disable in the Plan</a></dd>
+          <dt>1</dt><dd>Looks retired: last sign-in May 30, still enabled. <a href="#">Same step</a></dd>
+          <dt>1</dt><dd>New this month, hasn't signed in yet</dd>
+          <dt>2</dt><dd>Emergency access accounts</dd>
+          <dt>2</dt><dd>Service accounts</dd>
+          <dt>1</dt><dd>Shared device</dd>
+        </dl>
+      </section>
+
+      <section class="tile" aria-labelledby="evidence">
+        <h3 id="evidence">Evidence read</h3>
+        <dl class="ledger">
+          <dt>30</dt><dd>days of sign-ins, Aug 19 to Sep 18</dd>
+          <dt>3</dt><dd>people read individually (older sign-ins)</dd>
+          <dt>1</dt><dd>method list couldn't be read. Scan again.</dd>
+        </dl>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="note">
+    <span>Counted: the 30 people who signed in during the last 90 days.</span>
+    <span>The Plan's MFA steps follow their own policy requirements. This page holds the higher bar.</span>
+    <a href="#">Every account and policy the scan read</a>
+  </footer>
+</main>
+
+<aside class="panel" id="panel" aria-labelledby="p-name" aria-hidden="true">
+  <div class="panel-head">
+    <div>
+      <h2 id="p-name"></h2>
+      <p id="p-sub"></p>
+      <span class="state" id="p-state"></span>
+    </div>
+    <button class="close" type="button" id="p-close">Close</button>
+  </div>
+  <section><h3>Next step</h3><div class="todo" id="p-next"></div></section>
+  <section><h3>Devices seen in the last 30 days</h3><div id="p-devices"></div></section>
+  <section><h3>Phishing-resistant methods</h3><div id="p-methods"></div></section>
+</aside>
+
+<script>
+const STATES = {
+  seamless:{word:'Seamless',c:'var(--s-seamless)'},
+  ready:{word:'Ready',c:'var(--s-ready)'},
+  confirm:{word:'Confirm it',c:'var(--s-confirm)'},
+  device:{word:'Needs a device',c:'var(--s-device)'},
+  method:{word:'Needs a method',c:'var(--s-method)'},
+  blocked:{word:'Blocked by setup',c:'var(--s-blocked)'},
+  unknown:{word:'Unknown',c:'var(--s-unknown)'},
+}
+const COUNTS = {seamless:7,ready:11,confirm:4,device:1,method:5,blocked:1,unknown:1}
+
+// Groups, in the order the worklist works them. The action is the group's heading.
+const GROUPS = [
+  {state:'method',title:'Set up a passkey on their phone',why:'No phishing-resistant method yet',open:true},
+  {state:'confirm',title:'Confirm the method still exists',why:'Registered, but no confirmed sign-in in 30 days'},
+  {state:'device',title:'Add a passkey to the phone they use',why:'Confirmed on the computer, but the phone signs in without it'},
+  {state:'blocked',title:'Waiting on tenant setup',why:'The person can’t act until an admin change lands'},
+  {state:'unknown',title:'Scan again',why:'IAMAI couldn’t read this person’s evidence'},
+  {state:'ready',title:'Could be seamless',why:'Ready. A built-in credential would remove the extra device',quiet:true,more:8},
+  {state:'seamless',title:'Seamless',why:'Nothing to do',quiet:true,more:4},
+]
+
+const D = (kind,os,state,note) => ({kind,os,state,note})
+const PEOPLE = [
+  {n:'Jamie Walker',e:'jamie.walker@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator',
+    detail:{next:['Set up a passkey in Microsoft Authenticator','On the iPhone: Authenticator, add account, then Passkey. Then sign in once. Windows Hello for Business is offered on the laptop at the next Windows sign-in.'],
+      devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business (offered at next sign-in)','No phishing-resistant sign-in'],['phone','iPhone, iOS 18','Last seen Sep 17.','Passkey in Microsoft Authenticator','Signs in with Authenticator push']],
+      methods:[]}},
+  {n:'Priya Chen',e:'priya.chen@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','Android','method','Android 15')],m:'Authenticator push only',last:'None',next:'Set up a passkey in Authenticator'},
+  {n:'Rowan Kim',admin:true,e:'rowan.kim@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined'),D('phone','iPhone','method','iOS 17')],m:'Authenticator push only',last:'None',next:'Set up a passkey or a security key'},
+  {n:'Kai Patel',e:'kai.patel@contoso.example',s:'method',dev:[D('computer','Windows','method','Joined')],m:'Text message only',last:'None',next:'Set up Windows Hello on the laptop'},
+  {n:'Riley Garcia',e:'riley.garcia@contoso.example',s:'method',dev:[D('computer','macOS','method','Personal'),D('phone','iPhone','method','iOS 18')],m:'Authenticator push only',last:'None',next:'Phone passkey, used from the Mac'},
+
+  {n:'Morgan Lee',e:'morgan.lee@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','iPhone','confirm','iOS 18')],m:'Passkey (Authenticator)',last:'Jun 2, before the window',next:'Sign in once with the passkey',
+    detail:{next:['Sign in once with the passkey on the iPhone','The passkey was registered in March and last confirmed on Jun 2. If Morgan replaced the phone, the passkey went with it: remove the old one in Security info and register again.'],
+      devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Not set up. Signs in with Authenticator push.'],['phone','iPhone, iOS 18','Last seen Sep 16.','Passkey in Microsoft Authenticator','Registered, not confirmed in 30 days']],
+      methods:[['phone','Passkey','Microsoft Authenticator (iOS)','Allowed now and by Step 3','Last confirmed Jun 2, on iOS. May no longer exist.']]}},
+  {n:'Sasha Okafor',e:'sasha.okafor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined')],m:'Windows Hello',last:'Aug 9, before the window',next:'Sign in with Windows Hello'},
+  {n:'Quinn Taylor',e:'quinn.taylor@contoso.example',s:'confirm',dev:[D('computer','Windows','confirm','Joined'),D('phone','Android','ready','Android 14')],m:'Security key (unlisted model)',last:'Never',next:'Use the key once; replace it before Step 3',
+    detail:{next:['Sign in once with the security key, and plan a replacement','The key works today, but its model is not on the approved list in Emergency Access Step 3. It stops working when you apply those settings. Replace it with an approved model, or add this model under Step 3’s Additional AAGUIDs.'],
+      devices:[['computer','Windows desktop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Not set up'],['phone','Android 14','Last seen Sep 15.','Passkey in Microsoft Authenticator','Confirmed Sep 15']],
+      methods:[['key','Security key','Unlisted model <code>cb69481e…</code>','Allowed now. Blocked by Step 3’s approved list.','Never seen in a sign-in'],['phone','Passkey','Microsoft Authenticator (Android)','Allowed now and by Step 3','Confirmed Sep 15, on Android']]}},
+  {n:'Noor Haddad',e:'noor.haddad@contoso.example',s:'confirm',dev:[D('computer','Windows','idle','Joined'),D('phone','iPhone','idle','iOS 17')],m:'Passkey (Authenticator)',last:'Jul 28 · on leave',next:'Confirm on return'},
+
+  {n:'Avery Brown',e:'avery.brown@contoso.example',s:'device',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','device','iOS 18')],m:'Windows Hello',last:'Sep 16 on Windows',next:'Add a passkey on the iPhone',
+    detail:{next:['Add a passkey in Microsoft Authenticator on the iPhone','Windows Hello covers the laptop. The iPhone signed in 14 times this month with Authenticator push, which isn’t phishing-resistant and would be blocked once it’s required.'],
+      devices:[['computer','Windows laptop','Joined to Entra ID. Last seen Sep 18.','Windows Hello for Business','Confirmed Sep 16. Seamless.'],['phone','iPhone, iOS 18','Last seen Sep 18.','Passkey in Microsoft Authenticator','Signs in with Authenticator push']],
+      methods:[['computer','Windows Hello for Business','LAPTOP-AB12','Allowed','Confirmed Sep 16, on Windows']]}},
+
+  {n:'Drew Ivanova',e:'drew.ivanova@contoso.example',s:'blocked',dev:[D('computer','Windows','blocked','Personal'),D('phone','Android','blocked','Android 15')],m:'Authenticator push only',last:'None',next:'Waiting: registration location',
+    detail:{next:['Waiting on tenant setup','Drew works remotely, and the security-info registration policy only allows registration from Head Office. Once an admin issues a Temporary Access Pass or relaxes the policy, Drew sets up a passkey in Authenticator. The personal Windows PC can’t use Windows Hello for Business, so the phone passkey signs Drew in on both devices.'],
+      devices:[['computer','Windows PC (personal)','Not joined or registered. Last seen Sep 17.','Phone passkey, used from the PC','Windows Hello for Business isn’t possible on this PC'],['phone','Android 15','Last seen Sep 17.','Passkey in Microsoft Authenticator','Can’t register from outside the office']],
+      methods:[]}},
+
+  {n:'Casey Singh',e:'casey.singh@contoso.example',s:'unknown',dev:[D('computer','Windows','idle','Joined')],m:'Couldn’t be read',last:'—',next:'Scan again (the method read was throttled)'},
+
+  {n:'Alex Morgan',e:'alex.morgan@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Passkey (Authenticator)',last:'Sep 17',next:'Windows Hello on the laptop'},
+  {n:'Sam Nair',admin:true,e:'sam.nair@contoso.example',s:'ready',dev:[D('computer','macOS','ready','Managed'),D('phone','Android','seamless','Android 15')],m:'Passkey, security key',last:'Sep 18',next:'Platform SSO on the Mac'},
+  {n:'Taylor Nguyen',e:'taylor.nguyen@contoso.example',s:'ready',dev:[D('computer','Windows','ready','Joined')],m:'Security key',last:'Sep 12 · lapses Oct 12',next:'Windows Hello on the desktop'},
+
+  {n:'Jordan Wilson',e:'jordan.wilson@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined'),D('phone','iPhone','seamless','iOS 18')],m:'Windows Hello, passkey',last:'Sep 18',next:''},
+  {n:'Quinn Nguyen',e:'quinn.nguyen@contoso.example',s:'seamless',dev:[D('computer','Linux','seamless','Best available'),D('phone','Android','seamless','Android 14')],m:'Passkey, security key',last:'Sep 17',next:''},
+  {n:'Morgan Chen',e:'morgan.chen@contoso.example',s:'seamless',dev:[D('computer','Windows','seamless','Joined')],m:'Windows Hello',last:'Sep 18',next:''},
+]
+const LAPSING = ['Taylor Nguyen','Alex Morgan','Sam Nair']
+
+const icon = k => `<svg aria-hidden="true"><use href="#i-${k}"/></svg>`
+const esc = s => String(s)
+const devWord = {seamless:'Seamless',ready:'Ready',confirm:'Confirm',device:'Needs it',method:'None',blocked:'Blocked',idle:'Not read',unknown:'Unknown'}
+const devColor = {seamless:'var(--s-seamless)',ready:'var(--s-ready)',confirm:'var(--s-confirm)',device:'var(--s-device)',method:'var(--s-method)',blocked:'var(--s-blocked)',idle:'var(--s-unknown)'}
+
+// ribbon + legend
+const total = Object.values(COUNTS).reduce((a,b)=>a+b,0)
+document.getElementById('ribbon').innerHTML = Object.entries(COUNTS).map(([k,n])=>`<span style="flex:${n};background:${STATES[k].c}"></span>`).join('')
+document.getElementById('legend').innerHTML = Object.entries(COUNTS).map(([k,n])=>`<li><span class="dot" style="--c:${STATES[k].c}"></span>${STATES[k].word} <b>${n}</b></li>`).join('')
+
+function deviceChips(p){
+  const chips = p.dev.map(d=>`<span class="dev" title="${d.note}">${icon(d.kind)}${d.os}<i style="--c:${devColor[d.state]}">${devWord[d.state]}</i></span>`)
+  if (!p.dev.some(d=>d.kind==='phone')) chips.push(`<span class="dev off">${icon('phone')}No phone sign-ins</span>`)
+  return `<div class="devices">${chips.join('')}</div>`
+}
+function row(p){
+  return `<div class="row" data-name="${p.n}" data-admin="${!!p.admin}">
+    <div class="person"><strong>${p.n}${p.admin?'<span class="tag">Admin</span>':''}</strong><span>${p.e}</span></div>
+    ${deviceChips(p)}
+    <div class="methods">${p.m}${p.last && p.last !== 'None' ? `<div class="cell-note">Last confirmed: ${p.last}</div>` : ''}</div>
+    <div class="next-step">${p.next || '<span class="cell-note">Nothing to do</span>'}</div>
+    <button class="open" type="button" data-open="${p.n}" aria-controls="panel">Details</button>
+  </div>`
+}
+function render(filter){
+  const g = document.getElementById('groups')
+  g.innerHTML = GROUPS.map(gr=>{
+    let people = PEOPLE.filter(p=>p.s===gr.state)
+    if (filter==='admins') people = people.filter(p=>p.admin)
+    if (filter==='lapsing') people = people.filter(p=>LAPSING.includes(p.n))
+    if (filter==='action' && (gr.state==='ready'||gr.state==='seamless')) return ''
+    if (!people.length) return ''
+    const n = filter==='all'||filter==='action' ? COUNTS[gr.state] : people.length
+    const open = gr.open || filter==='lapsing' || filter==='admins'
+    return `<details class="group${gr.quiet?' quiet':''}"${open?' open':''}>
+      <summary><span class="dot" style="--c:${STATES[gr.state].c}"></span>
+        <span><span class="title">${gr.title}</span><span class="why">${gr.why}</span></span>
+        <span class="count">${n}</span><svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg></summary>
+      <div class="rows"><div class="row head"><span>Person</span><span>Devices seen</span><span>Methods</span><span>Next step</span><span class="sr">Details</span></div>
+      ${people.map(row).join('')}
+      ${gr.more && filter!=='lapsing' && filter!=='admins' ? `<div class="more">and ${gr.more} more</div>`:''}</div>
+    </details>`
+  }).join('')
+}
+render('action')
+
+document.addEventListener('click', e=>{
+  const f = e.target.closest('[data-filter]')
+  if (f){
+    const key = f.dataset.filter
+    document.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-pressed', String(p.dataset.filter===key)))
+    render(key); if (key==='lapsing') document.getElementById('groups').scrollIntoView({behavior:'smooth',block:'start'})
+  }
+  const o = e.target.closest('[data-open]')
+  if (o) openPanel(o.dataset.open, o)
+})
+
+// the person panel
+const panel = document.getElementById('panel'); let from = null
+function item(k,name,sub,facts){
+  return `<div class="item">${icon(k)}<div><div class="name">${name}</div><div class="cell-note">${sub}</div></div>
+    <dl class="facts">${facts.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></div>`
+}
+function openPanel(name, trigger){
+  const p = PEOPLE.find(x=>x.n===name); from = trigger
+  const d = p.detail || {next:[p.next||'Nothing to do', 'Open the full detail in the built page. This proposal fills in five people: Jamie Walker, Morgan Lee, Quinn Taylor, Avery Brown and Drew Ivanova.'],
+    devices:p.dev.map(v=>[v.kind, v.os, v.note, '—', devWord[v.state]]), methods:[]}
+  document.getElementById('p-name').textContent = p.n
+  document.getElementById('p-sub').textContent = p.e + (p.admin ? ' · Admin' : '')
+  document.getElementById('p-state').innerHTML = `<span class="dot" style="--c:${STATES[p.s].c}"></span>${STATES[p.s].word}`
+  document.getElementById('p-next').innerHTML = `<strong>${d.next[0]}</strong><p>${d.next[1]}</p>`
+  document.getElementById('p-devices').innerHTML = d.devices.map(([k,n,sub,best,now])=>item(k,n,sub,[['Best option',best],['Now',now]])).join('')
+  document.getElementById('p-methods').innerHTML = d.methods.length ? d.methods.map(([k,n,model,allowed,last])=>item(k,n,model,[['Allowed',allowed],['Last confirmed',last]])).join('') : '<p class="cell-note">None registered yet.</p>'
+  panel.classList.add('on'); panel.setAttribute('aria-hidden','false'); document.getElementById('p-close').focus()
+}
+function closePanel(){ panel.classList.remove('on'); panel.setAttribute('aria-hidden','true'); from?.focus() }
+document.getElementById('p-close').addEventListener('click', closePanel)
+document.addEventListener('keydown', e=>{ if (e.key==='Escape' && panel.classList.contains('on')) closePanel() })
+
+// theme
+const t = document.getElementById('theme')
+t.addEventListener('click', ()=>{
+  const light = document.documentElement.dataset.theme !== 'light'
+  document.documentElement.dataset.theme = light ? 'light' : 'dark'
+  t.textContent = light ? 'Dark theme' : 'Light theme'
+})
+</script>
+</body>
+</html>
