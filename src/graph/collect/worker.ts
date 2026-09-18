@@ -12,7 +12,8 @@ import {
 import type { LicenceProfile } from '../../licensing/capabilities.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
 import { EVIDENCE_WINDOW_DAYS, LANE_A_CONCURRENCY } from './constants.ts'
-import { collectSignInEvidence } from './laneB.ts'
+import { collectSignInEvidence, readTargeted } from './laneB.ts'
+import { targetedReadCandidates } from './laneBCore.ts'
 import {
   CONFIG_KEYS,
   collectAppSignInSummary,
@@ -365,6 +366,17 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
   if (!outcome.laneB.ok) {
     snapshot.sources.signInEvidence = sourceState('error', outcome.laneB.error)
     post({ type: 'section', source: 'signInEvidence', status: 'error', reason: outcome.laneB.error })
+  } else {
+    // MFA Readiness's targeted reads (prompt 62): a partial bulk read leaves out
+    // whoever signed in only before the rows it reached; the people that matters
+    // for (they hold a phishing-resistant method) are read one by one.
+    const source = snapshot.sources.signInEvidence
+    const windowStart = new Date(Date.now() - EVIDENCE_WINDOW_DAYS * 86_400_000).toISOString()
+    const ids = source.status === 'partial' ? targetedReadCandidates(snapshot.users, snapshot.authMethods, source.coveredWindow, windowStart) : []
+    if (ids.length > 0 && source.coveredWindow) {
+      const done = await readTargeted(runCtx, snapshot.signInEvidence, ids, windowStart, source.coveredWindow.from).catch(() => ({ read: 0, remaining: ids.length }))
+      snapshot.sources.signInEvidence = { ...source, targeted: done }
+    }
   }
   post({ type: 'state', value: 'done' })
   finishAggregates()

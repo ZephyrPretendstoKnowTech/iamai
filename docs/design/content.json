@@ -1138,7 +1138,8 @@
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
         "unreadMethods": "method lists couldn’t be read. The next scan retries.",
-        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues."
+        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
+        "individually": "people read individually for the older part of the window"
       },
       "footer": {
         "counted": "Counted: the {active} people who signed in during the last 90 days. Ready looks at the last 30.",

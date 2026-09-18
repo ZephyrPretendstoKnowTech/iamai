@@ -80,7 +80,7 @@ type Words = {
   rail: { setup: string; remaining: string; nothing: string; completed: string; shownAbove: string; models: string; modelsFrom: string; counted: string; evidence: string }
   checks: { link: string; step3: { note: string } }
   counted: Record<string, string>
-  evidence: { full: string; partial: string; none: string; unreadMethods: string; notCovered: string }
+  evidence: { full: string; partial: string; none: string; unreadMethods: string; notCovered: string; individually: string }
   footer: { counted: string; plan: string }
   inventory: string
   empty: string
@@ -588,6 +588,12 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
                 <div style={{ display: 'contents' }}>
                   <dt>0</dt>
                   <dd>{source?.reason && source.status !== 'ok' ? fillText(app.readiness.lineNoRecordsReason, { reason: source.reason }) : T.evidence.none}</dd>
+                </div>
+              )}
+              {(source?.targeted?.read ?? 0) > 0 && (
+                <div style={{ display: 'contents' }}>
+                  <dt>{source?.targeted?.read}</dt>
+                  <dd>{T.evidence.individually}</dd>
                 </div>
               )}
               {notCovered > 0 && (

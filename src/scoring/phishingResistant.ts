@@ -381,7 +381,7 @@ export type ReadinessInput = {
    * The sign-in records: whether they could be read, the proof, platforms and
    * devices in them; `proofs` null where the snapshot predates proof being recorded.
    */
-  signIns: { read: boolean; proofs: readonly ProofRecord[] | null; platforms: readonly PlatformSeen[]; devices?: readonly DeviceSeen[] | null; apps?: readonly string[]; trustedLocationSeen?: boolean }
+  signIns: { read: boolean; proofs: readonly ProofRecord[] | null; platforms: readonly PlatformSeen[]; devices?: readonly DeviceSeen[] | null; apps?: readonly string[]; trustedLocationSeen?: boolean; individuallyRead?: boolean }
   /** The directory's last successful sign-in (signInActivity). */
   lastSuccessfulSignIn?: string | null
   history: PersonHistory | null
@@ -469,7 +469,7 @@ function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, 
   // Windows Hello is built into the device it signed in on, whatever join state the record reported.
   if (cls === 'windowsHello') return true
   if (!builtIn || possible === 'no') return true
-  if (best === 'windowsHello') return cls === 'windowsHello'
+  if (best === 'windowsHello') return false
   if (best === 'platformSso') return true
   return cls === 'passkey'
 }
@@ -609,7 +609,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     // after the window did, and the directory says they signed in inside it, the
     // missing records are IAMAI's gap, not the person's.
     const last = input.lastSuccessfulSignIn ?? null
-    const gap = ctx.coveredFrom !== null && ctx.coveredFrom > ctx.windowStart && last !== null && last >= ctx.windowStart && last < ctx.coveredFrom
+    const gap = input.signIns.individuallyRead !== true && ctx.coveredFrom !== null && ctx.coveredFrom > ctx.windowStart && last !== null && last >= ctx.windowStart && last < ctx.coveredFrom
     if (gap) return { ...base, ...common, devices, state: 'unknown', unknown: 'notCovered', next: { kind: 'rescan', reason: 'notCovered' } }
     return { ...base, ...common, devices, state: 'confirm', onLeave: true, next: { kind: 'returnConfirm' } }
   }

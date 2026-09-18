@@ -400,7 +400,17 @@ only if they registered here.
 
 ## Execution status (2026-09-18)
 
-Built and shipped: segments 1–7, except the Intune read.
+Built and shipped: segments 1–7, except the Intune read and the backfill of older days.
+
+- **Collection.**
+  - The device fields and the targeted per-person reads are built (`laneBCore.ts`
+    `targetedReadCandidates` / `mergeTargeted`, `laneB.ts` `readTargeted`, wired in
+    the worker after a partial bulk read; 200 people or 90 s per scan).
+  - Filling in older days on later scans is not built. The targeted reads cover the
+    people whose state depends on those days, and anyone still unread reads Unknown
+    (not covered) with "the next scan continues".
+  - The success-only sign-in filter is not applied: it was not verified against a
+    real tenant.
 
 - **The Intune read is held on a contradiction.** `SPEC.md` §2 (a hard decision:
   "One admin-consent screen with the full read scope set. No staged consent")
