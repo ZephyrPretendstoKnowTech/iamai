@@ -16,7 +16,7 @@
 // it rides in (graph/collect/cache.ts forgetTenant). Pure.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { PLATFORMS, classOfKind, isQualifying, latestProofs } from './phishingResistant.ts'
-import type { MethodClass, MfaHistory, PersonHistory, PlatformSeen } from './phishingResistant.ts'
+import type { MethodClass, MfaHistory, PersonHistory, PlatformSeen, ReadinessState } from './phishingResistant.ts'
 
 const readable = (s: { status: string } | undefined): boolean => s?.status === 'ok' || s?.status === 'partial'
 
@@ -73,5 +73,16 @@ export function mergeMfaHistory(prior: MfaHistory | null | undefined, snapshot: 
     }
   }
 
-  return { schema: 1, asOf, people }
+  // The earlier scans' states (prompt 62), older than this one, the last few kept.
+  const scans = (usable(prior)?.scans ?? []).filter((x) => x && typeof x.asOf === 'string' && x.asOf < asOf && x.states && typeof x.states === 'object').slice(-SCANS_KEPT)
+  return { schema: 1, asOf, people, ...(scans.length > 0 ? { scans } : {}) }
+}
+
+/** How many earlier scans' states the history keeps. */
+export const SCANS_KEPT = 5
+
+/** The history with this scan's states added (the page's "since the last scan" reads the one before). */
+export function withScanStates(history: MfaHistory, asOf: string, states: Record<string, ReadinessState>): MfaHistory {
+  const scans = [...(history.scans ?? []).filter((x) => x.asOf !== asOf), { asOf, states }].sort((a, b) => (a.asOf < b.asOf ? -1 : 1)).slice(-SCANS_KEPT)
+  return { ...history, scans }
 }

@@ -6,6 +6,7 @@ import { deviceScopeOf } from './answers.ts'
 import type { DeviceScope } from './answers.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
 import { signInProofsRecorded } from '../scoring/fromSnapshot.ts'
+import { isReady } from '../scoring/phishingResistant.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -32,7 +33,7 @@ const LOCATION_GOALS = new Set(['geo-restriction'])
  * read this one state.
  */
 export function mfaReady(v: Pick<MfaViability, 'activity' | 'readiness'>): boolean {
-  return v.activity === 'active' && v.readiness.state === 'ready'
+  return v.activity === 'active' && isReady(v.readiness.state)
 }
 
 /**
@@ -41,7 +42,7 @@ export function mfaReady(v: Pick<MfaViability, 'activity' | 'readiness'>): boole
  * phishing-resistant policy as fully as a passkey does.
  */
 export function adminReady(v: Pick<MfaViability, 'readiness'>): boolean {
-  return v.readiness.state === 'ready'
+  return isReady(v.readiness.state)
 }
 
 /**

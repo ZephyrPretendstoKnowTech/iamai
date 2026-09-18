@@ -344,7 +344,7 @@ export function usePlanData(
       facetOverrides: mapping.facetOverrides,
       goalMap: baseline.goalMap,
     })
-    const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(mapping)).map(scoreMfaViability)
+    const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(mapping), mapping).map(scoreMfaViability)
     const names = buildNameDirectory(snapshot, groups)
     const result = generateRoadmap({
       planId,

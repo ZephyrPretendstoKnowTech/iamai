@@ -6,6 +6,8 @@ import type { PolicyEffect, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
 
 type Answer = 'yes' | 'no' | 'unknown'
+/** The single-method strength combination a sign-in's method class satisfies on its own. */
+const PROOF_COMBINATION: Record<string, string> = { passkey: 'fido2', windowsHello: 'windowshelloforbusiness', certificate: 'x509certificatemultifactor' }
 export type MethodPreparation = { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }
 
 /** A readiness cohort includes an eligible administrator's activation path,
@@ -61,6 +63,20 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     if (!cache.methodAnswers.has(methodKey)) cache.methodAnswers.set(methodKey, new Map())
     return { effect, scopes: cache.scopeAnswers.get(scopeKey)!, methods: cache.methodAnswers.get(methodKey)! }
   })
+  // A passkey sign-in settles nothing once the passkey method is off or excludes everyone.
+  const fido2 = ((snapshot.config.authMethodsPolicy?.rows?.[0] as { authenticationMethodConfigurations?: { id?: string; state?: string; excludeTargets?: { id?: string }[] }[] } | undefined)?.authenticationMethodConfigurations ?? []).find(c => String(c.id).toLowerCase() === 'fido2')
+  const fido2Open = fido2?.state === 'enabled' && !(fido2.excludeTargets ?? []).some(t => String(t.id).toLowerCase() === 'all_users')
+  // The method classes each person was seen succeeding with in the last 30 days.
+  const since = new Date(Date.parse(snapshot.asOf) - 30 * 86_400_000).toISOString()
+  const provenCache = new Map<string, Set<string>>()
+  const provenClasses = (id: string): Set<string> => {
+    let got = provenCache.get(id)
+    if (!got) {
+      got = new Set((snapshot.signInEvidence?.[id]?.proofs ?? []).filter(p => p.at >= since).map(p => p.cls))
+      provenCache.set(id, got)
+    }
+    return got
+  }
   const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
   const registered = (effect: PolicyEffect, id: string): Answer => {
     if (effect.unknown.length > 0) return 'unknown'
@@ -119,6 +135,23 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       }
       return unknown ? 'unknown' : 'no'
     })
+    // The outcome settles what registration could not (prompt 62): a successful
+    // sign-in in the last 30 days with a method this requirement accepts shows the
+    // method works under the tenant's settings, so an unknown compatibility is not
+    // left unknown for somebody seen using it.
+    const proven = provenClasses(id)
+    for (const [i, requirement] of effect.requirements.entries()) {
+      if (answers[i] !== 'unknown' || proven.size === 0) continue
+      if (requirement.kind === 'mfa') answers[i] = 'yes'
+      else if (requirement.kind === 'strength') {
+        // Only an unrestricted strength: a sign-in does not show which key model
+        // it used, so model restrictions stay the registration reading's to judge.
+        const strength = strengths.get(requirement.id.toLowerCase())
+        if (!strength || !Array.isArray(strength.combinationConfigurations) || strength.combinationConfigurations.length > 0) continue
+        const combos = (strength.allowedCombinations ?? []).map(c => c.toLowerCase().split(','))
+        if (combos.some(parts => parts.length === 1 && [...proven].some(cls => PROOF_COMBINATION[cls] === parts[0] && (cls !== 'passkey' || fido2Open)))) answers[i] = 'yes'
+      }
+    }
     const methods = effect.requirements.map((r, i) => ({ r, answer: answers[i] })).filter(x => x.r.kind === 'mfa' || x.r.kind === 'strength').map(x => x.answer)
     // AND's device/app tests belong to their own readiness checks. For OR a
     // suitable method is sufficient; an unmeasured alternative is not failure.

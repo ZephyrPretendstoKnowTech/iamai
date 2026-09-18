@@ -96,7 +96,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
   })
   // Confirmed service accounts are counted nowhere (target-state §8.1): they
   // leave the viability rows here, exactly as sets.activeUsers leaves them out.
-  const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(f.mapping)).map(scoreMfaViability)
+  const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(f.mapping), f.mapping).map(scoreMfaViability)
   const names = buildNameDirectory(snapshot, f.groups)
   const input: RoadmapInput = {
     planId: f.planId,
@@ -149,7 +149,7 @@ export function adminsAtRung5(viability: MfaViability[], at: string): MfaViabili
           ...v,
           kinds: [...new Set([...v.kinds, 'passkey' as const])],
           evidence: { at, method: 'Passkey' },
-          readiness: { ...v.readiness, state: 'ready', unknown: null, methods: [...new Set([...(v.readiness.methods ?? []), 'passkey' as const])], qualifying: ['passkey'], hasPasskey: true, proof: [{ cls: 'passkey', os: 'Windows', at, retained: false }], platforms: ['Windows'], missing: [], lost: [], next: { kind: 'none' }, recommended: null },
+          readiness: { ...v.readiness, state: 'ready', unknown: null, blocked: null, methods: [...new Set([...(v.readiness.methods ?? []), 'passkey' as const])], qualifying: ['passkey'], hasPasskey: true, onLeave: false, lastConfirmed: { cls: 'passkey', os: 'Windows', at, retained: false }, lost: [], next: { kind: 'none' }, recommended: null },
         }
       : v,
   )

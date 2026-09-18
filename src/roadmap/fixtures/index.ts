@@ -22,6 +22,7 @@ import { baselineStrength } from '../resolvePolicy.ts'
 import { withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCredentialBasis, RECOVERY_PREPARATION_WORKFLOW } from '../cleanupDone.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
+import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
 
@@ -776,7 +777,86 @@ export function buildFixture(spec: Spec): Fixture {
     }
   }
   if (mapping.breakGlassAnswers?.credentialStorage === true) mapping.breakGlassCustodyBasis = recoveryCredentialBasis(snapshot, bgIds)
+  if (!hostile) withDeviceFacts(snapshot, seed, spec.demo === true, ids.slice(0, spec.admins), new Set(ids.slice(spec.admins + 5, spec.admins + 13)))
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
+}
+
+/**
+ * The device facts a schema-10 scan records (prompt 62): each directory device
+ * gets its own device id and version, and each person's platforms become devices
+ * — a Windows computer is joined (hybrid where the directory says so) where the
+ * person owns one, and a personal, registered one otherwise; phones and Macs are
+ * registered or unmanaged. The demo also carries MFA Readiness's harder cases on
+ * people it tells no other story about: a separate admin account signing in on
+ * somebody else's joined computer, a contractor on a personal PC, a security key
+ * whose model is off Emergency Access Step 3's approved list, somebody on leave,
+ * and an account that signs in only to scripting tools. Deterministic.
+ */
+function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, adminIds: readonly string[], storied: ReadonlySet<string>): void {
+  const VERSIONS: Record<string, string> = { Windows: 'Windows 10.0.26100', macOS: 'MacOs 15.1', iOS: 'iOS 18.2', Android: 'Android 15', Linux: 'Linux', ChromeOS: 'ChromeOS' }
+  snapshot.devices.forEach((d, i) => {
+    d.deviceId = guid(seed, 4_000_000 + i)
+    d.operatingSystemVersion = d.operatingSystem === 'iOS' ? '18.2' : '10.0.26100'
+  })
+  const owned = new Map<string, TenantSnapshot['devices'][number]>()
+  for (const d of snapshot.devices) if (d.operatingSystem === 'Windows') for (const o of d.ownerIds) if (!owned.has(o)) owned.set(o, d)
+  const devicesOf = (id: string, platforms: readonly { os: Platform; at: string }[], trustOverride?: 'registered'): NonNullable<TenantSnapshot['signInEvidence'][string]['devices']> =>
+    platforms.map((p) => {
+      const own = p.os === 'Windows' ? owned.get(id) : undefined
+      const trust = p.os === 'Windows' ? (trustOverride ?? (own ? (own.trustType === 'ServerAd' ? 'hybrid' : 'joined') : 'registered')) : p.os === 'macOS' ? 'none' : 'registered'
+      return { os: p.os, at: p.at, trust, managed: own ? own.isManaged : p.os === 'macOS' ? false : null, deviceIds: own && !trustOverride ? [own.deviceId as string] : [], version: VERSIONS[p.os] ?? null }
+    })
+  for (const [id, e] of Object.entries(snapshot.signInEvidence)) {
+    if (!e.platforms) continue
+    e.devices = devicesOf(id, e.platforms)
+    e.apps = ['Microsoft 365', 'Microsoft Teams']
+    e.trustedLocationSeen = true
+  }
+  // The authentication-methods policy lists Voice, as Graph returns it: a text-only person's method is then known to be off, not unread.
+  const policy = snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations?: { id: string }[] } | undefined
+  if (policy?.authenticationMethodConfigurations && !policy.authenticationMethodConfigurations.some((c) => c.id === 'Voice')) policy.authenticationMethodConfigurations.push({ id: 'Voice', state: 'disabled', includeTargets: [] } as { id: string })
+  if (!demo) return
+  // People the demo tells no other story about (not the admins, not the campaign's no-method and unproven people), so week two keeps them.
+  const counted = Object.keys(snapshot.signInEvidence).filter((id) => !adminIds.includes(id) && !storied.has(id) && snapshot.users.some((u) => u.id === id && u.accountEnabled !== false))
+  const byId = new Map(snapshot.users.map((u) => [u.id, u]))
+  const plain = counted.filter((id) => {
+    const m = snapshot.authMethods[id]
+    return Array.isArray(m) && m.length === 1 && m[0].kind === 'microsoftAuthenticator' && (snapshot.signInEvidence[id].platforms ?? []).some((p) => Date.parse(snapshot.asOf) - Date.parse(p.at) < 20 * 86_400_000) && !(snapshot.signInEvidence[id].proofs ?? []).some((p) => p.cls === 'passkey' || p.cls === 'windowsHello')
+  })
+  // A separate admin account: the second admin signs in on the first person's joined computer.
+  const admin = adminIds[1]
+  const other = counted.find((id) => owned.has(id))
+  if (admin && other && snapshot.signInEvidence[admin]?.devices) {
+    for (const d of snapshot.signInEvidence[admin].devices ?? []) if (d.os === 'Windows') { d.trust = 'joined'; d.deviceIds = [owned.get(other)?.deviceId as string] }
+  }
+  const at = (days: number): string => new Date(Date.parse(snapshot.asOf) - days * 86_400_000).toISOString()
+  const [contractor, offList, onLeave, script] = plain.slice(-4)
+  if (contractor) {
+    const e = snapshot.signInEvidence[contractor]
+    e.platforms = [{ os: 'Windows', at: at(2) }, { os: 'Android', at: at(3) }]
+    e.devices = devicesOf(contractor, e.platforms, 'registered')
+    const u = byId.get(contractor)
+    if (u) { u.department = 'Contractor'; u.jobTitle = 'Contractor' }
+  }
+  if (offList) {
+    // A YubiKey 5 on older firmware: allowed by today's unrestricted settings, not by Step 3's approved models.
+    snapshot.authMethods[offList] = [...(snapshot.authMethods[offList] as AuthMethodSummary[]), { kind: 'fido2', id: 'demo-key-offlist', displayName: 'YubiKey 5 NFC', model: 'YubiKey 5 Series with NFC', aaGuid: 'cb69481e-8ff7-4039-93ec-0a2729a154a8', createdDateTime: at(60) }]
+    const r = snapshot.registrationDetails.find((x) => x.id === offList)
+    if (r) r.methodsRegistered = [...r.methodsRegistered, 'fido2SecurityKey']
+  }
+  if (onLeave) {
+    // On leave: a passkey held, and no sign-in in the last 30 days (active within 90).
+    snapshot.authMethods[onLeave] = [...(snapshot.authMethods[onLeave] as AuthMethodSummary[]), { kind: 'passkey', id: 'demo-passkey-leave', displayName: 'iPhone', aaGuid: '90a3ccdf-635c-4729-a248-9b709135078f', createdDateTime: at(120) }]
+    const r = snapshot.registrationDetails.find((x) => x.id === onLeave)
+    if (r) r.methodsRegistered = [...r.methodsRegistered, 'passKeyDeviceBoundAuthenticator']
+    const e = snapshot.signInEvidence[onLeave]
+    e.platforms = [{ os: 'Windows', at: at(44) }, { os: 'iOS', at: at(45) }]
+    e.devices = devicesOf(onLeave, e.platforms)
+    e.lastSignIn = at(44)
+    const u = byId.get(onLeave)
+    if (u) u.lastSuccessfulSignIn = at(44)
+  }
+  if (script) snapshot.signInEvidence[script].apps = ['Microsoft Graph Command Line Tools', 'Windows PowerShell']
 }
 
 /**

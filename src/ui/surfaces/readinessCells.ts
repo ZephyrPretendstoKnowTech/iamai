@@ -1,99 +1,62 @@
-// The MFA Readiness worklist's cells, once (task 012; Step 7): the role, the
-// methods and their note, the proof lines, the readiness word, the action and
-// the detail's Why and Next. The table on screen, its CSV, the Plan step's
-// preview (MfaHandoff.tsx) and the inventory export read these functions, so a
-// person reads the same wherever they are described.
+// The MFA Readiness worklist's cells, once (prompt 62): the device chips, the
+// methods, the next step, the detail panel's facts and the CSV row. The page, its
+// CSV, the Export bundle and the inventory read these functions, so a person
+// reads the same wherever they are described.
 //
 // Every fact here is scoring/phishingResistant.ts `personReadiness`, carried on
 // the row; this module only chooses its words. The words are pages.readiness.
 // Pure.
-import type { ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
-import type { Facts } from '../../derive/facts.ts'
+import type { Explained, ReadinessRow } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
+import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { isQualifying } from '../../scoring/phishingResistant.ts'
-import type { MethodClass, ProofLine, ReadinessState } from '../../scoring/phishingResistant.ts'
+import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 
-type ReadinessWords = {
+type Words = {
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
-  roles: { admin: string; person: string }
-  kinds: Record<Kind, string>
-  notAPerson: string
-  methods: Record<MethodClass | 'none' | 'unknown' | 'join', string>
-  methodsInSentence: Record<MethodClass, string>
-  methodNotes: { registered: string; noPasskey: string; noQualifying: string; lost: string; unread: string; signInsUnread: string }
-  proof: { line: string; lineRetained: string; anyPlatform: string; onPlatform: string; missing: string; notYetSeen: string; notQualifying: string; noQualifying: string; lost: string; unknown: string; signInsUnread: string }
-  actions: { addPasskey: string; recommended: string; test: string; prove: string; setUp: string; restore: string; rescan: string }
-  detail: Record<
-    | 'title' | 'and'
-    | 'whyReady' | 'whyReadyNoPlatform' | 'whyRetained' | 'whyProofMissing' | 'whyNoProof' | 'whySetUp' | 'whySetUpOther' | 'whyNoMethod' | 'whyLost' | 'whyUnknownMethods' | 'whyUnknownSignIns'
-    | 'nextNone' | 'nextAddPasskey' | 'nextTest' | 'nextProve' | 'nextSetUp' | 'nextRestore' | 'nextRescan',
-    string
-  >
-  ledger: Record<'notActive' | Kind, string>
-  strip: { rolloutWithout: string; rolloutNone: string; rolloutUnread: string }
-}
-const T = pages.readiness as unknown as ReadinessWords
-
-/**
- * The passkey rollout strip's value beside "{have} of {active} have a passkey":
- * the link to the people without one, and every other part of the active people
- * the strip must account for. A person whose method inventory could not be read
- * is neither with nor without a passkey, so they are named, never folded into
- * "None without" — a tenant nobody's methods were read in is not one where
- * everybody holds a passkey.
- */
-export function passkeyStripParts(p: { without: number; unread: number }): { without: string | null; rest: string[] } {
-  const S = T.strip
-  return {
-    without: p.without > 0 ? fillText(S.rolloutWithout, { n: p.without }) : null,
-    rest: [...(p.without === 0 && p.unread === 0 ? [S.rolloutNone] : []), ...(p.unread > 0 ? [fillText(S.rolloutUnread, { n: p.unread })] : [])],
+  groups: Record<ReadinessState, { title: string; why: string; body?: string }>
+  chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
+  methods: Record<MethodClass | 'none' | 'unread' | 'only', string>
+  lastConfirmed: string
+  beforeWindow: string
+  readyUntil: string
+  options: Record<SignInOption, string>
+  next: {
+    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; addDevice: string; replaceKey: string
+    waitSetup: Record<string, string>; rescan: Record<string, string>
   }
+  notes: { automated: string; onLeave: string }
+  panel: {
+    best: string
+    now: string
+    allowed: string
+    lastConfirmed: string
+    lastSeen: string
+    trust: Record<'joined' | 'hybrid' | 'registered' | 'none' | 'unknown', string>
+    whyNot: Record<string, string>
+    proofNow: { seamless: string; confirmed: string; none: string }
+    verdict: Record<'yes' | 'no' | 'unknown', string>
+    step3: Record<'yes' | 'no' | 'unknown', string>
+    never: string
+    retained: string
+    unlisted: string
+    why: Record<string, string>
+  }
+  checks: Record<string, Record<string, string>>
+  counted: Record<Explained | Kind | 'dormantLink', string>
+  admin: string
+  guest: string
+  and: string
 }
+const T = pages.readiness as unknown as Words
 
-/** A state's own word: Ready, Needs proof, Needs setup, Unknown. */
+/** A state's own word. */
 export function stateTitle(s: ReadinessState): string {
   return T.states[s].title
-}
-
-/** A method class as a cell names it. */
-export function classWord(c: MethodClass): string {
-  return T.methods[c]
-}
-
-/** A method class inside a sentence. */
-function inSentence(c: MethodClass): string {
-  return T.methodsInSentence[c]
-}
-
-/** "a", "a and b", "a, b and c". */
-function listWords(xs: readonly string[]): string {
-  if (xs.length <= 1) return xs[0] ?? ''
-  return `${xs.slice(0, -1).join(', ')} ${T.detail.and} ${xs[xs.length - 1]}`
-}
-
-/**
- * The accounts the page does not count, each a filter of its own: the not
- * active and the kinds that are not people, every part that is not zero.
- */
-export function footerParts(f: Facts): { key: string; text: string; show: ShowKey }[] {
-  const n = (k: 'notActive' | Kind): number => (k === 'notActive' ? f.notActive : f.kinds[k])
-  return (['notActive', 'emergency', 'service', 'shared', 'disabled'] as const).filter((k) => n(k) > 0).map((k) => ({ key: k, text: fillText(T.ledger[k], { n: n(k) }), show: k }))
-}
-
-/** The Role cell: the account's kind where it is not a person, Admin where the directory gives it a role (roles.ts, through the row), Person otherwise. */
-export function roleWord(r: ReadinessRow): string {
-  if (r.kind !== 'person') return T.kinds[r.kind]
-  return r.admin ? T.roles.admin : T.roles.person
-}
-
-/** The readiness word: the state for a counted person, Not active, or not a person. */
-export function readinessWord(r: ReadinessRow): string {
-  if (r.kind !== 'person') return T.notAPerson
-  return r.state !== null ? stateTitle(r.state) : T.show.notActive
 }
 
 /** A filter's word. */
@@ -101,132 +64,151 @@ export function showWord(key: string): string {
   return T.show[key] ?? key
 }
 
-export type MethodsCell = { main: string; note: string }
+/** A method class as a cell names it. */
+export function classWord(c: MethodClass): string {
+  return T.methods[c]
+}
 
-/**
- * The Methods cell: the qualifying methods held now where there are any, the
- * others where there are none; and the one note that matters about them — a
- * qualifying method gone since an earlier scan, none held, no passkey beside a
- * Ready method, or that the inventory could not be read.
- */
-export function methodsCell(r: ReadinessRow): MethodsCell {
-  if (r.methods === null) return { main: T.methods.unknown, note: T.methodNotes.unread }
+/** "a", "a and b", "a, b and c". */
+export function listWords(xs: readonly string[]): string {
+  if (xs.length <= 1) return xs[0] ?? ''
+  return `${xs.slice(0, -1).join(', ')} ${T.and} ${xs[xs.length - 1]}`
+}
+
+/** A platform family as people say it: an iPhone and an Android phone, the computers by name. */
+export function osWord(os: Platform): string {
+  return os === 'iOS' ? 'iPhone' : os === 'Android' ? 'Android' : os
+}
+
+/** A device family in a sentence: the Windows computer, the Mac, the iPhone. */
+export function deviceNoun(os: Platform): string {
+  return os === 'iOS' ? 'the iPhone' : os === 'Android' ? 'the Android phone' : os === 'macOS' ? 'the Mac' : `the ${os} computer`
+}
+
+/** The Role word under the person. */
+export function roleWord(r: ReadinessRow): string {
+  if (r.kind !== 'person') return T.show[r.kind] ?? r.kind
+  return r.admin ? T.admin : ''
+}
+
+export type Chip = { kind: 'computer' | 'phone'; os: string; word: string; tone: ReadinessState | 'unread'; title: string }
+
+/** A device's chip: the device, and where it stands. */
+export function deviceChip(d: DeviceReading, state: ReadinessState): Chip {
+  const tone: Chip['tone'] = d.seamless ? 'seamless' : d.proof ? 'ready' : state === 'blocked' ? 'blocked' : state === 'method' ? 'method' : state === 'unknown' ? 'unread' : d.type === 'phone' && state === 'device' ? 'device' : 'confirm'
+  const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' ? T.chip.noPasskey : T.chip.notConfirmed
+  const trust = d.trust ?? 'unknown'
+  return { kind: d.type, os: osWord(d.os), word, tone, title: `${d.version ?? osWord(d.os)}. ${T.panel.trust[trust]}` }
+}
+
+/** The row's chips: each device seen in the window, and a quiet note where no phone signed in. */
+export function deviceChips(r: ReadinessRow): { chips: Chip[]; noPhone: boolean } {
+  const rd = r.readiness
+  if (!rd || r.state === null) return { chips: [], noPhone: false }
+  const chips = rd.devices.map((d) => deviceChip(d, r.state as ReadinessState))
+  return { chips, noPhone: rd.devices.length > 0 && !rd.devices.some((d) => d.type === 'phone') }
+}
+
+/** The Methods cell: the phishing-resistant methods held, or what is held instead. */
+export function methodsCell(r: ReadinessRow): { main: string; note: string } {
+  if (r.methods === null) return { main: T.methods.unread, note: '' }
+  const rd = r.readiness
   const qualifying = r.methods.filter(isQualifying)
-  const shown = qualifying.length > 0 ? qualifying : r.methods
-  const main = shown.length > 0 ? shown.map(classWord).join(` ${T.methods.join} `) : T.methods.none
-  const rd = r.readiness
+  const main = qualifying.length > 0 ? listWords(qualifying.map(classWord)) : r.methods.length > 0 ? fillText(T.methods.only, { method: listWords(r.methods.map(classWord)) }) : T.methods.none
   if (!rd) return { main, note: '' }
-  if (rd.unknown === 'signIns') return { main, note: T.methodNotes.signInsUnread }
-  if (rd.qualifying.length === 0 && rd.lost.length > 0) return { main, note: fillText(T.methodNotes.lost, { method: classWord(rd.lost[0].cls) }) }
-  if (rd.qualifying.length === 0) return { main, note: T.methodNotes.noQualifying }
-  if (rd.hasPasskey === false) return { main, note: T.methodNotes.noPasskey }
-  return { main, note: T.methodNotes.registered }
+  if (rd.onLeave) return { main, note: T.notes.onLeave }
+  const last = rd.lastConfirmed
+  const note = !last ? '' : last.retained ? fillText(T.beforeWindow, { date: monthDay(last.at) }) : isReadyState(rd.state) && rd.readyUntil ? fillText(T.readyUntil, { date: monthDay(rd.readyUntil) }) : fillText(T.lastConfirmed, { date: monthDay(last.at) })
+  return { main, note }
 }
 
-/** How a proof line is marked: proven, missing on a platform, not qualifying, not known, or a change since an earlier scan. */
-export type ProofMark = 'good' | 'warn' | 'bad' | 'unknown' | 'history'
-export type ProofText = { mark: ProofMark; text: string }
+const isReadyState = (s: ReadinessState): boolean => s === 'ready' || s === 'seamless'
 
-function proofText(p: ProofLine): string {
-  if (p.os === null) return fillText(T.proof.anyPlatform, { method: classWord(p.cls) })
-  return fillText(p.retained ? T.proof.lineRetained : T.proof.line, { method: classWord(p.cls), platform: p.os, date: monthDay(p.at) })
-}
-
-/**
- * The Proof cell, a line each: qualifying proof as method · platform, a platform
- * the person uses with no proof of it, the non-phishing-resistant method a
- * person without a qualifying one was seen with, a qualifying method that has
- * gone, or that the evidence could not be read. Never a proof the records do not
- * hold, and never "no sign-in record" for somebody the records show.
- */
-export function proofLines(r: ReadinessRow): ProofText[] {
-  const rd = r.readiness
-  if (!rd) return []
-  if (rd.unknown === 'methods') return [{ mark: 'unknown', text: T.proof.unknown }]
-  if (rd.unknown === 'signIns') return [{ mark: 'unknown', text: T.proof.signInsUnread }]
-  if (rd.state === 'needsSetup') {
-    if (rd.lost.length > 0) return rd.lost.map((l) => ({ mark: 'history' as const, text: fillText(T.proof.lost, { method: classWord(l.cls), date: monthDay(l.lastSeen) }) }))
-    if (rd.other) return [{ mark: 'bad', text: fillText(T.proof.notQualifying, { method: classWord(rd.other.cls) }) }]
-    return [{ mark: 'bad', text: T.proof.noQualifying }]
+/** The next step, in words. */
+export function nextWords(n: NextAction): string {
+  const N = T.next
+  switch (n.kind) {
+    case 'none': return N.none
+    case 'seamless': return fillText(N.seamless, { option: T.options[n.option], device: deviceNoun(n.os) })
+    case 'setUp': return fillText(N.setUp, { option: T.options[n.option] })
+    case 'restore': return fillText(N.restore, { method: classWord(n.cls).toLowerCase() })
+    case 'confirm': return fillText(N.confirm, { method: classWord(n.cls).toLowerCase() })
+    case 'returnConfirm': return N.returnConfirm
+    case 'addDevice': return fillText(N.addDevice, { option: T.options[n.option], device: deviceNoun(n.os) })
+    case 'replaceKey': return N.replaceKey
+    case 'waitSetup': return N.waitSetup[n.reason]
+    case 'rescan': return N.rescan[n.reason]
   }
-  const lines: ProofText[] = rd.proof.map((p) => ({ mark: 'good' as const, text: proofText(p) }))
-  for (const os of rd.missing) lines.push({ mark: 'warn', text: fillText(T.proof.missing, { platform: os }) })
-  if (lines.length === 0) lines.push({ mark: 'warn', text: T.proof.notYetSeen })
-  return lines
 }
 
-export type RowAction = { text: string; recommended: boolean; rescan: boolean }
-
-/**
- * The Action cell: the baseline's next action, or — for somebody Ready without
- * a passkey — the passkey recommendation, marked as a recommendation. Nothing
- * for somebody Ready with one, and nothing for an account the page does not
- * count.
- */
-export function actionOf(r: ReadinessRow): RowAction | null {
+/** The Next step cell: the baseline's next action, or, for somebody Ready, the Seamless recommendation. */
+export function nextCell(r: ReadinessRow): string {
   const rd = r.readiness
-  if (!rd || r.state === null) return null
-  const n = rd.next
-  if (n.kind === 'none') return rd.recommended === 'addPasskey' ? { text: T.actions.addPasskey, recommended: true, rescan: false } : null
-  if (n.kind === 'test') return { text: fillText(T.actions.test, { platform: n.platform }), recommended: false, rescan: false }
-  if (n.kind === 'prove') return { text: fillText(T.actions.prove, { method: inSentence(n.cls) }), recommended: false, rescan: false }
-  if (n.kind === 'setUp') return { text: T.actions.setUp, recommended: false, rescan: false }
-  if (n.kind === 'restore') return { text: fillText(T.actions.restore, { method: inSentence(n.cls) }), recommended: false, rescan: false }
-  return { text: T.actions.rescan, recommended: false, rescan: true }
+  if (!rd || r.state === null) return ''
+  if (rd.next.kind === 'none') return rd.recommended ? nextWords(rd.recommended) : T.next.none
+  return nextWords(rd.next)
 }
 
-/** The recommendation's own label under a recommended action. */
-export function recommendedWord(): string {
-  return T.actions.recommended
+/** A note beside the next step: an account that looks automated. */
+export function rowNote(r: ReadinessRow): string {
+  return r.readiness?.automated ? T.notes.automated : ''
 }
 
-export type Detail = { title: string; why: string[]; next: string[]; rescan: boolean }
+export type PanelItem = { icon: 'computer' | 'phone' | 'key'; name: string; sub: string; facts: [string, string][] }
 
-/**
- * The detail one level deep: Why, and Next. For somebody Ready without a
- * passkey the baseline's answer (nothing) and the recommendation are two
- * separate lines, so the recommendation is never read as a requirement.
- */
-export function detailOf(r: ReadinessRow): Detail | null {
+/** The detail's devices: each device seen, its join state, its best option and where it stands now. */
+export function panelDevices(r: ReadinessRow): PanelItem[] {
+  const P = T.panel
+  return (r.readiness?.devices ?? []).map((d) => {
+    const trust = d.trust ?? 'unknown'
+    const sub = `${d.type === 'computer' ? P.trust[trust] + ' ' : ''}${fillText(P.lastSeen, { date: monthDay(d.lastSeen) })}`
+    const best = `${T.options[d.best].replace(/^a /, '')}${d.whyNot ? '. ' + P.whyNot[d.whyNot] : ''}`
+    const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : P.proofNow.none
+    return { icon: d.type, name: d.version ?? osWord(d.os), sub, facts: [[P.best, capital(best)], [P.now, now]] }
+  })
+}
+
+/** The detail's credentials: each phishing-resistant method, its model, whether it is allowed now and after Step 3, and its last use. */
+export function panelMethods(r: ReadinessRow): PanelItem[] {
+  const P = T.panel
+  return (r.readiness?.credentials ?? []).map((c: CredentialReading) => {
+    const model = c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
+    const allowed = c.afterStep3 !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[c.afterStep3]}.` : `${P.verdict[c.allowedNow]}.`
+    const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
+    return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts: [[P.allowed, allowed], [P.lastConfirmed, last]] }
+  })
+}
+
+/** Why the person stands where they do, one sentence. */
+export function whyLine(r: ReadinessRow): string {
   const rd = r.readiness
-  if (!rd) return null
-  const D = T.detail
-  const name = r.user.displayName ?? r.user.userPrincipalName ?? ''
-  const title = fillText(D.title, { name, state: stateTitle(r.state ?? rd.state) })
-  const proofList = (lines: readonly ProofLine[]): string => listWords(lines.map((p) => (p.os === null ? classWord(p.cls) : fillText(T.proof.onPlatform, { method: classWord(p.cls), platform: p.os }))))
-  const retained = rd.proof.filter((p) => p.retained)
-  const earlier = retained.length > 0 ? [fillText(D.whyRetained, { proof: proofList(retained) })] : []
-  if (rd.unknown === 'methods') return { title, why: [fillText(D.whyUnknownMethods, { name })], next: [D.nextRescan], rescan: true }
-  if (rd.unknown === 'signIns') return { title, why: [fillText(D.whyUnknownSignIns, { methods: listWords(rd.qualifying.map(inSentence)) })], next: [D.nextRescan], rescan: true }
-  if (rd.state === 'needsSetup') {
-    if (rd.lost.length > 0) return { title, why: [fillText(D.whyLost, { method: inSentence(rd.lost[0].cls), date: monthDay(rd.lost[0].lastSeen) })], next: [fillText(D.nextRestore, { method: inSentence(rd.lost[0].cls) })], rescan: false }
-    if ((rd.methods ?? []).length === 0) return { title, why: [D.whyNoMethod], next: [D.nextSetUp], rescan: false }
-    const other = rd.other ? [fillText(D.whySetUpOther, { method: inSentence(rd.other.cls) })] : []
-    return { title, why: [fillText(D.whySetUp, { methods: listWords((rd.methods ?? []).map(inSentence)) }), ...other], next: [D.nextSetUp], rescan: false }
-  }
-  if (rd.state === 'needsProof') {
-    // No proof anywhere: the Next agrees with the row's action — a platform in use to test where one is seen, the method to use once where none is.
-    if (rd.proof.length === 0) {
-      const next = rd.missing.length > 0 ? fillText(D.nextTest, { platform: listWords(rd.missing) }) : fillText(D.nextProve, { method: inSentence(rd.qualifying[0]) })
-      return { title, why: [fillText(D.whyNoProof, { methods: listWords(rd.qualifying.map(inSentence)) })], next: [next], rescan: false }
-    }
-    return { title, why: [fillText(D.whyProofMissing, { proof: proofList(rd.proof), name, missing: listWords(rd.missing) }), ...earlier], next: [fillText(D.nextTest, { platform: listWords(rd.missing) })], rescan: false }
-  }
-  const why = [fillText(rd.platforms.length > 0 ? D.whyReady : D.whyReadyNoPlatform, { proof: proofList(rd.proof), name }), ...earlier]
-  return { title, why, next: rd.recommended === 'addPasskey' ? [D.nextNone, D.nextAddPasskey] : [D.nextNone], rescan: false }
+  if (!rd || r.state === null) return ''
+  const W = T.panel.why
+  if (rd.next.kind === 'replaceKey' || rd.recommended?.kind === 'replaceKey') return W.replaceKey
+  if (rd.onLeave) return W.onLeave
+  if (r.state === 'device' && rd.next.kind === 'addDevice') return fillText(W.device, { device: deviceNoun(rd.next.os) })
+  return W[r.state] ?? ''
 }
 
-/** What the search box matches: the person, their role, their methods, their proof and their state. */
+const capital = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
+
+/** What the search box matches: the person, their devices, methods, state and next step. */
 export function searchText(r: ReadinessRow): string {
-  return [r.user.displayName ?? '', r.user.userPrincipalName ?? '', roleWord(r), methodsCell(r).main, ...proofLines(r).map((l) => l.text), readinessWord(r)].join(' ').toLowerCase()
+  return [r.user.displayName ?? '', r.user.userPrincipalName ?? '', r.user.department ?? '', roleWord(r), methodsCell(r).main, ...deviceChips(r).chips.map((c) => `${c.os} ${c.word}`), r.state ? stateTitle(r.state) : '', nextCell(r)].join(' ').toLowerCase()
 }
 
-/** A row as its CSV writes it, in the columns' order after the name: role, methods, proof, readiness, action. */
-export function proofLabel(line: ProofText): string {
-  const labels = (pages.readiness as unknown as { proof: { marks: Record<ProofMark, string> } }).proof.marks
-  return `${labels[line.mark]}: ${line.text}`
+/** A setup check's words: the line, and what to do where it fails. */
+export function checkWords(c: SetupCheck): { line: string; text: string } {
+  const W = T.checks[c.key]
+  if (c.outcome === 'pass') return { line: W.pass, text: '' }
+  if (c.outcome === 'note') return { line: W.note, text: '' }
+  if (c.outcome === 'unknown') return { line: W.unknown ?? W.fail, text: '' }
+  return { line: W.fail, text: W.failText ?? '' }
 }
 
+/** The CSV row, in the columns' order after the name: role, devices, methods, state, next step. */
 export function rowCells(r: ReadinessRow): string[] {
-  return [roleWord(r), methodsCell(r).main, proofLines(r).map(proofLabel).join('; '), readinessWord(r), actionOf(r)?.text ?? '']
+  const devices = deviceChips(r).chips.map((c) => `${c.os}: ${c.word}`).join('; ')
+  const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
+  return [roleWord(r), devices, methodsCell(r).main, state, nextCell(r)]
 }

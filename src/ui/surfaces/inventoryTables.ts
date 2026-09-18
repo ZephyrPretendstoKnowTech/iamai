@@ -171,7 +171,7 @@ export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUs
     id: 'readiness',
     label: 'MFA Readiness',
     csvName: READINESS_CSV,
-    header: [(pages.readiness as { columns: string[] }).columns[0], 'Sign-in name', ...(pages.readiness as { columns: string[] }).columns.slice(1)],
+    header: [...(pages.readiness as { csvColumns: string[] }).csvColumns],
     rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r)]),
   }
 }
