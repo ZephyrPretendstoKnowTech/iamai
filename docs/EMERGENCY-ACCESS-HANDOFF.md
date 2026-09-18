@@ -129,21 +129,28 @@ Route: `cleanup-drill`.
 - Required on-demand group reads must complete before the initial baseline; events during that acquisition are rejected.
 - Step 3 review no longer references nonexistent intended-value facts.
 
+## Prompt 60 corrections (2026-09-18)
+
+- **Order-sensitive passkey comparison (fixed).** `keyRestrictions.aaGuids`, profile assignments and `passkeyTypes` are unordered sets, and Graph returns their members in any order. `emergencyPasskeyTasks.ts` compared them with `JSON.stringify`, so the live tenant's four approved models in Graph order rendered as an Approved models change against the same four sorted. The Step 3 reading compared `passkeyProfiles` the same way (`passkeySettings.ts` `matches`). Both now use one `samePasskeyValue`: array entries (and the `passkeyTypes` comma string) are lower-cased, trimmed, de-duplicated and sorted before comparison, as `recoveryAccountBasis` does for approved models. Extra tenant models beyond `requiredModels()` produce no row by themselves. Fields compared, the target builder and display formatting are unchanged.
+- **Tasks Remaining tile standard.** Steps 2–4 render the Step 1 account tile's anatomy (`emergencyReadiness.ts` `emergencySubjectTileOf`, `ContentStep.tsx` `EmergencySubjectReadiness`): subject label, identity, the one required action and its instruction, the highest-priority finding per subject (at most three, the rest behind **Show N more**), then **Completed checks · N**; satisfied subjects under **Satisfied · N**. Print keeps the source findings. Step 2's heading/sentence renders once; Step 3's prerequisite reads "Finish X first." once; Step 4's per-account sign-in list renders only in the Sign-in Evidence tile (`readinessFacts`). Presentation only.
+- **Step 1 passkey task** drops its AAGUID lines and names only the selected accounts whose approved-passkey check fails. **Step 3 protections task** navigates first and applies each differing value inline; the Microsoft Authenticator provider entry is used where all its models are required, other models are entered by AAGUID, each Add AAGUID entry ends in its own Save. Methodology keeps only why the settings matter and how the checks differ.
+- **Dedicated-account signal** (`bg.notPersonal`) is also a note on Step 1's account tiles. It gates nothing and still renders in Step 4.
+
 ## What remains / next bounded execution plan
 
 Do these in order. No UI redesign or added permissions is authorized by this handoff.
 
 1. **Real Step 4 acceptance (owner action).** Use the same connected plan, finish genuine Steps 1–3 differences, scan to establish the baseline, sign in privately with each emergency account's prepared passkey, sign out, wait 5–10 minutes and scan again. Confirm A-only then both-account completion, refresh persistence, exports and downstream gates. Never impersonate an emergency account or change tenant settings automatically.
-2. **Step 2 governance evidence.** Run the existing read-only diagnostic under current consent. Record HTTP/result status for group owners, PIM eligibility/assignments and entitlement routes. Report readable, denied, unsupported or not collected. Do not equate licensing with absence or mark unread routes safe.
+2. **Step 2 governance evidence.** Run the existing read-only diagnostic under current consent. It is reachable only in a DEV build with `?dev=1` (`App.tsx` `DevSpikes`, not emitted in production), so run it against a local dev server at the registered callback `http://localhost:5173/planner/?dev=1` signed in to the real tenant, not against production. Record HTTP/result status for group owners, PIM eligibility/assignments and entitlement routes. Report readable, denied, unsupported or not collected. Do not equate licensing with absence or mark unread routes safe.
 3. **Close validation gaps.** Add a focused test of the actual plan persistence lifecycle with delayed group reads, tenant switch/sign-out and storage failure/retry. Current pure reconciliation tests are not a React/IndexedDB lifecycle test.
 4. **Bounded audit hardening.** Measure the directory-audit read on the real tenant. It currently requests a tenant-wide 90-day lookback and projects a small record; it does not guarantee 90 days of provider retention. Do not claim no unobserved mutation. Relevance is conservative: broad account/group audit updates may reset proof even if a property was cosmetic. Improve this only with observed provider fields plus tests; do not suppress security changes to reduce noise.
-5. **Presentation follow-up, only after owner review.** Step 4's configuration tile can still grow tall with many genuine prerequisite failures; Step 3 can repeat prerequisite rows alongside passing registration details. Capture a real example and propose a bounded simplification before changing tile design.
+5. **Presentation follow-up, only after owner review.** Prompt 60 applied the Step 1 tile standard to Steps 2–4 (Step 4's Configuration tile shows one finding per subject; Step 3 states a prerequisite once). Any further tile change still needs the owner's review.
 6. Once these results are understood, move to the requested MFA Readiness review using the same evidence and presentation rules.
 7. **Windows Hello model names.** `PASSKEY_DEFAULT_MODELS` has no Windows Hello entry, so a tenant that allow-lists a Windows Hello AAGUID renders it as `AAGUID 9ddd1817-…` / an unnamed existing model. Do not add Windows Hello to the default set without an owner decision: the portal warns attestation is not supported for Windows Hello passkeys.
 
 ## Verification and release procedure
 
-Latest focused command (74 passed, 0 failed):
+Latest focused command (83 passed, 0 failed):
 ```powershell
 node --test --test-isolation=none src/graph/collect/laneBCore.test.ts src/roadmap/cleanupDone.test.ts src/roadmap/emergencyJourney.test.ts src/ui/surfaces/emergencyPasskeyTasks.test.ts src/ui/surfaces/emergencyNextSteps.test.ts src/ui/surfaces/cleanupExports.test.ts src/roadmap/cleanupPhase.test.ts src/ui/emergencyDiagnosticDev.test.ts
 npx tsc --noEmit
