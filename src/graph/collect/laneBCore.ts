@@ -655,3 +655,82 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
     return await finalize('error', reason, false)
   }
 }
+
+// ---- MFA Readiness's targeted reads (prompt 62) ----
+//
+// A partial bulk read (the row ceiling or the time budget) leaves out whoever
+// signed in only before the rows it reached. That gap matters only for people
+// who hold a phishing-resistant method: without one, a person's state does not
+// depend on the logs. Those people get one small read each, under a budget, and
+// the rows it returns join their evidence exactly as bulk rows would.
+
+/** How many people a scan reads individually, and the wall-clock it may spend. */
+export const TARGETED_READ_LIMIT = 200
+export const TARGETED_READ_BUDGET_MS = 90_000
+
+const QUALIFYING_KINDS = new Set(['passkey', 'fido2', 'windowsHelloForBusiness'])
+
+/**
+ * The people to read individually: they hold a phishing-resistant method, the
+ * directory says they signed in inside the readiness window, and that sign-in
+ * falls before where the bulk read began. Most recent first, at most `limit`.
+ */
+export function targetedReadCandidates(
+  users: readonly { id: string; lastSuccessfulSignIn: string | null; accountEnabled: boolean | null }[],
+  methods: Record<string, readonly { kind: string }[] | 'unknown'>,
+  covered: { from: string } | null,
+  windowStart: string,
+  limit: number = TARGETED_READ_LIMIT,
+): string[] {
+  if (!covered || covered.from <= windowStart) return []
+  return users
+    .filter((u) => u.accountEnabled !== false && u.lastSuccessfulSignIn !== null && u.lastSuccessfulSignIn >= windowStart && u.lastSuccessfulSignIn < covered.from)
+    .filter((u) => { const m = methods[u.id]; return Array.isArray(m) && m.some((x) => QUALIFYING_KINDS.has(x.kind)) })
+    .sort((a, b) => ((a.lastSuccessfulSignIn as string) < (b.lastSuccessfulSignIn as string) ? 1 : -1))
+    .slice(0, limit)
+    .map((u) => u.id)
+}
+
+/** One person's read: their interactive sign-ins between the window's start and where the bulk read began. */
+export function targetedReadUrl(base: string, userId: string, windowStart: string, coveredFrom: string): string {
+  const filter = `userId eq '${userId}' and createdDateTime ge ${windowStart} and createdDateTime lt ${coveredFrom} and signInEventTypes/any(t: t eq 'interactiveUser')`
+  return `${base}/auditLogs/signIns?$filter=${encodeURIComponent(filter)}&$top=50`
+}
+
+/**
+ * Fold a person's individually read rows into their evidence. A person read and
+ * found to have no interactive sign-in in the gap is recorded as read, so
+ * readiness does not call their records missing.
+ */
+export function mergeTargeted(perUser: Record<string, UserEvidence>, userId: string, rows: readonly StoredSignIn[]): void {
+  const found = aggregate(rows.filter((r) => r.userId === userId))[userId]
+  const held = perUser[userId]
+  if (!found) {
+    perUser[userId] = { ...(held ?? { signInCount: 0, lastSignIn: null, lastMfaSuccess: null }), individuallyRead: true }
+    return
+  }
+  if (!held) {
+    perUser[userId] = { ...found, individuallyRead: true }
+    return
+  }
+  const later = (a: string | null, b: string | null): string | null => (a === null ? b : b === null ? a : a > b ? a : b)
+  const byOs = new Map<string, DeviceSeen>()
+  for (const d of [...(held.devices ?? []), ...(found.devices ?? [])]) {
+    const k = byOs.get(d.os)
+    byOs.set(d.os, !k || d.at > k.at ? { ...d, deviceIds: [...new Set([...(k?.deviceIds ?? []), ...d.deviceIds])].slice(0, 5) } : { ...k, deviceIds: [...new Set([...k.deviceIds, ...d.deviceIds])].slice(0, 5) })
+  }
+  const platforms = new Map<string, string>()
+  for (const p of [...(held.platforms ?? []), ...(found.platforms ?? [])]) if (!platforms.has(p.os) || p.at > (platforms.get(p.os) as string)) platforms.set(p.os, p.at)
+  perUser[userId] = {
+    ...held,
+    signInCount: held.signInCount + found.signInCount,
+    lastSignIn: later(held.lastSignIn, found.lastSignIn),
+    lastMfaSuccess: held.lastMfaSuccess ?? found.lastMfaSuccess,
+    proofs: latestProofs([...(held.proofs ?? []), ...(found.proofs ?? [])]),
+    platforms: PLATFORMS.filter((os) => platforms.has(os)).map((os) => ({ os, at: platforms.get(os) as string })),
+    devices: PLATFORMS.filter((os) => byOs.has(os)).map((os) => byOs.get(os) as DeviceSeen),
+    apps: [...new Set([...(held.apps ?? []), ...(found.apps ?? [])])].slice(0, 8).sort(),
+    trustedLocationSeen: (held.trustedLocationSeen ?? false) || (found.trustedLocationSeen ?? false),
+    individuallyRead: true,
+  }
+}

@@ -21,6 +21,8 @@ export type SourceState = {
   coveredWindow: { from: string; to: string } | null
   reason: string | null
   asOf: string
+  /** Sign-in evidence only: people read individually after a partial bulk read, and those still waiting for the next scan (prompt 62). */
+  targeted?: { read: number; remaining: number }
 }
 
 export type ConfigSectionKey =
@@ -143,6 +145,8 @@ export type UserEvidence = {
   apps?: string[]
   /** Whether any successful sign-in in the window matched a trusted named location. */
   trustedLocationSeen?: boolean
+  /** Read on their own after a partial bulk read (prompt 62): their records for the whole window are in hand. */
+  individuallyRead?: boolean
 }
 
 /** One platform family a person signed in from, as MFA Readiness reads its eligibility. */

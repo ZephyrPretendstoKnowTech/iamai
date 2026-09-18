@@ -84,6 +84,7 @@ export function buildViabilityInputs(
       devices: userEvidence?.devices ?? null,
       apps: userEvidence?.apps ?? [],
       trustedLocationSeen: userEvidence?.trustedLocationSeen,
+      individuallyRead: userEvidence?.individuallyRead === true,
     }
     return {
       userId: u.id,

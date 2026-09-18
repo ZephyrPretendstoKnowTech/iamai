@@ -80,6 +80,8 @@ export type MfaViabilityInput = {
     devices?: DeviceSeen[] | null
     apps?: string[]
     trustedLocationSeen?: boolean
+    /** Read on their own after a partial bulk read: the whole window is in hand. */
+    individuallyRead?: boolean
   }
   /** What earlier scans kept about this person (scoring/mfaHistory.ts). */
   history?: PersonHistory | null
@@ -223,7 +225,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     readiness: personReadiness({
       methods,
       registered: registration?.methodsRegistered ?? null,
-      signIns: { read: evidenceUsable, proofs: evidence.proofs === undefined ? [] : evidence.proofs, platforms: evidence.platforms ?? [], devices: evidence.devices ?? null, apps: evidence.apps ?? [], trustedLocationSeen: evidence.trustedLocationSeen },
+      signIns: { read: evidenceUsable, proofs: evidence.proofs === undefined ? [] : evidence.proofs, platforms: evidence.platforms ?? [], devices: evidence.devices ?? null, apps: evidence.apps ?? [], trustedLocationSeen: evidence.trustedLocationSeen, individuallyRead: evidence.individuallyRead === true },
       lastSuccessfulSignIn: lastSuccess,
       history: input.history ?? null,
       userId: input.userId,
