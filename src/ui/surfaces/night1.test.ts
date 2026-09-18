@@ -89,19 +89,30 @@ test('the problematic-accounts check lists the dormant accounts with their state
   assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
 })
 
-test("MFA Readiness's filters are the final reference's five, and every filter a link arrives with still has a word (task 012; Step 7)", async () => {
-  const { COMPAT_SHOW_KEYS, SHOW_KEYS } = await import('../../derive/mfaReadiness.ts')
-  const { showWord } = await import('./readinessCells.ts')
-  assert.deepEqual(SHOW_KEYS.map(showWord), ['Needs action', 'Admins', 'No passkey', 'Ready', 'All'])
-  // Not on the toolbar, still nameable: a filter a link or a summary count
-  // arrives with keeps its own word, so the control always says what is on screen.
-  assert.deepEqual(COMPAT_SHOW_KEYS.map(showWord), ['Needs proof', 'Needs setup', 'Unknown', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'])
+test("MFA Readiness's filters are the v3 pack's three, and every filter a link arrives with still has a word (task 012; prompt 62)", async () => {
+  const { SHOW_KEYS, showKeyOf } = await import('../../derive/mfaReadiness.ts')
+  const { KINDS } = await import('../../derive/ladder.ts')
+  const { READINESS_STATES } = await import('../../scoring/phishingResistant.ts')
+  const { showWord, stateTitle } = await import('./readinessCells.ts')
+  assert.deepEqual(SHOW_KEYS.map(showWord), ['Needs action', 'Admins', 'Everyone'])
+  // Not on the toolbar, still nameable: a filter a link, a legend state or a rail
+  // count arrives with keeps its own word, so the pressed control always says
+  // what is on screen.
+  const linked = ['lapsing', 'notActive', ...KINDS, 'guests']
+  for (const k of [...linked, ...READINESS_STATES]) assert.equal(showKeyOf(k), k, `${k}: a link with this filter does not land on it`)
+  assert.deepEqual(linked.map(showWord), ['Lapsing this week', 'Not counted', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'])
+  for (const s of READINESS_STATES) assert.equal(showWord(s), stateTitle(s), `${s}: the filter reads the state's word`)
+  // A link from before prompt 62 still lands somewhere sensible, never on nothing.
+  assert.equal(showKeyOf('needsProof'), 'confirm')
+  assert.equal(showKeyOf('needsSetup'), 'method')
+  assert.equal(showKeyOf('noPasskey'), 'all')
+  assert.equal(showKeyOf('rung-3'), null, 'an unknown filter falls back to the default')
   assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the four tiles are gone')
 })
 
 test("the Boardroom room is a shared device on MFA Readiness: listed, not counted, its method never a passkey (walk-51 item 11)", async () => {
   const { readinessView } = await import('../../derive/mfaReadiness.ts')
-  const { readinessWord } = await import('./readinessCells.ts')
+  const { nextCell, rowCells } = await import('./readinessCells.ts')
   const f = fixture('demo')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
@@ -111,5 +122,8 @@ test("the Boardroom room is a shared device on MFA Readiness: listed, not counte
   assert.equal(room.state, null, 'and has no readiness state')
   assert.equal(room.readiness, null, 'it is not scored as a person')
   assert.ok(!(room.methods ?? []).includes('passkey'), 'a room holds no passkey')
-  assert.equal(readinessWord(room), 'not a person')
+  // Listed under its kind, with no state and nothing to do.
+  assert.equal(rowCells(room)[3], (pages.readiness as { show: Record<string, string> }).show.shared, 'the CSV names it a shared device')
+  assert.equal(nextCell(room), '', 'a room is asked for nothing')
+  assert.equal(v.rows.filter((r) => r.state !== null).some((r) => r.user.id === room.user.id), false, 'it is in no worklist group')
 })

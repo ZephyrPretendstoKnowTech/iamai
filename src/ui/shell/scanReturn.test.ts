@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/generate.ts'
-import { PLAN_HREF, READINESS_HREF, afterScanHref, resolveHash, returnToStep, stepFromPlanHash } from './routes.ts'
+import { PLAN_HREF, READINESS_HREF, afterScanHref, readinessHref, resolveHash, returnToStep, showFromReadinessHash, stepFromPlanHash, stepFromReadinessHash } from './routes.ts'
+import { showKeyOf } from '../../derive/mfaReadiness.ts'
 
 test('the in-step scan ends at the step: the demo advances to week two and the countries step reopens', () => {
   const id = PREREQ_STEP_ID.allowedCountries
@@ -17,13 +18,20 @@ test('the in-step scan ends at the step: the demo advances to week two and the c
   assert.equal(resolveHash(returnTo).route, 'plan')
   assert.equal(afterScanHref(returnTo), returnTo, 'the scan lands on the step that asked for it')
   assert.equal(afterScanHref(null), PLAN_HREF, 'a scan with nowhere to return lands on the Plan')
-  assert.equal(afterScanHref('#/readiness/needsProof'), '#/readiness/needsProof', "MFA Readiness's Scan again returns to it, its filter kept")
+  assert.equal(afterScanHref('#/readiness/confirm'), '#/readiness/confirm', "MFA Readiness's Scan again returns to it, its filter kept")
+  assert.equal(afterScanHref(readinessHref('lapsing')), '#/readiness/lapsing', 'a filter reached from the change block returns to itself')
+  // A filter from before prompt 62 still lands on the state it meant.
+  assert.equal(afterScanHref('#/readiness/needsProof'), '#/readiness/needsProof')
+  assert.equal(showKeyOf(showFromReadinessHash('#/readiness/needsProof')), 'confirm')
+  assert.equal(stepFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), 's-goal-mfa-all-users', 'the step-scoped view reads its step from the hash')
+  assert.equal(showFromReadinessHash('#/readiness/step/s-goal-mfa-all-users'), null, 'and no filter')
   assert.equal(afterScanHref('#/readiness/step/s-goal-mfa-all-users'), '#/readiness/step/s-goal-mfa-all-users', 'a step-scoped view returns to itself')
   // The old name still resolves, and it resolves to the one surface; the scan
   // lands on the Plan rather than on a hash the app is about to rewrite.
   assert.equal(resolveHash('#/today/rung-3').route, 'readiness')
   assert.equal(resolveHash('#/today/rung-3').redirect, '#/readiness/rung-3')
   assert.equal(resolveHash('#/today').route, 'readiness')
+  assert.equal(showKeyOf(showFromReadinessHash('#/today/rung-3')), null, 'an old rung is no filter, so the page opens on its default')
   assert.equal(afterScanHref('#/nowhere'), PLAN_HREF, 'a hash that is no page lands on the Plan')
   assert.equal(afterScanHref('#/roadmap/step/x'), PLAN_HREF, 'an old link lands on the Plan')
   assert.equal(afterScanHref(returnToStep('cleanup-drill')), '#/plan/cleanup-drill', 'a Cleanup row returns to itself')

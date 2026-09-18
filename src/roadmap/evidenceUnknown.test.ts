@@ -58,8 +58,18 @@ test('Connect says when a complete scan holds no sign-in proof, and says nothing
 })
 
 test('MFA Readiness does not headline an unmeasured gate as "0 of N are Ready"', () => {
-  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /gate\?\.unmeasured === 'unreadable' \? fillText\(T\.summaryUnmeasured/)
-  assert.ok(typeof pages.readiness.summaryUnmeasured === 'string' && !/\b0\b|0%/.test(pages.readiness.summaryUnmeasured))
+  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8').replace(/\r\n/g, '\n')
+  // The headline chooses the unmeasured sentence on the one reading Connect and the
+  // gate make (signInProofRead): a scan whose records hold no proof is unmeasured
+  // even though its sign-in source read "ok", never "0 of N people are ready".
+  assert.match(page, /import \{[^}]*\bsignInProofRead\b[^}]*\} from '\.\.\/\.\.\/scoring\/fromSnapshot\.ts'/, 'the page does not read the one proof-read authority')
+  assert.match(page, /!signInProofRead\(snapshot\) \? fillText\(T\.summaryUnmeasured, \{ active \}\)/, 'the headline is not chosen by signInProofRead')
+  assert.doesNotMatch(page, /signInEvidence\.status === 'ok' \|\| snapshot\.sources\.signInEvidence\.status === 'partial'/, 'the page re-derives proof-read from the source status alone')
+  const summary = (pages.readiness as unknown as { summaryUnmeasured: string }).summaryUnmeasured
+  assert.ok(typeof summary === 'string' && !/\b0\b|0%/.test(summary))
+  // The case the source status alone misses: records read, proof never recorded.
+  const s = snapshotWith({ u1: { lastMfaSuccess: null }, u2: {}, u3: {} })
+  assert.equal(s.sources.signInEvidence?.status, 'ok')
+  assert.equal(signInProofRead(s), false, 'the premise: an ok source whose records hold no proof is proof not read')
   void app
 })

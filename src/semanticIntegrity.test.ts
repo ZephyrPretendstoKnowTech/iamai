@@ -41,10 +41,10 @@ import { laneReadings } from './ui/surfaces/planLanes.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
 import { shows } from './derive/mfaReadiness.ts'
-import { READINESS_STATES } from './scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
 import { factsOf, notReady, stepFacts } from './derive/facts.ts'
-import { actionOf, methodsCell, proofLines, proofLabel, readinessWord, roleWord } from './ui/surfaces/readinessCells.ts'
+import { deviceChips, methodsCell, nextCell, roleWord, rowCells, stateTitle } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
 import { cleanupComplete } from './roadmap/cleanupDone.ts'
@@ -105,7 +105,7 @@ test('042.1: a step is the same object everywhere, and identity is never a displ
 test('042.2: every count reconciles with the rows it claims to be about', () => {
   for (const c of corpus()) {
     const { rows, counts, ladder, facts } = c.readiness
-    // The four readiness states partition the active people, and each count is
+    // The seven readiness states partition the active people, and each count is
     // exactly the rows the view marked with that state.
     for (const s of READINESS_STATES) {
       assert.equal(counts[s], rows.filter((r) => r.state === s).length, `${c.label}: the ${s} count is not the ${s} rows`)
@@ -115,9 +115,10 @@ test('042.2: every count reconciles with the rows it claims to be about', () => 
     assert.equal(facts.active + facts.notActive + facts.kinds.emergency + facts.kinds.service + facts.kinds.shared + facts.kinds.disabled, facts.accounts, `${c.label}: the ledger's parts do not sum to the accounts`)
     assert.equal(rows.length, facts.accounts, `${c.label}: the table shows a different number of accounts from the ledger above it`)
     assert.deepEqual(factsOf(ladder), facts, `${c.label}: the view's facts are not the ladder's`)
-    // Needs action is every active person who is not Ready: the three counts
-    // beside Ready, the people whose evidence could not be read among them.
-    assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, counts.needsProof + counts.needsSetup + counts.unknown, `${c.label}: the needs-action filter and the three counts describe different people`)
+    // Needs action is every active person who is not Ready or Seamless: the five
+    // other states, the people whose evidence could not be read among them.
+    assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: the needs-action filter and the five counts describe different people`)
+    assert.equal(notReady(facts), READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: not Ready yet is the needs-action population`)
     // Not Ready yet is a subset of the active people and never a second score.
     assert.ok(notReady(facts) <= facts.active, `${c.label}: more people not Ready than there are active people`)
     // A step's count is the ids behind it, and a step whose reach is unknown has
@@ -338,28 +339,36 @@ test('042.8: the four channels serialise the same operations, or none of them do
 
 // ---- 9. registration is not proof ----
 
-test('042.9: nobody is Ready without a qualifying method and phishing-resistant proof on every platform seen', () => {
+test('042.9: nobody is Ready without a usable phishing-resistant method confirmed inside the window on every device seen', () => {
   for (const c of corpus()) {
+    const { windowStart } = c.readiness.context
     for (const r of c.readiness.rows) {
-      if (r.state !== 'ready') continue
+      if (r.state === null || !isReady(r.state)) continue
       const rd = r.readiness!
-      assert.ok(rd.qualifying.length > 0, `${c.label}: Ready with no qualifying method`)
-      assert.ok(rd.proof.length > 0, `${c.label}: Ready with no phishing-resistant proof behind it`)
-      assert.deepEqual(rd.missing, [], `${c.label}: Ready with a platform that has no proof`)
+      assert.ok(rd.qualifying.length > 0, `${c.label}: Ready with no usable phishing-resistant method`)
+      assert.ok(rd.devices.length > 0, `${c.label}: Ready with no device seen in the window`)
+      for (const d of rd.devices) {
+        assert.ok(d.proof !== null, `${c.label}: Ready with ${d.os} unconfirmed`)
+        assert.ok(d.proof.at >= windowStart, `${c.label}: Ready on proof older than the window`)
+        assert.ok(d.lastSeen >= windowStart, `${c.label}: Ready over a device seen only before the window`)
+      }
+      assert.equal(rd.lastConfirmed?.retained, false, `${c.label}: Ready on retained proof`)
+      assert.ok(rd.readyUntil !== null, `${c.label}: Ready with no date it lapses`)
     }
   }
-  // A qualifying method whose proof is missing somewhere is "needs proof" and
-  // never "ready": the corpus has the case, and it stays on the unproven side
-  // with something left to do.
+  // A phishing-resistant method not confirmed everywhere is Confirm it or Needs
+  // a device, never Ready: the corpus has the case, and it stays on the
+  // unconfirmed side with one thing left to do.
   for (const { c, row } of peopleIn('registeredNotProven')) {
-    assert.notEqual(row.state, 'ready', `${c.label}: a registration was read as proof`)
-    assert.ok((row.readiness?.qualifying.length ?? 0) > 0, `${c.label}: needs proof with no qualifying method to prove`)
-    assert.ok(actionOf(row) !== null, `${c.label}: an unproven method with nothing left to do`)
+    assert.equal(isReady(row.state!), false, `${c.label}: a registration was read as proof`)
+    assert.ok((row.readiness?.qualifying.length ?? 0) > 0, `${c.label}: nothing to confirm`)
+    assert.notEqual(row.readiness?.next.kind, 'none', `${c.label}: an unconfirmed method with nothing left to do`)
   }
-  // Needs setup holds no qualifying method, whatever the records show: an
-  // Authenticator or text-message sign-in is never phishing-resistant proof.
+  // Needs a method holds no usable phishing-resistant method, whatever the
+  // records show: an Authenticator or text-message sign-in is never
+  // phishing-resistant proof.
   for (const { c, row } of peopleIn('needsPasskey')) {
-    assert.deepEqual(row.readiness?.qualifying, [], `${c.label}: needs setup while holding a qualifying method`)
+    assert.deepEqual(row.readiness?.qualifying, [], `${c.label}: needs a method while holding a usable one`)
   }
 })
 
@@ -371,11 +380,13 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
     assert.equal(table.rows.length, c.readiness.rows.length, `${c.label}: the CSV has a different number of rows from the page`)
     c.readiness.rows.forEach((r, i) => {
       const row = table.rows[i]
+      assert.deepEqual(row.slice(2), rowCells(r), `${c.label}: the exported row is not the rendered row`)
       assert.equal(row[2], roleWord(r), `${c.label}: the exported role is not the rendered role`)
-      assert.equal(row[3], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
-      assert.equal(row[4], proofLines(r).map(proofLabel).join('; '), `${c.label}: the exported proof is not the rendered proof`)
-      assert.equal(row[5], readinessWord(r), `${c.label}: the exported readiness is not the rendered readiness`)
-      assert.equal(row[6], actionOf(r)?.text ?? '', `${c.label}: the exported action is not the rendered action`)
+      // The rendered chips, then any quiet chip the screen shows beside them (no phone sign-ins, no sign-in in 30 days).
+      assert.ok(String(row[3]).startsWith(deviceChips(r).chips.map((x) => `${x.os}: ${x.word}`).join('; ')), `${c.label}: the exported devices are not the rendered chips`)
+      assert.equal(row[4], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
+      if (r.state !== null) assert.equal(row[5], stateTitle(r.state), `${c.label}: the exported readiness is not the rendered readiness`)
+      assert.equal(row[6], nextCell(r), `${c.label}: the exported next step is not the rendered next step`)
     })
     // A Plan step's handoff names the people the same scoring named, and never a
     // set of its own: the ids are always rows on this page.

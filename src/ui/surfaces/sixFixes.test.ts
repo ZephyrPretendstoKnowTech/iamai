@@ -18,7 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { commsFor, stepLines } from './stepExport.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, stepById } from '../../content/content.ts'
-import { SUMMARY_STATES } from '../../derive/mfaReadiness.ts'
+import { READINESS_STATES } from '../../scoring/phishingResistant.ts'
 import { showWord, stateTitle } from './readinessCells.ts'
 import { rowWhen } from './rowWhen.ts'
 import { holdOf } from '../../roadmap/holds.ts'
@@ -82,9 +82,10 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.deepEqual(stepLines(s2, ctxFor(g, ready)).filter((l) => /not yet Ready for phishing-resistant MFA; get each Ready before/.test(l)), [], 'and no deadline is written')
 })
 
-test("(3) MFA Readiness's states are the table's words, and a summary count's filter is named by the same word", () => {
-  assert.deepEqual(['ready', 'needsProof', 'needsSetup', 'unknown'].map((s) => stateTitle(s as 'ready')), ['Ready', 'Needs proof', 'Needs setup', 'Unknown'])
-  for (const s of SUMMARY_STATES) assert.equal(showWord(s), stateTitle(s), `${s}: the filter and the state read one word`)
+test("(3) MFA Readiness's states are the legend's words, and a state's filter is named by the same word", () => {
+  assert.deepEqual(READINESS_STATES.map((s) => stateTitle(s)), ['Blocked by setup', 'Needs a method', 'Confirm it', 'Needs a device', 'Unknown', 'Ready', 'Seamless'])
+  // A link that arrives filtered to a state (#/readiness/<state>) shows a pressed filter in the state's own word.
+  for (const s of READINESS_STATES) assert.equal(showWord(s), stateTitle(s), `${s}: the filter and the state read one word`)
   const show = (pages.readiness as { show: Record<string, string> }).show
   assert.equal(showWord('all'), show.all)
   assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the tiles carry no words of their own')

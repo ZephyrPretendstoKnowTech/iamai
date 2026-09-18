@@ -304,7 +304,7 @@ test('each action from each location reaches the same function: the surfaces imp
   for (const file of ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/StepSections.tsx']) {
     assert.equal(readFileSync(file, 'utf8').includes('runScan('), false, `${file} runs a scan of its own`)
   }
-  // The header menu's two buttons, Connect's tile buttons and Today's Scan again call the actions by name.
+  // The header menu's two buttons, Connect's tile buttons and MFA Readiness's Scan again (its Evidence read tile) call the actions by name.
   assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(signOut\(\)\)[\s\S]*run\(forgetTenant\(\)\)/)
   assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /run\(signInAnother\(\)\)[\s\S]*run\(signOut\(\)\)/)
   assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /run\(scan\(readinessHref\(show\)\)\)/)
@@ -442,7 +442,8 @@ test('a stored baseline choice that cannot be rebuilt is reported, unless the te
 })
 
 test('the tenant\'s turn is ended by the two trust actions and by nothing else, and the scan lands only in the turn it began in', () => {
-  const src = readFileSync('src/ui/actions.ts', 'utf8')
+  // Line endings normalised: a Windows checkout writes the working copy with CRLF.
+  const src = readFileSync('src/ui/actions.ts', 'utf8').replace(/\r\n/g, '\n')
   const ends = src.match(/endTenantTurn\(\)/g) ?? []
   assert.equal(ends.length, 2, 'the turn is ended somewhere other than Sign out and Forget this tenant')
   assert.match(src, /stopScan\(\)\n  endTenantTurn\(\)\n  setSession\(\{ account: null/, 'Sign out no longer ends the turn before it clears the session')

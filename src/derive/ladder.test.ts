@@ -1,14 +1,14 @@
 // The person partition (derive/ladder.ts, rebuilt on phishing-resistant
-// readiness by Step 7): every active person counted in exactly one readiness
-// state, the states summing to the active people, the accounts that are not
-// people listed and never counted, the Windows-Hello-only person proven where
-// they used it and not on the phone they also use, and the campaign's groups
-// and the admin readiness list read from the same states.
+// readiness by Step 7 and prompt 62): every active person counted in exactly one
+// readiness state, the states summing to the active people, the accounts that
+// are not people listed and never counted, the Windows-Hello-only person proven
+// where they used it and Needs a device on the phone they also use, and the
+// campaign's groups and the admin readiness list read from the same states.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { KINDS, ladder, methodClassesOf, stateIds } from './ladder.ts'
-import { READINESS_STATES } from '../scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
 import { factsOf } from './facts.ts'
 import { campaignIdsFor } from './population.ts'
 import { notPeopleIds } from './sets.ts'
@@ -34,22 +34,22 @@ test('states are exclusive and sum to the active people; the kinds and the not a
     for (const id of f.mapping.breakGlassUserIds) assert.ok(l.kinds.emergency.some((u) => u.id === id), `${name}: an emergency account is listed as one`)
     for (const id of sharedDeviceIds(f.snapshot)) assert.ok(l.kinds.shared.some((u) => u.id === id), `${name}: a shared device is listed as one`)
     const counts = factsOf(l)
-    assert.equal(READINESS_STATES.reduce((n, s) => n + counts.states[s], 0), counts.active, `${name}: the four counts sum to the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + counts.states[s], 0), counts.active, `${name}: the seven counts sum to the active people`)
     assert.equal(counts.accounts, counts.active + counts.notActive + KINDS.reduce((n, k) => n + counts.kinds[k], 0), `${name}: the facts sum to the accounts`)
   }
 })
 
-test('the Windows-Hello-only person is proven on the PC they used, and Needs proof on the phone they also sign in from', () => {
+test('the Windows-Hello-only person is proven on the PC they used, and Needs a device on the phone they also sign in from', () => {
   const f = fixture('demo')
   const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
   const hello = [...l.viability.values()].find((v) => v.registered.length === 1 && v.registered[0] === 'windowsHelloForBusiness')
   assert.ok(hello, 'the demo has a Windows-Hello-only person')
   assert.ok(hello.evidence, 'MFA proven on that PC')
   assert.deepEqual(hello.readiness.methods, ['windowsHello'])
-  assert.deepEqual(hello.readiness.proof.map((p) => [p.cls, p.os]), [['windowsHello', 'Windows']], 'proven on Windows')
-  assert.deepEqual(hello.readiness.missing, ['iOS'], 'and not on the phone the records show in use')
-  assert.equal(hello.readiness.state, 'needsProof')
-  assert.ok(l.states.needsProof.some((p) => p.id === hello.userId), 'counted in Needs proof')
+  assert.deepEqual(hello.readiness.devices.map((d) => [d.os, d.proof?.cls ?? null]), [['Windows', 'windowsHello'], ['iOS', null]], 'proven on Windows, and not on the phone the records show in use')
+  assert.equal(hello.readiness.state, 'device')
+  assert.deepEqual(hello.readiness.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' })
+  assert.ok(l.states.device.some((p) => p.id === hello.userId), 'counted in Needs a device')
 })
 
 test('an account readiness does not score still shows its methods, from the method rows or the registration report, and unknown where neither was read', () => {
@@ -77,21 +77,22 @@ test("the campaign step's groups and the admin readiness list read the states; t
     const f = fixture(name)
     const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
     const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
-    assert.deepEqual([...cl.noMethod, ...cl.needsSetup].sort(), stateIds(l, 'needsSetup').sort(), `${name}: no method and no phishing-resistant method are Needs setup`)
+    assert.deepEqual([...cl.noMethod, ...cl.needsSetup].sort(), [...stateIds(l, 'method'), ...stateIds(l, 'blocked')].sort(), `${name}: no method and no phishing-resistant method are Needs a method or Blocked by setup`)
     for (const id of cl.noMethod) assert.equal(l.viability.get(id)?.mfaCapable, false, `${name}: ${id} has no method at all`)
-    assert.deepEqual([...cl.needsProof].sort(), stateIds(l, 'needsProof').sort(), `${name}: Needs proof`)
+    assert.deepEqual([...cl.needsProof].sort(), [...stateIds(l, 'confirm'), ...stateIds(l, 'device')].sort(), `${name}: Confirm it and Needs a device`)
     assert.deepEqual([...cl.readinessUnknown].sort(), stateIds(l, 'unknown').sort(), `${name}: Unknown`)
     const admins = adminUserIds(f.snapshot.roles)
     const bg = new Set(f.mapping.breakGlassUserIds)
-    const below = [...l.viability.values()].filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready').map((v) => v.userId).sort()
-    assert.ok(l.states.ready.length > 0 || name === 'getiamai', `${name}: someone is Ready`)
+    const below = [...l.viability.values()].filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && !isReady(v.readiness.state)).map((v) => v.userId).sort()
+    assert.ok(l.states.ready.length + l.states.seamless.length > 0 || name === 'getiamai', `${name}: someone is Ready`)
     // The readiness list names the admins not yet Ready; what a policy would
     // stop is the policy's own answer, counted on the step (roadmap/lockout.ts).
     assert.deepEqual([...cl.adminsWithout].sort(), below, `${name}: the admin readiness list is the admins not yet Ready`)
+    assert.deepEqual([...cl.adminsNotReady].sort(), below, `${name}: the campaign's admin note names the same admins`)
   }
   // The campaign's groups and the admin step say so in their own words.
   const campaign = JSON.stringify(stepById['s-verify-mfa'])
-  for (const t of ['with no sign-in method', 'with no phishing-resistant method', 'not yet proven on every platform they use']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
+  for (const t of ['with no sign-in method', 'with no phishing-resistant method', 'not confirmed in the last 30 days on every device they use', '{list:adminsNotReady}']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
   assert.ok(JSON.stringify(stepById['admins-phishing-resistant']).includes('not yet Ready for phishing-resistant MFA'))
   // The 90% gate is the engine's constant (roadmap/constants.ts): MFA Readiness
   // reads it and renders the count it implies, and no surface writes the number.

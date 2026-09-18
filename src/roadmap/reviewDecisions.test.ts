@@ -107,8 +107,10 @@ test('MFA preparation requires every suitable registration but not a recent proo
     v.mfaCapable = true
     v.readiness.methods = ['passkey']
     v.readiness.qualifying = ['passkey']
-    v.readiness.proof = []
-    v.readiness.state = 'needsProof'
+    // Held, and no confirmed use in the window: Confirm it (prompt 62), never Ready.
+    v.readiness.lastConfirmed = null
+    v.readiness.readyUntil = null
+    v.readiness.state = 'confirm'
   }
   readyEvidence(f, f.snapshot)
   const ready = runFixture(f, { viability }).steps.find(s => s.id === 's-verify-mfa')!

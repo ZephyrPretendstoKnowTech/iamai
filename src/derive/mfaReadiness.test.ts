@@ -1,22 +1,25 @@
 // MFA Readiness's rows and facts (derive/mfaReadiness.ts over derive/ladder.ts
-// and derive/facts.ts; Step 7): every account in the directory is one row; an
-// active person is counted in exactly one readiness state; an account that is
-// not counted carries no state; the facts sum to the accounts; a kind at zero is
-// left out of the footer; the Windows-Hello-only person who also signs in from
-// a phone is proven on Windows and not on the phone.
+// and derive/facts.ts; prompt 62): every account in the directory is one row;
+// an active person is counted in exactly one readiness state; an enabled person
+// who is not counted is explained (never signed in, looks retired, new, or
+// activity unread); an account that is not a person is listed by kind and
+// carries no state; the facts sum to the accounts; the Windows-Hello-only person
+// who also signs in from a phone is proven on Windows and Needs a device on the
+// phone.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { COMPAT_SHOW_KEYS, DEFAULT_SHOW, SHOW_KEYS, showKeyOf, shows, readinessView } from './mfaReadiness.ts'
+import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from './mfaReadiness.ts'
 import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
-import { READINESS_STATES } from '../scoring/phishingResistant.ts'
-import { actionOf, footerParts, methodsCell, passkeyStripParts, proofLines, readinessWord, stateTitle } from '../ui/surfaces/readinessCells.ts'
+import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
+import { deviceChips, methodsCell, nextCell, rowCells, stateTitle, whyLine } from '../ui/surfaces/readinessCells.ts'
 import { pages } from '../content/content.ts'
-import { fillText } from '../content/render.ts'
+
+const T = pages.readiness as unknown as { show: Record<string, string>; counted: Record<string, string> }
 
 test('every account is one row; the active people are counted in the states; an uncounted account carries none; the facts sum', () => {
   for (const snapshot of [fixtureSnapshot(), bigFixtureSnapshot(), fixture('demo').snapshot]) {
@@ -28,149 +31,142 @@ test('every account is one row; the active people are counted in the states; an 
     assert.equal(f.accounts, v.rows.length)
     assert.equal(v.rows.filter((r) => r.active).length, f.active, 'the active people are the counted rows')
     assert.equal(v.rows.filter((r) => r.kind === 'person' && !r.active).length, f.notActive)
+    assert.equal(EXPLAINED.reduce((n, e) => n + v.explained[e], 0), f.notActive, 'every uncounted person is explained')
     for (const k of KINDS) assert.equal(v.rows.filter((r) => r.kind === k).length, f.kinds[k], k)
     for (const r of v.rows) {
       if (r.active) {
         assert.ok(r.kind === 'person' && r.state !== null && r.viability && r.viability.activity === 'active', `${r.user.id}: counted means an active person in one state`)
         assert.equal(r.state, r.readiness?.state, `${r.user.id}: the row's state is its readiness`)
+        assert.equal(r.explained, null)
+        assert.ok(nextCell(r).length > 0, `${r.user.id}: a counted person always has a next step`)
       } else {
         // Not counted, so no state: an emergency account, a service account and a
         // person outside the window are none of them a failed adoption.
         assert.equal(r.state, null, `${r.user.id}: only an active person has a state`)
-        assert.equal(actionOf(r), null, `${r.user.id}: nothing is asked of an uncounted account`)
+        assert.equal(nextCell(r), '', `${r.user.id}: nothing is asked of an uncounted account`)
+        assert.deepEqual(deviceChips(r).chips, [], `${r.user.id}: no device is judged for an uncounted account`)
         if (r.kind !== 'person') assert.equal(r.readiness, null, `${r.user.id}: an account that is not a person is not scored`)
+        if (r.kind === 'person') assert.ok(r.explained !== null, `${r.user.id}: an uncounted person is explained`)
+        else assert.equal(r.explained, null)
       }
-      assert.ok(readinessWord(r).length > 0 && methodsCell(r).main.length > 0, `${r.user.id}: words in every cell`)
-      if (r.active) assert.ok(proofLines(r).length > 0, `${r.user.id}: a counted person always has a proof line`)
+      const cells = rowCells(r)
+      assert.ok(cells[3].length > 0 && methodsCell(r).main.length > 0, `${r.user.id}: words in the state and methods cells`)
     }
     for (const s of READINESS_STATES) assert.equal(v.rows.filter((r) => shows(r, s)).length, f.states[s], `the ${s} filter shows the people counted in it`)
     assert.equal(v.rows.filter((r) => shows(r, 'notActive')).length, f.notActive)
-    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, f.active, 'All is every active person')
-    // The four states partition the active people: the summary's denominator is
+    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, f.active, 'Everyone is every active person')
+    // The seven states partition the active people: the summary's denominator is
     // the partition's, and nobody is counted twice or dropped.
     assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), f.active, 'the states sum to the active people')
     assert.deepEqual(v.counts, f.states)
-    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, f.active - v.counts.ready, 'needs action is every active person who is not Ready')
+    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, f.active - v.counts.ready - v.counts.seamless, 'needs action is every active person who is not Ready or Seamless')
+    assert.equal(v.rows.filter((r) => shows(r, 'admins')).length, v.admins.active, 'the Admins filter is the admins counted')
+    assert.equal(v.rows.filter((r) => r.admin && r.state !== null && isReady(r.state)).length, v.admins.ready)
   }
 })
 
-test('the footer names every uncounted kind that is not zero, in order, and leaves a kind at zero off', () => {
-  const T = pages.readiness as { ledger: Record<string, string> }
-  const states = { ready: 0, needsProof: 0, needsSetup: 0, unknown: 0 }
-  assert.deepEqual(
-    footerParts({ accounts: 42, active: 33, notActive: 5, kinds: { emergency: 2, service: 0, shared: 1, disabled: 1 }, states }).map((p) => p.text),
-    ['5 not active', '2 emergency access', '1 shared device', '1 sign-in disabled'],
-  )
-  assert.deepEqual(footerParts({ accounts: 1, active: 1, notActive: 0, kinds: { emergency: 0, service: 0, shared: 0, disabled: 0 }, states }), [], 'nothing to say when everyone is counted')
-  assert.equal(fillText(T.ledger.service, { n: 1 }), '1 service account')
+test('the uncounted are explained or listed by kind, each in words, and with the active people they are every account', () => {
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const parts = footerParts(v.facts)
-  // Each part is a filter of its own, and the parts and the active people are the accounts.
-  for (const p of parts) assert.equal(showKeyOf(p.show), p.show)
-  const numbers = parts.map((p) => Number(p.text.match(/^(\d+)/)?.[1]))
-  assert.ok(numbers.every((n) => n > 0), 'no kind at zero')
-  assert.equal(v.facts.active + numbers.reduce((a, b) => a + b, 0), v.facts.accounts, 'the footer and the active people account for everyone')
+  for (const r of v.rows) {
+    if (r.explained) assert.equal(rowCells(r)[3], T.counted[r.explained], `${r.user.id}: the explained population's own words`)
+    if (r.kind !== 'person') assert.equal(rowCells(r)[3], T.show[r.kind], `${r.user.id}: the kind's own words`)
+  }
+  for (const e of EXPLAINED) assert.ok(T.counted[e], `${e} has words`)
+  const explained = EXPLAINED.reduce((n, e) => n + v.explained[e], 0)
+  const kinds = KINDS.reduce((n, k) => n + v.facts.kinds[k], 0)
+  assert.equal(v.facts.active + explained + kinds, v.facts.accounts, 'the active, the explained and the kinds account for everyone')
+  assert.ok(v.explained.retired > 0, 'the demo has somebody who looks retired')
+  // Each kind is a filter of its own.
+  for (const k of KINDS) assert.equal(showKeyOf(k), k)
 })
 
-test('the Windows-Hello-only person who also uses a phone: proven on Windows, Needs proof on the phone, and no passkey', () => {
+test('the Windows-Hello-only person who also uses a phone: proven on Windows, Needs a device on the phone, and no passkey', () => {
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const hello = v.rows.find((r) => r.active && JSON.stringify(r.readiness?.methods) === '["windowsHello"]')
-  assert.ok(hello, 'the demo has a Windows-Hello-only person')
-  assert.equal(hello.state, 'needsProof')
-  assert.equal(readinessWord(hello), stateTitle('needsProof'))
-  assert.deepEqual(hello.readiness?.missing, ['iOS'])
-  assert.deepEqual(proofLines(hello), [{ mark: 'good', text: 'Windows Hello · Windows' }, { mark: 'warn', text: 'iOS' }])
-  assert.equal(methodsCell(hello).note, 'No passkey')
-  assert.equal(actionOf(hello)?.text, 'Test iOS')
+  const hello = v.rows.find((r) => r.active && JSON.stringify(r.readiness?.methods) === '["windowsHello"]' && r.readiness?.devices.some((x) => x.type === 'phone'))
+  assert.ok(hello, 'the demo has a Windows-Hello-only person who signs in from a phone')
+  assert.equal(hello.state, 'device')
+  assert.equal(rowCells(hello)[3], stateTitle('device'))
+  assert.equal(hello.readiness?.hasPasskey, false)
+  assert.deepEqual(hello.readiness?.next, { kind: 'addDevice', os: 'iOS', option: 'authenticatorPasskey' })
+  assert.deepEqual(deviceChips(hello).chips.map((c) => [c.os, c.tone]), [['Windows', 'seamless'], ['iPhone', 'device']])
+  assert.equal(nextCell(hello), 'Add a passkey in Microsoft Authenticator on the iPhone')
+  assert.equal(whyLine(hello), 'Confirmed on one device, but the iPhone signs in without it.')
 })
 
-test('the accounts that are not people read not a person, with their kind, and are never counted or asked for anything', () => {
+test('the accounts that are not people read their kind, and are never counted or asked for anything', () => {
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const T = pages.readiness as { notAPerson: string; kinds: Record<string, string> }
   for (const id of d.mapping.breakGlassUserIds) {
     const row = v.rows.find((r) => r.user.id === id)!
     assert.equal(row.kind, 'emergency')
     assert.equal(row.active, false, 'never counted')
     assert.equal(row.state, null)
-    assert.equal(readinessWord(row), T.notAPerson)
-    assert.equal(actionOf(row), null)
-    assert.deepEqual(proofLines(row), [], 'no proof is claimed for an account the page does not count')
+    assert.equal(rowCells(row)[3], T.show.emergency)
+    assert.equal(nextCell(row), '')
+    assert.deepEqual(deviceChips(row).chips, [], 'no device is judged for an account the page does not count')
   }
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')!
   assert.equal(room.kind, 'shared')
   assert.equal(room.state, null)
-  assert.equal(T.kinds.shared, 'Shared device')
-  // The filters the page offers are the reference's five; the three summary
-  // counts and the separate populations are what a count or a link from the
-  // footer arrives filtered to, and they still resolve. The rungs are gone.
-  assert.deepEqual([...SHOW_KEYS], ['needsAction', 'admins', 'noPasskey', 'ready', 'all'])
-  assert.deepEqual([...COMPAT_SHOW_KEYS], ['needsProof', 'needsSetup', 'unknown', 'notActive', 'emergency', 'service', 'shared', 'disabled', 'guests'])
+  // The toolbar offers three filters, Needs action first and on by default; the
+  // states, the explained, the kinds and the old hashes still resolve.
+  assert.deepEqual([...SHOW_KEYS], ['needsAction', 'admins', 'all'])
+  assert.equal(DEFAULT_SHOW, 'needsAction')
+  for (const k of [...READINESS_STATES, 'lapsing', 'notActive', 'guests', ...KINDS]) assert.equal(showKeyOf(k), k, `${k} resolves`)
+  assert.equal(showKeyOf('needsProof'), 'confirm', 'the old Needs proof lands on Confirm it')
+  assert.equal(showKeyOf('needsSetup'), 'method', 'the old Needs setup lands on Needs a method')
+  assert.equal(showKeyOf('noPasskey'), 'all', 'the retired No passkey filter lands on Everyone')
   assert.equal(showKeyOf('rung-3'), null, 'the rung filters are gone')
-  assert.equal(showKeyOf('needsProof'), 'needsProof')
   assert.equal(showKeyOf('nonsense'), null)
 })
 
-// Batch 2 §7: the passkey strip's numbers add up to its denominator. The demo read
-// "4 of 30 have a passkey · Show 25 without" with one person whose methods were
-// not read in neither count, and the hostile tenant read "0 of 34 have a passkey ·
-// None without" when nobody's methods were read at all.
-test('the passkey strip accounts for every active person: with, without, and methods not read', () => {
+test('lapsing is the Ready people whose readiness ends within seven days, and nobody else', () => {
+  let seen = 0
   for (const f of allFixtures()) {
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const { have, without, unread } = v.passkeys
-    assert.equal(have + without + unread, v.facts.active, `${f.name}: the passkey parts do not sum to the active people`)
-    assert.equal(v.rows.filter((r) => shows(r, 'noPasskey')).length, without, `${f.name}: "Show ${without} without" filters to a different number of rows`)
+    const soon = new Date(Date.parse(f.snapshot.asOf) + 7 * 86_400_000).toISOString()
+    const expected = v.rows.filter((r) => r.state !== null && isReady(r.state) && r.readiness?.readyUntil != null && r.readiness.readyUntil <= soon).map((r) => r.user.id)
+    assert.deepEqual([...v.lapsing].sort(), expected.sort(), `${f.name}: the lapsing list`)
+    assert.equal(v.rows.filter((r) => shows(r, 'lapsing', v.lapsing)).length, v.lapsing.length, `${f.name}: the Lapsing filter shows them`)
+    for (const r of v.rows) {
+      if (r.state !== null && isReady(r.state)) assert.ok(r.readiness?.readyUntil, `${f.name}/${r.user.id}: a Ready person says until when`)
+      else assert.equal(r.readiness?.readyUntil ?? null, null, `${f.name}/${r.user.id}: only a Ready person has a Ready-until date`)
+    }
+    seen += v.lapsing.length
   }
-  const words = (name: 'demo' | 'demo-week2' | 'hostile'): string => {
-    const f = fixture(name)
-    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const s = passkeyStripParts(v.passkeys)
-    return [s.without, ...s.rest].filter((x) => x !== null).join(' · ')
-  }
-  assert.equal(words('demo'), 'Show 25 without → · 1 unread')
-  assert.equal(words('demo-week2'), 'Show 22 without → · 1 unread')
-  assert.equal(words('hostile'), '34 unread', 'a tenant with no method read is never "None without"')
-  assert.deepEqual(passkeyStripParts({ without: 0, unread: 0 }), { without: null, rest: ['None without'] })
+  assert.ok(seen > 0, 'no fixture has anybody lapsing: the premise is untested')
 })
 
-// Batch 2 §7: "No passkey" is a rollout fact, never a readiness one. Nobody holding
-// a passkey or FIDO2 key carries it; a Windows-Hello-only person does, and stays in
-// the readiness state the proof gives them (owner, Step 7: a passkey is recommended).
-test('no passkey or FIDO2 holder reads No passkey, and a Windows-Hello-only person keeps their readiness', () => {
+// Batch 2 §7 kept: a passkey is a recommendation, never the requirement. A
+// Windows-Hello-only person stays in the state the proof gives them.
+test('a Windows-Hello-only person keeps their readiness: a passkey is never the requirement', () => {
   let hello = 0
   for (const f of allFixtures()) {
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const r of v.rows) {
-      if (r.kind !== 'person') continue
-      const rows = f.snapshot.authMethods[r.user.id]
-      const registered = f.snapshot.registrationDetails.find((x) => x.id === r.user.id)?.methodsRegistered ?? []
-      const holds = Array.isArray(rows) ? rows.some((m) => m.kind === 'passkey' || m.kind === 'fido2') : registered.some((n) => n.startsWith('passKey') || n === 'fido2SecurityKey')
-      if (holds) {
-        assert.notEqual(methodsCell(r).note, 'No passkey', `${f.name}/${r.user.id}: a passkey holder reads No passkey`)
-        assert.equal(shows(r, 'noPasskey'), false, `${f.name}/${r.user.id}: a passkey holder is in No passkey`)
-      }
-      if (r.active && r.methods?.includes('windowsHello') && !r.methods.includes('passkey')) {
-        assert.equal(methodsCell(r).note, 'No passkey')
-        assert.equal(r.state, r.readiness?.state, 'No passkey moved a Windows Hello holder out of their readiness')
+      if (!r.active || !r.methods?.includes('windowsHello') || r.methods.includes('passkey')) continue
+      assert.notEqual(r.state, 'method', `${f.name}/${r.user.id}: Windows Hello is a phishing-resistant method`)
+      assert.ok(r.readiness?.qualifying.includes('windowsHello'), `${f.name}/${r.user.id}: held and usable`)
+      if (r.state !== null && isReady(r.state)) {
+        assert.equal(shows(r, 'needsAction'), false, `${f.name}/${r.user.id}: a Ready Windows Hello holder is asked for nothing`)
         hello++
       }
     }
   }
-  assert.ok(hello > 0, 'no Windows-Hello-only person in the fixtures: the premise is untested')
+  assert.ok(hello > 0, 'no Ready Windows-Hello-only person in the fixtures: the premise is untested')
 })
 
-// Batch 2 §7: the counts, the footer and a Plan-scoped worklist agree in the demo's
-// two snapshots — "Filtered to the N people" is exactly the rows it shows.
-test('the demo snapshots: states sum to the summary, the footer accounts for everyone, and a step-scoped list shows the people it names', () => {
+// Batch 2 §7: the counts, the uncounted and a Plan-scoped worklist agree in the
+// demo's two snapshots — "Filtered to the N people" is exactly the rows it shows.
+test('the demo snapshots: states sum to the summary, the uncounted account for everyone else, and a step-scoped list shows the people it names', () => {
   for (const name of ['demo', 'demo-week2'] as const) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.facts.active, `${name}: the states do not sum to the summary`)
-    const footer = footerParts(v.facts).map((p) => Number(p.text.match(/^(\d+)/)?.[1]))
-    assert.equal(v.facts.active + footer.reduce((a, b) => a + b, 0), v.rows.length, `${name}: the footer and the active people are not every account`)
+    const uncounted = EXPLAINED.reduce((n, e) => n + v.explained[e], 0) + KINDS.reduce((n, k) => n + v.facts.kinds[k], 0)
+    assert.equal(v.facts.active + uncounted, v.rows.length, `${name}: the uncounted and the active people are not every account`)
     const r = runFixture(f)
     let scoped = 0
     for (const step of r.steps) {
@@ -182,4 +178,31 @@ test('the demo snapshots: states sum to the summary, the footer accounts for eve
     }
     assert.ok(scoped > 0, `${name}: no step scopes the worklist: the premise is untested`)
   }
+})
+
+test('the worklist groups by state in the worklist order, admins lead each sub-grouped group, and every row is in one sub-group', () => {
+  assert.deepEqual([...GROUP_ORDER], ['blocked', 'method', 'confirm', 'device', 'unknown', 'ready', 'seamless'])
+  const f = fixture('large')
+  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const actionGroups = GROUP_ORDER.filter((s) => !isReady(s) && v.counts[s] > 0)
+  assert.ok(actionGroups.length <= 6, `the large worklist has ${actionGroups.length} action groups`)
+  let split = 0
+  for (const s of GROUP_ORDER) {
+    const rows = v.rows.filter((r) => r.state === s)
+    if (rows.length <= SUB_GROUP_AT) continue
+    split++
+    for (const by of ['devices', 'department'] as const) {
+      const subs = subGroupsOf(rows, by)
+      const ids = subs.flatMap((g) => g.rows.map((r) => r.user.id))
+      assert.equal(ids.length, rows.length, `${s}/${by}: every row once`)
+      assert.equal(new Set(ids).size, ids.length, `${s}/${by}: no row twice`)
+      if (rows.some((r) => r.admin)) {
+        assert.equal(subs[0].admins, true, `${s}/${by}: the admins lead`)
+        assert.ok(subs[0].rows.every((r) => r.admin))
+        assert.ok(subs.slice(1).every((g) => !g.admins && g.rows.every((r) => !r.admin)))
+      }
+      for (let i = 2; i < subs.length; i++) assert.ok(subs[i - 1].rows.length >= subs[i].rows.length, `${s}/${by}: largest first after the admins`)
+    }
+  }
+  assert.ok(split > 0, 'the large fixture has a group above the sub-group size: the premise is untested')
 })

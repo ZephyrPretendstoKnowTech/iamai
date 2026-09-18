@@ -1,4 +1,4 @@
-// Cross-surface responsive conformance (task 039; Step 7).
+// Cross-surface responsive conformance (task 039; prompt 62).
 //
 // Packs 032-038 restored Home, Connect, Plan and MFA Readiness one surface at a
 // time, and each of them landed its own responsive rules. This file is the
@@ -7,8 +7,8 @@
 //
 // The first is that each surface still uses ITS OWN breakpoints. The surfaces
 // do not share a responsive system — Home turns at 760 and 560, Connect at 760
-// alone, Plan at 940 and 650, MFA Readiness (its final reference, Step 7) at 940
-// and 720 — and the cheapest wrong answer to "make the product responsive" is
+// alone, Plan at 940 and 650, MFA Readiness (its v3 pack, prompt 62) at 1040
+// and 760 — and the cheapest wrong answer to "make the product responsive" is
 // one shared mobile width that flattens all four into the same stack. So the
 // breakpoints below are READ OUT OF THE AUTHORITY FILES at test time rather than
 // typed here: if an approved file's bytes ever change, this test changes with
@@ -25,7 +25,7 @@
 // What this file deliberately does NOT re-prove, because one authority already
 // owns it: the canonical bytes and hashes (src/ui/design-authority.test.ts);
 // focus, forced colours and reduced motion (src/ui/accessibility.test.ts); the
-// stacked person row's own anatomy and its aria-hidden key
+// stacked person row's own anatomy and its aria-hidden head row
 // (src/ui/surfaces/readinessAnatomy.test.ts); the Connect step and Plan row
 // anatomies (connectAnatomy.test.ts, planAnatomy.test.ts).
 //
@@ -43,12 +43,12 @@ const APP = read('src/ui/app.css')
 const HOME_CSS = read('home/home.css')
 const SHELL = read('src/ui/shell/AppShell.tsx')
 
-/** The authority for each surface's responsive model. MFA Readiness's is its final reference (Step 7). */
+/** The authority for each surface's responsive model. MFA Readiness's is its v3 pack (prompt 62). */
 const PACKS = {
   home: 'docs/design/approved/anatomy/home-v2.html',
   connect: 'docs/design/approved/anatomy/connect-v3.html',
   plan: 'docs/design/approved/anatomy/plan-step-v1.html',
-  mfa: 'docs/design/approved/reference/iamai-mfa-readiness-final.html',
+  mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
 } as const
 
 /** Every `max-width` a stylesheet turns at, in descending order. */
@@ -77,7 +77,7 @@ function mediaBodies(css: string, width: number): string {
   return bodies.join('\n')
 }
 
-const APP_WIDTHS = [940, 760, 720, 650]
+const APP_WIDTHS = [1040, 940, 760, 650]
 
 // ---------------------------------------------------------------- the model
 
@@ -88,14 +88,14 @@ test('each authority still declares the breakpoints production is built against'
   assert.deepEqual(breakpoints(read(PACKS.home)), [760, 560])
   assert.deepEqual(breakpoints(read(PACKS.connect)), [760])
   assert.deepEqual(breakpoints(read(PACKS.plan)), [940, 650])
-  assert.deepEqual(breakpoints(read(PACKS.mfa)), [940, 720])
+  assert.deepEqual(breakpoints(read(PACKS.mfa)), [1040, 760])
 })
 
 test('no surface is normalised onto another surface\'s breakpoint', () => {
   // The failure this guards against is one shared mobile width. Home is a
   // separate stylesheet and turns at its own two; the application sheet has to
-  // carry Connect's, Plan's and MFA Readiness's distinct widths at once (Plan and
-  // MFA Readiness both turn first at 940, each in a block of its own).
+  // carry Connect's, Plan's and MFA Readiness's distinct widths at once (Connect
+  // and MFA Readiness both turn at 760, each in a block of its own).
   assert.deepEqual(breakpoints(HOME_CSS), [760, 560])
   for (const w of APP_WIDTHS) {
     assert.ok(breakpoints(APP).includes(w), `src/ui/app.css declares no @media (max-width: ${w}px)`)
@@ -202,49 +202,64 @@ test('Plan keeps every lifecycle label readable rather than shrinking it away', 
 
 // --------------------------------------------------------- MFA Readiness
 
-test('MFA Readiness steps its summary and its strip through the reference\'s two states', () => {
-  const at940 = mediaBodies(APP, 940)
-  const at720 = mediaBodies(APP, 720)
-  // Four cells become two columns with the dominant cell spanning both …
-  assert.match(at940, /\.readiness-summary\s*\{[^}]*grid-template-columns:\s*1fr 1fr/, 'the summary does not become two columns')
-  assert.match(at940, /\.summary-main\s*\{[^}]*grid-column:\s*1 \/ -1/, 'the dominant summary cell does not span')
-  // … and then one, with the dominant cell giving up its span; the Plan gate and passkey strip stack too.
-  assert.match(at720, /\.readiness-summary\s*\{[^}]*grid-template-columns:\s*1fr/, 'the summary does not become one column')
-  assert.match(at720, /\.summary-main\s*\{[^}]*grid-column:\s*auto/, 'the dominant cell keeps a span it no longer has columns for')
-  assert.match(at720, /\.progress-strip\s*\{[^}]*grid-template-columns:\s*1fr/, 'the Plan gate and passkey strip does not stack')
-  // The counts are cells of one panel, not tiles that float away from it.
-  assert.doesNotMatch(at940, /\.summary-stat\s*\{[^}]*border-radius/)
-  assert.doesNotMatch(at720, /\.summary-stat\s*\{[^}]*display:\s*none/, 'a count is dropped on a phone')
-  assert.doesNotMatch(at720, /\.progress-item\s*\{[^}]*display:\s*none/, 'the Plan gate or the passkey rollout is dropped on a phone')
+/** The v3 pack's own `@media (max-width:N)` block, minified as the pack writes it. */
+const packMedia = (w: number): string => read(PACKS.mfa).match(new RegExp(`@media \\(max-width:${w}px\\)\\{([\\s\\S]*?)\\n\\}`))?.[1] ?? ''
+const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+test("MFA Readiness drops its rail under the worklist at the pack's 1040 and stacks its answer at 760", () => {
+  // The pack: one column below 1040, the rail's tiles side by side under it …
+  assert.match(packMedia(1040), /\.layout\{grid-template-columns:1fr\}/)
+  assert.match(packMedia(1040), /\.rail\{position:static;grid-template-columns:repeat\(auto-fit,minmax\(260px,1fr\)\)\}/)
+  // … and at 760 the change since the last scan moves under the sentence.
+  assert.match(packMedia(760), /\.answer-top\{flex-direction:column;gap:16px\}/)
+  assert.match(packMedia(760), /\.change\{flex:none;width:100%\}/)
+  // Production, the same two states.
+  const at1040 = mediaBodies(APP, 1040)
+  const at760 = mediaBodies(APP, 760)
+  assert.match(at1040, /\.readiness-layout\s*\{[^}]*grid-template-columns:\s*1fr/, 'the rail does not drop under the worklist')
+  assert.match(at1040, /\.readiness-rail\s*\{[^}]*position:\s*static/, 'the rail stays sticky beside nothing')
+  assert.match(at1040, /\.readiness-rail\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit, minmax\(260px, 1fr\)\)/, 'the rail tiles do not share the row')
+  assert.match(at760, /\.readiness-answer \.answer-top\s*\{[^}]*flex-direction:\s*column/, 'the answer does not stack')
+  assert.match(at760, /\.readiness-change\s*\{[^}]*width:\s*100%/, 'the change since the last scan does not take the full width')
+  // The rail, the change, the legend and the bar are moved, never dropped.
+  for (const w of [1040, 760]) {
+    for (const part of ['.readiness-rail', '.readiness-tile', '.readiness-change', '.readiness-legend', '.readiness-bar', '.readiness-setup-next']) {
+      assert.doesNotMatch(mediaBodies(APP, w), new RegExp(`${escape(part)}\\s*\\{[^}]*display:\\s*none`), `${part} is dropped at ${w}`)
+    }
+  }
 })
 
-test('MFA Readiness stacks a person row without losing a field or its label', () => {
-  const at720 = mediaBodies(APP, 720)
-  assert.match(at720, /table\.datatable,[\s\S]*?tr,[\s\S]*?td\s*\{\s*display: block/, 'the person row does not stack')
-  // The column header goes off screen and STAYS IN THE ACCESSIBILITY TREE.
-  // `display: none` would take the header a stacked cell is still associated
-  // with out of it, which is the whole reason the visible key can be
-  // aria-hidden (src/ui/surfaces/readinessAnatomy.test.ts owns that pairing).
-  assert.match(at720, /thead\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'the table head is not the visually-hidden pattern')
-  assert.doesNotMatch(at720, /thead\s*\{[^}]*display:\s*none/, 'the table head is removed from the accessibility tree')
-  // The Action column the reference drops between 720 and 940 is back in the stacked row.
-  assert.match(at720, /td:nth-child\(6\)\s*\{\s*display:\s*block/, 'the stacked row loses the person\'s action')
-  // The stacked key is a real element that becomes visible, never generated
-  // content: CSS `content` is not text a screen reader or a copy/paste reaches.
-  assert.match(at720, /\.cell-key\s*\{\s*display:\s*block/, 'the stacked field label never appears')
-  assert.doesNotMatch(APP, /\.cell-key::(before|after)/, 'the field label is generated content')
+test('MFA Readiness stacks a person row without losing a field or its words', () => {
+  const at760 = mediaBodies(APP, 760)
+  // The pack's own stacked row: the person and Details on the first line, the rest under it.
+  assert.match(packMedia(760), /\.row\{grid-template-columns:1fr auto;gap:6px 12px\}/)
+  assert.match(at760, /\.readiness-row\s*\{[^}]*grid-template-columns:\s*1fr auto/, 'the person row does not stack')
+  assert.match(at760, /\.readiness-row > \.devices,\s*\.readiness-row > \.methods,\s*\.readiness-row > \.next-step\s*\{[^}]*grid-column:\s*1 \/ -1/, 'the devices, methods and next step do not take the full row')
+  assert.match(at760, /\.readiness-row > \.open\s*\{[^}]*grid-row:\s*1;\s*grid-column:\s*2/, 'Details leaves the person it opens')
+  // The head row is the one thing that goes: it is aria-hidden, a visual label
+  // the stacked row no longer lines up under.
+  assert.match(packMedia(760), /\.row\.head\{display:none\}/)
+  assert.match(at760, /\.readiness-row\.head\s*\{\s*display:\s*none/)
+  // Nothing else in the row, and no chip's word, is dropped.
+  for (const field of ['.person', '.person-name', '.person-upn', '.devices', '.dev', '.dev-word', '.methods', '.cell-note', '.next-step', '.open']) {
+    assert.doesNotMatch(at760, new RegExp(`${escape(field)}\\s*\\{[^}]*display:\\s*none`), `${field} is dropped on a phone`)
+  }
+  // A field's words are DOM text, never generated content a screen reader or a copy cannot reach.
+  assert.doesNotMatch(APP, /\.readiness-row[^{]*::(before|after)/, 'a row field is generated content')
   for (const cell of ['.row>div::before', '.row > div::before']) {
     assert.ok(!APP.includes(cell), 'the pack\'s pseudo-element labels were copied instead of using the real ones')
   }
 })
 
-test('MFA Readiness tightens its gutter at the reference\'s 720', () => {
-  const at720 = mediaBodies(APP, 720)
+test("MFA Readiness tightens its gutter at the pack's 760, and its footer note wraps", () => {
+  const at760 = mediaBodies(APP, 760)
   for (const part of ['header.app', '> main.page', 'footer.app']) {
-    assert.ok(at720.includes(`.shell[data-route='readiness'] ${part}`), `${part} does not tighten with the readiness page`)
+    assert.ok(at760.includes(`.shell[data-route='readiness'] ${part}`), `${part} does not tighten with the readiness page`)
   }
-  assert.match(at720, /padding-left:\s*12px/, 'the readiness gutter does not tighten')
-  assert.match(at720, /\.footer-note\s*\{[^}]*flex-direction:\s*column/, 'the footer note does not stack its line above its link')
+  assert.match(at760, /padding-left:\s*12px/, 'the readiness gutter does not tighten')
+  // The pack's footer note wraps its line and its link rather than overflowing.
+  assert.match(read(PACKS.mfa), /footer\.note\{[^}]*flex-wrap:wrap/)
+  assert.match(APP, /\.surface\.readiness \.footer-note \{[^}]*flex-wrap: wrap/, 'the footer note does not wrap')
 })
 
 // ----------------------------------------------------------------- global
@@ -280,7 +295,7 @@ test('no narrow rule hides a control, a blocker or a state word', () => {
   // The layout may compress. The truth may not. These are the roles that carry
   // an action the operator takes or a fact the plan asserts, and none of them
   // may be answered with `display: none` at any width.
-  const CANNOT_VANISH = ['.btn', '.blocking', '.callout', '.status', '.decision', '.tenant-object', '.stage-label', '.cell-key', '.step-action-column', '.connect-step-actions', '.row-action', '.proof-lines', '.methods-main', '.progress-strip']
+  const CANNOT_VANISH = ['.btn', '.blocking', '.callout', '.status', '.decision', '.tenant-object', '.stage-label', '.cell-key', '.step-action-column', '.connect-step-actions', '.row-action', '.state-dot', '.dev-word', '.devices', '.methods', '.next-step', '.readiness-legend', '.readiness-change', '.readiness-rail', '.readiness-setup-next']
   for (const w of APP_WIDTHS) {
     const body = mediaBodies(APP, w)
     for (const role of CANNOT_VANISH) {

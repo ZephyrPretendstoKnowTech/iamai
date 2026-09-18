@@ -10,15 +10,14 @@ import { contentStepFor } from '../content/stepTitle.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds, peopleCounts } from './sets.ts'
-import { readinessView } from './mfaReadiness.ts'
-import { ladder } from './ladder.ts'
+import { EXPLAINED, readinessView } from './mfaReadiness.ts'
+import { KINDS, ladder } from './ladder.ts'
 import { READINESS_STATES } from '../scoring/phishingResistant.ts'
 import { affectedIds } from './whoLine.ts'
 import { contentLists } from './contentLists.ts'
 import { planDates, stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
-import { footerParts } from '../ui/surfaces/readinessCells.ts'
 import { inventoryTables } from '../ui/surfaces/inventoryTables.ts'
 
 const f = fixture('getiamai')
@@ -38,7 +37,8 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   assert.deepEqual(numbers, { strip: 2, lead: 2, who: 2, today: 2 }, JSON.stringify(numbers))
   assert.equal(Number(ex.n), campaign.preparation!.ids.length, 'the lead counts the preparation cohort')
   assert.equal(lead, '2 people are included in this preparation step.')
-  assert.equal(today.facts.active + footerParts(today.facts).reduce((n, p) => n + Number(p.text.match(/^(\d+)/)?.[1]), 0), today.facts.accounts, 'the footer names everyone the 2 active people leave out')
+  const uncounted = EXPLAINED.reduce((n, e) => n + today.explained[e], 0) + KINDS.reduce((n, k) => n + today.facts.kinds[k], 0)
+  assert.equal(today.facts.active + uncounted, today.facts.accounts, 'the explained and the kinds are everyone the 2 active people leave out')
   const whoText = rowWho(campaign)
   assert.match(whoText, /^2 people( · |$)/, 'the who column counts the two people')
   for (const id of who) assert.equal(whoText.includes(nameOf(id)), false, `${whoText} names ${nameOf(id)}; a row counts people and never names them`)

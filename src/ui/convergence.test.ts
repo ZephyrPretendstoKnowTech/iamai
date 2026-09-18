@@ -17,16 +17,18 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { ROUTE_WIDTHS, SOFT_TINTS, DARK, LIGHT } from './tokens.ts'
+// Line endings normalised: a Windows checkout writes the working copy with CRLF.
+const text = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-const APP = readFileSync('src/ui/app.css', 'utf8')
-const TOKENS = readFileSync('src/ui/tokens.css', 'utf8')
-const HOME_CSS = readFileSync('home/home.css', 'utf8')
-const HOME_THEME = readFileSync('home/theme.css', 'utf8')
-const TOKENS_TS = readFileSync('src/ui/tokens.ts', 'utf8')
-const HOW = readFileSync('src/ui/surfaces/How.tsx', 'utf8')
-const EXPORT = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
-const INVENTORY = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
-const INVENTORY_ROOT = readFileSync('src/ui/surfaces/Inventory.tsx', 'utf8')
+const APP = text('src/ui/app.css')
+const TOKENS = text('src/ui/tokens.css')
+const HOME_CSS = text('home/home.css')
+const HOME_THEME = text('home/theme.css')
+const TOKENS_TS = text('src/ui/tokens.ts')
+const HOW = text('src/ui/surfaces/How.tsx')
+const EXPORT = text('src/ui/surfaces/Export.tsx')
+const INVENTORY = text('src/ui/surfaces/InventoryPage.tsx')
+const INVENTORY_ROOT = text('src/ui/surfaces/Inventory.tsx')
 const MANIFEST = JSON.parse(readFileSync('docs/design/approved/manifest.json', 'utf8')) as {
   surfaces: { surface: string; path: string; sha256: string }[]
 }
@@ -134,6 +136,11 @@ test('every custom property a sheet reads is one a sheet declares', () => {
   // of the check design-lint runs on the app sheets.
   const declared = new Set<string>()
   for (const [, css] of SHEETS) for (const m of css.matchAll(/(--[a-z0-9-]+)\s*:/g)) declared.add(m[1])
+  // MFA Readiness paints its states through classes (`s-<state>`), never an
+  // inline custom property (prompt 62, design lint rule 5): nothing in the markup
+  // declares a property a sheet then reads.
+  const readiness = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  assert.doesNotMatch(readiness, /\['--[a-z0-9-]+' as string\]/, 'MfaReadiness.tsx sets a custom property inline')
   for (const [file, css] of SHEETS) {
     for (const m of css.matchAll(/var\((--[a-z0-9-]+)/g)) {
       assert.ok(declared.has(m[1]), `${file} reads ${m[1]}, which nothing declares`)

@@ -4,12 +4,14 @@ import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { adminUserIds } from '../roles.ts'
+import { ladder } from './ladder.ts'
+import { isReady } from '../scoring/phishingResistant.ts'
 import { contentLists } from './contentLists.ts'
 
-// The campaign's admins note ("Admins: {list:adminNames}: Require Phishing-Resistant
-// MFA for Admins waits on each registering a passkey") names the admins the
-// campaign asks something of. The emergency accounts hold Global Administrator
-// and are outside every campaign, so they are never on it.
+// The campaign's admins note (prompt 62: "Admins not yet ready: {list:adminsNotReady}")
+// names the admins the campaign still asks something of: active, not Ready. The
+// emergency accounts hold Global Administrator and are outside every campaign,
+// so they are never on it, nor on the list of all the admins.
 test('the emergency accounts are never in the campaign\'s admins note', () => {
   const f = fixture('demo')
   const r = runFixture(f)
@@ -21,6 +23,12 @@ test('the emergency accounts are never in the campaign\'s admins note', () => {
   for (const id of emergency) assert.ok(!lists.adminNames.includes(nameOf(id)), `${nameOf(id)} is an emergency account, not a campaign admin`)
   assert.equal(lists.adminNames.length, [...admins].filter((id) => !emergency.includes(id)).length, 'every other admin is named')
   assert.deepEqual(lists.emergencyAccounts, emergency.map(nameOf), 'the emergency accounts keep their own list')
+  // The note names only the admins not yet Ready, read from the one readiness state.
+  const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
+  const waiting = [...admins].filter((id) => !emergency.includes(id) && l.viability.get(id)?.activity === 'active' && !isReady(l.viability.get(id)!.readiness.state))
+  assert.ok(waiting.length > 0 && waiting.length < lists.adminNames.length, 'the demo has admins on both sides of Ready')
+  assert.deepEqual([...lists.adminsNotReady].sort(), waiting.map(nameOf).sort(), 'the note names the admins not yet Ready')
+  for (const id of emergency) assert.ok(!lists.adminsNotReady.includes(nameOf(id)), `${nameOf(id)} is an emergency account, not a campaign admin`)
 })
 
 // A service principal holds a role on GetIAMAI; it is never a person, so it is
@@ -35,7 +43,7 @@ test('a service principal never appears in a people list or an admins note', () 
   assert.equal(principals.length, 1, 'GetIAMAI has one role holder that is not a user account')
   const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   const userNames = new Set(f.snapshot.users.map((u) => nameOf(u.id)))
-  for (const key of ['adminNames', 'eligible', 'specialCare', 'adminsWithout', 'emergencyAccounts'] as const) for (const name of lists[key] ?? []) assert.ok(userNames.has(name.split(' · ')[0]), `${key} names a user account: ${name}`)
+  for (const key of ['adminNames', 'eligible', 'specialCare', 'adminsWithout', 'adminsNotReady', 'emergencyAccounts'] as const) for (const name of lists[key] ?? []) assert.ok(userNames.has(name.split(' · ')[0]), `${key} names a user account: ${name}`)
   for (const id of principals) {
     assert.ok(!lists.adminNames.includes(nameOf(id)), `${nameOf(id)} is not in the admins note`)
     assert.ok(!Object.values(lists).some((list) => Array.isArray(list) && list.some((x) => String(x).split(' · ')[0] === nameOf(id))), `${nameOf(id)} is in no people list`)

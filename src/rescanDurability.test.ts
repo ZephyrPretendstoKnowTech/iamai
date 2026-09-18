@@ -35,7 +35,7 @@ import { laneViewFor } from './ui/surfaces/planBoard.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
 import { breakGlassFindings } from './validation/report.ts'
 import { implementationOffered, unavailableReason } from './roadmap/operations.ts'
-import { READINESS_STATES } from './scoring/phishingResistant.ts'
+import { READINESS_STATES, isReady } from './scoring/phishingResistant.ts'
 import { INACTIVE_DAYS } from './scoring/mfaViability.ts'
 import { PINNED } from './baseline/pinned.ts'
 import type { Step } from './roadmap/types.ts'
@@ -358,8 +358,21 @@ test('043.8: proof ages by the clock and registration survives it', () => {
     const last = row.user.lastSuccessfulSignIn
     assert.ok(last !== null && (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(last)) / 86_400_000 > INACTIVE_DAYS, `${row.user.id}: left the active population without passing the boundary`)
   }
-  // The four readiness states still partition the people the page counts.
+  // The seven readiness states still partition the people the page counts.
   assert.equal(READINESS_STATES.reduce((n, s) => n + t.b.readiness.counts[s], 0), t.b.readiness.facts.active, 'the readiness states no longer sum to the active people')
+  // Prompt 62: Ready is proof inside the window, so the clock alone ends it.
+  // Somebody Ready whose proof left the window, and who is still counted, still
+  // holds their method and is asked to confirm it; they are never Ready on it.
+  let lapsed = 0
+  for (const was of t.a.readiness.rows) {
+    if (was.state === null || !isReady(was.state) || !was.readiness?.readyUntil || was.readiness.readyUntil > t.b.fixture.snapshot.asOf) continue
+    const row = rowIn(t.b, was.user.id)
+    if (!row?.active) continue
+    assert.equal(row.state, 'confirm', `${row.user.id}: Ready on proof that left the window`)
+    assert.deepEqual(row.readiness?.qualifying, was.readiness.qualifying, `${row.user.id}: the method went with the proof`)
+    lapsed++
+  }
+  assert.ok(lapsed > 0, 'nobody Ready lapsed with the clock: the premise is untested')
 })
 
 // ---- 9. proof is kept per method and platform ----
@@ -369,10 +382,12 @@ test('043.9: a phishing-resistant proof makes a person Ready, and a later weaker
   const upId = up.focus.userId!
   const before = rowIn(up.a, upId)!
   const after = rowIn(up.b, upId)!
-  assert.notEqual(before.state, 'ready', 'the case starts from somebody already Ready: it is testing something else')
-  assert.equal(after.state, 'ready', 'a passkey proved on every platform the person uses did not make them Ready')
+  const readyCount = (s: Scan): number => s.readiness.counts.ready + s.readiness.counts.seamless
+  assert.equal(isReady(before.state!), false, 'the case starts from somebody already Ready: it is testing something else')
+  assert.equal(isReady(after.state!), true, 'a passkey proved on every device the person uses did not make them Ready')
   assert.equal(after.state, after.viability!.readiness.state, 'the row and the scoring disagree about readiness')
-  assert.equal(up.b.readiness.counts.ready, up.a.readiness.counts.ready + 1, 'the summary did not follow the person who became Ready')
+  assert.equal(after.readiness?.lastConfirmed?.retained, false, 'Ready on proof from inside the window')
+  assert.equal(readyCount(up.b), readyCount(up.a) + 1, 'the summary did not follow the person who became Ready')
 
   // Step 7: proof is kept per method and platform, so a newer record that names
   // no method never erases the passkey proof the records still hold.
@@ -380,11 +395,11 @@ test('043.9: a phishing-resistant proof makes a person Ready, and a later weaker
   const downId = down.focus.userId!
   const was = rowIn(down.a, downId)!
   const now = rowIn(down.b, downId)!
-  assert.equal(was.state, 'ready', 'the case does not start from a Ready person: it is testing something else')
+  assert.equal(isReady(was.state!), true, 'the case does not start from a Ready person: it is testing something else')
   assert.deepEqual(now.viability?.registered, was.viability?.registered, 'the case took the method away too: it is testing something else')
   assert.equal(now.viability?.evidence?.method, 'Multifactor authentication', 'the newest record names no method')
-  assert.equal(now.state, 'ready', 'a later record that names no method erased the phishing-resistant proof the records hold')
-  assert.equal(down.b.readiness.counts.ready, down.a.readiness.counts.ready, 'the summary stopped counting a person whose proof the records still hold')
+  assert.equal(now.state, was.state, 'a later record that names no method erased the phishing-resistant proof the records hold')
+  assert.equal(readyCount(down.b), readyCount(down.a), 'the summary stopped counting a person whose proof the records still hold')
 })
 
 // ---- 10. an account's category is what the directory says today ----

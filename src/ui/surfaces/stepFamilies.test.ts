@@ -21,12 +21,13 @@ import type { StepFamily } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { enforcesOnRun, operationsOf } from '../../roadmap/operations.ts'
+import { app, pages } from '../../content/content.ts'
 
 // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
 const CONTRACT_SRC = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
+const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8').replace(/\r\n/g, '\n')
 const CSS = readFileSync('src/ui/app.css', 'utf8')
 
 const FAMILIES: StepFamily[] = ['policy', 'supporting', 'mfa', 'in-place', 'decision', 'resolution']
@@ -376,16 +377,28 @@ test('a source conflict states the ambiguity and invents no deployment', () => {
 // ------------------------------------------------------- MFA hands off, it does not recompute
 
 test('the MFA preview consumes existing readiness truth and computes none of its own', () => {
-  // Every word in a preview row is one of MFA Readiness's own four projections,
-  // so the Plan and the page cannot describe one person differently.
-  for (const cell of ['roleWord', 'methodsCell', 'readinessWord', 'actionOf']) {
-    assert.ok(HANDOFF.includes(cell), `the preview writes its own ${cell}`)
+  // The preview speaks the step's own requirement (prompt 62): the people are the
+  // step's own hold, what they have is their registered methods in the shared
+  // method words, and what they need is the step's own words (app.plan.mfaPreview).
+  assert.match(HANDOFF, /import \{ classWord, listWords \} from '\.\/readinessCells\.ts'/, 'the preview reads cells beyond the shared method words')
+  assert.match(HANDOFF, /listWords\(methods\.map\(classWord\)\)/, 'the methods are not the shared method words')
+  assert.match(HANDOFF, /const methods = methodClassesOf\(snapshot, u\.id\)/, 'the methods are not the directory reading every surface shares')
+  assert.match(HANDOFF, /\(P as unknown as \{ mfaPreview:/, 'the preview does not read its own words')
+  assert.match(HANDOFF, /unknown\.has\(u\.id\) \? W\.checkCompat : W\.needsMethod/, 'what a person needs is not the step\'s own requirement')
+  // It never shows MFA Readiness's state words or its higher bar's next step: the
+  // Plan never calls somebody short of a phishing-resistant method while the step
+  // counts them as prepared.
+  for (const gone of ['readinessView', 'stateTitle', 'nextCell', 'nextWords', 'whyLine', 'rowCells', 'personReadiness', 'readinessWord', 'actionOf', '.states', '.groups']) {
+    assert.equal(HANDOFF.includes(gone), false, `the preview reads MFA Readiness's own ${gone}`)
   }
-  assert.match(HANDOFF, /from '\.\/readinessCells\.ts'/, 'the preview does not read the shared cell projections')
-  // The hold, the ids and the rows all come from the derive layer.
+  const words = (app.plan as unknown as { mfaPreview: Record<string, string> }).mfaPreview
+  const titles = Object.values((pages.readiness as unknown as { states: Record<string, { title: string }> }).states).map((s) => s.title)
+  for (const [k, w] of Object.entries(words)) if (k !== '$comment') assert.ok(!titles.includes(w), `mfaPreview.${k} is one of MFA Readiness's state words`)
+  // The hold, the ids and the people all come from the derive layer.
   assert.match(HANDOFF, /stepMfaHold\(step, scored\)/, 'the step decides its own hold')
-  assert.match(HANDOFF, /readinessView\(snapshot, snapshot\.asOf, mapping\)/, 'the preview builds its own view')
-  // It may CALL the derive layer — `scoredPeople` and `readinessView` are the
+  assert.match(HANDOFF, /scoredPeople\(snapshot, mapping, snapshot\.asOf\)/, 'the preview scores people of its own')
+  assert.match(HANDOFF, /step\.methodPreparation\?\.unknownIds/, 'the unsettled people are not the step\'s own')
+  // It may CALL the derive layer — `scoredPeople` and `stepMfaHold` are the
   // authority — but it may not do the arithmetic itself.
   for (const forbidden of ['rung >', '>= 0.9', 'Math.', 'new Date(', '.reduce(', 'percent']) {
     assert.equal(HANDOFF.includes(forbidden), false, `the handoff computes ${forbidden} instead of reading the derive layer`)

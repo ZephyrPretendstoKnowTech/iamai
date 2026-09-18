@@ -1,7 +1,7 @@
 // The footer on every page (docs/design/mockups/today-v2.html, plan-top-v2.html):
 // IAMAI Home as a link, the author, the source, and feedback@getiamai.com as the
 // fourth link; the app's shell and the home page render the same four. And
-// "people" on Today, the Plan and Connect: "user" names an Entra user object
+// "people" on MFA Readiness, the Plan and Connect: "user" names an Entra user object
 // (Microsoft's own scope names) and nothing else.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -35,7 +35,7 @@ test('the footer has four links: IAMAI Home (a link), LinkedIn, GitHub, feedback
   assert.equal((footer.match(/ · /g) ?? []).length, 2)
 })
 
-test('"people" on Today, the Plan and Connect; "user" only for an Entra user object', () => {
+test('"people" on MFA Readiness, the Plan and Connect; "user" only for an Entra user object', () => {
   // The consent rows are Microsoft's own wording and live with the permission
   // authority (src/copy/permissions.ts), not in the page's words (task 016), so
   // the page's words carry no "user" at all.
@@ -45,7 +45,7 @@ test('"people" on Today, the Plan and Connect; "user" only for an Entra user obj
   // key such as `policies.guests.mixed.target.users` is a package's vocabulary and
   // is never drawn (its displayed name is the value beside it).
   const strings = (v: unknown): string[] => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.flatMap(strings) : v !== null && typeof v === 'object' ? Object.values(v).flatMap(strings) : [])
-  const words = JSON.stringify(strings({ today: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })).replaceAll(JSON.stringify((pages.plan as { impact: { noUserImpact: string } }).impact.noUserImpact), '""').replace(/All users/g, 'Everyone').replace(/Per-user MFA/g, 'MFA').replace(/user accounts/g, 'accounts')
+  const words = JSON.stringify(strings({ readiness: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })).replaceAll(JSON.stringify((pages.plan as { impact: { noUserImpact: string } }).impact.noUserImpact), '""').replace(/All users/g, 'Everyone').replace(/Per-user MFA/g, 'MFA').replace(/user accounts/g, 'accounts')
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
   assert.ok(JSON.stringify(consentRows()).includes("Read all users' basic profiles"))
