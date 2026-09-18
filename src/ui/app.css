@@ -4837,21 +4837,10 @@ th .th-sort:focus-visible,
 .emergency-account-readiness .readiness-satisfied .emergency-account-status-grid { margin-top: 8px; }
 .emergency-account-scan-note { margin: 12px 0 0; color: var(--secondary-text); font-size: var(--t-0); }
 .emergency-readiness-extra { margin-top: 10px; }
-.emergency-readiness-actions {
-  display: grid;
-  gap: 10px;
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.emergency-readiness-action { display: grid; gap: 3px; min-width: 0; }
-.emergency-readiness-action code { overflow-wrap: anywhere; }
-.emergency-readiness-action span { color: var(--secondary-text); }
-.emergency-readiness-action .inline-link { justify-self: start; }
 .emergency-finding-groups { display: grid; gap: 12px; margin-top: 8px; }
 .emergency-finding-group { min-width: 0; }
 .emergency-finding-group h5 { margin: 0 0 6px; overflow-wrap: anywhere; }
-.emergency-finding-group dl, .emergency-readiness-action dl { display: grid; gap: 5px; margin: 0; }
+.emergency-finding-group dl { display: grid; gap: 5px; margin: 0; }
 .emergency-fact { display: grid; grid-template-columns: minmax(8rem, .7fr) minmax(0, 1.3fr); gap: 8px; min-width: 0; }
 .emergency-fact dt { color: var(--secondary-text); overflow-wrap: anywhere; }
 .emergency-fact dd { margin: 0; overflow-wrap: anywhere; }
