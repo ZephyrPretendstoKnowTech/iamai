@@ -13,7 +13,7 @@ import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
-import { notActiveUsers, notPeopleIds } from './sets.ts'
+import { notActiveUsers, notPeopleIds, lastSuccessOf } from './sets.ts'
 import { ladder } from './ladder.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { pages } from '../content/content.ts'
@@ -165,7 +165,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // The dormant accounts (no sign-in for 90 days, or none on record) with their
     // state, for the problematic-accounts check (walk of f3d140b): the state is
     // the last sign-in date, or the content example's own "no sign-in on record".
-    accountsWithState: dormant.map((u) => `${nameOf(u.id)} · ${u.lastSuccessfulSignIn ? absoluteDate(u.lastSuccessfulSignIn) : 'no sign-in on record'}`),
+    accountsWithState: dormant.map((u) => { const last = lastSuccessOf(snapshot, u); return `${nameOf(u.id)} · ${last ? absoluteDate(last) : 'no sign-in on record'}` }),
     accountsWithStateIds: dormant.map((u) => u.id),
     // Directory-role holders who read mail or join Teams on the same account (E6),
     // with the apps: the separate-accounts step lists them, and the admin policies

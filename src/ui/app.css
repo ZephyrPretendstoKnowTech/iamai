@@ -958,8 +958,8 @@ footer.app a {
 
    A table stays a table: no cardification, the horizontal scroll stays on the
    wrap (a wide operational table is more useful scrolling than stacked), and
-   `.datatable-stacked` remains a separate opt-in that only MFA Readiness's pack
-   asks for. */
+   `.datatable-stacked` remains a separate opt-in; no surface asks for it since
+   MFA Readiness v3 draws its own grouped rows (prompt 62). */
 .surface .datatable-wrap.panel {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
@@ -3920,15 +3920,60 @@ td .not-person {
    than re-declares — `.panel`, `.eyebrow`, `.pill`, `.btn` (task 031). Every
    colour is a token; every state carries its word beside its colour (WCAG 1.4.1). */
 
-.surface.readiness {
-  --s-seamless: var(--brand-primary);
-  --s-ready: var(--success-text);
-  --s-confirm: var(--attention-text);
-  --s-device: var(--unproven-text);
-  --s-method: var(--danger-text);
-  --s-blocked: var(--admin-text);
-  --s-unknown: var(--idle);
-  --s-unread: var(--idle);
+/* The seven state colours, one class each (`s-<state>`), painted only where
+   the state's word is beside it: the legend's and a group's dot, a device
+   chip's word, and the bar whose legend carries every word (design lint rule 5).
+   The "Not read" chip word is text, so it takes the quiet ink that holds AA on
+   the chip surface in both themes. */
+.surface.readiness .state-dot.s-seamless,
+.surface.readiness .readiness-bar .s-seamless {
+  background: var(--brand-primary);
+}
+.surface.readiness .state-dot.s-ready,
+.surface.readiness .readiness-bar .s-ready {
+  background: var(--success-text);
+}
+.surface.readiness .state-dot.s-confirm,
+.surface.readiness .readiness-bar .s-confirm {
+  background: var(--attention-text);
+}
+.surface.readiness .state-dot.s-device,
+.surface.readiness .readiness-bar .s-device {
+  background: var(--unproven-text);
+}
+.surface.readiness .state-dot.s-method,
+.surface.readiness .readiness-bar .s-method {
+  background: var(--danger-text);
+}
+.surface.readiness .state-dot.s-blocked,
+.surface.readiness .readiness-bar .s-blocked {
+  background: var(--admin-text);
+}
+.surface.readiness .state-dot.s-unknown,
+.surface.readiness .readiness-bar .s-unknown {
+  background: var(--idle);
+}
+.surface.readiness .dev-word.s-seamless {
+  color: var(--brand-primary);
+}
+.surface.readiness .dev-word.s-ready {
+  color: var(--success-text);
+}
+.surface.readiness .dev-word.s-confirm {
+  color: var(--attention-text);
+}
+.surface.readiness .dev-word.s-device {
+  color: var(--unproven-text);
+}
+.surface.readiness .dev-word.s-method {
+  color: var(--danger-text);
+}
+.surface.readiness .dev-word.s-blocked {
+  color: var(--admin-text);
+}
+.surface.readiness .dev-word.s-unknown,
+.surface.readiness .dev-word.s-unread {
+  color: var(--quiet-text);
 }
 .surface.readiness .display {
   --display-size: var(--d-5);
@@ -3961,7 +4006,10 @@ td .not-person {
   align-items: flex-start;
 }
 .readiness-answer .headline {
-  font: 600 var(--d-9) / 1.2 var(--font-serif);
+  font-family: var(--font-serif);
+  font-size: var(--d-9);
+  font-weight: var(--weight-strong);
+  line-height: 1.2;
   margin: 0;
   max-width: 24ch;
   letter-spacing: -0.01em;
@@ -4008,9 +4056,12 @@ td .not-person {
   margin: 22px 0 12px;
 }
 .readiness-bar span {
-  border-radius: 3px;
+  border-radius: var(--radius);
   min-width: 6px;
-  background: var(--c);
+}
+.surface.readiness .readiness-legend {
+  max-width: none;
+  margin: 0;
 }
 .readiness-legend {
   display: flex;
@@ -4037,7 +4088,6 @@ td .not-person {
   height: 9px;
   border-radius: 50%;
   flex: none;
-  background: var(--c);
 }
 .readiness-answer .define {
   margin: 14px 0 0;
@@ -4069,7 +4119,10 @@ td .not-person {
   margin: 0 0 12px;
 }
 .surface.readiness .toolbar h2 {
-  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+  font-family: var(--font-serif);
+  font-size: var(--t-5);
+  font-weight: var(--weight-strong);
+  line-height: var(--lh-heading);
   margin: 0 auto 0 0;
 }
 .surface.readiness .toolbar input[type='search'] {
@@ -4077,10 +4130,8 @@ td .not-person {
 }
 
 /* A group: its action is its heading. */
-.readiness-group {
-  border: 1px solid var(--line);
+.readiness-group.panel {
   border-radius: var(--radius-control);
-  background: var(--surface);
   margin-bottom: 10px;
   overflow: hidden;
 }
@@ -4133,7 +4184,7 @@ td .not-person {
   color: var(--secondary-text);
 }
 .readiness-group.next {
-  border-color: color-mix(in srgb, var(--brand-primary) 55%, var(--line));
+  border-color: var(--brand-primary);
   border-left: 3px solid var(--brand-primary);
 }
 .readiness-group.next > summary,
@@ -4141,7 +4192,9 @@ td .not-person {
   background: var(--brand-tint);
 }
 .readiness-group.next .group-title {
-  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+  font-family: var(--font-serif);
+  font-size: var(--t-5);
+  line-height: var(--lh-heading);
 }
 .surface.readiness .next-label {
   display: block;
@@ -4173,13 +4226,16 @@ td .not-person {
 .readiness-setup-next {
   padding: 16px;
   margin-bottom: 10px;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 55%, var(--line));
+  border: 1px solid var(--brand-primary);
   border-left: 3px solid var(--brand-primary);
   border-radius: var(--radius-control);
   background: var(--brand-tint);
 }
 .readiness-setup-next h3 {
-  font: 600 var(--t-5) / var(--lh-heading) var(--font-serif);
+  font-family: var(--font-serif);
+  font-size: var(--t-5);
+  font-weight: var(--weight-strong);
+  line-height: var(--lh-heading);
   margin: 2px 0 6px;
 }
 
@@ -4255,7 +4311,7 @@ td .not-person {
   font-size: var(--t-0);
   font-weight: var(--weight-strong);
   color: var(--admin-text);
-  border: 1px solid color-mix(in srgb, var(--admin) 45%, var(--line));
+  border: 1px solid currentColor;
   vertical-align: 1px;
 }
 .readiness-row .cell-note {
@@ -4284,7 +4340,7 @@ td .not-person {
   gap: 6px;
   height: 26px;
   padding: 0 8px 0 6px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--secondary-surface);
   font-size: var(--t-1);
@@ -4298,7 +4354,6 @@ td .not-person {
 }
 .surface.readiness .dev .dev-word {
   font-weight: var(--weight-strong);
-  color: var(--c);
 }
 .surface.readiness .dev.off {
   border-style: dashed;
@@ -4307,85 +4362,84 @@ td .not-person {
 }
 
 /* The rail: the Tasks Remaining tile standard. */
-.readiness-tile {
+.readiness-rail .readiness-tile {
   padding: 16px;
 }
-.readiness-tile h3 {
+.readiness-rail .readiness-tile h3 {
   margin: 0 0 2px;
   font-size: var(--t-2);
   font-weight: var(--weight-strong);
   color: var(--secondary-text);
 }
-.readiness-tile .remain {
+.readiness-rail .readiness-tile .remain {
   margin: 0 0 10px;
   font-size: var(--t-1);
   color: var(--muted-text);
 }
-.readiness-tile .check {
+.readiness-rail .readiness-tile .check {
   margin: 0 0 4px;
   font-weight: var(--weight-strong);
 }
-.readiness-tile p {
+.readiness-rail .readiness-tile p {
   margin: 0 0 8px;
   font-size: var(--t-2);
   color: var(--secondary-text);
 }
-.readiness-tile details {
+.readiness-rail .readiness-tile details {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--line);
   font-size: var(--t-2);
 }
-.readiness-tile summary {
+.readiness-rail .readiness-tile summary {
   cursor: pointer;
   color: var(--secondary-text);
 }
-.readiness-tile ul {
+.readiness-rail .readiness-tile ul {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
   gap: 6px;
 }
-.readiness-tile li {
+.readiness-rail .readiness-tile li {
   display: flex;
   gap: 8px;
   color: var(--secondary-text);
 }
-.readiness-tile li .ok {
+.readiness-rail .readiness-tile li .ok {
   color: var(--success-text);
 }
-.readiness-tile .models {
+.readiness-rail .readiness-tile .models {
   font-size: var(--t-1);
   color: var(--muted-text);
 }
-.readiness-tile .ledger-list {
+.readiness-rail .readiness-tile .ledger-list {
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 5px 10px;
   font-size: var(--t-2);
 }
-.readiness-tile .ledger-list dt {
+.readiness-rail .readiness-tile .ledger-list dt {
   font-variant-numeric: tabular-nums;
   font-weight: var(--weight-strong);
   text-align: right;
 }
-.readiness-tile .ledger-list dd {
+.readiness-rail .readiness-tile .ledger-list dd {
   margin: 0;
   color: var(--secondary-text);
 }
 
 /* The person panel: non-modal, beside the list rather than over it. */
-.readiness-panel {
+.readiness-panel.panel {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   width: min(460px, 100%);
-  background: var(--surface);
+  border-radius: 0;
   border-left: 1px solid var(--strong-line);
-  box-shadow: var(--shadow-panel);
   overflow: auto;
   z-index: 20;
 }
@@ -4401,7 +4455,10 @@ td .not-person {
   border-bottom: 1px solid var(--line);
 }
 .readiness-panel .panel-head h2 {
-  font: 600 var(--t-6) / 1.2 var(--font-serif);
+  font-family: var(--font-serif);
+  font-size: var(--t-6);
+  font-weight: var(--weight-strong);
+  line-height: 1.2;
   margin: 0;
 }
 .readiness-panel .panel-head p {

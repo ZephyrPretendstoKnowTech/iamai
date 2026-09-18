@@ -23,7 +23,7 @@ import { reached } from '../../derive/population.ts'
 // step is waiting on (derive/stepMfaReadiness.ts). The hash carries the step's
 // id and nothing else; who it reaches is resolved from the plan computed here.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { DEFAULT_SHOW, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
@@ -49,6 +49,7 @@ import { toCsv } from '../format.ts'
 import { exportDownload, unredactedFrom } from '../exportGuard.ts'
 import { scan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
+import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 
 type Words = {
   h1: string
@@ -132,8 +133,6 @@ const Icon = ({ k }: { k: 'computer' | 'phone' | 'key' | 'chev' }): ReactNode =>
 /** The bar's and the legend's order: the done states first, then the work, as the pack draws it. */
 const LEGEND_ORDER: readonly ReadinessState[] = ['seamless', 'ready', 'confirm', 'device', 'method', 'blocked', 'unknown']
 
-const dotStyle = (s: ReadinessState | 'unread'): CSSProperties => ({ ['--c' as string]: `var(--s-${s})` })
-
 function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnapshot | null; context: PlanContext | null; planSteps: ReadonlySet<string> }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
@@ -200,8 +199,9 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   const active = counted.length
   const ready = counts.ready + counts.seamless
-  const proofRead = snapshot.sources.signInEvidence && (snapshot.sources.signInEvidence.status === 'ok' || snapshot.sources.signInEvidence.status === 'partial')
-  const summary = active === 0 ? T.summaryNone : !proofRead ? fillText(T.summaryUnmeasured, { active }) : fillText(T.summary, { ready, active })
+  // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
+  // proof. A scan that holds no proof is unmeasured, never "0 of N".
+  const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { active }) : fillText(T.summary, { ready, active })
   const goal = counts.seamless > 0 ? fillText(T.seamlessLine, { seamless: counts.seamless }) : T.seamlessNone
   const scopedView = { ...view, counts }
   const next = nextCheck(scopedView, checks)
@@ -238,7 +238,7 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
             <span className="dev" key={i} title={c.title}>
               <Icon k={c.kind} />
               {c.os}
-              <span className="dev-word" style={dotStyle(c.tone)}>{c.word}</span>
+              <span className={`dev-word s-${c.tone}`}>{c.word}</span>
             </span>
           ))}
           {chips.noPhone && (
@@ -336,9 +336,9 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
     return (
-      <details key={state} className={`readiness-group${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || undefined} data-state={state}>
+      <details key={state} className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || undefined} data-state={state}>
         <summary>
-          <span className="state-dot" style={dotStyle(state)} />
+          <span className={`state-dot s-${state}`} aria-hidden="true" />
           <span>
             {isNext && <span className="next-label">{T.nextLabel}</span>}
             <span className="group-title">{G.title}</span>
@@ -456,13 +456,13 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
           <>
             <div className="readiness-bar" aria-hidden="true">
               {LEGEND_ORDER.filter((s) => counts[s] > 0).map((s) => (
-                <span key={s} style={{ flex: counts[s], ...dotStyle(s) }} />
+                <span key={s} className={`s-${s}`} style={{ flex: counts[s] }} />
               ))}
             </div>
             <ul className="readiness-legend" aria-label={T.legendLabel}>
               {LEGEND_ORDER.filter((s) => counts[s] > 0).map((s) => (
                 <li key={s}>
-                  <span className="state-dot" style={dotStyle(s)} />
+                  <span className={`state-dot s-${s}`} aria-hidden="true" />
                   {stateTitle(s)} <b>{counts[s]}</b>
                 </li>
               ))}
@@ -628,14 +628,14 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
       </div>
 
       {openRow && (
-        <aside className="readiness-panel" id={PANEL_ID} role="dialog" aria-modal="false" aria-labelledby="readiness-panel-name">
+        <aside className="readiness-panel panel" id={PANEL_ID} role="dialog" aria-modal="false" aria-labelledby="readiness-panel-name">
           <div className="panel-head">
             <div>
               <h2 id="readiness-panel-name">{openRow.user.displayName ?? openRow.user.userPrincipalName}</h2>
               <p>{[openRow.user.userPrincipalName, openRow.admin ? T.admin : '', openRow.user.department ?? ''].filter(Boolean).join(', ')}</p>
               {openRow.state && (
                 <span className="panel-state">
-                  <span className="state-dot" style={dotStyle(openRow.state)} />
+                  <span className={`state-dot s-${openRow.state}`} aria-hidden="true" />
                   {stateTitle(openRow.state)}
                 </span>
               )}

@@ -143,10 +143,22 @@ export function activeUsers(snapshot: TenantSnapshot, now: string, confirmedServ
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
     // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
-    if (!u.lastSuccessfulSignIn) return false
-    const at = Date.parse(u.lastSuccessfulSignIn)
+    const last = lastSuccessOf(snapshot, u)
+    if (!last) return false
+    const at = Date.parse(last)
     return Number.isFinite(at) && at >= cutoff
   })
+}
+
+/**
+ * A person's last successful sign-in: the later of the directory's
+ * signInActivity and the newest successful sign-in in the records (prompt 62).
+ * The directory's date lags, and an account seen signing in is not "never
+ * signed in". The one reading every activity rule takes (scoring/mfaViability.ts too).
+ */
+export function lastSuccessOf(snapshot: Pick<TenantSnapshot, 'signInEvidence'>, u: Pick<UserRow, 'id' | 'lastSuccessfulSignIn'>): string | null {
+  const records = (snapshot.signInEvidence?.[u.id]?.platforms ?? []).map((p) => p.at).sort().pop() ?? null
+  return [u.lastSuccessfulSignIn, records].filter((x): x is string => !!x).sort().pop() ?? null
 }
 
 /**

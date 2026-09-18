@@ -522,7 +522,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     return rows.length === 0 || rows.some((r) => !r.m?.createdDateTime || r.m.createdDateTime <= p.at)
   }
   const windowProofs = latestProofs(current.filter((p) => inWindow(p.at) && stands(p)))
-  const retained = latestProofs((history?.proofs ?? []).filter((p) => isQualifying(p.cls) && inv.classes.has(p.cls)))
+  // Kept proof is shown only for a credential that existed when it was made (the same chronology as the window's proof).
+  const retained = latestProofs((history?.proofs ?? []).filter((p) => isQualifying(p.cls) && stands(p)))
   const latestOf = (cls: MethodClass): ProofLine | null => {
     const w = windowProofs.filter((p) => p.cls === cls).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
     if (w) return { cls, os: w.os, at: w.at, retained: false }
@@ -604,6 +605,12 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
 
   if (!input.signIns.read || input.signIns.proofs === null) return { ...base, ...common, devices, state: 'unknown', unknown: 'signIns', next: { kind: 'rescan', reason: 'signIns' } }
 
+  if (devices.length === 0 && windowProofs.some((p) => qualifying.includes(p.cls))) {
+    // A phishing-resistant sign-in in the window whose record named no platform:
+    // confirmed, though IAMAI cannot say on which device (never "on leave").
+    const latest = windowProofs.filter((p) => qualifying.includes(p.cls)).map((p) => p.at).sort().pop() as string
+    return { ...base, ...common, devices, readyUntil: new Date(Date.parse(latest) + READINESS_WINDOW_DAYS * DAY).toISOString(), state: 'ready', next: { kind: 'none' } }
+  }
   if (devices.length === 0) {
     // No interactive sign-in inside the window. Where the records read began
     // after the window did, and the directory says they signed in inside it, the
