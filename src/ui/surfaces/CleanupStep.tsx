@@ -22,11 +22,11 @@ import { HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
-import { EmergencyReadinessActions, Implementation } from './ContentStep.tsx'
+import { EmergencyReadinessActions, EmergencySubjectReadiness, Implementation } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
 import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationPowerShell, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { exportClipboard, unredactedFrom } from '../exportGuard.ts'
-import { consolidateEmergencyReadiness } from './emergencyReadiness.ts'
+import { consolidateEmergencyReadiness, recoverySubjectsOf } from './emergencyReadiness.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 export type { CleanupEntry, NotAssessedNotes } from './cleanupExport.ts'
@@ -96,6 +96,8 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
     return tiles
   })
   const recoveryReadiness = consolidateEmergencyReadiness({ tiles: recoveryTiles.filter(t => t.tone !== 'good'), satisfied: recoveryTiles.filter(t => t.tone === 'good'), bar: { key: 'recovery', main: row.done ? 'Current recovery verification recorded' : 'Complete the configuration findings, then verify recovery for each account.' } }, verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {})), !onDone)
+  // Interactive Tasks Remaining (the Step 1 tile standard); print keeps the source findings split as above.
+  const recoverySubjects = useMemo(() => recoverySubjectsOf(phase.recoveryFindings ?? [], verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {}))), [phase, verificationTasks])
   const openVerificationTask = (id: string): void => { setImplementationChannel('portal'); setTaskId(id); setTaskFocusRequest(value => value + 1) }
   const verificationArtifacts = useMemo<Artifact[]>(() => [
     { id: 'portal', form: 'markdown', lines: [], text: () => '', note: null },
@@ -128,7 +130,8 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       </StepSection>
-      {row.kind === 'drill' && recoveryTiles.length > 0 && <ReadinessSection heading="Tasks Remaining" readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} extra={tile => <EmergencyReadinessActions tile={tile} projected={verificationTasks} printing={!onDone} onTask={openVerificationTask} onSelectAccounts={() => undefined} stepId="cleanup-drill" />} />}
+      {row.kind === 'drill' && recoveryTiles.length > 0 && onDone && <EmergencySubjectReadiness subjects={recoverySubjects} printing={false} barMain={recoveryReadiness.bar.main} onWhy={null} />}
+      {row.kind === 'drill' && recoveryTiles.length > 0 && !onDone && <ReadinessSection heading="Tasks Remaining" readiness={recoveryReadiness} lead={null} showClosedCount={false} printing={!onDone} extra={tile => <EmergencyReadinessActions tile={tile} projected={verificationTasks} printing={!onDone} onTask={openVerificationTask} onSelectAccounts={() => undefined} stepId="cleanup-drill" />} />}
       {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
           no step draws What to do, and the not-assessed notes below stay in this
           one column under it rather than in an action column. */}

@@ -63,7 +63,9 @@ test('Step 4 task and machine projections remain read-only and identity-stable',
   } as unknown as CleanupPhase
   const tasks = emergencyVerificationTasksOf(phase).tasks
   assert.deepEqual(tasks.map(task => task.title), ['Verify emergency sign-in', 'Troubleshoot emergency sign-in'])
-  assert.ok(tasks[0].facts?.some(fact => fact.label === 'emergency@contoso.onmicrosoft.com'))
+  // The per-account list is the Sign-in Evidence tile's; the Implementation Task does not repeat it.
+  assert.ok(tasks[0].readinessFacts?.some(fact => fact.label === 'emergency@contoso.onmicrosoft.com'))
+  assert.equal(tasks[0].facts, undefined)
   assert.ok(tasks[0].steps.some(line => line.includes('Sign in as that emergency account using its prepared passkey.')))
   assert.ok(tasks[0].steps.some(line => line.includes('Wait 5–10 minutes')))
   assert.equal(tasks.flatMap(task => task.steps).some(line => /Start verification|Save verification|Passed|Failed/.test(line)), false)

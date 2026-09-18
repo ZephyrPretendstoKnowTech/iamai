@@ -1399,7 +1399,9 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
         : 'registration'
       const topic = configuredTiles.find(t => t.key === 'configuration:' + key) ?? configuredTiles[0]
       if (extra.key.startsWith('engine:evidence:passkey-settings-')) continue
-      topic.items = [...(topic.items ?? []), { label: extra.label, value: [extra.value, extra.note].filter(Boolean).join('. ') }]
+      // State the prerequisite once: "Finish X first." already names X.
+      const value = extra.note && extra.note.includes(extra.value) ? extra.note : [extra.value, extra.note].filter(Boolean).join('. ')
+      topic.items = [...(topic.items ?? []), { label: extra.label, value }]
       if (topic.tone === 'good') { topic.tone = extra.tone; topic.value = 'Review required' }
     }
     const tiles = configuredTiles.filter(t => t.tone !== 'good')
