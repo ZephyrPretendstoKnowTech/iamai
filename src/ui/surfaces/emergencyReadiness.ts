@@ -77,7 +77,8 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
     upn: subjects.length ? subjects.join('\n') : task?.subjectLabel ?? null,
     title: prerequisite ? next.value : name(next),
     detail: prerequisite ? '' : next.value,
-    instruction: prerequisite || next.link ? '' : direction ?? '',
+    // A finding that already says what to do ("Follow … Then wait …") is not told again.
+    instruction: prerequisite || next.link || (direction && next.value.includes(direction.replace(/\.$/, ''))) ? '' : direction ?? '',
     ...(next.link ? { link: next.link } : {}),
   }
 }
