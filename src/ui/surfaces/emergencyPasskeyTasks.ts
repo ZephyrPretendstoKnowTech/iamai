@@ -16,6 +16,7 @@ const fieldValue = (label: string, value: unknown, modelNames: ReadonlyMap<strin
     const words = entries.map(entry => String(entry ?? '').trim()).filter(Boolean).map(entry => entry.toLowerCase() === 'devicebound' ? 'Device-bound passkeys' : entry.toLowerCase() === 'synced' ? 'Synced passkeys' : entry)
     return words.join(', ') || 'Unavailable'
   }
+  if (label === 'Attestation' && typeof value === 'string') return value === 'registrationOnly' ? 'Required' : value === 'disabled' ? 'Off' : value
   if (label === 'Approved models' && Array.isArray(value)) return value.map(entry => {
     const aaguid = String(entry).toLowerCase()
     const model = modelNames.get(aaguid)

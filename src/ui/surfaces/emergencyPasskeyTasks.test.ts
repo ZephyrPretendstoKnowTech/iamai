@@ -21,7 +21,7 @@ function projectProfile(profile: Record<string, unknown> = {}) {
     id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true,
     defaultPasskeyProfile: 'authenticator',
     includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['authenticator'] }], excludeTargets: [],
-    passkeyProfiles: [{ id: 'authenticator', name: 'Authenticator', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] }, ...profile }],
+    passkeyProfiles: [{ id: 'authenticator', name: 'Authenticator', passkeyTypes: 'deviceBound', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] }, ...profile }],
   }
   value.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [current] }] }
   const run = runFixture(value)
@@ -75,9 +75,9 @@ test('profile corrections expose only changed fields and do not repeat fact valu
   const task = projectProfileChange().tasks.find(row => row.id === 'apply-passkey-settings')!
   assert.equal(task.facts, undefined, 'the changes are the tile’s facts, not a block above the procedure')
   const facts = task.readinessFacts ?? []
-  assert.deepEqual(facts.map(row => row.label), ['Authenticator · Storage'])
-  assert.match(facts[0].value, /Device-bound passkeys, Synced passkeys.*→.*Device-bound passkeys/)
-  assert.doesNotMatch(facts[0].value, /deviceBound|deviceBound,synced/)
+  assert.deepEqual(facts.map(row => row.label), ['Authenticator · Attestation'])
+  assert.equal(facts[0].value, 'Off → Required')
+  assert.doesNotMatch(facts[0].value, /registrationOnly|disabled/)
   const text = task.steps.join('\n')
   for (const fact of facts) assert.doesNotMatch(text, new RegExp(fact.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
   assert.doesNotMatch(text, /Add only:|Remove only:|Use these approved authenticator models:/i)
@@ -106,15 +106,15 @@ test('include-target changes render the resolved target list', () => {
 
 test('the same approved models in a different order produce no Approved models row', () => {
   assert.notDeepEqual(GRAPH_ORDER, [...PASSKEY_TARGET_AAGUIDS])
-  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Storage'])
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Attestation'])
 })
 
 test('the same approved models in different letter casing produce no Approved models row', () => {
-  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER.map(id => id.toUpperCase()))).map(row => row.label), ['Authenticator · Storage'])
+  assert.deepEqual(protectionFacts(allow(GRAPH_ORDER.map(id => id.toUpperCase()))).map(row => row.label), ['Authenticator · Attestation'])
 })
 
 test('a reordered, otherwise correct profile reads in place with no protection facts', () => {
-  const { projected, reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow(GRAPH_ORDER) })
+  const { projected, reading } = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) })
   assert.equal(reading.state, 'inPlace')
   assert.deepEqual(reading.differs, [])
   assert.deepEqual(projected.tasks.find(row => row.id === 'apply-passkey-settings')!.readinessFacts, [])
@@ -142,20 +142,21 @@ test('passkeyTypes equality ignores order and serialisation', () => {
 })
 
 test('extra tenant models outside the required set do not by themselves produce a row', () => {
-  assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Storage'])
-  const { reading } = projectProfile({ passkeyTypes: 'deviceBound', ...allow([WINDOWS_HELLO, ...GRAPH_ORDER]) })
+  assert.deepEqual(protectionFacts(allow([...GRAPH_ORDER, WINDOWS_HELLO])).map(row => row.label), ['Authenticator · Attestation'])
+  const { reading } = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', ...allow([WINDOWS_HELLO, ...GRAPH_ORDER]) })
   assert.equal(reading.state, 'inPlace')
 })
 
 const protectionSteps = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.steps
 
 test('protections: navigate first, then apply each value inline, one Save per Add AAGUID entry', () => {
-  // The live GetIAMAI profile: synced storage allowed, no restrictions.
-  const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
+  // A GetIAMAI-shaped profile: attestation enforced, stored types "deviceBound,synced"
+  // (the portal shows Device-bound), no restrictions. Enforced attestation already
+  // limits registration to device-bound passkeys, so Passkey types is no step.
+  const steps = protectionSteps({ name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } })
   assert.deepEqual(steps, [
     'Keep your working administrator session open. Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.',
     'Open **Default passkey profile**.',
-    'Set **Passkey types** to **Device-bound**.',
     'Select **Target specific AAGUIDs** and set **Behavior** to **Allow**.',
     'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.',
     'Select **+ Add AAGUID → Enter AAGUID**, enter **19083c3d-8383-4b18-bc03-8f1c9ab2fd1b** (YubiKey 5 Series), then **Save**.',
@@ -166,11 +167,11 @@ test('protections: navigate first, then apply each value inline, one Save per Ad
 
 test('protections: a satisfied value produces no step, and an AAGUID is never a header block', () => {
   // Only the Android model is missing; storage and restrictions already match.
-  const steps = protectionSteps({ passkeyTypes: 'deviceBound', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
+  const steps = protectionSteps({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: GRAPH_ORDER.filter(id => id !== 'de1e552d-db1d-4423-a619-566b625cdc84') } })
   const text = steps.join('\n')
   assert.doesNotMatch(text, /Passkey types|Target specific AAGUIDs|Enforce attestation|Apply only the changed values/)
   assert.deepEqual(steps.slice(1, -1), ['Open **Authenticator**.', 'Select **+ Add AAGUID → Microsoft Authenticator**, then **Save**.'])
-  const task = projectProfile({ passkeyTypes: 'deviceBound', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
+  const task = projectProfile({ passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [] } }).projected.tasks.find(row => row.id === 'apply-passkey-settings')!
   for (const line of task.steps) if (/19083c3d|a25342c0/.test(line)) assert.match(line, /^Select \*\*\+ Add AAGUID → Enter AAGUID\*\*, enter/)
   assert.equal(task.facts, undefined)
 })
@@ -183,4 +184,11 @@ test('protections: a legacy configuration is changed on Configure, each AAGUID e
   const entered = rest.filter(line => line.startsWith('Select **Add AAGUID** and enter'))
   assert.equal(entered.length, PASSKEY_TARGET_AAGUIDS.length - 1)
   assert.equal(rest.at(-2), 'Select **Save**.')
+})
+
+test('storage: stored "deviceBound,synced" with attestation enforced is no change; synced only is', () => {
+  assert.deepEqual(protectionFacts({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }), [])
+  assert.equal(projectProfile({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }).reading.state, 'inPlace')
+  const steps = protectionSteps({ passkeyTypes: 'synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) })
+  assert.ok(steps.includes('Set **Passkey types** to **Device-bound**.'))
 })

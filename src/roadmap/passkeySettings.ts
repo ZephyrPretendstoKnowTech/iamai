@@ -99,6 +99,10 @@ export function assignedPasskeyProfiles(current: Fido2Configuration): { profiles
   return { profiles: [...ids].flatMap(id => byId.has(id) ? [byId.get(id)!] : []), targets, unknown: [...new Set(unknown)] }
 }
 
+/** The target's passkey types: kept where they already include device-bound (the proposed profile enforces attestation), device-bound otherwise. */
+const targetPasskeyTypes = (current: unknown): unknown =>
+  typeof current === 'string' && current.split(',').some(type => type.trim().toLowerCase() === 'devicebound') ? current : 'deviceBound'
+
 function findingsFor(current: Fido2Configuration | null, mapping?: MappingState): PasskeyFinding[] {
   const findings: PasskeyFinding[] = []
   const add = (key: string, label: string, outcome: PasskeyFinding['outcome'], value: string, detail: string): void => { findings.push({ key, label, outcome, value, detail }) }
@@ -114,8 +118,14 @@ function findingsFor(current: Fido2Configuration | null, mapping?: MappingState)
     if (profile) {
       const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.split(',').map(x => x.trim().toLowerCase()) : []
       const known = types.length > 0 && types.every(t => t === 'devicebound' || t === 'synced')
-      const registrationDeviceBound = known && types.includes('devicebound') && attestation === true
-      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : types.length === 1 && types[0] === 'devicebound' ? 'pass' : 'fail', !known ? 'Not read' : types.includes('synced') ? registrationDeviceBound ? 'Device-bound registration only; stored types include synced' : 'Synced passkeys allowed' : 'Device-bound only', `${name}: attestation restricts registration. The stored type setting is checked separately for existing passkeys.`)
+      // The outcome, not the stored flag: synced passkeys cannot be attested, so with
+      // attestation enforced only device-bound passkeys can register, whatever the
+      // stored types say. Graph can keep "deviceBound,synced" while the portal shows
+      // Device-bound, and no portal action changes it, so it is not required. The
+      // allow list is its own check; registered passkeys are checked per account
+      // (passkeyCompatibility.ts).
+      const lockedDown = known && types.includes('devicebound') && attestation === true
+      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : types.length === 1 && types[0] === 'devicebound' || lockedDown ? 'pass' : 'fail', !known ? 'Not read' : types.length === 1 && types[0] === 'devicebound' ? 'Device-bound only' : lockedDown ? 'Device-bound registration only' : types.includes('devicebound') ? 'Synced passkeys allowed' : 'Synced passkeys only', `${name}: device-bound passkeys stay in the authenticator that created them. Synced passkeys cannot be attested, so enforced attestation limits registration to device-bound passkeys; each account's registered passkeys are checked separately.`)
     }
     const known = restrictions && typeof restrictions.isEnforced === 'boolean' && (restrictions.enforcementType === 'allow' || restrictions.enforcementType === 'block') && Array.isArray(restrictions.aaGuids) && restrictions.aaGuids.every(id => typeof id === 'string' && GUID.test(id))
     const strict = known && restrictions.isEnforced && restrictions.enforcementType === 'allow'
@@ -239,7 +249,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
       // Disabled lists confer no approvals; never retain their dormant entries.
       if (restrictions.isEnforced !== true) {
         requiredIds.forEach(id => added.add(id))
-        return { ...structuredClone(profile), passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...requiredIds] } }
+        return { ...structuredClone(profile), passkeyTypes: targetPasskeyTypes(profile.passkeyTypes), attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...requiredIds] } }
       }
       if (restrictions.enforcementType === 'block') {
         const conflict = currentIds.filter(id => requiredIds.includes(id))
@@ -247,7 +257,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
       }
       currentIds.forEach(id => retained.add(id))
       const missing = requiredIds.filter(id => !currentIds.includes(id)); missing.forEach(id => added.add(id))
-      return { ...structuredClone(profile), passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...currentIds, ...missing] } }
+      return { ...structuredClone(profile), passkeyTypes: targetPasskeyTypes(profile.passkeyTypes), attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...currentIds, ...missing] } }
     })
     const invalid = proposed.find(value => value === null || (object(value) && 'review' in object(value)!))
     if (invalid === null) return { kind: 'review', review: 'partialRead', subjects: ['passkeyProfiles'] }
