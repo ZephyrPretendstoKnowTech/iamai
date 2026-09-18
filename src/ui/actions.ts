@@ -19,7 +19,7 @@ import { isDemo } from './demoMode.ts'
 import { afterScanHref } from './shell/routes.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
 import type { BaselineResult } from './baseline.ts'
-import { restoreBaseline } from './baseline.ts'
+import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import { IDLE_SCAN, endTenantTurn, getSession, setScan, setSession, stillThisTurn, tenantTurn } from './session.ts'
 
 /** The sign-in library behind the actions (graph/auth.ts). A test replaces these: the real one needs a browser. */
@@ -36,7 +36,7 @@ export const tenantLib = {
   fetchTenantName: async (): Promise<string | null> => (await import('../graph/organization.ts')).fetchTenantName(),
 }
 /** The baseline reader behind the restore action (ui/baseline.ts). A test replaces it: the real one fetches. */
-export const baselineLib = { restoreBaseline }
+export const baselineLib = { restoreBaseline, loadPinnedBaseline }
 /** The collector, loaded when the first scan starts: it carries the sign-in library, which needs a browser. */
 const collector = () => import('../graph/collect/runScan.ts')
 
@@ -302,6 +302,16 @@ export async function restoreSession(account: AccountInfo | null): Promise<void>
   // The baseline the tenant chose (prompt 14 §6): the pinned index by commit,
   // or the operator's own uploaded files.
   const origin = await storeLib.loadBaselineRecord<BaselineResult['origin']>(account.tenantId).catch(() => null)
-  if (!stillThisTurn(turn) || !origin) return
-  await restoreChosenBaseline(origin, turn)
+  if (!stillThisTurn(turn)) return
+  if (origin) {
+    await restoreChosenBaseline(origin, turn)
+  } else {
+    // The default is deliberately not stored as a choice. Restore it here too,
+    // so opening Plan directly does not depend on mounting Connect first.
+    try {
+      await chooseBaseline(() => baselineLib.loadPinnedBaseline(), false, turn)
+    } catch (e) {
+      if (stillThisTurn(turn)) setSession({ baselineRestoreError: e instanceof Error ? e.message : String(e) })
+    }
+  }
 }

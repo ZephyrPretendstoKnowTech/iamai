@@ -480,6 +480,39 @@ function hydration() {
   return { name, snapshot, origin, pkg }
 }
 
+test('opening a saved plan directly restores the unchosen default baseline without saving a choice', async () => {
+  const h = hydration()
+  let saves = 0
+  actions.storeLib.saveBaselineRecord = async () => { saves += 1 }
+  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+  const restoring = actions.restoreSession(account)
+  h.name.settle('Contoso')
+  h.snapshot.settle(record)
+  h.origin.settle(null)
+  await restoring
+  assert.equal(getSession().lastScan?.snapshot, record.snapshot)
+  assert.equal(getSession().baseline, pinnedResult)
+  assert.equal(saves, 0)
+})
+
+test('signing out during default baseline restoration does not repopulate the signed-out session', async () => {
+  const h = hydration()
+  const pending = deferred<BaselineResult>()
+  let started = false
+  actions.authLib.signOut = async () => {}
+  actions.baselineLib.loadPinnedBaseline = () => { started = true; return pending.promise }
+  const restoring = actions.restoreSession(account)
+  h.name.settle('Contoso')
+  h.snapshot.settle(record)
+  h.origin.settle(null)
+  await flush()
+  assert.equal(started, true)
+  await actions.signOut()
+  pending.settle(pinnedResult)
+  await restoring
+  assert.equal(getSession().baseline, null)
+})
+
 /** Let every settled read run its handlers before the assertions read the session. */
 const flush = async (): Promise<void> => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve()
@@ -615,6 +648,6 @@ test('every read the restoration makes is bound to the turn it began in, and the
   // they touch the session or read on.
   assert.match(restore, /fetchTenantName\(\)[\s\S]*?if \(stillThisTurn\(turn\)\) setSession\(\{ tenantName: name \}\)/, 'a late tenant name is written to the session unchecked')
   assert.match(restore, /loadSnapshotRecord<ScanRecord>[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a late stored scan is written to the session unchecked')
-  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>[\s\S]*?if \(!stillThisTurn\(turn\) \|\| !origin\) return/, 'a late baseline choice is acted on unchecked')
+  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a late baseline choice is acted on unchecked')
   assert.match(restore, /await restoreChosenBaseline\(origin, turn\)/, "the baseline restore starts a turn of its own instead of being handed the restoration's")
 })
