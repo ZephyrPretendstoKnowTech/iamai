@@ -397,3 +397,27 @@ only if they registered here.
   the owner's procedure.
 - The page UI waits for the owner's approval of the v3 layout, which is then promoted to
   `docs/design/approved/anatomy/` with its manifest hash.
+
+## Execution status (2026-09-18)
+
+Built and shipped: segments 1–7, except the Intune read.
+
+- **The Intune read is held on a contradiction.** `SPEC.md` §2 (a hard decision:
+  "One admin-consent screen with the full read scope set. No staged consent")
+  contradicts this brief's incremental consent. Microsoft also documents two scopes,
+  not one: `DeviceManagementServiceConfig.Read.All` for the Windows Hello for
+  Business enrollment configuration, and `DeviceManagementConfiguration.Read.All`
+  for the settings catalog (Windows Hello and macOS Platform SSO policies).
+  - Until the owner chooses, the snapshot type carries `intune` (IntuneReading).
+  - The Windows Hello setup check reads unknown, with the "IAMAI can't see Windows
+    Hello for Business settings; check Intune" wording.
+  - Eligibility falls back to the join state.
+  - The choice is between:
+    - adding both scopes to the one consent screen, which forces existing tenants
+      to consent again;
+    - amending SPEC §2 to allow the incremental path described above.
+- **Page contracts.** `docs/qa/page-contracts.json` is not edited (Claude Code never
+  edits it). The proposed readiness entry is
+  `docs/qa/page-contracts-readiness-v3-proposal.md`.
+- **The layout** is promoted to `docs/design/approved/anatomy/mfa-readiness-v3.html`.
+  v2 is in `docs/design/superseded/`.
