@@ -128,88 +128,6 @@ function ApprovedAuthenticatorModels({ models }: { models: ApprovedModel[] }) {
   </details>
 }
 
-export function EmergencyReadinessActions({ tile, projected, printing, onTask, onSelectAccounts, stepId }: {
-  tile: ReadinessTile
-  projected: EmergencyTaskProjection
-  printing: boolean
-  onTask: (id: string) => void
-  onSelectAccounts: () => void
-  stepId: string
-}) {
-  const key = tile.key.replace(/^configuration:/, '')
-  const tasks = projected.tasks.filter(item => item.readinessKey === key || item.readinessKeys?.includes(key))
-  const factsFor = (task: EmergencyAccountTask): { label: string; value: string }[] => {
-    const issueKeys = new Set(task.issueKeys ?? [])
-    const matched = (tile.items ?? []).filter(item => item.issueKeys?.some(issue => issueKeys.has(issue)))
-    const multipleSubjects = new Set(matched.map(item => item.subjectLabel).filter(Boolean)).size > 1
-    const source = task.facts?.length ? task.facts : matched.length ? matched.map(item => item.factLabel === 'AAGUID' && item.subjectLabel
-      ? { label: item.subjectLabel, value: `AAGUID: ${item.value}` }
-      : {
-          label: multipleSubjects && item.subjectLabel
-            ? `${item.subjectLabel} · ${item.factLabel ?? item.label}`
-            : item.factLabel ?? item.label,
-          value: item.value,
-        }) : []
-    return source.filter((fact, index, rows) => rows.findIndex(other => other.label === fact.label && other.value === fact.value) === index)
-  }
-  const taskList = (rows: EmergencyAccountTask[]) => printing || rows.length === 0 ? null : (
-    <ul className="emergency-readiness-actions">
-      {rows.map(item => (
-        <li key={item.id} className="emergency-readiness-action">
-          <strong>{item.title}</strong>
-          {(item.targetUpn || item.targetLabel) && <code>{item.targetUpn ?? item.targetLabel}</code>}
-          {factsFor(item).length ? <dl>{factsFor(item).map(fact => <div key={`${fact.label}:${fact.value}`} className="emergency-fact"><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl> : item.evidence && <span>{item.evidence}</span>}
-          <button type="button" className="inline-link" onClick={() => onTask(item.id)}>{item.actionLabel}</button>
-        </li>
-      ))}
-    </ul>
-  )
-  const stepTwoTaskList = (rows: EmergencyAccountTask[]) => printing || rows.length === 0 ? null : (
-    <ul className="emergency-readiness-actions">
-      {rows.map(item => {
-        const facts = factsFor(item)
-        const visible = facts.slice(0, 3)
-        const remaining = facts.slice(3)
-        const factRows = (items: typeof facts) => <dl>{items.map((fact, index) => <div key={`${fact.label}:${fact.value}:${index}`} className="emergency-fact"><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
-        return <li key={item.id} className="emergency-readiness-action">
-          <strong>{item.readinessTitle ?? item.title}</strong>
-          {visible.length ? factRows(visible) : item.evidence && <span>{item.evidence}</span>}
-          {remaining.length > 0 && <details className="approved-model-disclosure"><summary>Show {remaining.length} more</summary>{factRows(remaining)}</details>}
-          {item.readinessDirection && <p>{item.readinessDirection}</p>}
-        </li>
-      })}
-    </ul>
-  )
-  if (stepId === 's-prereq-break-glass' && key === 'account-setup') {
-    const required = tasks.filter(item => item.required)
-    const create = tasks.find(item => item.id === 'create-account')
-    return <div className="emergency-readiness-extra">
-      {tile.tone !== 'good' && !printing && <button type="button" className="inline-link" onClick={onSelectAccounts}>Select emergency accounts</button>}
-      {taskList(required)}
-      {create && !printing && <p><button type="button" className="inline-link" onClick={() => onTask(create.id)}>Create an emergency account</button></p>}
-    </div>
-  }
-  if (stepId === 's-prereq-break-glass' && key === 'recovery-methods') {
-    const required = tasks.filter(item => item.required)
-    const tap = tasks.filter(item => item.id.startsWith('issue-tap:'))
-    return <div className="emergency-readiness-extra">
-      {taskList(required)}
-      {taskList(tap)}
-      <details className="approved-model-disclosure"><summary>Approved passkey models</summary>
-        <ul className="approved-model-list">{(projected.approvedModels ?? []).map(model => <li key={model.aaguid}><strong>{model.name}</strong><span>{model.aaguid}{model.source === 'existing' ? ' · Existing tenant allowance retained during the transition' : ''}</span></li>)}</ul>
-      </details>
-    </div>
-  }
-  if (stepId === 's-prereq-passkey-settings' && key === 'protection') {
-    return <div className="emergency-readiness-extra">
-      {taskList(tasks.filter(item => item.required))}
-      <ApprovedAuthenticatorModels models={projected.approvedModels ?? []} />
-    </div>
-  }
-  if (stepId === 's-prereq-exclusion-group') return stepTwoTaskList(tasks.filter(item => item.required))
-  return taskList(tasks.filter(item => item.required))
-}
-
 /** An identifier (UPN, object id, model id) with break opportunities after "@", "." and "-", so a narrow column wraps it at those boundaries rather than mid-word. */
 export function Breakable({ text }: { text: string }) {
   return <>{text.split(/(?<=[@.\-])/).map((part, index) => <Fragment key={index}>{index > 0 && <wbr />}{part}</Fragment>)}</>
@@ -372,18 +290,6 @@ export function ContentStep({
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)
-  const [taskFocusRequest, setTaskFocusRequest] = useState(0)
-  const accountDecisionRef = useRef<HTMLDivElement>(null)
-  const focusIn = (ref: { current: HTMLElement | null }): void => {
-    const target = ref.current?.querySelector<HTMLElement>('input, select, button') ?? ref.current
-    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    target?.focus({ preventScroll: true })
-  }
-  const openEmergencyTask = (id: string): void => {
-    setImplementationChannel('portal')
-    chooseEmergencyTask(id)
-    setTaskFocusRequest(value => value + 1)
-  }
   const chooseEmergencyTask = (id: string | null): void => {
     setEmergencyTaskId(id)
     writeEmergencyTaskPreference(emergencyTaskPreferenceKey, { taskId: id ?? undefined })
@@ -503,16 +409,8 @@ export function ContentStep({
             onOpenMappings={null}
             printing={printing}
             extra={(t) => {
-              const taskBody = isEmergencyTaskStep && emergencyAccountTasks ? (
-                <EmergencyReadinessActions
-                  tile={t}
-                  projected={emergencyAccountTasks}
-                  printing={printing}
-                  onTask={openEmergencyTask}
-                  onSelectAccounts={() => focusIn(accountDecisionRef)}
-                  stepId={step.id}
-                />
-              ) : null
+              // Printed Steps 2–3 draw the source findings; Step 3 protections also list the approved models.
+              const taskBody = isPasskeySettings && t.key === 'configuration:protection' && emergencyAccountTasks ? <div className="emergency-readiness-extra"><ApprovedAuthenticatorModels models={emergencyAccountTasks.approvedModels ?? []} /></div> : null
               const slot = t.key === 'configuration:credential-custody' && contract.hardening
                 ? { key: t.key, label: t.label, accountId: null, state: 'hardening' as const, minimum: [], hardening: [] }
                 : contract.emergencySlots.find((s) => s.key === t.key)
@@ -565,7 +463,7 @@ export function ContentStep({
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
           {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
-          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && (isEmergencyAccounts || step.id === 's-prereq-exclusion-group' ? <div ref={accountDecisionRef}><Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} /></div> : <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />)}
+          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -591,7 +489,6 @@ export function ContentStep({
               onChooseChannel={isEmergencyTaskStep ? setImplementationChannel : null}
               chosenTaskId={isEmergencyTaskStep ? emergencyTaskId : null}
               onChooseTask={isEmergencyTaskStep ? chooseEmergencyTask : null}
-              taskFocusRequest={taskFocusRequest}
               taskPreferenceKey={isEmergencyTaskStep ? emergencyTaskPreferenceKey : null}
               heading={isEmergencyJourneyStep ? 'Implementation Tasks' : undefined}
             />
@@ -763,7 +660,7 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskFocusRequest, taskPreferenceKey, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -789,7 +686,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   onChooseChannel: ((channel: Channel | null) => void) | null
   chosenTaskId: string | null
   onChooseTask: ((taskId: string | null) => void) | null
-  taskFocusRequest: number
   taskPreferenceKey?: string | null
   emptyTaskText?: string
   heading?: string
@@ -798,7 +694,6 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   const [variants, setVariants] = useState<Record<string, string>>(() => taskPreferenceKey ? readEmergencyTaskPreference(taskPreferenceKey).variants ?? {} : {})
   const base = useId()
   const dialogBase = useId()
-  const taskHeading = useRef<HTMLHeadingElement>(null)
   const W = CONTRACT.implementation
   const ids = artifacts.map((a) => a.id)
   const chosen = onChooseChannel ? chosenChannel : localChannel
@@ -813,18 +708,12 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   const taskList = tasks?.tasks ?? []
   const activeTask = taskList.find(item => item.id === chosenTaskId) ?? taskList.find(item => item.id === tasks?.recommendedTaskId) ?? taskList.find(item => item.required) ?? taskList[0] ?? null
   const activeVariant = activeTask?.variants?.find(item => item.id === variants[activeTask.id])?.id ?? activeTask?.defaultVariantId ?? activeTask?.variants?.[0]?.id ?? null
-  useEffect(() => {
-    if (taskFocusRequest > 0 && tab === 'portal' && activeTask) {
-      taskHeading.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      taskHeading.current?.focus({ preventScroll: true })
-    }
-  }, [taskFocusRequest, tab, activeTask?.id])
-  const renderTask = (item: EmergencyAccountTask, cls: string, focus = false) => {
+  const renderTask = (item: EmergencyAccountTask, cls: string) => {
     const variant = item.variants?.find(row => row.id === variants[item.id])?.id ?? item.defaultVariantId ?? item.variants?.[0]?.id ?? null
     const taskFacts = emergencyTaskFacts(item, variant)
     // The Task selector already names the task on screen; printing lists every task, so it keeps the title.
     return <section key={item.id} className={`${cls} emergency-task-body`} data-emergency-account-tasks="true">
-      <h5 ref={focus ? taskHeading : undefined} tabIndex={focus ? -1 : undefined} className={printing ? undefined : 'sr-only'}>{item.title}</h5>
+      <h5 className={printing ? undefined : 'sr-only'}>{item.title}</h5>
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
       {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
       <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
@@ -837,7 +726,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
         ? <div className="emergency-task-print" data-emergency-account-tasks="true">{printableTasks.map(item => renderTask(item, cls))}</div>
         : <div className={`${cls} emergency-task-empty`} data-emergency-account-tasks="true">{emptyTaskText ?? 'No Entra action is currently identified. Review Readiness.'}</div>
       : activeTask
-        ? renderTask(activeTask, cls, !dialog)
+        ? renderTask(activeTask, cls)
         : <div className={`${cls} emergency-task-empty`} data-emergency-account-tasks="true">{emptyTaskText ?? 'No Entra action is currently identified. Review Readiness.'}</div>
     : active === null ? null : active.form === 'list' ? (
       <ol className={cls}>
