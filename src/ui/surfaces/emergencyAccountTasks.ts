@@ -37,6 +37,8 @@ export type EmergencyAccountTask = {
   /** Exact constituent findings this action/evidence replaces in interactive Readiness. */
   issueKeys?: string[]
   facts?: { label: string; value: string }[]
+  /** Facts shown only in the Tasks Remaining tile, never repeated in the Implementation Task. */
+  readinessFacts?: { label: string; value: string }[]
   steps: string[]
   variants?: EmergencyAccountTaskVariant[]
   defaultVariantId?: string

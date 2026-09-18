@@ -4816,6 +4816,12 @@ th .th-sort:focus-visible,
 }
 .emergency-account-status h5 { margin: 0 0 6px; font-size: var(--t-2); }
 .emergency-account-status > p:not(.emergency-account-label) { margin: 0; color: var(--secondary-text); }
+.emergency-account-facts { margin-top: 10px; }
+.emergency-account-facts dl, .emergency-account-more dl { display: grid; gap: 5px; margin: 0; }
+.emergency-account-more { margin-top: 8px; }
+.emergency-account-more > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
+.emergency-account-more > dl { margin-top: 8px; }
+.emergency-account-status .approved-model-disclosure { margin-top: 10px; }
 .emergency-account-completed { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .emergency-account-completed > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
 .emergency-account-completed ul { margin: 8px 0 0; padding-left: 18px; font-size: var(--t-0); }
@@ -4839,7 +4845,7 @@ th .th-sort:focus-visible,
 .emergency-finding-group h5 { margin: 0 0 6px; overflow-wrap: anywhere; }
 .emergency-finding-group dl, .emergency-readiness-action dl { display: grid; gap: 5px; margin: 0; }
 .emergency-fact { display: grid; grid-template-columns: minmax(8rem, .7fr) minmax(0, 1.3fr); gap: 8px; min-width: 0; }
-.emergency-fact dt { color: var(--secondary-text); }
+.emergency-fact dt { color: var(--secondary-text); overflow-wrap: anywhere; }
 .emergency-fact dd { margin: 0; overflow-wrap: anywhere; }
 .emergency-fact-action { margin-top: 4px; }
 .recovery-account-choice > .option-value { align-items: start; }

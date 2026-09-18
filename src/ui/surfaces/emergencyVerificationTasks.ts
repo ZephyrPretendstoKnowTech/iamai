@@ -13,7 +13,8 @@ export function emergencyVerificationTasksOf(phase: CleanupPhase): EmergencyTask
       id: 'verify-emergency-sign-in', accountId: null, title: 'Verify emergency sign-in', targetUpn: null,
       required: pending.length > 0, readinessKey: 'recovery-sign-ins', evidence: pending.length ? `${pending.length} account${pending.length === 1 ? '' : 's'} still need a qualifying sign-in.` : 'Both emergency accounts are verified.', actionLabel: 'Open sign-in instructions',
       issueKeys: pending.map(id => `recovery-sign-in:${id.toLowerCase()}`),
-      facts: phase.accountIds.map(id => ({ label: upnOf(phase, id), value: verified.has(id) ? 'Verified' : 'Sign-in required' })),
+      // The per-account list is the Sign-in Evidence tile's; the procedure names no list of its own.
+      readinessFacts: phase.accountIds.map(id => ({ label: upnOf(phase, id), value: verified.has(id) ? 'Verified' : 'Sign-in required' })),
       steps: ['Keep your working administrator session open.', 'Retrieve the prepared passkey for the emergency account named in Tasks Remaining.', 'Open a separate private browser window and go to **Microsoft Entra admin center**.', 'Sign in as that emergency account using its prepared passkey.', 'Confirm the account and tenant. Open **Entra ID → Conditional Access → Policies** and open a policy without editing it.', 'Sign out and close the private window. Repeat for each remaining account.', 'Wait 5–10 minutes, then select **Scan to update the plan**. If the event has not appeared, wait and scan again.'],
     },
     {

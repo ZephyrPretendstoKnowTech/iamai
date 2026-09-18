@@ -34,7 +34,7 @@ import { ManualReviewForm } from './ManualReviewForm.tsx'
 // And it does not decide anything. What the step is, whether an implementation
 // is offered, what blocks it and what finishes it are the contract's answers,
 // asked once, below the UI.
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
@@ -70,8 +70,10 @@ import type { OwnerConfirmation, TroubleshootingScenario } from '../../content/i
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
-import type { EmergencyAccountStatus, EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
-import { consolidateEmergencyReadiness } from './emergencyReadiness.ts'
+import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
+import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
+import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
+import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 
 type Ex = Record<string, unknown>
@@ -118,6 +120,12 @@ function WhoBlockView({ block }: { block: WhoBlock }) {
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
   return <>{fillText(s, ex as Record<string, unknown>)}</>
+}
+
+function ApprovedAuthenticatorModels({ models }: { models: ApprovedModel[] }) {
+  return <details className="approved-model-disclosure"><summary>Approved authenticator models</summary>
+    <ul className="approved-model-list">{models.map(model => <li key={model.aaguid}><span>{model.name} — {model.aaguid}</span></li>)}</ul>
+  </details>
 }
 
 export function EmergencyReadinessActions({ tile, projected, printing, onTask, onSelectAccounts, stepId }: {
@@ -195,44 +203,61 @@ export function EmergencyReadinessActions({ tile, projected, printing, onTask, o
   if (stepId === 's-prereq-passkey-settings' && key === 'protection') {
     return <div className="emergency-readiness-extra">
       {taskList(tasks.filter(item => item.required))}
-      <details className="approved-model-disclosure"><summary>Approved authenticator models</summary>
-        <ul className="approved-model-list">{(projected.approvedModels ?? []).map(model => <li key={model.aaguid}><span>{model.name} — {model.aaguid}</span></li>)}</ul>
-      </details>
+      <ApprovedAuthenticatorModels models={projected.approvedModels ?? []} />
     </div>
   }
   if (stepId === 's-prereq-exclusion-group') return stepTwoTaskList(tasks.filter(item => item.required))
   return taskList(tasks.filter(item => item.required))
 }
 
-function EmergencyAccountStatusTile({ account }: { account: EmergencyAccountStatus }) {
-  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`}>
+/** An identifier (UPN, object id, model id) with break opportunities after "@", "." and "-", so a narrow column wraps it at those boundaries rather than mid-word. */
+export function Breakable({ text }: { text: string }) {
+  return <>{text.split(/(?<=[@.\-])/).map((part, index) => <Fragment key={index}>{index > 0 && <wbr />}{part}</Fragment>)}</>
+}
+
+function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
+  return <dl>{facts.map((fact, index) => <Fragment key={`${fact.label}:${fact.value}:${index}`}>
+    <div className="emergency-fact"><dt><Breakable text={fact.label} /></dt><dd><Breakable text={fact.value} /></dd></div>
+    {fact.link && <div className="emergency-fact-action"><a href={fact.link.href}>{fact.link.label}</a></div>}
+  </Fragment>)}</dl>
+}
+
+/** The Tasks Remaining tile standard, from Step 1's account tile: subject label, subject identity, the single highest-priority remaining action and its instruction, its finding per subject with the rest behind a disclosure, then Completed checks. */
+function EmergencyAccountStatusTile({ account, extra = null, printing = false }: { account: EmergencySubjectTile; extra?: ReactNode; printing?: boolean }) {
+  const facts = account.facts ?? []
+  const more = account.moreFacts ?? []
+  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
-    {account.upn && <p className="emergency-account-upn">{account.upn}</p>}
+    {account.upn && <p className="emergency-account-upn"><Breakable text={account.upn} /></p>}
     {account.remainingCount !== null && account.remainingCount > 0 && <p className="emergency-account-count">{account.remainingCount} check{account.remainingCount === 1 ? '' : 's'} remaining</p>}
     <h5>{account.title}</h5>
-    <p>{account.instruction}</p>
-    {account.completed.length > 0 && <details className="emergency-account-completed">
+    {account.instruction && <p>{account.instruction}</p>}
+    {facts.length > 0 && <div className="emergency-account-facts"><EmergencyFacts facts={facts} /></div>}
+    {more.length > 0 && <details className="emergency-account-more" open={printing || undefined}><summary>Show {more.length} more</summary><EmergencyFacts facts={more} /></details>}
+    {extra}
+    {account.completed.length > 0 && <details className="emergency-account-completed" open={printing || undefined}>
       <summary>Completed checks · {account.completed.length}</summary>
-      <ul>{account.completed.map(item => <li key={item}>{item}</li>)}</ul>
+      <ul>{account.completed.map(item => <li key={item}><Breakable text={item} /></li>)}</ul>
     </details>}
   </article>
 }
 
-function EmergencyAccountReadiness({ projected, printing, onWhy }: { projected: EmergencyTaskProjection; printing: boolean; onWhy: (() => void) | null }) {
-  const accounts = projected.accounts ?? []
-  const remaining = accounts.filter(account => !account.satisfied)
-  const satisfied = accounts.filter(account => account.satisfied)
+/** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N. */
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, extraFor = () => null }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; extraFor?: (subject: EmergencySubjectTile) => ReactNode }) {
+  const remaining = subjects.filter(subject => !subject.satisfied)
+  const satisfied = subjects.filter(subject => subject.satisfied)
+  const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} extra={extraFor(subject)} printing={printing} />
   return <section className="step-section readiness-section emergency-account-readiness">
     <h4>Tasks Remaining</h4>
     {remaining.length > 0
-      ? <div className="emergency-account-status-grid">{remaining.map(account => <EmergencyAccountStatusTile key={account.key} account={account} />)}</div>
+      ? <div className="emergency-account-status-grid">{remaining.map(tile)}</div>
       : <p className="readiness-clear"><span className="readiness-status readiness-status-good" aria-hidden="true">✓</span><strong>No tasks remaining</strong></p>}
     {satisfied.length > 0 && <details className="readiness-satisfied" open={printing || undefined}>
       <summary>Satisfied · {satisfied.length}</summary>
-      <div className="emergency-account-status-grid satisfied">{satisfied.map(account => <EmergencyAccountStatusTile key={account.key} account={account} />)}</div>
+      <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>Scan to update the plan</strong>.</p>
-    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{remaining.length ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'}</span></div><button type="button" className="inline-link" onClick={onWhy}>Why IAMAI says this →</button></div>}
+    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div><button type="button" className="inline-link" onClick={onWhy}>Why IAMAI says this →</button></div>}
   </section>
 }
 
@@ -464,7 +489,14 @@ export function ContentStep({
               bar that says where the step stands with its one action under it,
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
-          {isEmergencyAccounts && emergencyAccountTasks ? <EmergencyAccountReadiness projected={emergencyAccountTasks} printing={printing} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} /> : <ReadinessSection
+          {isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
+          : isEmergencyTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
+            subjects={emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
+            printing={printing}
+            barMain={displayedReadiness.bar.main}
+            onWhy={hasEvidence ? () => setDialog('readiness') : null}
+            extraFor={subject => isPasskeySettings && subject.key === 'configuration:protection' ? <ApprovedAuthenticatorModels models={emergencyAccountTasks.approvedModels ?? []} /> : null}
+          /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={isEmergencyJourneyStep ? 'Tasks Remaining' : undefined}
             showClosedCount={!['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)}
