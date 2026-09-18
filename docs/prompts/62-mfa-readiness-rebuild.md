@@ -212,10 +212,26 @@ never re-read.
 - **Devices:** add `operatingSystemVersion`.
 - **Intune (new scope):** Windows Hello for Business enrollment configuration, and the
   settings-catalog policies for Windows Hello for Business and macOS Platform SSO.
-  - Add the scope to `copy/permissions.ts` with plain consent wording.
+  - Add the scope to `copy/permissions.ts` with plain consent wording, marked optional.
+    The Connect page's consent row names it, with how to remove it, like the others.
   - It must fail closed: not consented, not licensed or denied all read "not visible",
-    with the reason.
-  - The Connect page's consent row names it.
+    with the reason. Eligibility falls back to join state, and no scan ever blocks on it.
+  - **Consent path** (existing tenants consented without it, and a Global Reader can't
+    consent):
+    - **Requested incrementally, not at sign-in.** The sign-in scopes (`GRAPH_SCOPES`)
+      stay as they are, so no existing tenant is forced to re-consent. The scan asks
+      for the Intune scope silently in its own token request.
+    - **A silent request that fails** with consent or interaction required records
+      "not granted". It is not treated as an error.
+    - **The page shows one Tenant setup row:** "IAMAI can't see Windows Hello or Mac
+      sign-in settings. A Global Administrator can grant read-only access once."
+      - Signed in as a Global Administrator: a **Grant read access** button runs an
+        interactive consent for that one scope, then scans again.
+      - Otherwise: **Copy the consent link**, the tenant's admin-consent URL for
+        IAMAI's app id, with "Send it to a Global Administrator".
+    - **Test the three outcomes:** not granted (the row and the fallback wording),
+      granted but Intune unlicensed ("not visible: no Intune licence"), and granted and
+      read.
 - **Coverage statement.** Coverage is stated once, at page level: "Sign-ins read
   <from> → <to>" plus "N people read individually".
 
@@ -229,32 +245,55 @@ In order. Each section answers one question.
    - "N of M are Ready", with Seamless beside it as the goal.
    - One segmented bar: Seamless, Ready, Confirm, Needs, Blocked, Unknown.
    - A sub-line: "Ready = phishing-resistant sign-in confirmed in the last 30 days on
-     every device type they use."
-3. **Tenant setup.** *Can people even do this?* The prerequisites tile (segment 3).
-   Satisfied checks collapse.
-4. **Next check.** *What do I do first?*
-   - The largest group, and the one action that moves it.
-   - A secondary action where one exists: a registration campaign, a Temporary Access
-     Pass, the email.
-5. **People, grouped by next action.**
-   - Each group is a collapsible section headed by the action and its count. The first
-     group is open.
+     every device type they use." The footer adds that the count covers people active
+     in 90 days.
+   - **Progress since the last scan,** beside the answer: "+N Ready", "+N Seamless" and
+     "N lapse in the next 7 days", with a link to those people.
+     - Source: a per-scan summary kept with the history (`mfaHistory.ts`): the scan
+       date, each state's count, and each person's state. It holds no raw records.
+     - The first scan shows no change block.
+     - The lapse count comes from each Ready person's "Ready until" date.
+3. **Next check, then the rest of the worklist.** *What do I do first?* The next check
+   is not a separate card: it is the first group of the worklist, opened, with its
+   explanation and actions under the heading. It is chosen in this order:
+   - A **tenant setup check** takes the slot when the people it blocks are more than
+     the largest person group. On a tie, setup wins, because those people can't act
+     until it lands. It renders as its own block, "Tenant setup, unblocks N people",
+     and the blocked people follow as "Waiting on tenant setup".
+   - Otherwise the **largest actionable person group** takes it. Groups of Ready people
+     never do.
+   - The other groups follow in the fixed order, collapsed.
+   - The Tenant setup tile in the rail keeps every prerequisite (satisfied checks
+     collapsed). When its check holds the slot, the tile says "Shown above as the next
+     check".
+4. **People, grouped by next action.**
+   - Each group is a collapsible section headed by the action and its count.
    - Rows show the person, device chips (a computer and a phone icon, each with a
      state), the phishing-resistant methods held, the last confirmed use and the next
      step.
-   - Search, the Admins filter, CSV and paging (50) stay.
-6. **Person detail.** A non-modal side panel (NN/g: never cover the table):
+   - Search, the Admins filter and CSV stay.
+   - **At scale** (a group over 50 people):
+     - The group splits into sub-groups. **Admins come first**, open, three rows, then
+       "Show all N".
+     - Then sub-groups by **device setup** (the default: Windows and iPhone, Windows
+       only, Mac and iPhone, and so on), because each shares one set of instructions.
+     - A **Group by** control offers **Department** instead (`users.department`, which
+       is already collected).
+     - Each sub-group pages 50 rows, admins first.
+     - The acceptance fixture is `large`: no group renders more than 50 rows before the
+       admin opens a sub-group.
+5. **Person detail.** A non-modal side panel (NN/g: never cover the table):
    - devices seen, with type, OS, join state, last seen, eligibility and best option;
    - methods, with model, compatibility now and after Step 3, and last confirmed use
      and where;
    - one next action;
    - "Ready until <date>".
-7. **Explained, not counted.** Each population's count and its action (the Plan step
+6. **Explained, not counted.** Each population's count and its action (the Plan step
    link).
-8. **Unknown.** One line per reason, with its count and IAMAI's fix.
-9. **Recommendations (collapsed).** Seamless upgrades for Ready people, and the
+7. **Unknown.** One line per reason, with its count and IAMAI's fix.
+8. **Recommendations (collapsed).** Seamless upgrades for Ready people, and the
    registration campaign.
-10. **Satisfied · N** (collapsed), then the ledger footer: the denominator, coverage,
+9. **Satisfied · N** (collapsed), then the ledger footer: the denominator, coverage,
     and the Inventory link.
 
 Words live in `pages.readiness` (rewritten keys; the commit message says so). Pass the
@@ -268,8 +307,18 @@ footer test's word rules ("person", never "user", in page words).
 - **`methodPreparation`.** Takes the "seen working" outcome: a successful sign-in with
   the method class under the target strength settles compatibility for that person
   (audit §4, finding 2). The Plan's gates otherwise stay as they are.
-- **`MfaHandoff`.** Previews use the new state's words, and "Has" and "Needs" move to
-  `content.json`.
+- **`MfaHandoff`: Plan previews speak the step's own requirement, never this page's
+  bar.**
+  - A held step previews the people its own gate names (`stepMfaHold`, from
+    `methodPreparation`), in that requirement's words: for example "Has no method
+    allowed by Require MFA for Everyone".
+  - It then links here with one line: "MFA Readiness holds the higher bar:
+    phishing-resistant on every device."
+  - The Plan never shows a person as "Needs a method" by this page's standard while the
+    step counts them as prepared. The acceptance test: on the demo tenant's held MFA
+    steps, every previewed person is one the step's own gate names, worded in the
+    step's requirement, and no preview uses this page's state words.
+  - "Has" and "Needs" move to `content.json`.
 
 ## Fixtures and demo (segment 7)
 
@@ -307,7 +356,13 @@ footer test's word rules ("person", never "user", in page words).
     Step 3 the page note appears;
   - every Unknown carries a reason and a fix; every explained population carries its
     wording and action;
-  - the Intune scope, not consented, yields "not visible" and no failure.
+  - the Intune scope, not consented, yields "not visible" and no failure;
+  - the next check is the first group, never a separate card that repeats it. A setup
+    check that blocks more people than the largest group takes the slot;
+  - on `large`, admins lead every sub-grouped group, and no group shows more than 50
+    rows until a sub-group is opened;
+  - the progress block's deltas come from the stored per-scan summary, and a first
+    scan shows none.
 - **Screen.** Desktop 1280 and mobile 375, with no horizontal scroll. The segmented bar
   and the device chips carry text, never colour alone (WCAG 1.4.1). Contrast is AA in
   both themes.
