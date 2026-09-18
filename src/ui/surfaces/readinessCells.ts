@@ -94,9 +94,10 @@ export function roleWord(r: ReadinessRow): string {
 export type Chip = { kind: 'computer' | 'phone'; os: string; word: string; tone: ReadinessState | 'unread'; title: string }
 
 /** A device's chip: the device, and where it stands. */
-export function deviceChip(d: DeviceReading, state: ReadinessState): Chip {
-  const tone: Chip['tone'] = d.seamless ? 'seamless' : d.proof ? 'ready' : state === 'blocked' ? 'blocked' : state === 'method' ? 'method' : state === 'unknown' ? 'unread' : d.type === 'phone' && state === 'device' ? 'device' : 'confirm'
-  const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' ? T.chip.noPasskey : T.chip.notConfirmed
+export function deviceChip(d: DeviceReading, state: ReadinessState, holdsPasskey = false): Chip {
+  const tone: Chip['tone'] = d.seamless ? 'seamless' : d.proof ? 'ready' : state === 'blocked' ? 'blocked' : state === 'method' ? 'method' : state === 'unknown' ? 'unread' : d.type === 'phone' && state === 'device' && !holdsPasskey ? 'device' : 'confirm'
+  // In Needs a device, a phone with no passkey reads No passkey; a device whose method the person already holds reads Not confirmed.
+  const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' && d.type === 'phone' && !holdsPasskey ? T.chip.noPasskey : T.chip.notConfirmed
   const trust = d.trust ?? 'unknown'
   return { kind: d.type, os: osWord(d.os), word, tone, title: `${d.version ?? osWord(d.os)}. ${T.panel.trust[trust]}` }
 }
@@ -105,7 +106,7 @@ export function deviceChip(d: DeviceReading, state: ReadinessState): Chip {
 export function deviceChips(r: ReadinessRow): { chips: Chip[]; noPhone: boolean } {
   const rd = r.readiness
   if (!rd || r.state === null) return { chips: [], noPhone: false }
-  const chips = rd.devices.map((d) => deviceChip(d, r.state as ReadinessState))
+  const chips = rd.devices.map((d) => deviceChip(d, r.state as ReadinessState, rd.hasPasskey === true))
   return { chips, noPhone: rd.devices.length > 0 && !rd.devices.some((d) => d.type === 'phone') }
 }
 
@@ -208,7 +209,10 @@ export function checkWords(c: SetupCheck): { line: string; text: string } {
 
 /** The CSV row, in the columns' order after the name: role, devices, methods, state, next step. */
 export function rowCells(r: ReadinessRow): string[] {
-  const devices = deviceChips(r).chips.map((c) => `${c.os}: ${c.word}`).join('; ')
+  // Every chip the screen shows, the quiet ones included (no phone sign-ins, no sign-in in 30 days).
+  const shown = deviceChips(r)
+  const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null ? [(pages.readiness as unknown as { sub: { noDevices: string } }).sub.noDevices] : [])]
+  const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
   return [roleWord(r), devices, methodsCell(r).main, state, nextCell(r)]
 }

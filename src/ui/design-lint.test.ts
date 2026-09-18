@@ -167,7 +167,7 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // Copy and Expand controls are circles in the approved design
       // (docs/design/approved/anatomy/plan-step-v1.html `.readiness-status`,
       // `.icon-btn{border-radius:50%}`); the mark sits beside its tile's words.
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector) || /\.readiness-status\b/.test(r.selector) || /\.icon-btn\b/.test(r.selector))) continue
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector) || /\.readiness-status\b/.test(r.selector) || /\.icon-btn\b/.test(r.selector) || /\.state-dot\b/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
@@ -179,7 +179,11 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // (docs/design/approved/anatomy/connect-v3.html `.num{border-radius:999px}`).
       // And the opened Plan step's implementation channels, which the approved
       // design draws as pills (plan-step-v1.html `.impl-tab{border-radius:999px}`).
-      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b|\.plan-controls \.count|\.impl-tabs \.tab\b/.test(r.selector)) continue
+      // MFA Readiness v3 (docs/design/approved/anatomy/mfa-readiness-v3.html) draws its
+      // state dot as a circle beside its word (`.dot{border-radius:50%}`, allowed above as
+      // `.state-dot`), and its Admin tag and the panel's state as full rounds
+      // (`.tag`, `.state{border-radius:999px}`).
+      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b|\.plan-controls \.count|\.impl-tabs \.tab\b|\.surface\.readiness \.tag\b|\.panel-state\b/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
@@ -253,7 +257,18 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    the opened Plan step's readiness mark (docs/design/approved/
   //                    anatomy/plan-step-v1.html `.readiness-status`): a ✓ ! … glyph
   //                    beside the tile's own label and value, so the words say it.
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-|\.readiness-status-/
+  //   MFA Readiness v3 (prompt 62, mfa-readiness-v3.html):
+  //   .state-dot.s-*   the dot beside a state's own word (the legend, a group, the panel)
+  //   .dev-word.s-*    a device chip's word, which is the state itself
+  //   .readiness-bar .s-*
+  //                    the bar, aria-hidden, whose legend names every state and count
+  //   .readiness-change b
+  //                    the "+N" beside the word Ready or Seamless
+  //   .surface.readiness .tag
+  //                    the Admin tag: the role's own NAME in the admin colour
+  //   .readiness-tile li .ok
+  //                    the check mark beside a completed check's own words
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))
