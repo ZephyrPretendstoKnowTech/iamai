@@ -38,13 +38,10 @@ export function consolidateEmergencyReadiness(
 export type EmergencyFact = { label: string; value: string; link?: { label: string; href: string } }
 
 /** One Tasks Remaining tile in the Step 1 account-tile standard: subject label,
- * subject identity, the single highest-priority remaining action with its short
- * instruction, the highest-priority finding per subject (the rest behind a
- * disclosure), then the completed checks. */
-export type EmergencySubjectTile = EmergencyAccountStatus & { facts?: EmergencyFact[]; moreFacts?: EmergencyFact[] }
-
-/** Subjects whose highest-priority finding shows before the disclosure. */
-export const VISIBLE_SUBJECTS = 3
+ * the subject(s) the next check concerns, the one next check and what is wrong,
+ * one action (the owning step's link or the Implementation Task), then the
+ * completed checks. Everything else waits behind the remaining count. */
+export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string } }
 
 const rank = (outcome: string | undefined): number => outcome === 'fail' ? 0 : outcome === 'unknown' ? 1 : 2
 
@@ -56,40 +53,32 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
   const task = satisfied ? undefined : projected?.tasks.find(item => item.required && (item.readinessKey === key || item.readinessKeys?.includes(key)))
   const items = tile.items ?? []
   const passed = (item: ConfigurationFindingItem): boolean => item.outcome === 'pass' || (item.outcome === undefined && satisfied)
-  const pending = items.filter(item => !passed(item)).map((item, index) => ({ item, index })).sort((a, b) => rank(a.item.outcome) - rank(b.item.outcome) || a.index - b.index).map(row => row.item)
-  const taskFacts = task?.readinessFacts ?? task?.facts ?? []
-  // Facts with their subject: an item's own subject identity, or the part of a
-  // task fact's label before " · " (a profile, an account), or the fact itself.
-  const rows: { subject: string; subjectLabel: string | null; fact: EmergencyFact }[] = taskFacts.length
-    ? taskFacts.map(fact => {
-        const [head, ...rest] = fact.label.split(' · ')
-        return rest.length ? { subject: head, subjectLabel: head, fact: { label: rest.join(' · '), value: fact.value } } : { subject: `${fact.label}\n${fact.value}`, subjectLabel: null, fact }
-      })
-    : pending.map(item => ({
-        // A subject is a named one (an account, a group, a policy). A finding without
-        // one (a policy-wide setting) belongs to the tile's shared subject.
-        subject: item.accountId ?? (item.subjectLabel ? item.subjectId ?? item.subjectLabel : ''),
-        subjectLabel: item.subjectLabel ?? null,
-        fact: { label: item.factLabel ?? item.label, value: item.value, ...(item.link ? { link: item.link } : {}) },
-      }))
-  const subjectLabels = [...new Set(rows.length ? rows.map(row => row.subjectLabel) : items.map(item => item.subjectLabel ?? null))]
-  const actionTitle = task ? task.readinessTitle ?? task.title : tile.value
-  // One subject names the tile's identity: the findings' own subject, or the one a task title names after " — ".
-  const titled = / — ([^—]+)$/.exec(actionTitle)
-  const identity = subjectLabels.length === 1 && subjectLabels[0] ? subjectLabels[0] : subjectLabels.every(label => !label) && titled ? titled[1] : null
-  const labelled = rows.map(row => ({ ...row, fact: !identity && row.subjectLabel ? { ...row.fact, label: `${row.subjectLabel} · ${row.fact.label}` } : row.fact }))
-  const firstOf = new Map<string, number>()
-  labelled.forEach((row, index) => { if (!firstOf.has(row.subject) && firstOf.size < VISIBLE_SUBJECTS) firstOf.set(row.subject, index) })
-  const shown = new Set(firstOf.values())
-  const facts = labelled.filter((_, index) => shown.has(index)).map(row => row.fact)
-  const moreFacts = labelled.filter((_, index) => !shown.has(index)).map(row => row.fact)
-  // The identity is already on the tile; "Configure passkey protections — Default passkey profile" states it once.
-  const title = identity && actionTitle.endsWith(` — ${identity}`) ? actionTitle.slice(0, -` — ${identity}`.length) : actionTitle
-  const instruction = task ? task.readinessDirection ?? `Follow ${task.title} in Implementation Tasks.` : satisfied ? '' : tile.note ?? ''
-  const completed = items.filter(passed).map(item => `${item.subjectLabel && !identity ? `${item.subjectLabel} · ` : ''}${item.factLabel ?? item.label}: ${item.value}`)
+  // A tile without findings of its own (Sign-in Evidence) reads its task's per-subject facts.
+  const findings: ConfigurationFindingItem[] = items.length ? items : (task?.readinessFacts ?? []).map(fact => ({
+    label: fact.value, factLabel: fact.value, value: '', subjectLabel: fact.label, outcome: /^verified$/i.test(fact.value) ? 'pass' as const : 'fail' as const,
+  }))
+  const pending = findings.filter(item => !passed(item)).map((item, index) => ({ item, index })).sort((x, y) => rank(x.item.outcome) - rank(y.item.outcome) || x.index - y.index).map(row => row.item)
+  const completed = findings.filter(passed).map(item => [item.subjectLabel, `${item.factLabel ?? item.label}${item.value ? `: ${item.value}` : ''}`].filter(Boolean).join(' · '))
+  const direction = task ? task.readinessDirection ?? `Follow ${task.title} in Implementation Tasks.` : null
+  const base = { key: tile.key, accountId: null, heading: tile.label, completed, remainingCount: pending.length || null, satisfied }
+  const next = pending[0]
+  if (!next) {
+    const labels = [...new Set(findings.map(item => item.subjectLabel).filter((label): label is string => !!label))]
+    return { ...base, upn: labels.length === 1 ? labels[0] : task?.subjectLabel ?? null, title: satisfied ? tile.value : task?.readinessTitle ?? tile.value, instruction: satisfied ? '' : direction ?? tile.note ?? '' }
+  }
+  // The next check, and every subject it applies to alike (two accounts both needing a sign-in).
+  const name = (item: ConfigurationFindingItem): string => item.factLabel ?? item.label
+  const alike = pending.filter(item => name(item) === name(next) && item.value === next.value)
+  const subjects = [...new Set(alike.map(item => item.subjectLabel).filter((label): label is string => !!label))]
+  // A merged prerequisite ("Prerequisite · To do", "Finish X first.") is its own action.
+  const prerequisite = /^Prerequisite\b/.test(name(next))
   return {
-    key: tile.key, accountId: null, heading: tile.label, upn: identity, title, instruction: instruction === title ? '' : instruction,
-    completed, remainingCount: pending.length || null, satisfied, facts, moreFacts,
+    ...base,
+    upn: subjects.length ? subjects.join('\n') : task?.subjectLabel ?? null,
+    title: prerequisite ? next.value : name(next),
+    detail: prerequisite ? '' : next.value,
+    instruction: prerequisite || next.link ? '' : direction ?? '',
+    ...(next.link ? { link: next.link } : {}),
   }
 }
 

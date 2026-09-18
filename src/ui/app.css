@@ -4779,6 +4779,17 @@ th .th-sort:focus-visible,
   font-family: var(--font-sans);
 }
 .step .emergency-task-body li + li { margin-top: 7px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 .emergency-account-status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4801,6 +4812,7 @@ th .th-sort:focus-visible,
   font-weight: var(--weight-strong);
   overflow-wrap: anywhere;
 }
+.emergency-account-upn span { display: block; }
 .emergency-account-upn {
   margin: 0 0 8px;
   color: var(--primary-text);
@@ -4816,12 +4828,6 @@ th .th-sort:focus-visible,
 }
 .emergency-account-status h5 { margin: 0 0 6px; font-size: var(--t-2); }
 .emergency-account-status > p:not(.emergency-account-label) { margin: 0; color: var(--secondary-text); }
-.emergency-account-facts { margin-top: 10px; }
-.emergency-account-facts dl, .emergency-account-more dl { display: grid; gap: 5px; margin: 0; }
-.emergency-account-more { margin-top: 8px; }
-.emergency-account-more > summary { cursor: pointer; color: var(--secondary-text); font-size: var(--t-0); font-weight: var(--weight-strong); }
-.emergency-account-more > dl { margin-top: 8px; }
-.emergency-account-status .approved-model-disclosure { margin-top: 10px; }
 .emergency-account-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--t-0); }
 .emergency-account-note dl { display: grid; gap: 5px; margin: 0; }
 .emergency-account-completed { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }

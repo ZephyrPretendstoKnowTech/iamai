@@ -1,8 +1,8 @@
-// The Tasks Remaining tile standard (prompt 60 Part 2): Steps 2–4 render the
-// Step 1 account tile's anatomy — subject label, identity, one action with its
-// instruction, the finding per subject with the rest behind a disclosure, then
-// Completed checks — and no tile repeats its heading, its sentence or a list
-// the same screen already shows.
+// The Tasks Remaining tile standard: Steps 2–4 render the Step 1 account tile's
+// anatomy — subject label, the subject(s) of the next check, the remaining
+// count, the one next check and what is wrong, one action, then Completed
+// checks — and nothing else: no list of every finding, no heading or sentence
+// twice, no list the same screen already shows.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
@@ -10,7 +10,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
-import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf, VISIBLE_SUBJECTS } from './emergencyReadiness.ts'
+import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
@@ -27,8 +27,15 @@ function subjectsOf(value: Fixture, stepId: string, blockers: PrerequisiteBlocke
   return emergencySubjectsOf(consolidateEmergencyReadiness(passkeyReadiness(step, body.readiness), body.emergencyAccountTasks, upns, true), body.emergencyAccountTasks)
 }
 
-/** Every line a subject tile draws, in order. */
-const linesOf = (tile: EmergencySubjectTile): string[] => [tile.heading, tile.upn ?? '', tile.title, tile.instruction, ...[...(tile.facts ?? []), ...(tile.moreFacts ?? [])].flatMap(fact => [fact.label, fact.value]), ...tile.completed].filter(Boolean)
+/** Step 4 as CleanupStep composes it for the interactive view. */
+function recoveryOf(value: Fixture) {
+  const phase = runFixture(value).schedule.cleanup!
+  const tasks = emergencyVerificationTasksOf(phase)
+  return { phase, tasks, tiles: recoverySubjectsOf(phase.recoveryFindings ?? [], tasks, new Map(Object.entries(phase.accountUpnsById ?? {}))) }
+}
+
+/** Every line a remaining tile draws above its Completed checks, in order. */
+const linesOf = (tile: EmergencySubjectTile): string[] => [tile.heading, ...(tile.upn ?? '').split('\n'), tile.title, tile.detail ?? '', tile.instruction, tile.link?.label ?? ''].filter(Boolean)
 
 test('Step 2: an unanswered exclusions group states its heading and sentence once', () => {
   const tiles = subjectsOf(noExclusionsAnswer(fixture('small')), 's-prereq-exclusion-group').filter(tile => !tile.satisfied)
@@ -38,7 +45,6 @@ test('Step 2: an unanswered exclusions group states its heading and sentence onc
   assert.match(tile.instruction, /^Select a group under Exclusions group, then Save\./)
   const lines = linesOf(tile)
   for (const line of lines) assert.equal(lines.filter(other => other === line).length, 1, `"${line}" is drawn more than once`)
-  assert.equal(lines.filter(line => line.includes('Select a group under Exclusions group')).length, 1)
 })
 
 test('Step 2: a satisfied subject collapses under Satisfied with its checks completed, not remaining', () => {
@@ -46,53 +52,46 @@ test('Step 2: a satisfied subject collapses under Satisfied with its checks comp
   assert.ok(tiles.length > 0 && tiles.every(tile => tile.satisfied))
   for (const tile of tiles) {
     assert.equal(tile.remainingCount, null)
-    assert.deepEqual(tile.facts, [])
+    assert.equal(tile.detail, undefined)
     assert.ok(tile.completed.length > 0, `${tile.heading} lists its completed checks`)
   }
 })
 
-test('Step 3: a prerequisite is stated once, not "X. Finish X first."', () => {
+test('Step 3: a prerequisite is the next check, stated once', () => {
   const blocker: PrerequisiteBlocker = { kind: 'step', id: 's-prereq-break-glass', abnormal: false, label: 'Prerequisite', title: 'Prepare Emergency Access Accounts' }
-  const tiles = subjectsOf(structuredClone(fixture('demo')), 's-prereq-passkey-settings', [blocker])
-  const values = tiles.flatMap(tile => [...(tile.facts ?? []), ...(tile.moreFacts ?? [])]).map(fact => fact.value)
-  assert.ok(values.includes('Finish Prepare Emergency Access Accounts first.'), JSON.stringify(values))
-  assert.ok(values.every(value => !/Prepare Emergency Access Accounts\. Finish/.test(value)))
+  const registration = subjectsOf(structuredClone(fixture('demo')), 's-prereq-passkey-settings', [blocker]).find(tile => tile.key === 'configuration:registration')!
+  assert.equal(registration.title, 'Finish Prepare Emergency Access Accounts first.')
+  assert.ok(linesOf(registration).every(line => !/Prepare Emergency Access Accounts\. Finish/.test(line)))
 })
 
-test('Step 3: the protection tile names its subject once and shows one finding per subject before the disclosure', () => {
+test('Step 3: the protection tile shows the next check only, under its profile', () => {
   const tile = subjectsOf(structuredClone(fixture('small')), 's-prereq-passkey-settings').find(row => row.key === 'configuration:protection')!
   assert.equal(tile.upn, 'Passkey (FIDO2) policy')
-  assert.equal(tile.title, 'Configure passkey protections')
-  assert.ok((tile.facts ?? []).length <= VISIBLE_SUBJECTS)
-  assert.ok((tile.moreFacts ?? []).length > 0)
+  assert.equal(tile.title, 'Current attestation')
+  assert.equal(tile.detail, 'Disabled')
+  assert.equal(tile.instruction, 'Follow Configure passkey protections in Implementation Tasks.')
+  assert.ok((tile.remainingCount ?? 0) > 1, 'the other checks wait behind the count')
+  assert.ok(linesOf(tile).every(line => !/→|AAGUID|Approved models/.test(line)), 'no change list and no model list in the tile')
 })
 
-test('Step 4: the sign-in list renders once, in the Sign-in Evidence tile', () => {
-  const value = structuredClone(fixture('demo'))
-  const phase = runFixture(value).schedule.cleanup!
-  const tasks = emergencyVerificationTasksOf(phase)
+test('Step 4: the sign-in list renders once, in the Sign-in Evidence tile, as one check for both accounts', () => {
+  const { phase, tasks, tiles } = recoveryOf(structuredClone(fixture('demo')))
   const verify = tasks.tasks.find(task => task.id === 'verify-emergency-sign-in')!
   assert.equal(verify.facts, undefined, 'the Implementation Task draws no account list')
-  const upns = new Map(Object.entries(phase.accountUpnsById ?? {}))
-  const signIn = recoverySubjectsOf(phase.recoveryFindings ?? [], tasks, upns).find(tile => tile.key === 'recovery-sign-ins')!
-  assert.deepEqual((signIn.facts ?? []).map(fact => fact.label), phase.accountIds.map(id => phase.accountUpnsById?.[id] ?? id))
+  const signIn = tiles.find(tile => tile.key === 'recovery-sign-ins')!
+  assert.equal(signIn.title, 'Sign-in required')
+  assert.deepEqual(signIn.upn?.split('\n'), phase.accountIds.map(id => phase.accountUpnsById?.[id] ?? id))
+  assert.equal(signIn.remainingCount, phase.accountIds.length)
 })
 
-test('Step 4: Configuration shows the highest-priority finding per account, the rest behind a disclosure', () => {
-  const value = structuredClone(fixture('demo'))
-  const phase = runFixture(value).schedule.cleanup!
-  const tasks = emergencyVerificationTasksOf(phase)
-  const upns = new Map(Object.entries(phase.accountUpnsById ?? {}))
-  const configuration = recoverySubjectsOf(phase.recoveryFindings ?? [], tasks, upns).find(tile => !tile.satisfied && tile.key !== 'recovery-sign-ins' && (tile.moreFacts ?? []).length > 0)!
-  assert.ok(configuration, 'the demo has a Configuration tile with more findings than subjects')
-  const shown = configuration.facts ?? []
-  assert.ok(shown.length <= VISIBLE_SUBJECTS)
-  // Each account with a pending finding is visible before the disclosure.
-  for (const id of phase.accountIds) {
-    const upn = phase.accountUpnsById?.[id] ?? id
-    const pending = [...shown, ...(configuration.moreFacts ?? [])].some(fact => fact.label.startsWith(`${upn} · `))
-    if (pending) assert.ok(shown.some(fact => fact.label.startsWith(`${upn} · `)), `${upn} has a visible finding`)
-  }
-  // The highest-priority finding leads: a confirmed failure before an unverified one.
-  assert.doesNotMatch(shown[0].value, /Could not verify/)
+test('Step 4: Configuration shows one next check, a confirmed failure, with its owning step', () => {
+  const { tiles } = recoveryOf(structuredClone(fixture('demo')))
+  const configuration = tiles.find(tile => tile.key === 'recovery-configuration')!
+  assert.equal(configuration.title, 'Enabled policy exclusions')
+  assert.equal(configuration.upn, 'bg2@demo-fixture.onmicrosoft.com')
+  assert.equal(configuration.detail, 'Missing from Core - Grant - MFA for all users')
+  assert.equal(configuration.link?.label, 'Review emergency exclusions')
+  assert.equal(configuration.instruction, '')
+  assert.ok((configuration.remainingCount ?? 0) > 1)
+  assert.ok(linesOf(configuration).length <= 6, 'one check, not every finding')
 })
