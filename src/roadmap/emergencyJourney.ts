@@ -411,7 +411,7 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
     const action = current ? 'Passkey sign-in verified'
       : sourceFailure ? 'IAMAI could not read the verification evidence'
         : 'Sign in with the prepared passkey'
-    const value = current ? `Signed in after configuration: ${verifiedAt}`
+    const value = current ? verifiedAt!
       : sourceFailure ? source.reason ?? String(source.status)
         : recoveryWaitingLine(configuredAt, readings, mapping.displayTimeZone)
     return { label: accountLabel(snapshot, id), action, value, current }

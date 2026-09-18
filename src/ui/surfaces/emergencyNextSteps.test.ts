@@ -85,7 +85,7 @@ test('a current passing final result does not ask the operator to record it agai
     recoveryCandidates: { 'account-1': [{ qualifies: true, reason: null, candidate: { eventId: 'event-1', at: '2026-09-16T09:00:00.000Z' } }] },
     recoveryFindings: [
       { key: 'recovery-configuration', label: 'Configuration', value: 'Verified', detail: '', outcome: 'pass' },
-      { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: 'Verified', detail: '', outcome: 'pass', items: [{ accountId: 'account-1', subjectId: 'account-1', label: 'Passkey sign-in verified', value: 'Signed in after configuration: Sep 16, 2026', outcome: 'pass' }] },
+      { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: 'Verified', detail: '', outcome: 'pass', items: [{ accountId: 'account-1', subjectId: 'account-1', label: 'Passkey sign-in verified', value: 'Sep 16, 2026, 10:00 AM UTC', outcome: 'pass' }] },
       { key: 'recovery-confirmation', label: 'Verification', value: 'Passed', detail: '', outcome: 'pass', items: [{ accountId: 'account-1', subjectId: 'account-1', label: 'Result', value: 'Passed', outcome: 'pass' }] },
     ],
     tenantId: 'tenant-1', snapshotObservedAt: '2026-09-16T10:00:00.000Z', rows: [], start: '2026-09-16', end: '2026-09-16', convention: null,
