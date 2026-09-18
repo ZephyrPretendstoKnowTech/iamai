@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { PASSKEY_TARGET_AAGUIDS, passkeyFindingsOf, passkeyReadingOf, resolvePasskeyTarget, passkeyReadinessFindingsOf } from './passkeySettings.ts'
-import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
 
 const HARDWARE = 'cb69481e-8ff7-4039-93ec-0a2729a154a8'
 const profile = (id: string, aaGuids: string[] = [...PASSKEY_TARGET_AAGUIDS]) => ({ id, name: id, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids } })
@@ -68,7 +68,7 @@ test('unrestricted legacy policy requires model selection without manufacturing 
   assert.deepEqual(resolvePasskeyTarget(current), { kind: 'review', review: 'modelSelection', subjects: ['unrestricted'] })
   assert.ok(passkeyFindingsOf(scan(current)).some(f => f.value === 'Unrestricted' && f.outcome === 'fail'))
   const snapshot = scan(current)
-  snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE }] }
+  snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE, attestationLevel: 'attested' }] }
   assert.equal(emergencyPasskeyCompatibility(snapshot, ['emergency'])[0].state, 'eligible', 'existing hardware compatibility is separate from the desired restriction')
 })
 
@@ -76,7 +76,7 @@ test('profile compatibility follows per-account assignments and exclusions, not 
   const current = policy()
   current.includeTargets = [{ id: 'hardware-users', targetType: 'group', allowedPasskeyProfiles: ['hardware'] }, { id: 'other-users', targetType: 'group', allowedPasskeyProfiles: ['authenticator'] }]
   const snapshot = scan(current)
-  snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE, passkeyType: 'deviceBound' }] }
+  snapshot.authMethods = { emergency: [{ kind: 'fido2', aaGuid: HARDWARE, passkeyType: 'deviceBound', attestationLevel: 'attested' }] }
   const groups = new Map([['hardware-users', { memberIds: ['emergency'], memberCount: 1, sampled: false }], ['other-users', { memberIds: [], memberCount: 0, sampled: false }]])
   assert.equal(emergencyPasskeyCompatibility(snapshot, ['emergency'], groups)[0].state, 'eligible')
   current.excludeTargets = [{ id: 'hardware-users' }]
@@ -123,12 +123,40 @@ test('an incompletely described synced-profile change stays unknown rather than 
   delete (current as Partial<typeof current>).defaultPasskeyProfile
   current.passkeyTypes = 'deviceBound,synced'
   current.attestationEnforcement = 'disabled'
+  current.isAttestationEnforced = false
   current.keyRestrictions = {isEnforced:false,enforcementType:'allow',aaGuids:[]}
   current.includeTargets = [{ id: 'all_users', targetType: 'group' }]
   const snapshot = scan(current)
-  snapshot.authMethods = { emergency: [{kind:'passkey', aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'synced'}] }
+  snapshot.authMethods = { emergency: [{kind:'passkey', aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'synced',attestationLevel:'attested'}] }
   assert.equal(emergencyPasskeyCompatibility(snapshot,['emergency'])[0].state,'eligible')
   assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'], fixture('demo').mapping)[0].state,'unknown')
-  snapshot.authMethods.emergency = [{kind:'fido2',aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'deviceBound'}]
+  snapshot.authMethods.emergency = [{kind:'fido2',aaGuid:PASSKEY_TARGET_AAGUIDS[0],passkeyType:'deviceBound',attestationLevel:'attested'}]
   assert.equal(emergencyProposedPasskeyCompatibility(snapshot,['emergency'], fixture('demo').mapping)[0].state,'unknown')
+})
+
+test('an attestation-only approval change does not claim an existing passkey loses runtime access', () => {
+  const current: any = policy()
+  current.passkeyProfiles = current.passkeyProfiles.map((row: any) => ({ ...row, attestationEnforcement: 'disabled' }))
+  const snapshot = scan(current)
+  const id = snapshot.users[0].id
+  snapshot.authMethods[id] = [{ kind: 'fido2', id: 'existing-key', aaGuid: HARDWARE, passkeyType: 'deviceBound', attestationLevel: 'notAttested' }]
+  const mapping = fixture('demo').mapping
+  assert.notEqual(emergencyProposedPasskeyCompatibility(snapshot, [id], mapping)[0].state, 'eligible')
+  assert.deepEqual(affectedPasskeysByProposedChange(snapshot, mapping).users, [])
+})
+
+test('an unambiguous assigned profile mismatch produces an executable per-profile proposal', () => {
+  const current = policy()
+  current.includeTargets = [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['authenticator'] }]
+  current.passkeyProfiles = [{ ...profile('authenticator', [PASSKEY_TARGET_AAGUIDS[0]]), passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled' }]
+  const reading = passkeyReadingOf(scan(current))
+  assert.equal(reading.state, 'partial')
+  assert.equal(reading.resolution?.kind, 'target')
+  if (reading.resolution?.kind === 'target') {
+    const proposed = (reading.resolution.target.passkeyProfiles as any[])[0]
+    assert.equal(proposed.passkeyTypes, 'deviceBound')
+    assert.equal(proposed.attestationEnforcement, 'registrationOnly')
+    assert.ok(PASSKEY_TARGET_AAGUIDS.every(id => proposed.keyRestrictions.aaGuids.includes(id)))
+    assert.ok(reading.differs.includes('passkeyProfiles'))
+  }
 })

@@ -27,8 +27,8 @@ export type VerifiedRecoveryEvidence = {
   resourceId: string | null
   method: 'Passkey (FIDO2)'
   provenance: 'observed-sign-in'
-  recoveryConfirmed: true
-  credentialConfirmed: true
+  recoveryConfirmed?: true
+  credentialConfirmed?: true
   configurationObservedAt: string
   purpose?: RecoveryPurpose
 }
@@ -57,7 +57,7 @@ export function withCleanupDone(checkpoints: readonly unknown[], kind: CleanupKi
     const ids = details.accountIds ?? []
     if (!ids.length || ids.some(id => {
       const evidence = details.recoveryEvidence?.[id]
-      return !details.purpose || !evidence || evidence.purpose !== details.purpose || evidence.accountId.toLowerCase() !== id.toLowerCase() || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true
+      return !details.purpose || !evidence || evidence.purpose !== details.purpose || evidence.accountId.toLowerCase() !== id.toLowerCase() || (evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true)
     })) return [...checkpoints]
   }
   const entry: CleanupCheckpoint = { at, cleanup: kind, date: cleanupDateToIso(date), ...details }
@@ -122,7 +122,7 @@ function evidenceMatchesCurrentCandidate(evidence: VerifiedRecoveryEvidence | un
   if (!context || !evidence || evidence.tenantId !== context.tenantId || evidence.schema !== 1 || evidence.provenance !== 'observed-sign-in' || evidence.method !== 'Passkey (FIDO2)') return false
   if (evidence.purpose !== purpose || preparation?.purpose !== purpose) return false
   if (!preparation?.configurationObservedAt || evidence.configurationObservedAt !== preparation.configurationObservedAt) return false
-  if (!Number.isFinite(Date.parse(evidence.configurationObservedAt)) || Date.parse(evidence.eventAt) < Date.parse(evidence.configurationObservedAt)) return false
+  if (!Number.isFinite(Date.parse(evidence.configurationObservedAt)) || Date.parse(evidence.eventAt) <= Date.parse(evidence.configurationObservedAt)) return false
   if (Date.parse(context.currentSnapshotObservedAt) < Date.parse(evidence.eventAt)) return false
   return context.readings.some(({ candidate, qualifies }) => qualifies &&
     candidate.userId.toLowerCase() === accountId.toLowerCase() &&
@@ -151,7 +151,10 @@ export function latestRecoveryTest(accountId: string, records: readonly CleanupC
   const latest = records.filter(r => r.cleanup === 'drill' && r.purpose === purpose && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && validCompletionDate(r.date, now, r.timeZone) && Date.parse(r.at) <= Date.parse(now)).sort((a,b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
   const evidence = latest ? Object.entries(latest.recoveryEvidence ?? {}).find(([id]) => id.toLowerCase() === accountId.toLowerCase())?.[1] : undefined
   const preparation = latest && context ? recoveryPreparation(accountId, records.filter(candidate => Date.parse(candidate.at) <= Date.parse(latest.at)), latest.at, expectedBasis, context.tenantId, purpose) : null
-  if (!latest || latest.outcome !== 'passed' || !evidence || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, purpose) || evidence.recoveryConfirmed !== true || evidence.credentialConfirmed !== true || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  const assured = evidence?.recoveryConfirmed === true && evidence?.credentialConfirmed === true
+  if (!latest || latest.outcome !== 'passed' || !evidence || !evidenceMatchesCurrentCandidate(evidence, accountId, context, preparation, purpose) || !assured || evidence.accountId.toLowerCase() !== accountId.toLowerCase() || !evidence.eventId || !Number.isFinite(Date.parse(evidence.eventAt)) || Date.parse(evidence.eventAt) > Date.parse(latest.at) || (expectedBasis !== undefined && latest.accountBasis?.[accountId] !== expectedBasis)) return null
+  const failure = records.filter(r => r.cleanup === 'drill' && r.purpose === purpose && r.outcome === 'failed' && r.accountIds?.some(id => id.toLowerCase() === accountId.toLowerCase()) && Date.parse(r.at) <= Date.parse(latest.at)).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).at(-1)
+  if (failure && Date.parse(evidence.eventAt) <= Date.parse(failure.at)) return null
   return latest.date
 }
 
@@ -184,8 +187,11 @@ export function recoveryCandidateReadings(snapshot: TenantSnapshot, accountId: s
     else if (candidate.success !== true) reason = 'The sign-in did not succeed.'
     else if (candidate.isInteractive !== true) reason = candidate.isInteractive === null ? 'Interactive sign-in evidence was not returned.' : 'The sign-in was not interactive.'
     else if (candidate.freshMethod !== true || candidate.method !== 'Passkey (FIDO2)') reason = candidate.freshMethod === null ? 'Fresh passkey authentication details are not available yet.' : 'The event does not show a fresh successful passkey authentication.'
-    else if (![candidate.resourceId, candidate.appId].some(id => !!id && SUPPORTED_RECOVERY_RESOURCE_IDS.has(id.toLowerCase()))) reason = 'The event is not tied to a supported administrative resource.'
-    else if (configurationObservedAt && Date.parse(candidate.at) < Date.parse(configurationObservedAt)) reason = 'The sign-in occurred before the current recovery configuration was in place.'
+    else if (!candidate.resourceId || !SUPPORTED_RECOVERY_RESOURCE_IDS.has(candidate.resourceId.toLowerCase())) reason = 'The event is not tied to a supported administrative resource.'
+    else if (candidate.resourceTenantId && candidate.resourceTenantId.toLowerCase() !== snapshot.tenantId.toLowerCase()) reason = 'The event belongs to a different resource tenant.'
+    else if (candidate.authenticationAt && (!Number.isFinite(Date.parse(candidate.authenticationAt)) || Date.parse(candidate.authenticationAt) > Date.parse(now))) reason = 'The authentication time is invalid or in the future.'
+    else if (configurationObservedAt && candidate.authenticationAt && Date.parse(candidate.authenticationAt) <= Date.parse(configurationObservedAt)) reason = 'The passkey authentication predates the current recovery configuration.'
+    else if (configurationObservedAt && Date.parse(candidate.at) <= Date.parse(configurationObservedAt)) reason = 'The sign-in did not occur after the current recovery configuration was observed.'
     else if (Date.parse(candidate.at) > Date.parse(now)) reason = 'The event time is in the future.'
     else if (Date.parse(now) - Date.parse(candidate.at) > BREAK_GLASS_DRILL_DAYS * 86_400_000) reason = 'The event is older than the recovery-test interval.'
     return { candidate, qualifies: reason === null, reason }
@@ -214,7 +220,7 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
   const fido = methodPolicy?.fido2Configuration ?? methodPolicy?.authenticationMethodConfigurations?.find((p: Record<string, unknown>) => String(p.id).toLowerCase() === 'fido2')
   const decision = mapping ? operatorExclusionsDecision(mapping) : null
   const selectedGroup = decision && groups ? ([...groups.entries()].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
-  const exclusionsIntent = decision ? [decision.id.toLowerCase(), selectedGroup ? { sampled: selectedGroup.sampled, memberIds: selectedGroup.memberIds.map(id => id.toLowerCase()).sort() } : 'membership-unread'] : null
+  const exclusionsIntent = decision ? [decision.id.toLowerCase(), selectedGroup ? { sampled: selectedGroup.sampled, memberIds: selectedGroup.memberIds.map(id => id.toLowerCase()).sort(), directMembers: selectedGroup.directMembers, directMemberIds: selectedGroup.directMemberIds, securityEnabled: selectedGroup.securityEnabled, mailEnabled: selectedGroup.mailEnabled, groupTypes: selectedGroup.groupTypes, membershipRule: selectedGroup.membershipRule, assignedLicenseSkuIds: selectedGroup.assignedLicenseSkuIds } : 'membership-unread'] : null
   const approvedModelIntent = mapping ? requiredModels(mapping).map(model => [model.name, model.aaguid]).sort((a,b) => a[1].localeCompare(b[1])) : null
   const out: Record<string, string> = {}
   for (const id of accountIds) {
@@ -239,7 +245,7 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
       return [p.id, p.state, { ...p.conditions, users: scopedUsers }, p.grantControls, p.sessionControls]
     })
     const roleSchedules = (snapshot.config.roleAssignmentSchedules.rows as Record<string, unknown>[]).filter(row => String(row.principalId).toLowerCase() === id.toLowerCase())
-    out[id] = JSON.stringify(canonical([id, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, methods, fido ?? null, policies, securityDefaults, exclusionsIntent, approvedModelIntent]))
+    out[id] = JSON.stringify(canonical([id, u.userPrincipalName, u.accountEnabled, u.onPremisesSyncEnabled, snapshot.roles.active[id] ?? [], roleSchedules, methods, fido ?? null, policies, (snapshot.config.authStrengths?.rows ?? []).filter(raw => policies.some(policy => (policy[3] as Record<string, any> | undefined)?.authenticationStrength?.id === (raw as Record<string, unknown>).id)), securityDefaults, exclusionsIntent, approvedModelIntent]))
   }
   return out
 }

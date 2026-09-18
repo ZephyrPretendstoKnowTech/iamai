@@ -1380,7 +1380,12 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  */
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
   const configuration = step.configurationFindings ?? []
-  const configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  let configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
+  if (step.id === 's-prereq-exclusion-group') {
+    const choice = configuration.find(finding => finding.key === 'group-choice')
+    const explicitlySaved = choice?.items?.some(item => item.issueKeys?.includes('group:choice') && item.value === 'Saved') === true
+    if (!explicitlySaved) configuredTiles = configuredTiles.filter(tile => tile.key === 'configuration:group-choice')
+  }
   // These topics contain the underlying account/group checks, including unknowns.
   // Do not add one more tile per account, check or dependency beside them.
   if (configuration.length && ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)) {
@@ -1391,7 +1396,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
       const id = tileStepOf(extra)
       const key = step.id === 's-prereq-exclusion-group' ? id === 's-prereq-break-glass' ? 'group-members' : 'group-choice'
         : step.id === 's-prereq-break-glass' ? id === 's-prereq-passkey-settings' ? 'recovery-methods' : id === 's-prereq-exclusion-group' ? 'account-exclusions' : 'account-setup'
-        : 'availability'
+        : 'registration'
       const topic = configuredTiles.find(t => t.key === 'configuration:' + key) ?? configuredTiles[0]
       if (extra.key.startsWith('engine:evidence:passkey-settings-')) continue
       topic.items = [...(topic.items ?? []), { label: extra.label, value: [extra.value, extra.note].filter(Boolean).join('. ') }]

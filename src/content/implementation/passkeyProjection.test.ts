@@ -16,6 +16,11 @@ import { projectImplementation, planSafely, NO_RUNTIME } from './project.ts'
 import { PASSKEY_TARGET_AAGUIDS, passkeyBindings, resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
 import type { Fido2Configuration } from '../../roadmap/passkeySettings.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
+import { packageBindings } from '../../ui/surfaces/stepPackage.ts'
+import { stepContract } from '../../ui/surfaces/stepContract.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const PASSKEY = PACKAGES['s-prereq-passkey-settings']
@@ -53,6 +58,34 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
 test('passkey settings: with no readable configuration no request body is built at all', () => {
   const p = projectImplementation(PASSKEY, 'missing', passkeyBindings(null))
   assert.equal(p.channels.some((c) => c.channel === 'json'), false, JSON.stringify(p.channels.map((c) => c.channel)))
+})
+
+test('runtime package and final JSON/PowerShell retain only the resolver-authored profile correction while preserving the unchanged profile', () => {
+  const value = structuredClone(fixture('demo-week2'))
+  const row = (value.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Fido2Configuration[] })
+  const current = row.authenticationMethodConfigurations.find(item => String(item.id).toLowerCase() === 'fido2')!
+  const correct = { id: 'profile-correct', name: 'Correct profile', passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] } }
+  const changed = { id: 'profile-change', name: 'Profile to change', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [PASSKEY_TARGET_AAGUIDS[0]] } }
+  Object.assign(current, { state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: correct.id, passkeyProfiles: [correct, changed], includeTargets: [{ id: 'group-correct', targetType: 'group', isRegistrationRequired: false, allowedPasskeyProfiles: [correct.id] }, { id: 'group-change', targetType: 'group', isRegistrationRequired: false, allowedPasskeyProfiles: [changed.id] }], excludeTargets: [] })
+  ;(value.snapshot.config.authMethodsPolicy.rows[0] as Record<string, unknown>).fido2Configuration = current
+  const run = runFixture(value)
+  const step = run.steps.find(item => item.id === 's-prereq-passkey-settings')!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const bindings = packageBindings(step, ctx, stepContract(step, ctx))
+  const body = bindings['passkey.target.fido2Configuration'] as Fido2Configuration
+  assert.ok(body, JSON.stringify(Object.keys(bindings).filter(key => key.startsWith('passkey.'))))
+  const profiles = body.passkeyProfiles as Record<string, unknown>[]
+  assert.equal(profiles.length, 2)
+  assert.deepEqual(profiles.find(profile => profile.id === correct.id), correct)
+  assert.notDeepEqual(profiles.find(profile => profile.id === changed.id), changed)
+  const projection = projectImplementation(PASSKEY, 'missing', bindings)
+  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
+  const json = projection.channels.find(channel => channel.channel === 'json')!
+  const powershell = projection.channels.find(channel => channel.channel === 'powershell')!
+  assert.deepEqual(JSON.parse(json.text), body)
+  assert.match(powershell.text, /profile-correct/)
+  assert.match(powershell.text, /profile-change/)
+  assert.equal(JSON.stringify(JSON.parse(json.text)).includes('passkeyProfiles'), true)
 })
 
 test('passkey settings: Apply writes only FIDO2; missing configuration keeps Verify available', () => {

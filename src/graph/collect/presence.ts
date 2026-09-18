@@ -21,6 +21,7 @@ export type ObjectPresence = 'present' | 'absent' | 'unknown'
 
 /** How much of an object's membership this scan actually read. */
 export type MemberEvidence = 'complete' | 'sampled' | 'unknown'
+export type DirectoryMemberEvidence = { id: string; displayName: string | null; userPrincipalName: string | null; kind: 'user' | 'group' | 'servicePrincipal' | 'device' | 'other' }
 
 /**
  * The presence a failed read proves. A 404 on the object's own URL is Graph
@@ -40,13 +41,18 @@ export type GroupRead = {
   /** Why presence is what it is, in the read's own words; null when the object was read. */
   reason: string | null
   /** The object's own fields — only when the object itself was read. */
-  object: { displayName: string | null; membershipRule: string | null; mailEnabled: boolean; securityEnabled?: boolean | null; groupTypes?: string[] | null; isAssignableToRole?: boolean | null } | null
+  object: { displayName: string | null; membershipRule: string | null; membershipRuleProcessingState?: string | null; mailEnabled: boolean | null; securityEnabled?: boolean | null; groupTypes?: string[] | null; isAssignableToRole?: boolean | null; assignedLicenseSkuIds?: string[] | null } | null
   /** Membership evidence, independent of presence. */
   members: MemberEvidence
   /** The ids read; empty where `members` is `unknown`, a first page where it is `sampled`. */
   memberIds: string[]
   /** null wherever `members` is `unknown` — a count nobody read is not zero. */
   memberCount: number | null
+  directMembers?: MemberEvidence
+  directMemberIds?: string[]
+  directMemberObjects?: DirectoryMemberEvidence[]
+  owners?: MemberEvidence
+  ownerObjects?: DirectoryMemberEvidence[]
   /** When this reading was taken. */
   asOf: string
 }

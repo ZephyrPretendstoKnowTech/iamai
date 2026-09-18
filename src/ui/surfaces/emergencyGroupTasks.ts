@@ -1,4 +1,4 @@
-import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
+import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -7,107 +7,85 @@ const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
 const upnOf = (ctx: StepVarContext, id: string): string => clean(ctx.snapshot.users.find(user => same(user.id, id))?.userPrincipalName || ctx.nameOf(id) || id)
 
+/** Four persistent, outcome-sized Entra procedures for Configure Emergency Exclusions. */
 export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskProjection {
   const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
+  const saved = operatorExclusionsDecision(ctx.mapping)
   const selected = ctx.mapping.breakGlassUserIds
-  const tasks: EmergencyAccountTask[] = []
-
-  if (!choice.actionableId) {
-    if (choice.suggested) tasks.push({
-      id: `choose-group:${choice.suggested.id}`,
-      accountId: null,
-      title: 'Choose the emergency exclusions group',
-      targetUpn: null,
-      required: true,
-      readinessKey: 'group-choice',
-      evidence: `Suggested: ${choice.suggested.name}. A suggestion is not saved intent.`,
-      actionLabel: 'Open group-selection instructions',
-      steps: [
-        'Open **Entra ID → Groups → All groups**.',
-        `Open **${clean(choice.suggested.name)}** and verify its object ID is **${choice.suggested.id}**.`,
-        'Confirm it is the dedicated assigned security group intended for emergency-account exclusions.',
-        'In IAMAI, choose that exact group under **Exclusions group** and select **Save**.',
-        'Return to IAMAI and select **Scan to update the plan**.',
-      ],
-    })
-    if (!choice.suggested && choice.status === 'none-found' && selected.length > 0) tasks.push({
-      id: 'create-group', accountId: null, title: 'Create the emergency exclusions group', targetUpn: null, required: true,
-      readinessKey: 'group-choice', evidence: choice.status === 'none-found' ? 'The complete reading found no suitable group.' : 'No group is saved and the current reading cannot establish a suitable existing group.',
-      actionLabel: 'Open group-creation instructions',
-      steps: [
-        'Open **Entra ID → Groups → All groups → New group**.',
-        'Set **Group type** to **Security** and **Membership type** to **Assigned**.',
-        'Enter the approved tenant name for the emergency exclusions group.',
-        `Add only the selected emergency accounts: ${selected.map(id => `**${upnOf(ctx, id)}**`).join(', ')}.`,
-        'Create the group. Do not make it mail-enabled or dynamic.',
-        'Return to IAMAI, select the created group under **Exclusions group**, select **Save**, and scan again.',
-      ],
-    })
-    if (choice.storedId && choice.status === 'unverified') tasks.unshift({
-      id: `inspect-group:${choice.storedId}`, accountId: null, title: 'Inspect the saved exclusions group', targetUpn: null, required: true,
-      readinessKey: 'group-choice', evidence: `The saved choice ${choice.storedName || choice.storedId} remains saved, but the current scan did not verify it.`, actionLabel: 'Open inspection instructions',
-      steps: ['Open **Entra ID → Groups → All groups**.', `Search for the saved object ID **${choice.storedId}**.`, 'Open the group and confirm its name, type, membership mode and current members.', 'Return to IAMAI and select **Scan to update the plan**. Do not save a different group merely because this read was unavailable.', 'If the object is absent, choose the verified replacement in IAMAI and select **Save**.'],
-    })
-    return { tasks }
-  }
-
-  const groupId = choice.actionableId
-  const groupName = clean(choice.actionableName || ctx.nameOf(groupId) || groupId)
+  // Preserve the operator's saved identity through a failed read. Only the
+  // actionable identity may drive an asserted tenant correction.
+  const groupId = saved?.id ?? choice.actionableId
+  const actionableGroupId = choice.actionableId
+  const groupName = clean(saved?.name || choice.actionableName || (groupId ? ctx.nameOf(groupId) : '') || 'the saved emergency exclusions group')
+  const accounts = selected.length ? selected.map(id => `**${upnOf(ctx, id)}**`).join(', ') : 'the emergency accounts selected in the previous step'
   const groupFinding = step.configurationFindings?.find(finding => finding.key === 'group-choice')
-  if (groupFinding?.outcome !== 'pass') tasks.push({
-    id: `inspect-group:${groupId}`, accountId: null, title: 'Inspect group', targetUpn: null, targetLabel: groupName, required: true,
-    readinessKey: 'group-choice', evidence: 'One or more required group properties could not be verified.', actionLabel: 'Open inspection instructions',
-    issueKeys: groupFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
-    facts: groupFinding?.items?.filter(item => item.outcome !== 'pass').map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? [],
-    steps: ['Keep your working administrator session open.', 'Open **Entra ID → Groups → All groups**.', `Open **${groupName}** and verify object ID **${groupId}**.`, 'Inspect **Group type**, **Membership type**, **Security enabled** and **Mail enabled**. Do not replace or delete the saved group in this inspection task.', 'Return to IAMAI and select **Scan to update the plan**.'],
+  const policyFinding = step.configurationFindings?.find(finding => finding.key === 'group-policies')
+  const groupMismatchFacts = (groupFinding?.items ?? []).filter(item => item.outcome === 'fail').flatMap(item => {
+    const issues = item.issueKeys ?? []
+    if (issues.includes('group:membershipRuleProcessingState')) return [{ label: 'Mismatch', value: 'This group uses dynamic membership.' }]
+    if (issues.includes('group:assignedLicenses')) return [{ label: 'Mismatch', value: 'This group has assigned licenses.' }]
+    if (issues.includes('group:securityEnabled')) return [{ label: 'Mismatch', value: 'This group is not a security group.' }]
+    if (issues.includes('group:isAssignableToRole')) return [{ label: 'Mismatch', value: 'This group is role-assignable.' }]
+    return item.value ? [{ label: 'Mismatch', value: `${item.label}: ${item.value}.` }] : []
   })
-  const members = ctx.groups?.get(groupId) ?? [...(ctx.groups ?? [])].find(([id]) => same(id, groupId))?.[1]
-  if (!members || members.sampled || members.memberIds.length < members.memberCount) tasks.push({
-    id: `inspect-members:${groupId}`, accountId: null, title: 'Inspect exclusions group membership', targetUpn: null, required: true,
-    readinessKey: 'group-members', evidence: 'The current scan did not establish the complete assigned membership.', actionLabel: 'Inspect membership', issueKeys: ['group:xg.containsEmergency', 'group:xg.membersApproved', 'group:xg.noExtraAdmins'],
-    steps: ['Open **Entra ID → Groups → All groups**.', `Open **${groupName}** and verify object ID **${groupId}**.`, 'Open **Members** and review the complete direct membership.', 'Confirm the group uses **Assigned** membership and is a security group that is not mail-enabled.', 'Return to IAMAI and select **Scan to update the plan**. Do not infer missing or extra members from a partial list.'],
-  })
-  if (members && !members.sampled && members.memberIds.length >= members.memberCount) {
-    const missing = selected.filter(id => !members.memberIds.some(member => same(member, id)))
-    const extra = members.memberIds.filter(id => !selected.some(selectedId => same(selectedId, id)))
-    if (missing.length) tasks.push({
-      id: `add-members:${groupId}`, accountId: null, title: 'Add missing emergency accounts', targetUpn: null, required: true,
-      readinessKey: 'group-members', evidence: missing.map(id => upnOf(ctx, id)).join(', '), actionLabel: 'Add missing accounts', issueKeys: ['group:xg.containsEmergency'],
-      facts: [{ label: 'Selected emergency accounts', value: `Missing: ${missing.map(id => upnOf(ctx, id)).join(', ')}` }], targetLabel: groupName,
-      steps: [`Open **Entra ID → Groups → ${groupName} → Members**.`, 'Select **Add members**.', `Add only: ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}.`, 'Select **Add**, confirm the direct membership, then return to IAMAI and select **Scan to update the plan**.'],
-    })
-    if (extra.length && step.configurationFindings?.find(finding => finding.key === 'group-members')?.outcome !== 'pass') tasks.push({
-      id: `inspect-unexpected-members:${groupId}`, accountId: null, title: 'Review additional members', targetUpn: null, targetLabel: groupName, required: true,
-      readinessKey: 'group-members', evidence: 'Additional direct members require review against the existing approval rules.', actionLabel: 'Review members', issueKeys: ['group:xg.membersApproved', 'group:xg.noExtraAdmins'],
-      facts: [{ label: 'Additional direct members', value: extra.map(id => upnOf(ctx, id)).join(', ') }],
-      steps: ['Keep your working administrator session open.', `Open **Entra ID → Groups → ${groupName} → Members**.`, 'Review the additional direct members against the approved exclusions and emergency-account rules shown in Readiness.', 'Remove only a member that the existing rules identify as unexpected. Do not remove nested or unread membership.', 'Return to IAMAI and select **Scan to update the plan**.'],
-    })
+  const unsuitableGroup = choice.status === 'confirmed' && groupMismatchFacts.length > 0
+  const members = groupId ? (ctx.groups?.get(groupId) ?? [...(ctx.groups ?? [])].find(([id]) => same(id, groupId))?.[1]) : undefined
+  const completeMembers = members?.directMembers === 'complete'
+  const directIds = members?.directMemberIds ?? []
+  const missing = completeMembers ? selected.filter(id => !directIds.some(member => same(member, id))) : []
+  const extra = completeMembers ? directIds.filter(id => !selected.some(selectedId => same(selectedId, id))) : []
+  const directObject = (id: string): string => {
+    const object = members?.directMemberObjects?.find(row => same(row.id, id))
+    if (!object) return upnOf(ctx, id)
+    if (object.kind === 'user') return [object.displayName, object.userPrincipalName].filter(Boolean).join(' — ') || object.id
+    return `${object.displayName || 'Unnamed object'} · ${object.kind} · ${object.id}`
   }
-
-  const policies = ctx.snapshot.config.caPolicies
-  if (policies?.status === 'ok') for (const [index, raw] of (policies.rows as Record<string, any>[]).entries()) {
+  const missingPolicies: { id: string; name: string; mode: string }[] = []
+  if (groupId && ctx.snapshot.config.caPolicies?.status === 'ok') for (const [index, raw] of (ctx.snapshot.config.caPolicies.rows as Record<string, any>[]).entries()) {
     if (raw.state === 'disabled') continue
     const excluded = raw.conditions?.users?.excludeGroups
     if (Array.isArray(excluded) && excluded.some((id: unknown) => typeof id === 'string' && same(id, groupId))) continue
-    const id = typeof raw.id === 'string' && raw.id.trim() ? clean(raw.id) : ''
+    const id = typeof raw.id === 'string' && raw.id.trim() ? clean(raw.id) : `unread-${index + 1}`
     const name = clean(String(raw.displayName || raw.id || 'Unnamed policy'))
     const mode = raw.state === 'enabled' ? 'On' : raw.state === 'enabledForReportingButNotEnforced' ? 'Report-only' : 'Mode not read'
-    if (!id || mode === 'Mode not read' || !Array.isArray(excluded) || groupFinding?.taskSafe !== true) {
-      tasks.push({
-        id: `inspect-policy:${id || index}`, accountId: null, title: 'Review policy exclusion', targetUpn: null, targetLabel: name, required: true,
-        readinessKey: 'group-policies', evidence: 'The policy target, mode, group safety or current exclusions could not be established safely.', actionLabel: 'Open inspection instructions',
-        issueKeys: [`group-policy:${id || 'unknown'}:mode`, `group-policy:${id || 'unknown'}:exclusion`],
-        facts: [{ label: 'Mode', value: mode === 'Mode not read' ? 'Could not verify' : mode }, { label: 'Group exclusion', value: Array.isArray(excluded) ? 'Missing' : 'Could not verify' }],
-        steps: ['Keep your working administrator session open.', 'Open **Entra ID → Conditional Access → Policies**.', `Open **${name}** and verify its object ID, current mode and existing user/group inclusions and exclusions.`, 'Do not edit the policy until Readiness confirms the saved exclusions group is safe and the exact missing reference is known.', 'Return to IAMAI and select **Scan to update the plan**.'],
-      })
-      continue
-    }
-    tasks.push({
-      id: `exclude-policy:${id}`, accountId: null, title: 'Review policy exclusion', targetUpn: null, targetLabel: name, required: true,
-      readinessKey: 'group-policies', evidence: `${name} — ${mode}`, actionLabel: 'Open exclusion instructions', issueKeys: [`group-policy:${id}:exclusion`],
-      facts: [{ label: 'Mode', value: mode }, { label: 'Group exclusion', value: 'Missing' }],
-      steps: ['Keep your working administrator session open.', `Open **Entra ID → Conditional Access → Policies → ${name}** and verify policy ID **${id}**.`, 'Open **Users → Exclude → Users and groups**.', `Add **${groupName}** (${groupId}).`, 'Preserve all existing included users, groups, roles, guests and exclusions.', `Keep the policy mode **${mode}**; do not enable or disable it as part of this correction.`, 'Select **Save**.', 'Reopen the policy and verify the group exclusion.', 'Return to IAMAI and select **Scan to update the plan**.'],
-    })
+    const target = { id, name, mode }
+    if (raw.id && mode !== 'Mode not read' && Array.isArray(excluded) && groupFinding?.taskSafe === true && actionableGroupId) missingPolicies.push(target)
   }
-  return { tasks }
+  const tasks: EmergencyAccountTask[] = [
+    {
+      id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',
+      readinessTitle: 'Choose an exclusions group', readinessDirection: 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
+      steps: ['Open Microsoft Entra admin center in the intended tenant, then **Entra ID → Groups → All groups → New group**.', 'Choose **Security**, enter the group name, and choose **Assigned** membership.', ...(selected.length ? [`Under **Members**, add ${accounts}.`] : []), 'Select **Create**. Return to IAMAI and select **Scan to update the plan**.', 'Select the exact group IAMAI discovered under **Exclusions group**, then **Save**. Scan again to verify its membership and settings.'],
+    },
+    {
+      id: 'choose-exclusions-group', accountId: null, title: 'Choose an existing exclusions group', targetUpn: null, required: (!saved && choice.status !== 'none-found') || choice.status === 'invalidated' || unsuitableGroup, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open selection instructions',
+      readinessTitle: unsuitableGroup ? 'Use a suitable exclusions group' : 'Choose an exclusions group', readinessDirection: unsuitableGroup ? 'Choose a dedicated assigned security group, or follow Create an emergency exclusions group in Implementation Tasks.' : 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.',
+      issueKeys: groupFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
+      facts: unsuitableGroup ? groupMismatchFacts : [],
+      steps: ['Open **Entra ID → Groups → All groups** and open the intended exclusions group.', 'Check its name and object ID. Confirm **Security** group type and **Assigned** membership.', 'In IAMAI, select that group under **Exclusions group**, then **Save**.', 'Select **Scan to update the plan**.'],
+    },
+    {
+      id: 'manage-emergency-membership', accountId: null, title: 'Manage emergency account membership', targetUpn: null, required: !!groupId && completeMembers && (missing.length > 0 || extra.length > 0), readinessKey: 'group-members', evidence: !groupId || !completeMembers ? null : missing.length ? `${missing.length} selected account${missing.length === 1 ? ' is' : 's are'} missing.` : extra.length ? `${extra.length} additional direct member${extra.length === 1 ? '' : 's'} require review.` : null, actionLabel: 'Open membership instructions',
+      readinessTitle: missing.length && extra.length ? 'Correct emergency account membership' : extra.length ? 'Remove unexpected members' : 'Add the missing emergency accounts', readinessDirection: 'Follow Manage emergency account membership in Implementation Tasks.',
+      issueKeys: ['group:xg.containsEmergency', 'group:xg.membersApproved', 'group:xg.noExtraAdmins'],
+      facts: [
+        ...extra.map(id => ({ label: 'Remove', value: directObject(id) })),
+        ...missing.map(id => ({ label: 'Add', value: upnOf(ctx, id) })),
+      ],
+      steps: [...(groupId ? [`Open **Entra ID → Groups → All groups → ${groupName} → Members**. Check object ID **${groupId}**.`] : ['Select and save an exclusions group in IAMAI first.']), ...(missing.length ? [`Select **Add members**, choose ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}, then select **Select** to confirm.`] : [`For an identified missing account, select **Add members**, choose the intended emergency account, then select **Select** to confirm.`]), `Confirm ${accounts} appear as direct members. Preserve a working administrator session while changing exclusions membership.`, ...(extra.length ? [`Verify the intended recovery accounts work before removal. Select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, then confirm.`] : ['For an identified unwanted direct member, verify the intended recovery accounts work first, select that member, choose **Remove**, then confirm.']), 'Reopen **Members** and verify the intended list. Return to IAMAI and select **Scan to update the plan**.'],
+    },
+    {
+      id: 'configure-policy-exclusions', accountId: null, title: 'Configure Conditional Access exclusions', targetUpn: null, required: !!actionableGroupId && missingPolicies.length > 0, readinessKey: 'group-policies', evidence: missingPolicies.length ? `${missingPolicies.length} policy exclusion${missingPolicies.length === 1 ? '' : 's'} need attention.` : null, actionLabel: 'Open exclusion instructions',
+      readinessTitle: 'Add the group to the listed policy exclusions', readinessDirection: 'Follow Configure Conditional Access exclusions in Implementation Tasks.',
+      issueKeys: policyFinding?.items?.flatMap(item => item.issueKeys ?? []) ?? [],
+      facts: missingPolicies.map(policy => ({ label: policy.name, value: `${policy.mode} · ${policy.id}` })),
+      steps: ['Keep your working administrator session open. Open **Entra ID → Conditional Access → Policies**.', ...(missingPolicies.length ? missingPolicies.flatMap(policy => [`Open **${policy.name}** and verify policy ID **${policy.id}**.`, `Open **Assignments → Users → Exclude → Users and groups**, add **${groupName}**, then select **Select**.`, `Retain the policy’s current mode **${policy.mode}**, other exclusions and other settings. Select **Save**, then reopen the policy and confirm the group remains excluded.`]) : [
+        ...(!actionableGroupId || groupFinding?.taskSafe !== true ? ['IAMAI has not established the policy or group change values for this scan. Use the remaining steps as a reference; do not save guessed changes.'] : []),
+        'Open the intended policy, then open **Assignments → Users → Exclude → Users and groups**.',
+        'Select the intended emergency exclusions group, then select **Select**. Preserve the policy mode, other exclusions and all unrelated settings.',
+        'When an established correction is required, select **Save**, reopen the policy and confirm the intended group remains excluded.',
+      ]), 'Return to IAMAI and select **Scan to update the plan**.'],
+    },
+  ]
+  return { tasks, printAll: true }
 }

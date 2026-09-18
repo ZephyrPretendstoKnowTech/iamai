@@ -671,7 +671,8 @@ function withGroup(f: Fixture, change: (g: GroupEntry) => Partial<GroupEntry>): 
   const id = f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
   const groups: GroupMembers = new Map([...f.groups])
   const before = groups.get(id) as GroupEntry
-  groups.set(id, { ...before, ...change(before) })
+  const changed = change(before)
+  groups.set(id, { ...before, ...changed, ...(changed.memberIds ? { directMembers: 'complete', directMemberIds: [...changed.memberIds] } : {}) })
   return { ...f, groups }
 }
 
@@ -688,7 +689,8 @@ test('G1-G3. a blocking exclusion-group check that has not passed holds the step
     // excluded from does not apply to them.
     ['an unapproved member', withGroup(f, (g) => ({ memberIds: [...g.memberIds, outsider], memberCount: g.memberCount + 1 }))],
     // A rule that adds members adds exclusions, without anybody deciding to.
-    ['a dynamic membership rule', withGroup(f, () => ({ membershipRule: 'user.department -eq "IT"' }))],
+    ['a paused dynamic membership rule', withGroup(f, () => ({ membershipRule: 'user.department -eq "IT"', membershipRuleProcessingState: 'Paused' }))],
+    ['an assigned license', withGroup(f, () => ({ assignedLicenseSkuIds: ['sku-1'] }))],
     // An emergency account that is not in the group the policies exclude.
     ['a missing emergency account', withGroup(f, (g) => ({ memberIds: g.memberIds.filter((m) => m !== bg[0]), memberCount: g.memberCount - 1 }))],
   ]

@@ -35,6 +35,7 @@ export const ACTIVITY_STATE = {
   active: { title: 'Active', text: 'A successful sign-in within the last 90 days.' },
   dormant: { title: 'Inactive 90+ days', text: 'No successful sign-in for more than 90 days: planned separately, never counted as an MFA success.' },
   neverSignedIn: { title: 'Never signed in', text: 'No successful sign-in on record; the account creation date is shown instead.' },
+  unknown: { title: 'Activity unavailable', text: 'Successful sign-in activity could not be read for this account.' },
 } as const satisfies Record<string, Definition>
 
 export const METHOD_TIER = {

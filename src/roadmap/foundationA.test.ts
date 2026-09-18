@@ -1488,7 +1488,7 @@ test('with no policy-usable exclusions group there is no direct-user fallback: t
   const outsider = (f.snapshot.users.find((u) => !bg.includes(u.id)) as { id: string }).id
   const groups: GroupMembersMap = new Map([...f.groups])
   const before = groups.get(group) as NonNullable<ReturnType<GroupMembersMap['get']>>
-  groups.set(group, { ...before, memberIds: [...before.memberIds, outsider], memberCount: before.memberCount + 1 })
+  groups.set(group, { ...before, memberIds: [...before.memberIds, outsider], directMemberIds: [...(before.directMemberIds ?? before.memberIds), outsider], memberCount: before.memberCount + 1 })
   const unsafe = runFixture({ ...f, groups }, { groupMembers: groups, directory: directoryEvidenceFromGroups(groups, 'complete') })
   assertNoFallback(unsafe.steps, f, 'an unapproved member')
 
@@ -1503,7 +1503,7 @@ test('with no policy-usable exclusions group there is no direct-user fallback: t
   assertNoFallback(unread.steps, f, 'a membership nobody read')
 })
 
-type GroupMembersMap = Map<string, { memberIds: string[]; memberCount: number; sampled: boolean; displayName?: string | null; membershipRule?: string | null; mailEnabled?: boolean }>
+type GroupMembersMap = Map<string, { memberIds: string[]; directMemberIds?: string[]; memberCount: number; sampled: boolean; displayName?: string | null; membershipRule?: string | null; mailEnabled?: boolean | null }>
 
 /** No policy names the emergency accounts, and no policy that would need the carve-out is offered. */
 function assertNoFallback(steps: Step[], f: Fixture, why: string): void {

@@ -1,5 +1,5 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
-import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -215,7 +215,7 @@ import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
-import { awaitsOperator, exclusionsGroupChoice } from '../mapping/safetyChoice.ts'
+import { awaitsOperator, exclusionsGroupChoice, operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../mapping/safetyChoice.ts'
 import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
@@ -1309,11 +1309,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Each confirmed account's own evidence, never another's or the set's.
       accounts: emergencyAccountStanding(bgReport, mapping.breakGlassUserIds),
     }
-    const currentKeys = emergencyPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, input.groupMembers)
-    const proposedKeys = emergencyProposedPasskeyCompatibility(snapshot, mapping.breakGlassUserIds, mapping, input.groupMembers)
-    const compatibleKeys = [...currentKeys, ...proposedKeys].every(c => c.state === 'eligible')
+    const preparation = emergencyAccountPreparationOf(snapshot, mapping, input.groupMembers)
+    const preparedAccounts = emergencyAccountPreparationComplete(preparation)
     const results = bgReport.targets.flatMap((t) => t.results)
-    if (compatibleKeys && confirmed > 0 && results.length > 0 && accountStanding.minimum.length === 0 && accountStanding.hardening.length === 0) {
+    if (preparedAccounts && results.length > 0 && accountStanding.minimum.length === 0 && accountStanding.hardening.length === 0) {
       setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
@@ -1342,7 +1341,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // count of what it holds is filled in once the goal steps are known.
   attachConfigurationFindings(steps, validationReports)
   if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
-  if (geStep) geStep.configurationFindings = journeyGroupFindings(geReport, exclusions.actionableName ?? exclusions.suggested?.name ?? null, exclusions.actionableId !== null, snapshot, exclusions.actionableId, input.groupMembers)
+  if (geStep) {
+    const savedExclusions = operatorExclusionsDecision(mapping)
+    geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers)
+  }
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
 
@@ -2131,7 +2133,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // people in its own scope (roadmap/lockout.ts lockoutCount). No goal has a
       // lockout count of its own — a policy that requires no strength stops
       // nobody, and neither does work the plan cannot write.
-      ...(!state.satisfied && stepLockout !== null ? { lockout: stepLockout } : {}),
+      ...(!state.satisfied && unavailableReason(asStep) === null && stepLockout !== null ? { lockout: stepLockout } : {}),
       ...(measured !== null ? { measured: { ids: measured } } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
@@ -2438,7 +2440,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // And a step whose enforcement waits on a readiness threshold has no rings
   // either: the rings are the rollout of that enforcement, and dating them is
   // the promise that it lands (roadmap/operations.ts enforcementHeld).
-  for (const s of steps) s.rings = unavailableReason(s) !== null || enforcementHeld(s) ? [] : proposeRings(s, ringCtx)
+  for (const s of steps) {
+    const unavailable = unavailableReason(s) !== null
+    s.rings = unavailable || enforcementHeld(s) ? [] : proposeRings(s, ringCtx)
+    if (unavailable) delete s.lockout
+  }
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)

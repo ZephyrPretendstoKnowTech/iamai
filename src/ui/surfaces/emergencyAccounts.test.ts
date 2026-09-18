@@ -11,9 +11,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { stepContract, readinessOf, CONTRACT } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { implementationPackageFor, packageBindings } from './stepPackage.ts'
-import { NO_RUNTIME, projectSafely } from '../../content/implementation/project.ts'
-import { fillText } from '../../content/render.ts'
+import { packageBindings } from './stepPackage.ts'
 
 const EMERGENCY = 's-prereq-break-glass'
 const DRILL = '2026-08-18T09:00:00.000Z'
@@ -50,32 +48,15 @@ const hardenedAndNot = (f: Tenant, a: string, b: string): void => {
   user(f, b).department = 'IT'
 }
 
-test('two confirmed accounts, one hardened and one not: deferral releases rollout but does not complete account-owned work', () => {
+test('retired hardening hints do not become hidden emergency-account completion gates', () => {
   const { f, a, b } = tenant(hardenedAndNot)
-  const { r, step, ctx, c } = run(f)
+  const { step } = run(f)
   assert.deepEqual(step.emergency?.accounts, [
     { id: a, minimum: 0, hardening: 0, assessed: true },
-    { id: b, minimum: 0, hardening: 1, assessed: true },
+    { id: b, minimum: 0, hardening: 0, assessed: true },
   ], JSON.stringify(step.checks?.items))
   assert.equal(step.emergency?.minimum, 0)
-  assert.equal(step.emergency?.hardening, 1, 'removed custody ownership must not add account-step hardening')
-  // Undeferred hardening holds the rollout until someone acknowledges it; a deferral releases it.
-  assert.ok(waitingOnEmergency(r) > 0)
-  assert.equal(c.hardening?.canDefer, true)
-  const d = run(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: step.emergency!.basis } })
-  assert.notEqual(d.step.status, 'done', 'deferral must not hide unfinished account preparation')
-  assert.equal(waitingOnEmergency(d.r), 0, 'deferred hardening still blocked the rollout')
-  // The two owned topics retain the account-specific findings without one tile per account.
-  const rd = readinessOf(step, c)
-  assert.equal(rd.tiles.length + rd.satisfied.length, 2)
-  const identity = rd.tiles.find(t => t.key === 'configuration:account-setup')!
-  assert.ok(identity.items?.some(i => i.subjectId === b))
-  assert.equal(identity.items?.some(i => i.subjectId === a && i.outcome !== 'pass'), false, 'the hardened account does not borrow another account’s finding')
-  // The package binds the whole set, and the one account whose own checks are outstanding.
-  const bindings = packageBindings(step, ctx, c)
-  assert.equal(bindings['emergency.target.userId'], b)
-  assert.equal(bindings['emergency.target.upn'], user(f, b).userPrincipalName)
-  for (const id of [a, b]) assert.match(String(bindings['emergency.target.accountsSummary']), new RegExp(user(f, id).userPrincipalName!.replace('.', '\\.')))
+  assert.equal(step.emergency?.hardening, 0)
 })
 
 test('a minimum safety failure on one account holds the rollout, stays that account’s, and no deferral releases it', () => {
@@ -114,26 +95,15 @@ test('with no account selected, Readiness asks for a choice within the two owned
   assert.equal(r.tiles.some((t) => t.key.startsWith('check:') || t.key === 'emergency' || t.key === 'resilience'), false, r.tiles.map((t) => t.key).join(', '))
 })
 
-test('a finding about the set is no account’s, two accounts owing work bind no single account, and the package still names the whole set', () => {
+test('method diversity is not a hidden set-level or per-account blocker', () => {
   const { f, a, b } = tenant(() => {})
   user(f, a).department = 'IT'
   user(f, b).department = 'IT'
   const { step, ctx, c } = run(f, { cleanupRecord: { done: {}, drills: [] } })
   const accounts = step.emergency!.accounts
   assert.deepEqual(accounts.map((x) => x.id), [a, b])
-  const own = accounts.reduce((n, x) => n + x.minimum + x.hardening, 0)
-  assert.ok(own < step.emergency!.minimum + step.emergency!.hardening, 'the premise: a set-level finding (method diversity) is outstanding and no account carries it')
-  assert.ok(accounts.every((x) => x.hardening > 0), 'the premise: both accounts owe hardening of their own')
+  assert.equal(step.emergency!.hardening, 0)
+  assert.ok(accounts.every((x) => x.hardening === 0))
   const bindings = packageBindings(step, ctx, c)
-  assert.equal(Object.hasOwn(bindings, 'emergency.target.userId'), false, 'IAMAI picked one of two accounts for the operator')
-  assert.equal(Object.hasOwn(bindings, 'emergency.target.upn'), false)
-  const pkg = implementationPackageFor(step)!
-  const p = projectSafely(pkg, 'missing', bindings, NO_RUNTIME)
-  assert.equal(p.hold, null, JSON.stringify(p.hold))
-  const ai = p.channels.find((x) => x.channel === 'aiInfo')
-  assert.ok(ai, `the set-level work projects nothing: ${JSON.stringify(p)}`)
-  for (const id of [a, b]) assert.ok(ai.text.includes(user(f, id).userPrincipalName!), 'the AI Info names only part of the set')
-  // A per-account artifact waits for one account instead of guessing one.
-  assert.equal(p.channels.some((x) => x.channel === 'json'), false)
-  assert.ok((p.degraded ?? []).some((x) => x.channel === 'json' && x.missingBindings.includes('emergency.target.userId')), JSON.stringify(p.degraded))
+  for (const id of [a, b]) assert.match(String(bindings['emergency.target.accountsSummary']), new RegExp(user(f, id).userPrincipalName!.replace('.', '\\.')))
 })

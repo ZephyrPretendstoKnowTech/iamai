@@ -3,10 +3,9 @@
 // is deliberately presentation-only: it does not decide readiness, persist a
 // choice, or change tenant state.
 import type { Step } from '../../roadmap/types.ts'
-import { approvedPasskeyModels, emergencyMethodIssueKey, emergencyValidationIssueKey } from '../../roadmap/emergencyJourney.ts'
+import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
-import { emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from '../../roadmap/passkeyCompatibility.ts'
-import { methodAvailability } from '../../roadmap/methodAvailability.ts'
+import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -15,6 +14,7 @@ import type { StepVarContext } from './stepVars.ts'
 export type EmergencyAccountTaskVariant = {
   id: string
   label: string
+  facts?: { label: string; value: string }[]
   steps: string[]
 }
 
@@ -30,6 +30,10 @@ export type EmergencyAccountTask = {
   readinessKeys?: string[]
   evidence: string | null
   actionLabel: string
+  /** Concise correction heading used only in Tasks Remaining. */
+  readinessTitle?: string
+  /** Plain direction to the matching Implementation Task; never a second workflow. */
+  readinessDirection?: string
   /** Exact constituent findings this action/evidence replaces in interactive Readiness. */
   issueKeys?: string[]
   facts?: { label: string; value: string }[]
@@ -40,15 +44,34 @@ export type EmergencyAccountTask = {
 
 export type EmergencyAccountTasks = {
   tasks: EmergencyAccountTask[]
+  recommendedTaskId?: string | null
   approvedModels: ApprovedModel[]
   tapAvailable: boolean | null
+  accounts: EmergencyAccountStatus[]
+  printAll?: boolean
+}
+
+export type EmergencyAccountStatus = {
+  key: string
+  accountId: string | null
+  heading: string
+  upn: string | null
+  title: string
+  instruction: string
+  completed: string[]
+  remainingCount: number | null
+  satisfied: boolean
 }
 
 /** Shared task projection used by the connected emergency-access steps. */
 export type EmergencyTaskProjection = {
   tasks: EmergencyAccountTask[]
+  /** Initial Entra procedure derived from the highest-priority confirmed action. */
+  recommendedTaskId?: string | null
   approvedModels?: ApprovedModel[]
   tapAvailable?: boolean | null
+  accounts?: EmergencyAccountStatus[]
+  printAll?: boolean
 }
 
 const safe = (value: string): string => oneLine(value).trim()
@@ -56,29 +79,11 @@ const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user
 const targetOf = (ctx: StepVarContext, id: string): string => safe(userOf(ctx, id)?.userPrincipalName || ctx.nameOf(id) || id)
 const task = (value: EmergencyAccountTask): EmergencyAccountTask => value
 
-const UNKNOWN_PASSKEY_EVIDENCE: Record<string, string> = {
-  methodsUnread: 'The registered authentication methods could not be read.',
-  profileOrPartial: 'The assigned passkey profile could not be read.',
-  policyUnread: 'The Passkey (FIDO2) configuration could not be read.',
-  membershipUnread: 'The account’s Passkey (FIDO2) targeting membership could not be read.',
-  modelsUnread: 'The registered passkey model or applicable restriction could not be read.',
-}
-
 function tenantLead(ctx: StepVarContext): string[] {
   const tenant = safe(tenantNameOf(ctx.snapshot))
   return tenant
     ? [`Open [Microsoft Entra admin center](https://entra.microsoft.com/) and select **${tenant}**.`]
     : ['Open [Microsoft Entra admin center](https://entra.microsoft.com/) and confirm the intended tenant before continuing.']
-}
-
-function inspectSteps(ctx: StepVarContext, target: string, inspectIdentity: boolean, inspectRole: boolean): string[] {
-  return [
-    ...tenantLead(ctx),
-    `Open **Entra ID → Users** and select **${target}**.`,
-    ...(inspectIdentity ? ['Open **Properties** and check the username, account-enabled state, and on-premises synchronization details.'] : []),
-    ...(inspectRole ? ['Open **Assigned roles** and check the Global Administrator assignment and its active or eligible state.'] : []),
-    'Return to IAMAI and select **Scan to update the plan**.',
-  ]
 }
 
 function createSteps(domain: string, replacement: boolean): string[] {
@@ -95,31 +100,28 @@ function createSteps(domain: string, replacement: boolean): string[] {
   ]
 }
 
-export function yubiKeySteps(upn: string): string[] {
+export function yubiKeySteps(upn: string, device = 'approved YubiKey'): string[] {
+  const account = upn === 'the emergency account' ? upn : `**${upn}**`
   return [
-    'Keep your working administrator session open.',
-    `Open a separate browser session, go to [Security info](https://mysignins.microsoft.com/security-info), and sign in as **${upn}**.`,
-    'Select **Add sign-in method → Choose a method → Passkey**, then select **Next**.',
-    'When Microsoft asks where to save the passkey, select **Use another device** or **More options**, then choose **Security key**.',
-    'Connect the approved YubiKey. Complete its PIN and touch prompts.',
-    'Give the passkey a recognizable name and finish registration.',
-    `Confirm the new passkey appears in **${upn}**’s Security info.`,
-    'Store the YubiKey and its PIN securely where authorized staff can retrieve them without signing in to this tenant.',
+    `In a separate browser session, open [Security info](https://mysignins.microsoft.com/security-info) and sign in as ${account}.`,
+    'Select **Add sign-in method**, then the passkey or security-key option offered by Microsoft. Choose **Security key** as the storage destination.',
+    `Connect the ${device}. Set or enter its PIN and touch the key when prompted.`,
+    `Name the new method and finish registration. Confirm it appears in ${account}’s Security info.`,
+    'Open a separate private browser window and sign in to Microsoft Entra admin center with the new passkey. Confirm the account and tenant, then sign out. Retain the previous working method until this succeeds.',
+    `Store the ${device} and its access information securely where authorized staff can retrieve them without this tenant.`,
     'Return to IAMAI and select **Scan to update the plan**.',
   ]
 }
 
 export function authenticatorSteps(upn: string, platform: 'iPhone/iPad' | 'Android'): string[] {
+  const account = upn === 'the emergency account' ? upn : `**${upn}**`
   return [
-    'Keep your working administrator session open.',
     `Open **Microsoft Authenticator** on the recovery ${platform} device.`,
-    `If **${upn}** is listed, select it, then select **Create a passkey**.`,
-    `If the account is not listed, select **Add account** or **+**, choose **Work or school account → Sign in**, and enter **${upn}**.`,
-    `After the account is added, select **${upn} → Create a passkey**.`,
-    'Complete the Microsoft sign-in and multifactor prompts shown for this account.',
-    'Follow the app-directed screen-lock and passkey-provider setup, then finish registration.',
-    `Confirm **${upn}** and its passkey appear in Microsoft Authenticator.`,
-    'Store the recovery device and its unlock information through the approved process accessible to authorized staff without this tenant.',
+    `Select ${account} and **Create a passkey**. If the account is absent, use **Add account → Work or school account → Sign in** instead, and complete the passkey setup flow.`,
+    'Complete the Microsoft authentication prompts for that account.',
+    'Follow the app’s Settings prompt to enable a screen lock and select **Authenticator** as a passkey provider. Return to the app and finish setup.',
+    `Confirm the passkey appears for ${account}. In a separate private browser window, sign in to Microsoft Entra admin center using it; confirm the account and tenant, then sign out.`,
+    'Retain the previous working method until that sign-in succeeds. Secure the recovery device and unlock information for authorized access without this tenant.',
     'Return to IAMAI and select **Scan to update the plan**.',
   ]
 }
@@ -132,10 +134,68 @@ export function emergencyRegistrationVariants(upn: string): EmergencyAccountTask
   ]
 }
 
-function tapState(ctx: StepVarContext, id: string): boolean | null {
-  const groups = Object.fromEntries([...(ctx.groups ?? new Map())].map(([groupId, value]) => [groupId, value.memberIds]))
-  const state = methodAvailability(ctx.snapshot, { groupMembers: groups }).usable(id, 'temporaryaccesspass')
-  return state === 'yes' ? true : state === 'no' ? false : null
+function accountStatuses(ctx: StepVarContext): EmergencyAccountStatus[] {
+  const selected = ctx.mapping.breakGlassUserIds
+  const domain = initialDomain(ctx.snapshot)
+  const preparations = new Map(emergencyAccountPreparationOf(ctx.snapshot, ctx.mapping, ctx.groups).map(row => [row.accountId, row]))
+  const rows: EmergencyAccountStatus[] = selected.map((id, index) => {
+    const user = userOf(ctx, id)
+    const upn = user?.userPrincipalName ? targetOf(ctx, id) : null
+    const heading = `Emergency access account ${index + 1}`
+    const preparation = preparations.get(id)!
+    const { cloudOnly, initialDomain: rightDomain, enabled, permanentGlobalAdministrator: permanentGa, approvedPasskey: compatible } = preparation.checks
+    const checks = [cloudOnly, rightDomain, enabled, permanentGa, compatible]
+    const completed = [
+      cloudOnly && 'Cloud-only account',
+      rightDomain && 'Initial onmicrosoft.com sign-in address',
+      enabled && 'Account enabled',
+      permanentGa && 'Permanent, active Global Administrator',
+      compatible && 'Approved passkey registered',
+    ].filter((value): value is string => Boolean(value))
+    let title = 'Account prepared'
+    let instruction = 'No account changes remain.'
+    if (cloudOnly === false) {
+      title = 'Use a cloud-only account'
+      instruction = 'This account is synchronized. Select a cloud-only account, or follow Create an emergency account in Implementation Tasks.'
+    } else if (rightDomain === false) {
+      title = 'Change the sign-in address'
+      instruction = `Use ${domain ?? 'the tenant’s initial onmicrosoft.com domain'}. Follow Configure an existing account in Implementation Tasks.`
+    } else if (enabled === false) {
+      title = 'Account disabled'
+      instruction = 'Follow Configure an existing account in Implementation Tasks.'
+    } else if (permanentGa === false) {
+      const active = (ctx.snapshot.roles.active[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
+      const eligible = (ctx.snapshot.roles.eligible[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
+      title = active ? 'Global Administrator assignment expires' : eligible ? 'Global Administrator is eligible only' : 'Global Administrator not assigned'
+      instruction = active ? 'Follow Configure an existing account in Implementation Tasks to make it permanent.' : eligible ? 'Follow Configure an existing account in Implementation Tasks to make it permanent and active.' : 'Follow Configure an existing account in Implementation Tasks.'
+    } else if (compatible === false) {
+      const missing = preparation.passkeyCount === 0
+      title = missing ? 'Approved passkey needed' : 'Passkey does not meet planned settings'
+      instruction = 'Follow Set up an approved passkey in Implementation Tasks.'
+    } else if (cloudOnly === null) {
+      title = 'Account source could not be verified'
+      instruction = 'Scan again so IAMAI can confirm this is a cloud-only account.'
+    } else if (rightDomain === null) {
+      title = 'Tenant sign-in domain could not be verified'
+      instruction = 'Scan again so IAMAI can confirm the account uses the tenant onmicrosoft.com domain.'
+    } else if (enabled === null) {
+      title = 'Account status could not be verified'
+      instruction = 'Scan again so IAMAI can confirm the account is enabled.'
+    } else if (permanentGa === null) {
+      title = 'Global Administrator assignment could not be verified'
+      instruction = 'Scan again so IAMAI can confirm the account has permanent, active Global Administrator access.'
+    } else if (compatible === null) {
+      title = 'Passkey check incomplete'
+      instruction = 'IAMAI could not fully check this account. Review the scan coverage details; no account change is established.'
+    }
+    const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
+    return { key: id, accountId: id, heading, upn, title, instruction, completed, remainingCount, satisfied: checks.every(value => value === true) }
+  })
+  while (rows.length < 2) {
+    const slot = rows.length + 1
+    rows.push({ key: `empty-${slot}`, accountId: null, heading: `Emergency access account ${slot}`, upn: null, title: 'No account selected', instruction: 'Select an account under Emergency access accounts, then Save. To create one, follow Create an emergency account in Implementation Tasks.', completed: [], remainingCount: null, satisfied: false })
+  }
+  return rows
 }
 
 const fixSet = (step: Step, id: string): Set<string> => new Set((step.checks?.items ?? []).filter(item => item.target?.toLowerCase() === id.toLowerCase()).map(item => item.fix))
@@ -144,214 +204,89 @@ const fixSet = (step: Step, id: string): Set<string> => new Set((step.checks?.it
 export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): EmergencyAccountTasks {
   const domain = initialDomain(ctx.snapshot)
   const selected = ctx.mapping.breakGlassUserIds
-  const current = new Map(emergencyPasskeyCompatibility(ctx.snapshot, selected, ctx.groups).map(item => [item.accountId.toLowerCase(), item]))
-  const intended = new Map(emergencyProposedPasskeyCompatibility(ctx.snapshot, selected, ctx.mapping, ctx.groups).map(item => [item.accountId.toLowerCase(), item]))
-  const tasks: EmergencyAccountTask[] = []
-  const tapStates = selected.map(id => tapState(ctx, id))
+  const targets = selected.map(id => targetOf(ctx, id))
+  const targetLine = targets.length ? targets.join(', ') : 'the emergency account'
+  const registrationTarget = targets.length === 1 ? targets[0] : 'the account you are preparing'
+  const repeatLead = targets.length
+    ? [`Keep your working administrator session open. Accounts: **${targets.join('**, **')}**.`, 'Repeat this procedure separately for each account listed above.']
+    : ['Keep your working administrator session open.']
+  const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
+  const modelFacts = (models: ApprovedModel[]) => models.map(model => ({ label: model.name, value: `AAGUID: ${model.aaguid}` }))
+  const variants = emergencyRegistrationVariants(registrationTarget).map(variant => ({
+    ...variant,
+    facts: modelFacts(approvedModels.filter(model => variant.id === 'yubikey' ? /yubikey/i.test(model.name) : variant.id === 'authenticator-ios' ? /authenticator.*ios/i.test(model.name) : /authenticator.*android/i.test(model.name))),
+    steps: [...repeatLead, ...variant.steps.slice(0, -1), 'Cannot complete registration sign-in? Use **Troubleshooting → Temporary Access Pass**.', variant.steps.at(-1)!],
+  }))
+  const customHardware = approvedModels.filter(model => model.source === 'plan' && model.recovery && !/yubikey/i.test(model.name))
+  if (customHardware.length) variants.push({
+    id: 'approved-hardware',
+    label: 'Additional approved hardware key',
+    facts: modelFacts(customHardware),
+    steps: [
+      ...repeatLead,
+      ...yubiKeySteps(registrationTarget, `approved hardware security key (${customHardware.map(model => `${model.name}, AAGUID ${model.aaguid}`).join('; ')})`).slice(0, -1),
+      'Cannot complete registration sign-in? Use **Troubleshooting → Temporary Access Pass**.',
+      'Return to IAMAI and select **Scan to update the plan**.',
+    ],
+  })
+  const tasks: EmergencyAccountTask[] = [
+    task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.'] }),
+    task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
+      'Keep your working administrator session open.',
+      `Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users** and open the account named in **Tasks Remaining**. Selected accounts: **${targetLine}**.`,
+      `If the tile requests a sign-in-address change, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`,
+      'If the tile says the account is disabled, open **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.',
+      'For a direct role assignment, open **Entra ID → Roles & admins → Global Administrator → Add assignments**, select the account, and complete the assignment.',
+      'If Privileged Identity Management manages the role, open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**. Choose **Assignment type: Active** and **Permanently assigned**.',
+      'Save the changes, reopen the account, and confirm the sign-in address, enabled state, cloud-only identity, and permanent active role.',
+      'Return to IAMAI and select **Scan to update the plan**.',
+    ] }),
+    task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
+  ]
+  const accounts = accountStatuses(ctx)
+  const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
+    : row.title === 'Use a cloud-only account' ? 1
+      : row.title === 'Change the sign-in address' ? 2
+        : row.title === 'Account disabled' ? 3
+          : /Global Administrator/.test(row.title) ? 4
+            : row.title === 'Approved passkey needed' || row.title === 'Passkey does not meet planned settings' ? 5
+              : Number.POSITIVE_INFINITY
+  const next = accounts.map((row, index) => ({ row, index, priority: confirmedPriority(row) })).filter(value => Number.isFinite(value.priority)).sort((a, b) => a.priority - b.priority || a.index - b.index)[0]?.row
+  const recommendedTaskId = next?.accountId === null
+    ? 'create-account'
+    : next?.title === 'Use a cloud-only account'
+      ? 'create-account'
+    : next?.title === 'Approved passkey needed' || next?.title === 'Passkey does not meet planned settings'
+      ? 'set-up-passkey'
+      : next && !/could not be verified|check incomplete/i.test(next.title)
+        ? 'configure-account'
+        : null
+  return { tasks, accounts, recommendedTaskId, printAll: true, approvedModels, tapAvailable: null }
+}
 
-  for (const id of selected) {
-    const target = targetOf(ctx, id)
-    const user = userOf(ctx, id)
-    const fixes = fixSet(step, id)
-    const standing = step.emergency?.accounts.find(account => account.id.toLowerCase() === id.toLowerCase())
-    const replacement = fixes.has('cloud-only') || fixes.has('onmicrosoft-domain') || fixes.has('not-a-person')
-    const scheduleRead = ctx.snapshot.config.roleAssignmentSchedules?.status === 'ok'
-    const rolesRead = ctx.snapshot.config.roleAssignments?.status === 'ok'
-    const roleUnread = !user || !rolesRead || !scheduleRead || standing?.assessed === false
-    if (roleUnread && !replacement) {
-      tasks.push(task({
-        id: `inspect-account:${id}`,
-        accountId: id,
-        title: 'Inspect account settings',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'account-setup',
-        evidence: !user ? 'The selected identity was not read.' : !rolesRead ? 'Role assignments were not read.' : !scheduleRead ? 'Permanent role schedules were not read.' : 'Identity or role evidence is incomplete.',
-        actionLabel: 'Open inspection instructions',
-        ...(!rolesRead || !scheduleRead || standing?.assessed === false ? { issueKeys: [emergencyValidationIssueKey('bg.role.permanentGa', id)] } : {}),
-        steps: inspectSteps(ctx, target, true, true),
-      }))
-    }
-    if (replacement && !domain) {
-      tasks.push(task({
-        id: `inspect-initial-domain:${id}`,
-        accountId: id,
-        title: 'Inspect the initial tenant domain',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'account-setup',
-        evidence: 'The identity needs replacement, but the initial tenant domain was not read.',
-        actionLabel: 'Open inspection instructions',
-        issueKeys: [emergencyValidationIssueKey('bg.initialDomain', id)],
-        steps: [
-          ...tenantLead(ctx),
-          'Open **Entra ID → Custom domain names** and identify the verified initial **onmicrosoft.com** domain.',
-          'Return to IAMAI and select **Scan to update the plan** before creating the replacement.',
-          'Do not change roles or authentication methods on the unsuitable identity.',
-        ],
-      }))
-      continue
-    }
-    if (replacement && domain) {
-      tasks.push(task({
-        id: `create-replacement:${id}`,
-        accountId: id,
-        title: 'Create a replacement emergency account',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'account-setup',
-        evidence: 'The selected identity is unsuitable for emergency access.',
-        actionLabel: 'Open replacement instructions',
-        issueKeys: [
-          ...(fixes.has('cloud-only') ? [emergencyValidationIssueKey('bg.cloudOnly', id)] : []),
-          ...(fixes.has('onmicrosoft-domain') ? [emergencyValidationIssueKey('bg.initialDomain', id)] : []),
-          ...(fixes.has('not-a-person') ? [emergencyValidationIssueKey('bg.notPersonal', id)] : []),
-        ],
-        steps: createSteps(domain, true),
-      }))
-      continue
-    }
-    if (fixes.has('enabled')) {
-      tasks.push(task({
-        id: `enable-account:${id}`,
-        accountId: id,
-        title: 'Enable account sign-in',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'account-setup',
-        evidence: 'The account is disabled.',
-        actionLabel: 'Open enablement instructions',
-        issueKeys: [emergencyValidationIssueKey('bg.enabled', id)],
-        steps: [
-          `Open **Microsoft Entra admin center → Entra ID → Users → ${target}**.`,
-          'Open **Properties → Edit properties → Settings**.',
-          'Set **Account enabled** to **Yes**, then select **Save**.',
-          'Reopen the account and confirm sign-in is enabled.',
-          'Return to IAMAI and select **Scan to update the plan**.',
-        ],
-      }))
-    }
-    if (fixes.has('permanent-global-admin') && !roleUnread) {
-      const active = (ctx.snapshot.roles.active[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
-      const eligible = (ctx.snapshot.roles.eligible[id] ?? []).some(role => role.toLowerCase() === GLOBAL_ADMIN_ROLE)
-      tasks.push(task({
-        id: `assign-role:${id}`,
-        accountId: id,
-        title: 'Assign permanent active Global Administrator',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'account-setup',
-        evidence: active ? 'A permanent tenant-wide assignment was not established.' : eligible ? 'Global Administrator is eligible, not permanently active.' : 'No permanent active Global Administrator assignment was found.',
-        actionLabel: 'Open role-assignment instructions',
-        issueKeys: [emergencyValidationIssueKey('bg.role.permanentGa', id)],
-        steps: [
-          'Keep your working administrator session open.',
-          `For a direct assignment, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Roles & admins → Global Administrator → Add assignments**, select **${target}**, then select **Add**. The direct assignment page has no Active or expiry controls.`,
-          `If your organization uses PIM for this permanent assignment, open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → Global Administrator → Add assignments**, select **${target}**, choose **Assignment type: Active** and **Permanently assigned**, then select **Assign**.`,
-          `Reopen **${target} → Assigned roles** and confirm Global Administrator is active and permanent.`,
-          'Return to IAMAI and select **Scan to update the plan**.',
-        ],
-      }))
-    }
-
-    const now = current.get(id.toLowerCase())
-    const next = intended.get(id.toLowerCase())
-    // A directly observed absence is enough to offer registration even when the
-    // intended profile assignment is partly unread. Unknown method evidence is
-    // still left in Readiness and never becomes a mutation task.
-    const needsRegistration = (now?.state === 'review' && now.reason === 'newKey')
-      || (next?.state === 'review' && ['newKey', 'modelRestricted', 'proposedModelRestricted'].includes(next.reason))
-    if (needsRegistration) {
-      const registrationReasons = new Set(['newKey', 'modelRestricted', 'proposedModelRestricted'])
-      const issueKeys = ([['current', now], ['planned', next]] as const).flatMap(([phase, reading]) => reading && reading.state !== 'eligible' && registrationReasons.has(reading.reason) ? [emergencyMethodIssueKey(id, phase, reading.reason)] : [])
-      const variants = emergencyRegistrationVariants(target)
-      if (variants.length) tasks.push(task({
-        id: `register-passkey:${id}`,
-        accountId: id,
-        title: 'Register an approved passkey',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'recovery-methods',
-        evidence: now?.reason === 'newKey' ? 'No registered passkey was found.' : 'The registered passkey is not compatible with the current and planned settings.',
-        actionLabel: 'Open registration instructions',
-        issueKeys,
-        steps: variants[0].steps,
-        variants,
-        defaultVariantId: variants[0].id,
-      }))
-      if (tapState(ctx, id) === true) tasks.push(task({
-        id: `issue-tap:${id}`,
-        accountId: id,
-        title: 'Issue a Temporary Access Pass',
-        targetUpn: target,
-        required: false,
-        readinessKey: 'recovery-methods',
-        evidence: 'Optional bootstrap help. Requires Privileged Authentication Administrator.',
-        actionLabel: 'Open Temporary Access Pass instructions',
-        steps: [
-          `In your working administrator session, open **Entra ID → Users → ${target} → Authentication methods**.`,
-          'Select **Add authentication method → Temporary Access Pass**.',
-          'Set a short lifetime and select single use, then create the pass.',
-          `Use the displayed pass only in **${target}**’s separate Microsoft sign-in session.`,
-          'Complete the selected passkey-registration task and confirm the passkey appears for the intended account.',
-        ],
-      }))
-    }
-    const unreadReasons = [...new Set([now, next].filter(reading => reading?.state === 'unknown').map(reading => reading!.reason))]
-    if (unreadReasons.length > 0) {
-      const inspectPolicy = unreadReasons.some(reason => reason !== 'methodsUnread')
-      const issueKeys = ([['current', now], ['planned', next]] as const).flatMap(([phase, reading]) => reading?.state === 'unknown' ? [emergencyMethodIssueKey(id, phase, reading.reason)] : [])
-      tasks.push(task({
-        id: `inspect-passkey:${id}`,
-        accountId: id,
-        title: 'Review passkey evidence',
-        targetUpn: target,
-        required: true,
-        readinessKey: 'recovery-methods',
-        evidence: unreadReasons.map(reason => UNKNOWN_PASSKEY_EVIDENCE[reason] ?? 'Passkey evidence could not be read.').join(' '),
-        actionLabel: 'Open inspection instructions',
-        issueKeys,
-        steps: [
-          ...tenantLead(ctx),
-          `Open **Entra ID → Users → ${target} → Authentication methods**.`,
-          'Inspect the registered passkey entries and note the display name, AAGUID and passkey type. Do not add or delete a method in this inspection task.',
-          ...(inspectPolicy ? ['Open **Entra ID → Authentication methods → Policies → Passkey (FIDO2)** and inspect the targeting and applicable profile shown for this account. Do not change the policy or profile in this inspection task.'] : []),
-          'Return to IAMAI and select **Scan to update the plan**.',
-        ],
-      }))
-    }
-  }
-
-  if (domain && !tasks.some(item => item.id.startsWith('create-replacement:'))) {
-    tasks.push(task({
-      id: 'create-account',
-      accountId: null,
-      title: 'Create an emergency account',
-      targetUpn: null,
-      required: false,
-      readinessKey: 'account-setup',
-      evidence: null,
-      actionLabel: 'Open creation instructions',
-      steps: createSteps(domain, false),
-    }))
-  }
-
-  return { tasks, approvedModels: approvedPasskeyModels(ctx.snapshot, ctx.mapping), tapAvailable: tapStates.length === 0 ? null : tapStates.every(value => value === true) ? true : tapStates.some(value => value === false) ? false : null }
+export function emergencyTaskFacts(task: EmergencyAccountTask, variantId?: string | null): { label: string; value: string }[] {
+  const selected = task.variants?.find(variant => variant.id === variantId) ?? task.variants?.find(variant => variant.id === task.defaultVariantId) ?? task.variants?.[0]
+  return selected?.facts ?? task.facts ?? []
 }
 
 export function emergencyTaskSteps(task: EmergencyAccountTask, variantId?: string | null): string[] {
   if (!task.variants?.length) return task.steps
-  return task.variants.find(variant => variant.id === variantId)?.steps ?? task.variants.find(variant => variant.id === task.defaultVariantId)?.steps ?? task.variants[0].steps
+  const selected = task.variants.find(variant => variant.id === variantId) ?? task.variants.find(variant => variant.id === task.defaultVariantId) ?? task.variants[0]
+  if (task.id !== 'prepare-affected-passkeys') return selected.steps
+  const closing = task.steps.at(-1)
+  return [...task.steps.slice(0, -1), ...selected.steps.filter(line => !/Return to IAMAI.*Scan to update the plan/i.test(line)), ...(closing ? [closing] : [])]
 }
 
 export function emergencyTaskText(task: EmergencyAccountTask, variantId?: string | null): string {
   const heading = `**${task.title}**${task.targetUpn ? `\n\nTarget: ${task.targetUpn}` : ''}`
-  return `${heading}\n\n${emergencyTaskSteps(task, variantId).map((line, index) => `${index + 1}. ${line}`).join('\n')}`
+  const taskFacts = emergencyTaskFacts(task, variantId)
+  const facts = taskFacts.length ? `\n\n${taskFacts.map(row => `- **${row.label}:** ${row.value}`).join('\n')}` : ''
+  return `${heading}${facts}\n\n${emergencyTaskSteps(task, variantId).map((line, index) => `${index + 1}. ${line}`).join('\n')}`
 }
 
 /** Deterministic flattened output for exports and the Entra artifact. */
 export function emergencyAccountTasksText(value: EmergencyAccountTasks): string {
-  const required = value.tasks.filter(item => item.required)
+  const required = value.printAll ? value.tasks : value.tasks.filter(item => item.required)
   return required.length
     ? required.map(item => emergencyTaskText(item, item.defaultVariantId)).join('\n\n')
     : 'No Entra action is currently identified. Review Readiness.'

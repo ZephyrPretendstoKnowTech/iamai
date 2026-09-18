@@ -40,6 +40,7 @@ export const PASSKEY_FIELDS = [
   'keyRestrictions.enforcementType',
   'keyRestrictions.aaGuids',
   'isSelfServiceRegistrationAllowed',
+  'passkeyProfiles',
 ] as const
 export type PasskeyField = (typeof PASSKEY_FIELDS)[number]
 
@@ -215,12 +216,36 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
     ...(assigned.length > 0 ? ['includeTargets.allowedPasskeyProfiles'] : []),
   ]
   if (profiles.length > 0) {
-    const findings = findingsFor(current, mapping).filter(f => f.outcome !== 'pass' && f.key !== 'method' && f.key !== 'selfService')
-    if (findings.length > 0) return { kind: 'review', review: 'profiles', subjects: findings.map(f => `${f.label}: ${f.value}. ${f.detail}`) }
     if (!['enabled', 'disabled'].includes(String(current.state)) || typeof current.isSelfServiceRegistrationAllowed !== 'boolean') return { kind: 'review', review: 'partialRead', subjects: ['state', 'isSelfServiceRegistrationAllowed'] }
-    // Profile settings already meet the standard. Keep every profile and its
-    // assignments; only the global enabled/self-service fields can differ.
-    return { kind: 'target', target: { ...structuredClone(current), state: 'enabled', isSelfServiceRegistrationAllowed: true }, restriction: 'allow', retained: assignedPasskeyProfiles(current).profiles.flatMap(p => strings(p.keyRestrictions?.aaGuids)), added: [] }
+    const assignedProfiles = assignedPasskeyProfiles(current)
+    if (assignedProfiles.unknown.length) return { kind: 'review', review: 'partialRead', subjects: assignedProfiles.unknown }
+    const profileProblems = findingsFor(current, mapping).filter(f => f.outcome !== 'pass' && f.key !== 'method' && f.key !== 'selfService')
+    if (profileProblems.length === 0) return { kind: 'target', target: { ...structuredClone(current), state: 'enabled', isSelfServiceRegistrationAllowed: true }, restriction: 'allow', retained: assignedProfiles.profiles.flatMap(profile => strings(profile.keyRestrictions?.aaGuids)), added: [] }
+    // A single profile per target has one unambiguous place for the approved
+    // intent. Overlapping profiles still require an actual policy decision.
+    if (assignedProfiles.targets.some(target => target.profileIds.length !== 1)) return { kind: 'review', review: 'profiles', subjects: ['Overlapping applicable passkey profiles require a target decision.'] }
+    const assignedIds = new Set(assignedProfiles.targets.flatMap(target => target.profileIds))
+    const retained = new Set<string>(); const added = new Set<string>()
+    const proposed = (current.passkeyProfiles as unknown[]).map(raw => {
+      const profile = object(raw)
+      if (!profile || typeof profile.id !== 'string' || !assignedIds.has(profile.id.toLowerCase())) return structuredClone(raw)
+      const restrictions = object(profile.keyRestrictions)
+      const values = restrictions && Array.isArray(restrictions.aaGuids) ? restrictions.aaGuids : null
+      if (!restrictions || typeof restrictions.isEnforced !== 'boolean' || !['allow', 'block'].includes(String(restrictions.enforcementType)) || !values || values.some(value => typeof value !== 'string' || !GUID.test(value))) return null
+      const currentIds = strings(values)
+      if (restrictions.isEnforced !== true) return { review: 'modelSelection' as const, subjects: [profile.id] }
+      if (restrictions.enforcementType === 'block') {
+        const conflict = currentIds.filter(id => requiredIds.includes(id))
+        return conflict.length ? { review: 'blockListConflict' as const, subjects: conflict } : { review: 'modelSelection' as const, subjects: [profile.id] }
+      }
+      currentIds.forEach(id => retained.add(id))
+      const missing = requiredIds.filter(id => !currentIds.includes(id)); missing.forEach(id => added.add(id))
+      return { ...structuredClone(profile), passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: { ...structuredClone(restrictions), isEnforced: true, enforcementType: 'allow', aaGuids: [...currentIds, ...missing] } }
+    })
+    const invalid = proposed.find(value => value === null || (object(value) && 'review' in object(value)!))
+    if (invalid === null) return { kind: 'review', review: 'partialRead', subjects: ['passkeyProfiles'] }
+    if (invalid && object(invalid)?.review) return { kind: 'review', review: object(invalid)!.review as PasskeyReview, subjects: strings(object(invalid)!.subjects).length ? strings(object(invalid)!.subjects) : [String(object(invalid)!.subjects ?? '')] }
+    return { kind: 'target', target: { ...structuredClone(current), state: 'enabled', isSelfServiceRegistrationAllowed: true, passkeyProfiles: proposed }, restriction: 'allow', retained: [...retained], added: [...added] }
   }
   // Every setting the target is built from, read. An assignment list absent from a
   // target is not "no profiles": it is a read that did not carry them.
@@ -269,7 +294,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null, mapping
 const sameSet = (a: unknown, b: unknown): boolean => JSON.stringify([...new Set(strings(a))]) === JSON.stringify([...new Set(strings(b))])
 
 function matches(field: PasskeyField, current: Fido2Configuration, t: Fido2Configuration): boolean {
-  if (profileMode(t) && field !== 'state' && field !== 'includeTargets' && field !== 'isSelfServiceRegistrationAllowed') return true
+  if (profileMode(t) && !['state', 'includeTargets', 'isSelfServiceRegistrationAllowed', 'passkeyProfiles'].includes(field)) return true
   switch (field) {
     case 'state':
       return current.state === t.state
@@ -287,6 +312,8 @@ function matches(field: PasskeyField, current: Fido2Configuration, t: Fido2Confi
       return sameSet(current.keyRestrictions?.aaGuids, t.keyRestrictions?.aaGuids)
     case 'isSelfServiceRegistrationAllowed':
       return current.isSelfServiceRegistrationAllowed === t.isSelfServiceRegistrationAllowed
+    case 'passkeyProfiles':
+      return JSON.stringify(current.passkeyProfiles) === JSON.stringify(t.passkeyProfiles)
   }
 }
 

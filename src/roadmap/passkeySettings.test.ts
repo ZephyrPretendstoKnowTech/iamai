@@ -215,10 +215,10 @@ test('B.4 a block list that blocks Authenticator is reviewed, never overridden: 
   assert.deepEqual(other, { kind: 'review', review: 'modelSelection', subjects: ['block'] })
 })
 
-test('B.5 a profile-based policy keeps its profiles and assignments: nothing legacy is written over it and the step holds on the review', () => {
+test('B.5 an incomplete profile-based read stays partial: nothing legacy is written over it and the step holds on the evidence gap', () => {
   const assigned = legacy({ includeTargets: [{ targetType: 'group', id: 'finance', isRegistrationRequired: false, allowedPasskeyProfiles: ['11111111-1111-4111-8111-111111111111'] }] })
   for (const fido2 of [assigned, legacy({ defaultPasskeyProfile: '11111111-1111-4111-8111-111111111111' }), legacy({ passkeyProfiles: [{ id: 'p', name: 'Finance' }] })]) {
-    assert.equal(resolved(fido2).kind === 'review' && (resolved(fido2) as { review: string }).review, 'profiles', JSON.stringify(fido2))
+    assert.equal(resolved(fido2).kind === 'review' && (resolved(fido2) as { review: string }).review, 'partialRead', JSON.stringify(fido2))
   }
   const f = withFido2(fixture('demo'), assigned)
   const { r, lane } = plan(f)

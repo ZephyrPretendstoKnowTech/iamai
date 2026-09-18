@@ -222,16 +222,19 @@ export function StepActionColumn({ rail, children = null }: { rail: { metric: st
  * action on the existing routing — and it renders nothing where it has nothing
  * to offer. The row above the step is what closes it.
  */
-export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; onScan?: (() => void) | null }) {
-  if (!controls && !onScan) return null
+export function StepFooter({ controls = null, onScan, auxiliary = null }: { controls?: ReactNode; onScan?: (() => void) | null; auxiliary?: ReactNode }) {
+  if (!controls && !onScan && !auxiliary) return null
   return (
     <footer className="step-footer no-print">
       {controls}
-      {onScan && (
-        <Button variant="primary" className="step-footer-scan" onClick={onScan}>
-          {FOOTER.scan}
-        </Button>
-      )}
+      <div className="step-footer-end">
+        {auxiliary}
+        {onScan && (
+          <Button variant="primary" className="step-footer-scan" onClick={onScan}>
+            {FOOTER.scan}
+          </Button>
+        )}
+      </div>
     </footer>
   )
 }
@@ -257,7 +260,7 @@ const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wai
  * the evidence where there is evidence to open. The grid takes its track
  * count from the tiles it is handed, so nothing is padded.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true }: {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null, showClosedCount = true, heading }: {
   readiness: ContractReadiness
   lead: ReactNode
   onWhy?: (() => void) | null
@@ -271,6 +274,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   printing?: boolean
   children?: ReactNode
   showClosedCount?: boolean
+  heading?: string
 }) {
   const W = CONTRACT.readiness
   // The blocking tiles open with the step (content review D5). Their explanations
@@ -302,7 +306,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   const closedBlocking = !printing && auto !== null && auto.sig === sig ? auto.closed : 0
   return (
     <section ref={sectionRef} className="step-section readiness-section">
-      <h4>{W.heading}</h4>
+      <h4>{heading ?? W.heading}</h4>
       {readiness.tiles.length > 0 ? (
         strip(readiness.tiles, 'unresolved')
       ) : (

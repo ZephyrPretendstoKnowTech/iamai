@@ -5,7 +5,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
-import { app, stepById } from '../../content/content.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -15,8 +14,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { matchedNoteOf } from './pickerRows.ts'
-import { partnerLinkOf, readinessLeadOf } from './stepContract.ts'
+import { readinessLeadOf } from './stepContract.ts'
 import { authoredParts } from './authoredText.ts'
 
 type Block = { meta: { id: string; channel: string }; text: string }
@@ -45,7 +43,7 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 }
 
 test('s-prereq-break-glass: preparation owns account identity, role and approved passkeys only', () => {
-  assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare dedicated accounts and approved passkeys that will work with the planned settings.')
+  assert.equal(stepOf('s-prereq-break-glass').why, 'Prepare at least two dedicated emergency access accounts with approved passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.')
   const cs = stepOf('s-prereq-break-glass')
   assert.equal(cs.partner, undefined)
   assert.deepEqual(cs.doneWhen, [
@@ -59,19 +57,15 @@ test('s-prereq-break-glass: preparation owns account identity, role and approved
   assert.doesNotMatch(artifacts.find((artifact) => artifact.id === 'ai')!.text(), /credential custody|controlled (?:sign-in|drill)|exclusions group/i)
 })
 
-test('s-prereq-exclusion-group: Why says what the group does, a match says what Save confirms, the note links its partner, and Entra has two paths', () => {
+test('s-prereq-exclusion-group: About text is direct, the selector has no repeated helper, and Entra has two paths', () => {
   const cs = stepOf(EXCLUSIONS)
   // Editorial batch C: the register Why.
   assert.equal(cs.why, 'Keep the selected recovery accounts outside policies that could prevent recovery, using the intended exclusions group.')
-  // The pre-filled match: a ✓ badge, and one line saying what Save confirms.
-  assert.equal(app.picker.matched, '✓ Matched by IAMAI')
-  assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Breakglass Exclusion', badge: app.picker.matched }], app.picker.matched), 'IAMAI found "Breakglass Exclusion" in your tenant. Confirm this is the group every policy should exclude, then Save.')
-  assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Another group' }], app.picker.matched), null, 'a group the operator chose reads as IAMAI’s match')
-  assert.match(CONTENT_STEP, /\{matchedNote !== null && <p className="reason">\{matchedNote\}<\/p>\}/)
-  // The relationship link remains available without a repeated "Done together" lead.
+  // The milestone carries the short selector help; the picker does not repeat a detected-match paragraph.
+  assert.match(CONTENT_STEP, /const matchedNote = isExclusionsGroup \? null : matchedNoteOf/)
+  // The nearby previous-step link was removed from the header.
   assert.equal(cs.partner, undefined)
-  assert.deepEqual(partnerLinkOf(stepById[EXCLUSIONS] as never), { label: 'Open Prepare Emergency Access Accounts', href: '#/plan/s-prereq-break-glass' })
-  assert.match(CONTENT_STEP, /const partnerLink = partnerLinkOf\(cs\)/)
+  assert.doesNotMatch(CONTENT_STEP, /const partnerLink = partnerLinkOf\(cs\)/)
   const entra = blocksOf(EXCLUSIONS)['entra.create-group'].text
   // Editorial batch C (channel correction): saving records the group's ID and changes no policy; each policy is corrected separately.
   assert.match(entra, /^If confirming an existing group \(like "Breakglass Exclusion"\):\nClick Save above\. IAMAI records the group's ID for the plan; saving does not change any policy\. Each policy that must exclude the group is corrected separately\.\n\nIf creating a new group:\n1\. Go to Entra admin center → Groups → All groups → New group\.$/m)
@@ -99,10 +93,9 @@ test('authored Markdown: a numbered list starts where it is written, and an inde
 test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile are clear, Entra is one numbered procedure, AI Info explains it, and Done when is one line', () => {
   const cs = stepOf(PASSKEYS)
   // Editorial batch C: the register Why, and the resolved change on the next scan with the emergency sign-in as a human check.
-  assert.equal(cs.why, 'Choose which passkeys are approved before preparing the emergency accounts. Apply the intended settings after confirming that a working recovery method will remain available.')
+  assert.equal(cs.why, 'Keep approved passkey registration available, protect existing working methods, and apply the intended passkey settings without guessing at unread configuration.')
   assert.deepEqual(cs.doneWhen, [
-    'The next scan confirms Passkey (FIDO2) and self-service registration are enabled for the intended groups, with device-bound profiles where applicable, attestation required, and the approved models allowed.',
-    'Verify account-specific key compatibility and recovery in Prepare Emergency Access Accounts.',
+    'The scan confirms that the applicable passkey settings match the intended configuration.',
   ])
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)!
   assert.ok(body.readiness.tiles.some(t => t.key.startsWith('configuration:')), 'scan findings are concrete')

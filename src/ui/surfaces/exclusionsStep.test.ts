@@ -41,10 +41,10 @@ test('two groups qualify and nobody has chosen: the step asks which, and offers 
   assert.ok(Array.isArray(ex.candidateGroups) && (ex.candidateGroups as string[]).length === 2)
 })
 
-test('a group the operator confirmed and the scan read: four owned topics and the help name it', () => {
+test('a group the operator confirmed and the scan read: three non-duplicative topics and the help name it', () => {
   const { lines, ex, findings, status } = linesOn('small')
   assert.equal(status, 'confirmed')
   assert.ok(typeof ex.total === 'number' && ex.total > 0)
-  assert.deepEqual(findings.map(f => f.label), ['Exclusions Group', 'Group Settings', 'Emergency Account Membership', 'Policy Exclusions'])
+  assert.deepEqual(findings.map(f => f.label), ['Exclusions group', 'Emergency account membership', 'Policy exclusions'])
   assert.ok(lines.some((l) => l === `The one group every policy excludes. IAMAI recognised ${ex.exclusionsGroup} from the exclusions already in place.`), 'the help names the recognised group')
 })

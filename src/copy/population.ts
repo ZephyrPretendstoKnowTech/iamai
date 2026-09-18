@@ -31,6 +31,7 @@ export const POPULATION = {
     active: 'Active (30 days)',
     dormant: 'Dormant',
     neverSignedIn: 'Never signed in',
+    unknown: 'Activity unavailable',
     verified: 'Verified',
     likelyViable: 'Likely viable',
     notChallenged: 'Not challenged yet',

@@ -158,10 +158,18 @@ export function scenarioContext(args: {
 }): Omit<Ctx, 'enforceDate'> {
   const { snapshot } = args
   const evidence = snapshot.scenarioEvidence ?? EMPTY
-  const guestMfaTrust = (snapshot.config.crossTenantAccess?.rows ?? []).some((r) => {
-    const row = r as { inboundTrust?: { isMfaAccepted?: boolean }; b2bCollaborationInbound?: { inboundTrust?: { isMfaAccepted?: boolean } } }
-    return row.inboundTrust?.isMfaAccepted === true || row.b2bCollaborationInbound?.inboundTrust?.isMfaAccepted === true
-  })
+  const crossTenant = snapshot.config.crossTenantAccess
+  const trustRows = (crossTenant?.rows ?? []) as { relationship?: string; inboundTrust?: { isMfaAccepted?: boolean }; b2bCollaborationInbound?: { inboundTrust?: { isMfaAccepted?: boolean } } }[]
+  const trustValue = (row: typeof trustRows[number]): boolean | null => {
+    const value = row.inboundTrust?.isMfaAccepted ?? row.b2bCollaborationInbound?.inboundTrust?.isMfaAccepted
+    return typeof value === 'boolean' ? value : null
+  }
+  const defaultTrust = trustRows.find(row => row.relationship === 'default')
+  const partners = trustRows.filter(row => row.relationship === 'partner')
+  // The tenant can rely on inbound MFA only when the applicable default is
+  // readable and no partner override explicitly rejects it. An unrelated true
+  // row is not tenant-wide proof.
+  const guestMfaTrust = crossTenant?.status === 'ok' && !!defaultTrust && trustValue(defaultTrust) === true && partners.every(row => trustValue(row) !== false)
   const hybridPresent = snapshot.users.some((u) => u.onPremisesSyncEnabled === true)
   const syncRoleHolder =
     Object.entries(snapshot.roles.active).find(([, roles]) => roles.some((r) => r.toLowerCase() === DIR_SYNC_ROLE))?.[0] ?? null

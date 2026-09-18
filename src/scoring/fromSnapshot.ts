@@ -90,11 +90,13 @@ export function buildViabilityInputs(
             userPreferredMethodForSecondaryAuthentication: reg.userPreferredMethodForSecondaryAuthentication,
             isAdmin: admins.has(u.id),
             userType: reg.userType,
+            complete: reg.complete,
           }
         : null,
       methods: methodsAvailable ? (snapshot.authMethods[u.id] ?? 'unknown') : 'unknown',
       // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
       lastSuccessfulSignIn: u.lastSuccessfulSignIn,
+      successfulActivityAvailable: u.successfulSignInActivityRead === true || u.lastSuccessfulSignIn !== null,
       accountCreated: u.createdDateTime,
       evidence,
       history: snapshot.mfaHistory?.people?.[u.id] ?? null,

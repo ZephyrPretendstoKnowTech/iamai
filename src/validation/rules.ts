@@ -38,13 +38,17 @@ export type GroupFacts = {
   groupId: string
   displayName?: string | null
   membershipRule?: string | null
-  mailEnabled?: boolean
+  mailEnabled?: boolean | null
   securityEnabled?: boolean | null
   groupTypes?: string[] | null
   isAssignableToRole?: boolean | null
+  membershipRuleProcessingState?: string | null
+  assignedLicenseSkuIds?: string[] | null
   memberIds: string[]
   memberCount: number
   sampled: boolean
+  directMembers?: 'complete' | 'sampled' | 'unknown'
+  directMemberIds?: string[]
 }
 
 export type RuleSubject =
@@ -230,10 +234,67 @@ function mfaKinds(methods: AuthMethodSummary[]): string[] {
 export function initialDomain(snapshot: TenantSnapshot): string | null {
   const org = (snapshot.config.organization?.rows?.[0] ?? null) as { verifiedDomains?: { name?: string; isInitial?: boolean }[] } | null
   const domains = org?.verifiedDomains ?? []
-  const flagged = domains.find((d) => d.isInitial === true)?.name
-  if (typeof flagged === 'string') return flagged
-  const byShape = domains.find((d) => typeof d.name === 'string' && /\.onmicrosoft\.com$/i.test(d.name))?.name
-  return typeof byShape === 'string' ? byShape : null
+  const flagged = domains.filter((d) => d.isInitial === true && typeof d.name === 'string').map(d => d.name!)
+  return flagged.length === 1 ? flagged[0] : null
+}
+
+type RoleSchedule = {
+  principalId?: string
+  roleDefinitionId?: string
+  directoryScopeId?: string
+  assignmentType?: string
+  memberType?: string
+  startDateTime?: string | null
+  endDateTime?: string | null
+  status?: string | null
+}
+
+const sameId = (a: string | null | undefined, b: string): boolean => typeof a === 'string' && a.toLowerCase() === b.toLowerCase()
+const atOrBefore = (value: string | null | undefined, at: string): boolean => typeof value === 'string' && Number.isFinite(Date.parse(value)) && Date.parse(value) <= Date.parse(at)
+
+/** One production meaning of a current, permanent, tenant-root GA assignment. */
+export function permanentGlobalAdministratorState(snapshot: TenantSnapshot, groupMembers: readonly GroupFacts[], accountId: string): boolean | null {
+  if (snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.roleAssignmentSchedules?.status !== 'ok') return null
+  const activeDirect = (snapshot.roles.active[accountId] ?? []).some(role => sameId(role, GLOBAL_ADMIN_ROLE))
+  const schedules = snapshot.config.roleAssignmentSchedules.rows as RoleSchedule[]
+  const relevant = schedules.filter(row => sameId(row.principalId, accountId) && sameId(row.roleDefinitionId, GLOBAL_ADMIN_ROLE) && row.directoryScopeId === '/')
+  const permanent = relevant.some(row => {
+    const type = String(row.assignmentType ?? row.memberType ?? '').toLowerCase()
+    const status = String(row.status ?? '').toLowerCase()
+    return (type === 'assigned' || type === 'direct')
+      && atOrBefore(row.startDateTime, snapshot.asOf)
+      && row.endDateTime === null
+      && ['active', 'granted', 'provisioned'].includes(status)
+  })
+  if (activeDirect && permanent) return true
+  if (activeDirect) {
+    // An explicit schedule can establish that the effective role is temporary,
+    // future or expired. Missing schedule fields remain unknown; they never
+    // become evidence of permanence.
+    const completeNonPermanent = relevant.some(row => {
+      const type = String(row.assignmentType ?? row.memberType ?? '').toLowerCase()
+      const status = String(row.status ?? '').toLowerCase()
+      const startKnown = typeof row.startDateTime === 'string' && Number.isFinite(Date.parse(row.startDateTime))
+      const endKnown = row.endDateTime === null || (typeof row.endDateTime === 'string' && Number.isFinite(Date.parse(row.endDateTime)))
+      return !!type && !!status && startKnown && endKnown
+    })
+    return completeNonPermanent ? false : null
+  }
+
+  // Current group membership proves effective access, not that the account's
+  // membership is permanent. Until that schedule is readable, do not promote
+  // group-derived GA to the emergency-account permanence claim.
+  const roleGroups = groupMembers.filter(group => group.isAssignableToRole === true)
+  const effectiveThroughGroup = roleGroups.some(group =>
+    group.memberIds.some(member => sameId(member, accountId))
+    && (snapshot.roles.active[group.groupId] ?? []).some(role => sameId(role, GLOBAL_ADMIN_ROLE)),
+  )
+  const sampledCouldContain = roleGroups.some(group =>
+    group.sampled
+    && !group.memberIds.some(member => sameId(member, accountId))
+    && (snapshot.roles.active[group.groupId] ?? []).some(role => sameId(role, GLOBAL_ADMIN_ROLE)),
+  )
+  return effectiveThroughGroup || sampledCouldContain ? null : false
 }
 
 /** Every enabled or report-only policy; a disabled policy denies nothing. */
@@ -299,22 +360,10 @@ const bgPermanentGa: ValidationRule = {
   severity: 'blocker',
   needs: ['roles'],
   evaluate: (id, ctx) => {
-    const active = ctx.snapshot.roles.active[id] ?? []
-    const eligible = ctx.snapshot.roles.eligible[id] ?? []
-    const schedules = ctx.snapshot.config.roleAssignmentSchedules
-    if (schedules?.status !== 'ok') return unknown(`Permanent assignment schedule evidence was not read${schedules?.reason ? `: ${schedules.reason}` : '.'}`)
-    const permanent = (schedules.rows as { principalId?: string; roleDefinitionId?: string; directoryScopeId?: string; assignmentType?: string; memberType?: string; endDateTime?: string | null; status?: string }[]).some(row =>
-      row.principalId?.toLowerCase() === id.toLowerCase()
-      && row.roleDefinitionId?.toLowerCase() === GLOBAL_ADMIN_ROLE
-      && row.directoryScopeId === '/'
-      && /assigned|direct/i.test(row.assignmentType ?? row.memberType ?? '')
-      && (row.endDateTime === null || row.endDateTime === undefined)
-      && !/activated/i.test(row.assignmentType ?? '')
-      && (!row.status || !/revoked|canceled|expired/i.test(row.status))
-    )
-    if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE) && permanent) return PASS
-    if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return unknown('Global Administrator is active, but a permanent tenant-wide assigned schedule with no expiration was not established.')
-    if (eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return fail(F.bgEligibleOnly)
+    const state = permanentGlobalAdministratorState(ctx.snapshot, ctx.groupMembers, id)
+    if (state === true) return PASS
+    if (state === null) return unknown('Global Administrator access is present or possible, but a current permanent tenant-root assignment was not established.')
+    if ((ctx.snapshot.roles.eligible[id] ?? []).some(role => sameId(role, GLOBAL_ADMIN_ROLE))) return fail(F.bgEligibleOnly)
     return fail(F.bgNoGa)
   },
 }
@@ -324,7 +373,11 @@ const bgCloudOnly: ValidationRule = {
   subject: 'breakGlass',
   severity: 'blocker',
   needs: ['users'],
-  evaluate: (id, ctx) => (userOf(ctx, id)?.onPremisesSyncEnabled === true ? fail(F.bgSynced) : PASS),
+  evaluate: (id, ctx) => {
+    const user = userOf(ctx, id)
+    if (!user || (user.onPremisesSyncEnabled === null && user.onPremisesSyncEnabledRead !== true)) return unknown('Cloud-only identity status was not reported.')
+    return user.onPremisesSyncEnabled === true ? fail(F.bgSynced) : PASS
+  },
 }
 
 const bgInitialDomain: ValidationRule = {
@@ -346,7 +399,10 @@ const bgEnabled: ValidationRule = {
   subject: 'breakGlass',
   severity: 'blocker',
   needs: ['users'],
-  evaluate: (id, ctx) => (userOf(ctx, id)?.accountEnabled === false ? fail(F.bgDisabled) : PASS),
+  evaluate: (id, ctx) => {
+    const value = userOf(ctx, id)?.accountEnabled
+    return value === false ? fail(F.bgDisabled) : value === true ? PASS : unknown('Account enabled status was not reported.')
+  },
 }
 
 const bgExcluded: ValidationRule = {
@@ -676,9 +732,9 @@ const xgContainsEmergency: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    if (entry.sampled) return unknown(F.xgMembershipUnread)
+    if (entry.directMembers !== 'complete') return unknown(F.xgMembershipUnread)
     if (ctx.breakGlassIds.length === 0) return PASS
-    const members = new Set(entry.memberIds.map((id) => id.toLowerCase()))
+    const members = new Set((entry.directMemberIds ?? []).map((id) => id.toLowerCase()))
     const missing = ctx.breakGlassIds.filter((id) => !members.has(id.toLowerCase()))
     if (missing.length === 0) return PASS
     const names = missing.map((id) => nameOf(ctx, id))
@@ -708,9 +764,9 @@ const xgMembersApproved: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    if (entry.sampled) return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
+    if (entry.directMembers !== 'complete') return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
     const approved = new Set([...ctx.breakGlassIds, ...ctx.approvedExclusionIds])
-    const extra = entry.memberIds.filter((id) => !approved.has(id))
+    const extra = (entry.directMemberIds ?? []).filter((id) => !approved.has(id))
     if (extra.length === 0) return PASS
     const names = extra.map((id) => nameOf(ctx, id))
     return fail(F.xgUnapproved(names), { extraMembers: names }, unconfirmedEmergency(ctx, extra) ? 'members-only-emergency-unconfirmed' : undefined)
@@ -724,8 +780,9 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
   needs: ['groupMembers', 'roles'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
+    if (entry.directMembers !== 'complete') return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
     const bg = new Set(ctx.breakGlassIds)
-    const admins = entry.memberIds.filter((id) => !bg.has(id) && (ctx.snapshot.roles.active[id] ?? []).length > 0)
+    const admins = (entry.directMemberIds ?? []).filter((id) => !bg.has(id) && (ctx.snapshot.roles.active[id] ?? []).length > 0)
     if (admins.length === 0) return PASS
     const names = admins.map((id) => nameOf(ctx, id))
     return fail(F.xgAdmins(names), { name: names.join(', '), role: 'an administrator role' }, unconfirmedEmergency(ctx, admins) ? 'no-admin-members-unconfirmed' : undefined)
@@ -739,9 +796,10 @@ const xgNotDynamic: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
-    if (entry.securityEnabled === undefined || entry.securityEnabled === null || !Array.isArray(entry.groupTypes)) return unknown('The group type and security-enabled state were not fully read.')
+    if (entry.securityEnabled === undefined || entry.securityEnabled === null || !Array.isArray(entry.groupTypes) || !Array.isArray(entry.assignedLicenseSkuIds)) return unknown('The group type, security-enabled state, and license assignments were not fully read.')
     if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.')
     if (entry.membershipRule || entry.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership')) return fail(F.xgDynamic(entry.membershipRule || 'DynamicMembership'))
+    if (entry.assignedLicenseSkuIds.length) return fail(`The exclusions group has ${entry.assignedLicenseSkuIds.length} assigned license${entry.assignedLicenseSkuIds.length === 1 ? '' : 's'}. Review its license dependencies before using a different unlicensed assigned security group.`)
     return PASS
   },
 }
@@ -770,10 +828,12 @@ const xgSizeReasonable: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
+    if (entry.directMembers !== 'complete') return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
+    const memberCount = entry.directMemberIds?.length ?? 0
     const allowed = Math.max(ctx.breakGlassIds.length, 1)
-    return entry.memberCount <= allowed
-      ? pass(F.xgMembers(entry.memberCount, entry.sampled))
-      : fail(F.xgSize(entry.memberCount, ctx.breakGlassIds.length), { memberCount: entry.memberCount, emergencyCount: ctx.breakGlassIds.length })
+    return memberCount <= allowed
+      ? pass(F.xgMembers(memberCount, false))
+      : fail(F.xgSize(memberCount, ctx.breakGlassIds.length), { memberCount, emergencyCount: ctx.breakGlassIds.length })
   },
 }
 
@@ -784,6 +844,7 @@ const xgNotMailEnabled: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
+    if (typeof entry.mailEnabled !== 'boolean') return unknown('The group mail-enabled state was not fully read.')
     return entry.mailEnabled === true ? fail(F.xgMailEnabled) : PASS
   },
 }

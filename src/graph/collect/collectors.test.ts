@@ -4,7 +4,7 @@
 // wants it goes unknown, never "could not be read".
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { collectConfigSection } from './collectors.ts'
+import { collectConfigSection, collectMethodsForUsers, collectUsers } from './collectors.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
 const ctx = { tokens, signal: new AbortController().signal } as unknown as Parameters<typeof collectConfigSection>[0]
@@ -113,4 +113,78 @@ test('a failed beta read is tolerated: the v1.0 section stands', async () => {
   assert.equal(section.status, 'ok')
   assert.equal(section.httpStatus, 200)
   assert.equal(section.fallback, 'policyMigrationState absent from v1.0; beta read failed')
+})
+
+test('a failed sign-in attempt never becomes the last successful sign-in', async () => {
+  const result = await withFetch({
+    '/users?': () => new Response(JSON.stringify({ value: [{
+      id: 'u1', userPrincipalName: 'u1@example.test', accountEnabled: true,
+      signInActivity: {
+        lastSignInDateTime: '2026-09-16T10:00:00Z',
+        lastSuccessfulSignInDateTime: '2026-09-10T08:00:00Z',
+      },
+    }] }), { status: 200 }),
+  }, () => collectUsers(ctx, async () => undefined))
+  assert.equal(result.users[0].lastSignInAttempt, '2026-09-16T10:00:00Z')
+  assert.equal(result.users[0].lastSuccessfulSignIn, '2026-09-10T08:00:00Z')
+})
+
+test('dedicated FIDO reads merge exact credential fields and endpoint provenance', async () => {
+  const original = globalThis.fetch
+  let v1Batch = 0
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/v1.0/$batch')) {
+      v1Batch += 1
+      const value = v1Batch === 1
+        ? [{ id: 'credential-1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', displayName: 'Recovery key' }]
+        : [{ id: 'credential-1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', displayName: 'Recovery key', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+      return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value } }] }), { status: 200 })
+    }
+    if (url.includes('/beta/$batch')) return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [{ id: 'credential-1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', lastUsedDateTime: '2026-09-16T10:00:00Z' }] } }] }), { status: 200 })
+    return new Response('{}', { status: 404 })
+  }) as typeof fetch
+  try {
+    const result = await collectMethodsForUsers(ctx, ['user-1'])
+    assert.deepEqual(result['user-1'], [{ kind: 'fido2', id: 'credential-1', displayName: 'Recovery key', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', attestationLevel: 'attested', passkeyType: 'deviceBound', sourceVersion: 'v1.0', lastUsedDateTime: '2026-09-16T10:00:00Z', lastUsedSourceVersion: 'beta' }])
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('failed FIDO detail batches preserve the generic method inventory', async () => {
+  const original = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls += 1
+    if (calls === 1) return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [{ id: 'credential-1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod' }] } }] }), { status: 200 })
+    return new Response(JSON.stringify({ error: { code: 'Authorization_RequestDenied', message: 'denied' } }), { status: 403 })
+  }) as typeof fetch
+  try {
+    const result = await collectMethodsForUsers(ctx, ['user-1'])
+    assert.equal(Array.isArray(result['user-1']), true)
+    assert.equal(Array.isArray(result['user-1']) ? result['user-1'][0]?.id : null, 'credential-1')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('cross-tenant collection keeps defaults and partner overrides separate', async () => {
+  const section = await withFetch({
+    '/policies/crossTenantAccessPolicy/default': () => new Response(JSON.stringify({ id: 'default', inboundTrust: { isMfaAccepted: true } }), { status: 200 }),
+    '/policies/crossTenantAccessPolicy/partners': () => new Response(JSON.stringify({ value: [{ tenantId: 'partner', inboundTrust: { isMfaAccepted: false } }] }), { status: 200 }),
+    '/policies/crossTenantAccessPolicy': () => new Response(JSON.stringify({ id: 'base' }), { status: 200 }),
+  }, () => collectConfigSection(ctx, 'crossTenantAccess'))
+  assert.equal(section.status, 'ok')
+  assert.deepEqual((section.rows as Record<string, unknown>[]).map(row => row.relationship), ['policy', 'default', 'partner'])
+})
+
+test('an unavailable cross-tenant relationship is partial rather than no trust', async () => {
+  const section = await withFetch({
+    '/policies/crossTenantAccessPolicy/default': () => new Response(JSON.stringify({ error: { message: 'denied' } }), { status: 403 }),
+    '/policies/crossTenantAccessPolicy/partners': () => new Response(JSON.stringify({ value: [] }), { status: 200 }),
+    '/policies/crossTenantAccessPolicy': () => new Response(JSON.stringify({ id: 'base' }), { status: 200 }),
+  }, () => collectConfigSection(ctx, 'crossTenantAccess'))
+  assert.equal(section.status, 'partial')
+  assert.match(section.reason ?? '', /default relationship unavailable/)
 })

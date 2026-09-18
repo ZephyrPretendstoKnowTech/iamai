@@ -30,8 +30,6 @@ export const EMERGENCY_MINIMUM_RULES: ReadonlySet<string> = new Set(['bg.role.pe
 /** Checks whose completion belongs to Prepare Emergency Access Accounts. */
 export const EMERGENCY_ACCOUNT_RULES: ReadonlySet<string> = new Set([
   'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled',
-  'bg.hasMfaMethod', 'bg.separateDevices', 'bg.notPersonal', 'bg.phishingResistant',
-  'bg.methodDiversity', 'bg.perUserMfaOff', 'bg.noLicenceNeeded',
 ])
 
 /** The owner confirmation a deferral is recorded under (PlanDecisions.confirmations[emergency step][this]). */
