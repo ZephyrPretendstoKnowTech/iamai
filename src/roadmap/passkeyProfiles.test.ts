@@ -71,19 +71,25 @@ test('single unrestricted device-bound profile is collected accurately and compa
   const tiles = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
   assert.equal(tiles.some(row => row.outcome === 'unknown'), false)
   assert.deepEqual(current, original, 'proposal must not mutate observed tenant settings')
-  // The live API can retain both type flags while the portal shows
-  // Device-bound because attestation blocks synced registration.
+  // The live API can retain both type flags while the portal shows Device-bound,
+  // and no portal action changes the stored value. Synced passkeys cannot be
+  // attested, so with attestation enforced the outcome is device-bound
+  // registration: storage passes and no change to the flag is proposed.
   const observed = structuredClone(current)
   observed.passkeyProfiles[0].passkeyTypes = 'deviceBound,synced'
   const observedSnapshot = scan(observed)
   const storage = passkeyFindingsOf(observedSnapshot).find(row => row.key.endsWith('.types'))!
-  assert.equal(storage.value, 'Device-bound registration only; stored types include synced')
-  assert.equal(passkeyReadingOf(observedSnapshot).resolution?.kind, 'target')
+  assert.equal(storage.value, 'Device-bound registration only')
+  assert.equal(storage.outcome, 'pass')
+  const resolution = passkeyReadingOf(observedSnapshot).resolution
+  assert.equal(resolution?.kind, 'target')
+  if (resolution?.kind === 'target') assert.equal((resolution.target.passkeyProfiles as any[])[0].passkeyTypes, 'deviceBound,synced')
+  // An existing synced key is still judged per account: it is not an approved emergency passkey.
   const syncedId = observedSnapshot.users[0].id
   observedSnapshot.authMethods = Object.fromEntries(observedSnapshot.users.map(user => [user.id, []]))
   observedSnapshot.authMethods[syncedId] = [{ kind: 'fido2', id: 'existing-synced', aaGuid: PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'synced', attestationLevel: 'notAttested' }]
-  assert.deepEqual(affectedPasskeysByProposedChange(observedSnapshot).users.map(user => user.accountId), [syncedId],
-    'registration-only attestation must not pretend an existing synced key is already denied at sign-in')
+  assert.notEqual(emergencyPasskeyCompatibility(observedSnapshot, [syncedId])[0].state, 'eligible',
+    'an unattested synced key is not an approved emergency passkey')
 })
 
 test('assigned attested device-bound profiles jointly support Authenticator and retained hardware', () => {
@@ -232,7 +238,8 @@ test('an unambiguous assigned profile mismatch produces an executable per-profil
   assert.equal(reading.resolution?.kind, 'target')
   if (reading.resolution?.kind === 'target') {
     const proposed = (reading.resolution.target.passkeyProfiles as any[])[0]
-    assert.equal(proposed.passkeyTypes, 'deviceBound')
+    // Enforcing attestation already limits registration to device-bound passkeys; the stored flag is kept.
+    assert.equal(proposed.passkeyTypes, 'deviceBound,synced')
     assert.equal(proposed.attestationEnforcement, 'registrationOnly')
     assert.ok(PASSKEY_TARGET_AAGUIDS.every(id => proposed.keyRestrictions.aaGuids.includes(id)))
     assert.ok(reading.differs.includes('passkeyProfiles'))
