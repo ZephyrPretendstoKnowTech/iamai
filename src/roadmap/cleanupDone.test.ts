@@ -182,12 +182,14 @@ test('recovery rejects wrong resource tenant, pre-baseline authentication, reuse
     { authenticationAt: 'invalid' },
     { at: baseline },
     { freshMethod: false },
-    { resourceId: 'wrong-resource', appId: '00000003-0000-0000-c000-000000000000' },
   ]) {
     f.snapshot.signInEvidence[id]!.recoveryCandidates = [{ ...original, ...change }]
     assert.equal(recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, baseline)[0].qualifies, false, JSON.stringify(change))
   }
   f.snapshot.signInEvidence[id]!.recoveryCandidates = [{ ...original, resourceTenantId: f.snapshot.tenantId, authenticationAt: original.at }]
+  assert.equal(recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, baseline)[0].qualifies, true)
+  // Where the account signed in is not the proof; how is. A fresh passkey sign-in to the Azure portal counts.
+  f.snapshot.signInEvidence[id]!.recoveryCandidates = [{ ...original, resourceTenantId: f.snapshot.tenantId, authenticationAt: original.at, appId: 'c44b4083-3bb0-49c1-b47d-974e53cbdf3c', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013' }]
   assert.equal(recoveryCandidateReadings(f.snapshot, id, f.snapshot.asOf, baseline)[0].qualifies, true)
 })
 
@@ -422,4 +424,74 @@ test('a Conditional Access policy audit event does not reset recovery proof; an 
   f.snapshot.recoveryDirectoryAudits.push({ id: 'audit-account', at: plus(90), activity: 'Update user', category: 'UserManagement', result: 'success', targets: [{ id: ids[0], type: 'User' }] })
   checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(120) })
   assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_INVALIDATION_WORKFLOW && record.accountIds?.includes(ids[0])).length, 1)
+})
+
+/** demo-week2 with a readable 30-day audit window and sign-in window ending at `at`, as the collector returns them. */
+function anchoredCase() {
+  const f = structuredClone(fixture('demo-week2'))
+  const ids = f.mapping.breakGlassUserIds
+  const at = f.snapshot.asOf
+  const plus = (minutes: number): string => new Date(Date.parse(at) + minutes * 60_000).toISOString()
+  const windows = (now: string) => {
+    f.snapshot.asOf = now
+    f.snapshot.recoveryAuditSource = { status: 'ok', reason: null, coveredWindow: { from: plus(-30 * 24 * 60), to: now }, asOf: now }
+    f.snapshot.sources.signInEvidence = { status: 'ok', reason: null, coveredWindow: { from: plus(-30 * 24 * 60), to: now }, asOf: now }
+  }
+  windows(at)
+  const signIn = (index: number, eventId: string, minutes: number) => {
+    const template = fixture('demo-week2').snapshot.signInEvidence[ids[index]]!.recoveryCandidates![0]
+    f.snapshot.signInEvidence[ids[index]]!.recoveryCandidates = [{ ...template, eventId, at: plus(minutes), authenticationAt: plus(minutes), resourceTenantId: f.snapshot.tenantId }]
+  }
+  const policyId = String((f.snapshot.config.caPolicies.rows[0] as Record<string, unknown>).id)
+  const policyChange = (minutes: number) => ({ id: `audit-policy-${minutes}`, at: plus(minutes), activity: 'Update conditional access policy', category: 'Policy', result: 'success', targets: [{ id: policyId, type: 'Policy' }] })
+  const proofs = (checkpoints: unknown[], id: string) => cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_AUTOMATIC_WORKFLOW && record.accountIds?.includes(id))
+  return { f, ids, at, plus, windows, signIn, policyChange, proofs }
+}
+
+test('the baseline starts at the last recorded change, so a passkey sign-in after it counts on the first scan', () => {
+  const { f, ids, at, plus, signIn, policyChange, proofs } = anchoredCase()
+  f.snapshot.recoveryDirectoryAudits = [policyChange(-120)]
+  signIn(0, 'after-change', -60)
+  signIn(1, 'before-change', -180)
+  const checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  const preparation = cleanupRecord(checkpoints).records!.find(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0]))!
+  assert.equal(preparation.configurationObservedAt, plus(-120))
+  assert.equal(preparation.configurationCheckedThrough, at)
+  assert.equal(proofs(checkpoints, ids[0]).length, 1, 'signed in after the last change, before IAMAI scanned')
+  assert.equal(proofs(checkpoints, ids[1]).length, 0, 'signed in before the last change')
+})
+
+test('a late audit entry inside the baseline window moves its start forward and retires earlier proof', () => {
+  const { f, ids, at, plus, windows, signIn, policyChange, proofs } = anchoredCase()
+  f.snapshot.recoveryDirectoryAudits = []
+  signIn(0, 'early', -60)
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  const first = proofs(checkpoints, ids[0])
+  assert.equal(first.length, 1)
+  // The next scan's audit read includes a change made before the first scan that had not arrived yet.
+  windows(plus(60))
+  f.snapshot.recoveryDirectoryAudits = [policyChange(-30)]
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(60) })
+  const records = cleanupRecord(checkpoints).records!
+  const preparation = records.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0])).at(-1)!
+  assert.equal(preparation.configurationObservedAt, plus(-30))
+  assert.notEqual(preparation.recoveryGeneration, first[0].recoveryGeneration, 'the earlier proof belongs to a retired generation')
+  assert.equal(proofs(checkpoints, ids[0]).filter(record => record.recoveryGeneration === preparation.recoveryGeneration).length, 0)
+  // Unchanged audit on a further scan: the start stays put, no churn.
+  const again = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(90) })
+  assert.equal(again, checkpoints)
+})
+
+test('an unproved baseline set at scan time moves back to the last change; routine later policy edits do not move it', () => {
+  const { f, ids, at, plus, windows, signIn, policyChange, proofs } = anchoredCase()
+  // A baseline recorded by the earlier rule: start = scan time, no checked-through mark.
+  const legacy = reconcileAutomaticRecovery({ checkpoints: [], snapshot: { ...f.snapshot, recoveryAuditSource: { ...f.snapshot.recoveryAuditSource!, coveredWindow: null } }, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+    .map(record => { const { configurationCheckedThrough: _mark, ...rest } = record as Record<string, unknown>; return rest })
+  f.snapshot.recoveryDirectoryAudits = [policyChange(-240), policyChange(30)]
+  signIn(0, 'before-scan', -60)
+  windows(plus(45))
+  const checkpoints = reconcileAutomaticRecovery({ checkpoints: legacy, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(45) })
+  const preparation = cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0])).at(-1)!
+  assert.equal(preparation.configurationObservedAt, plus(-240), 'the last change up to the original baseline scan')
+  assert.equal(proofs(checkpoints, ids[0]).length, 1, 'a sign-in before that scan now counts; the edit after it does not reset anything')
 })

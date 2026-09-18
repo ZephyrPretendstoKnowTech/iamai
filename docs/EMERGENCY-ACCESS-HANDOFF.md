@@ -106,14 +106,14 @@ Route: `cleanup-drill`.
 
 - No Start verification, event picker, manual pass/fail/date or Save verification controls.
 - After complete correct account/group/policy/passkey evidence, record a per-account baseline.
-- The baseline time is captured when the on-demand group acquisition completes, after the worker snapshot—not during React rendering.
-- A later scan can pass an account only from a successful interactive Entra admin-center/Graph event with fresh successful passkey authentication after the baseline, correct resource tenant and complete compliant candidate inventory.
+- The baseline is recorded when the on-demand group acquisition completes on the first scan where everything is correct (`configurationCheckedThrough`). Its start (`configurationObservedAt`) is the last relevant change in the directory audit log before then — the accounts, the exclusions group, any Conditional Access policy, the passkey policy — or the start of the 30-day audit window. A late-arriving audit entry inside that window moves the start forward on a later scan (new generation; earlier proof retired). A baseline recorded at scan time by the earlier rule, with no proof, moves back to the last change.
+- A scan passes an account from any successful, interactive sign-in with a fresh passkey authentication in the tenant after the baseline start, with a complete compliant candidate inventory. Where it signed in is not checked: Step 2 already proves the accounts are excluded from every policy. The tile states the start time and why the latest sign-in seen did not count (`recoveryWaitingLine`).
 - Completed accounts move to Satisfied; remaining accounts stay actionable.
 - Proof expires 90 days after the event.
 - Unread evidence suspends current success while retaining history.
 - Confirmed account changes invalidate that account. Confirmed shared recovery changes affect both.
 - Schema-1 manual records are history only. Schema-2 records retain bounded proof/generation/evidence identity.
-- Persistent SOPs: **Verify emergency sign-in** and **Troubleshoot emergency sign-in**. Emergency recovery procedure remains available.
+- Persistent SOPs: **Verify emergency sign-in** and **Troubleshoot emergency sign-in**. Opening Conditional Access is optional in the verify SOP; IAMAI cannot see it. Emergency recovery procedure remains available.
 
 **Exact-key limit:** Entra logs do not reliably expose the physical credential ID. The implemented assurance is: a fresh FIDO2/passkey event occurred and every potentially usable registered passkey is known and compliant. Do not claim IAMAI identified which physical key was touched, its custody, or that the user opened a specific policy blade.
 
