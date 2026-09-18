@@ -2,9 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { approvedPasskeyModels, emergencyMethodFinding, journeyGroupFindings, journeyPasskeyFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
+import { approvedPasskeyModels, emergencyMethodFinding, journeyGroupFindings, journeyPasskeyFindings, journeyRecoveryFindings, recoveryWaitingLine } from './emergencyJourney.ts'
 import { buildContext, breakGlassReport } from '../validation/report.ts'
-import { recoveryAccountBasis, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCandidateReadings, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { readinessOf, stepContract } from '../ui/surfaces/stepContract.ts'
@@ -225,4 +225,18 @@ test('emergency exclusions stay on hold until emergency accounts are selected', 
   assert.equal(exclusions.status, 'blocked')
   assert.ok(exclusions.blockers.some(blocker => blocker.kind === 'step' && blocker.stepId === 's-prereq-break-glass'))
   assert.ok(result.schedule.cleanup?.rows.some(row => row.kind === 'drill'), 'Verify Emergency Access remains present as the fourth journey row')
+})
+
+test('Step 4 says what it is waiting on: a sign-in after the configuration start, and why the last one seen did not count', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const id = f.mapping.breakGlassUserIds[0]
+  const candidate = f.snapshot.signInEvidence[id]!.recoveryCandidates![0]
+  const start = '2026-09-18T18:37:17.142Z'
+  const seen = { ...candidate, at: '2026-09-18T16:02:21Z', authenticationAt: '2026-09-18T16:02:21Z', resourceTenantId: f.snapshot.tenantId }
+  const readings = recoveryCandidateReadings({ ...f.snapshot, signInEvidence: { ...f.snapshot.signInEvidence, [id]: { ...f.snapshot.signInEvidence[id]!, recoveryCandidates: [seen] } } }, id, '2026-09-18T19:00:00Z', start)
+  const line = recoveryWaitingLine(start, readings, 'America/Chicago')
+  assert.equal(line, 'Sign in with this account’s passkey after Sep 18, 2026, 1:37 PM CDT. Last sign-in seen Sep 18, 2026, 11:02 AM CDT did not count: The passkey authentication predates the current recovery configuration.')
+  assert.doesNotMatch(line, /Follow Verify emergency sign-in/, 'the tile adds the action once')
+  assert.equal(recoveryWaitingLine(start, [], 'UTC'), 'Sign in with this account’s passkey after Sep 18, 2026, 6:37 PM UTC.')
+  assert.equal(recoveryWaitingLine(null, [], 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
 })

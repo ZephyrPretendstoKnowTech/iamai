@@ -11,7 +11,7 @@ import type { ConfigurationFinding, ConfigurationFindingItem } from './types.ts'
 import { assignedPasskeyProfiles, passkeyFindingsOf, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
 import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility, recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
-import type { CleanupCheckpoint } from './cleanupDone.ts'
+import type { CleanupCheckpoint, RecoveryCandidateReading } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
 
@@ -23,6 +23,13 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: timeZone || 'UTC' }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
+}
+/** What Step 4 is waiting on for one account: a passkey sign-in after the
+ * configuration start, and why the latest sign-in seen did not count. */
+export function recoveryWaitingLine(configuredAt: string | null, readings: readonly RecoveryCandidateReading[], timeZone: string | null | undefined): string {
+  const waiting = configuredAt ? `Sign in with this account’s passkey after ${recoveryTime(configuredAt, timeZone)}.` : 'Sign in with this account’s passkey once the configuration checks pass.'
+  const latest = [...readings].sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
+  return latest && !latest.qualifies && latest.reason ? `${waiting} Last sign-in seen ${recoveryTime(latest.candidate.at, timeZone)} did not count: ${latest.reason}` : waiting
 }
 export const RECOVERY_DRILL = 'cleanup-drill'
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
@@ -405,7 +412,7 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
         : 'Sign in with the prepared passkey'
     const value = current ? `Signed in after configuration: ${verifiedAt}`
       : sourceFailure ? source.reason ?? String(source.status)
-        : 'Follow Verify emergency sign-in in Implementation Tasks. Then wait 5–10 minutes and scan to update the plan.'
+        : recoveryWaitingLine(configuredAt, readings, mapping.displayTimeZone)
     return { label: accountLabel(snapshot, id), action, value, current }
   })
   const configurationParts = [accounts, exclusions, method, ...finalPolicy]
