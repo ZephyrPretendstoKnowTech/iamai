@@ -192,10 +192,13 @@ test('B.2 duplicates and case: each model once, as Graph returned it first, comp
   assert.deepEqual(r.target.keyRestrictions?.aaGuids, [IOS.toUpperCase(), HARDWARE, ...PASSKEY_TARGET_AAGUIDS.filter(id => id !== IOS)])
 })
 
-test('B.3 an unrestricted policy needs approved-model selection, never a silent narrowing', () => {
+test('B.3 an unrestricted policy uses the approved plan models without changing observed settings', () => {
   const kept = { isEnforced: false, enforcementType: 'block', aaGuids: [HARDWARE] }
   const current = legacy({ keyRestrictions: kept })
-  assert.deepEqual(resolved(current), { kind: 'review', review: 'modelSelection', subjects: ['unrestricted'] })
+  const result = targetOf(resolved(current))
+  assert.equal(result.restriction, 'allow')
+  assert.deepEqual(result.retained, [])
+  assert.deepEqual(result.target.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
   assert.deepEqual(current.keyRestrictions, kept)
 })
 

@@ -243,10 +243,8 @@ type RoleSchedule = {
   roleDefinitionId?: string
   directoryScopeId?: string
   assignmentType?: string
-  memberType?: string
   startDateTime?: string | null
   endDateTime?: string | null
-  status?: string | null
 }
 
 const sameId = (a: string | null | undefined, b: string): boolean => typeof a === 'string' && a.toLowerCase() === b.toLowerCase()
@@ -259,12 +257,16 @@ export function permanentGlobalAdministratorState(snapshot: TenantSnapshot, grou
   const schedules = snapshot.config.roleAssignmentSchedules.rows as RoleSchedule[]
   const relevant = schedules.filter(row => sameId(row.principalId, accountId) && sameId(row.roleDefinitionId, GLOBAL_ADMIN_ROLE) && row.directoryScopeId === '/')
   const permanent = relevant.some(row => {
-    const type = String(row.assignmentType ?? row.memberType ?? '').toLowerCase()
-    const status = String(row.status ?? '').toLowerCase()
-    return (type === 'assigned' || type === 'direct')
-      && atOrBefore(row.startDateTime, snapshot.asOf)
+    // This source contains unifiedRoleAssignmentScheduleInstance records.
+    // Instances represent active assignments and have no status property.
+    // memberType describes inheritance, not Assigned versus Activated.
+    const type = String(row.assignmentType ?? '').toLowerCase()
+    return type === 'assigned'
+      // Direct permanent instances can explicitly return null start dates.
+      // Their current activity is corroborated by roleAssignments above.
+      // An omitted date remains unknown.
+      && (row.startDateTime === null || atOrBefore(row.startDateTime, snapshot.asOf))
       && row.endDateTime === null
-      && ['active', 'granted', 'provisioned'].includes(status)
   })
   if (activeDirect && permanent) return true
   if (activeDirect) {
@@ -272,11 +274,10 @@ export function permanentGlobalAdministratorState(snapshot: TenantSnapshot, grou
     // future or expired. Missing schedule fields remain unknown; they never
     // become evidence of permanence.
     const completeNonPermanent = relevant.some(row => {
-      const type = String(row.assignmentType ?? row.memberType ?? '').toLowerCase()
-      const status = String(row.status ?? '').toLowerCase()
-      const startKnown = typeof row.startDateTime === 'string' && Number.isFinite(Date.parse(row.startDateTime))
+      const type = String(row.assignmentType ?? '').toLowerCase()
+      const startKnown = row.startDateTime === null || (typeof row.startDateTime === 'string' && Number.isFinite(Date.parse(row.startDateTime)))
       const endKnown = row.endDateTime === null || (typeof row.endDateTime === 'string' && Number.isFinite(Date.parse(row.endDateTime)))
-      return !!type && !!status && startKnown && endKnown
+      return ['assigned', 'activated'].includes(type) && startKnown && endKnown
     })
     return completeNonPermanent ? false : null
   }
