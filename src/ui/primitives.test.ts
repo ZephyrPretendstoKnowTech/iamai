@@ -30,7 +30,7 @@ const PACKS = {
   home: 'docs/design/approved/anatomy/home-v2.html',
   connect: 'docs/design/approved/anatomy/connect-v3.html',
   plan: 'docs/design/approved/anatomy/plan-step-v1.html',
-  mfa: 'docs/design/approved/anatomy/mfa-readiness-v2.html',
+  mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
 } as const
 
 const APP = 'src/ui/app.css'
