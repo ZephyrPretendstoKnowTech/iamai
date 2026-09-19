@@ -4,18 +4,19 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, isGroupMember, membersOf, pinnedGroups, usesTaskAnatomy } from './stepGroups.ts'
+import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, isGroupMember, membersOf, pinnedGroups, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
 import type { StepGroup } from './stepGroups.ts'
 import { EMERGENCY_STEP_IDS, groupTitleOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups } from '../ui/surfaces/planBoard.ts'
 import type { BoardItem } from '../ui/surfaces/planBoard.ts'
-import { TASK_HEAD, taskHeadingsOf } from '../ui/surfaces/stepHeadings.ts'
+import { DECISION_HEAD, TASK_HEAD, decisionHeadingsOf, taskHeadingsOf } from '../ui/surfaces/stepHeadings.ts'
 
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
 const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
+const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations']
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, hold: null, workType: 'setup', order: 0 })
 
 test('the registry lists the four Emergency Access steps in order, pinned, with the task anatomy', () => {
-  assert.deepEqual(STEP_GROUPS.map((g) => g.key), [EMERGENCY_ACCESS_GROUP])
+  assert.deepEqual(STEP_GROUPS.map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP])
   assert.deepEqual([...membersOf(EMERGENCY_ACCESS_GROUP)], EA)
   assert.deepEqual([...EMERGENCY_STEP_IDS], EA, 'the board reads its emergency ids from the registry')
   const g = groupOf('s-prereq-exclusion-group')
@@ -33,14 +34,43 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), true, id)
     assert.equal(isGroupMember(id, 'direction'), false, id)
     assert.equal(usesTaskAnatomy(id), true, id)
+    assert.equal(usesDecisionAnatomy(id), false, id)
+    assert.equal(anatomyOf(id), 'task', id)
     assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
+    assert.equal(decisionHeadingsOf(id), null, id)
   }
   for (const id of ['s-ladder-break-glass-accounts', 's-confirm-workloads', 'cleanup-alerting']) {
     assert.equal(groupOf(id), null, id)
     assert.equal(isGroupMember(id), false, id)
     assert.equal(usesTaskAnatomy(id), false, id)
+    assert.equal(anatomyOf(id), null, id)
     assert.equal(taskHeadingsOf(id), null, id)
+    assert.equal(decisionHeadingsOf(id), null, id)
   }
+})
+
+test("(a) Decide Your Tenant's Direction is the second pinned group: its four steps in order, with the decision anatomy", () => {
+  assert.deepEqual(pinnedGroups().map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'pinned right after Emergency Access')
+  assert.deepEqual([...membersOf(DIRECTION_GROUP)], DIRECTION)
+  const g = groupOf('s-direction-devices')!
+  assert.equal(g.key, DIRECTION_GROUP)
+  assert.equal(g.pinned, true)
+  assert.equal(g.anatomy, 'decision')
+  assert.equal(groupTitleOf(g, false), "Decide Your Tenant's Direction")
+  for (const id of DIRECTION) {
+    assert.equal(usesDecisionAnatomy(id), true, id)
+    assert.equal(usesTaskAnatomy(id), false, id)
+    assert.equal(taskHeadingsOf(id), null, id)
+    assert.deepEqual(decisionHeadingsOf(id), { why: 'About this Step', questions: 'Questions', doneWhen: 'Completion Criteria' }, id)
+  }
+  assert.equal(DECISION_HEAD.why, TASK_HEAD.why, 'both anatomies open with About this Step')
+
+  // The Plan partitions the Direction rows out of the lanes with no code of its own.
+  const items = [item('ordinary'), ...DIRECTION.map((id) => item(id)), ...EA.map((id) => item(id))]
+  const { pinned, remaining } = partitionPinnedGroups(items)
+  assert.deepEqual(pinned.map((p) => p.group.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP])
+  assert.deepEqual(pinned[1].items.map((i) => i.id), DIRECTION)
+  assert.deepEqual(remaining.map((i) => i.id), ['ordinary'])
 })
 
 test('the registry is the only place the Plan names the Emergency Access ids', () => {
@@ -56,9 +86,9 @@ test('the registry is the only place the Plan names the Emergency Access ids', (
 })
 
 test('a second registry entry is partitioned and drawn as its own pinned group', () => {
-  const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], pinned: true, taskAnatomy: false }
-  const unpinned: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one'], pinned: false, taskAnatomy: false }
-  const groups = [...STEP_GROUPS, direction, unpinned]
+  const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], pinned: true, anatomy: 'decision' }
+  const unpinned: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one'], pinned: false, anatomy: 'decision' }
+  const groups = [...STEP_GROUPS.filter((g) => g.key === EMERGENCY_ACCESS_GROUP), direction, unpinned]
   assert.deepEqual(pinnedGroups(groups).map((g) => g.key), [EMERGENCY_ACCESS_GROUP, 'direction'])
   assert.equal(groupOf('d-two', groups)?.key, 'direction')
   assert.equal(usesTaskAnatomy('d-two', groups), false)
