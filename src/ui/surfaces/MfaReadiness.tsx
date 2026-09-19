@@ -77,6 +77,8 @@ type Words = {
   columns: string[]
   csvColumns: string[]
   details: string
+  detailsFor: string
+  chip: { unread: string; noPhone: string }
   admin: string
   guest: string
   panel: { close: string; next: string; devices: string; methods: string; noneRegistered: string; noDevices: string }
@@ -88,7 +90,7 @@ type Words = {
   inventory: string
   empty: string
   emptyFilter: string
-  planContext: { filtered: string; unknown: string; back: string }
+  planContext: { filtered: string; unknown: string; back: string; uncounted: string }
   show: Record<string, string>
   guests: { title: string; count: string; trustOn: string; trustOff: string; trustUnknown: string; policyInPlace: string; policyNotInPlace: string; policyLink: string; suggestion: string }
 }
@@ -165,21 +167,27 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   }
   // A scan that changes who is listed closes the panel rather than leaving it over an account that is gone.
   const openRow = openId === null ? null : (view?.rows.find((r) => r.user.id === openId) ?? null)
+  const isOpen = openRow !== null
   useEffect(() => {
-    if (openRow) closeRef.current?.focus()
-  }, [openRow])
+    if (openId !== null) closeRef.current?.focus()
+  }, [openId])
+  const close = (): void => {
+    setOpenId(null)
+    // The row that opened the panel, or, where a filter has since removed it, the worklist.
+    if (trigger.current?.isConnected) trigger.current.focus()
+    else groupsRef.current?.querySelector<HTMLElement>('summary, button')?.focus()
+  }
+  const closeRefFn = useRef(close)
+  closeRefFn.current = close
   useEffect(() => {
-    if (!openRow) return
+    if (!isOpen) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') close()
+      const field = e.target instanceof HTMLElement && e.target.closest('input, textarea, select') !== null
+      if (e.key === 'Escape' && !field) closeRefFn.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
-  const close = (): void => {
-    setOpenId(null)
-    trigger.current?.focus()
-  }
+  }, [isOpen])
 
   const heading = (
     <>
@@ -199,6 +207,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const q = query.trim().toLowerCase()
   const scoped = context?.ids ? new Set(context.ids) : null
   const inScope = (r: ReadinessRow): boolean => !context || scoped === null || scoped.has(r.user.id)
+  // The step's people this page doesn't count: guests (spoken for at tenant level) and people outside the activity window.
+  const uncountedInScope = scoped ? view.rows.filter((r) => scoped.has(r.user.id) && r.state === null).length : 0
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   // Scoped to the Plan step's people where the page was opened from one; guests are never counted.
@@ -208,8 +218,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
   const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { active }) : fillText(T.summary, { ready, active })
   const goal = goalLine(counted)
-  const scopedView = { ...view, counts }
-  const next = nextCheck(scopedView, checks)
+  // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
+  const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
+  const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
   const remaining = remainingChecks(checks)
   const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note')
   const action = active - ready
@@ -249,11 +260,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           {chips.noPhone && (
             <span className="dev off">
               <Icon k="phone" />
-              {(pages.readiness as unknown as { chip: { noPhone: string } }).chip.noPhone}
+              {T.chip.noPhone}
             </span>
           )}
           {chips.chips.length === 0 && r.state !== null && (
-            <span className="dev off">{T.sub.noDevices}</span>
+            <span className="dev off">{r.readiness?.unknown === 'signIns' ? T.chip.unread : T.sub.noDevices}</span>
           )}
         </div>
         <div className="methods">
@@ -268,7 +279,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           variant="tertiary"
           className="open"
           aria-haspopup="dialog"
-          aria-controls={PANEL_ID}
+          aria-label={fillText(T.detailsFor, { name: r.user.displayName ?? r.user.userPrincipalName ?? '' })}
+          aria-expanded={openId === r.user.id}
+          aria-controls={openId === r.user.id ? PANEL_ID : undefined}
           onClick={(e) => {
             trigger.current = e.currentTarget
             setOpenId(r.user.id)
@@ -419,6 +432,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       {context && (
         <p className="line scope-line">
           {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}{' '}
+          {uncountedInScope > 0 && <>{fillText(T.planContext.uncounted, { n: uncountedInScope })}{' '}</>}
           <a href={stepHref(context.stepId)}>{T.planContext.back}</a>
         </p>
       )}
@@ -514,7 +528,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               )}
             </section>
           )}
-          {groups.length === 0 ? <p className="reason">{show === 'needsAction' && !q ? T.empty : T.emptyFilter}</p> : groups.map(groupView)}
+          {groups.length === 0 ? <p className="reason">{show === 'needsAction' && !q && active > 0 ? T.empty : T.emptyFilter}</p> : groups.map(groupView)}
         </div>
 
         <aside className="readiness-rail" aria-label={T.rail.setup}>
@@ -534,8 +548,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               <summary>{fillText(T.rail.completed, { n: done.length })}</summary>
               <ul>
                 {done.map((c) => (
-                  <li key={c.key}>
-                    <span className="ok" aria-hidden="true">✓</span>
+                  <li key={c.key} className={c.outcome === 'note' ? 'note' : undefined}>
+                    <span className={c.outcome === 'note' ? 'info' : 'ok'} aria-hidden="true">{c.outcome === 'note' ? 'i' : '✓'}</span>
                     {checkWords(c).line}
                   </li>
                 ))}
@@ -583,7 +597,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             </dl>
           </section>
 
-          {guests.active > 0 && !context && (
+          {guests.active > 0 && (!context || context.stepId === GUEST_STEP_ID) && (
             <section className="readiness-tile panel" aria-labelledby="readiness-guests">
               <h3 id="readiness-guests">{G.title}</h3>
               <p>{fillText(G.count, { n: guests.active })}</p>

@@ -947,6 +947,7 @@
         "Next step"
       ],
       "details": "Details",
+      "detailsFor": "Details for {name}",
       "admin": "Admin",
       "guest": "Guest",
       "and": "and",
@@ -969,7 +970,8 @@
         "phone": "Text or call",
         "none": "No phishing-resistant method",
         "unread": "Methods not read",
-        "only": "{method} only"
+        "only": "{method} only",
+        "notAllowed": "{method} held, but today’s passkey settings don’t allow it"
       },
       "lastConfirmed": "Last confirmed {date}",
       "beforeWindow": "Last confirmed {date}, before the window",
@@ -1011,7 +1013,8 @@
         "rescan": {
           "methods": "Nothing to do: the next scan retries the method list",
           "signIns": "Nothing to do: the next scan retries the sign-in records",
-          "notCovered": "Nothing to do: the next scan reads their sign-ins"
+          "notCovered": "Nothing to do: the next scan reads their sign-ins",
+        "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
         }
       },
       "notes": {
@@ -1182,7 +1185,8 @@
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
-        "back": "← Back to the step"
+        "back": "← Back to the step",
+        "uncounted": "{n} of them aren’t counted on this page: guests, or no sign-in in the last 90 days."
       }
     },
     "export": {

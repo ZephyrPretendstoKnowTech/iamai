@@ -111,6 +111,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     windowStart,
     coveredFrom: source?.coveredWindow?.from ?? null,
     signInsRead,
+    signInsUnavailable: source?.status === 'disabled',
     passkey,
     step3: { models, applied },
     modelNames,

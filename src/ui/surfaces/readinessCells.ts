@@ -9,7 +9,7 @@
 import type { Explained, ReadinessRow } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
-import { isQualifying } from '../../scoring/phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
 import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -24,7 +24,7 @@ type Words = {
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string }>
   chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
-  methods: Record<MethodClass | 'none' | 'unread' | 'only', string>
+  methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
   beforeWindow: string
   readyUntil: string
@@ -102,8 +102,11 @@ export function goalLine(counted: readonly ReadinessRow[]): string {
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */
 export function versionWord(os: Platform, version: string | null): string {
+  // Sign-in records report Windows 11 as "Windows10", so a Windows version would mislead.
+  if (os === 'Windows') return 'Windows'
   const major = /(\d+)/.exec(version ?? '')?.[1]
-  return major ? `${os} ${major}` : osWord(os)
+  const name = /^ipad/i.test(version ?? '') ? 'iPadOS' : os
+  return major ? `${name} ${major}` : /^ipad/i.test(version ?? '') ? 'iPad' : osWord(os)
 }
 
 /** A device family in a sentence: the Windows computer, the Mac, the iPhone. */
@@ -132,7 +135,9 @@ export function deviceChip(d: DeviceReading, state: ReadinessState, holdsPasskey
 export function deviceChips(r: ReadinessRow): { chips: Chip[]; noPhone: boolean } {
   const rd = r.readiness
   if (!rd || r.state === null) return { chips: [], noPhone: false }
-  const chips = rd.devices.map((d) => deviceChip(d, r.state as ReadinessState, rd.hasPasskey === true))
+  // A phone's passkey is one in Microsoft Authenticator (or of unknown model); a security key held doesn't put one on the phone.
+  const phonePasskey = rd.credentials.some((c) => c.cls === 'passkey' && c.allowedNow !== 'no' && (c.aaguid === null || AUTHENTICATOR_AAGUIDS.includes(c.aaguid)))
+  const chips = rd.devices.map((d) => deviceChip(d, r.state as ReadinessState, phonePasskey))
   return { chips, noPhone: rd.devices.length > 0 && !rd.devices.some((d) => d.type === 'phone') }
 }
 
@@ -140,8 +145,12 @@ export function deviceChips(r: ReadinessRow): { chips: Chip[]; noPhone: boolean 
 export function methodsCell(r: ReadinessRow): { main: string; note: string } {
   if (r.methods === null) return { main: T.methods.unread, note: '' }
   const rd = r.readiness
-  const qualifying = r.methods.filter(isQualifying)
-  const main = qualifying.length > 0 ? listWords(qualifying.map(classWord)) : r.methods.length > 0 ? fillText(T.methods.only, { method: listWords(r.methods.map(classWord)) }) : T.methods.none
+  // Usable now where the readiness says so: a passkey the settings don't allow is not a method the person can use.
+  const qualifying = rd ? rd.qualifying : r.methods.filter(isQualifying)
+  const blocked = rd ? r.methods.filter((c) => isQualifying(c) && !rd.qualifying.includes(c)) : []
+  const others = r.methods.filter((c) => !isQualifying(c))
+  const main = qualifying.length > 0 ? listWords(qualifying.map(classWord)) : others.length > 0 ? fillText(T.methods.only, { method: listWords(others.map(classWord)) }) : T.methods.none
+  if (blocked.length > 0) return { main, note: fillText(T.methods.notAllowed, { method: listWords(blocked.map(classWord)) }) }
   if (!rd) return { main, note: '' }
   if (rd.onLeave) return { main, note: T.notes.onLeave }
   const last = rd.lastConfirmed
