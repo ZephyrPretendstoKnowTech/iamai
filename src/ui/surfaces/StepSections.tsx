@@ -42,11 +42,20 @@ import { autoOpenTiles } from './tileExpansion.ts'
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, stepId, title, who, when, open, onToggle }: {
+export function PlanRow({ lane, tone, chip = null, wave = null, number = null, stepId, title, who, when, open, onToggle }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
   tone: StatusTone
+  /**
+   * The step's place in its group's full order (planBoard.ts rowNumbersOf), or
+   * null where the row is in no group.
+   *
+   * It is tinted with the lane's own tone and nothing else, and the tint is the
+   * SECOND cue: the state's words are beside it, unchanged, so the row still
+   * says where it is to somebody who cannot see the colour (WCAG 1.4.1).
+   */
+  number?: number | null
   /** The tenant fact beside the lane — Report-only or Enforced (stepContract.ts factOf) — or nothing. */
   chip?: string | null
   /** The phase the finished plan places the step in, carried on the row as data only: a secondary projection the lane never reads. */
@@ -80,6 +89,10 @@ export function PlanRow({ lane, tone, chip = null, wave = null, stepId, title, w
         }
       }}
     >
+      {/* The group position, in the lane's tone. `aria-hidden` because the row's
+          own words already carry the state and the title, and a bare ordinal
+          read out before every row is noise, not information. */}
+      <span className={`plan-row-number number-${tone}`} aria-hidden="true">{number ?? ''}</span>
       <span className="plan-row-status">
         <span className={`lane lane-${tone}`}>{compactLane(lane)}</span>
         {chip && <Status tone={tone}>{chip}</Status>}
