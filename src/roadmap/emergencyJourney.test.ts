@@ -107,7 +107,7 @@ test('a policy without readable excludeGroups is unknown rather than a confirmed
   const groupId = exclusionsGroupIdToVerify(f.mapping)!
   const rows = f.snapshot.config.caPolicies.rows as Record<string, any>[]
   if (rows[0]) delete rows[0].conditions.users.excludeGroups
-  const finding = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups).find(row => row.key === 'group-policies')!
+  const finding = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups, f.mapping.breakGlassUserIds).find(row => row.key === 'group-policies')!
   const item = finding.items?.find(row => row.subjectId === rows[0]?.id && row.factLabel === 'Group exclusion')
   assert.equal(item?.outcome, 'unknown')
   assert.equal(item?.value, 'Could not verify')
@@ -210,7 +210,7 @@ test('independent prerequisites and unsaved choices remain visible within the th
 test('policy exclusion rows state each policy mode without repeating the shared correction', () => {
   const f = tenant()
   const groupId = f.mapping.records[EXCLUSIONS_RECORD_KEY]?.resolvedId as string
-  const policies = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups).find(t => t.key === 'group-policies')!
+  const policies = journeyGroupFindings(reportOf(f), 'Emergency exclusions', true, f.snapshot, groupId, f.groups, f.mapping.breakGlassUserIds).find(t => t.key === 'group-policies')!
   assert.ok(policies.items?.length)
   assert.ok(policies.items?.filter(item => item.factLabel === 'Mode').every(item => /^(On|Report-only|Could not verify)$/.test(item.value)))
   assert.ok(policies.items?.filter(item => item.factLabel === 'Group exclusion').every(item => /^(Present|Missing)$/.test(item.value)))

@@ -18,7 +18,7 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../roadmap/fixtures/run.ts'
 import { operationsOf } from '../roadmap/operations.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
-import { policiesNotExcludingGroup } from '../validation/rules.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { rowReason } from '../ui/surfaces/rowWhen.ts'
 import { existingOf } from '../ui/surfaces/stepContract.ts'
 
@@ -420,7 +420,7 @@ test('audit, demo MFA for everyone: without the exclusions group it is partly in
   assert.deepEqual(mfa.caveats, ['exclusion-missing'], 'and the exclusions group is the only thing it lacks')
   assert.ok(r.reasons.some((x) => x.kind === 'exclusion-missing'))
   // Step 2's own reading of the chosen group names the same policy.
-  assert.ok(policiesNotExcludingGroup(rowsOf(f), chosenGroup(f)).includes(row.displayName))
+  assert.ok(exclusionsGroupPolicies({ policies: rowsOf(f), groupId: chosenGroup(f), accountIds: f.mapping.breakGlassUserIds, activeRoles: f.snapshot.roles.active, membersOf: groupLookup(f.groups) }).some(p => p.outcome !== 'pass' && p.name === row.displayName))
   // The Plan asks for a change to that policy's users, not a new policy.
   const step = goalStep(run, 'mfa-all-users')
   assert.notEqual(step.status, 'done')

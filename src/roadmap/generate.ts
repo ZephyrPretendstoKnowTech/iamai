@@ -1334,7 +1334,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (bgStep && bgReport) bgStep.configurationFindings = journeyAccountFindings(bgReport, snapshot, mapping, input.groupMembers)
   if (geStep) {
     const savedExclusions = operatorExclusionsDecision(mapping)
-    geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers)
+    geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers, mapping.breakGlassUserIds)
   }
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)

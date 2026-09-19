@@ -1,4 +1,5 @@
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -39,17 +40,12 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     if (object.kind === 'user') return [object.displayName, object.userPrincipalName].filter(Boolean).join(' — ') || object.id
     return `${object.displayName || 'Unnamed object'} · ${object.kind} · ${object.id}`
   }
-  const missingPolicies: { id: string; name: string; mode: string }[] = []
-  if (groupId && ctx.snapshot.config.caPolicies?.status === 'ok') for (const [index, raw] of (ctx.snapshot.config.caPolicies.rows as Record<string, any>[]).entries()) {
-    if (raw.state === 'disabled') continue
-    const excluded = raw.conditions?.users?.excludeGroups
-    if (Array.isArray(excluded) && excluded.some((id: unknown) => typeof id === 'string' && same(id, groupId))) continue
-    const id = typeof raw.id === 'string' && raw.id.trim() ? clean(raw.id) : `unread-${index + 1}`
-    const name = clean(String(raw.displayName || raw.id || 'Unnamed policy'))
-    const mode = raw.state === 'enabled' ? 'On' : raw.state === 'enabledForReportingButNotEnforced' ? 'Report-only' : 'Mode not read'
-    const target = { id, name, mode }
-    if (raw.id && mode !== 'Mode not read' && Array.isArray(excluded) && groupFinding?.taskSafe === true && actionableGroupId) missingPolicies.push(target)
-  }
+  // The one rule (validation/exclusionsGroupPolicies.ts): the applicable policies,
+  // On or Report-only, that confirmedly lack the group. Unread evidence is never a task.
+  const missingPolicies: { id: string; name: string; mode: string }[] = groupId && actionableGroupId && groupFinding?.taskSafe === true && ctx.snapshot.config.caPolicies?.status === 'ok'
+    ? exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies.rows, groupId, accountIds: selected, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) })
+      .flatMap(policy => policy.outcome === 'fail' && policy.id && policy.mode ? [{ id: clean(policy.id), name: clean(policy.name), mode: policy.mode }] : [])
+    : []
   const tasks: EmergencyAccountTask[] = [
     {
       id: 'create-exclusions-group', accountId: null, title: 'Create an emergency exclusions group', targetUpn: null, required: choice.status === 'none-found' && selected.length > 0, readinessKey: 'group-choice', evidence: null, actionLabel: 'Open creation instructions',

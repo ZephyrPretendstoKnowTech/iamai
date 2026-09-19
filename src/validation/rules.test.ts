@@ -337,7 +337,8 @@ const CASES: Record<string, Case> = {
       const g = exclusionGroup(b)
       b.snapshot.config.caPolicies.rows = [
         { id: 'p-a', displayName: 'Policy A', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [g.groupId] } } },
-        { id: 'p-b', displayName: 'Policy B', state: 'enabled', conditions: { users: { includeUsers: ['All'] } } },
+        // An excluded-groups list that was read and lacks the group; an unread one is unknown (exclusionsGroupPolicies.ts).
+        { id: 'p-b', displayName: 'Policy B', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [] } } },
       ]
       return g
     },
@@ -648,17 +649,17 @@ test('a healthy tenant carries no blocker step, and its deny-capable steps are o
 
 // The fix line names every policy that does not exclude the group, a report-only
 // one included: it becomes enforcing without a second look at its exclusions.
-test('xg.usedConsistently lists enabled policies and leaves report-only preparation to its owning transition', () => {
+test('xg.usedConsistently lists every applicable policy without the group, a report-only one included (overnight review B3)', () => {
   const b = base()
   const g = exclusionGroup(b)
   b.snapshot.config.caPolicies.rows = [
     { id: 'p-a', displayName: 'Policy A', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [g.groupId] } } },
-    { id: 'p-b', displayName: 'Policy B', state: 'enabled', conditions: { users: { includeUsers: ['All'] } } },
-    { id: 'p-c', displayName: 'Defender test', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] } } },
+    { id: 'p-b', displayName: 'Policy B', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [] } } },
+    { id: 'p-c', displayName: 'Defender test', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'], excludeGroups: [] } } },
   ]
   const r = run('xg.usedConsistently', g, b)
   assert.equal(r.outcome, 'fail')
-  assert.deepEqual((r as { values?: { policies?: string[] } }).values?.policies, ['Policy B'])
+  assert.deepEqual((r as { values?: { policies?: string[] } }).values?.policies, ['Policy B', 'Defender test'])
 })
 
 
