@@ -80,6 +80,12 @@ export function osWord(os: Platform): string {
   return os === 'iOS' ? 'iPhone' : os === 'Android' ? 'Android' : os
 }
 
+/** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */
+export function versionWord(os: Platform, version: string | null): string {
+  const major = /(\d+)/.exec(version ?? '')?.[1]
+  return major ? `${os} ${major}` : osWord(os)
+}
+
 /** A device family in a sentence: the Windows computer, the Mac, the iPhone. */
 export function deviceNoun(os: Platform): string {
   return os === 'iOS' ? 'the iPhone' : os === 'Android' ? 'the Android phone' : os === 'macOS' ? 'the Mac' : `the ${os} computer`
@@ -99,7 +105,7 @@ export function deviceChip(d: DeviceReading, state: ReadinessState, holdsPasskey
   // In Needs a device, a phone with no passkey reads No passkey; a device whose method the person already holds reads Not confirmed.
   const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' && d.type === 'phone' && !holdsPasskey ? T.chip.noPasskey : T.chip.notConfirmed
   const trust = d.trust ?? 'unknown'
-  return { kind: d.type, os: osWord(d.os), word, tone, title: `${d.version ?? osWord(d.os)}. ${T.panel.trust[trust]}` }
+  return { kind: d.type, os: osWord(d.os), word, tone, title: `${versionWord(d.os, d.version)}. ${T.panel.trust[trust]}` }
 }
 
 /** The row's chips: each device seen in the window, and a quiet note where no phone signed in. */
@@ -165,7 +171,7 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
     const sub = `${d.type === 'computer' ? P.trust[trust] + ' ' : ''}${fillText(P.lastSeen, { date: monthDay(d.lastSeen) })}`
     const best = `${T.options[d.best].replace(/^a /, '')}${d.whyNot ? '. ' + P.whyNot[d.whyNot] : ''}`
     const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : P.proofNow.none
-    return { icon: d.type, name: d.version ?? osWord(d.os), sub, facts: [[P.best, capital(best)], [P.now, now]] }
+    return { icon: d.type, name: versionWord(d.os, d.version), sub, facts: [[P.best, capital(best)], [P.now, now]] }
   })
 }
 

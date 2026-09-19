@@ -351,6 +351,13 @@ export type ReadinessContext = {
   registration: 'open' | 'trustedOnly' | 'unknown'
   /** Entra device id → its registered owners' object ids. */
   deviceOwners: ReadonlyMap<string, readonly string[]>
+  /**
+   * The Windows computers in the tenant's device directory: none at all, some but
+   * none joined, some joined, or unknown (the directory was not read in full). A
+   * sign-in reports a computer's join state only when the computer identifies
+   * itself; the directory settles the rest, because a joined computer is always in it.
+   */
+  windowsDirectory: 'none' | 'notJoined' | 'joined' | 'unknown'
   /** The latest change to the authentication methods policy the audit log shows; a sign-in before it no longer settles compatibility. */
   policyChangedAt: string | null
 }
@@ -410,6 +417,7 @@ export function emptyReadinessContext(now: string): ReadinessContext {
     platformSso: 'unknown',
     registration: 'unknown',
     deviceOwners: new Map(),
+    windowsDirectory: 'unknown',
     policyChangedAt: null,
   }
 }
@@ -450,7 +458,8 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
       if (ctx.whfb === 'disabled') return { best: 'windowsHello', builtIn: true, possible: 'no', whyNot: 'notProvisioned' }
       return { best: 'windowsHello', builtIn: true, possible: ctx.whfb === 'unknown' ? 'unknown' : 'yes', whyNot: null }
     }
-    if (d.trust === null) return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
+    // Join state unreported: unknown, unless the directory holds no joined Windows computer.
+    if (d.trust === null && ctx.windowsDirectory !== 'none' && ctx.windowsDirectory !== 'notJoined') return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
     const hello = passkeyAllowed(ctx.passkey, WINDOWS_HELLO_AAGUID)
     if (ctx.passkey.attestation !== true && hello === 'yes') return { best: 'windowsHelloPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'notJoined' }
@@ -570,7 +579,10 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const seenDevices: DeviceSeen[] = input.signIns.devices && input.signIns.devices.length > 0
     ? [...input.signIns.devices]
     : input.signIns.platforms.map((p) => ({ os: p.os, at: p.at, trust: null, managed: null, deviceIds: [], version: null }))
-  const devices: DeviceReading[] = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map((d) => {
+  // A Windows computer whose sign-ins never reported a join state, in a tenant
+  // whose directory holds no Windows computer at all, is neither joined nor registered.
+  const settled = (d: DeviceSeen): DeviceSeen => (d.os === 'Windows' && d.trust === null && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' } : d)
+  const devices: DeviceReading[] = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled).map((d) => {
     const e = eligibility(d, ctx, input.userId)
     const p = windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).sort((a, b) => (seamlessProof(e.best, e.builtIn, e.possible, b.cls) ? 1 : 0) - (seamlessProof(e.best, e.builtIn, e.possible, a.cls) ? 1 : 0) || (a.at < b.at ? 1 : -1))[0]
     return { os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...e, proof: p ? { cls: p.cls, at: p.at } : null, seamless: !!p && seamlessProof(e.best, e.builtIn, e.possible, p.cls) }
