@@ -312,7 +312,7 @@ export function ContentStep({
   // body, a script or a portal procedure deployable, and a redacted copy would be
   // a different, invalid artifact (exportGuard.ts `implementation-artifact`).
   const copyArtifact = (id: string, text: string): void => {
-    void exportClipboard(text, unredactedFrom('implementation-artifact')).then(copied1500(id))
+    void copyImplementationArtifact(text).then(copied1500(id))
   }
   // The one next action (stepContract.ts actionOf), under the Readiness bar where
   // the step has no instructions of its own. Where it led instructions it was
@@ -662,6 +662,15 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
+/**
+ * Copy from the Implementation viewer, exactly as it shows the artifact: the one
+ * place the unredacted `implementation-artifact` surface is claimed, for every
+ * step body that draws the viewer (a Plan step and the Cleanup verification row).
+ */
+export function copyImplementationArtifact(text: string): Promise<boolean> {
+  return exportClipboard(text, unredactedFrom('implementation-artifact'))
+}
+
 export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */

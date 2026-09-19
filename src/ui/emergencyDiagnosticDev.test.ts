@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyMappingState } from '../mapping/types.ts'
 import { downloadEmergencyDiagnosticPair, emergencyDiagnosticPairPayload, ENTRA_ADMIN_TARGET, runEmergencyDiagnosticEntry } from './emergencyDiagnosticDev.ts'
+import { redactIdentifiers } from '../redact.ts'
 
 const AAGUID = 'a25342c0-3cdc-4414-8e46-f4807fca511c'
 function response(url: string, withSignIn: boolean): unknown {
@@ -41,6 +42,9 @@ test('the dev entry runs the real collector/evaluator through a URL-routed trans
     let clicked = false
     let downloadName = ''
     const beforeDocument = globalThis.document
+    const beforeWindow = (globalThis as any).window
+    // The download goes through the export guard, which reads the page's URL for demo mode.
+    ;(globalThis as any).window = { location: { search: '' } }
     const beforeCreateObjectURL = URL.createObjectURL
     const beforeRevokeObjectURL = URL.revokeObjectURL
     ;(globalThis as any).document = { createElement: () => ({
@@ -55,10 +59,12 @@ test('the dev entry runs the real collector/evaluator through a URL-routed trans
       assert.equal(clicked, true)
       assert.match(downloadName, /^iamai-emergency-diagnostic-.+\.json$/)
       const downloaded = await downloadedBlob!.text()
-      assert.deepEqual(JSON.parse(downloaded), payload)
+      // The guard redacts the download: identifiers are replaced consistently, the structure is kept.
+      assert.equal(downloaded, redactIdentifiers(JSON.stringify(payload, null, 2) + '\n'))
       for (const privateValue of ['private-token', 'private@example.com', 'Private key', 'Private model', 'account-a']) assert.doesNotMatch(downloaded, new RegExp(privateValue, 'i'))
     } finally {
       ;(globalThis as any).document = beforeDocument
+      ;(globalThis as any).window = beforeWindow
       URL.createObjectURL = beforeCreateObjectURL
       URL.revokeObjectURL = beforeRevokeObjectURL
     }

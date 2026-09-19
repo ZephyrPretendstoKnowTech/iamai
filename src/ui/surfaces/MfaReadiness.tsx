@@ -36,7 +36,7 @@ import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { KINDS } from '../../derive/ladder.ts'
 import { READINESS_STATES, isReady } from '../../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../../scoring/phishingResistant.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
@@ -516,7 +516,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                 {T.show[show] ?? show}
               </Button>
             )}
-            <Button variant="secondary" onClick={exportCsv}>
+            <Button variant="secondary" title={String(shared.csvNotice)} onClick={exportCsv}>
               {T.exportCsv}
             </Button>
           </div>

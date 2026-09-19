@@ -75,11 +75,13 @@ test('an unredacted export is only reachable from a surface that warns', () => {
       if (text.includes(`unredactedFrom('${surface}')`)) callers.set(surface, [...(callers.get(surface) ?? []), file])
     }
   }
-  assert.deepEqual((callers.get('inventory-csv') ?? []).sort(), ['src/ui/components/DataTable.tsx', 'src/ui/surfaces/Export.tsx'])
+  // The inventory tables and MFA Readiness's person list (prompt 62) each carry the CSV notice on their control.
+  assert.deepEqual((callers.get('inventory-csv') ?? []).sort(), ['src/ui/components/DataTable.tsx', 'src/ui/surfaces/Export.tsx', 'src/ui/surfaces/MfaReadiness.tsx'])
   assert.match(readFileSync('src/ui/components/DataTable.tsx', 'utf8'), /shared\.csvNotice/)
+  assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /title=\{String\(shared\.csvNotice\)\} onClick=\{exportCsv\}/)
   for (const surface of declared) {
     const at = callers.get(surface) ?? []
-    assert.equal(at.length, surface === 'inventory-csv' ? 2 : 1, `${surface} is claimed from ${at.length} places (${at.join(', ')}); it must be exactly one, next to its warning`)
+    assert.equal(at.length, surface === 'inventory-csv' ? 3 : 1, `${surface} is claimed from ${at.length} places (${at.join(', ')}); it must be exactly one, next to its warning`)
   }
 })
 
