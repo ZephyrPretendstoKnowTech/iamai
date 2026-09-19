@@ -225,7 +225,7 @@ Emergency Access grouping is hard-coded by step id in three files. Build one **g
 
 **Now (the next two weeks)**
 1. **Decisions 8–11** (engine truth), then **12–17** (Emergency Access), so the suite goes green and stays green (decision 19).
-2. **SMS and voice retirement card** on MFA Readiness.
+2. **SMS and voice retirement card** on MFA Readiness. The derivation is built and tested (`src/derive/smsRetirement.ts`); the card's draft brief, for your review, is `docs/prompts/63-sms-voice-retirement-brief.md`.
    - Who has only SMS or voice, split into the February and July groups.
    - Who used SMS in the last 30 days.
    - Dated, with wording that follows Microsoft's ("prompted to register", never "locked out").
