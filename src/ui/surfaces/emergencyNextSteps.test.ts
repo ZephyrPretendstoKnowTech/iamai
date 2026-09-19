@@ -35,7 +35,7 @@ test('Step 2 projects exact member and policy work and never owns a pre-change t
 test('Step 3 exposes the three contracted readiness topics and uses the exact resolved task projection', () => {
   const { f, ctx } = context()
   const step = runFixture(f).steps.find(item => item.id === 's-prereq-passkey-settings')!
-  assert.deepEqual(step.configurationFindings?.map(item => item.label), ['Passkey Registration', 'Existing passkeys affected', 'Passkey Protections'])
+  assert.deepEqual(step.configurationFindings?.map(item => item.label), ['Passkey registration', 'Existing passkeys affected', 'Passkey protections'])
   const projection = emergencyPasskeyTasksOf(step, ctx)
   assert.ok(projection.tasks.filter(task => task.id !== 'inspect-passkey-settings').every(task => task.steps.at(-1)?.includes('Scan to update the plan')))
   assert.doesNotMatch(projection.tasks.find(task => task.id === 'inspect-passkey-settings')!.steps.at(-1) ?? '', /Scan to update the plan/)

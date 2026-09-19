@@ -14,7 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Passkey Registration",
+      "label": "Passkey registration",
       "state": "Review required"
     },
     {
@@ -22,7 +22,7 @@
       "state": "Could not verify"
     },
     {
-      "label": "Passkey Protections",
+      "label": "Passkey protections",
       "state": "Needs correction"
     }
   ],

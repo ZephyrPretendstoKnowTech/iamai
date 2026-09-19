@@ -36,7 +36,7 @@ test('passkey topics stay compact while the approved-model disclosure remains co
   f.snapshot.authMethods[f.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', aaGuid: UNAPPROVED, passkeyType: 'deviceBound' }]
   const findings = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
   assert.equal(findings.length, 3)
-  assert.deepEqual(findings.map(finding => finding.label), ['Passkey Registration', 'Existing passkeys affected', 'Passkey Protections'])
+  assert.deepEqual(findings.map(finding => finding.label), ['Passkey registration', 'Existing passkeys affected', 'Passkey protections'])
   const models = findings.find(t => t.key === 'protection')!
   const approved = approvedPasskeyModels(f.snapshot, f.mapping)
   for (const model of PASSKEY_DEFAULT_MODELS) {
@@ -99,7 +99,7 @@ test('an unsaved exclusions choice exposes only the actionable group-selection t
   const step = run.steps.find(item => item.id === 's-prereq-exclusion-group')!
   const ready = readinessOf(step, stepContract(step, context(f)))
   assert.deepEqual([...ready.tiles, ...ready.satisfied].map(tile => tile.key), ['configuration:group-choice'])
-  assert.doesNotMatch(JSON.stringify([...ready.tiles, ...ready.satisfied]), /Membership|Policy Exclusions/)
+  assert.doesNotMatch(JSON.stringify([...ready.tiles, ...ready.satisfied]), /Membership|Policy exclusions/)
 })
 
 test('a policy without readable excludeGroups is unknown rather than a confirmed missing exclusion', () => {
@@ -122,7 +122,7 @@ test('a successful generic sign-in cannot satisfy observed passkey evidence or a
     [other]: { signInCount: 1, lastSignIn: f.snapshot.asOf, lastMfaSuccess: null, proofs: [{ at: f.snapshot.asOf, cls: 'passkey', os: null, method: 'FIDO2 security key' }], recoveryCandidates: [] },
   }
   const findings = journeyRecoveryFindings(reportOf(f), f.snapshot, f.mapping, f.groups, [], f.snapshot.asOf)
-  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence', 'Verification Results'])
+  assert.deepEqual(findings.map(finding => finding.label), ['Configuration', 'Sign-in evidence', 'Verification results'])
   const identity = findings.find(t => t.key === 'recovery-configuration')?.items?.find(item => item.factLabel === 'Account identity')
   assert.equal(identity, undefined)
   assert.equal(findings.find(t => t.key === 'recovery-sign-ins')?.outcome, 'unknown')
