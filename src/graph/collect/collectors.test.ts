@@ -5,6 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { collectConfigSection, collectMethodsForUsers, collectUsers } from './collectors.ts'
+import { RETRY_MAX_5XX } from './constants.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
 const ctx = { tokens, signal: new AbortController().signal } as unknown as Parameters<typeof collectConfigSection>[0]
@@ -187,4 +188,75 @@ test('an unavailable cross-tenant relationship is partial rather than no trust',
   }, () => collectConfigSection(ctx, 'crossTenantAccess'))
   assert.equal(section.status, 'partial')
   assert.match(section.reason ?? '', /default relationship unavailable/)
+})
+
+// Owner item 4 (2026-09-19): a person IAMAI could not read is IAMAI's evidence
+// problem. A method read that failed for a passing reason is read again.
+function methodsFetch(batch: (ids: string[]) => Response, single: (id: string) => Response): { calls: string[]; restore: () => void } {
+  const calls: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    calls.push(url)
+    if (url.endsWith('/$batch')) {
+      const { requests } = JSON.parse(String(init?.body)) as { requests: { url: string }[] }
+      // The FIDO2 detail reads answer empty; this is about the generic inventory.
+      if (requests[0]?.url.endsWith('/fido2Methods')) return new Response(JSON.stringify({ responses: requests.map((_, n) => ({ id: String(n), status: 200, body: { value: [] } })) }), { status: 200 })
+      return batch(requests.map((r) => r.url.split('/')[2]))
+    }
+    const id = /\/users\/([^/]+)\/authentication\/methods$/.exec(url)?.[1]
+    return id ? single(decodeURIComponent(id)) : new Response('{}', { status: 404 })
+  }) as typeof fetch
+  return { calls, restore: () => { globalThis.fetch = original } }
+}
+const phone = { value: [{ '@odata.type': '#microsoft.graph.phoneAuthenticationMethod', phoneType: 'mobile' }] }
+
+test('a throttled or failed method read is read again after the batch Retry-After; a refused one is not', async () => {
+  const waits: number[] = []
+  const f = methodsFetch(
+    () => new Response(JSON.stringify({ responses: [
+      { id: '0', status: 200, body: phone },
+      { id: '1', status: 429, headers: { 'Retry-After': '7' } },
+      { id: '2', status: 503 },
+      { id: '3', status: 403, body: { error: { message: 'denied' } } },
+      // u4: no answer at all
+    ] }), { status: 200 }),
+    () => new Response(JSON.stringify(phone), { status: 200 }),
+  )
+  try {
+    const result = await collectMethodsForUsers({ ...ctx, wait: async (ms: number) => void waits.push(ms) }, ['u0', 'u1', 'u2', 'u3', 'u4'])
+    for (const id of ['u0', 'u1', 'u2', 'u4']) assert.deepEqual(result[id], [{ kind: 'phone', phoneType: 'mobile' }], `${id} read`)
+    assert.equal(result.u3, 'unknown', 'a refused read stays unknown')
+    const singles = f.calls.filter((u) => !u.endsWith('/$batch')).map((u) => /users\/([^/]+)\//.exec(u)?.[1])
+    assert.deepEqual(singles, ['u1', 'u2', 'u4'], 'only the passing failures are read again, once each')
+    assert.deepEqual(waits, [7000], 'the batch Retry-After is honoured before the throttled person is asked again')
+  } finally {
+    f.restore()
+  }
+})
+
+test('a method batch that fails outright is read person by person rather than losing the page', async () => {
+  const f = methodsFetch(() => new Response(JSON.stringify({ error: { code: 'ServiceUnavailable' } }), { status: 503 }), () => new Response(JSON.stringify(phone), { status: 200 }))
+  try {
+    const result = await collectMethodsForUsers({ ...ctx, wait: async () => undefined }, ['u0', 'u1'])
+    assert.deepEqual(result.u0, [{ kind: 'phone', phoneType: 'mobile' }])
+    assert.deepEqual(result.u1, [{ kind: 'phone', phoneType: 'mobile' }])
+  } finally {
+    f.restore()
+  }
+})
+
+test('re-reads are bounded: a person still failing stays unknown, and a second failure leaves the rest of the batch for the next scan', async () => {
+  const f = methodsFetch(
+    (ids) => new Response(JSON.stringify({ responses: ids.map((_, n) => ({ id: String(n), status: 500 })) }), { status: 200 }),
+    () => new Response(JSON.stringify({ error: { code: 'InternalServerError' } }), { status: 500 }),
+  )
+  try {
+    const result = await collectMethodsForUsers({ ...ctx, wait: async () => undefined }, ['u0', 'u1', 'u2'])
+    assert.deepEqual([result.u0, result.u1, result.u2], ['unknown', 'unknown', 'unknown'])
+    const singles = f.calls.filter((u) => !u.endsWith('/$batch'))
+    assert.equal(singles.length, 2 * RETRY_MAX_5XX, 'two people, each through the retry policy once; the third is not asked')
+  } finally {
+    f.restore()
+  }
 })
