@@ -98,7 +98,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
     goalMap: over.goalMap,
   })
   // Confirmed service accounts are counted nowhere (target-state §8.1): they
-  // leave the viability rows here, exactly as sets.activeUsers leaves them out.
+  // leave the viability rows here, exactly as population.ts activePeopleIds leaves them out.
   const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(f.mapping), f.mapping).map(scoreMfaViability)
   const names = buildNameDirectory(snapshot, f.groups)
   const input: RoadmapInput = {

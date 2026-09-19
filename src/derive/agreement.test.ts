@@ -128,29 +128,33 @@ test('a plan derived twice from the same fixture gives the same numbers', () => 
 // ---- prompt 46 Part 2: one denominator, one verdict ----
 
 test('one denominator: active people agree across sets, viability and rollout, and never-signed-in accounts are in none (prompt 46 item 7)', async () => {
-  const { activeUsers, notActiveUsers, peopleCounts } = await import('./sets.ts')
+  const { notActiveUsers } = await import('./sets.ts')
+  const { activePeopleIds, isActivePerson, peopleCounts } = await import('./population.ts')
   const { summarizeTenant } = await import('../scoring/mfaViability.ts')
   for (const f of allFixtures()) {
     const run = runFixture(f)
     const snapshot = run.input.snapshot
     const now = snapshot.asOf
     const confirmed = notPeopleIds(f.mapping)
-    const active = activeUsers(snapshot, now, confirmed)
-    const notActive = notActiveUsers(snapshot, now, confirmed)
+    const active = activePeopleIds(snapshot, now, confirmed)
+    const dormant = notActiveUsers(snapshot, now, confirmed)
     const people = peopleCounts(snapshot, now, confirmed)
-    // The scoring engine's idea of active is the same set.
-    const viaActive = run.viability.filter((v) => v.activity === 'active').map((v) => v.userId).sort()
-    assert.deepEqual(active.map((u) => u.id).sort(), viaActive, `${f.name}: sets.activeUsers and viability.activity disagree`)
+    // The scored rows' active people are the same set.
+    const viaActive = run.viability.filter(isActivePerson).map((v) => v.userId).sort()
+    assert.deepEqual([...active].sort(), viaActive, `${f.name}: activePeopleIds and the scored rows disagree`)
     // Enabled splits cleanly into active and not active.
     assert.equal(people.enabled, people.active + people.notActive, `${f.name}: enabled != active + notActive`)
-    assert.equal(people.notActive, notActive.length)
+    assert.equal(people.active, active.length)
+    // The dormant accounts are among the not active, never among the active (a script account is neither dormant nor active).
+    for (const u of dormant) assert.ok(!active.includes(u.id), `${f.name}: ${u.id} is dormant and counted active`)
+    assert.ok(dormant.length <= people.notActive, `${f.name}: more dormant accounts than not active people`)
     // Rollout counts over active people and nothing else.
     const rollout = summarizeTenant(run.viability).rollout
     assert.equal(rollout.active, active.length, `${f.name}: rollout denominator is not the active set`)
     assert.equal(rollout.proven + rollout.noMethod + rollout.unproven, rollout.active, `${f.name}: rollout buckets do not sum to active`)
     // A never-signed-in account is in no denominator.
     const never = new Set(snapshot.users.filter((u) => !u.lastSuccessfulSignIn).map((u) => u.id))
-    for (const id of active) assert.ok(!never.has(id.id), `${f.name}: ${id.id} never signed in and is counted active`)
+    for (const id of active) assert.ok(!never.has(id), `${f.name}: ${id} never signed in and is counted active`)
     for (const v of run.viability) if (never.has(v.userId)) assert.notEqual(v.activity, 'active')
     // Step populations count active people only.
     for (const s of run.steps) assert.ok(s.population.active <= people.active, `${f.name}/${s.id}: population.active ${s.population.active} exceeds the tenant's active count ${people.active}`)
@@ -196,7 +200,7 @@ test('one verdict: task completion requires coverage and any explicit workflow e
 // enabledUsers / adminUsers — the sets Today counts.
 for (const f of allFixtures()) {
   test(`${f.name}: Today's tiles and every step's who-line agree on the denominator`, async () => {
-    const { peopleCounts } = await import('./sets.ts')
+    const { peopleCounts } = await import('./population.ts')
     const { affectedIds } = await import('./whoLine.ts')
     const run = runFixture(f)
     const snapshot = run.input.snapshot
