@@ -92,8 +92,11 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
   if (!entry) return null
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
+  // The drill's task steps carry the screen's inline bold (StepSections renders
+  // it); an export is plain words, so the markers go, as stepExport.ts drops
+  // them from the emergency preparation steps.
   const whatToDo = row.kind === 'drill'
-    ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE]
+    ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE].map(line => line.replace(/\*\*/g, ''))
     : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
   return { kind: row.kind, day: row.day, done: row.done, title: entry.title, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
