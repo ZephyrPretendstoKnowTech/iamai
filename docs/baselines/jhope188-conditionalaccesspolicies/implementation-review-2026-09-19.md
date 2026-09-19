@@ -211,4 +211,7 @@ In his words, lightly trimmed, then what each one changes for IAMAI.
 5. **Guests and risk.** "My intention is to block guest accounts from Risk. I have no way to satisfy risk in my tenant, and if they are risky in their own tenant, then I don't want them interacting in mine."
    - **For IAMAI:** a risky guest is blocked by design, which is what the exported risk policies already do.
    - The step says so plainly, so an admin doesn't read it as a lockout bug.
-6. **Still open:** the passkey registration question (issue E). He asked which README was meant. The follow-up names the file.
+6. **Passkey registration (issue E), answered.** "That was a mistake. The method should have been register info, not device. I updated and changed."
+   - **For IAMAI:** confirmed. "Protect Sign-in Method Registration" uses Register security information, which matches his corrected intent. Check his next push for the corrected export.
+7. **Device join.** "An MSSP would limit this down to something like TAP so you can register, knowing that passkeys aren't an option… most people do not do this… most probably just want to do MFA. Ideally you join via Autopilot from a trusted account and location, so it's extremely locked down."
+   - **For IAMAI:** "Require MFA to Register a Device" keeps Require MFA (issue D). The step's guidance can add his advice: join through Autopilot, from a trusted account and location.

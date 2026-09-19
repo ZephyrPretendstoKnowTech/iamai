@@ -28,7 +28,11 @@ All 31 items in the review list are approved, except these:
 - **22:** archive the old files.
 - **23:** add a fourth "By Area" view (steps grouped by wave), beside Ready, Up Next and On Hold.
 - **24:** D2 needs a better title. Proposed: "Identify Service and Shared Accounts".
-- **25:** the lockdown kit (Jon's ZTCA) is deferred until after launch.
+- **25:** the lockdown kit (Jon's ZTCA) gets built, as **its own group at the end, after all the other policies**. It's low priority for Monday.
+
+## Before the public deployment (owner does these)
+
+- [ ] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
 
 ## Done
 
