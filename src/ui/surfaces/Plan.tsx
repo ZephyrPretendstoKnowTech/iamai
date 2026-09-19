@@ -25,7 +25,7 @@ import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
+import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
 import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
@@ -44,6 +44,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { stepById } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
+import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { BaselineMappings } from './BaselineMappings.tsx'
 import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
 import { freezeInputOf } from '../../roadmap/schedule.ts'
@@ -304,6 +305,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     )
   }
   const summary = structuralWords.summary
+  const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
   const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({ 'aside:complete': false }); setOpen(null) }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
@@ -317,6 +319,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
     <section className="surface plan">
       {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
       <h1>{P.h1}</h1>
+      {/* Without Entra ID P1 no Conditional Access policy can exist (owner, 2026-09-19):
+          the Plan says so first, and the free-tier ladder below is the whole plan. */}
+      {licenceLine && <Callout kind="info">{licenceLine}</Callout>}
       {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
           repeated what the rows below already say and named blockers the board
           names where they are. Why the plan is as long as it is stays one tip away. */}

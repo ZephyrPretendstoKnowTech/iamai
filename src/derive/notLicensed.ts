@@ -15,6 +15,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import { tierName } from '../coverage/coverage.ts'
 import { DEVICE_GOALS } from '../roadmap/deviations.ts'
 import { list } from '../copy/statements.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 export type NotLicensedRow = { goalId: string; title: string; licence: string; text: string }
 
@@ -69,4 +70,14 @@ export function notLicensedNote(): string {
 export function notLicensedPrintLine(n: number): string {
   const line = (pages.export as { printPage1: { notLicensed: string } }).printPage1.notLicensed
   return fillText(line, { n })
+}
+
+/**
+ * The Plan's first sentence for a tenant without Entra ID P1 (owner decision,
+ * 2026-09-19): Conditional Access needs P1, so no policy can exist and the plan
+ * is the free-tier ladder. Null for a tenant that holds P1.
+ */
+export function conditionalAccessLicenceLine(snapshot: Pick<TenantSnapshot, 'capabilities'>): string | null {
+  if (snapshot.capabilities.entraP1.enabled) return null
+  return (pages.plan as { conditionalAccessNeedsP1: string }).conditionalAccessNeedsP1
 }

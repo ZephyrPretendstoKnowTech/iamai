@@ -618,6 +618,7 @@
     },
     "plan": {
       "h1": "Plan",
+      "conditionalAccessNeedsP1": "Conditional Access needs Entra ID P1, and this tenant does not have it. No Conditional Access policy can be created here; the steps below are the protections available without it.",
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} at pace · {weeks}",
       "line1Committed": "{steps} steps · {inPlace} in place · finishes {finish} at pace · committed {committed} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",

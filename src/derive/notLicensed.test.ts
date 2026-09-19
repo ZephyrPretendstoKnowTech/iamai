@@ -10,7 +10,8 @@ import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
-import { notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
+import { readFileSync } from 'node:fs'
+import { conditionalAccessLicenceLine, notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
 import { pages, stepById } from '../content/content.ts'
 
 test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () => {
@@ -72,4 +73,19 @@ test('a goal whose content step names no licence falls back to the tier the cont
     }
     assert.equal(row.text, `${row.title}: needs a licence this tenant does not hold: ${row.licence}`)
   }
+})
+
+test('without Entra ID P1 the Plan says first that Conditional Access needs it; with P1 it says nothing (owner, 2026-09-19)', () => {
+  const free = fixture('micro')
+  assert.equal(free.snapshot.capabilities.entraP1.enabled, false, 'micro is the no-P1 tenant')
+  const line = conditionalAccessLicenceLine(free.snapshot)
+  assert.equal(line, (pages.plan as { conditionalAccessNeedsP1: string }).conditionalAccessNeedsP1, 'the words are the content key')
+  assert.match(line ?? '', /^Conditional Access needs Entra ID P1\b/)
+  for (const name of ['small', 'demo'] as const) assert.equal(conditionalAccessLicenceLine(fixture(name).snapshot), null, `${name} holds P1`)
+  // The Plan draws it under its heading, ahead of the progress tiles and the board.
+  const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
+  const h1 = src.indexOf('<h1>{P.h1}</h1>')
+  const drawn = src.indexOf('{licenceLine && <Callout kind="info">{licenceLine}</Callout>}')
+  assert.ok(h1 > 0 && drawn > h1 && drawn < src.indexOf('className="plan-progress"'), 'the licence line sits directly under the Plan heading')
+  assert.match(src, /const licenceLine = conditionalAccessLicenceLine\(scan\.snapshot\)/)
 })
