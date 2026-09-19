@@ -92,9 +92,13 @@ export function methodClassesOf(snapshot: TenantSnapshot, id: string): MethodCla
   const list = snapshot.authMethods[id]
   const reg = snapshot.registrationDetails.find((r) => r.id === id)
   const classes = new Set<MethodClass>()
-  if (Array.isArray(list)) for (const m of list) {
-    const c = classOfKind(m.kind)
-    if (c) classes.add(c)
+  if (Array.isArray(list)) {
+    for (const m of list) {
+      const c = classOfKind(m.kind)
+      if (c) classes.add(c)
+    }
+    // The method rows never list certificates; the registration report does (as personReadiness reads it).
+    if (reg?.methodsRegistered.includes('x509Certificate')) classes.add('certificate')
   }
   else if (reg) for (const name of reg.methodsRegistered) {
     const c = classOfRegistered(name)

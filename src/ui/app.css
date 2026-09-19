@@ -5186,19 +5186,20 @@ th .th-sort:focus-visible,
   width: min(100%, 620px);
   text-align: center;
 }
-.passkey-model-disclosure > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-0); font-weight: 600; list-style: none; padding: 4px 0; }
+.passkey-model-disclosure > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-0); font-weight: var(--weight-strong); list-style: none; padding: 4px 0; }
 .passkey-model-disclosure > summary::-webkit-details-marker { display: none; }
-.passkey-model-disclosure > summary::before { content: '›'; display: inline-block; font-size: 1.1em; line-height: 1; transform: rotate(0deg); transition: transform 120ms ease; }
+.passkey-model-disclosure > summary::before { content: '›'; display: inline-block; font-size: var(--t-1); line-height: 1; transform: rotate(0deg); transition: transform 120ms ease; }
 .passkey-model-disclosure[open] > summary::before { transform: rotate(90deg); }
 .passkey-model-disclosure[open] > .passkey-model-decision { margin-top: 8px; text-align: left; }
 .passkey-model-disclosure .passkey-model-decision { padding-top: 8px; }
-@media (max-width: 620px) {
+/* The Plan's phone width (650px), not the retired readiness pack's 620px. */
+@media (max-width: 650px) {
   .step-footer-end { width: 100%; }
   .passkey-model-disclosure { width: 100%; }
 }
 @media print { .passkey-model-disclosure { display: none !important; } }
 .emergency-task-facts { margin: .75rem 0 1rem; display: grid; gap: .4rem; }
 .emergency-task-facts div { display: grid; grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr); gap: .75rem; }
-.emergency-task-facts dt { font-weight: 700; }
+.emergency-task-facts dt { font-weight: var(--weight-strong); }
 .emergency-task-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 44rem) { .emergency-task-facts div { grid-template-columns: 1fr; gap: .1rem; } }
+@media (max-width: 650px) { .emergency-task-facts div { grid-template-columns: 1fr; gap: .1rem; } }

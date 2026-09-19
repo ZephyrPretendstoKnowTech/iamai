@@ -200,7 +200,7 @@ test('every family draws the one milestone at the head of its action column, and
     const scheduled = a.contract.schedule !== null ? a.contract.schedule.at : null
     if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
-  assert.equal(CONTENT_STEP.split('<StepActionColumn rail={rail}>').length - 1, 1, 'the action column is gated, or drawn twice')
+  assert.equal(CONTENT_STEP.split('<StepActionColumn rail={displayRail}>').length - 1, 1, 'the action column is gated, or drawn twice')
 })
 
 // ------------------------------------ implementation is not always the action
@@ -433,7 +433,7 @@ test('a detected candidate is not a persisted decision, and the step creates no 
   // The picker writes through the Plan's own handler, which is the mapping's
   // persistence path. The step neither writes nor invents one.
   assert.match(CONTENT_STEP, /onDecide\?: \(decision: StepDecisionInput\) => void/, 'the step no longer takes the persistence handler')
-  assert.match(CONTENT_STEP, /<Decision d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\}/, 'the decision primitive is not handed the saved decision and the handler')
+  assert.match(CONTENT_STEP, /<Decision (?:key=\{step\.id\} )?d=\{d\} ex=\{ex\} saved=\{decision\} onDecide=\{onDecide\}/, 'the decision primitive is not handed the saved decision and the handler')
   for (const forbidden of ['localStorage', 'indexedDB', 'putMapping', 'saveMapping', 'new Map()']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the step persists a decision itself: ${forbidden}`)
   }
