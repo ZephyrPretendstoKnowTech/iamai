@@ -111,6 +111,21 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
 const POLICY_SUBJECT = 'Conditional Access policy'
 
 /**
+ * The bar over the evidence link: what to do, as Prepare Emergency Access
+ * Accounts says it, and not the status word a policy step used to show there
+ * ("Ready now") — the step's state is already its badge's.
+ *
+ * Two sentences, the way that step's own two are two sentences in
+ * ContentStep.tsx: there is no content key for them, and the words are the
+ * cards' ("task", "complete"), not new vocabulary.
+ */
+export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
+  return subjects.some((subject) => !subject.satisfied)
+    ? 'Complete the next task shown for each item.'
+    : 'Every task on this step is complete.'
+}
+
+/**
  * A policy's own checks: the rollout stages the step's track already records
  * (stepContract.ts `stepTrack`), read for one policy. Nothing is classified
  * here — `reached`/`current` are the track's, and the stage a policy has not

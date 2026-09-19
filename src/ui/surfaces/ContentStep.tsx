@@ -74,7 +74,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
-import { policySubjectsOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { policyBarOf, policySubjectsOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -161,7 +161,7 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
   </article>
 }
 
-/** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N. */
+/** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under the same Completed checks · N a card's own finished checks fold under (owner, 2026-09-19: one label for one control). */
 export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
@@ -172,7 +172,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       ? <div className="emergency-account-status-grid">{remaining.map(tile)}</div>
       : <p className="readiness-clear"><span className="readiness-status readiness-status-good" aria-hidden="true">✓</span><strong>No tasks remaining</strong></p>}
     {satisfied.length > 0 && <details className="readiness-satisfied" open={printing || undefined}>
-      <summary>Satisfied · {satisfied.length}</summary>
+      <summary>Completed checks · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
@@ -298,6 +298,11 @@ export function ContentStep({
     return upn ? [[id, upn] as const] : []
   }))
   const displayedReadiness = isEmergencyTaskStep ? consolidateEmergencyReadiness(baseReadiness, emergencyAccountTasks, emergencyAccountUpns, !printing) : baseReadiness
+  // The Tasks Remaining cards of a task-anatomy step other than Step 1, which
+  // draws its accounts: the policy's own card and its Readiness tiles on a
+  // policy step, the Readiness tiles alone on Steps 2–3. The bar reads them, so
+  // they are decided once.
+  const taskSubjects = isPolicyTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
@@ -408,9 +413,9 @@ export function ContentStep({
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isEmergencyTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
-            subjects={isPolicyTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
+            subjects={taskSubjects}
             printing={printing}
-            barMain={displayedReadiness.bar.main}
+            barMain={isPolicyTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
           /> : <ReadinessSection
             readiness={displayedReadiness}
