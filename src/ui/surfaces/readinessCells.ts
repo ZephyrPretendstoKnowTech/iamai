@@ -30,6 +30,7 @@ type Words = {
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
   chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
+  sub: { noDevices: string }
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
   beforeWindow: string
@@ -210,6 +211,22 @@ export function nextWords(n: NextAction): string {
   }
 }
 
+/**
+ * A person the tenant's sign-in records can't speak for at all (no Entra ID P1,
+ * or no permission to read them). That is the tenant's, said once on the page;
+ * the row does not mark each of them "not read" (owner item 4, 2026-09-19).
+ */
+export function signInsUnavailableFor(r: ReadinessRow): boolean {
+  const n = r.readiness?.next
+  return r.state === 'unknown' && n?.kind === 'rescan' && n.reason === 'unavailable'
+}
+
+/** The devices cell where no device was seen: not read, nothing (the page says why), or no sign-in in 30 days. */
+export function noDevicesWord(r: ReadinessRow): string {
+  if (signInsUnavailableFor(r)) return ''
+  return r.readiness?.unknown === 'signIns' ? T.chip.unread : T.sub.noDevices
+}
+
 /** The next actions that ask a person to set up a passkey or another built-in method. */
 const GUEST_SETUP: ReadonlySet<NextAction['kind']> = new Set(['seamless', 'setUp', 'addDevice', 'updateOs'])
 
@@ -220,6 +237,8 @@ export function nextCell(r: ReadinessRow): string {
   // A guest is in the campaign (owner, 2026-09-19): Microsoft Authenticator works
   // for them and a passkey does not yet, so a guest is never asked to set one up.
   if (r.guest && GUEST_SETUP.has(rd.next.kind)) return T.next.guest
+  // Records the tenant can't provide: nothing for this person to do, and the page says why once.
+  if (signInsUnavailableFor(r)) return T.next.none
   if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
   return nextWords(rd.next)
 }
@@ -294,7 +313,7 @@ export function checkWords(c: SetupCheck): { line: string; text: string } {
 export function rowCells(r: ReadinessRow): string[] {
   // Every chip the screen shows, the quiet ones included (no phone sign-ins, no sign-in in 30 days).
   const shown = deviceChips(r)
-  const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null ? [(pages.readiness as unknown as { sub: { noDevices: string } }).sub.noDevices] : [])]
+  const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null && noDevicesWord(r) ? [noDevicesWord(r)] : [])]
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
   return [roleWord(r), devices, methodsCell(r).main, state, nextCell(r)]

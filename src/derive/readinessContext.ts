@@ -83,6 +83,18 @@ export function registrationRestriction(snapshot: TenantSnapshot): ReadinessCont
   return 'open'
 }
 
+/**
+ * The sign-in records can't be read because the tenant has no Entra ID P1: the
+ * worker skipped them on the licence it read, or Graph refused them for want of
+ * a premium licence. MFA Readiness says this once, at the page, rather than
+ * marking every person "not read" (owner item 4, 2026-09-19). A refusal for any
+ * other reason (a permission) is not this.
+ */
+export function signInsNeedP1(snapshot: Pick<TenantSnapshot, 'sources'>): boolean {
+  const source = snapshot.sources?.signInEvidence
+  return source?.status === 'disabled' && /needs Entra ID P1|premium licen[cs]e/i.test(source.reason ?? '')
+}
+
 /** The tenant's readiness context from the snapshot and the mapping (Step 3's additional models). */
 export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<MappingState> | null, now: string = snapshot.asOf): ReadinessContext {
   const windowStart = new Date(Date.parse(now) - READINESS_WINDOW_DAYS * DAY).toISOString()
