@@ -33,7 +33,9 @@ import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
-import { EMERGENCY_ACCOUNTS } from '../../roadmap/emergencyJourney.ts'
+import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
+import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
+import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 
 export type { ExportStep }
@@ -340,8 +342,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
-  if (step.id === EMERGENCY_ACCOUNTS) {
-    lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyAccountTasksOf(step, ctx)).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
+  // The three emergency preparation steps export the task text the screen shows
+  // (stepBody.ts), not the content's older What to do lines (overnight review B5).
+  const emergencyTasks = step.id === EMERGENCY_ACCOUNTS ? emergencyAccountTasksOf(step, ctx)
+    : step.id === EMERGENCY_GROUP ? emergencyGroupTasksOf(step, ctx)
+      : step.id === PASSKEY_SETTINGS ? emergencyPasskeyTasksOf(step, ctx)
+        : null
+  if (emergencyTasks) {
+    lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyTasks).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
     // The export opens with the screen's action, as every artifact does (013.A).
     if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }

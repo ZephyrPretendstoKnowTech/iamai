@@ -321,7 +321,7 @@ export function emergencyTaskText(task: EmergencyAccountTask, variantId?: string
 }
 
 /** Deterministic flattened output for exports and the Entra artifact. */
-export function emergencyAccountTasksText(value: EmergencyAccountTasks): string {
+export function emergencyAccountTasksText(value: Pick<EmergencyAccountTasks, 'tasks' | 'printAll'>): string {
   const required = value.printAll ? value.tasks : value.tasks.filter(item => item.required)
   return required.length
     ? required.map(item => emergencyTaskText(item, item.defaultVariantId)).join('\n\n')
