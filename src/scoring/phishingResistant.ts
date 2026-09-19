@@ -296,7 +296,7 @@ export type NextAction =
   | { kind: 'addDevice'; os: Platform; option: SignInOption }
   | { kind: 'replaceKey'; model: string | null; aaguid: string | null }
   | { kind: 'waitSetup'; reason: BlockReason }
-  | { kind: 'rescan'; reason: UnknownReason }
+  | { kind: 'rescan'; reason: UnknownReason | 'unavailable' }
 
 export type PersonReadiness = {
   state: ReadinessState
@@ -346,6 +346,8 @@ export type ReadinessContext = {
   /** Where the sign-in records read begin; later than windowStart when the read was partial. */
   coveredFrom: string | null
   signInsRead: boolean
+  /** Sign-in records can't be read in this tenant at all (a licence or permission), so a rescan won't help. */
+  signInsUnavailable?: boolean
   passkey: PasskeyPolicy
   /** Emergency Access Step 3's intended models; `applied` where the tenant's allow list already equals them. */
   step3: { models: readonly { name: string; aaguid: string }[]; applied: boolean }
@@ -680,7 +682,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   }
 
   if (usable.length === 0) {
-    if (!input.signIns.read && devices.length === 0 && qualifying.length > 0) return { ...base, ...common, devices, state: 'unknown', unknown: 'signIns', next: { kind: 'rescan', reason: 'signIns' } }
+    if (!input.signIns.read && devices.length === 0 && qualifying.length > 0) return { ...base, ...common, devices, state: 'unknown', unknown: 'signIns', next: { kind: 'rescan', reason: ctx.signInsUnavailable ? 'unavailable' : 'signIns' } }
     const phoneOnly = devices.length > 0 && !devices.some((d) => d.best === 'windowsHello' && d.possible !== 'no')
     const blocked: BlockReason | null =
       ctx.registration === 'trustedOnly' && input.signIns.trustedLocationSeen === false ? 'registrationLocation'
@@ -693,7 +695,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     return { ...base, ...common, devices, state: 'method', next }
   }
 
-  if (!input.signIns.read || input.signIns.proofs === null) return { ...base, ...common, devices, state: 'unknown', unknown: 'signIns', next: { kind: 'rescan', reason: 'signIns' } }
+  if (!input.signIns.read || input.signIns.proofs === null) return { ...base, ...common, devices, state: 'unknown', unknown: 'signIns', next: { kind: 'rescan', reason: ctx.signInsUnavailable ? 'unavailable' : 'signIns' } }
 
   if (devices.length === 0 && windowProofs.some((p) => qualifying.includes(p.cls))) {
     // A phishing-resistant sign-in in the window whose record named no platform:

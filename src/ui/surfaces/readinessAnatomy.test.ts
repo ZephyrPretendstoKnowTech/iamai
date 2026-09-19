@@ -189,7 +189,8 @@ test("a person row is the pack's five zones: the person, the devices seen, the m
   }
   // The head row is a visual label only; it repeats the content words and hides from assistive technology.
   assert.match(SURFACE, /<div className="readiness-row head" aria-hidden="true">\s*\{T\.columns\.map/)
-  assert.match(cssRule('.readiness-row'), /grid-template-columns: minmax\(150px, 1\.2fr\) minmax\(200px, 1\.3fr\) minmax\(130px, 1fr\) minmax\(160px, 1\.2fr\) auto/)
+  // The pack's proportions, with columns that shrink: the pack's minimums (about 798px) clipped Details at 761-850px and 1041-1190px (audit item 10).
+  assert.match(cssRule('.readiness-row'), /grid-template-columns: minmax\(0, 1\.2fr\) minmax\(0, 1\.3fr\) minmax\(0, 1fr\) minmax\(0, 1\.2fr\) auto/)
   assert.match(packRule('.row'), /grid-template-columns:minmax\(150px,1\.2fr\) minmax\(210px,1\.3fr\) minmax\(130px,1fr\) minmax\(170px,1\.2fr\) auto/)
   // The CSV is the row's cells, with the sign-in name, role and state spelled out.
   const f = fixture('demo')
@@ -237,9 +238,10 @@ test('the person detail is one non-modal panel: the next step, the devices seen 
   assert.match(panel, /panelList\(panelMethods\(openRow\)/)
   // The panel never covers the list, and closes on Escape back to what opened it.
   assert.match(PACK, /document\.getElementById\('p-close'\)\.focus\(\)/)
-  assert.match(SURFACE, /if \(openRow\) closeRef\.current\?\.focus\(\)/)
-  assert.match(SURFACE, /if \(e\.key === 'Escape'\) close\(\)/)
-  assert.match(SURFACE, /trigger\.current\?\.focus\(\)/)
+  // Keyed on the person opened, so a recomputed view never steals focus back to Close.
+  assert.match(SURFACE, /if \(openId !== null\) closeRef\.current\?\.focus\(\)\s*\}, \[openId\]\)/)
+  assert.match(SURFACE, /if \(e\.key === 'Escape' && !field\) closeRefFn\.current\(\)/)
+  assert.match(SURFACE, /trigger\.current\?\.isConnected\) trigger\.current\.focus\(\)/)
   assert.doesNotMatch(SURFACE, /<dialog|detail-block|readiness-detail/, 'the modal Why/Next dialog came back')
   // No second dashboard, no guide panel, no callout, no tip.
   for (const gone of [/RemediationPanel/, /guide-panel/, /<Callout/, /<PageTip/, /methodGuide\(/]) assert.doesNotMatch(SURFACE, gone, `${gone} is back on the page`)
@@ -255,7 +257,8 @@ test("the rail is the pack's four tiles: tenant setup, approved models, not coun
   const rail = SURFACE.slice(SURFACE.indexOf('<aside className="readiness-rail"'), SURFACE.indexOf('</aside>', SURFACE.indexOf('<aside className="readiness-rail"')))
   // Guests (owner decision, option B) is the one tile the pack does not draw: shown only when guests sign in.
   assert.deepEqual([...rail.matchAll(/<section className="readiness-tile panel" aria-labelledby="readiness-([a-z]+)">/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'guests', 'evidence'])
-  assert.match(rail, /\{guests\.active > 0 && !context && \(\s*<section className="readiness-tile panel" aria-labelledby="readiness-guests">/)
+  // Shown when guests sign in, and kept on a page scoped to the guest step (audit item 6).
+  assert.match(rail, /\{guests\.active > 0 && \(!context \|\| context\.stepId === GUEST_STEP_ID\) && \(\s*<section className="readiness-tile panel" aria-labelledby="readiness-guests">/)
   assert.deepEqual([...rail.matchAll(/<h3 id="readiness-[a-z]+">\{T\.rail\.([a-z]+)\}<\/h3>/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'evidence'])
   assert.match(cssRule('.readiness-layout'), /grid-template-columns: minmax\(0, 1fr\) 320px/)
   assert.match(packRule('.layout'), /grid-template-columns:minmax\(0,1fr\) 320px/)

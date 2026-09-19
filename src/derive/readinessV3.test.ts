@@ -16,7 +16,9 @@ import { isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
-import { checkWords, goalLine, nextCell, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { checkWords, deviceChips, goalLine, methodsCell, nextCell, nextWords, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { fillText } from '../content/render.ts'
+import { readFileSync } from 'node:fs'
 import { readinessContextOf } from './readinessContext.ts'
 import { passkeyReadingOf } from '../roadmap/passkeySettings.ts'
 import { pages } from '../content/content.ts'
@@ -215,10 +217,11 @@ test('the migration check passes when the policy reports no migration state, and
   assert.deepEqual([check(unread).outcome, check(unread).reason], ['unknown', 'methodsPolicyUnread'])
 })
 
-test('a device is named with its version as people say it: Windows 10, never Windows10', () => {
-  assert.equal(versionWord('Windows', 'Windows10'), 'Windows 10')
-  assert.equal(versionWord('Windows', 'Windows 11'), 'Windows 11')
+test('a device is named as people say it: no Windows version (records call Windows 11 "Windows10"), iOS 17, an iPad as an iPad', () => {
+  assert.equal(versionWord('Windows', 'Windows10'), 'Windows')
+  assert.equal(versionWord('Windows', 'Windows 10.0.26100'), 'Windows')
   assert.equal(versionWord('iOS', 'Ios 17.4'), 'iOS 17')
+  assert.equal(versionWord('iOS', 'iPadOS 17.2'), 'iPadOS 17')
   assert.equal(versionWord('Android', 'Android'), 'Android', 'no version: the family word')
   assert.equal(versionWord('iOS', null), 'iPhone')
 })
@@ -272,4 +275,34 @@ test('audit B2: Step 3 is in place for MFA Readiness exactly when Emergency Acce
     assert.equal(readinessContextOf(f.snapshot, f.mapping).step3.applied, expected, name)
   }
   assert.ok(inPlace >= 0)
+})
+
+test('audit 15, 17 and 21: the Methods cell lists what is usable, a phone chip reads the Authenticator passkey, and unavailable sign-ins say so', () => {
+  const W = pages.readiness as unknown as { methods: { notAllowed: string; passkey: string }; chip: { noPasskey: string; notConfirmed: string }; next: { rescan: { unavailable: string } } }
+  // 15: a passkey held but not allowed now is a note, never listed as a usable method.
+  const base = person(demoView, (x) => x.state === 'method')
+  const blockedPasskey = { ...base, methods: [...(base.methods ?? []), 'passkey' as const], readiness: { ...base.readiness!, qualifying: [] } }
+  const cell = methodsCell(blockedPasskey)
+  assert.doesNotMatch(cell.main, /^Passkey/)
+  assert.equal(cell.note, fillText(W.methods.notAllowed, { method: W.methods.passkey }))
+  // 17: a security key held doesn't put a passkey on the phone.
+  const device = person(demoView, (x) => x.state === 'device' && (x.readiness?.devices ?? []).some((d) => d.type === 'phone' && d.proof === null))
+  const withKeyOnly = { ...device, readiness: { ...device.readiness!, credentials: [{ cls: 'passkey' as const, key: 'y', name: null, aaguid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', model: null, created: null, allowedNow: 'yes' as const, afterStep3: null, lastConfirmed: null }] } }
+  const phoneChip = deviceChips(withKeyOnly).chips.find((c) => c.kind === 'phone')!
+  assert.equal(phoneChip.word, W.chip.noPasskey)
+  // 21: sign-in records unavailable in this tenant (a licence): the rescan words don't promise a retry.
+  assert.equal(nextWords({ kind: 'rescan', reason: 'unavailable' }), W.next.rescan.unavailable)
+  assert.doesNotMatch(W.next.rescan.unavailable, /next scan/)
+})
+
+test('audit A1, A4, 6 and 26: Details names its person, focus is kept safe, the scope line counts the uncounted, and a note has no tick', () => {
+  const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  assert.match(src, /aria-label=\{fillText\(T\.detailsFor, \{ name:/)
+  assert.match(src, /aria-expanded=\{openId === r\.user\.id\}/)
+  assert.match(src, /aria-controls=\{openId === r\.user\.id \? PANEL_ID : undefined\}/)
+  assert.match(src, /closest\('input, textarea, select'\)/, 'Escape from the search box does not close the panel')
+  assert.match(src, /trigger\.current\?\.isConnected/, 'focus returns to a row that still exists')
+  assert.match(src, /fillText\(T\.planContext\.uncounted/)
+  assert.match(src, /c\.outcome === 'note' \? 'info' : 'ok'/)
+  assert.ok((pages.readiness as unknown as { detailsFor: string }).detailsFor.includes('{name}'))
 })

@@ -377,7 +377,8 @@ test('the tab strip scrolls sideways without clipping the ring on its end tabs',
 
 test('closing the readiness detail puts focus back on the control that opened it', () => {
   assert.match(readiness, /trigger\.current = e\.currentTarget/)
-  assert.match(readiness, /trigger\.current\?\.focus\(\)/)
+  // Focus returns to the row that opened the panel, or to the worklist where a filter has removed that row.
+  assert.match(readiness, /if \(trigger\.current\?\.isConnected\) trigger\.current\.focus\(\)/)
 })
 
 test('closing Plan settings puts focus back on the link that opened it', () => {
@@ -469,7 +470,8 @@ test('every expanded/collapsed state sits on a control a keyboard reaches, and n
   }
   assert.deepEqual(offenders, [], 'aria-expanded on something that is not a control')
   // A person's Details opens the one person panel (prompt 62) and says so: what it opens, and that it is a dialog.
-  assert.match(readiness, /aria-haspopup="dialog"\s+aria-controls=\{PANEL_ID\}/)
+  // Details names its person, says whether it's open, and points at the panel only while the panel exists.
+  assert.match(readiness, /aria-haspopup="dialog"\s+aria-label=\{fillText\(T\.detailsFor[^}]*\}\)\}\s+aria-expanded=\{openId === r\.user\.id\}\s+aria-controls=\{openId === r\.user\.id \? PANEL_ID : undefined\}/)
   assert.match(readiness, /id=\{PANEL_ID\} role="dialog" aria-modal="false"/, 'the panel the control names is not the non-modal dialog')
   // The groups and sub-groups open and close as native disclosures, which carry their own expanded state.
   assert.match(readiness, /<details key=\{state\} className=\{`readiness-group/)

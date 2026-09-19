@@ -4275,7 +4275,9 @@ td .not-person {
 }
 .readiness-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.2fr) minmax(200px, 1.3fr) minmax(130px, 1fr) minmax(160px, 1.2fr) auto;
+  /* The pack's proportions; the columns shrink and their cells wrap, so Details is never clipped (the pack's
+     minimums summed to about 798px, wider than the worklist at 761-850px and 1041-1190px). */
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
   gap: 14px;
   align-items: center;
   padding: 11px 16px;
@@ -4297,6 +4299,7 @@ td .not-person {
 .readiness-row .person-name {
   display: block;
   font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
 }
 .readiness-row .person-upn {
   font-size: var(--t-1);
@@ -4406,6 +4409,10 @@ td .not-person {
   display: flex;
   gap: 8px;
   color: var(--secondary-text);
+}
+.readiness-rail .readiness-tile li .info {
+  color: var(--muted-text);
+  font-weight: var(--weight-strong);
 }
 .readiness-rail .readiness-tile li .ok {
   color: var(--success-text);
