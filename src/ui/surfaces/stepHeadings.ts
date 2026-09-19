@@ -12,6 +12,7 @@
 // Pure: no DOM, no network.
 import { app, directionWords } from '../../content/content.ts'
 import { usesDecisionAnatomy, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
+import { usesPolicyTaskAnatomy } from './policyTasks.ts'
 
 export type StepHeadings = {
   why: string
@@ -39,8 +40,12 @@ export const HEAD = (app.plan as unknown as { stepContract: { headings: StepHead
  */
 export const TASK_HEAD = { why: 'About this Step', remaining: 'Tasks Remaining', implementation: 'Implementation Tasks', doneWhen: 'Completion Criteria' } as const
 
-/** The task-step headings for a step that uses them, or null for a step drawn with its defaults. */
-export const taskHeadingsOf = (stepId: string): typeof TASK_HEAD | null => (usesTaskAnatomy(stepId) ? TASK_HEAD : null)
+/**
+ * The task-step headings for a step that uses them, or null for a step drawn
+ * with its defaults: a member of a `task` group, and the policy step piloted on
+ * the same anatomy (policyTasks.ts), which keeps its own group.
+ */
+export const taskHeadingsOf = (stepId: string): typeof TASK_HEAD | null => (usesTaskAnatomy(stepId) || usesPolicyTaskAnatomy(stepId) ? TASK_HEAD : null)
 
 /**
  * The three headings a decision-anatomy step draws (a member of a group whose
