@@ -440,8 +440,11 @@ test('a Windows computer whose sign-ins report no join state is settled by the d
   assert.equal(none.devices[0].trust, 'none', 'no Windows computer in the directory: neither joined nor registered')
   assert.equal(none.devices[0].whyNot, 'notJoined')
   assert.notEqual(none.devices[0].best, 'windowsHello')
-  assert.equal(none.state, 'seamless', 'the best this computer allows is in use: nothing left to add')
-  assert.notEqual(none.recommended?.kind, 'seamless')
+  // Nothing is built into this computer: Ready is the top, and nothing impossible is recommended.
+  assert.equal(none.state, 'ready', 'a phone passkey used from a personal PC is Ready, not Seamless')
+  assert.equal(none.devices[0].seamless, false)
+  assert.equal(none.recommended, null)
+  assert.deepEqual(none.next, { kind: 'none' })
   // Windows computers in the directory, none joined: still never Windows Hello for Business; the join state stays unreported.
   const notJoined = passkeyPc('notJoined')
   assert.equal(notJoined.devices[0].trust, null)

@@ -16,6 +16,9 @@ import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 
 type Words = {
+  seamlessLine: string
+  seamlessNone: string
+  seamlessNotPossible: string
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string }>
@@ -78,6 +81,18 @@ export function listWords(xs: readonly string[]): string {
 /** A platform family as people say it: an iPhone and an Android phone, the computers by name. */
 export function osWord(os: Platform): string {
   return os === 'iOS' ? 'iPhone' : os === 'Android' ? 'Android' : os
+}
+
+/**
+ * The answer's second line: how many are Seamless; or, with nobody Seamless, how
+ * to get there, but only when somebody's device offers a built-in option (a
+ * personal PC never does, so a tenant of them is told so, not given a target).
+ */
+export function goalLine(counted: readonly ReadinessRow[]): string {
+  const seamless = counted.filter((r) => r.state === 'seamless').length
+  if (seamless > 0) return fillText(T.seamlessLine, { seamless })
+  const couldBe = counted.some((r) => (r.readiness?.devices ?? []).some((d) => d.builtIn && d.possible !== 'no'))
+  return couldBe ? T.seamlessNone : T.seamlessNotPossible
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */

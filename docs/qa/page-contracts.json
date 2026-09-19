@@ -351,7 +351,7 @@
           "re:^(Next check)?Confirm the method still existsRegistered, but no confirmed sign-in in 30 days\\d+$",
           "re:^(Next check)?Add a passkey to the device they useConfirmed on one device, but another signs in without it\\d+$",
           "re:^(Next check)?IAMAI couldn’t read these peopleEach row says what was missing\\. The next scan retries\\.\\d+$",
-          "re:^(Next check)?Could be seamlessReady\\. A built-in credential would remove the extra device\\d+$",
+          "re:^(Next check)?ReadyConfirmed in the last 30 days\\. A row names a built-in option where the device has one\\d+$",
           "re:^(Next check)?SeamlessNothing to do\\d+$",
           "re:^AdminsFirst, because a lockout hurts most here\\d+$",
           "re:^((Windows|macOS|iPhone|Android|Linux|ChromeOS)((, (Windows|macOS|iPhone|Android|Linux|ChromeOS))* and (Windows|macOS|iPhone|Android|Linux|ChromeOS))?|No sign-in seen in 30 days)\\d+$",

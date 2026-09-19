@@ -191,7 +191,9 @@ export type MfaHistory = { schema: 1; asOf: string; people: Record<string, Perso
 // assumed. Unknown is a last resort: it says which read was missing.
 //
 //   seamless  Ready, and each device used signs them in with its own built-in
-//             credential (or the best one the device can have)
+//             credential. A device with nothing built in (a personal PC, Linux)
+//             or whose built-in option is impossible tops out at Ready (owner,
+//             2026-09-18: "it isn't technically seamless. It's just ready")
 //   ready     phishing-resistant sign-in confirmed in the window on every kind
 //             of device they used in it
 //   confirm   a usable phishing-resistant method, not confirmed in the window
@@ -469,7 +471,7 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     if (ctx.passkey.attestation === false && ctx.passkey.restriction === 'unrestricted') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: ctx.passkey.attestation === true ? 'attestation' : null }
   }
-  // Linux and ChromeOS: nothing is built in; the best available counts as seamless.
+  // Linux and ChromeOS: nothing is built in; the best available is a key, and Ready is the top.
   return { best: 'securityKey', builtIn: false, possible: 'yes', whyNot: null }
 }
 
@@ -477,7 +479,8 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
 function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, cls: MethodClass): boolean {
   // Windows Hello is built into the device it signed in on, whatever join state the record reported.
   if (cls === 'windowsHello') return true
-  if (!builtIn || possible === 'no') return true
+  // Nothing built in, or the built-in option is impossible here: Ready is as far as this device goes.
+  if (!builtIn || possible === 'no') return false
   if (best === 'windowsHello') return false
   if (best === 'platformSso') return true
   return cls === 'passkey'
@@ -648,8 +651,9 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: d.os, option: d.best } }
   }
   const readyUntil = devices.map((d) => new Date(Date.parse((d.proof as { at: string }).at) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
-  const upgrade = devices.find((d) => !d.seamless && d.possible !== 'no')
-  const seamless = devices.every((d) => d.seamless)
+  // Recommend only what the device can have: a built-in option that is not ruled out.
+  const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no')
+  const seamless = devices.length > 0 && devices.every((d) => d.seamless)
   const recommended: NextAction | null = onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : null
   return { ...base, ...common, devices, readyUntil, state: seamless ? 'seamless' : 'ready', next: { kind: 'none' }, recommended }
 }
