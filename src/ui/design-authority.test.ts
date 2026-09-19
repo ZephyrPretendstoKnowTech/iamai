@@ -156,7 +156,7 @@ test('the archived MFA Readiness files are records: no live file names one excep
   // becomes an authority again, so none may survive outside history.
   let files: string[]
   try {
-    files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    files = execFileSync('git', ['ls-files'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
       .split('\n')
       .filter((f) => f && existsSync(f) && /\.(ts|tsx|mjs|cjs|js|json|md|html|css|ya?ml|txt|svg)$/.test(f) && !HISTORY(f))
   } catch {
