@@ -170,7 +170,7 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
     const checks = [cloudOnly, rightDomain, enabled, permanentGa, compatible]
     const completed = [
       cloudOnly && 'Cloud-only account',
-      rightDomain && 'Initial onmicrosoft.com sign-in address',
+      rightDomain && 'Signs in with the tenant’s onmicrosoft.com address',
       enabled && 'Account enabled',
       permanentGa && 'Permanent, active Global Administrator',
       compatible && 'Approved passkey registered',

@@ -189,7 +189,7 @@ for (const name of ['demo', 'demo-week2'] as const) {
       assert.ok(policyTopic, `${universe}: the exclusions step owns the policy-exclusion topic even when no policy is missing it`)
       // Each policy is two items since cff043a2 (Mode, Group exclusion), named in subjectLabel.
       for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.subjectLabel === policy && item.label === 'Group exclusion' && item.outcome !== 'pass'), `${universe}: ${policy} is absent from the exclusions topic`)
-      assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy Exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
+      assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
     }
   })
 }
