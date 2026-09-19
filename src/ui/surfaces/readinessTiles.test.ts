@@ -127,7 +127,7 @@ test('the Emergency Access step is Why → Readiness → account selection → I
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
     return i
   }
-  const order = [at('<h4>{HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={HEAD.doneWhen}')]
+  const order = [at('<h4>{taskHead?.why ?? HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen}')]
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'the regions are out of order')
   const { step, ctx, c } = opened('demo', EMERGENCY)
   assert.ok((ctx.mapping.breakGlassUserIds?.length ?? 0) > 1, 'the premise: two accounts are selected')

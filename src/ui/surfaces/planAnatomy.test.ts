@@ -405,7 +405,7 @@ test('the frame has a main column and the step’s own action column, and the co
   // fact every step has, so the column is never gated and never duplicated.
   assert.equal(CONTENT_STEP.split('<StepActionColumn').length - 1, 1, 'the step draws more than one action column')
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
-  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{rail\}>/, 'the action column is gated')
+  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{displayRail\}>/, 'the action column is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -546,12 +546,12 @@ test('every approved variant draws the same regions, and production runs them in
     return i
   }
   const order = [
-    ['why', at('<h4>{HEAD.why}</h4>')],
+    ['why', at('<h4>{taskHead?.why ?? HEAD.why}</h4>')],
     ['readiness', at('<ReadinessSection')],
     ['conflict attention', at('{conflictWords && (')],
-    ['action column', at('<StepActionColumn rail={rail}>')],
+    ['action column', at('<StepActionColumn rail={displayRail}>')],
     ['implementation', at('<Implementation\n')],
-    ['done when', at('<DoneWhen heading={HEAD.doneWhen}')],
+    ['done when', at('<DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen}')],
   ] as const
   assert.deepEqual([...order].sort((a, b) => a[1] - b[1]).map((x) => x[0]), order.map((x) => x[0]), 'the opened step’s regions are not in the approved order')
   // What IAMAI found, Who this touches, Dates and More are on the printed page
@@ -561,7 +561,7 @@ test('every approved variant draws the same regions, and production runs them in
     assert.ok(at(needle) > printed, `${needle} is on the opened step outside the printed page`)
   }
   // Done when is drawn on every step, gated by nothing.
-  assert.match(MAIN, /\n\s*<DoneWhen heading=\{HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is gated')
+  assert.match(MAIN, /\n\s*<DoneWhen heading=\{taskHead\?\.doneWhen \?\? HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is gated')
   // Each region is the pack's ruled section.
   assert.match(pack, /\.step-section\{padding:19px 0;border-bottom:1px solid var\(--line\)\}/, 'the pack no longer rules its sections')
   assert.match(rule('.step-section'), /border-bottom: 1px solid var\(--line\);/, 'production’s sections are not divided')
@@ -839,7 +839,7 @@ test('the demo opens the same step body, with the same grammar', () => {
     .filter(Boolean)
   assert.deepEqual(bodies, ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx'], 'a third step body draws its own main column')
   for (const body of bodies) assert.match(read(body!), /from '\.\/StepSections\.tsx'/, `${body} draws its sections itself`)
-  assert.match(CLEANUP_STEP, /<StepSection heading=\{HEAD\.why\}>/, 'the Cleanup row stopped using the shared section')
+  assert.match(CLEANUP_STEP, /<StepSection heading=\{taskHead\?\.why \?\? HEAD\.why\}>/, 'the Cleanup row stopped using the shared section')
   for (const forbidden of ['demoMode', 'isDemo', 'demo-']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the step body branches on ${forbidden}`)
   }

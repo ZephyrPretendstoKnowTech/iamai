@@ -215,12 +215,12 @@ test('every policy step in the fixtures offers a channel count the rule can draw
 // ----------------------------------------------------------------- the footer
 
 test('the footer carries the rollout exception and the scan, and nothing it cannot act on', () => {
-  assert.match(CONTENT_STEP, /<StepFooter controls=\{exceptions\.length > 0 \? exceptions : null\} onScan=\{printing \? null : \(onScan \?\? null\)\} \/>/, 'the footer is not handed the exception and the scan')
+  assert.match(CONTENT_STEP, /<StepFooter controls=\{exceptions\.length > 0 \? exceptions : null\} onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the footer is not handed the exception and the scan')
   // A disabled button kept for symmetry is a control that teaches the operator
   // to ignore the footer, and a footer with nothing to offer is not drawn.
   const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
   assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
-  assert.match(footer, /if \(!controls && !onScan\) return null/, 'an empty footer is drawn')
+  assert.match(footer, /if \(!controls && !onScan && !auxiliary\) return null/, 'an empty footer is drawn')
   assert.equal(/disabled|onClose/.test(footer), false, 'the footer keeps a disabled control, or closes the step the row closes')
 })
 
@@ -230,7 +230,8 @@ test('the header is full width and the two-column split begins below it', () => 
   // The head is a sibling of the body, not a row inside it: the lifecycle track
   // spans the whole frame rather than being squeezed into the main column beside
   // the 260px action column.
-  const frame = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<article className="step'), CONTENT_STEP.indexOf('</article>'))
+  const start = CONTENT_STEP.indexOf('<article className="step')
+  const frame = CONTENT_STEP.slice(start, CONTENT_STEP.indexOf('</article>', start))
   assert.ok(frame.indexOf('<StepHead') < frame.indexOf('<div className="step-body has-rail">'), 'the head is not above the body')
   assert.ok(frame.indexOf('</StepHead>') < frame.indexOf('<div className="step-body has-rail">'), 'the head is inside the body')
   assert.equal(/step-body[\s\S]{0,400}<StepHead/.test(frame), false, 'the head was drawn inside the split')
@@ -242,7 +243,7 @@ test('every step has the action column beside its main column (U2)', () => {
   // The action column is led by the milestone, and every step has one, so the
   // column is never optional and never empty.
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
-  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{rail\}>/, 'the action column is gated')
+  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{displayRail\}>/, 'the action column is gated')
   const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
   const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
   assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no action column leaves an empty column')
@@ -253,7 +254,7 @@ test('the footer is the frame’s own band, not the last line of the main column
   const rule = CSS.match(/\.step-footer \{[^}]*\}/)?.[0] ?? ''
   assert.match(rule, /border-top: 1px solid var\(--line\);/, 'the footer is not divided from the step')
   assert.match(rule, /background: var\(--secondary-surface\);/, 'the footer is not on the quieter surface')
-  assert.match(CSS, /\.step-footer \.step-footer-scan \{\n\s*margin-left: auto;/, 'the scan is not held to the end')
+  assert.match(CSS, /\.step-footer-end \{[^}]*margin-left: auto;/, 'the scan is not held to the end')
   // And it collapses with the rest of the frame at the pack's second breakpoint.
   const narrow = CSS.slice(CSS.indexOf('@media (max-width: 650px)'))
   assert.match(narrow, /\.step-head,\n\s*\.step-main,\n\s*\.step-footer \{/, 'the footer keeps a desktop inset on a phone')
@@ -359,7 +360,7 @@ test('every family is migrated, and each one still has the components it always 
   }
   // The decision primitive, the people blocks, More and the MFA handoff are all
   // still drawn by the components that drew them, inside the same frame.
-  for (const kept of ['<Decision d={d}', '<WhoBlockView', '<More', '<MfaHandoff']) {
+  for (const kept of ['<Decision key={step.id} d={d}', '<WhoBlockView', '<More', '<MfaHandoff']) {
     assert.ok(CONTENT_STEP.includes(kept), `${kept} left the step`)
   }
   // src/ui/surfaces/stepFamilies.test.ts is where the one-frame claim is proven
