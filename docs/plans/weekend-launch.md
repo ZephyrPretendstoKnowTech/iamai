@@ -93,6 +93,13 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 - CI on `df5f23e9`: **every unit test passes.** Smoke fails 5 checks (was 8+ Plan failures this morning); an agent is on them.
 - `2069e30f`..`df5f23e9`: Emergency Access 12–15 and 18. Recorded Test only for legacy records; one exclusions-group rule; Step 4 starts at the change time; exports print the screen's tasks; wording and sentence-case tiles.
 
+## Owner answers at Gates 1–2 (2026-09-19, afternoon)
+
+- **Policy anatomy + By Area spec** (`policy-anatomy-spec.md`): build as recommended, all 15 decisions. An agent is building it.
+- **Direction waits hold the date back:** a policy waiting on a Direction answer is undated until the answer is approved, like every other hold. (Replaces item 1 below.)
+- **The exclusions group goes on every On or Report-only policy**, whatever it reaches today: "that's the intent from Jon's baseline" (`7467521e`; replaces item 3 below). The GetIAMAI live check should confirm Emergency Access still reads Completed.
+- **"Never used" passkeys:** keep the flag; verify it against GetIAMAI on Sunday.
+
 ## For the owner to confirm (decided so work could continue)
 
 1. **Direction waits and dates:** a policy waiting on a Direction answer keeps its date (the device policy on the demo shows "On Hold · Waiting on your direction" beside a date). If a wait should hold the date back, the Direction exception in `holdOf` (`src/roadmap/holds.ts`) comes out.
