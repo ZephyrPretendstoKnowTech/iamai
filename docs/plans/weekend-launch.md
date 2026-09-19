@@ -34,6 +34,12 @@ All 31 items in the review list are approved, except these:
 - **24:** D2 needs a better title. Proposed: "Identify Service and Shared Accounts".
 - **25:** the lockdown kit (Jon's ZTCA) gets built, as **its own group at the end, after all the other policies**. It's low priority for Monday.
 
+## After launch (context from Jon, 2026-09-19)
+
+- He clarified the purpose in the per-policy READMEs, and will review them further. More changes may come.
+- He's testing new policies he may add to the baseline soon ("DFCA"). The pin stays at `90d9b89` for V1; a re-pin is a deliberate, owner-approved event.
+- He'd like feedback on the sign-in log feature of his **CA Policy Analyzer**. He's still working on making its results match the Entra portal's sign-in log filters. IAMAI reads the same logs (MFA Readiness evidence), so our lessons may help him: 30-day windows, the method as logged per sign-in, the Platform SSO method appearing as Windows Hello for Business. Post-launch.
+
 ## Before the public deployment (owner does these)
 
 - [ ] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
