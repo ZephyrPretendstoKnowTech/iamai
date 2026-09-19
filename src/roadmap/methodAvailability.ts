@@ -28,7 +28,8 @@ export function methodAvailability(snapshot: TenantSnapshot, context: ScopeEvide
     const original = snapshot.authMethods[id]
     const filtered = allowed && Array.isArray(original) ? original.filter(key => key.aaGuid && allowed.includes(key.aaGuid.toLowerCase())) : original
     const source = allowed ? { ...snapshot, authMethods: { [id]: filtered ?? 'unknown' as const } } : snapshot
-    const finding = emergencyPasskeyCompatibility(source, [id], groups)[0]
+    // Can this key sign in now: the sign-in rules, not the registration rules (owner item 8).
+    const finding = emergencyPasskeyCompatibility(source, [id], groups, 'runtime')[0]
     const answer = finding.state === 'eligible' ? 'yes' : finding.state === 'unknown' ? 'unknown' : 'no'
     keys.set(cacheKey, answer)
     return answer

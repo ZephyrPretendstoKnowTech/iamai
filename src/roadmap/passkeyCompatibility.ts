@@ -99,10 +99,16 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
   })
 }
 
-/** Account targeting and registered key restrictions, not proof of a recovery drill. */
-export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], groups: GroupMembers = new Map()): PasskeyCompatibility[] {
+/**
+ * Account targeting and registered key restrictions, not proof of a recovery drill.
+ * `approval` (Emergency Access) judges a key by the registration rules, attestation
+ * included; `runtime` judges whether a key already held can sign in now, and
+ * Microsoft enforces attestation only at registration (keys registered earlier
+ * keep signing in), so the Plan's readiness gates read it that way.
+ */
+export function emergencyPasskeyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], groups: GroupMembers = new Map(), purpose: 'approval' | 'runtime' = 'approval'): PasskeyCompatibility[] {
   const reading = passkeyReadingOf(snapshot)
-  return policyCompatibility(snapshot, ids, reading.state === 'unread' ? null : reading.current, groups)
+  return policyCompatibility(snapshot, ids, reading.state === 'unread' ? null : reading.current, groups, 'policyUnread', purpose)
 }
 
 /** Prospective compatibility uses the exact resolved target that instructions and artifacts use. */
