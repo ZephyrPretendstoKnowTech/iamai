@@ -79,6 +79,14 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 
   Checked on the demo: approving D1 took Completed from 3/42 to 4/39 and On Hold from 14 to 8, with no console errors.
 
+## In flight (2026-09-19 afternoon session)
+
+- `3a85c604`: CI's Linux-only reds were two, not seven: the PowerShell harness spawned `pwsh.exe` (Linux has `pwsh`), and the 041 report test compared against Connect's post-scrub hash (the dated report keeps the hash it verified).
+- `75e83b97`: Direction polish (Next 3): evidence lines from content, "Decision step" eyebrow, tiles that don't stretch, Approve moves to the next open Direction step (checked on the demo).
+- `2ff15dae`: planAnatomy and planVariants read the Direction code as it is.
+- **CI on `3a85c604` showed 21 reds, not 11.** The Direction commits broke 13 more (holds, stepSchedule, blockedReason, rescanDurability, semanticIntegrity, readinessTiles, aiGrounding and others). An agent is on them.
+- Agents in worktrees: free-tier EA path removal; guests in the campaign ("30 people and 1 guest"); Direction reds; Emergency Access 12–15 and 18; item 22 archive.
+
 ## Next (in order)
 
 1. **Check CI for `840abc1e`.** The triage push had 11 failures on CI against 4 locally. The 7 extra are Linux-only:
@@ -108,32 +116,3 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
    - item 22: archive the old manifest.
 5. **One policy anatomy for every policy step** (the V1 map §6), then the "By Area" view, then the words for waves 1–4. Protect Sign-in Method Registration must allow Windows Hello and Platform SSO setup for remote workers.
 6. **Sunday:** launch readiness (Home and How accuracy, phone widths, privacy), a full-suite milestone, and a live GetIAMAI check with the owner.
-
-## Later: Connect's scan screen (owner, 2026-09-19)
-
-The owner likes the scan screen in Jon's CA Policy Analyzer:
-- a shield icon;
-- "Ready to Analyze" with "Connected as <name>";
-- a live checklist of each read (a tick when done, a spinner while running, greyed out while waiting);
-- a progress bar with "Step 7 of 14".
-
-**For IAMAI:** Connect's scan becomes a live list of what's being read (policies, named locations, sign-in logs, methods, and so on), fed by the collector's per-source progress. A source that fails shows as "couldn't read" in place, instead of only surfacing on MFA Readiness later. The design goes to the owner first. It's a Sunday stretch goal if time allows; otherwise it's the first post-launch item.
-
-## Before the public deployment (owner does these)
-
-- [ ] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
-
-## Done
-
-- `7e99ffb4`: CI runs on every push to main, beside the deploy and never gating it. The first run showed about 60 red tests, not 5; an agent is triaging them.
-- `24755bd2`, `f7374a64`: Jon's answers recorded; the step inventory; the V1 step map.
-- `db2d1070`: the group registry (`src/roadmap/stepGroups.ts`). Emergency Access runs on it with no visible change.
-- `87b30f1a`: an estimated date is never in the past. Known gap: a policy already ready to enforce still waits one observation window from today.
-
-## Next
-
-1. Land the red-suite triage and the tenant-data scrub (agents running in worktrees).
-2. The Direction spec (`docs/plans/direction-spec.md`) goes to the owner for review, then gets built on the registry.
-3. The approved review items, in the build queue.
-4. One policy anatomy for every policy step, then per-wave word reviews (waves 1–4 first), then the "By Area" view.
-5. Launch readiness on Sunday, with a full-suite milestone each night.
