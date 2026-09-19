@@ -2,7 +2,7 @@
 // (laneBCore.ts) to real I/O: Graph HTTP with the §6 retry policy, the
 // IndexedDB cache, and wall-clock time.
 import { PAGE_ABORT_MS, SIGN_IN_RETRY_MAX_429, SIGN_IN_RETRY_MAX_5XX } from './constants.ts'
-import { BETA, graphRequest } from './http.ts'
+import { BETA, graphPaged, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
 import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, TARGETED_READ_BUDGET_MS, mapRecoveryAudit, mapRow, mergeTargeted, recoveryAuditRequest, runLaneB, targetedReadUrl } from './laneBCore.ts'
@@ -66,8 +66,8 @@ export async function collectSignInEvidence(
 
 /**
  * MFA Readiness's targeted reads (prompt 62): each person's interactive sign-ins
- * in the part of the window a partial bulk read did not reach, one small request
- * each, stopping at the time budget. Returns how many were read and how many
+ * in the part of the window a partial bulk read did not reach, their own read
+ * (every page of it), stopping at the time budget. Returns how many were read and how many
  * wait for the next scan. A failed person is left for the next scan too.
  */
 export async function readTargeted(
@@ -82,8 +82,9 @@ export async function readTargeted(
   for (const id of ids) {
     if (Date.now() - started > TARGETED_READ_BUDGET_MS || ctx.signal.aborted) break
     try {
-      const page: any = await graphRequest(ctx.tokens, targetedReadUrl(BETA, id, windowStart, coveredFrom), { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait })
-      const rows = (Array.isArray(page?.value) ? page.value : []).map(mapRow).filter((r: StoredSignIn | null): r is StoredSignIn => r !== null)
+      // Every page of their records to the start of the window, following nextLink: a busy person has more than one page.
+      const raw = await graphPaged(ctx.tokens, targetedReadUrl(BETA, id, windowStart, coveredFrom), { ...SIGN_IN_READ, signal: ctx.signal, wait: ctx.wait })
+      const rows = raw.map(mapRow).filter((r): r is StoredSignIn => r !== null)
       mergeTargeted(perUser, id, rows)
       read += 1
     } catch {

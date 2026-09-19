@@ -6,7 +6,6 @@ import {
   MIN_COVERAGE_HOURS,
   ROW_MEMORY_CEILING,
   SLOW_THRESHOLD_MS,
-  TIME_BUDGET_MS,
 } from './constants.ts'
 import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
@@ -528,7 +527,9 @@ export type LaneBDeps = {
 // point, only the gap since that point is fetched; an incomplete cache means
 // paging continues past the overlap (merge is by id, overlap is harmless).
 export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
-  const budgetMs = deps.budgetMs ?? TIME_BUDGET_MS
+  // No wall-clock stop by default: the read runs to the end of the window (owner item 4,
+  // 2026-09-19). A caller may still pass one; the row ceiling guards memory.
+  const budgetMs = deps.budgetMs ?? Number.POSITIVE_INFINITY
   const rowCeiling = deps.rowCeiling ?? ROW_MEMORY_CEILING
   const slowThresholdMs = deps.slowThresholdMs ?? SLOW_THRESHOLD_MS
   const nowIso = new Date(deps.nowMs).toISOString()
