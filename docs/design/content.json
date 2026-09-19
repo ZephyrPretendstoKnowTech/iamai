@@ -1095,6 +1095,9 @@
           "unknown": "Conditional Access policies weren’t read. Scan again."
         },
         "windowsHello": {
+          "seen": "Windows Hello for Business is working here: people sign in with it",
+          "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
+          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
           "pass": "Windows Hello for Business is provisioned",
           "fail": "Windows Hello for Business is turned off in Intune",
           "failText": "Turn it on in Intune: Devices, Enrollment, Windows Hello for Business.",
@@ -1127,6 +1130,7 @@
         "retired": "Looks retired: no sign-in in 90 days, still enabled.",
         "new": "New this month, hasn’t signed in yet.",
         "unread": "Activity not read.",
+        "guest": "Guest: MFA happens in their home organisation.",
         "emergency": "Emergency access accounts",
         "service": "Service accounts",
         "shared": "Shared devices",
@@ -1140,6 +1144,18 @@
         "unreadMethods": "method lists couldn’t be read. The next scan retries.",
         "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
         "individually": "people read individually for the older part of the window"
+      },
+      "guests": {
+        "$comment": "Guests (owner decision, option B): spoken for at tenant level, never listed as people. derive/guestReadiness.ts is the reading.",
+        "title": "Guests",
+        "count": "{n} active guests sign in to this tenant. Their MFA happens in their home organisation, so IAMAI can’t see their methods and doesn’t list them as people.",
+        "trustOn": "This tenant trusts MFA from their home organisation.",
+        "trustOff": "This tenant doesn’t trust MFA from their home organisation, so guests are asked to register a method here.",
+        "trustUnknown": "Cross-tenant access settings weren’t read.",
+        "policyInPlace": "Require MFA for Guests is in place.",
+        "policyNotInPlace": "Require MFA for Guests isn’t in place yet.",
+        "policyLink": "Open the step",
+        "suggestion": "Suggested: trust MFA from guests’ home organisations and ask guests for phishing-resistant MFA. This works only where their organisation uses phishing-resistant MFA."
       },
       "footer": {
         "counted": "Counted: the {active} people who signed in during the last 90 days. Ready looks at the last 30.",

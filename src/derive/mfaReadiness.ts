@@ -44,9 +44,14 @@ export function showKeyOf(value: string | null | undefined): ShowKey | null {
   return EVERY_SHOW_KEY.includes(value) ? (value as ShowKey) : null
 }
 
-/** Why an enabled person is not counted: never signed in, signed in long ago, new, or activity unread. */
-export type Explained = 'never' | 'retired' | 'new' | 'unread'
-export const EXPLAINED: readonly Explained[] = ['never', 'retired', 'new', 'unread']
+/**
+ * Why an enabled person is not counted: never signed in, signed in long ago,
+ * new, activity unread — or a guest, whose MFA happens in their home
+ * organisation (owner decision, option B: the page speaks for guests at tenant
+ * level, derive/guestReadiness.ts, and never lists them as people).
+ */
+export type Explained = 'never' | 'retired' | 'new' | 'unread' | 'guest'
+export const EXPLAINED: readonly Explained[] = ['never', 'retired', 'new', 'unread', 'guest']
 
 export type ReadinessRow = {
   user: UserRow
@@ -76,7 +81,9 @@ export type ReadinessView = {
   ladder: Ladder
   context: ReadinessContext
   rows: ReadinessRow[]
-  /** The active people by state; they sum to `facts.active`. */
+  /** The people the page counts: the partition's active people less the active guests (option B). */
+  people: number
+  /** The counted people by state; they sum to `people`. */
   counts: Record<ReadinessState, number>
   /** The enabled people not counted, by why. */
   explained: Record<Explained, number>
@@ -109,7 +116,11 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
   const admins = adminUserIds(snapshot.roles ?? { active: {} })
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const rows: ReadinessRow[] = []
-  const person = (u: UserRow, v: MfaViability, active: boolean): ReadinessRow => ({ user: u, kind: 'person', active, state: active ? v.readiness.state : null, explained: active ? null : explainedOf(u, v, now), admin: admins.has(u.id), guest: u.userType === 'guest', readiness: v.readiness, methods: v.readiness.methods, viability: v })
+  const person = (u: UserRow, v: MfaViability, active: boolean): ReadinessRow => {
+    const guest = u.userType === 'guest'
+    const counted = active && !guest
+    return { user: u, kind: 'person', active: counted, state: counted ? v.readiness.state : null, explained: counted ? null : active ? 'guest' : explainedOf(u, v, now), admin: admins.has(u.id), guest, readiness: v.readiness, methods: v.readiness.methods, viability: v }
+  }
   for (const s of READINESS_STATES) {
     for (const p of l.states[s]) {
       const u = byId.get(p.id)
@@ -128,12 +139,16 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
   }
   const order = (r: ReadinessRow): number => (r.kind !== 'person' ? 20 + KINDS.indexOf(r.kind) : !r.active ? 10 + EXPLAINED.indexOf(r.explained ?? 'unread') : GROUP_ORDER.indexOf(r.state as ReadinessState))
   rows.sort((a, b) => order(a) - order(b) || (a.admin === b.admin ? 0 : a.admin ? -1 : 1) || (name(a.user) < name(b.user) ? -1 : name(a.user) > name(b.user) ? 1 : 0))
-  const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, l.states[s].length])) as Record<ReadinessState, number>
+  // Counted from the rows, which leave guests out (the ladder's states include them for the Plan).
+  const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, rows.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   const explained = Object.fromEntries(EXPLAINED.map((e) => [e, rows.filter((r) => r.explained === e).length])) as Record<Explained, number>
   const soon = new Date(Date.parse(now) + 7 * DAY).toISOString()
   const lapsing = rows.filter((r) => r.state !== null && isReady(r.state) && r.readiness?.readyUntil != null && r.readiness.readyUntil <= soon).map((r) => r.user.id)
   const counted = rows.filter((r) => r.state !== null)
-  return { facts: factsOf(l), ladder: l, context, rows, counts, explained, lapsing, admins: { active: counted.filter((r) => r.admin).length, ready: counted.filter((r) => r.admin && isReady(r.state as ReadinessState)).length } }
+  // The facts stay the partition's (one function for every surface); the page's
+  // counts are its rows, which leave the active guests out: counts sum to
+  // facts.active - explained.guest.
+  return { facts: factsOf(l), people: counted.length, ladder: l, context, rows, counts, explained, lapsing, admins: { active: counted.filter((r) => r.admin).length, ready: counted.filter((r) => r.admin && isReady(r.state as ReadinessState)).length } }
 }
 
 /**
@@ -154,7 +169,7 @@ export function shows(r: ReadinessRow, key: ShowKey, lapsing: readonly string[] 
   if (key === 'lapsing') return lapsing.includes(r.user.id)
   if ((READINESS_STATES as readonly string[]).includes(key)) return r.state === key
   if (key === 'guests') return r.guest
-  if (key === 'notActive') return r.kind === 'person' && !r.active
+  if (key === 'notActive') return r.kind === 'person' && !r.active && r.explained !== 'guest'
   return r.kind === key
 }
 

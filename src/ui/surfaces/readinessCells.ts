@@ -201,6 +201,8 @@ export function searchText(r: ReadinessRow): string {
 /** A setup check's words: the line, and what to do where it fails. */
 export function checkWords(c: SetupCheck): { line: string; text: string } {
   const W = T.checks[c.key]
+  // A check judged by its outcome names which outcome (Windows Hello: seen, not seen yet, no joined computer).
+  if (c.reason && W[c.reason]) return { line: W[c.reason], text: '' }
   if (c.outcome === 'pass') return { line: W.pass, text: '' }
   if (c.outcome === 'note') return { line: W.note, text: '' }
   if (c.outcome === 'unknown') return { line: W.unknown ?? W.fail, text: '' }

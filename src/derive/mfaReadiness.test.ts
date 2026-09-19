@@ -29,9 +29,11 @@ test('every account is one row; the active people are counted in the states; an 
     const f = v.facts
     assert.equal(f.accounts, f.active + f.notActive + KINDS.reduce((n, k) => n + f.kinds[k], 0), 'the parts sum to the accounts')
     assert.equal(f.accounts, v.rows.length)
-    assert.equal(v.rows.filter((r) => r.active).length, f.active, 'the active people are the counted rows')
-    assert.equal(v.rows.filter((r) => r.kind === 'person' && !r.active).length, f.notActive)
-    assert.equal(EXPLAINED.reduce((n, e) => n + v.explained[e], 0), f.notActive, 'every uncounted person is explained')
+    assert.equal(v.rows.filter((r) => r.active).length, v.people, 'the active people are the counted rows')
+    // The uncounted people are the partition's not active plus its active guests (option B).
+    assert.equal(v.people + v.explained.guest, f.active, 'the page counts the active people less the guests')
+    assert.equal(v.rows.filter((r) => r.kind === 'person' && !r.active).length, f.notActive + v.explained.guest)
+    assert.equal(EXPLAINED.reduce((n, e) => n + v.explained[e], 0), f.notActive + v.explained.guest, 'every uncounted person is explained')
     for (const k of KINDS) assert.equal(v.rows.filter((r) => r.kind === k).length, f.kinds[k], k)
     for (const r of v.rows) {
       if (r.active) {
@@ -52,14 +54,17 @@ test('every account is one row; the active people are counted in the states; an 
       const cells = rowCells(r)
       assert.ok(cells[3].length > 0 && methodsCell(r).main.length > 0, `${r.user.id}: words in the state and methods cells`)
     }
-    for (const s of READINESS_STATES) assert.equal(v.rows.filter((r) => shows(r, s)).length, f.states[s], `the ${s} filter shows the people counted in it`)
+    for (const s of READINESS_STATES) assert.equal(v.rows.filter((r) => shows(r, s)).length, v.counts[s], `the ${s} filter shows the people counted in it`)
     assert.equal(v.rows.filter((r) => shows(r, 'notActive')).length, f.notActive)
-    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, f.active, 'Everyone is every active person')
+    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, v.people, 'Everyone is every active person')
     // The seven states partition the active people: the summary's denominator is
     // the partition's, and nobody is counted twice or dropped.
-    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), f.active, 'the states sum to the active people')
-    assert.deepEqual(v.counts, f.states)
-    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, f.active - v.counts.ready - v.counts.seamless, 'needs action is every active person who is not Ready or Seamless')
+    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.people, 'the states sum to the active people')
+    // The partition's states, less the active guests the page speaks for at tenant level (option B).
+    const lessGuests = { ...f.states }
+    for (const r of v.rows) if (r.explained === 'guest') lessGuests[r.readiness!.state]--
+    assert.deepEqual(v.counts, lessGuests)
+    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, v.people - v.counts.ready - v.counts.seamless, 'needs action is every active person who is not Ready or Seamless')
     assert.equal(v.rows.filter((r) => shows(r, 'admins')).length, v.admins.active, 'the Admins filter is the admins counted')
     assert.equal(v.rows.filter((r) => r.admin && r.state !== null && isReady(r.state)).length, v.admins.ready)
   }
@@ -75,7 +80,7 @@ test('the uncounted are explained or listed by kind, each in words, and with the
   for (const e of EXPLAINED) assert.ok(T.counted[e], `${e} has words`)
   const explained = EXPLAINED.reduce((n, e) => n + v.explained[e], 0)
   const kinds = KINDS.reduce((n, k) => n + v.facts.kinds[k], 0)
-  assert.equal(v.facts.active + explained + kinds, v.facts.accounts, 'the active, the explained and the kinds account for everyone')
+  assert.equal(v.people + explained + kinds, v.facts.accounts, 'the active, the explained and the kinds account for everyone')
   assert.ok(v.explained.retired > 0, 'the demo has somebody who looks retired')
   // Each kind is a filter of its own.
   for (const k of KINDS) assert.equal(showKeyOf(k), k)
@@ -132,7 +137,7 @@ test('lapsing is the Ready people whose readiness ends within seven days, and no
     assert.equal(v.rows.filter((r) => shows(r, 'lapsing', v.lapsing)).length, v.lapsing.length, `${f.name}: the Lapsing filter shows them`)
     for (const r of v.rows) {
       if (r.state !== null && isReady(r.state)) assert.ok(r.readiness?.readyUntil, `${f.name}/${r.user.id}: a Ready person says until when`)
-      else assert.equal(r.readiness?.readyUntil ?? null, null, `${f.name}/${r.user.id}: only a Ready person has a Ready-until date`)
+      else if (r.explained !== 'guest') assert.equal(r.readiness?.readyUntil ?? null, null, `${f.name}/${r.user.id}: only a Ready person has a Ready-until date`)
     }
     seen += v.lapsing.length
   }
@@ -164,9 +169,9 @@ test('the demo snapshots: states sum to the summary, the uncounted account for e
   for (const name of ['demo', 'demo-week2'] as const) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.facts.active, `${name}: the states do not sum to the summary`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.people, `${name}: the states do not sum to the summary`)
     const uncounted = EXPLAINED.reduce((n, e) => n + v.explained[e], 0) + KINDS.reduce((n, k) => n + v.facts.kinds[k], 0)
-    assert.equal(v.facts.active + uncounted, v.rows.length, `${name}: the uncounted and the active people are not every account`)
+    assert.equal(v.people + uncounted, v.rows.length, `${name}: the uncounted and the active people are not every account`)
     const r = runFixture(f)
     let scoped = 0
     for (const step of r.steps) {

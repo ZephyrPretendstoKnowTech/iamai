@@ -817,7 +817,7 @@ function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, 
   if (policy?.authenticationMethodConfigurations && !policy.authenticationMethodConfigurations.some((c) => c.id === 'Voice')) policy.authenticationMethodConfigurations.push({ id: 'Voice', state: 'disabled', includeTargets: [] } as { id: string })
   if (!demo) return
   // People the demo tells no other story about (not the admins, not the campaign's no-method and unproven people), so week two keeps them.
-  const counted = Object.keys(snapshot.signInEvidence).filter((id) => !adminIds.includes(id) && !storied.has(id) && snapshot.users.some((u) => u.id === id && u.accountEnabled !== false))
+  const counted = Object.keys(snapshot.signInEvidence).filter((id) => !adminIds.includes(id) && !storied.has(id) && snapshot.users.some((u) => u.id === id && u.accountEnabled !== false && u.userType !== 'guest'))
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const plain = counted.filter((id) => {
     const m = snapshot.authMethods[id]
@@ -830,7 +830,9 @@ function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, 
     for (const d of snapshot.signInEvidence[admin].devices ?? []) if (d.os === 'Windows') { d.trust = 'joined'; d.deviceIds = [owned.get(other)?.deviceId as string] }
   }
   const at = (days: number): string => new Date(Date.parse(snapshot.asOf) - days * 86_400_000).toISOString()
-  const [contractor, offList, onLeave, script] = plain.slice(-4)
+  const [contractor, offList, onLeave] = plain.slice(-3)
+  // Scripting tools only: a person (Authenticator held) outside the plain cases.
+  const script = counted.find((id) => !plain.includes(id) && (snapshot.authMethods[id] as AuthMethodSummary[] | undefined)?.some?.((m) => m.kind === 'microsoftAuthenticator'))
   if (contractor) {
     const e = snapshot.signInEvidence[contractor]
     e.platforms = [{ os: 'Windows', at: at(2) }, { os: 'Android', at: at(3) }]

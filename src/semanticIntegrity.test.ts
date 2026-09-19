@@ -110,7 +110,7 @@ test('042.2: every count reconciles with the rows it claims to be about', () => 
     for (const s of READINESS_STATES) {
       assert.equal(counts[s], rows.filter((r) => r.state === s).length, `${c.label}: the ${s} count is not the ${s} rows`)
     }
-    assert.equal(READINESS_STATES.reduce((n, s) => n + counts[s], 0), facts.active, `${c.label}: the states do not sum to the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + counts[s], 0), c.readiness.people, `${c.label}: the states do not sum to the active people`)
     // The ledger's own parts sum to every account once.
     assert.equal(facts.active + facts.notActive + facts.kinds.emergency + facts.kinds.service + facts.kinds.shared + facts.kinds.disabled, facts.accounts, `${c.label}: the ledger's parts do not sum to the accounts`)
     assert.equal(rows.length, facts.accounts, `${c.label}: the table shows a different number of accounts from the ledger above it`)
@@ -118,7 +118,9 @@ test('042.2: every count reconciles with the rows it claims to be about', () => 
     // Needs action is every active person who is not Ready or Seamless: the five
     // other states, the people whose evidence could not be read among them.
     assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: the needs-action filter and the five counts describe different people`)
-    assert.equal(notReady(facts), READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: not Ready yet is the needs-action population`)
+    // The partition's not Ready yet (the printed plan's) also holds the active guests the page speaks for at tenant level (option B).
+    const guestsNotReady = rows.filter((r) => r.explained === 'guest' && !isReady(r.readiness!.state)).length
+    assert.equal(notReady(facts), READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0) + guestsNotReady, `${c.label}: not Ready yet is the needs-action population and the active guests`)
     // Not Ready yet is a subset of the active people and never a second score.
     assert.ok(notReady(facts) <= facts.active, `${c.label}: more people not Ready than there are active people`)
     // A step's count is the ids behind it, and a step whose reach is unknown has

@@ -3,6 +3,7 @@
 // scenario → step → derivation is docs/design/lockout-scenarios.md and the
 // table in the prompt. Pure: the snapshot's scenarioEvidence in, ordered lines
 // out. The generic catalogue text stays behind More (content.ts, unchanged).
+import { guestMfaTrustOf } from '../derive/guestReadiness.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { ScenarioEvidence } from '../derive/evidence.ts'
 import type { Step } from './types.ts'
@@ -158,18 +159,10 @@ export function scenarioContext(args: {
 }): Omit<Ctx, 'enforceDate'> {
   const { snapshot } = args
   const evidence = snapshot.scenarioEvidence ?? EMPTY
-  const crossTenant = snapshot.config.crossTenantAccess
-  const trustRows = (crossTenant?.rows ?? []) as { relationship?: string; inboundTrust?: { isMfaAccepted?: boolean }; b2bCollaborationInbound?: { inboundTrust?: { isMfaAccepted?: boolean } } }[]
-  const trustValue = (row: typeof trustRows[number]): boolean | null => {
-    const value = row.inboundTrust?.isMfaAccepted ?? row.b2bCollaborationInbound?.inboundTrust?.isMfaAccepted
-    return typeof value === 'boolean' ? value : null
-  }
-  const defaultTrust = trustRows.find(row => row.relationship === 'default')
-  const partners = trustRows.filter(row => row.relationship === 'partner')
   // The tenant can rely on inbound MFA only when the applicable default is
-  // readable and no partner override explicitly rejects it. An unrelated true
-  // row is not tenant-wide proof.
-  const guestMfaTrust = crossTenant?.status === 'ok' && !!defaultTrust && trustValue(defaultTrust) === true && partners.every(row => trustValue(row) !== false)
+  // readable and no partner override explicitly rejects it (derive/guestReadiness.ts,
+  // the one reading MFA Readiness's guest tile shares).
+  const guestMfaTrust = guestMfaTrustOf(snapshot) === 'on'
   const hybridPresent = snapshot.users.some((u) => u.onPremisesSyncEnabled === true)
   const syncRoleHolder =
     Object.entries(snapshot.roles.active).find(([, roles]) => roles.some((r) => r.toLowerCase() === DIR_SYNC_ROLE))?.[0] ?? null
