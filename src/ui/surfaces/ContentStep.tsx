@@ -83,16 +83,16 @@ const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
 
 type EmergencyTaskPreference = { taskId?: string; variants?: Record<string, string> }
+// The chosen task and channel variants, kept for this page load only. Its key
+// names the tenant, and nothing about a tenant reaches web storage
+// (sessionTruth.test): a module-level map survives the step remounting as the
+// person moves between steps, and goes when the page does.
+const EMERGENCY_TASK_PREFERENCES = new Map<string, EmergencyTaskPreference>()
 function readEmergencyTaskPreference(key: string): EmergencyTaskPreference {
-  if (typeof sessionStorage === 'undefined') return {}
-  try {
-    const value = JSON.parse(sessionStorage.getItem(key) ?? '{}')
-    return value && typeof value === 'object' ? value as EmergencyTaskPreference : {}
-  } catch { return {} }
+  return EMERGENCY_TASK_PREFERENCES.get(key) ?? {}
 }
 function writeEmergencyTaskPreference(key: string, patch: EmergencyTaskPreference): void {
-  if (typeof sessionStorage === 'undefined') return
-  try { sessionStorage.setItem(key, JSON.stringify({ ...readEmergencyTaskPreference(key), ...patch })) } catch { /* A blocked storage preference must not block the step. */ }
+  EMERGENCY_TASK_PREFERENCES.set(key, { ...readEmergencyTaskPreference(key), ...patch })
 }
 
 /** A content string, filled with the tenant's values. */
