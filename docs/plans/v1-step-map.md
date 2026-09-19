@@ -14,7 +14,7 @@ Two sources sit behind it:
 3. **Everything else** shows in the Ready, Up Next and On Hold lanes, as today, ordered by wave. The waves are the build order and the sort order. They are **not** new visible groups.
 4. **Cleanup** stays where it is, with the new lockdown kit added.
 
-Nothing after Direction becomes Ready until Direction is answered. Before then, each row says "Waiting on your direction" and links to the step that decides it.
+A policy waits only for the Direction answers it depends on (owner, 2026-09-19). Until then its row says "Waiting on your direction" and links to the question.
 
 ## 1. Establish Emergency Access: frozen, no change
 
@@ -34,7 +34,7 @@ Answers only. Nothing is changed in Entra. The scan pre-fills each answer, and t
 | # | Step | What it asks | Folds in (today) | What the answers drive |
 |---|---|---|---|---|
 | D1 | **Confirm What You Use** | The services (Azure Virtual Desktop, SharePoint and OneDrive off-network, Inforcer, Intune, external authentication methods), then the old sign-in paths still in use (mail-sending devices, device code sign-in, partner or MSP technicians). | `s-confirm-workloads`, and the mail-devices, device-code and partner questions | Adds or removes the service policies. A "no" on an old path *tightens* its block (no exceptions). A "yes" adds the exception to that policy's tasks. |
-| D2 | **Identify Accounts That Aren't People** | Service accounts, shared devices, script accounts. | The pickers in `s-prereq-service-accounts-group` and `s-shared-devices`, and the script-account note on MFA Readiness | Every people count (Plan, MFA Readiness, Impact). The service-accounts policy. The shared-devices policy. |
+| D2 | **Identify Service and Shared Accounts** | Service accounts, shared devices, script accounts. | The pickers in `s-prereq-service-accounts-group` and `s-shared-devices`, and the script-account note on MFA Readiness | Every people count (Plan, MFA Readiness, Impact). The service-accounts policy. The shared-devices policy. |
 | D3 | **Decide How People and Devices Sign In** | Phones (registered, enrolled, unmanaged, blocked), app protection, computers (joined, hybrid, unmanaged), and whether any devices need a standing exception. | `s-prereq-device-plan` (always shown now, never hidden on evidence) | Applicability of the device wave. The device exceptions group (Jon's `2d25c298`), created only when the answer asks for one. |
 | D4 | **Decide Where People Sign In From** | The trusted network (office addresses, or everyone remote), work countries, and whether travel is allowed (with notice, or never). | The answers in `s-prereq-trusted-location` and `s-prereq-allowed-countries`, plus the unused travel question | The countries policy. The trusted network in the service-accounts and sign-up policies. The travellers group (Jon's `cc7f9bb7`), only when travel is allowed. |
 
@@ -66,7 +66,7 @@ Each policy follows the same life: create it in Report-only, watch it, then enfo
 
 ## 4. Ongoing and Cleanup
 
-- **Prepare Your Lockdown Policies (new).** Jon's three ZTCA policies:
+- **Prepare Your Lockdown Policies (new; owner, 2026-09-19: its own group, at the end, after every other policy).** Jon's three ZTCA policies:
   - the Admin Portal block;
   - block all apps except CA-Global;
   - Intune: block all apps outside the trusted network.
@@ -111,6 +111,6 @@ Each policy follows the same life: create it in Report-only, watch it, then enfo
 ## Decisions this map needs from the owner
 
 1. Two pinned groups, with the waves as order only (not visible groups)?
-2. Direction as four steps (D1–D4), with D2 "Accounts That Aren't People" added to your three?
+2. Direction as four steps (D1–D4)? **Approved.** D2 is titled "Identify Service and Shared Accounts".
 3. The lockdown kit in Report-only, as Jon's export has it, rather than Off? Report-only shows who *would* be blocked, which makes the incident switch-on safer.
 4. The retirements in §5, especially the free-tier ladder?
