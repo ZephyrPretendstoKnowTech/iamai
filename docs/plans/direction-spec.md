@@ -1,4 +1,4 @@
-# Decide Your Tenant's Direction: the spec (draft for owner review, 2026-09-19)
+# Decide Your Tenant's Direction: the spec (approved by the owner, 2026-09-19)
 
 This is the second pinned group on the Plan, right after Establish Emergency Access. It has four steps, takes about 30 minutes, and asks for **answers only: nothing is changed in Entra.**
 
@@ -41,7 +41,7 @@ It follows the V1 standard (`v1-procedure.md` §3) and "intent over evidence":
 | Partner or MSP technicians who sign in to your tenant | No / Yes | Partner relationships and service-provider sign-ins | Yes: the partner exclusion task goes on the guest and countries policies |
 | External authentication methods (a third-party MFA provider) | No / Yes | The authentication methods policy | Yes: the external-method users group, for the risk policy |
 
-## D2. Identify Service and Shared Accounts (title pending: owner item 24)
+## D2. Identify Service and Shared Accounts
 
 **About:** "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules."
 
@@ -76,11 +76,10 @@ Intune is treated as in use when either computers or phones are managed. There's
 
 ---
 
-## What the owner is being asked
+## Owner decisions (2026-09-19)
 
-1. **Anatomy:** "About / Questions / Completion Criteria", with no Implementation Tasks. OK?
-2. **Drop "Not sure":** every question has a suggestion, and keeping it is the answer. OK?
-3. **Gating per answer:** a policy waits only for the answers it depends on, rather than all of Direction. This changes one line of the step map. OK?
-4. **Intune** follows D3 instead of being its own question. OK?
-5. **D2's title** (item 24).
-6. **Anything missing?** For example: whether guests are allowed at all, or whether admins use separate admin accounts. Both are left out on purpose: they belong to their own policy steps.
+1. **Layout:** About this Step / Questions / Completion Criteria. There are no Implementation Tasks.
+2. **"Not sure" is dropped.** Every question has a suggestion.
+3. **Gating is per answer.** A policy waits only for the answers it depends on. This replaces the step map's "nothing after Direction is Ready until it's answered".
+4. **Intune** follows D3; there's no separate question.
+5. **D2 is titled** "Identify Service and Shared Accounts".
