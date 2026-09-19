@@ -1,18 +1,23 @@
 {
-  "lane": "Completed",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Create",
   "reason": null,
   "fact": null,
-  "badge": "Completed",
-  "bar": "In place",
-  "rail": "Completed",
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Trusted Network",
+      "state": "Choose your office networks"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",
@@ -20,5 +25,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Already in place"
+  "when": "Aug 31, 2026"
 }

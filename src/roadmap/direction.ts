@@ -344,11 +344,9 @@ export function gateOnDirection(steps: Step[]): void {
     const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
     if (waiting.length === 0) continue
     // The wait is the lane engine's to read (planLanes.ts observe), not a
-    // condition of the step's own: its lifecycle, its tracking and its readiness
-    // are what they are, and an already enforced policy is never held by it.
-    for (const id of waiting) {
-      if (!step.blockedBy.includes(id)) step.blockedBy.push(id)
-      step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
-    }
+    // condition of the step's own nor an edge the schedule sequences on: its
+    // lifecycle, its tracking, its readiness and its dates are what they are, and
+    // an already enforced policy is never held by it.
+    for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
   }
 }

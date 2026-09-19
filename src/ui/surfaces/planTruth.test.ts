@@ -140,7 +140,10 @@ test('Step 5: the header says what holds the plan, and names no step a held row 
   assert.doesNotMatch(clause, /Decide How Devices Are Managed/, clause)
   for (const id of finish.unwritable.waitsOn) assert.ok(p.r.steps.some(s => s.blockedBy.includes(id)), `${id}: only actual dependencies are named`)
   assert.ok(finish.unwritable.named < finish.unwritable.count, 'the premise: most holds name no step')
-  assert.match(clause, /^\d+ held steps are cleared/, clause)
+  // The device goals wait for device readiness on the demo now (their old wait on the retired device
+  // step is Direction's, which the lane holds), so the header leads with that; the held clause is the rest.
+  const unwritable = FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
+  assert.match(unwritable, /^\d+ held steps are cleared/, unwritable)
   // The three shapes, as the header fills them.
   assert.equal(FINISH.unwritable(3, ['Create or Correct Exclusions Group']), '3 steps wait on Create or Correct Exclusions Group')
   assert.equal(FINISH.unwritable(3, [], 0), '3 held steps are cleared')

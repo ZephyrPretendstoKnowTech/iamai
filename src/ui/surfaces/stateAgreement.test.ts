@@ -27,6 +27,7 @@ import { stepExportView } from './stepExport.ts'
 import { laneReadings } from './planLanes.ts'
 import { doesntApplyView, laneViewOf } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { directionBlockerStep } from '../../roadmap/direction.ts'
 
 type Row = Record<string, unknown>
 const fixtures = allFixtures()
@@ -117,6 +118,8 @@ test('S7.3: while the plan dates the report-only create, no readiness wait is li
     const ctx = ctxOf(f)
     for (const s of run.steps) {
       if (scheduleOf(s).transition !== 'createReportOnly') continue
+      // A step waiting on a Direction answer lists that answer under Fix whatever its date (roadmap/direction.ts; direction.test.ts).
+      if (s.blockers.some((b) => directionBlockerStep(b) !== null)) continue
       // The step's own threshold is a wait on every reading (stepContract.ts thresholdBinding); the other readiness bindings are the ones at issue.
       const waits = s.blockers.filter((b) => b.kind === 'readiness' && typeof b.binding === 'string' && !/readiness reaches/.test(b.binding)).map((b) => b.binding as string)
       if (waits.length === 0) continue

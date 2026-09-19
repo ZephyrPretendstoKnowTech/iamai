@@ -387,12 +387,12 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     const mapping = reading.lane === 'On Hold' ? (observe(s, byId).blockers ?? []).find((b) => b.kind === 'sourceMapping') : undefined
     // A Direction answer this row depends on holds it, as it holds an engine row (observe),
     // unless its policy is already enforced; it outranks a wait on ordinary work.
-    const open = s.blockedBy.map((id) => byId.get(id)).filter((d): d is Step => d !== undefined && d.status !== 'done')
-    const direction = s.state.lifecycle === 'enforced' ? undefined : open.find((d) => isDirectionStep(d.id) && s.blockers.some((b) => directionBlockerStep(b) === d.id))
-    const dependency = direction ?? open.find((d) => !isDirectionStep(d.id))
-    const prerequisite: HoldBlocker | null = direction ? { kind: 'decision', id: direction.id, milestone: null, condition: null, abnormal: true, ordinal: 0 } : dependency ? { kind: 'step', id: dependency.id, milestone: null, condition: null, abnormal: false, ordinal: 0 } : null
+    const waitsOn = s.state.lifecycle === 'enforced' ? null : s.blockers.map(directionBlockerStep).find((id) => id !== null) ?? null
+    const direction = waitsOn !== null ? byId.get(waitsOn) : undefined
+    const dependency = (direction && direction.status !== 'done' ? direction : undefined) ?? s.blockedBy.map((id) => byId.get(id)).find((d) => d && d.status !== 'done')
+    const prerequisite: HoldBlocker | null = direction && dependency === direction ? { kind: 'decision', id: direction.id, milestone: null, condition: null, abnormal: true, ordinal: 0 } : dependency ? { kind: 'step', id: dependency.id, milestone: null, condition: null, abnormal: false, ordinal: 0 } : null
     const reason: HoldBlocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : prerequisite
-    if (dependency && !mapping && reading.lane !== 'Completed' && reading.lane !== 'Deferred') { reading.lane = direction ? 'On Hold' : (out.get(dependency.id) ?? fallbackOf(planStateOf(dependency, isHeld(dependency)))).lane === 'Ready' ? 'Up Next' : 'On Hold'; reading.substatus = null }
+    if (dependency && !mapping && reading.lane !== 'Completed' && reading.lane !== 'Deferred') { reading.lane = direction && dependency === direction ? 'On Hold' : (out.get(dependency.id) ?? fallbackOf(planStateOf(dependency, isHeld(dependency)))).lane === 'Ready' ? 'Up Next' : 'On Hold'; reading.substatus = null }
     rest.push({ id: s.id, reading: { ...reading, reason, blockers: reason ? [reason] : [], gates: [] } })
   }
   for (const r of rows) {

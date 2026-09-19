@@ -36,6 +36,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
+import { DIRECTION_BLOCKER } from './directionAnswers.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
 import { enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
@@ -62,7 +63,8 @@ export function holdOf(step: Step): Hold | null {
     // Blocked with nothing named is held: nothing says what would release it.
     if (step.blockers.length === 0) return { kind: 'prerequisite' }
     // A Setup answer, evidence or a decision nobody has given is not work the plan schedules.
-    if (step.blockers.some((b) => b.kind === 'setup' || b.kind === 'evidence' || b.kind === 'decision')) return { kind: 'prerequisite' }
+    // A Direction wait is the lane's (roadmap/direction.ts), not a hold on the step's schedule.
+    if (step.blockers.some((b) => b.kind === 'setup' || b.kind === 'evidence' || (b.kind === 'decision' && !b.label.startsWith(DIRECTION_BLOCKER)))) return { kind: 'prerequisite' }
     // A readiness condition that binds a tenant fact — a number to reach, an
     // object to exist, a safe way in — holds until the scan finds it. One with no
     // binding is an ordering rule: it waits on the step it names, and that is

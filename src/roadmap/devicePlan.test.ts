@@ -82,10 +82,9 @@ test('open: the step asks, phones are out of readiness, and only the device step
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)
     assert.ok(s, `${goalId}: on the plan`)
-    assert.ok(s.blockedBy.includes(D3), `${goalId}: waits on the device decision`)
-    assert.ok(s.blockers.some((b) => b.kind === 'decision' && b.label === `direction:${D3}`))
+    assert.ok(s.blockers.some((b) => b.kind === 'decision' && b.label === `direction:${D3}`), `${goalId}: waits on the device decision`)
   }
-  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId)) assert.ok(!s.blockedBy.includes(D3), `${s.id}: does not wait on the device decision`)
+  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId)) assert.ok(!s.blockers.some((b) => b.label === `direction:${D3}`), `${s.id}: does not wait on the device decision`)
   // Device readiness against the open decision: compliant computers only, phones out.
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
   const all = r.viability.map((v) => v.userId)
@@ -111,7 +110,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const ds = r.steps.find((s) => s.id === D3)!
   assert.equal(ds.status, 'done', 'all separate management choices were confirmed')
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
-  assert.ok(!compliant.blockedBy.includes(D3), 'nothing waits on a made decision')
+  assert.ok(!compliant.blockers.some((b) => b.label === `direction:${D3}`), 'nothing waits on a made decision')
   assert.notEqual(compliant.status, 'skipped', 'computers stay in the policy')
   const body = JSON.parse(compliant.action.json ?? '{}') as { conditions?: { platforms?: { includePlatforms?: string[]; excludePlatforms?: string[] } } }
   assert.deepEqual(body.conditions?.platforms, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }, 'the JSON scopes phones out')
@@ -122,7 +121,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.match(platforms, /Include: Any device; Exclude: Android, iOS/)
   assert.match(platforms, /the baseline's version: no such condition/, 'the deviation is shown beside the baseline\'s version')
   const enrolment = r.steps.find((x) => x.goalId === INTUNE_ENROLMENT_GOAL)!
-  assert.ok(!enrolment.blockedBy.includes(D3))
+  assert.ok(!enrolment.blockers.some((b) => b.label === `direction:${D3}`))
   assert.notEqual(enrolment.status, 'skipped', 'the enrolment step follows the compliant-device one')
   assert.equal(deviceStepDoesntApply(APP_PROTECTION_GOAL, m), null, 'phones protected by their apps: the app-protection policy applies')
   // Readiness against the answer: hybrid-joined computers count as managed.
