@@ -40,16 +40,19 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(decisionHeadingsOf(id), null, id)
   }
   // A step outside the two pinned groups is in one of the rollout's own groups
-  // now, and draws its OWN headings there: grouping a step says where it sits on
-  // the board and nothing about what its interior draws (anatomy null).
+  // now. Grouping says where it sits on the board and nothing about its interior:
+  // a policy step draws the task anatomy because it IS one (owner, 2026-09-19:
+  // every policy step reads as an Emergency Access step), and the rest draw their own.
   for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything']) {
     assert.notEqual(groupOf(id), null, `${id} is in no group`)
     assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
     assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
-    assert.equal(usesTaskAnatomy(id), false, id)
+    assert.equal(usesTaskAnatomy(id), false, `${id}: no group anatomy`)
     assert.equal(usesDecisionAnatomy(id), false, id)
     assert.equal(anatomyOf(id), null, id)
-    assert.equal(taskHeadingsOf(id), null, id)
+    // A policy step draws the task headings from its own kind, not from a group
+    // (ui/surfaces/policyTasks.ts): grouping still says nothing about the interior.
+    assert.equal(taskHeadingsOf(id), id === 's-goal-block-legacy-auth' ? TASK_HEAD : null, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
 })
