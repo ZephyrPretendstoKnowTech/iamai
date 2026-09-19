@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
-  "reason": "until a scan rebuilds this step",
+  "lane": "Ready",
+  "substatus": "Decision",
+  "reason": null,
   "fact": "Enforced",
-  "badge": "On Hold",
-  "bar": "Not supported",
+  "badge": "Ready · Decision",
+  "bar": "Needs a decision",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -18,16 +18,8 @@
       "state": "Not established"
     },
     {
-      "label": "Implementation",
-      "state": "Unavailable"
-    },
-    {
       "label": "Partner or MSP access",
       "state": "Confirm whether partners access your tenant"
-    },
-    {
-      "label": "Not supported",
-      "state": "Not supported"
     }
   ],
   "channels": [

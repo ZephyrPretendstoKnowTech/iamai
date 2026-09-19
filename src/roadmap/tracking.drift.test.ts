@@ -21,7 +21,7 @@ import { applyProgress } from './progress.ts'
 import { stepIdForGoal } from './generate.ts'
 import { holdOf } from './holds.ts'
 import { nextSafeAction } from './nextSafeAction.ts'
-import { unavailableReason } from './operations.ts'
+import { awaitsWorkflowRecord, unavailableReason } from './operations.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 import type { StepObservation, StepObservationRecord } from './observation.ts'
@@ -161,7 +161,8 @@ test('outcomes: every deployed, undone step of every fixture reads exactly one o
     for (const s of runFixture(f).steps) {
       const got = driftOutcomeOf(s)
       const deployed = (s.tracking?.members ?? []).some((m) => m.policyId !== null)
-      if (s.status === 'done' || s.status === 'skipped' || !deployed) assert.equal(got, null, `${f.name} ${s.id} has nothing owned to drift`)
+      // A goal the tenant's enforced policy delivers, open only for its workflow record, has not drifted either.
+      if (s.status === 'done' || s.status === 'skipped' || !deployed || awaitsWorkflowRecord(s)) assert.equal(got, null, `${f.name} ${s.id} has nothing owned to drift`)
       else assert.ok(got !== null && OUTCOMES.includes(got), `${f.name} ${s.id}: ${String(got)}`)
     }
   }

@@ -32,7 +32,7 @@ import type { Schedule, WaveSchedule } from './schedule.ts'
 import { toWeekday } from './schedule.ts'
 import { holdOf } from './holds.ts'
 import type { HoldKind } from './holds.ts'
-import { implementationOffered } from './operations.ts'
+import { awaitsWorkflowRecord, implementationOffered } from './operations.ts'
 
 /**
  * Where a step stands in the schedule:
@@ -150,6 +150,9 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
   const none = { transition: null, at: null, range: null, wave: null } as const
   if (step.status === 'done') return { ...base, ...none, class: 'complete', enforcement: 'none' }
   if (step.status === 'skipped' || step.state.setAside) return { ...base, ...none, wave: basis?.wave ?? null, class: 'setAside', enforcement: 'none' }
+  // The tenant's enforced policy delivers the goal and a person records the
+  // workflow test when they run it: the rollout is complete and nothing is left to date.
+  if (awaitsWorkflowRecord(step)) return { ...base, ...none, class: 'complete', enforcement: 'none' }
   const policy = step.kind === 'create' || step.kind === 'adjust'
   if (hold !== null) {
     if (step.reportOnlyAt && createsWhileGated(step, basis)) {

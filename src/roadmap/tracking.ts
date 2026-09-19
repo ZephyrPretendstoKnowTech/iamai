@@ -27,12 +27,12 @@ import { findTaggedPolicies } from './generate.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyBasis, readyWhen } from '../derive/readyWhen.ts'
-import { effectOf } from './operations.ts'
+import { awaitsWorkflowRecord, effectOf } from './operations.ts'
 import { evidenceStrategyOf } from './evidenceStrategy.ts'
 import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
-import { advanceState, aggregateObservation, raiseCondition, setState, workflowReviewIsCurrent } from './lifecycle.ts'
+import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
 import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
@@ -1196,7 +1196,8 @@ export type DriftOutcome = 'correctable' | 'review-required' | 'on-hold'
  * no policy delivers yet, one that is done, or one set aside.
  */
 export function driftOutcomeOf(step: Step): DriftOutcome | null {
-  if (workflowReviewIsCurrent(step)) return null
+  // A goal the tenant's enforced policy delivers, open only for its workflow record, has not drifted.
+  if (awaitsWorkflowRecord(step)) return null
   if (step.status === 'done' || step.status === 'skipped') return null
   const members = step.tracking?.members ?? []
   if (!members.some((m) => m.policyId !== null)) return null

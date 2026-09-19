@@ -1098,7 +1098,21 @@ export function submitsEnforcementOnly(op: PolicyOperation): boolean {
 }
 
 /** What any of this applies to: a step that describes a policy. */
-type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state'>>
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview'>>
+
+/**
+ * True when a policy the tenant already enforces delivers the goal and the step
+ * stays open only for the workflow test a person records (roadmap/manualWork.ts
+ * POLICY_WORKFLOWS: `readyToConfirm` is the delivery, `confirmedAt` the record).
+ * Nothing is left for IAMAI to write and nothing it owns has drifted; the step is
+ * not done either, because the test is not recorded. Whether recording it is the
+ * step's next action is a separate question (lifecycle.ts workflowReviewIsCurrent):
+ * an answer nobody saved comes first.
+ */
+export function awaitsWorkflowRecord(step: PolicyStep): boolean {
+  const s = step.state
+  return !!step.manualReview?.readyToConfirm && !step.manualReview.confirmedAt && s?.lifecycle === 'enforced' && s.condition === 'healthy' && !s.satisfied && !s.setAside
+}
 
 /**
  * True when this step's enforcement is held behind a readiness prerequisite
@@ -1146,7 +1160,9 @@ export type PolicyHold = 'observation-incomplete'
  * - `held`: operations that hold together, and today is not the day to run them;
  * - `unavailable`: an open policy the plan cannot write, and why;
  * - `preserved`: a goal already in place — nothing to write, and nothing wrong;
- * - `not-policy`: a step that describes no policy, or one set aside.
+ * - `not-policy`: a step that describes no policy for IAMAI to write: none at
+ *   all, one set aside, or a goal the tenant's own enforced policy delivers
+ *   whose remaining work is a person's workflow record (`awaitsWorkflowRecord`).
  *
  * Everything else in this module is a reading of this one answer. Being in place
  * never covers up a reason: a goal whose baseline contradicts itself, whose
@@ -1206,6 +1222,10 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // than waiting for a scan to rebuild it, which names no work.
   if ((step.state?.observation?.unwritten.length ?? 0) > 0 && declared.some((o) => o.mode === 'update' && !isSubmittablePatch(o.body))) return { kind: 'unavailable', reason: 'manual-correction' }
   if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }
+  // The tenant's enforced policy delivers the goal and a person still records its
+  // workflow test: nothing to write, and nothing a scan has to rebuild. Not
+  // preserved either — the step is not finished until the test is recorded.
+  if (valid.length === 0 && step.status !== 'done' && awaitsWorkflowRecord(step)) return { kind: 'not-policy' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
   if (step.status === 'done') return { kind: 'preserved' }
   // Foundation B's gate, in the one place that decides whether IAMAI hands an

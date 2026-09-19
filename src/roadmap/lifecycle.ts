@@ -31,7 +31,7 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
-import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
+import { awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
@@ -282,7 +282,7 @@ export function raiseCondition(step: Step, next: Condition): Step {
  * been watched (observation.ts historyReset).
  */
 export function workflowReviewIsCurrent(step: Step): boolean {
-  return !!step.manualReview?.readyToConfirm && !step.manualReview.confirmedAt && step.state.lifecycle === 'enforced' && step.state.condition === 'healthy' && !step.state.satisfied && !step.state.setAside && !(step.unsavedInputs?.length)
+  return awaitsWorkflowRecord(step) && !(step.unsavedInputs?.length)
 }
 
 export function nextMilestone(step: Step): Milestone {
@@ -296,6 +296,9 @@ export function nextMilestone(step: Step): Milestone {
     return s.inPlace ? { kind: 'preserve', label: MILESTONE.preserve, at: null, gatedBy: null } : { kind: 'none', label: MILESTONE.none, at: null, gatedBy: null }
   }
   if (workflowReviewIsCurrent(step)) return { kind: 'verify', label: 'Test the required workflow and record its outcome.', at: null, gatedBy: null }
+  // Delivered by the tenant's enforced policy, with an input nobody saved: the
+  // answer comes before the workflow record, and nothing else is left to do.
+  if (awaitsWorkflowRecord(step)) return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: null }
   // A deployed policy that is no longer what the plan asked for is held until
   // somebody has looked at it, and that comes before the stage's own next move:
   // a window closing does not settle a change nobody has explained, and there is
