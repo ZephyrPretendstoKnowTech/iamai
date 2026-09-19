@@ -10,7 +10,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { CONTRACT, readinessOf, stepContract } from './stepContract.ts'
@@ -30,11 +30,11 @@ const CSS = read('src/ui/app.css')
 const CONTENT = read('docs/design/content.json')
 const EMERGENCY = 's-prereq-break-glass'
 
-function opened(name: 'demo' | 'demo-week2', id: string) {
-  const f: Fixture = fixture(name)
+function opened(name: 'demo' | 'demo-week2' | Fixture, id: string) {
+  const f: Fixture = typeof name === 'string' ? fixture(name) : name
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === id)
-  assert.ok(step, `${name} carries no ${id}`)
+  assert.ok(step, `${f.name} carries no ${id}`)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
   const readings = laneReadings(r.steps)
   const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? null
@@ -76,12 +76,12 @@ test('the engine’s blockers the fixes do not name become tiles: a queued step 
   assert.equal(h.tone, 'warn')
   assert.equal(h.value, BOARD.blockers['license/platform'])
   assert.equal(r.tiles.filter((t) => t.key.endsWith(EMERGENCY)).length, 1, 'the fix’s step tile and the engine’s are two tiles for one step')
-  const { step: d, c: dc } = opened('demo', 's-prereq-device-plan')
-  const deviceReadiness = readinessOf(d, dc, [])
-  assert.equal([...deviceReadiness.tiles, ...deviceReadiness.satisfied].some(t => t.key === 'people'), false)
-  assert.match(deviceReadiness.tiles.find(t => t.key === 'decision')?.note ?? '', /Phone Management, Phone App Protection and Computer Management/)
-  assert.equal(dc.state.condition, 'needs-decision', 'the premise: the device decision is the step’s own')
-  const own2 = readinessOf(d, dc, [{ kind: 'decision', id: 'decision:device-plan', abnormal: false, label: BOARD.blockers.decision, title: null }])
+  // The device decision's step is retired (its questions are Decide How People and Devices Sign In's,
+  // which draws Questions and no Readiness). The decision a person still owes on a step with a
+  // Readiness region is the exclusions group's.
+  const { step: d, c: dc } = opened(noExclusionsAnswer(fixture('demo-week2')), 's-prereq-exclusion-group')
+  assert.equal(dc.state.condition, 'needs-decision', 'the premise: the exclusions decision is the step’s own')
+  const own2 = readinessOf(d, dc, [{ kind: 'decision', id: 'decision:exclusions-decision', abnormal: false, label: BOARD.blockers.decision, title: null }])
   assert.equal(own2.tiles.some((t) => t.key.startsWith('engine:decision')), false, 'the step’s own decision is listed as a prerequisite of itself')
 })
 
@@ -121,7 +121,7 @@ test('the Emergency Access step is Why → Readiness → account selection → I
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
     return i
   }
-  const order = [at('<h4>{taskHead?.why ?? HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen}')]
+  const order = [at('<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>'), at('<ReadinessSection'), at('decides && <Decision'), at('<Implementation\n'), at('<DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen}')]
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'the regions are out of order')
   const { step, ctx, c } = opened('demo', EMERGENCY)
   assert.ok((ctx.mapping.breakGlassUserIds?.length ?? 0) > 1, 'the premise: two accounts are selected')

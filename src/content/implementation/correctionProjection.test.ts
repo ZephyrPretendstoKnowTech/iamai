@@ -11,7 +11,7 @@ import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
 import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from '../../roadmap/sourceMappings.ts'
 import { nextSafeAction } from '../../roadmap/nextSafeAction.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
@@ -214,8 +214,12 @@ test('a two-policy set corrects only the member that differs, creates only the m
 
 test('Partial is never the state of a source conflict, a question for a person, or a step that implements nothing', () => {
   let checked = 0
-  for (const name of ['demo', 'demo-week2', 'small', 'getiamai'] as const) {
-    const { f, r, ctx } = plan(name)
+  // The questions that used to sit on policy steps (the device plan, mail devices, device code) are
+  // Direction's now, and a policy waiting on one is Blocked, not Needs decision (lifecycle.ts
+  // conditionFor). The decision a person still owes on a packaged step is the exclusions group's.
+  const unanswered = (() => { const f = noExclusionsAnswer(fixture('demo-week2')); const r = runFixture(f); return { f, r, ctx: { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext } })()
+  for (const name of ['demo', 'demo-week2', 'small', 'getiamai', 'demo-week2+unanswered'] as const) {
+    const { f, r, ctx } = name === 'demo-week2+unanswered' ? unanswered : plan(name)
     for (const step of r.steps) {
       if (!implementationPackageFor(step)) continue
       const c = stepContract(step, ctx)

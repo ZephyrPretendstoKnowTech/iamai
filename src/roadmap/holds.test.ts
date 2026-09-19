@@ -13,7 +13,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withDirectionApproved } from './fixtures/run.ts'
+import { DIRECTION_STEP } from './directionAnswers.ts'
 import { observationsOf } from './tracking.ts'
 import { holdOf, isHeld, markHoldChains } from './holds.ts'
 import { heldForReview, nextMilestone, raiseCondition } from './lifecycle.ts'
@@ -126,7 +127,8 @@ test('Step 4 A: a policy not deployed that something holds is Blocked, undated a
   assert.equal(holdOf(held)?.kind, 'unavailable')
   nothingIsDated(p, held)
   // Sequencing: waiting on emergency access, which Preparation schedules, and nothing else.
-  const g = planOf(curatedFixture('getiamai'))
+  // Its one Direction answer (mail-sending devices) is approved: an open one is a wait on a person.
+  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
   const sequenced = stepOf(g, 's-goal-block-legacy-auth')
   assert.ok(sequenced.blockers.length > 0 && sequenced.blockers.every((b) => b.kind === 'step'), 'the premise: it waits on another step only')
   assert.equal(isHeld(sequenced), false)

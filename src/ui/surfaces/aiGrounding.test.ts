@@ -90,7 +90,8 @@ test('an observation step: the briefing carries its report-only window, the evid
 })
 
 test('in place: AI Info explains the delivered step without offering another change', () => {
-  const o = opened('demo', 's-prereq-trusted-location')
+  // The demo's first visit leaves the office network to Direction (Decide Where People Sign In From); week two approved it.
+  const o = opened('demo-week2', 's-prereq-trusted-location')
   assert.equal(o.step.status, 'done', 'the premise: delivered')
   assert.equal(Boolean(o.unavailable), false)
   assert.equal(o.ai.includes(F.heading), true)
