@@ -89,7 +89,7 @@ test('the campaign and the exclusions group finish on what their step docs say',
   const byId = (id: string) => content.steps.find((s) => s.id === id)
   // Editorial batch C: the campaign's own settings check is a human check; the admin readiness gate stays.
   assert.ok(byId('s-verify-mfa')?.doneWhen?.some((line: string) => /Administrators have a phishing-resistant method/.test(line)))
-  const target = 'The exclusions group is confirmed and contains only the selected emergency access accounts.'
+  const target = "The scan verifies the selected group's configuration, membership and required policy exclusions."
   assert.equal(byId('s-prereq-exclusion-group')?.doneWhen?.[0], target)
   let read = 0
   for (const name of FIXTURES) {

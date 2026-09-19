@@ -66,9 +66,11 @@ test('P0-11: the exclusions step owns policy exclusions and states the shared co
     const b = bodiesOf(f).get(EXCLUSIONS)!
     const policies = allTiles(b).find((t) => t.key === 'configuration:group-policies')
     assert.ok(policies, `${name}: no policy-exclusions topic`)
-    assert.match(policies.note ?? '', /Correct missing exclusions on enabled policies now/)
+    // Each policy is two facts, its mode and its group exclusion (cff043a2); the correction is the step's, not repeated on the tile.
+    assert.equal(policies.note ?? null, null)
     assert.ok(policies.items?.length)
-    assert.ok(policies.items?.every(item => /^(On|Report-only|Mode not read)( · Group already excluded)?$/.test(item.value)))
+    assert.ok(policies.items?.every(item => item.label === 'Mode' || item.label === 'Group exclusion'))
+    for (const policy of new Set(policies.items?.map(item => item.subjectLabel))) assert.deepEqual(policies.items?.filter(item => item.subjectLabel === policy).map(item => item.label), ['Mode', 'Group exclusion'], `${name}: ${policy}`)
     assert.doesNotMatch(JSON.stringify(policies.items), /Add the group exclusion/)
   }
 })
@@ -84,8 +86,10 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')
   const name = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') }).candidates[0].name
   const tile = group.readiness.tiles.find((t) => t.key === 'configuration:group-choice')!
-  assert.equal(tile.value, name)
-  assert.match(tile.note ?? '', /Confirm the intended group in the selector/)
+  // The next-check tile asks for the choice; the suggestion line names the group IAMAI found (needsDecision.test).
+  assert.ok(name)
+  assert.equal(tile.value, 'Choose an exclusions group')
+  assert.match(tile.note ?? '', /^Select a group under Exclusions group, then Save\./)
   for (const t of allTiles(group)) assert.doesNotMatch(t.value, /Needs decision/)
 })
 
