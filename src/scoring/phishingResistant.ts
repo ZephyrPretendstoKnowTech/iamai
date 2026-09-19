@@ -371,6 +371,10 @@ export type PasskeyPolicy = {
   aaguids: readonly string[]
   /** Whether passkeys are targeted at all users; false where only some groups; null where not read. */
   targetsAll?: boolean | null
+  /** One person's reading (owner item 9): whether the passkey method reaches them is unknown (a group's membership was not read). */
+  reach?: 'in' | 'unknown'
+  /** One person's reading: a profile whose target membership was not read might allow what these profiles don't. */
+  partial?: boolean
 }
 
 /** What readiness reads once per tenant: the window, the settings and the device facts (derive/readinessContext.ts). */
@@ -400,6 +404,12 @@ export type ReadinessContext = {
   windowsDirectory: 'none' | 'notJoined' | 'joined' | 'unknown'
   /** The latest change to the authentication methods policy the audit log shows; a sign-in before it no longer settles compatibility. */
   policyChangedAt: string | null
+  /**
+   * One person's passkey settings: the targets and passkey profiles scoped to
+   * them, never the tenant's profiles merged (owner item 9). Absent, every person
+   * reads `passkey`.
+   */
+  passkeyFor?: (userId: string) => PasskeyPolicy
 }
 
 /** Microsoft Authenticator's passkey models (iOS, Android): a phone passkey needs one of them allowed. */
@@ -422,6 +432,14 @@ export const WINDOWS_HELLO_AAGUID = WINDOWS_HELLO_AAGUIDS[0]
  * an allow list names it, and never under enforced attestation.
  */
 export function passkeyAllowed(p: PasskeyPolicy, aaguid: string | null, passkeyType: string | null = null, purpose: 'use' | 'register' = 'use'): Verdict {
+  const v = allowedBySettings(p, aaguid, passkeyType, purpose)
+  // One person's reading: a method whose reach is unknown settles no yes, and a profile that might apply settles no no.
+  if (v === 'yes' && p.reach === 'unknown') return 'unknown'
+  if (v === 'no' && p.partial === true && p.enabled !== false) return 'unknown'
+  return v
+}
+
+function allowedBySettings(p: PasskeyPolicy, aaguid: string | null, passkeyType: string | null, purpose: 'use' | 'register'): Verdict {
   if (!p.read) return 'unknown'
   if (p.enabled === false) return 'no'
   const hello = aaguid !== null && WINDOWS_HELLO_AAGUIDS.includes(aaguid.toLowerCase())
@@ -493,15 +511,15 @@ const versionMajor = (v: string | null): number | null => {
 }
 
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
-function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
-  const phonePasskey = passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
+function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined, pk: PasskeyPolicy): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
+  const phonePasskey = passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
   const fallback: SignInOption = phonePasskey ? 'phonePasskey' : 'securityKey'
   if (d.os === 'iOS' || d.os === 'Android') {
     const major = versionMajor(d.version)
     const floor = d.os === 'iOS' ? 17 : 14
     if (major !== null && major < floor) return { best: 'authenticatorPasskey', builtIn: true, possible: 'no', whyNot: 'osTooOld' }
     const aaguid = d.os === 'iOS' ? AUTHENTICATOR_AAGUIDS[0] : AUTHENTICATOR_AAGUIDS[1]
-    const allowed = passkeyAllowed(ctx.passkey, aaguid, null, 'register')
+    const allowed = passkeyAllowed(pk, aaguid, null, 'register')
     return { best: 'authenticatorPasskey', builtIn: true, possible: allowed, whyNot: allowed === 'no' ? 'notAllowed' : null }
   }
   if (d.os === 'Windows') {
@@ -515,12 +533,12 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     // Join state unreported: unknown, unless the directory holds no joined Windows computer.
     if (d.trust === null && ctx.windowsDirectory !== 'none' && ctx.windowsDirectory !== 'notJoined') return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
     // Not joined: a passkey in Windows Hello, where an allow list names one of its models.
-    if (WINDOWS_HELLO_AAGUIDS.some((a) => passkeyAllowed(ctx.passkey, a, null, 'register') === 'yes')) return { best: 'windowsHelloPasskey', builtIn: true, possible: 'yes', whyNot: null }
+    if (WINDOWS_HELLO_AAGUIDS.some((a) => passkeyAllowed(pk, a, null, 'register') === 'yes')) return { best: 'windowsHelloPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'notJoined' }
   }
   if (d.os === 'macOS') {
-    if (ctx.passkey.attestation === false && ctx.passkey.restriction === 'unrestricted') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
-    return { best: fallback, builtIn: false, possible: 'yes', whyNot: ctx.passkey.attestation === true ? 'attestation' : null }
+    if (pk.attestation === false && pk.restriction === 'unrestricted' && pk.reach !== 'unknown') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
+    return { best: fallback, builtIn: false, possible: 'yes', whyNot: pk.attestation === true ? 'attestation' : null }
   }
   // Linux and ChromeOS: nothing is built in; the best available is a key, and Ready is the top.
   return { best: 'securityKey', builtIn: false, possible: 'yes', whyNot: null }
@@ -596,6 +614,8 @@ function inventory(input: ReadinessInput): { classes: Set<MethodClass>; rows: In
 
 export function personReadiness(input: ReadinessInput): PersonReadiness {
   const ctx = input.context ?? emptyReadinessContext(new Date().toISOString())
+  // This person's passkey settings: the targets and profiles scoped to them (owner item 9).
+  const pk = input.userId && ctx.passkeyFor ? ctx.passkeyFor(input.userId) : ctx.passkey
   const inv = inventory(input)
   const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null, usedRecently: null }
   const apps = input.signIns.apps ?? []
@@ -618,7 +638,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     : d.os === 'Windows' && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' }
     : d
   const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
-  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId), proof: null, covered: false, seamless: false })
+  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId, pk), proof: null, covered: false, seamless: false })
 
   if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
   // The method rows never list certificates; where the registration report has no
@@ -663,7 +683,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const credentials: CredentialReading[] = inv.rows.map(({ cls, m, reg }) => {
     const aaguid = m?.aaGuid ? m.aaGuid.toLowerCase() : null
     const seen = seenWorking(cls)
-    const allowedNow: Verdict = cls !== 'passkey' ? 'yes' : seen ? 'yes' : passkeyAllowed(ctx.passkey, aaguid, m?.passkeyType ?? null, 'use')
+    const allowedNow: Verdict = cls !== 'passkey' ? 'yes' : seen ? 'yes' : passkeyAllowed(pk, aaguid, m?.passkeyType ?? null, 'use')
     if (cls === 'passkey') {
       forms.add(passkeyForm(m, reg ?? null))
       if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
@@ -731,7 +751,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     const phoneOnly = devices.length > 0 && !devices.some((d) => d.best === 'windowsHello' && d.possible !== 'no')
     const blocked: BlockReason | null =
       ctx.registration === 'trustedOnly' && input.signIns.trustedLocationSeen === false ? 'registrationLocation'
-      : ctx.passkey.enabled === false && phoneOnly ? 'passkeyOff'
+      : pk.enabled === false && phoneOnly ? 'passkeyOff'
       : devices.some((d) => d.type === 'phone') && devices.filter((d) => d.type === 'phone').every((d) => d.whyNot === 'notAllowed') && phoneOnly ? 'authenticatorNotAllowed'
       : null
     if (blocked) return { ...base, ...common, devices, state: 'blocked', blocked, next: { kind: 'waitSetup', reason: blocked } }
@@ -784,7 +804,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     if (settable) return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: settable.os, option: settable.best } }
     const old = missing.find((d) => d.whyNot === 'osTooOld')
     if (old) return { ...base, ...common, devices, state: 'device', next: { kind: 'updateOs', os: old.os } }
-    const reason: BlockReason = ctx.passkey.enabled === false ? 'passkeyOff' : 'authenticatorNotAllowed'
+    const reason: BlockReason = pk.enabled === false ? 'passkeyOff' : 'authenticatorNotAllowed'
     return { ...base, ...common, devices, state: 'blocked', blocked: reason, next: { kind: 'waitSetup', reason } }
   }
   // Ready until the oldest device type's latest phishing-resistant sign-in leaves the window

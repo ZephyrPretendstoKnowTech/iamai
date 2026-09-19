@@ -23,6 +23,54 @@ const profileAttestationRequirement = (value: unknown): boolean | null =>
   value === 'registrationOnly' ? true : value === 'disabled' ? false : null
 
 /**
+ * Whether a passkey target list reaches one account: all users, or a group the
+ * account is in. Null where a group target's membership was not read in full, so
+ * the answer is unknown rather than guessed either way.
+ */
+export function passkeyTargetsReach(targets: unknown, accountId: string, groups: GroupMembers): boolean | null {
+  if (!Array.isArray(targets)) return null
+  let unknown = false
+  for (const target of targets) {
+    const id = String(target?.id ?? '').toLowerCase()
+    if (id === 'all_users' || id === 'allusers') return true
+    const group = [...groups.entries()].find(([key]) => key.toLowerCase() === id)?.[1]
+    if (group?.memberIds.some(member => member.toLowerCase() === accountId.toLowerCase())) return true
+    if (!group || group.sampled || group.memberIds.length < group.memberCount) unknown = true
+  }
+  return unknown ? null : false
+}
+
+/** Whether the passkey method is configured with passkey profiles rather than one tenant-wide restriction. */
+export function usesPasskeyProfiles(policy: Fido2Configuration): boolean {
+  return (Array.isArray(policy.passkeyProfiles) && policy.passkeyProfiles.length > 0) || !!policy.defaultPasskeyProfile || (Array.isArray(policy.includeTargets) && policy.includeTargets.some(t => Array.isArray(t.allowedPasskeyProfiles) && t.allowedPasskeyProfiles.length))
+}
+
+export type ScopedPasskeyProfiles = {
+  /** The profiles assigned to a target that reaches the account: a passkey is usable when any one of them allows it. */
+  profiles: ReturnType<typeof assignedPasskeyProfiles>['profiles']
+  /** A target whose membership was not read might add another profile. */
+  membershipUnknown: boolean
+  /** The profiles or their assignments were not read in full. */
+  unread: boolean
+}
+
+/**
+ * The passkey profiles scoped to one account (Microsoft: a person's passkey must
+ * satisfy a profile assigned to a target they are in), never the tenant's
+ * profiles merged. Emergency Access and MFA Readiness read a person through this.
+ */
+export function passkeyProfilesFor(policy: Fido2Configuration, accountId: string, groups: GroupMembers): ScopedPasskeyProfiles {
+  const assigned = assignedPasskeyProfiles(policy)
+  const reach = assigned.targets.map(t => ({ t, in: passkeyTargetsReach([{ id: t.id }], accountId, groups) }))
+  const profileIds = new Set(reach.filter(r => r.in === true).flatMap(r => r.t.profileIds))
+  return {
+    profiles: assigned.profiles.filter(p => profileIds.has(p.id.toLowerCase())),
+    membershipUnknown: reach.some(r => r.in === null),
+    unread: assigned.unknown.length > 0,
+  }
+}
+
+/**
  * The snapshot as it would read with one registered key for one account: what a
  * per-key policyCompatibility call judges. policyCompatibility reads only that
  * account's methods, so the copy carries only them; copying every account's
@@ -38,18 +86,7 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
     const result = (state: PasskeyCompatibility['state'], reason: string): PasskeyCompatibility => ({ accountId, state, reason })
     if (!policy) return result('unknown', unreadReason)
     if (policy.state !== 'enabled') return result(policy.state === 'disabled' ? 'review' : 'unknown', policy.state === 'disabled' ? 'disabled' : unreadReason)
-    const match = (targets: unknown): boolean | null => {
-      if (!Array.isArray(targets)) return null
-      let unknown = false
-      for (const target of targets) {
-        const id = String(target?.id ?? '').toLowerCase()
-        if (id === 'all_users' || id === 'allusers') return true
-        const group = [...groups.entries()].find(([key]) => key.toLowerCase() === id)?.[1]
-        if (group?.memberIds.some(member => member.toLowerCase() === accountId.toLowerCase())) return true
-        if (!group || group.sampled || group.memberIds.length < group.memberCount) unknown = true
-      }
-      return unknown ? null : false
-    }
+    const match = (targets: unknown): boolean | null => passkeyTargetsReach(targets, accountId, groups)
     const excluded = match(policy.excludeTargets)
     if (excluded === true) return result('excluded', 'excluded')
     if (excluded === null) return result('unknown', 'membershipUnread')
@@ -60,14 +97,11 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
     if (!Array.isArray(methods)) return result('unknown', 'methodsUnread')
     const keys = methods.filter(isPasskey)
     if (!keys.length) return result('review', 'newKey')
-    if ((Array.isArray(policy.passkeyProfiles) && policy.passkeyProfiles.length > 0) || policy.defaultPasskeyProfile || (Array.isArray(policy.includeTargets) && policy.includeTargets.some(t => Array.isArray(t.allowedPasskeyProfiles) && t.allowedPasskeyProfiles.length))) {
-      const assigned = assignedPasskeyProfiles(policy)
-      if (assigned.unknown.length) return result('unknown', 'profileOrPartial')
-      const matching = assigned.targets.filter(t => match([{ id: t.id }]) === true)
-      const unknownMembership = assigned.targets.some(t => match([{ id: t.id }]) === null)
-      const profileIds = new Set(matching.flatMap(t => t.profileIds))
-      const profiles = assigned.profiles.filter(p => profileIds.has(p.id.toLowerCase()))
-      let unknown = unknownMembership
+    if (usesPasskeyProfiles(policy)) {
+      const scoped = passkeyProfilesFor(policy, accountId, groups)
+      if (scoped.unread) return result('unknown', 'profileOrPartial')
+      const profiles = scoped.profiles
+      let unknown = scoped.membershipUnknown
       let attestationRejected = false
       for (const key of keys) for (const profile of profiles) {
         const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.toLowerCase().split(',').map(t => t.trim()) : []
