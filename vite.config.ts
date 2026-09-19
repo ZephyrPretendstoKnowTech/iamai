@@ -140,6 +140,10 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
   build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
   plugins: [react(), spikeCapture(), productTitle(), contentSecurityPolicy(), homeTheme(), demoFactsModule()],
+  // The pages the dev server serves, and nothing else: left alone, the dependency
+  // scan crawls every HTML file in the repository (archive/, docs/design/, a
+  // built dist/, work/) looking for imports to pre-bundle.
+  optimizeDeps: { entries: ['index.html', 'dev/pilot.html'] },
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
 })
