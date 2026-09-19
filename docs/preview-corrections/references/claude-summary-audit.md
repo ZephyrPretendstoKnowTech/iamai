@@ -2,7 +2,7 @@
 
 **Auditor:** Claude (automated browser testing)
 **Date:** September 13, 2026
-**Tenant:** GoldenTestIAMAI (Admin@GoldenTestIAMAI.onmicrosoft.com — Global Administrator)
+**Tenant:** GoldenTestIAMAI ([the tenant admin UPN, redacted] — Global Administrator)
 **Baseline:** Jon Hope — Defense in Depth, 38 policies, pinned version
 **Theme tested:** Dark (primary), Light (partial)
 
@@ -70,7 +70,7 @@
 | # | Item | Score | Finding |
 |---|------|-------|---------|
 | 1 | "Sign in with Microsoft" works on first click | **P** | Clicked once, auto-authenticated instantly (~2 seconds with existing browser session). |
-| 2 | Correct tenant name and account shown | **P** | Shows "GetIAMAI" and "Admin@GoldenTestIAMAI.onmicrosoft.com". |
+| 2 | Correct tenant name and account shown | **P** | Shows "GetIAMAI" and "[the tenant admin UPN, redacted]". |
 | 3 | Role displayed | **P** | "Global Administrator" is displayed after the email. |
 | 4 | "Sign in with another account" present | **P** | Button present and visible. |
 | 5 | "Sign out" present | **P** | Button present and visible. |
