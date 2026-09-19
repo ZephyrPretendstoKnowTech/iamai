@@ -263,18 +263,20 @@ export type RecoveryPreparationState = 'ready' | 'incorrect' | 'unread'
 const lowerSet = (values: readonly string[]): string[] => [...new Set(values.map(value => value.toLowerCase()))].sort()
 const sameMembers = (a: readonly string[], b: readonly string[]): boolean => JSON.stringify(lowerSet(a)) === JSON.stringify(lowerSet(b))
 
-function relevantRecoveryAuditObserved(snapshot: TenantSnapshot, mapping: MappingState, accountId: string, after: string, through: string): boolean {
+function relevantRecoveryAuditObserved(snapshot: TenantSnapshot, mapping: MappingState, accountId: string, after: string, through: string): string | null {
   const decision = operatorExclusionsDecision(mapping)
   // Only the emergency accounts and their exclusions group reset proof on an
   // observed change: nothing else should touch them. Policy and passkey-policy
   // changes are judged by their outcome for the account (recoveryAccountBasis),
   // so routine Conditional Access rollout does not reset proof that still holds.
-  return (snapshot.recoveryDirectoryAudits ?? []).some(audit => {
+  // The latest such change, or null when there is none.
+  const times = (snapshot.recoveryDirectoryAudits ?? []).flatMap(audit => {
     const auditAt = Date.parse(audit.at)
-    if (!Number.isFinite(auditAt) || auditAt <= Date.parse(after) || auditAt > Date.parse(through) || audit.result?.toLowerCase() === 'failure') return false
+    if (!Number.isFinite(auditAt) || auditAt <= Date.parse(after) || auditAt > Date.parse(through) || audit.result?.toLowerCase() === 'failure') return []
     const targets = audit.targets.map(target => target.id.toLowerCase())
-    return targets.includes(accountId.toLowerCase()) || (!!decision && targets.includes(decision.id.toLowerCase()))
+    return targets.includes(accountId.toLowerCase()) || (!!decision && targets.includes(decision.id.toLowerCase())) ? [auditAt] : []
   })
+  return times.length ? new Date(Math.max(...times)).toISOString() : null
 }
 
 /** Audit events that can change an emergency account's recovery configuration:
@@ -381,11 +383,16 @@ export function reconcileAutomaticRecovery(input: AutomaticRecoveryInput): unkno
         append(preparation)
       }
     }
-    if (preparation.configurationObservedAt && relevantRecoveryAuditObserved(input.snapshot, input.mapping, id, preparation.configurationCheckedThrough ?? preparation.configurationObservedAt, at)) {
+    const changedAt = preparation.configurationObservedAt ? relevantRecoveryAuditObserved(input.snapshot, input.mapping, id, preparation.configurationCheckedThrough ?? preparation.configurationObservedAt, at) : null
+    if (changedAt) {
+      // The new baseline starts at the change, not at this scan (overnight review
+      // B4, EMERGENCY-ACCESS-HANDOFF Step 4): the last relevant change up to now,
+      // so a passkey sign-in between the change and the scan counts, on this scan.
       append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id] })
       const generation = `recovery:${input.snapshot.tenantId}:${id}:${at}`
-      append({ at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: at, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation })
-      continue
+      const start = recoveryConfigurationStableSince(input.snapshot, input.mapping, id, at) ?? changedAt
+      preparation = { at, cleanup: 'drill', date: cleanupDateToIso(at), workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: input.snapshot.tenantId, accountIds: [id], configurationObservedAt: Date.parse(start) < Date.parse(changedAt) ? changedAt : start, configurationCheckedThrough: at, accountBasis: { [id]: currentBasis }, candidateSetBasis: { [id]: candidateSetBasis }, recoveryGeneration: generation }
+      append(preparation)
     }
     if (source.status !== 'ok') continue
     const reading = recoveryCandidateReadings(input.snapshot, id, at, preparation.configurationObservedAt).filter(item => item.qualifies).sort((a,b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
