@@ -35,7 +35,7 @@ import { awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableR
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
-import { DIRECTION_BLOCKER } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 
 const MILESTONE = engine.milestone
 
@@ -326,7 +326,11 @@ export function nextMilestone(step: Step): Milestone {
   // keeps back is said beside it. "Clear what this step is waiting on" over a
   // policy that is only watching was two instructions pulling apart. No date:
   // a held step names none (Step 4), and the window's own day is on the rail.
-  if (hold?.kind === 'readiness' && s.lifecycle === 'report-only') return { kind: 'observe', label: MILESTONE.observe, at: null, gatedBy: step.blockedReason }
+  // A Direction answer nobody has approved holds a policy already in report-only
+  // the same way (owner, 2026-09-19): it goes on being watched, undated, and the
+  // answer is what it waits on.
+  const directionWait = hold?.kind === 'prerequisite' && step.blockers.some((b) => directionBlockerStep(b) !== null)
+  if ((hold?.kind === 'readiness' || directionWait) && s.lifecycle === 'report-only') return { kind: 'observe', label: MILESTONE.observe, at: null, gatedBy: step.blockedReason }
   // Held and not deployed, and Foundation A still hands over its create: a policy
   // created in report-only denies nobody, so making it now is safe preparation
   // (roadmap/operations.ts policyResult; owner decision, Step 5). The next thing is

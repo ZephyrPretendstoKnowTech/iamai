@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Review MFA before enabling Every time",
+  "reason": "after: Decide How People and Devices Sign In",
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "Waiting on your direction",

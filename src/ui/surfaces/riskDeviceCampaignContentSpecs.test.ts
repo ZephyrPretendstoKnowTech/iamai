@@ -127,7 +127,7 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.")
 })
 
-test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and the milestone is its create day', () => {
+test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and it is undated while it waits on the device direction', () => {
   const DEVICE = 's-goal-require-managed-device'
   assert.equal(CONTRACT.readinessValue.device, '{value} of devices compliant')
   // Editorial batch C: the exclusions resolved from the device plan, the location include and exclude, the current
@@ -155,10 +155,10 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
   for (const t of prerequisites) assert.ok(['Before enforcement', 'Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
   assert.ok(prerequisites.some(t => t.label === 'Before enforcement'), 'the safe report-only path is not distinguished from enforcement prerequisites')
-  // It was undated while it waited on the retired device-plan step. Its wait is on Decide How People and
-  // Devices Sign In now, which holds the row and not the schedule (roadmap/direction.ts gateOnDirection):
-  // the milestone is the day the plan creates it in report-only.
-  assert.match(b.rail.metric, /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/)
+  // Its wait is on Decide How People and Devices Sign In (roadmap/direction.ts gateOnDirection), and a
+  // Direction answer nobody has approved holds the step undated, like every other hold (owner, 2026-09-19):
+  // no create day either, until the answer is approved.
+  assert.equal(b.rail.metric, 'Not scheduled')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.

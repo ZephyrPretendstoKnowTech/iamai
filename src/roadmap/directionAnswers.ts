@@ -38,6 +38,13 @@ export const isDirectionStep = (id: string): id is DirectionStepId => (DIRECTION
 /** The label prefix of the decision blocker a policy carries while it waits on a Direction answer (direction.ts gateOnDirection). */
 export const DIRECTION_BLOCKER = 'direction:'
 
+/** The Direction step a blocker waits on, or null for a blocker that is not one. */
+export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
+  if (b.kind !== 'decision' || !b.label.startsWith(DIRECTION_BLOCKER)) return null
+  const id = b.label.slice(DIRECTION_BLOCKER.length)
+  return isDirectionStep(id) ? id : null
+}
+
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */
