@@ -263,7 +263,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'A rule that adds members adds exclusions, without anybody deciding to.',
   },
   'xg.usedConsistently': {
-    what: 'The group is excluded from every enabled or report-only policy that reaches the emergency accounts.',
+    what: 'The group is excluded from every enabled or report-only policy.',
     why: 'A group excluded from some policies and not others protects nobody reliably and hides which is which.',
   },
   'xg.sizeReasonable': {
