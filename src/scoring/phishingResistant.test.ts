@@ -12,7 +12,10 @@
 // the fixtures every surface is rendered from.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, emptyReadinessContext, isReady, personReadiness, readSignIn } from './phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, emptyReadinessContext, isPhishingResistantKind, isPhishingResistantRegistered, isReady, personReadiness, readSignIn } from './phishingResistant.ts'
+import { methodTier } from './mfaViability.ts'
+import { accountVerdict, strengthSatisfaction } from '../roadmap/strand.ts'
+import { readFileSync } from 'node:fs'
 import type { DeviceSeen, MethodClass, PasskeyPolicy, Platform, ProofRecord, ReadinessContext, ReadinessInput, ReadinessState } from './phishingResistant.ts'
 import { mergeMfaHistory } from './mfaHistory.ts'
 import type { AuthMethodSummary } from './mfaViability.ts'
@@ -537,4 +540,21 @@ test('item 1: proof is required once per device type, so a joined Windows laptop
   assert.equal(phone.state, 'device')
   assert.equal(phone.next.kind === 'addDevice' && phone.next.os, 'iOS')
   assert.equal(phone.devices.find((d) => d.os === 'iOS')!.covered, false)
+})
+
+test('item 10: one phishing-resistant method set: synced passkeys count, Authenticator phone sign-in does not, wherever a method name is judged', () => {
+  assert.equal(isPhishingResistantRegistered('passKeySynced'), true)
+  assert.equal(isPhishingResistantRegistered('microsoftAuthenticatorPasswordless'), false)
+  assert.equal(isPhishingResistantKind('windowsHelloForBusiness'), true)
+  assert.equal(isPhishingResistantKind('microsoftAuthenticator'), false)
+  assert.equal(methodTier('passKeySynced'), 'phishingResistant', 'the tier a row shows')
+  assert.equal(methodTier('microsoftAuthenticatorPasswordless'), 'passwordless')
+  const snap = (methodsRegistered: string[]): TenantSnapshot => ({ registrationDetails: [{ id: 'a', methodsRegistered, isMfaCapable: true }], sources: { registrationDetails: { status: 'ok' } } }) as unknown as TenantSnapshot
+  assert.equal(accountVerdict('admin', 'a', snap(['passKeySynced']), []).stranded, false, 'an admin with a synced passkey holds a phishing-resistant method')
+  assert.equal(accountVerdict('admin', 'a', snap(['microsoftAuthenticatorPasswordless']), []).stranded, true, 'Authenticator phone sign-in is not phishing-resistant')
+  assert.equal(strengthSatisfaction(['fido2'], ['passKeySynced']), 'yes', 'a synced passkey satisfies the passkey combination')
+  // No second list lives beside the one authority.
+  for (const file of ['src/roadmap/strand.ts', 'src/scoring/mfaViability.ts', 'src/validation/rules.ts', 'src/graph/collect/laneBCore.ts']) {
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /const (PHISHING_RESISTANT|QUALIFYING_KINDS) = new Set/, `${file} keeps no phishing-resistant set of its own`)
+  }
 })

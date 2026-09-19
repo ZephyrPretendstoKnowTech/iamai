@@ -86,6 +86,24 @@ export function classOfRegistered(name: string): MethodClass | null {
 }
 
 /**
+ * The one phishing-resistant method set, for every reader that holds a method
+ * name rather than a readiness (the strand simulation, the tier a row shows, the
+ * emergency-access rule, the collector's targeted reads): the qualifying classes
+ * above. A synced passkey counts; Microsoft Authenticator's phone sign-in does
+ * not, because the Phishing-resistant MFA strength does not accept it.
+ */
+export function isPhishingResistantRegistered(name: string): boolean {
+  const c = classOfRegistered(name)
+  return c !== null && isQualifying(c)
+}
+
+/** The same set, for a method row's kind (/users/{id}/authentication/methods). */
+export function isPhishingResistantKind(kind: string): boolean {
+  const c = classOfKind(kind as MethodKind)
+  return c !== null && isQualifying(c)
+}
+
+/**
  * The class a sign-in record's method string names. Microsoft documents only
  * some of these strings, so an unrecognised one names no class: it is never
  * promoted to proof of anything.

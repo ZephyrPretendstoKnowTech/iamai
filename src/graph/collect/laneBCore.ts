@@ -11,7 +11,7 @@ import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
-import { GENERIC_MFA, PLATFORMS, latestProofs, readSignIn } from '../../scoring/phishingResistant.ts'
+import { GENERIC_MFA, PLATFORMS, isPhishingResistantKind, latestProofs, readSignIn } from '../../scoring/phishingResistant.ts'
 import type { ProofRecord } from '../../scoring/phishingResistant.ts'
 import type {
   BlockedTodayEntry,
@@ -669,7 +669,6 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
 export const TARGETED_READ_LIMIT = 200
 export const TARGETED_READ_BUDGET_MS = 90_000
 
-const QUALIFYING_KINDS = new Set(['passkey', 'fido2', 'windowsHelloForBusiness'])
 
 /**
  * The people to read individually: they hold a phishing-resistant method, the
@@ -686,7 +685,7 @@ export function targetedReadCandidates(
   if (!covered || covered.from <= windowStart) return []
   return users
     .filter((u) => u.accountEnabled !== false && u.lastSuccessfulSignIn !== null && u.lastSuccessfulSignIn >= windowStart && u.lastSuccessfulSignIn < covered.from)
-    .filter((u) => { const m = methods[u.id]; return Array.isArray(m) && m.some((x) => QUALIFYING_KINDS.has(x.kind)) })
+    .filter((u) => { const m = methods[u.id]; return Array.isArray(m) && m.some((x) => isPhishingResistantKind(x.kind)) })
     .sort((a, b) => ((a.lastSuccessfulSignIn as string) < (b.lastSuccessfulSignIn as string) ? 1 : -1))
     .slice(0, limit)
     .map((u) => u.id)
