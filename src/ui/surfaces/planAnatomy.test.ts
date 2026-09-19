@@ -546,12 +546,12 @@ test('every approved variant draws the same regions, and production runs them in
     return i
   }
   const order = [
-    ['why', at('<h4>{taskHead?.why ?? HEAD.why}</h4>')],
+    ['why', at('<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>')],
     ['readiness', at('<ReadinessSection')],
     ['conflict attention', at('{conflictWords && (')],
     ['action column', at('<StepActionColumn rail={displayRail}>')],
     ['implementation', at('<Implementation\n')],
-    ['done when', at('<DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen}')],
+    ['done when', at('<DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen}')],
   ] as const
   assert.deepEqual([...order].sort((a, b) => a[1] - b[1]).map((x) => x[0]), order.map((x) => x[0]), 'the opened step’s regions are not in the approved order')
   // What IAMAI found, Who this touches, Dates and More are on the printed page
@@ -561,7 +561,7 @@ test('every approved variant draws the same regions, and production runs them in
     assert.ok(at(needle) > printed, `${needle} is on the opened step outside the printed page`)
   }
   // Done when is drawn on every step, gated by nothing.
-  assert.match(MAIN, /\n\s*<DoneWhen heading=\{taskHead\?\.doneWhen \?\? HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is gated')
+  assert.match(MAIN, /\n\s*<DoneWhen heading=\{taskHead\?\.doneWhen \?\? decisionHead\?\.doneWhen \?\? HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is gated')
   // Each region is the pack's ruled section.
   assert.match(pack, /\.step-section\{padding:19px 0;border-bottom:1px solid var\(--line\)\}/, 'the pack no longer rules its sections')
   assert.match(rule('.step-section'), /border-bottom: 1px solid var\(--line\);/, 'production’s sections are not divided')
