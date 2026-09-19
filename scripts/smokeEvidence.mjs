@@ -6,7 +6,7 @@
 // Why it exists: CI's smoke found no Plan at #/plan on some runs ("main=(no
 // main)") and hung on another until the job's 15-minute limit, and neither left
 // anything to read. The page's own text, what it threw, what the browser
-// refused to load and what the dev server said are the evidence for which of a
+// refused to load and what the server said are the evidence for which of a
 // throw, a stuck load or a dead request it was.
 
 /** How long one DevTools call may go unanswered before the smoke names it and stops waiting. */
@@ -38,7 +38,7 @@ const block = (title, lines) => [`  --- ${title} ---`, ...(lines.length > 0 ? li
  * (the first 400 characters, whitespace collapsed; left out when `body` is null,
  * as at the end of a run, when the page on screen is not the one that failed),
  * the last few errors it threw or logged, the browser's own load errors, the
- * last navigation's result, and the dev server's recent output.
+ * last navigation's result, and the server's recent output (the smoke's vite preview).
  */
 export function pageEvidence({ body, pageErrors, logErrors, navigation, viteTail }) {
   const text = String(body ?? '').replace(/\s+/g, ' ').trim().slice(0, BODY_CHARS)
@@ -47,6 +47,6 @@ export function pageEvidence({ body, pageErrors, logErrors, navigation, viteTail
     block(`page errors (${pageErrors.length})`, pageErrors.slice(-LAST_ERRORS).map((e) => String(e).slice(0, ERROR_CHARS))),
     block(`browser load errors (${logErrors.length})`, logErrors.slice(-LAST_ERRORS).map((e) => String(e).slice(0, ERROR_CHARS))),
     block('last navigation', navigation ? [`${navigation.url} -> ${navigation.errorText || 'committed'}`] : []),
-    block('dev server', String(viteTail ?? '').split('\n').filter((l) => l.trim() !== '')),
+    block('server', String(viteTail ?? '').split('\n').filter((l) => l.trim() !== '')),
   ].join('\n')
 }

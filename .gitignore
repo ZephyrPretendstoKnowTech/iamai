@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The smoke's own build (scripts/smokeBuild.ts), never published.
+dist-smoke/
 .DS_Store
 docs/spikes/raw/
 docs/qa/night/

@@ -52,9 +52,13 @@ function MockCrash(): never {
 }
 // ?dev=1&mock=1: the smoke test's tenant (prompt 20 §10). A synthetic account,
 // scan and baseline stand in for Graph so the walk from Start to Roadmap runs
-// headless with no sign-in. Dev builds only; the fixture is loaded lazily so
-// it never ships.
-const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock') === '1'
+// headless with no sign-in. The dev server and the smoke's own build only
+// (__MOCK_TENANT__, vite.config.ts): in the published bundle the condition folds
+// to false, and the fixtures, loaded lazily behind it, are never emitted.
+const MOCK =
+  __MOCK_TENANT__ &&
+  new URLSearchParams(window.location.search).get('dev') === '1' &&
+  new URLSearchParams(window.location.search).get('mock') === '1'
 // Demo mode ships (prompt 45 Part 1). Unlike MOCK it is not gated on a dev
 // build: the whole point is that a stranger can see the tool work before being
 // asked to connect a production tenant. The fixture is synthetic, so shipping it

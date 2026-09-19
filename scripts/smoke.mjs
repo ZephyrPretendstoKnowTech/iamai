@@ -1,6 +1,8 @@
-// First-run smoke test (prompt 20 §10): starts the dev server, drives headless
-// Chrome over the DevTools protocol with no dependencies beyond Node 22+, and
-// walks Connect → MFA Readiness → Plan → Export → How → Recovery
+// First-run smoke test (prompt 20 §10): builds the smoke's bundle (the
+// production build with the synthetic tenant left in, scripts/smokeBuild.ts),
+// serves it with vite preview, drives headless Chrome over the DevTools
+// protocol with no dependencies beyond Node 22+, and walks
+// Connect → MFA Readiness → Plan → Export → How → Recovery
 // against the synthetic tenant (?dev=1&mock=1), asserting the key numbers.
 // It then drives the two trust actions against real storage (task 015): with a
 // second tenant's rows seeded beside the mock tenant's, Sign out leaves every
@@ -18,7 +20,7 @@
 //   1   checks failed — the product. Each FAIL line names the check and its detail.
 //   2   the harness never got as far as checking. The line starts "smoke: harness"
 //       and carries whatever vite or Chrome said before giving up.
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 // The same "worth asking again" the Learn probe uses, so external-health has one
@@ -29,6 +31,8 @@ import { BACKOFF_MS, MAX_ATTEMPTS, probe } from '../src/testing/transient.ts'
 import { STEP_GROUPS } from '../src/roadmap/stepGroups.ts'
 // What a page that never drew leaves behind, and the deadline on every DevTools call.
 import { CDP_DEADLINE_MS, pageEvidence, withDeadline } from './smokeEvidence.mjs'
+// The mode the smoke's own bundle is built and served in, and where it is written.
+import { SMOKE_MODE, smokeOutDir } from './smokeBuild.ts'
 
 // The authority whose metadata the sign-in warm fetches (src/graph/msal.ts).
 // Asked directly only to tell a wobbling Microsoft apart from a broken IAMAI.
@@ -58,6 +62,11 @@ const STATE_TITLES = Object.values(CONTENT_PAGES.readiness.states).map((s) => s.
 
 const PORT = Number(process.env.SMOKE_PORT ?? 5199)
 const CDP_PORT = Number(process.env.SMOKE_CDP_PORT ?? 9444)
+// The site root, not the tool folder: the server answers it with a redirect to
+// /<TOOL_PATH>/ that keeps the query (the browser keeps the fragment across
+// it), so every Page.navigate to BASE is a new document even when the tab is
+// already on that page, never a same-document fragment change that leaves the
+// old page running. The sign-in-again and Forget checks depend on it.
 const BASE = `http://localhost:${PORT}/?dev=1&mock=1`
 const CANDIDATES = [
   process.env.CHROME,
@@ -110,15 +119,36 @@ const tailOf = (limit = 40) => {
   }
 }
 
-// ---- dev server ----
-// The dependency optimizer narrates its runs (vite:deps): when it re-bundles and
-// reloads the page mid-walk, the dev server's lines in the evidence say so. They
-// are kept in the tail below and printed only when a check fails.
-const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], {
+// ---- the bundle, and a server for it ----
+// The smoke's own build (scripts/smokeBuild.ts), not the dev server. The dev
+// server hands the browser every module of the Plan as its own request, and on a
+// CI runner Chrome refused them once the graph grew past a few hundred
+// (net::ERR_INSUFFICIENT_RESOURCES, "main=(no main)" at #/plan, on some runs and
+// not others). The bundle is the shipped code, split as it ships, a few dozen
+// requests whatever the graph grows to. The base is always the tool folder
+// (BASE above relies on it): a VITE_BASE meant for another host must not move it.
+// The port goes to vite too: it names the folder the build is written to and served from.
+const childEnv = { ...process.env, SMOKE_PORT: String(PORT) }
+delete childEnv.VITE_BASE
+delete childEnv.BASE_PATH
+const built = spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--mode', SMOKE_MODE, '--logLevel', 'warn'], { encoding: 'utf8', env: childEnv })
+if (built.status !== 0) {
+  console.error(`smoke: harness — the smoke build failed (${built.error?.message ?? `exit ${built.status}`})`)
+  const said = `${built.stdout ?? ''}${built.stderr ?? ''}`.trim().split('\n').slice(-40).join('\n')
+  if (said) console.error(`--- vite build said ---\n${said}\n-----------------------`)
+  process.exit(2)
+}
+// The chunk src/ui/demo.ts was built into, by the build's own manifest: the
+// demo checks ask whether the page fetched it. A manifest without the entry
+// leaves a pattern that matches nothing, so the demo-mode check fails and says why.
+const DEMO_FILE = JSON.parse(readFileSync(`${smokeOutDir(PORT)}/.vite/manifest.json`, 'utf8'))['src/ui/demo.ts']?.file ?? null
+const DEMO_CHUNK = DEMO_FILE ? String(new RegExp(`/${DEMO_FILE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)) : '/(?!)/'
+// vite preview serves the build under the same base as the published site.
+const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--mode', SMOKE_MODE, '--port', String(PORT), '--strictPort'], {
   stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, DEBUG: process.env.DEBUG ?? 'vite:deps' },
+  env: childEnv,
 })
-// Longer than Chrome's: the dev server's recent lines are the evidence printed when a page never drew (smokeEvidence.mjs).
+// Longer than Chrome's: the server's recent lines are the evidence printed when a page never drew (smokeEvidence.mjs).
 const viteOut = tailOf(120)
 vite.stdout?.on('data', (d) => viteOut.push(d))
 vite.stderr?.on('data', (d) => viteOut.push(d))
@@ -132,7 +162,7 @@ for (let i = 0; i < 100 && !up; i++) {
   }
 }
 if (!up) {
-  console.error(`smoke: harness — the dev server did not start on port ${PORT} within 20 s`)
+  console.error(`smoke: harness — the preview server did not start on port ${PORT} within 20 s`)
   if (viteOut.text()) console.error(`--- vite said ---\n${viteOut.text()}\n-----------------`)
   vite.kill()
   process.exit(2)
@@ -248,7 +278,7 @@ const navigateFresh = async (url) => {
   await send('Page.navigate', { url })
 }
 const text = () => evaluate('document.body.innerText')
-// What the page, the browser and the dev server said, printed under a check
+// What the page, the browser and the server said, printed under a check
 // that found no page at all: without it a CI failure reads as "(no main)" and
 // nothing else.
 const printPageEvidence = async () => {
@@ -298,10 +328,11 @@ try {
   check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/plan'`))
 
   // The demo chunk loads in demo mode and nowhere else: the signed-out page reads
-  // the sample facts from the build-time module and never fetches src/ui/demo.ts.
+  // the sample facts from the build-time module and never fetches the chunk
+  // src/ui/demo.ts is built into (DEMO_CHUNK).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3 && document.querySelectorAll('main.page .connect-destination').length === 1`)
-  check('Connect (signed out): the demo chunk is not loaded outside demo mode', !(await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts|\\/src\\/ui\\/demoFacts\\.ts/.test(e.name))`)))
+  check('Connect (signed out): the demo chunk is not loaded outside demo mode', !(await evaluate(`performance.getEntriesByType('resource').some((e) => ${DEMO_CHUNK}.test(e.name))`)))
   t = await text()
   check('Connect (signed out): the sample facts are on the page without it', /\d+\s*steps/.test(t) && /already in place/.test(t))
   // A chunk that fails to load reloads the page once per session, then leaves the error page to the person.
@@ -916,7 +947,7 @@ try {
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
   check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
-  check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
+  check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => ${DEMO_CHUNK}.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // RUN-CONTEXT-B decision 10: a row draws no reason line under its title; the
   // lane label is its reason, and a readiness threshold is the opened step's tile.
@@ -1351,7 +1382,7 @@ if (failures.length > 0) {
   // are repeated here so a reader has the list without scanning the whole log.
   console.error(`\nsmoke: ${failures.length} check(s) failed${note}`)
   for (const name of failures) console.error(`  FAIL ${name}`)
-  // What the page threw, what the browser refused to load and what the dev
+  // What the page threw, what the browser refused to load and what the
   // server said over the run, for a failure no check printed evidence under.
   console.error(pageEvidence({ body: null, pageErrors: consoleErrors, logErrors, navigation: lastNavigation, viteTail: viteOut.text() }))
   process.exit(1)
