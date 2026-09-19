@@ -829,7 +829,8 @@ export function renderPages(): string {
     'MFA Readiness',
     `<p class="sub">${esc(td.eyebrow)}</p>` +
       `<h2 class="h1">${esc(td.h1)}</h2>` +
-      p(td.lead, {}) +
+      // The lead in each set of computers the tenant signs in from (readinessCells.ts computersSeen).
+      leaves(td.lead).map((l) => p(l, {})).join('') +
       Object.entries(td as Record<string, unknown>)
         .filter(([k]) => !['$comment', 'h1', 'eyebrow', 'lead'].includes(k))
         .map(([k, v]) => h(k) + ul(leaves(v), readinessVars))
