@@ -25,7 +25,9 @@ import { mfaReady, readinessFor, readyNeeded } from '../roadmap/readiness.ts'
 import { readinessView, showKeyOf, shows } from '../derive/mfaReadiness.ts'
 import { campaignIds } from '../derive/population.ts'
 import { contentLists } from '../derive/contentLists.ts'
-import { deviceChip, methodsCell, nextCell, nextWords } from '../ui/surfaces/readinessCells.ts'
+import { deviceChip, methodsCell, nextCell, nextWords, whyLine } from '../ui/surfaces/readinessCells.ts'
+import { fillText } from '../content/render.ts'
+import { monthDay } from '../copy/dates.ts'
 import { pages } from '../content/content.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -558,4 +560,34 @@ test('item 10: one phishing-resistant method set: synced passkeys count, Authent
   for (const file of ['src/roadmap/strand.ts', 'src/scoring/mfaViability.ts', 'src/validation/rules.ts', 'src/graph/collect/laneBCore.ts']) {
     assert.doesNotMatch(readFileSync(file, 'utf8'), /const (PHISHING_RESISTANT|QUALIFYING_KINDS) = new Set/, `${file} keeps no phishing-resistant set of its own`)
   }
+})
+
+test('item 2: a passkey’s last-used date is supporting evidence only: it never makes anybody Ready, and an unused passkey is flagged as possibly gone', () => {
+  const W = pages.readiness as unknown as { usedRecently: string; unusedKey: { never: string; stale: string }; panel: { why: { usedRecently: string } } }
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
+  const key = (over: Partial<AuthMethodSummary>): AuthMethodSummary => ({ kind: 'passkey', id: 'k1', aaGuid: AUTHENTICATOR_AAGUIDS[0], ...over })
+  // Used inside the window by Microsoft's date, no sign-in with it: still Confirm it, and the page says "used recently".
+  const used = personReadiness(input({ methods: [key({ lastUsedDateTime: LATER, lastUsedSourceVersion: 'beta' })], platforms: ['Windows'], context: ctx }))
+  assert.equal(used.state, 'confirm', 'a last-used date never makes a person Ready')
+  assert.equal(used.usedRecently, LATER)
+  const usedRow = { user: { id: 'u', displayName: 'U' }, kind: 'person', active: true, state: used.state, explained: null, admin: false, guest: false, readiness: used, methods: used.methods, viability: null } as unknown as Parameters<typeof methodsCell>[0]
+  assert.equal(methodsCell(usedRow).note, fillText(W.usedRecently, { date: monthDay(LATER) }))
+  assert.equal(whyLine(usedRow), fillText(W.panel.why.usedRecently, { date: monthDay(LATER) }), 'and says a date alone is not Ready')
+  // A date older than the window moves nothing.
+  assert.equal(personReadiness(input({ methods: [key({ lastUsedDateTime: OLD, lastUsedSourceVersion: 'beta' })], platforms: ['Windows'], context: ctx })).usedRecently, null)
+  // Never used, as Microsoft reports it: flagged, and the state is unchanged.
+  const never = personReadiness(input({ methods: [key({ lastUsedSourceVersion: 'beta' })], platforms: ['Windows'], context: ctx }))
+  assert.equal(never.state, 'confirm')
+  assert.equal(never.credentials[0].unused, 'never')
+  assert.equal(methodsCell({ ...usedRow, readiness: never, state: never.state } as typeof usedRow).note, W.unusedKey.never)
+  // Not used for 90 days or more: flagged with its date.
+  const stale = personReadiness(input({ methods: [key({ lastUsedDateTime: '2026-05-01T10:00:00.000Z', lastUsedSourceVersion: 'beta' })], platforms: ['Windows'], context: ctx }))
+  assert.equal(stale.credentials[0].unused, 'stale')
+  // Not read (no beta field): nothing is said either way.
+  assert.equal(personReadiness(input({ methods: [key({})], platforms: ['Windows'], context: ctx })).credentials[0].unused, null)
+  // The only passkey, seen working in a sign-in: in use whatever the date says.
+  const proven = personReadiness(input({ methods: [key({ lastUsedSourceVersion: 'beta' })], proofs: [proof('passkey', 'Windows')], platforms: ['Windows'], context: ctx }))
+  assert.equal(isReady(proven.state), true)
+  assert.equal(proven.credentials[0].unused, null)
+  assert.equal(proven.usedRecently, null, '"used recently" belongs to Confirm it only')
 })

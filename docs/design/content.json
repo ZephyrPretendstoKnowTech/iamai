@@ -1007,6 +1007,12 @@
       "lastConfirmed": "Last confirmed {date}",
       "beforeWindow": "Last confirmed {date}, before the window",
       "readyUntil": "Ready until {date}",
+      "usedRecently": "Used recently ({date}), not yet seen in a sign-in",
+      "unusedKey": {
+        "$comment": "Owner item 2: a passkey Microsoft reports never used, or not used for 90 days. A flag, never a state.",
+        "never": "Passkey registered but not used, may be gone",
+        "stale": "Passkey not used since {date}, may be gone"
+      },
       "methodsInline": {
         "$comment": "A method's name mid-sentence (next steps): capitals kept for product names.",
         "passkey": "the passkey",
@@ -1096,6 +1102,12 @@
           "unknown": "Model not reported"
         },
         "never": "Never seen in a sign-in",
+        "lastUsed": "Last used",
+        "lastUsedDate": "{date}, as Microsoft reports it. Not proof on its own.",
+        "unused": {
+          "never": "Registered but not used, may be gone.",
+          "stale": "Not used since {date}, may be gone."
+        },
         "retained": "kept from an earlier scan",
         "unlisted": "Unlisted model ({aaguid})",
         "why": {
@@ -1107,6 +1119,7 @@
           "method": "No phishing-resistant method they can use.",
           "blocked": "A tenant setting stops them from setting one up.",
           "unknown": "IAMAI couldn’t read what the answer depends on.",
+          "usedRecently": "Microsoft reports their passkey used {date}, but no sign-in with it shows in 30 days. A last-used date alone never makes someone Ready.",
           "replaceKey": "The key works today, but its model isn’t on Emergency Access Step 3’s approved list, so it stops working when you apply those settings."
         }
       },

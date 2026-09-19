@@ -130,6 +130,25 @@ test('a failed sign-in attempt never becomes the last successful sign-in', async
   assert.equal(result.users[0].lastSuccessfulSignIn, '2026-09-10T08:00:00Z')
 })
 
+test('item 2: a beta row that reports lastUsedDateTime as null marks the passkey never used; one without the field leaves it unknown', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/v1.0/$batch')) return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [{ id: 'k1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod' }, { id: 'k2', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod' }] } }] }), { status: 200 })
+    if (url.includes('/beta/$batch')) return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [{ id: 'k1', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod', lastUsedDateTime: null }, { id: 'k2', '@odata.type': '#microsoft.graph.fido2AuthenticationMethod' }] } }] }), { status: 200 })
+    return new Response('{}', { status: 404 })
+  }) as typeof fetch
+  try {
+    const result = await collectMethodsForUsers(ctx, ['user-1'])
+    const [k1, k2] = result['user-1'] as { id?: string; lastUsedDateTime?: string; lastUsedSourceVersion?: string }[]
+    assert.equal(k1.lastUsedSourceVersion, 'beta', 'reported: never used')
+    assert.equal(k1.lastUsedDateTime, undefined)
+    assert.equal(k2.lastUsedSourceVersion, undefined, 'not reported: unknown, never "never used"')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
 test('dedicated FIDO reads merge exact credential fields and endpoint provenance', async () => {
   const original = globalThis.fetch
   let v1Batch = 0
