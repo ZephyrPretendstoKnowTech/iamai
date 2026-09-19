@@ -15,6 +15,7 @@ import { buildIcs } from './roadmap/ics.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from './roadmap/prompts.ts'
 import { buildPlanFile, fileStep } from './roadmap/plan.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
+import { cleanupExportViews } from './ui/surfaces/cleanupExport.ts'
 import type { StepVarContext } from './ui/surfaces/stepVars.ts'
 import { readinessView } from './derive/mfaReadiness.ts'
 
@@ -32,6 +33,9 @@ const nameOf = (id: string): string => run.input.names!.label(id)
 const firstEnforce = run.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
 const ctx = (s: (typeof run.steps)[number]): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, firstEnforce, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null })
 const view = (s: (typeof run.steps)[number]) => stepExportView(s, ctx(s))
+// The Cleanup rows travel as Export.tsx sends them: the drill's task steps carry
+// the screen's inline bold, which no export may.
+const cleanup = cleanupExportViews(run.schedule.cleanup)
 
 /**
  * Every forbidden string the export carries. A JSON export is checked on its
@@ -61,15 +65,17 @@ test('the calendar speaks from the content-driven step and carries no forbidden 
 })
 
 test('the prompt pack speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', planSummary: run.schedule.derivation.criticalPath, announcement: null })
+  const pack = promptPack({ view, tenant: 'Contoso Pty Ltd', steps: run.steps, schedule: run.schedule, changeRecord: '', planSummary: run.schedule.derivation.criticalPath, announcement: null, cleanup })
   const md = promptPackMarkdown(pack, 'Contoso Pty Ltd')
+  assert.match(md, /Verify emergency sign-in/, 'the premise: the drill travels in the pack')
   assert.deepEqual(hits(md), [], 'no forbidden string in the prompt pack')
   assert.match(md, /What to do:/, 'the step prompt carries the portal lines')
 })
 
 test('the grounding bundle speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const bundle = groundingBundle({ view, tenant: 'Contoso Pty Ltd', snapshot: f.snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: 'Sep 2, 2026' })
+  const bundle = groundingBundle({ view, tenant: 'Contoso Pty Ltd', snapshot: f.snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: 'Sep 2, 2026', cleanup })
   const text = JSON.stringify(bundle, null, 2)
+  assert.match(text, /Verify emergency sign-in/, 'the premise: the drill travels in the bundle')
   assert.deepEqual(hits(text, { json: true }), [], 'no forbidden string in the bundle')
   const steps = (bundle as { plan: { steps: { title: string; whatToDo?: string[]; doneWhen?: string[]; whatChanges?: string }[] } }).plan.steps
   assert.ok(steps.length > 0)
