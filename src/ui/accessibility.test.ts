@@ -418,7 +418,7 @@ test("the Plan step's implementation channels are one tab set over one panel, an
   assert.match(contentStep, /<TabList base=\{base\}[\s\S]*?panelId=\{\(\) => `\$\{base\}-panel`\}/)
   // One panel, labelled by whichever tab is selected, and reachable: a scrolling
   // code block holds nothing else a keyboard can land on.
-  assert.match(contentStep, /<div className="impl-preview" \{\.\.\.onePanelProps\(base, tab\)\}>/)
+  assert.match(contentStep, /<div className="impl-preview"[^>]*\{\.\.\.onePanelProps\(base, tab\)\}>/)
   // Copy and Expand are real buttons with names, not glyphs a screen reader
   // cannot announce.
   assert.match(contentStep, /<button\s+type="button"\s+className="icon-btn"\s+aria-label=\{W\.copy\}/)

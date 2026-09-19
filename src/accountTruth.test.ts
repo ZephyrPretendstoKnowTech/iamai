@@ -187,7 +187,8 @@ for (const name of ['demo', 'demo-week2'] as const) {
       const fromCheck = sorted(Array.isArray(policyCheck?.values.policies) ? (policyCheck.values.policies as string[]) : [])
       const policyTopic = ge.configurationFindings?.find(finding => finding.key === 'group-policies')
       assert.ok(policyTopic, `${universe}: the exclusions step owns the policy-exclusion topic even when no policy is missing it`)
-      for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.label === policy && !item.value.includes('Group already excluded')), `${universe}: ${policy} is absent from the exclusions topic`)
+      // Each policy is two items since cff043a2 (Mode, Group exclusion), named in subjectLabel.
+      for (const policy of fromCheck) assert.ok(policyTopic.items?.some(item => item.subjectLabel === policy && item.label === 'Group exclusion' && item.outcome !== 'pass'), `${universe}: ${policy} is absent from the exclusions topic`)
       assert.equal(bg.configurationFindings?.some(finding => finding.label === 'Policy Exclusions'), false, `${universe}: policy exclusions leaked back into the account-owned topics`)
     }
   })

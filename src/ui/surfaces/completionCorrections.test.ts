@@ -84,7 +84,7 @@ test('passkey exclusion wins over All users, and incomplete membership stays unk
  f.snapshot.config.authMethodsPolicy.rows=[{authenticationMethodConfigurations:[config]}]
  assert.equal(emergencyPasskeyCompatibility(f.snapshot,[id],new Map([['g',{memberIds:[id],memberCount:1,sampled:false}]]))[0].state,'excluded')
  assert.equal(emergencyPasskeyCompatibility(f.snapshot,[id],new Map())[0].state,'unknown')
- config.excludeTargets=[];f.snapshot.authMethods[id]=[{kind:'fido2',aaGuid:'11111111-1111-4111-8111-111111111111'}]
+ config.excludeTargets=[];f.snapshot.authMethods[id]=[{kind:'fido2',aaGuid:'11111111-1111-4111-8111-111111111111',attestationLevel:'attested'}]
  assert.equal(emergencyPasskeyCompatibility(f.snapshot,[id])[0].state,'eligible')
 })
 test('a device chip survives export as words, never a symbol',()=>{const d={os:'Windows' as const,type:'computer' as const,lastSeen:'2026-09-01T00:00:00Z',trust:'joined' as const,version:null,best:'windowsHello' as const,builtIn:true,possible:'yes' as const,whyNot:null,proof:{cls:'windowsHello' as const,at:'2026-09-01T00:00:00Z'},seamless:true};assert.equal(deviceChip(d,'seamless').word,'Seamless');assert.equal(deviceChip({...d,proof:null,seamless:false},'confirm').word,'Not confirmed')})

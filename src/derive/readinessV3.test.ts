@@ -21,6 +21,7 @@ import { fillText } from '../content/render.ts'
 import { readFileSync } from 'node:fs'
 import { readinessContextOf } from './readinessContext.ts'
 import { passkeyReadingOf } from '../roadmap/passkeySettings.ts'
+import { methodClassesOf } from './ladder.ts'
 import { pages } from '../content/content.ts'
 
 const demo = fixture('demo')
@@ -305,4 +306,12 @@ test('audit A1, A4, 6 and 26: Details names its person, focus is kept safe, the 
   assert.match(src, /fillText\(T\.planContext\.uncounted/)
   assert.match(src, /c\.outcome === 'note' \? 'info' : 'ok'/)
   assert.ok((pages.readiness as unknown as { detailsFor: string }).detailsFor.includes('{name}'))
+})
+
+test('audit 28: the Plan preview and MFA Readiness name the same methods: a certificate only the registration report lists counts in both', () => {
+  const snap = structuredClone(demo.snapshot)
+  const id = snap.users.find((u) => Array.isArray(snap.authMethods[u.id]) && snap.registrationDetails.some((r) => r.id === u.id))!.id
+  snap.registrationDetails.find((r) => r.id === id)!.methodsRegistered.push('x509Certificate')
+  assert.ok(methodClassesOf(snap, id)!.includes('certificate'))
+  assert.ok(readinessView(snap, snap.asOf, demo.mapping).rows.find((r) => r.user.id === id)!.methods!.includes('certificate'))
 })

@@ -62,14 +62,12 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
   const admins = adminUserIds(snapshot.roles ?? { active: {} })
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const preview = (hold.ids ?? []).map((id) => byId.get(id)).filter((u) => u !== undefined).slice(0, PREVIEW)
-  // What each person has is the one readiness reading MFA Readiness shows (a certificate from the registration report included).
-  const scoredBy = new Map(scored.map((v) => [v.userId, v]))
   return (
     <div className="mfa-handoff-block">
       {preview.length > 0 && (
         <ul className="mfa-preview">
           {preview.map((u) => {
-            const methods = scoredBy.get(u.id)?.readiness.methods ?? methodClassesOf(snapshot, u.id) ?? []
+            const methods = methodClassesOf(snapshot, u.id) ?? []
             return (
               <li key={u.id}>
                 <span className="who">
