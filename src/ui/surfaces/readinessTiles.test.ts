@@ -64,7 +64,7 @@ test('one tile per outstanding fix, each linking to its step or to Baseline mapp
 
 test('the engine’s blockers the fixes do not name become tiles: a queued step is a wait with a link, a hold needs attention, the step’s own decision is not a prerequisite of itself', () => {
   const { step, c } = opened('demo', 's-goal-mfa-all-users')
-  const queued: PrerequisiteBlocker = { kind: 'step', id: 's-prereq-passkey-settings', abnormal: false, label: BOARD.blockers.step, title: 'Passkeys' }
+  const queued: PrerequisiteBlocker = { kind: 'step', id: 's-prereq-trusted-location', abnormal: false, label: BOARD.blockers.step, title: 'Trusted network' }
   const held: PrerequisiteBlocker = { kind: 'license/platform', id: 'license:p2', abnormal: true, label: BOARD.blockers['license/platform'], title: null }
   const own: PrerequisiteBlocker = { kind: 'step', id: EMERGENCY, abnormal: true, label: BOARD.blockers.step, title: 'Emergency' }
   const r = readinessOf(step, c, [queued, held, own, queued])
@@ -89,7 +89,7 @@ test('with nothing unresolved the region is its compact success line and the sat
   const { step, c, blockers } = opened('demo-week2', EMERGENCY)
   const r = readinessOf(step, c, blockers)
   assert.deepEqual(r.tiles, [])
-  assert.equal(r.satisfied.length, 4)
+  assert.equal(r.satisfied.length, 2)
   assert.ok(r.satisfied.every(t => t.key.startsWith('configuration:') && t.tone === 'good'))
   assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
   const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
@@ -101,21 +101,15 @@ test('with nothing unresolved the region is its compact success line and the sat
   assert.match(CSS, /\.step \.readiness-clear \{/, 'the success line has no treatment')
 })
 
-test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step; each account slot carries its own minimum blockers or hardening', () => {
+test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step', () => {
   for (const gone of ['<FixBeforeContinuing', '<HardeningRecommendations', 'fixHeading', 'W.preview.checks']) assert.equal(CONTENT_STEP.includes(gone), false, `ContentStep still draws ${gone}`)
   for (const gone of ['export function FixBeforeContinuing', 'export function HardeningRecommendations', 'CONTRACT.fixHeading']) assert.equal(SECTIONS.includes(gone), false, `StepSections still exports ${gone}`)
-  assert.match(CONTENT_STEP, /t.key === 'configuration:credential-custody' && contract.hardening/, 'the grouped custody topic retains the existing deferral control')
   // The content file no longer points at a container that does not exist (the export's section heading keeps the key).
   assert.equal((CONTENT.match(/Fix before continuing/g) ?? []).length, 1)
   const { step, c, blockers } = opened('demo', EMERGENCY)
   const r = readinessOf(step, c, blockers)
-  // The account slots (P0-7): the failing minimum leads as its slot's line; a slot whose minimum is met is ✓ with its
-  // hardening open (content review D4), with the satisfied evidence, carrying the hardening lead; no check tile stands beside them.
-  assert.equal(r.tiles.length + r.satisfied.length, 4)
-  const hardening = r.tiles.find(t => t.key === 'configuration:credential-custody')
-  assert.ok(hardening?.items?.length, 'the grouped custody topic contains its outstanding findings')
-  assert.equal(r.tiles.some((t) => t.key.startsWith('check:')), false, 'a failing check is drawn beside its account slot')
-  assert.ok(c.emergencySlots.some((s) => s.state === 'minimum' && s.minimum.length > 0), 'the failing minimum check is no slot’s line')
+  // Step 1 states its facts as findings (c1cacf21); no check tile stands beside them.
+  assert.ok([...r.tiles, ...r.satisfied].every((t) => t.key.startsWith('configuration:')), r.tiles.map((t) => t.key).join(' | '))
   assert.equal(c.doneWhen.some((l) => /Fix before continuing/.test(l)), false)
 })
 

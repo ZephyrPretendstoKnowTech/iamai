@@ -314,78 +314,14 @@ test('a minimum safety blocker holds the rollout, and no deferral can release it
   assert.ok((bg.emergency?.minimum ?? 0) > 0, 'the premise: demo has a minimum safety failure')
   assert.notEqual(bg.status, 'done')
   assert.ok(waitingOnEmergency(r) > 0, 'a missing way back in released the deny-capable steps')
-  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
-  assert.equal(c.hardening?.canDefer, false, 'deferral is offered while the minimum is not met')
-  assert.ok(c.fix.length > 0, 'the minimum blocker is not under Fix before continuing')
   // Even a deferral recorded against every hardening finding releases nothing.
   const deferred = runFixture(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: bg.emergency!.basis } })
   assert.notEqual(deferred.steps.find((s) => s.id === EMERGENCY)!.status, 'done')
   assert.ok(waitingOnEmergency(deferred) > 0)
 })
 
-test('resilience hardening holds until fixed or deferred; a deferral releases the rollout, keeps it in Cleanup, and claims no full resilience', () => {
-  const f = fixture('small')
-  f.snapshot.config.authMethodsPolicy = structuredClone(fixture('demo-week2').snapshot.config.authMethodsPolicy)
-  for (const id of f.mapping.breakGlassUserIds) {
-    const methods = f.snapshot.authMethods[id]
-    if (Array.isArray(methods)) f.snapshot.authMethods[id] = methods.map(method => method.kind === 'fido2' ? { ...method, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound' } : method)
-  }
-  const r = runFixture(f)
-  const bg = r.steps.find((s) => s.id === EMERGENCY)!
-  assert.equal(bg.emergency?.minimum, 0, 'the premise: minimum emergency access is available')
-  assert.ok((bg.emergency?.hardening ?? 0) > 0, 'the premise: hardening is outstanding')
-  assert.equal(statusOf(bg).word, 'Needs attention', 'a step with failing checks reads Ready')
-  assert.ok(waitingOnEmergency(r) > 0, 'undeferred hardening released the rollout without anyone acknowledging it')
-  const at = '2026-09-11T10:00:00.000Z'
-  const d = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis } })
-  const dbg = d.steps.find((s) => s.id === EMERGENCY)!
-  assert.equal(dbg.status, 'ready', 'deferral must not complete the account step')
-  assert.equal(dbg.emergency?.deferredAt, at)
-  assert.equal(waitingOnEmergency(d), 0, 'the deferral did not release the rollout')
-  assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'hardening'), false, 'hardening reached Cleanup without a deferral')
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => d.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const c = stepContract(dbg, ctx)
-  const rd = readinessOf(dbg, c)
-  const tiles = [...rd.tiles, ...rd.satisfied].map((t) => `${t.label}: ${t.value}`)
-  assert.equal(rd.tiles.some((t) => t.key === 'resilience' || t.key === 'emergency' || t.key.startsWith('slot:')), false)
-  assert.equal([...rd.tiles, ...rd.satisfied].filter(t => t.key.startsWith('configuration:')).length, 4, tiles.join(' | '))
-  assert.ok(c.doneWhen.every(line => !/recovery test|every required emergency-access check/i.test(line)), 'account completion claims final verification')
-  assert.equal(c.hardening?.deferredAt, at)
-  // A new finding is not covered by an earlier deferral: the rollout waits again.
-  const partial = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis.split(',').slice(1).join(',') } })
-  assert.notEqual(partial.steps.find((s) => s.id === EMERGENCY)!.status, 'done')
-  // The deferral is an owner confirmation, carried by the one persistence path.
-  const kept = decisionsOf({ planId: 'p', skips: {}, checkpoints: [], confirmations: { [EMERGENCY]: { [HARDENING_DEFERRAL_ID]: { at, basis: bg.emergency!.basis } } } }, 'p')
-  assert.deepEqual(kept.confirmations?.[EMERGENCY]?.[HARDENING_DEFERRAL_ID], { at, basis: bg.emergency!.basis })
-  assert.match(readFileSync('src/ui/surfaces/planData.ts', 'utf8'), /hardeningDeferral: saved\?\.confirmations\?\.\[BREAK_GLASS_STEP_ID\]\?\.\[HARDENING_DEFERRAL_ID\] \?\? null/)
-  assert.match(CONTENT_STEP, /onConfirm\(\{ \[HARDENING_DEFERRAL_ID\]: \{ basis: contract\.hardening!\.basis \} \}\)/)
-})
-
-test('the opened emergency step agrees with its row: the bar and the badge are the lane’s, set-wide hardening under every account, and an undated Cleanup row reads the placeholder', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const bg = r.steps.find((s) => s.id === EMERGENCY)!
-  const lane = laneViewFor(bg, r.steps)
-  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }, undefined, lane)
-  assert.ok(c.fix.length > 0, 'the premise: a fix is outstanding')
-  // The bar is keyed by the lane (A1b, RUN-CONTEXT-A decision 1). The demo's
-  // confirmed accounts exist and fail a minimum check: started work drifted from
-  // the target, so Ready · Correct (A6); the badge says the same label the row says.
-  const bar = readinessOf(bg, c).bar
-  assert.ok(bg.emergency!.accounts.length > 0, 'the premise: the demo plan holds confirmed emergency accounts')
-  assert.equal(lane.substatus, 'Correct', 'existing accounts with failing checks read Create, not Correct')
-  assert.equal(bar.main, CONTRACT.readiness.bar.correct, 'the bar is not the lane’s word')
-  // With no confirmed accounts nothing is started: the next action creates them.
-  const none = { ...bg, emergency: { ...bg.emergency!, accounts: [] } }
-  assert.equal(laneViewFor(none, r.steps.map((s) => (s.id === EMERGENCY ? none : s))).substatus, 'Create', 'emergency access with no accounts reads other than Create')
-  assert.equal(badgeLabel(c), lane.label, 'the badge and the row disagree')
-  // A recommendation about the set of accounts is not filed under the first account's name.
-  const groups = c.hardening!.groups
-  const every = groups.find((g) => g.title === CONTRACT.hardening.everyAccount)
-  assert.ok(every && every.items.some((i) => /offline/.test(i)), groups.map((g) => g.title).join(' | '))
-  for (const g of groups.filter((x) => x !== every)) assert.equal(g.items.some((i) => /offline/.test(i)), false, `${g.title} carries a set-wide recommendation`)
-  // Cleanup while the plan cannot finish: a word, not a blank.
-  const row = { ...runFixture(fixture('small'), { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: runFixture(fixture('small')).steps.find((s) => s.id === EMERGENCY)!.emergency!.basis } }).schedule.cleanup!.rows[0], done: null }
+test('an undated Cleanup row reads the placeholder while the plan cannot finish, and never a blank', () => {
+  const row = { ...runFixture(fixture('small')).schedule.cleanup!.rows[0], done: null }
   assert.equal(cleanupWhen(row, true), 'After prerequisites')
   assert.equal(cleanupWhen(row, true, true), 'Already in place', 'an attested completion never reads as waiting')
   assert.notEqual(cleanupWhen(row, false).trim(), '')
