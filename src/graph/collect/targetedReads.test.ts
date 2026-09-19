@@ -6,6 +6,8 @@ import assert from 'node:assert/strict'
 import { mergeTargeted, targetedReadCandidates, targetedReadUrl } from './laneBCore.ts'
 import type { StoredSignIn, UserEvidence } from './types.ts'
 import { personReadiness, emptyReadinessContext } from '../../scoring/phishingResistant.ts'
+import { SIGN_IN_READ, readTargeted } from './laneB.ts'
+import { RETRY_MAX_429, RETRY_MAX_5XX } from './constants.ts'
 
 const NOW = '2026-09-18T12:00:00.000Z'
 const START = '2026-08-19T12:00:00.000Z'
@@ -41,6 +43,53 @@ test('the rows read join the person’s evidence, and the person reads as covere
   // Read and found nothing interactive: recorded as read, so readiness does not call the records missing.
   mergeTargeted(perUser, 'u-2', [])
   assert.equal(perUser['u-2'].individuallyRead, true)
+})
+
+// Owner item 4 (2026-09-19): the sign-in logs throttle hardest, so their reads
+// try longer than the default policy, honouring each Retry-After, and still stop.
+function scripted(statuses: number[], ok: unknown): { calls: () => number; restore: () => void } {
+  let n = 0
+  const original = globalThis.fetch
+  globalThis.fetch = (async () => {
+    const status = statuses[n++] ?? 200
+    return status === 200
+      ? new Response(JSON.stringify(ok), { status: 200 })
+      : new Response(JSON.stringify({ error: { code: 'x' } }), { status, headers: status === 429 ? { 'Retry-After': '3' } : {} })
+  }) as typeof fetch
+  return { calls: () => n, restore: () => { globalThis.fetch = original } }
+}
+const signInCtx = (waits: number[]) => ({ tokens: { get: () => 't', refresh: async () => 't' }, signal: new AbortController().signal, wait: async (ms: number) => void waits.push(ms) })
+
+test('a throttled sign-in read keeps honouring Retry-After past the default ceiling, then reads', async () => {
+  const throttled = Array.from({ length: RETRY_MAX_429 + 1 }, () => 429)
+  const f = scripted(throttled, { value: [] })
+  try {
+    const waits: number[] = []
+    const perUser: Record<string, UserEvidence> = {}
+    const done = await readTargeted(signInCtx(waits), perUser, ['u-1'], START, FROM)
+    assert.deepEqual(done, { read: 1, remaining: 0 })
+    assert.equal(waits.length, throttled.length)
+    assert.ok(waits.every((ms) => ms >= 3000 && ms <= 3000 * 1.2), 'each wait is the Retry-After')
+    assert.equal(perUser['u-1'].individuallyRead, true)
+  } finally {
+    f.restore()
+  }
+})
+
+test('a sign-in read retries server errors past the default ceiling, and stops at its own', async () => {
+  const recovers = scripted(Array.from({ length: RETRY_MAX_5XX }, () => 503), { value: [] })
+  try {
+    assert.deepEqual(await readTargeted(signInCtx([]), {}, ['u-1'], START, FROM), { read: 1, remaining: 0 })
+  } finally {
+    recovers.restore()
+  }
+  const down = scripted(Array.from({ length: 50 }, () => 503), { value: [] })
+  try {
+    assert.deepEqual(await readTargeted(signInCtx([]), {}, ['u-1'], START, FROM), { read: 0, remaining: 1 }, 'left for the next scan')
+    assert.equal(down.calls(), SIGN_IN_READ.attempts5xx, 'bounded')
+  } finally {
+    down.restore()
+  }
 })
 
 test('a partial read without the targeted read is Unknown; with it, the person is judged on their sign-ins', () => {

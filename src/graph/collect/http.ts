@@ -70,6 +70,9 @@ export type GraphRequestOpts = {
   headers?: Record<string, string>
   /** Retry wait; injectable so tests run the policy without sleeping. */
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>
+  /** Attempts before a 429 or a 5xx/timeout is final; RETRY_MAX_429 and RETRY_MAX_5XX unless a read needs more. */
+  attempts429?: number
+  attempts5xx?: number
   /** Called once per settled response (after retries) with its status and body length. */
   onResponse?: (info: { status: number; bytes: number }) => void
 }
@@ -139,12 +142,12 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
       await tokens.refresh()
       continue
     }
-    if (res && res.status === 429 && count429 < RETRY_MAX_429 - 1) {
+    if (res && res.status === 429 && count429 < (opts.attempts429 ?? RETRY_MAX_429) - 1) {
       count429 += 1
       await wait(jitter(retryAfterMs(res.headers.get('Retry-After'))), opts.signal)
       continue
     }
-    if ((timedOut || (res && res.status >= 500)) && count5xx < RETRY_MAX_5XX - 1) {
+    if ((timedOut || (res && res.status >= 500)) && count5xx < (opts.attempts5xx ?? RETRY_MAX_5XX) - 1) {
       count5xx += 1
       await wait(jitter(BACKOFF_BASE_MS * 2 ** (count5xx - 1)), opts.signal)
       continue
