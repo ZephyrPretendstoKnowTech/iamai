@@ -36,7 +36,7 @@ that now apply across the product:
 - Evidence and scoring: `src/scoring/phishingResistant.ts` (the one readiness
   state), `src/scoring/mfaViability.ts`, `src/scoring/mfaHistory.ts`
 - Approved design pack (anatomy only, never copy or truth):
-  `docs/design/approved/anatomy/mfa-readiness-v2.html`
+  `archive/design/mfa-readiness-v2.html` (superseded by v3, archived 2026-09-19)
 - The plan step that hands over to this page: `s-verify-mfa` (grep its id)
 
 Earlier findings (memory: Step 6 MFA evidence audit, Step 7 MFA readiness):

@@ -408,9 +408,10 @@ try {
   //
   // Prompt 47.1 asked for the opposite of the second check: a transparent `th`,
   // because the head it was replacing was the legacy sticky band. Task 040
-  // moved every panel table onto the treatment BOTH approved packs draw —
-  // `plan-step-v1.html` and `mfa-readiness-v2.html` each put the head on the
-  // secondary surface inside one bordered panel — so what the check now asks is
+  // moved every panel table onto the treatment BOTH approved packs drew —
+  // `plan-step-v1.html` and the MFA Readiness v2 pack (archived 2026-09-19)
+  // each put the head on the secondary surface inside one bordered panel — so
+  // what the check now asks is
   // that the head is that band and not the old one: on the inset surface, not
   // sticky, inside a panel that carries the border.
   check('Inventory: the page uses its own operational column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))

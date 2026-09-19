@@ -65,16 +65,14 @@
     "home": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
     "connect": "d899bd2a99f65bd68e6af6ac156dd765591f06d0df5c53750b8148236becb793",
     "plan": "43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39",
-    "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
+    "mfa-readiness": "39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4"
   },
   "files": {
-    "iamai-mfa-readiness-final.html": "2621993a15c1174bfa463032eb0b78e62770c709f7c055390e5944d935c24a75",
     "iamai-plan-step-variants-final.html": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
     "iamai-plan-organization-final.html": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
-    "iamai-approved-visual-system-comparison-reference.html": "a4e5c36dc88e0acf195dc12cb57ea5417b7afab4168d9e8f4cf82e69978521d8",
+    "iamai-approved-visual-system-comparison-reference.html": "95849a723d19039262f1bd2d06f749dfefdf428a1c4d01d8d4bd230f8c42428a",
     "iamai-connect-approved-comparison-reference.html": "3104f4b3e22d3bbbd44ff15f5819d70a9b13a2423831f5ede6d9edafbd7c90d0",
     "iamai-home-approved-comparison-reference.html": "ff4413a4c14de2d720bbc9f87889e9532d1201f0d7af3630be42f58369cc5594",
-    "iamai-mfa-readiness-approved-comparison-reference.html": "62d6f5820d63ea7c7bfd2dc8e02f3fabd24fc1285400b009210033e457f4615e",
     "iamai-plan-approved-comparison-reference.html": "293e26093cd5bd1b4e0681015c92678ff07a9accf3d3d3cba5ff1df44dfa43f1",
     "iamai-threshold-logo-authority.html": "f614e5dfb7487e8af5101d8e9325c768a623dd34cad056bc96d31f786ffee7aa",
     "iamai-threshold-master.svg": "0bd2591af69fbe39138134a5af12f979ba91be2735afa59b6e190e8a51551775"
@@ -176,10 +174,15 @@
     "implementedBy": "plan shared step frame + policy rollout family pass; remaining families migrated by the final expanded-step pass"
   },
   "mfaReadiness": {
-    "$comment": "The final MFA Readiness visual and interaction authority (Step 7). Recorded as its own block, like the two Plan authorities, so a later task can read what it owns as a value. It supersedes docs/design/approved/anatomy/mfa-readiness-v2.html and iamai-mfa-readiness-approved-comparison-reference.html for the page presentation; neither file is deleted or re-hashed, and both remain the record of what the page looked like before.",
-    "file": "iamai-mfa-readiness-final.html",
+    "$comment": "SUPERSEDED on 2026-09-19 (owner decision, docs/plans/2026-09-19-overnight-review.md item 22). This block recorded the Step 7 MFA Readiness visual and interaction authority. Prompt 62 replaced it with the v3 pack, which docs/design/approved/manifest.json records as the current MFA Readiness authority, and the owner's answer was to archive the old files. So the Step 7 reference and the two presentations it had superseded now live under archive/design/ as records; nothing current renders or tests from them. This block is kept so a later reader can see what the page answered to before, and where the authority went. Read the current authority from manifest.json, never from here.",
+    "status": "superseded",
+    "supersededOn": "2026-09-19",
+    "supersededBy": "docs/design/approved/anatomy/mfa-readiness-v3.html",
+    "supersededBySha256": "39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4",
+    "supersededByRecord": "docs/design/approved/manifest.json",
+    "file": "archive/design/iamai-mfa-readiness-final.html",
     "sha256": "2621993a15c1174bfa463032eb0b78e62770c709f7c055390e5944d935c24a75",
-    "owns": [
+    "owned": [
       "page hierarchy",
       "the summary anatomy: one answer and three counts that filter",
       "the Plan gate and passkey rollout strip",
@@ -192,21 +195,10 @@
       "the minimal detail: Why and Next",
       "responsive behaviour at 940px and 720px"
     ],
-    "doesNotOwn": [
-      "production copy",
-      "tenant facts",
-      "readiness calculation",
-      "proof calculation",
-      "population calculation",
-      "Plan gate calculation",
-      "Graph collection",
-      "evidence history"
-    ],
     "supersedes": [
-      "docs/design/approved/anatomy/mfa-readiness-v2.html (presentation)",
-      "iamai-mfa-readiness-approved-comparison-reference.html (presentation)"
+      "archive/design/mfa-readiness-v2.html (presentation)",
+      "archive/design/iamai-mfa-readiness-approved-comparison-reference.html (presentation)"
     ],
-    "exampleDataNote": "The file carries example people, counts and tenant names. None of it is production data and none may be copied into production: docs/design/content.json remains the copy authority and scoring/phishingResistant.ts the readiness authority.",
     "implementedBy": "Step 7 - implement evidence-based MFA readiness"
   },
   "logo": {

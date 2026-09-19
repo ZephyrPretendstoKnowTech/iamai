@@ -265,7 +265,7 @@ and how the page should say so.
 
 ## 6. Rebuild outline
 
-The anatomy follows `docs/design/approved/anatomy/mfa-readiness-v2.html`: summary,
+The anatomy follows `archive/design/mfa-readiness-v2.html` (then the approved pack): summary,
 Current Plan dependency callout, toolbar, six-zone table, footer. The pack itself
 separates "blocking the current Plan" from "on a weaker method but not blocking". The
 rebuild restores that split.
