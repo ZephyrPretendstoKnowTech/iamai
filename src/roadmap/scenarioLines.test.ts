@@ -72,7 +72,8 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
     else assert.equal(current.state.satisfied, true)
   }
   const verifiedExclusions = exclusionOnly.filter(s => week2.steps.find(x => x.id === s.id)?.state.satisfied).length
-  assert.equal(inPlace(week2), inPlace(day1) + 4 + verifiedExclusions, 'completion adds verified configuration, not unrecorded manual workflows')
+  // And the trusted network: Direction's office-network answer, approved in week one (roadmap/direction.ts).
+  assert.equal(inPlace(week2), inPlace(day1) + 4 + verifiedExclusions + 1, 'completion adds verified configuration, not unrecorded manual workflows')
   assert.equal(reportOnly(week2), 3, 'three plan-created policies are in report-only in week two (A4 added the Intune enrollment one)')
   // The step is on every plan. Day one: the group its technician chose is not
   // the one the tenant's policies carve out, so the step has a check to fix; by

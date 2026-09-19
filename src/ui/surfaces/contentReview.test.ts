@@ -24,6 +24,7 @@ import { stepBodyOf } from './stepBody.ts'
 import { fillText } from '../../content/render.ts'
 import { AUTO_OPEN_CAP_PX, autoOpenTiles } from './tileExpansion.ts'
 import type { StepBody } from './stepBody.ts'
+import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 
 /** Every step's body on a fixture, as the Plan composes it (readinessWords.test.ts, stepSnapshots.ts). */
 function bodiesOf(f: Fixture): Map<string, StepBody> {
@@ -207,6 +208,8 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
   let missing = 0
   for (const name of ['demo', 'mid'] as const) {
     for (const [id, b] of bodiesOf(fixture(name))) {
+      // A decision-anatomy step (Decide Your Tenant's Direction) builds nothing and draws no Implementation (owner, 2026-09-19).
+      if (usesDecisionAnatomy(id)) { assert.equal(b.showImplementation, false, `${name}/${id}`); continue }
       assert.equal(b.showImplementation, true, `${name}/${id}: the Implementation region is hidden`)
       assert.ok(b.artifacts.some((a) => a.id === 'ai'), `${name}/${id}: AI briefing is missing`)
       assert.ok(b.artifacts.every(a => a.text().trim().length > 0), `${name}/${id}: empty resource`)

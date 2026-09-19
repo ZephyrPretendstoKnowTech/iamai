@@ -1,0 +1,24 @@
+{
+  "lane": "Ready",
+  "substatus": "Decision",
+  "reason": "Not sure? Keep the suggestion. You can change it any time.",
+  "fact": null,
+  "badge": "Ready · Decision",
+  "bar": "Needs a decision",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "About this Step",
+    "Questions",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Decision",
+      "state": "Decision"
+    }
+  ],
+  "channels": [
+    "AI Info"
+  ],
+  "when": "Est. Aug 31, 2026"
+}

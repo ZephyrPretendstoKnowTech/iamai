@@ -1,16 +1,15 @@
 {
   "lane": "Ready",
   "substatus": "Decision",
-  "reason": "after: Confirm the Services You Use",
+  "reason": "Not sure? Keep the suggestion. You can change it any time.",
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
   "rail": "Aug 31, 2026",
   "headings": [
-    "Why",
-    "Readiness",
-    "Implementation",
-    "Done when"
+    "About this Step",
+    "Questions",
+    "Completion Criteria"
   ],
   "tiles": [
     {

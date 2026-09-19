@@ -28,6 +28,10 @@
     {
       "label": "Prerequisite · To do",
       "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
     }
   ],
   "channels": [

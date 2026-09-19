@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
-  "badge": "Up Next",
-  "bar": "After Confirm the Services You Use",
+  "badge": "On Hold",
+  "bar": "On Hold",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -20,10 +20,6 @@
     {
       "label": "Prerequisites",
       "state": "after: Identify the Inforcer application"
-    },
-    {
-      "label": "Prerequisite · To do",
-      "state": "Confirm the Services You Use"
     }
   ],
   "channels": [
@@ -33,5 +29,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "After prerequisites"
+  "when": "Not scheduled"
 }

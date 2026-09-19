@@ -15,6 +15,9 @@ import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
 import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
+import { DIRECTION_STEP, SERVICE_KEYS, directionDecisionOf } from '../directionAnswers.ts'
+import { serviceReading } from '../workflows.ts'
+import { sharedDeviceUsers } from '../../derive/sharedDevices.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
@@ -711,7 +714,10 @@ export function buildFixture(spec: Spec): Fixture {
     // answered has no plan to show, and the sample is not a place to teach
     // otherwise.
     records: { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } },
-    wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
+    // The demo's first visit has answered none of Decide Your Tenant's Direction
+    // (roadmap/direction.ts): its countries, network and service accounts show as
+    // suggestions until the visitor approves them. Week two approved them.
+    wizardAnswered: { breakGlass: true, globalExclusion: true, countries: demoConfirmed, trustedLocations: demoConfirmed, serviceAccounts: demoConfirmed, timeZone: true, applicability: true },
     // The emergency accounts as its technician confirmed them, said in the one
     // way a record can say it (mapping/emergencyChoice.ts). Every tenant here
     // has answered: a detection may recommend these accounts and may not choose
@@ -763,6 +769,31 @@ export function buildFixture(spec: Spec): Fixture {
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
     // Nobody uses device code sign-in (B7): the enforced block's conditional input is saved.
     decisions[stepIdForGoal('block-device-code')] = { option: 'None', at: NOW }
+    // Decide Your Tenant's Direction, approved in week one with the answers this
+    // demo already assumes (roadmap/direction.ts): the services as the scan saw
+    // them, the printer, no device code, partners excluded, no external method;
+    // the service accounts as confirmed and the shared-device accounts as
+    // detected; everyone remote, the allowed countries, travel allowed. The
+    // device answers (D3) stay open, as the device decision always has here.
+    const services = serviceReading(snapshot, [], [])
+    const answer = (value: string, picked: readonly string[] = []) => ({ value, picked: [...picked] })
+    decisions[DIRECTION_STEP.use] = { ...directionDecisionOf({
+      ...Object.fromEntries(SERVICE_KEYS.map((key) => { const s = services.signal(key); return [`service:${key}`, answer(s.used || !s.complete ? 'yes' : 'no')] })),
+      mailDevices: printerId !== null ? answer('some', [printerId]) : answer('none'),
+      deviceCode: answer('unused'),
+      partner: answer('yes'),
+      externalMethods: answer('no'),
+    }, Object.fromEntries(SERVICE_KEYS.map((key) => { const s = services.signal(key); return [`service:${key}`, s.used ? 'present' : s.complete ? 'absent' : 'unread'] }))), at: NOW }
+    const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !bgIds.includes(id))
+    decisions[DIRECTION_STEP.accounts] = { ...directionDecisionOf({
+      serviceAccounts: mapping.serviceAccountUserIds.length > 0 ? answer('some', mapping.serviceAccountUserIds) : answer('none'),
+      sharedDevices: shared.length > 0 ? answer('some', shared) : answer('none'),
+    }), at: NOW }
+    decisions[DIRECTION_STEP.locations] = { ...directionDecisionOf({
+      officeNetwork: mapping.trustedLocationIds.length > 0 ? answer('office', mapping.trustedLocationIds) : answer('remote'),
+      workCountries: answer('some', mapping.allowedCountries),
+      travel: answer('allowed'),
+    }), at: NOW }
     // The emergency accounts signed in ten days before the scan (E3): on day one
     // the emergency-access step asks who and why; by week two the technician
     // recorded that sign-in as the drill on the Cleanup row, so the step is In

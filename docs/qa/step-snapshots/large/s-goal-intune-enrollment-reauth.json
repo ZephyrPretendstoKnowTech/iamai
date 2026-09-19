@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Confirm the Services You Use",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -14,16 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · To do",
-      "state": "Decide How Devices Are Managed"
-    },
-    {
       "label": "Before enforcement",
       "state": "Prepare Emergency Access Accounts"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Confirm the Services You Use"
+      "label": "Waiting on your direction",
+      "state": "Decide How People and Devices Sign In"
     }
   ],
   "channels": [

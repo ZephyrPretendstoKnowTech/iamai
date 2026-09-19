@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "after: Configure Emergency Exclusions",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Create or Correct Allowed Countries Location",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -24,6 +24,14 @@
     {
       "label": "Prerequisite · To do",
       "state": "Create or Correct Allowed Countries Location"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Decide Where People Sign In From"
     }
   ],
   "channels": [

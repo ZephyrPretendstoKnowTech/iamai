@@ -1,11 +1,11 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "when device readiness reaches 80% (now 29%)",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Confirm the Services You Use",
-  "rail": "Not scheduled",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
+  "rail": "Aug 31, 2026",
   "headings": [
     "Why",
     "Readiness",
@@ -18,12 +18,12 @@
       "state": "29% of devices compliant"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Decide How Devices Are Managed"
-    },
-    {
       "label": "Before enforcement",
       "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Decide How People and Devices Sign In"
     },
     {
       "label": "Prerequisite · To do",
@@ -31,7 +31,7 @@
     },
     {
       "label": "Prerequisite · To do",
-      "state": "Confirm the Services You Use"
+      "state": "Define the Trusted Network"
     }
   ],
   "channels": [
@@ -40,5 +40,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "After prerequisites"
+  "when": "Aug 31, 2026"
 }

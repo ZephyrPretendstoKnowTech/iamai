@@ -200,6 +200,26 @@ test('(f) a saved No reopens Confirm What You Use when new usage appears; missin
   assert.equal(stepOf(stepsOf({ ...unread, mapping: noUnread }), DIRECTION_STEP.use).status, 'done', 'a saved No with nothing seen stays done')
 })
 
+test('the demo: its first visit answers none of Direction; week two approved it, the device answers still open', () => {
+  const initial = fixture('demo')
+  const first = runFixture({ ...initial, mapping: applyStepDecisions(initial.mapping, initial.decisions ?? {}) }).steps
+  for (const id of Object.values(DIRECTION_STEP)) {
+    const s = stepOf(first, id)
+    assert.notEqual(s.status, 'done', `${id}: unanswered on the first visit`)
+    assert.ok(s.directionQuestions!.every((x) => x.saved === null), `${id}: every question shows its suggestion`)
+  }
+  const week2 = fixture('demo-week2')
+  const second = runFixture({ ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions ?? {}) }).steps
+  for (const id of [DIRECTION_STEP.use, DIRECTION_STEP.accounts, DIRECTION_STEP.locations]) assert.equal(stepOf(second, id).status, 'done', `${id}: approved in week one`)
+  assert.notEqual(stepOf(second, DIRECTION_STEP.devices).status, 'done', 'the device decision stays open, as it always has on the demo')
+  // The answers are the ones the demo already assumed.
+  const use = stepOf(second, DIRECTION_STEP.use)
+  assert.equal(q(use, 'partner').saved?.value, 'yes')
+  assert.equal(q(use, 'deviceCode').saved?.value, 'unused')
+  assert.equal(q(use, 'mailDevices').saved?.value, 'some')
+  assert.deepEqual(q(stepOf(second, DIRECTION_STEP.locations), 'workCountries').saved?.picked, week2.mapping.allowedCountries)
+})
+
 test('(g) the retired steps are gone as rows, and D3 shows even with no device sign-ins', () => {
   const f = fixture('demo')
   if (f.snapshot.scenarioEvidence) {
@@ -238,7 +258,6 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
     const s = r.steps.find((x) => x.goalId === goal)
     if (!s) continue
     assert.ok(!s.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), goal)
-    assert.ok(!Object.values(DIRECTION_STEP).some((id) => s.blockedBy.includes(id)), goal)
     assert.notEqual(readings.get(s.id)?.reason?.kind, 'decision', goal)
   }
   // A policy already enforced is never held by it: its question is asked where it is, as before.

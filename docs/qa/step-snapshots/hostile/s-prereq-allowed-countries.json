@@ -24,10 +24,6 @@
     {
       "label": "Allowed countries",
       "state": "Not Fully Read"
-    },
-    {
-      "label": "Recurring Travel Countries",
-      "state": "Not confirmed"
     }
   ],
   "channels": [

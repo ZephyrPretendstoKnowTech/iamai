@@ -1,27 +1,24 @@
 {
   "lane": "Ready",
   "substatus": "Decision",
-  "reason": "until phones and computers are decided",
+  "reason": "Not sure? Keep the suggestion. You can change it any time.",
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
   "rail": "Aug 31, 2026",
   "headings": [
-    "Why",
-    "Readiness",
-    "Implementation",
-    "Done when"
+    "About this Step",
+    "Questions",
+    "Completion Criteria"
   ],
   "tiles": [
     {
       "label": "Decision",
-      "state": "Choose device management"
+      "state": "Decision"
     }
   ],
   "channels": [
-    "Entra",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Est. Aug 31, 2026"
 }
