@@ -11,7 +11,7 @@
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import { cleanupRows } from './cleanup.ts'
 import type { CleanupRow } from './cleanup.ts'
-import { cleanupBasis, validCompletionDate, latestRecoveryTest, consolidationVerified, replacementPolicyBasis, namingVerified } from './cleanupDone.ts'
+import { cleanupBasis, validCompletionDate, latestRecoveryTest, consolidationVerified, replacementPolicyBasis, namingVerified, isLegacyManualDrillRecord } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import type { CleanupCheckpoint, CleanupDone } from './cleanupDone.ts'
 import type { ConfigurationFinding } from './types.ts'
@@ -164,7 +164,9 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     const latestConsolidation = r.kind === 'consolidation' ? records.filter(c => c.cleanup === 'consolidation' && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
     const latestNaming = r.kind === 'naming' ? records.filter(c => c.cleanup === 'naming' && validCompletionDate(c.date, now, c.timeZone) && c.at <= now).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
     const done = r.kind === 'naming' ? namingVerified(latestNaming, input.policies) && namingProposals.every(p => latestNaming?.namingChanges?.some(change => change.id === p.id)) ? latestNaming!.date : null : r.kind === 'hardening' ? input.hardeningVerified ? now : null : r.kind === 'consolidation' ? consolidationVerified(latestConsolidation, input.policies) && consolidationCandidateIds.every(id => [...(latestConsolidation?.retainedPolicyIds ?? []), ...(latestConsolidation?.retiredPolicyIds ?? []), latestConsolidation?.replacementPolicyId].includes(id)) ? latestConsolidation!.date : null : r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record && (r.kind !== 'alerting' || (record.outcome === 'passed' && !!record.recipient?.trim())) ? record.date : null
-    const latest = records.filter(c => c.cleanup === r.kind).sort((a,b) => a.at.localeCompare(b.at)).at(-1)
+    // The drill's recorded check is a legacy manual record only (overnight review
+    // B1): the automatic per-account records are Step 4's Sign-in evidence tile.
+    const latest = records.filter(c => c.cleanup === r.kind && (r.kind !== 'drill' || isLegacyManualDrillRecord(c))).sort((a,b) => a.at.localeCompare(b.at)).at(-1)
     const verification = done ? 'current' : latest && (r.kind === 'consolidation' || r.kind === 'naming') ? input.policies == null ? 'unread' : (r.kind === 'naming' ? !latest.namingChanges?.length : !latest.replacementPolicyId && latest.consolidationDecision !== 'retain-both') ? 'historical' : 'changed' : latest && (r.kind === 'drill' || r.kind === 'alerting') && !latest.outcome ? 'historical' : latest && input.accountBasis && accounts.some(id => !input.accountBasis?.[id]) ? 'unread' : latest && latest.basis !== basis ? 'changed' : 'incomplete'
     dated.push({ ...r, day: r.kind === 'drill' && input.early ? addWorkingDays(input.early, 2, ctx) : day, done, ...(latest ? { record: latest, verification, ...(verification === 'changed' ? { verificationReason: 'The recorded check does not cover the current accounts or configuration.' } : verification === 'unread' ? { verificationReason: 'The latest scan could not verify the configuration used for this check.' } : verification === 'historical' ? { verificationReason: 'The earlier date is retained; it does not record a successful scoped test.' } : verification === 'incomplete' ? { verificationReason: r.kind === 'naming' ? 'Save the approved names, rescan after renaming, and confirm the tooling check.' : r.kind === 'consolidation' ? 'Review the current candidate policies and save the outcome.' : 'Record a successful test for the current scope.' } : {}) } : {}) })
   }
