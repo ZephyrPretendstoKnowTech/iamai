@@ -19,7 +19,7 @@ test('an answered call passes its answer through, and its timer does not hold th
   await assert.rejects(withDeadline(Promise.reject(new Error('socket closed')), 60_000, 'x'), /socket closed/)
 })
 
-test('the evidence names what the page said, what it threw, what failed to load, the navigation and the dev server', () => {
+test('the evidence names what the page said, what it threw, what failed to load, the navigation and the server', () => {
   const out = pageEvidence({
     body: `  IAMAI\n\n  ${'x'.repeat(500)}`,
     pageErrors: ['one', 'two', 'three', 'four', 'five', 'six', 'TypeError: Cannot read properties of undefined\n  at Plan (Plan.tsx:1:1)'],
@@ -35,7 +35,7 @@ test('the evidence names what the page said, what it threw, what failed to load,
   assert.match(out, /\n {2}TypeError: Cannot read properties of undefined\n {4}at Plan \(Plan\.tsx:1:1\)\n/)
   assert.match(out, /--- browser load errors \(1\) ---\n {2}Failed to load resource: .*504/)
   assert.match(out, /--- last navigation ---\n {2}http:\/\/localhost:5199\/\?dev=1&mock=1#\/plan -> committed/)
-  assert.match(out, /--- dev server ---\n {2}.*optimized dependencies changed\. reloading$/)
+  assert.match(out, /--- server ---\n {2}.*optimized dependencies changed\. reloading$/)
 })
 
 test('an empty page, no errors and no navigation read as such; a null body leaves the page text out', () => {
@@ -43,7 +43,7 @@ test('an empty page, no errors and no navigation read as such; a null body leave
   assert.match(empty, /--- page text \(first 400 characters\) ---\n {2}\(empty\)/)
   assert.match(empty, /--- page errors \(0\) ---\n {2}\(none\)/)
   assert.match(empty, /--- last navigation ---\n {2}u -> net::ERR_CONNECTION_REFUSED/)
-  assert.match(empty, /--- dev server ---\n {2}\(none\)$/)
+  assert.match(empty, /--- server ---\n {2}\(none\)$/)
   const end = pageEvidence({ body: null, pageErrors: [], logErrors: [], navigation: null, viteTail: 'ready' })
   assert.doesNotMatch(end, /page text/)
   assert.match(end, /--- last navigation ---\n {2}\(none\)/)

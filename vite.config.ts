@@ -9,6 +9,7 @@ import { buildHome } from './scripts/build-home.ts'
 import { plannerCsp, withCsp } from './scripts/csp.ts'
 import { demoFacts } from './src/ui/demoFacts.ts'
 import { TOOL_PATH } from './scripts/toolPath.ts'
+import { SMOKE_MODE, smokeOutDir } from './scripts/smokeBuild.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
 // This middleware exists only in the local dev server; the shipped app is a
@@ -125,12 +126,15 @@ const BUILD_DATE = new Date().toISOString().slice(0, 10)
 // (TOOL_PATH), and every build — this one and scripts/assemble-site.mjs —
 // reads it from there.
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __TOOL_PATH__: JSON.stringify(TOOL_PATH),
     __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
     __BUILD_DATE__: JSON.stringify(BUILD_DATE),
+    // The synthetic tenant (?dev=1&mock=1, ui/App.tsx): the dev server and the
+    // smoke's build (scripts/smokeBuild.ts), never the published bundle.
+    __MOCK_TENANT__: JSON.stringify(command === 'serve' || mode === SMOKE_MODE),
   },
   // Derived from TOOL_PATH so the base and the output folder cannot disagree.
   // VITE_BASE still overrides it for hosting that is not the custom domain
@@ -138,7 +142,13 @@ export default defineConfig({
   // the older name. Routing is hash-based and the baseline index fetches by
   // absolute URL, so nothing else has to change between them.
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
-  build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
+  // The smoke's build goes to its own folder (scripts/smokeBuild.ts) and writes a
+  // manifest, so the smoke can name the chunk a source module was built into
+  // (scripts/smoke.mjs DEMO_CHUNK).
+  build:
+    mode === SMOKE_MODE
+      ? { outDir: smokeOutDir(Number(process.env.SMOKE_PORT) || 0), emptyOutDir: true, manifest: true }
+      : { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
   plugins: [react(), spikeCapture(), productTitle(), contentSecurityPolicy(), homeTheme(), demoFactsModule()],
   // The pages the dev server serves, and nothing else: left alone, the dependency
   // scan crawls every HTML file in the repository (archive/, docs/design/, a
@@ -146,4 +156,4 @@ export default defineConfig({
   optimizeDeps: { entries: ['index.html', 'dev/pilot.html'] },
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
-})
+}))
