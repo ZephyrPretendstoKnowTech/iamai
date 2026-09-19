@@ -19,6 +19,7 @@ export type MethodKind =
   | 'passkey'
   | 'fido2'
   | 'windowsHelloForBusiness'
+  | 'platformCredential'
   | 'phone'
   | 'softwareOath'
   | 'temporaryAccessPass'
@@ -161,6 +162,7 @@ const MFA_CAPABLE_KINDS: MethodKind[] = [
   'passkey',
   'fido2',
   'windowsHelloForBusiness',
+  'platformCredential',
   'phone',
   'softwareOath',
 ]

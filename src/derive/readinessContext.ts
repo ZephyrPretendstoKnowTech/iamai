@@ -11,7 +11,7 @@ import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, PASSKEY_DEFA
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
 import { passkeyProfilesFor, passkeyTargetsReach, usesPasskeyProfiles } from '../roadmap/passkeyCompatibility.ts'
 import type { GroupMembers } from '../coverage/population.ts'
-import { READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
+import { PLATFORM_CREDENTIAL_AAGUID, READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
 import type { PasskeyPolicy, ReadinessContext } from '../scoring/phishingResistant.ts'
 
 const DAY = 86_400_000
@@ -135,6 +135,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
   const applied = reading.state === 'inPlace'
   const modelNames = new Map<string, string>([...PASSKEY_DEFAULT_MODELS, ...models].map((m) => [m.aaguid.toLowerCase(), m.name]))
   for (const a of WINDOWS_HELLO_AAGUIDS) modelNames.set(a, 'Windows Hello')
+  modelNames.set(PLATFORM_CREDENTIAL_AAGUID, 'Platform Credential for macOS')
   const deviceOwners = new Map<string, string[]>()
   for (const d of snapshot.devices ?? []) if (d.deviceId) deviceOwners.set(d.deviceId.toLowerCase(), d.ownerIds)
   // Directory trustType: AzureAd is joined, ServerAd hybrid joined, Workplace registered.

@@ -315,7 +315,7 @@ test('every sentence the page carries is 25 words or fewer: the goal line, the d
   assert.deepEqual(over, [], 'a sentence on MFA Readiness is over the 25-word rule')
   // The three the owner approved in the pack and then asked to trim keep their meaning.
   const R = pages.readiness as unknown as { lead: unknown; define: string }
-  assert.match(R.define, /^Ready means a phishing-resistant sign-in \(passkey, security key, Windows Hello or certificate\) confirmed in the last 30 days on every kind of device they use\. /)
+  assert.match(R.define, /^Ready means a phishing-resistant sign-in \(passkey, security key, Windows Hello, Platform SSO or certificate\) on every kind of device they use, within 30 days\. /)
   assert.match(JSON.stringify(R.lead), /Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
   assert.match(JSON.stringify(W.groups.method.body), /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
 })

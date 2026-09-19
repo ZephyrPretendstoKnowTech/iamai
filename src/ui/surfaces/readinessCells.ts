@@ -297,7 +297,7 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.
     const used = c.unused === 'never' ? P.unused.never : c.unused === 'stale' && c.lastUsed ? fillText(P.unused.stale, { date: monthDay(c.lastUsed) }) : c.lastUsed ? fillText(P.lastUsedDate, { date: monthDay(c.lastUsed) }) : null
     const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
-    return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
+    return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' || c.cls === 'platformCredential' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
 }
 

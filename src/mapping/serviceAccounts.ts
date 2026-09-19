@@ -17,7 +17,7 @@ export const EXCHANGE_PLANS = new Set([
   '176a09a6-7ec5-4039-ac02-b2791c6ba793', // EXCHANGE_S_ARCHIVE_ADDON
 ])
 
-const MFA_KINDS = new Set(['microsoftAuthenticator', 'passkey', 'fido2', 'windowsHelloForBusiness', 'phone', 'softwareOath', 'temporaryAccessPass'])
+const MFA_KINDS = new Set(['microsoftAuthenticator', 'passkey', 'fido2', 'windowsHelloForBusiness', 'platformCredential', 'phone', 'softwareOath', 'temporaryAccessPass'])
 
 export type ServiceAccountCandidate = {
   id: string

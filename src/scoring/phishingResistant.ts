@@ -35,18 +35,20 @@ import type { AuthMethodSummary, MethodKind } from './mfaViability.ts'
 // ---------------------------------------------------------------- vocabulary
 
 /** A method as readiness reasons about it: the class a registration, a method row or a sign-in names. */
-export type MethodClass = 'passkey' | 'windowsHello' | 'certificate' | 'authenticator' | 'oath' | 'phone'
+export type MethodClass = 'passkey' | 'windowsHello' | 'platformCredential' | 'certificate' | 'authenticator' | 'oath' | 'phone'
 
 /**
  * The classes that satisfy the Phishing-resistant MFA strength alone: a passkey
- * or FIDO2 security key (fido2), Windows Hello for Business, and a certificate
- * used as multifactor. The Windows Hello PIN or biometric is the local gesture
- * that unlocks the credential, not the credential.
+ * or FIDO2 security key (fido2), Windows Hello for Business, a Mac's Platform SSO
+ * credential (Platform Credential for macOS, which the strength represents as
+ * Windows Hello for Business), and a certificate used as multifactor. The Windows
+ * Hello PIN or biometric is the local gesture that unlocks the credential, not
+ * the credential.
  */
-export const QUALIFYING_CLASSES: readonly MethodClass[] = ['passkey', 'windowsHello', 'certificate']
+export const QUALIFYING_CLASSES: readonly MethodClass[] = ['passkey', 'windowsHello', 'platformCredential', 'certificate']
 
 /** The order methods are listed in: the qualifying classes first, the portable one first. */
-export const CLASS_ORDER: readonly MethodClass[] = ['passkey', 'windowsHello', 'certificate', 'authenticator', 'oath', 'phone']
+export const CLASS_ORDER: readonly MethodClass[] = ['passkey', 'windowsHello', 'platformCredential', 'certificate', 'authenticator', 'oath', 'phone']
 
 export function isQualifying(c: MethodClass): boolean {
   return QUALIFYING_CLASSES.includes(c)
@@ -64,6 +66,7 @@ const CLASS_BY_KIND: Partial<Record<MethodKind, MethodClass>> = {
   passkey: 'passkey',
   fido2: 'passkey',
   windowsHelloForBusiness: 'windowsHello',
+  platformCredential: 'platformCredential',
   microsoftAuthenticator: 'authenticator',
   softwareOath: 'oath',
   phone: 'phone',
@@ -78,6 +81,7 @@ export function classOfKind(kind: MethodKind): MethodClass | null {
 export function classOfRegistered(name: string): MethodClass | null {
   if (name.startsWith('passKey') || name === 'fido2SecurityKey') return 'passkey'
   if (name === 'windowsHelloForBusiness') return 'windowsHello'
+  if (name === 'platformCredential' || name === 'macOsSecureEnclaveKey') return 'platformCredential'
   if (name === 'x509Certificate') return 'certificate'
   if (name.startsWith('microsoftAuthenticator')) return 'authenticator'
   if (name === 'softwareOneTimePasscode' || name === 'hardwareOneTimePasscode') return 'oath'
@@ -112,12 +116,24 @@ export function classOfProofMethod(method: string): MethodClass | null {
   const m = method.trim()
   if (!m || /^(password|previously satisfied|satisfied by token|mfa|multifactor authentication)$/i.test(m)) return null
   if (/passkey|fido|security key/i.test(m)) return 'passkey'
+  if (/platform credential|platform sso|secure enclave/i.test(m)) return 'platformCredential'
   if (/windows hello/i.test(m)) return 'windowsHello'
   if (/certificate|x\.?509/i.test(m)) return 'certificate'
   if (/authenticator|notification|phone ?app|mobile app|passwordless phone/i.test(m)) return 'authenticator'
   if (/oath|verification code|one-?time|hardware token|software token/i.test(m)) return 'oath'
   if (/text message|\bsms\b|voice|phone call/i.test(m)) return 'phone'
   return null
+}
+
+/**
+ * The class a proof stands for on the platform it was made on. Microsoft Learn
+ * (Platform Credential for macOS, 2026-03-27): the Mac's Platform SSO credential
+ * is "represented in authentication strength under Windows Hello For Business",
+ * so a macOS sign-in whose method reads as Windows Hello for Business is that
+ * Mac's built-in credential, never a Windows Hello for Business one.
+ */
+export function proofClassOn(cls: MethodClass, os: Platform | null): MethodClass {
+  return cls === 'windowsHello' && os === 'macOS' ? 'platformCredential' : cls
 }
 
 // ------------------------------------------------------------------- evidence
@@ -176,9 +192,9 @@ export function readSignIn(row: SignInForProof): SignInReading {
   const named = detail && !NOT_A_FACTOR.test(detail) ? [...steps, detail] : steps
   const factors = named.map((m) => ({ m, c: classOfProofMethod(m) })).filter((x): x is { m: string; c: MethodClass } => x.c !== null)
   const mfaRequired = row.authenticationRequirement === 'multiFactorAuthentication'
-  const credential = factors.find((x) => x.c === 'passkey' || x.c === 'windowsHello')
+  const credential = factors.find((x) => x.c === 'passkey' || x.c === 'windowsHello' || x.c === 'platformCredential')
   let proof: ProofRecord | null = null
-  if (credential) proof = { cls: credential.c, os: platform, at, method: credential.m }
+  if (credential) proof = { cls: proofClassOn(credential.c, platform), os: platform, at, method: credential.m }
   else if (mfaRequired && factors.length > 0) {
     const cert = factors.every((x) => x.c === 'certificate')
     const f = cert ? factors[0] : (factors.find((x) => x.c !== 'certificate') ?? factors[0])
@@ -422,6 +438,18 @@ export const AUTHENTICATOR_AAGUIDS: readonly string[] = ['90a3ccdf-635c-4729-a24
  */
 export const WINDOWS_HELLO_AAGUIDS: readonly string[] = ['08987058-cadc-4b81-b6e1-30de50dcbe96', '9ddd1817-af5a-4672-a2b9-3e3dd95000a9', '6028b017-b1d4-4c02-b4b3-afcdafc96bb2']
 export const WINDOWS_HELLO_AAGUID = WINDOWS_HELLO_AAGUIDS[0]
+/**
+ * Platform Credential for macOS (the Mac's Platform SSO credential). Microsoft
+ * Learn: a tenant with passkey key restrictions must allow it, as it allows the
+ * Windows Hello models above.
+ */
+export const PLATFORM_CREDENTIAL_AAGUID = '7fd635b3-2ef9-4542-8d9d-164f2c771efc'
+
+/** Whether the tenant's passkey key restrictions let a Mac's Platform SSO credential sign in: its model must be allowed. */
+export function platformCredentialAllowed(p: PasskeyPolicy): Verdict {
+  // Only the model restriction weighs here; the credential is the Mac's, not a passkey the passkey method registers.
+  return passkeyAllowed({ ...p, enabled: p.enabled === false ? true : p.enabled, reach: undefined }, PLATFORM_CREDENTIAL_AAGUID, null, 'use')
+}
 
 /**
  * Whether the tenant's current passkey settings let this model and storage sign in
@@ -511,7 +539,7 @@ const versionMajor = (v: string | null): number | null => {
 }
 
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
-function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined, pk: PasskeyPolicy): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
+function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined, pk: PasskeyPolicy, holdsPlatformCredential = false): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
   const phonePasskey = passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(pk, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
   const fallback: SignInOption = phonePasskey ? 'phonePasskey' : 'securityKey'
   if (d.os === 'iOS' || d.os === 'Android') {
@@ -537,6 +565,11 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'notJoined' }
   }
   if (d.os === 'macOS') {
+    // A Platform SSO credential held: the Mac's own built-in credential, where the key restrictions allow its model.
+    if (holdsPlatformCredential) {
+      const allowed = platformCredentialAllowed(pk)
+      return { best: 'platformSso', builtIn: true, possible: allowed, whyNot: allowed === 'no' ? 'notAllowed' : null }
+    }
     if (pk.attestation === false && pk.restriction === 'unrestricted' && pk.reach !== 'unknown') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: pk.attestation === true ? 'attestation' : null }
   }
@@ -573,8 +606,8 @@ const FORM_OF: Partial<Record<SignInOption, PasskeyForm>> = { authenticatorPassk
  * Where a credential's form can't be told (no AAGUID), it is not held against them.
  */
 function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, cls: MethodClass, forms: ReadonlySet<PasskeyForm> = new Set(['unknown'])): boolean {
-  // Windows Hello is built into the device it signed in on, whatever join state the record reported.
-  if (cls === 'windowsHello') return true
+  // Windows Hello, and a Mac's Platform SSO credential, are built into the device they signed in on, whatever join state the record reported.
+  if (cls === 'windowsHello' || cls === 'platformCredential') return true
   // Nothing built in, or the built-in option is impossible here: Ready is as far as this device goes.
   if (!builtIn || possible === 'no') return false
   if (best === 'windowsHello') return false
@@ -621,7 +654,9 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const apps = input.signIns.apps ?? []
   const automated = apps.length > 0 && apps.every((a) => SCRIPTING.test(a))
   const inWindow = (at: string): boolean => at >= ctx.windowStart
-  const current = input.signIns.proofs ?? []
+  // A proof recorded before macOS Windows Hello sign-ins were read as Platform SSO reads as one now (proofClassOn).
+  const onPlatform = (p: ProofRecord): ProofRecord => (proofClassOn(p.cls, p.os) === p.cls ? p : { ...p, cls: proofClassOn(p.cls, p.os) })
+  const current = (input.signIns.proofs ?? []).map(onPlatform)
 
   // The devices used inside the window, before any method is weighed: an unreadable
   // method list still shows where the person signs in, never "no sign-in".
@@ -638,7 +673,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     : d.os === 'Windows' && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' }
     : d
   const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
-  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId, pk), proof: null, covered: false, seamless: false })
+  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId, pk, inv?.classes.has('platformCredential') === true), proof: null, covered: false, seamless: false })
 
   if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
   // The method rows never list certificates; where the registration report has no
@@ -659,7 +694,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   }
   const windowProofs = latestProofs(current.filter((p) => inWindow(p.at) && stands(p)))
   // Kept proof is shown only for a credential that existed when it was made (the same chronology as the window's proof).
-  const retained = latestProofs((history?.proofs ?? []).filter((p) => isQualifying(p.cls) && stands(p)))
+  const retained = latestProofs((history?.proofs ?? []).map(onPlatform).filter((p) => isQualifying(p.cls) && stands(p)))
   const latestOf = (cls: MethodClass): ProofLine | null => {
     const w = windowProofs.filter((p) => p.cls === cls).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
     if (w) return { cls, os: w.os, at: w.at, retained: false }
@@ -683,7 +718,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const credentials: CredentialReading[] = inv.rows.map(({ cls, m, reg }) => {
     const aaguid = m?.aaGuid ? m.aaGuid.toLowerCase() : null
     const seen = seenWorking(cls)
-    const allowedNow: Verdict = cls !== 'passkey' ? 'yes' : seen ? 'yes' : passkeyAllowed(pk, aaguid, m?.passkeyType ?? null, 'use')
+    // A passkey, and a Mac's Platform SSO credential, are usable only where the tenant's key restrictions allow their model.
+    const allowedNow: Verdict = seen ? 'yes' : cls === 'passkey' ? passkeyAllowed(pk, aaguid, m?.passkeyType ?? null, 'use') : cls === 'platformCredential' ? platformCredentialAllowed(pk) : 'yes'
     if (cls === 'passkey') {
       forms.add(passkeyForm(m, reg ?? null))
       if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
@@ -694,8 +730,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       cls,
       key: m?.id ?? null,
       name: m?.displayName ?? null,
-      aaguid,
-      model: aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null),
+      aaguid: cls === 'platformCredential' ? PLATFORM_CREDENTIAL_AAGUID : aaguid,
+      model: cls === 'platformCredential' ? (ctx.modelNames.get(PLATFORM_CREDENTIAL_AAGUID) ?? null) : aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null),
       created: m?.createdDateTime ?? null,
       allowedNow,
       afterStep3,
@@ -785,7 +821,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     // Until Step 3 is in place any passkey counts (owner decision): the key is confirmed
     // like any other, and the off-list model is flagged on the credential and, once Ready, as a recommendation.
     const cls = qualifying[0]
-    const os = (cls === 'windowsHello' ? devices.find((d) => d.os === 'Windows') : devices[0])?.os ?? null
+    const os = (cls === 'windowsHello' ? devices.find((d) => d.os === 'Windows') : cls === 'platformCredential' ? devices.find((d) => d.os === 'macOS') : devices[0])?.os ?? null
     return { ...base, ...common, devices, state: 'confirm', usedRecently, next: { kind: 'confirm', cls, os } }
   }
   const missing = devices.filter((d) => !d.covered)
@@ -795,6 +831,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     // a phone too old for it; and only where every gap waits on a tenant setting, Blocked.
     const holdsFor = (d: DeviceReading): MethodClass | null => {
       if (d.type === 'phone') return usableForms.has('authenticator') || (usableForms.has('synced') && d.best === 'syncedPasskey') ? 'passkey' : null
+      // A Mac with Platform SSO set up: sign in once with it there.
+      if (d.os === 'macOS' && qualifying.includes('platformCredential')) return 'platformCredential'
       if (d.builtIn && d.possible !== 'no') return null
       return qualifying.includes('passkey') ? 'passkey' : qualifying.includes('certificate') ? 'certificate' : null
     }
