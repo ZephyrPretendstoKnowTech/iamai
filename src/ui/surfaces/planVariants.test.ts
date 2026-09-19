@@ -359,30 +359,29 @@ const INVENTORY: string[] = [
   'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · found · no-fix · one-policy · who-none', // micro/s-ladder-guest-review
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-verify-mfa
   'ladder · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro+set-aside/s-ladder-legacy-auth-inventory
-  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-confirm-workloads
+  'decision · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-direction-use
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-break-glass
   'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-per-user-mfa
   'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-security-defaults
   'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-check-dormant-accounts
   'object · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-service-accounts-group
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
   'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // small/s-goal-block-device-code
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-inforcer-mfa
   'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // small/s-goal-guests-mfa
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-inforcer-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-guests-mfa
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // getiamai/s-goal-block-legacy-auth
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
-  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // large/s-prereq-device-plan
   'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // large/s-goal-intune-enrollment-reauth
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
@@ -390,13 +389,11 @@ const INVENTORY: string[] = [
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-block-legacy-auth
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo/s-goal-mfa-all-users
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
-  'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
+  'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
+  'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
-  'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known',
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-unknown',
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · members · who-unknown',
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-register-info-protected
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-admin-session
@@ -404,6 +401,8 @@ const INVENTORY: string[] = [
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-token-protection
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
+  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo-week2+no-ca/s-goal-block-legacy-auth
+  'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {
@@ -693,7 +692,7 @@ test('§6a Portal, JSON and PowerShell are one authority chain the presentation 
   // (`implementation.offered`, which is roadmap/operations.ts's
   // `implementationOffered`). A surface that decided a channel for itself is
   // how the screen came to instruct a change the artifacts refused to describe.
-  assert.ok(step.includes("const channels = step.workflowChoices ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []"), "the step no longer gates its channels on the contract's one answer")
+  assert.ok(step.includes("const channels = step.directionQuestions ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []"), "the step no longer gates its channels on the contract's one answer")
   assert.ok(step.includes("if (machineOffered) out.push('ps', 'json')"), 'the machine channels are offered without Foundation A')
   assert.equal(/implementationOffered|jsonOffered/.test(sections.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the frame components ask Foundation A themselves')
   // And the bodies themselves are never composed here: the JSON is stepJson's
