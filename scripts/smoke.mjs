@@ -926,14 +926,16 @@ try {
     evaluate(
       `(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const v = await new Promise((r) => { const q = tx.objectStore('plan').get('demo-sample-tenant'); q.onsuccess = () => r(q.result) }); db.close(); if (!v || typeof v !== 'object') return null; const d = v.decisions ?? v; return JSON.stringify({ skips: d.skips ?? null, startDate: d.startDate ?? null, stepDecisions: d.stepDecisions ?? null }) })()`,
     )
-  // A decision: the service-accounts picker's Save.
+  // A decision: the service-accounts picker, asked in the Direction step
+  // Identify Service and Shared Accounts and saved by its Approve answers.
   await demoGo('plan')
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   let decided = false
   let decideNote = ''
-  if (await openRow('/Service Accounts Group/')) {
-    decideNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('|')`)
-    decided = await clickText('/^Save$/', 'main.page .step-body .decision')
+  if (await openRow('/Identify Service and Shared Accounts/')) {
+    decideNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim() + (b.disabled ? ' (disabled)' : '')).join('|')`)
+    const hasPicker = await evaluate(`!!document.querySelector('main.page .step-body .direction-question[data-question="serviceAccounts"] .direction-question-picker')`)
+    decided = hasPicker && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .step-body .direction-section'))
     await sleep(400)
   }
   check('Demo: a picker decision is saved', decided, decideNote || openNote)
@@ -976,7 +978,7 @@ try {
     // The decision is looked for by key, not by position: the record also holds
     // the sample technician's own decisions (the emergency accounts), and which
     // one JSON writes first is not what this check is about.
-    typeof recordBefore === 'string' && /"stepDecisions":\{/.test(recordBefore) && /"s-prereq-service-accounts-group":/.test(recordBefore) && /"skips":\{[^}]*"s-goal-guests-mfa"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
+    typeof recordBefore === 'string' && /"stepDecisions":\{/.test(recordBefore) && /"s-direction-accounts":\{[^{}]*"answers":\{[^}]*"serviceAccounts:picked":"[^"]+"/.test(recordBefore) && /"skips":\{[^}]*"s-goal-guests-mfa"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
     String(recordBefore).slice(0, 200),
   )
   await demoGo('plan')
@@ -1006,7 +1008,7 @@ try {
   const demoPlanJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return window.__dl.length > ${dlBefore} && d && d.blob ? await d.blob.text() : null })()`)
   check(
     'Demo: Save plan file carries the tenant id, the decision, the skip and the start',
-    typeof demoPlanJson === 'string' && /"id":\s*"demo-sample-tenant"/.test(demoPlanJson) && /"s-prereq-service-accounts-group"/.test(demoPlanJson) && /"s-goal-guests-mfa"/.test(demoPlanJson) && /2026-10-05/.test(demoPlanJson),
+    typeof demoPlanJson === 'string' && /"id":\s*"demo-sample-tenant"/.test(demoPlanJson) && /"s-direction-accounts":\s*\{[^{}]*"answers":\s*\{[^}]*"serviceAccounts:picked":\s*"[^"]+"/.test(demoPlanJson) && /"s-goal-guests-mfa"/.test(demoPlanJson) && /2026-10-05/.test(demoPlanJson),
   )
   const alertsBefore = await evaluate(`window.__alerts.length`)
   const loaded =
