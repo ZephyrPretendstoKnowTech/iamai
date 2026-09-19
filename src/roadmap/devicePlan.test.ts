@@ -53,6 +53,8 @@ const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
 /** The demo's exclusions group, as its technician would confirm it on the step. */
 const EXCLUSIONS_GROUP = [...fixture('demo').groups].find(([, g]) => g.displayName === 'Core - Exclusions')![0]
 const DEVICE = PREREQ_STEP_ID.devicePlan
+/** Direction's D3, which asks the device decision now (roadmap/direction.ts). */
+const D3 = 's-direction-devices'
 const labels = questionLabels(DEVICE)
 
 /** The decision as the walk makes it on the demo: phones protected by their apps, computers hybrid-joined. */
@@ -67,22 +69,23 @@ test('open: the step asks, phones are out of readiness, and only the device step
   assert.equal(devicePlanOf(m), null)
   assert.deepEqual(deviceScopeOf(null), { phones: false, computers: true, hybridCounts: false })
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
-  const ds = r.steps.find((s) => s.id === DEVICE)
-  assert.ok(ds, 'the device decision is a Preparation step on the demo')
+  // The device decision is Direction's D3 (roadmap/direction.ts); the old step is retired.
+  assert.equal(r.steps.some((s) => s.id === DEVICE), false)
+  const ds = r.steps.find((s) => s.id === D3)
+  assert.ok(ds, 'the device decision is asked on the demo')
   assert.equal(ds.phase, 0)
   // Open, it waits on a person: Needs decision, never Ready (owner, 2026-09-11).
   assert.equal(ds.status, 'blocked')
   assert.equal(ds.state.condition, 'needs-decision')
-  assert.ok(ds.population.active > 0, 'it names the people on phones and unjoined computers')
-  const ex = stepVars(ds, ctxFor(f, r, m))
-  assert.ok((ex.phoneUsers as string[]).length >= 2, 'the demo signs in from two phones')
+  assert.ok((f.snapshot.scenarioEvidence?.phoneSignIns?.people.length ?? 0) >= 2, 'the demo signs in from two phones')
+  assert.match(ds.directionQuestions!.find((q) => q.key === 'phones')!.today ?? '', /^Today: \d+ people signed in from phones/)
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)
     assert.ok(s, `${goalId}: on the plan`)
-    assert.ok(s.blockedBy.includes(DEVICE), `${goalId}: waits on the device decision`)
-    assert.ok(s.blockers.some((b) => b.kind === 'step' && b.stepId === DEVICE))
+    assert.ok(s.blockedBy.includes(D3), `${goalId}: waits on the device decision`)
+    assert.ok(s.blockers.some((b) => b.kind === 'decision' && b.label === `direction:${D3}`))
   }
-  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId)) assert.ok(!s.blockedBy.includes(DEVICE), `${s.id}: does not wait on the device decision`)
+  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId)) assert.ok(!s.blockedBy.includes(D3), `${s.id}: does not wait on the device decision`)
   // Device readiness against the open decision: compliant computers only, phones out.
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
   const all = r.viability.map((v) => v.userId)
@@ -99,15 +102,16 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const f = fixture('demo')
   // The baseline's compliant-device policy excludes the author's service-accounts
   // group, so this tenant needs one before the policy can be written at all.
-  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
+  // D3's third answer, device exceptions, is new with Direction: saved None here.
+  const m = { ...applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [DEVICE]: { at: f.snapshot.asOf, answers: { phoneManagement: 'unmanaged', phoneAppProtection: 'required', computerManagement: 'hybrid' } }, [D3]: { at: f.snapshot.asOf, answers: { deviceExceptions: 'none' } } }), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
-  const ds = r.steps.find((s) => s.id === DEVICE)!
+  const ds = r.steps.find((s) => s.id === D3)!
   assert.equal(ds.status, 'done', 'all separate management choices were confirmed')
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
-  assert.ok(!compliant.blockedBy.includes(DEVICE), 'nothing waits on a made decision')
+  assert.ok(!compliant.blockedBy.includes(D3), 'nothing waits on a made decision')
   assert.notEqual(compliant.status, 'skipped', 'computers stay in the policy')
   const body = JSON.parse(compliant.action.json ?? '{}') as { conditions?: { platforms?: { includePlatforms?: string[]; excludePlatforms?: string[] } } }
   assert.deepEqual(body.conditions?.platforms, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }, 'the JSON scopes phones out')
@@ -118,7 +122,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.match(platforms, /Include: Any device; Exclude: Android, iOS/)
   assert.match(platforms, /the baseline's version: no such condition/, 'the deviation is shown beside the baseline\'s version')
   const enrolment = r.steps.find((x) => x.goalId === INTUNE_ENROLMENT_GOAL)!
-  assert.ok(!enrolment.blockedBy.includes(DEVICE))
+  assert.ok(!enrolment.blockedBy.includes(D3))
   assert.notEqual(enrolment.status, 'skipped', 'the enrolment step follows the compliant-device one')
   assert.equal(deviceStepDoesntApply(APP_PROTECTION_GOAL, m), null, 'phones protected by their apps: the app-protection policy applies')
   // Readiness against the answer: hybrid-joined computers count as managed.

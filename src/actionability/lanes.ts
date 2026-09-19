@@ -32,6 +32,8 @@ export type StepKind = 'policy' | 'object' | 'decision'
 /** Caller-supplied abnormal blockers the graph cannot carry (§15 rows without an edge, or a
  *  conflict / mapping the scan found on the step itself rather than on a listed prerequisite). */
 export type ObservedBlockerKind = 'license/platform' | 'fact' | 'missingObject' | 'unsupported' | 'sourceConflict' | 'baselineSafetyConflict' | 'sourceMapping'
+  /** A Direction answer the step depends on and nobody has saved (roadmap/direction.ts gateOnDirection). */
+  | 'decision'
 
 export type ObservedBlocker = {
   kind: ObservedBlockerKind

@@ -203,9 +203,10 @@ export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>
 /**
  * The conditional inputs (U28): questions whose answer changes the plan and that
  * the scan can only suggest — the mail-sending devices, device code sign-in,
- * partner access, people who travel. Each sits on its step and persists as
- * questionAnswers[stepId:label]; evidence may pre-fill one, and only a Save
- * records it, "None" included.
+ * partner access. Each is asked in Decide Your Tenant's Direction (roadmap/
+ * direction.ts) and persists as questionAnswers[stepId:label] on the step it
+ * changes; evidence may pre-fill one, and only an approval records it, "None"
+ * included. Until then the step it changes is short of Completed.
  */
 /** The registration campaign, whose special-care list a person confirms (S-MC-2). */
 export const SPECIAL_CARE_STEP_ID = 's-verify-mfa'
@@ -216,7 +217,6 @@ const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; saved?: (
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
   { stepId: QUESTION_STEP.deviceCode, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
-  { stepId: QUESTION_STEP.travel, kind: 'question' },
   // The campaign's special-care people (B10 P0-10, S-MC-2, A6): saved once a
   // person's Save confirms the list, an empty one included.
   { stepId: SPECIAL_CARE_STEP_ID, kind: 'decision', saved: (mapping) => Array.isArray(mapping.specialCareConfirmed) },

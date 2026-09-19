@@ -29,7 +29,8 @@ import { schedulingWords } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
-import { content, pages } from '../../content/content.ts'
+import { content, directionWords, pages } from '../../content/content.ts'
+import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, membersOf, pinnedGroups } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
@@ -246,6 +247,7 @@ export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf
 export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
   if (r.reason?.id === 'after-security-rollout') return 'After security rollout'
   if (r.reason === null) return BOARD.lanes.onHold
+  if (waitsOnDirection(r)) return directionWords.waiting
   // A healthy prerequisite that is still more than one action away: the wait reads as Up Next's does.
   if (r.reason.kind === 'step' && !r.reason.abnormal) {
     const title = titleOf(r.reason.id)
@@ -259,9 +261,13 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
   return kind
 }
 
+/** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */
+const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decision' && isDirectionStep(r.reason.id)
+
 /** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
 export function holdGroupOf(r: LaneReading): string {
   if (r.reason?.id === 'after-security-rollout') return 'After Security Rollout'
+  if (waitsOnDirection(r)) return directionWords.waiting
   if (r.reason?.kind === 'step' && !r.reason.abnormal) return WHEN.afterPrerequisites
   return r.reason === null ? BOARD.lanes.onHold : BOARD.blockers[r.reason.kind]
 }
@@ -275,7 +281,10 @@ export function holdGroupOf(r: LaneReading): string {
  */
 export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
   if (!r) return []
-  return r.blockers.map((b) => ({ kind: b.kind, id: b.id, abnormal: b.abnormal, label: BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? titleOf(b.id) : null }))
+  return r.blockers.map((b) => {
+    const direction = b.kind === 'decision' && isDirectionStep(b.id)
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null }
+  })
 }
 
 /**

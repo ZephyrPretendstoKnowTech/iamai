@@ -17,7 +17,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { stepById } from '../../content/content.ts'
+import { directionWords, stepById } from '../../content/content.ts'
 import { laneReadings } from './planLanes.ts'
 import {
   BOARD,
@@ -169,7 +169,8 @@ test('On Hold groups by the primary blocker label and nothing else; the other tw
       assert.match(g.key, /^hold-\d+$/)
       for (const i of g.items) assert.equal(i.hold, g.label, `${name}/${i.id}: grouped under "${g.label}" while its blocker reads "${i.hold}"`)
       // A healthy deeper prerequisite holds too (owner's status contract), under the wait's own heading.
-      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold || g.label === WHEN.afterPrerequisites, `${name}: "${g.label}" is not a blocker label`)
+      // A wait on a Direction answer reads as one, whichever Direction step asks it (roadmap/direction.ts).
+      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold || g.label === WHEN.afterPrerequisites || g.label === directionWords.waiting, `${name}: "${g.label}" is not a blocker label`)
     }
     for (const tab of ['ready', 'upNext'] as const) {
       const keys = groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)

@@ -33,7 +33,9 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
+import { app, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
+import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
+import { directionBlockerStep, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -703,6 +705,13 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })
       continue
     }
+    // A Direction answer this policy is written from (roadmap/direction.ts): the
+    // fix is to answer it there. An enforced policy is not held by one.
+    const direction = directionBlockerStep(b)
+    if (direction !== null) {
+      if (step.state.lifecycle !== 'enforced') out.push({ key: `direction:${direction}`, text: fillText(directionWords.waitingNote, { step: directionTitleOf(direction) }) })
+      continue
+    }
     // A decision waiting on this step's own person is its What to do, not a fix:
     // listing "until phones and computers are decided" under Fix before
     // continuing restated the question the step is asking (owner, 2026-09-11).
@@ -1317,6 +1326,10 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
       if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: t.mapping, tone: 'warn', value: title, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
       return { key: f.key, label: prerequisiteLabel(id) ?? t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
     }
+    if (kind === 'direction' && isDirectionStep(rest.join(':'))) {
+      const id = rest.join(':') as Parameters<typeof directionTitleOf>[0]
+      return { key: f.key, label: directionWords.waiting, tone: 'warn', value: directionTitleOf(id), note: f.text, link: stepLink(id, directionTitleOf(id)) }
+    }
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
     if (kind === 'check') return { key: f.key, label: t.check, tone: 'warn', value: f.text, note: null }
@@ -1350,6 +1363,13 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       continue
     }
     if ((b.kind === 'sourceConflict' || b.kind === 'baselineSafetyConflict') && present.has('baseline')) continue
+    // A Direction answer the step waits on (roadmap/direction.ts): the tile links to the Direction step that asks it.
+    if (b.kind === 'decision' && isDirectionStep(b.id)) {
+      if (present.has(`direction:${b.id}`)) continue
+      const title = directionTitleOf(b.id)
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: title, note: fillText(directionWords.waitingNote, { step: title }), link: stepLink(b.id, title) })
+      continue
+    }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
     if (b.kind === 'missingObject' && [...present].some((k) => k.startsWith('missing:'))) continue
     out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: null })

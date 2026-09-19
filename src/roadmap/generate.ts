@@ -1,7 +1,7 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { directionSteps } from './direction.ts'
+import { directionSteps, gateOnDirection } from './direction.ts'
 import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -2466,7 +2466,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Decide Your Tenant's Direction (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
-    steps.push(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
+    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, input.cleanupRecord?.records ?? [], input.groupMembers, input.reviewNow ?? snapshot.asOf, new Set(campaignIds(viability, snapshot, mapping)))
@@ -2482,6 +2482,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { satisfied: complete, inPlace: complete })
     if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
   }
+  // Per-answer gating (roadmap/direction.ts): a policy waits only on the
+  // Direction answers it depends on, before the schedule reads what is held.
+  gateOnDirection(steps)
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,
