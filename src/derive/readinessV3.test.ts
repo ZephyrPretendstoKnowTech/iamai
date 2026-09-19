@@ -231,4 +231,10 @@ test('the answer never sets a Seamless target a tenant cannot reach: personal co
   // Nobody seamless, and no device offers one (personal PCs, attestation on): said plainly, with no target.
   const noneBuiltIn = notYet.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.map((d) => ({ ...d, builtIn: false })) } } : r))
   assert.equal(goalLine(noneBuiltIn), W.seamlessNotPossible)
+  // Live GetIAMAI: a seamless phone and a personal PC. The phone cannot make the person Seamless.
+  const phoneAndPc = notYet.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: [
+    { ...r.readiness.devices[0], os: 'Android' as const, builtIn: true, possible: 'yes' as const, seamless: true },
+    { ...r.readiness.devices[0], os: 'Windows' as const, builtIn: false, possible: 'yes' as const, seamless: false },
+  ] } } : r))
+  assert.equal(goalLine(phoneAndPc), W.seamlessNotPossible)
 })

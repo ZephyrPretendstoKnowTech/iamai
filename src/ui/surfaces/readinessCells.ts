@@ -91,7 +91,11 @@ export function osWord(os: Platform): string {
 export function goalLine(counted: readonly ReadinessRow[]): string {
   const seamless = counted.filter((r) => r.state === 'seamless').length
   if (seamless > 0) return fillText(T.seamlessLine, { seamless })
-  const couldBe = counted.some((r) => (r.readiness?.devices ?? []).some((d) => d.builtIn && d.possible !== 'no'))
+  // A person can become Seamless only when every device they use is, or could be: one personal PC rules them out.
+  const couldBe = counted.some((r) => {
+    const devices = r.readiness?.devices ?? []
+    return devices.length > 0 && devices.every((d) => d.seamless || (d.builtIn && d.possible !== 'no'))
+  })
   return couldBe ? T.seamlessNone : T.seamlessNotPossible
 }
 
