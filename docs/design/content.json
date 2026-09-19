@@ -786,6 +786,7 @@
         "baseline": "the baseline defines this policy two ways",
         "exclusionsGroup": "until you choose the exclusions group",
         "devicePlan": "until phones and computers are decided",
+        "direction": "until every answer is approved",
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",
         "pairUnmatched": "until both policies of the pair can be matched",

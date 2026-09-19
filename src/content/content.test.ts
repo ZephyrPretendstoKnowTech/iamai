@@ -132,6 +132,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
   // decision layout read that the review body does not draw.
   '.pages.plan.blocked.devicePlan',
+  // A Direction step with an answer nobody has approved (roadmap/direction.ts): its row reason.
+  '.pages.plan.blocked.direction',
   '.pages.plan.howTo.items[0]',
   '.pages.plan.howTo.items[1]',
   '.pages.plan.howTo.items[2]',
