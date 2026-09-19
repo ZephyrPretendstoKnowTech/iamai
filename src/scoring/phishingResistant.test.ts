@@ -12,7 +12,10 @@
 // the fixtures every surface is rendered from.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, emptyReadinessContext, isPhishingResistantKind, isPhishingResistantRegistered, isReady, personReadiness, readSignIn } from './phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, emptyReadinessContext, isPhishingResistantKind, isPhishingResistantRegistered, isReady, passkeyAllowed, personReadiness, readSignIn } from './phishingResistant.ts'
+import { passkeyPolicyOf, personPasskeyPolicy } from '../derive/readinessContext.ts'
+import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
+import type { GroupMembers } from '../coverage/population.ts'
 import { methodTier } from './mfaViability.ts'
 import { accountVerdict, strengthSatisfaction } from '../roadmap/strand.ts'
 import { readFileSync } from 'node:fs'
@@ -590,4 +593,39 @@ test('item 2: a passkey’s last-used date is supporting evidence only: it never
   assert.equal(isReady(proven.state), true)
   assert.equal(proven.credentials[0].unused, null)
   assert.equal(proven.usedRecently, null, '"used recently" belongs to Confirm it only')
+})
+
+test('item 9: each person’s passkeys are read against the profiles scoped to them, never the tenant’s profiles merged', () => {
+  const YUBIKEY = 'a25342c0-3cdc-4414-8e46-f4807fca511c'
+  // All users get a strict profile (one key model); a group gets Microsoft's "all passkeys" profile.
+  const fido2: Fido2Configuration = {
+    id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, excludeTargets: [],
+    includeTargets: [{ id: 'all_users', allowedPasskeyProfiles: ['strict'] }, { id: 'g-sms', allowedPasskeyProfiles: ['open'] }],
+    passkeyProfiles: [
+      { id: 'strict', passkeyTypes: 'deviceBound', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [YUBIKEY] } },
+      { id: 'open', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } },
+    ],
+  }
+  const tenant = passkeyPolicyOf(fido2, true)
+  const groups: GroupMembers = new Map([['g-sms', { memberIds: ['in-group'], memberCount: 1, sampled: false }]])
+  const authenticatorKey: AuthMethodSummary = { kind: 'passkey', id: 'k1', aaGuid: AUTHENTICATOR_AAGUIDS[0], passkeyType: 'deviceBound' }
+  const read = (userId: string, g: GroupMembers) => {
+    const context: ReadinessContext = { ...CTX, passkey: tenant, passkeyFor: (id) => personPasskeyPolicy(fido2, tenant, id, g) }
+    return personReadiness(input({ userId, methods: [authenticatorKey], platforms: ['iOS'], context }))
+  }
+  // The merged reading allowed the Authenticator passkey for everybody: the open profile allows it somewhere.
+  assert.equal(passkeyAllowed(tenant, AUTHENTICATOR_AAGUIDS[0]), 'yes', 'the tenant-wide reading (setup checks) is unchanged')
+  assert.equal(read('in-group', groups).credentials[0].allowedNow, 'yes', 'a member of the group is read against the open profile too')
+  const outside = read('outside', groups)
+  assert.equal(outside.credentials[0].allowedNow, 'no', 'somebody outside it is read against the strict profile alone')
+  assert.deepEqual([outside.state, outside.blocked], ['blocked', 'authenticatorNotAllowed'], 'their own profile allows no passkey on their phone: blocked by setup, not by the tenant-wide merge')
+  // Group membership not read: the open profile may apply, so the answer is unknown, never a no.
+  assert.equal(read('outside', new Map()).credentials[0].allowedNow, 'unknown')
+  // Excluded from the passkey method: passkeys are off for them.
+  const excluded = { ...fido2, excludeTargets: [{ id: 'g-sms' }] }
+  assert.equal(personPasskeyPolicy(excluded, passkeyPolicyOf(excluded, true), 'in-group', groups).enabled, false)
+  // One reading of scope: MFA Readiness uses Emergency Access's (roadmap/passkeyCompatibility.ts), no copy of its own.
+  const src = readFileSync('src/derive/readinessContext.ts', 'utf8')
+  assert.match(src, /passkeyProfilesFor/)
+  assert.match(src, /passkeyTargetsReach/)
 })

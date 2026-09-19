@@ -9,6 +9,8 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
+import { passkeyProfilesFor, passkeyTargetsReach, usesPasskeyProfiles } from '../roadmap/passkeyCompatibility.ts'
+import type { GroupMembers } from '../coverage/population.ts'
 import { READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
 import type { PasskeyPolicy, ReadinessContext } from '../scoring/phishingResistant.ts'
 
@@ -24,24 +26,10 @@ export function passkeyPolicyOf(current: Fido2Configuration | null, read: boolea
   const selfService = typeof current.isSelfServiceRegistrationAllowed === 'boolean' ? current.isSelfServiceRegistrationAllowed : null
   const targets = Array.isArray(current.includeTargets) ? (current.includeTargets as unknown[]).map((t) => String(object(t)?.id ?? '').toLowerCase()) : null
   const targetsAll = targets === null ? null : targets.includes('all_users')
-  // Profile mode: the profiles assigned to any target, together. A model any assigned
-  // profile allows is allowed; the attestation is enforced only where every profile enforces it.
+  // Profile mode, tenant-wide (the setup checks: can anybody here register one?): the profiles
+  // assigned to any target, together. A person is read against their own profiles (`personPasskeyPolicy`).
   const assigned = Array.isArray(current.passkeyProfiles) && current.passkeyProfiles.length > 0 ? assignedPasskeyProfiles(current) : null
-  if (assigned && assigned.profiles.length > 0) {
-    const restrictions = assigned.profiles.map((p) => object(p.keyRestrictions))
-    const unrestricted = restrictions.some((r) => r?.isEnforced === false)
-    const allows = restrictions.filter((r) => r?.isEnforced === true && r.enforcementType === 'allow')
-    const attest = assigned.profiles.map((p) => (p.attestationEnforcement === 'registrationOnly' ? true : p.attestationEnforcement === 'disabled' ? false : null))
-    return {
-      read: true,
-      enabled,
-      selfService,
-      attestation: attest.every((a) => a === true) ? true : attest.some((a) => a === false) ? false : null,
-      restriction: unrestricted ? 'unrestricted' : allows.length > 0 ? 'allow' : null,
-      aaguids: [...new Set(allows.flatMap((r) => lower(r?.aaGuids)))],
-      targetsAll,
-    }
-  }
+  if (assigned && assigned.profiles.length > 0) return { read: true, enabled, selfService, ...profilesReading(assigned.profiles), targetsAll }
   const kr = current.keyRestrictions
   const restriction = kr && typeof kr.isEnforced === 'boolean' ? (kr.isEnforced === false ? 'unrestricted' : kr.enforcementType === 'allow' ? 'allow' : kr.enforcementType === 'block' ? 'block' : null) : null
   return {
@@ -53,6 +41,39 @@ export function passkeyPolicyOf(current: Fido2Configuration | null, read: boolea
     aaguids: lower(kr?.aaGuids),
     targetsAll,
   }
+}
+
+type Profiles = ReturnType<typeof assignedPasskeyProfiles>['profiles']
+/** Profiles read together: a model any of them allows is allowed; attestation is enforced only where every one enforces it. */
+function profilesReading(profiles: Profiles): Pick<PasskeyPolicy, 'attestation' | 'restriction' | 'aaguids'> {
+  const restrictions = profiles.map((p) => object(p.keyRestrictions))
+  const unrestricted = restrictions.some((r) => r?.isEnforced === false)
+  const allows = restrictions.filter((r) => r?.isEnforced === true && r.enforcementType === 'allow')
+  const attest = profiles.map((p) => (p.attestationEnforcement === 'registrationOnly' ? true : p.attestationEnforcement === 'disabled' ? false : null))
+  return {
+    attestation: attest.length > 0 && attest.every((a) => a === true) ? true : attest.some((a) => a === false) ? false : null,
+    restriction: unrestricted ? 'unrestricted' : allows.length > 0 ? 'allow' : null,
+    aaguids: [...new Set(allows.flatMap((r) => lower(r?.aaGuids)))],
+  }
+}
+
+/**
+ * One person's passkey settings (owner item 9): whether the method's targets reach
+ * them, and in profile mode only the profiles assigned to a target they are in
+ * (roadmap/passkeyCompatibility.ts, the reading Emergency Access uses), never the
+ * tenant's profiles merged. Group membership not read leaves the answer open:
+ * a yes the reach can't confirm, or a no another profile might overturn, is unknown.
+ */
+export function personPasskeyPolicy(current: Fido2Configuration | null, tenant: PasskeyPolicy, userId: string, groups: GroupMembers): PasskeyPolicy {
+  if (!tenant.read || !current || tenant.enabled !== true) return tenant
+  const excluded = passkeyTargetsReach(current.excludeTargets, userId, groups)
+  const included = passkeyTargetsReach(current.includeTargets, userId, groups)
+  if (excluded === true || included === false) return { ...tenant, enabled: false }
+  const reach: PasskeyPolicy['reach'] = excluded === false && included === true ? 'in' : 'unknown'
+  if (!usesPasskeyProfiles(current)) return { ...tenant, reach }
+  const scoped = passkeyProfilesFor(current, userId, groups)
+  if (scoped.unread) return { ...tenant, reach, attestation: null, restriction: null, aaguids: [] }
+  return { ...tenant, reach, ...profilesReading(scoped.profiles), partial: scoped.membershipUnknown }
 }
 
 /**
@@ -96,12 +117,18 @@ export function signInsNeedP1(snapshot: Pick<TenantSnapshot, 'sources'>): boolea
 }
 
 /** The tenant's readiness context from the snapshot and the mapping (Step 3's additional models). */
-export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<MappingState> | null, now: string = snapshot.asOf): ReadinessContext {
+export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<MappingState> | null, now: string = snapshot.asOf, groups: GroupMembers = new Map()): ReadinessContext {
   const windowStart = new Date(Date.parse(now) - READINESS_WINDOW_DAYS * DAY).toISOString()
   const source = snapshot.sources?.signInEvidence
   const signInsRead = !!source && (source.status === 'ok' || source.status === 'partial')
   const reading = passkeyReadingOf(snapshot, (mapping ?? undefined) as MappingState | undefined)
   const passkey = passkeyPolicyOf(reading.current, reading.state !== 'unread')
+  const people = new Map<string, PasskeyPolicy>()
+  const passkeyFor = (userId: string): PasskeyPolicy => {
+    let p = people.get(userId)
+    if (!p) people.set(userId, (p = personPasskeyPolicy(reading.current, passkey, userId, groups)))
+    return p
+  }
   const models = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
   // Step 3 is in place exactly when Emergency Access Step 3 reads it so (one reading, roadmap/passkeySettings.ts),
   // which counts the extra models the operator accepted there.
@@ -130,5 +157,6 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     deviceOwners,
     windowsDirectory,
     policyChangedAt: changes[changes.length - 1] ?? null,
+    passkeyFor,
   }
 }
