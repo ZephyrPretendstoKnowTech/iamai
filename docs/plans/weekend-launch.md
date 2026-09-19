@@ -89,6 +89,8 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 - `664217da`..`666e294b`: the 14 reds the Direction commits caused. Engine fix: Direction gating runs after tracking, so an enforced policy never waits and a waiting step reads Blocked, never Ready.
 - `05450e85`..`233db2b6`: MFA Readiness items 5–7. Hidden group headings, the panel is modal below 760px, words by the computers seen (Windows / Mac / both / none), every sentence within 25 words.
 - `19490ed8`..`b301954a`: item 4, "not read" as our evidence problem. Per-person method retries, registration-report fallback, longer sign-in retries, the full 30 days, no-P1 said once, "Needs action · 26, 1 not read".
+- `0a61e44f`..`9f80a4be`: MFA Readiness items 1, 2, 3, 9, 10, 11. Proof per device type; a last-used date never makes Ready, and unused passkeys are flagged; script accounts under Not counted (demo: 31 → 30 active, "29 people and 1 guest"); passkey profiles read per person; one phishing-resistant method set; Mac Platform SSO counts, its macOS "Windows Hello for Business" sign-in is its proof, and AAGUID `7FD635B3-…` is checked against key restrictions.
+- CI on `df5f23e9`: **every unit test passes.** Smoke fails 5 checks (was 8+ Plan failures this morning); an agent is on them.
 - `2069e30f`..`df5f23e9`: Emergency Access 12–15 and 18. Recorded Test only for legacy records; one exclusions-group rule; Step 4 starts at the change time; exports print the screen's tasks; wording and sentence-case tiles.
 
 ## For the owner to confirm (decided so work could continue)
@@ -100,7 +102,9 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 5. **Free tier:** "Review Global Administrator access" no longer requires two selected emergency accounts (nothing can select them now).
 6. **The walk's heading list** (`docs/qa/page-contracts.json`, owner-owned) needs the four hidden MFA Readiness group headings, or the walk flags them.
 7. **Still Windows-worded on a Mac-only tenant:** `seamlessNone` and the "Needs a method" reason ("No passkey, security key or Windows Hello yet").
-8. **Loose ends:** the device-plan reason and tile words are unused now; on the demo's first visit the trusted-location step reads Ready with a "Choose your office networks" tile although that question lives in D4. A very large tenant can still stop before 30 days at the 50,000-row ceiling.
+8. **"Never used" passkeys (item 2):** a beta method row whose `lastUsedDateTime` is an explicit null reads "never used"; a row without the field stays unknown. If Microsoft's null means "not tracked", the flag would show on keys in use (it is suppressed when the sign-in logs show the passkey working).
+9. **Passkey profiles targeted at a group (item 9)** read "unknown" in the Plan and page counts, because counting runs without group membership. Passing groups in is a signature change across the counting code.
+10. **Loose ends:** the device-plan reason and tile words are unused now; on the demo's first visit the trusted-location step reads Ready with a "Choose your office networks" tile although that question lives in D4. A very large tenant can still stop before 30 days at the 50,000-row ceiling.
 
 ## Next (in order)
 
@@ -124,7 +128,7 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
    Open the Direction agent's decisions for the owner:
    - the week-two demo leaves D3 open;
    - a Direction wait adds no date change.
-4. **The approved review items:** all landed except items 1, 2, 3, 9, 10, 11 (readiness rules; an agent is on them):
+4. ~~**The approved review items:**~~ All landed:
    - MFA Readiness items 1–7 and 9–11, including Mac Platform SSO: a macOS sign-in reading "Windows Hello for Business" counts as the Mac's built-in proof, plus the key restriction needs AAGUID `7FD635B3-2EF9-4542-8D9D-164F2C771EFC`;
    - "not read" as an evidence fix;
    - Emergency Access bugs 12–15 and 18;
