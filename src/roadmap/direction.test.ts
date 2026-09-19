@@ -299,3 +299,9 @@ test('Direction polish: evidence is content sentences, the eyebrow is a decision
   assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
   assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
 })
+
+test('a count of one bends "look": "1 account looks like"', async () => {
+  const { fillText } = await import('../content/render.ts')
+  assert.equal(fillText(W.questions.sharedDevices.seen, { n: 1 }), '1 account looks like shared-device accounts.')
+  assert.equal(fillText(W.questions.sharedDevices.seen, { n: 2 }), '2 accounts look like shared-device accounts.')
+})
