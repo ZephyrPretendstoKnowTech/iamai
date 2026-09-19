@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { directionSteps } from './direction.ts'
+import { directionSteps, nextDirectionStep } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
 import { DIRECTION_STEP, answersOfDecision, directionDecisionOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
@@ -273,4 +273,29 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
   assert.notEqual(laneReadings(after).get(released.id)?.reason?.kind, 'decision')
   assert.equal(after.find((s) => s.id === DIRECTION_STEP.devices)!.status, 'done')
   assert.ok(after.find((s) => s.goalId === 'geo-restriction')?.blockers.some((b) => b.kind === 'decision') ?? true, 'a policy waiting on another step\'s answers still waits')
+})
+
+test('Direction polish: evidence is content sentences, the eyebrow is a decision step, and Approve moves to the next open step', async () => {
+  const { eyebrowOf } = await import('../ui/surfaces/stepContract.ts')
+  const f = fixture('demo')
+  const steps = stepsOf(f)
+  const use = stepOf(steps, DIRECTION_STEP.use)
+  // Words from content, never the engine's reason ("no sign-in activity for ...").
+  assert.equal(q(use, 'service:sharepoint').evidence, 'SharePoint and OneDrive sign-ins were seen in the last 30 days.')
+  for (const x of use.directionQuestions!) {
+    assert.doesNotMatch(x.evidence, /no sign-in activity|sign-in activity observed|licence present/, x.key)
+    assert.match(x.evidence, /^[A-Z0-9].*\.$/, `${x.key} is a capitalised sentence: ${x.evidence}`)
+  }
+  // The eyebrow reads Decision step, not Check step.
+  assert.equal(use.guidance?.kind, 'decision')
+  assert.equal(eyebrowOf({ state: use.state } as never, use.guidance!.kind), 'Decision step')
+  // Approving D1 moves to D2; with D2 and D3 answered too, D4 is next, and from D4 back to the first open one.
+  assert.equal(nextDirectionStep(DIRECTION_STEP.use, steps), DIRECTION_STEP.accounts)
+  const answered = (id: string): Step => ({ ...stepOf(steps, id), directionQuestions: stepOf(steps, id).directionQuestions!.map((x) => ({ ...x, saved: x.suggested, needsReview: false })) })
+  const later = steps.map((s) => s.id === DIRECTION_STEP.accounts || s.id === DIRECTION_STEP.devices ? answered(s.id) : s)
+  assert.equal(nextDirectionStep(DIRECTION_STEP.use, later), DIRECTION_STEP.locations)
+  assert.equal(nextDirectionStep(DIRECTION_STEP.locations, later), DIRECTION_STEP.use)
+  const all = steps.map((s) => answered(s.id))
+  assert.equal(nextDirectionStep(DIRECTION_STEP.use, all), null, 'nothing open: the page stays')
+  assert.equal(nextDirectionStep('s-goal-admin-mfa', steps), null, 'only a Direction step moves the page')
 })

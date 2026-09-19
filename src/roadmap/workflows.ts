@@ -28,8 +28,8 @@ export function checkStep(id: string, title: string, why: string): Step {
   return { ...STEP_EXTRAS, id, goalId: id, phase: 0, kind: 'check', title, why, ...stateFields({}), blockedBy: [], blockers: [], unblockNotes: [], population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }, readiness: { family: 'other', percent: null, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] }, history: [], skipReason: null, deliveredBy: [] }
 }
 
-/** What the scan read of a service: seen in use, whether the read was complete enough to say it is not, and the evidence in one line. */
-export type ServiceSignal = { used: boolean; complete: boolean; evidence: string }
+/** What the scan read of a service: seen in use, and whether the read was complete enough to say it is not. The words are Direction's (direction.ts). */
+export type ServiceSignal = { used: boolean; complete: boolean }
 
 /**
  * The services this plan's baseline has something to protect (a goal whose
@@ -44,10 +44,10 @@ export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotA
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
   const signal = (key: string): ServiceSignal => {
-    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', evidence: detected.intune.reason }
-    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', evidence: detected.workload.evidence ?? detected.workload.reason }
+    if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok' }
+    if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok' }
     const complete = snapshot.sources.appSignInSummary?.status === 'ok' && snapshot.sources.spActivity?.status === 'ok'
-    return { used: reliable[key as Facet]?.observedUsage === true, complete, evidence: reliable[key as Facet]?.evidence ?? reliable[key as Facet]?.reason ?? W.noSignal }
+    return { used: reliable[key as Facet]?.observedUsage === true, complete }
   }
   return { keys, signal }
 }

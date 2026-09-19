@@ -1938,6 +1938,7 @@ footer.app a {
    one hairline along its top, which is what makes a phase read as a list of
    rows rather than a stack of cards. */
 .plan-row {
+  scroll-margin-top: calc(var(--header) + 8px);
   display: grid;
   grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
   gap: 14px;
@@ -4882,7 +4883,7 @@ th .th-sort:focus-visible,
 .workflow-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; width: 100%; }
 .workflow-choices > p, .workflow-choices > button { grid-column: 1 / -1; }
 .workflow-choices > button { justify-self: start; }
-.workflow-choice { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.workflow-choice { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); align-content: start; }
 .workflow-choice .reason { grid-column: 1; }
 .workflow-choice select { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 100%; }
 /* A Direction question (DirectionQuestions.tsx): the answer's list picker spans the tile under its lines. */

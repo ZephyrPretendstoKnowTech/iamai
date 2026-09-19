@@ -20,7 +20,7 @@ export type Learn = { url: string }
  */
 export type ContentStep = {
   id: string
-  kind: 'blocker' | 'object' | 'check' | 'campaign' | 'policy' | 'ladder'
+  kind: 'blocker' | 'object' | 'check' | 'campaign' | 'policy' | 'ladder' | 'decision'
   title?: string
   changeLine?: string | null
   partner?: string | null

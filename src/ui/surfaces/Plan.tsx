@@ -10,6 +10,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { nextDirectionStep } from '../../roadmap/direction.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
@@ -109,6 +110,18 @@ export function Plan({ scan: lastScan, baseline, account }: {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
+  // Approving a Direction step's answers moves to the next Direction step still
+  // open, once the plan has re-rendered with the saved answers; the page would
+  // otherwise stay where the completed step's row used to be.
+  const moveTo = useRef<string | null>(null)
+  useEffect(() => {
+    const id = moveTo.current
+    if (id === null) return
+    const row = document.querySelector(`.plan-row[data-step="${id}"]`)
+    if (!row) return
+    moveTo.current = null
+    row.scrollIntoView({ block: 'start' })
+  })
   const openStep = (id: string | null): void => {
     setOpen((cur) => {
       const next = cur === id ? null : id
@@ -216,7 +229,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -606,6 +619,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
           open it — the lane, the tenant fact, the title, who it touches, when.
           The lane label is its reason; no line under the title repeats it (RUN-CONTEXT-B decision 10). */}
       <PlanRow
+        stepId={step.id}
         lane={lane.label}
         tone={lane.tone}
         chip={factOf(step)}

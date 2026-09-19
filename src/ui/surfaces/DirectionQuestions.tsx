@@ -77,6 +77,9 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
   )
 }
 
+/** The saved answers, as the Questions section's key: a save starts its draft again from them. */
+export const directionDraftKey = (step: Step): string => JSON.stringify((step.directionQuestions ?? []).map((q) => q.saved))
+
 /**
  * The Questions section: one tile per question, the Not sure line, and the one
  * Approve answers button. `saveStatus` disables the button while a save runs.
