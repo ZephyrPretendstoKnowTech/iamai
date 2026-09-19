@@ -12,17 +12,29 @@ const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: 
 
 test('MFA preparation row and evidence lead identify the whole cohort before subgroup counts', () => {
   const step = structuredClone(run.steps.find(s => s.id === 's-verify-mfa')!)
-  assert.equal(step.preparation!.ids.length, 30)
-  assert.equal(rowWho(step), '30 people')
-  assert.equal(stepBodyOf(step, ctx).lead, '30 people are included in this preparation step.')
+  // Guests stay in the MFA campaign (owner, 2026-09-19): the demo's one guest is
+  // in the cohort, and both headlines name it beside the people.
+  assert.equal(step.preparation!.ids.length, 31)
+  assert.equal(step.preparation!.guestIds.length, 1)
+  const guest = step.preparation!.guestIds[0]
+  assert.equal(f.snapshot.users.find(u => u.id === guest)?.userType, 'guest')
+  assert.ok(step.preparation!.ids.includes(guest), 'the guest is in the cohort')
+  assert.equal(rowWho(step), '30 people and 1 guest')
+  assert.equal(stepBodyOf(step, ctx).lead, '30 people and 1 guest are included in this preparation step.')
   // A quiet account can still require preparation; an activity-only population
   // must not silently remove it from either headline.
   step.preparation!.ids.push('quiet-target-account')
-  assert.equal(rowWho(step), '31 people')
-  assert.equal(stepBodyOf(step, ctx).lead, '31 people are included in this preparation step.')
+  assert.equal(rowWho(step), '31 people and 1 guest')
+  assert.equal(stepBodyOf(step, ctx).lead, '31 people and 1 guest are included in this preparation step.')
   step.preparation!.ids = ['quiet-target-account']
   assert.equal(rowWho(step), '1 person')
   assert.equal(stepBodyOf(step, ctx).lead, '1 person is included in this preparation step.')
+  step.preparation!.ids = [guest]
+  assert.equal(rowWho(step), '1 guest')
+  assert.equal(stepBodyOf(step, ctx).lead, '1 guest is included in this preparation step.')
+  step.preparation!.ids = ['quiet-target-account', guest]
+  assert.equal(rowWho(step), '1 person and 1 guest')
+  assert.equal(stepBodyOf(step, ctx).lead, '1 person and 1 guest are included in this preparation step.', 'a subject of two counts keeps the plural verb')
   step.preparation!.ids = []
   assert.equal(rowWho(step), 'User Authentication', 'empty preparation uses the topic rather than a stale activity count')
 })

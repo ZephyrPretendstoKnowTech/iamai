@@ -2216,7 +2216,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq('s-verify-mfa'),
       title: 'Prepare Your Team for MFA',
-      preparation: { ids: preparationIds, readyIds: [...preparedSet], missingIds: preparationIds.filter(id => !preparedSet.has(id)), unknownIds: targetsKnown ? preparation.unknownIds : preparationIds },
+      preparation: { ids: preparationIds, readyIds: [...preparedSet], missingIds: preparationIds.filter(id => !preparedSet.has(id)), unknownIds: targetsKnown ? preparation.unknownIds : preparationIds, guestIds: preparationIds.filter(id => popIndex.guests.has(id)) },
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',

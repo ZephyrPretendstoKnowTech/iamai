@@ -42,8 +42,9 @@ const MORE_HEADINGS = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step
 const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_HEADINGS.includes(f))]
 
 // MFA Readiness's answer (pages.readiness.summary), matched in either tense:
-// content/render.ts pluralise may bend the noun and the verb to the count.
-const SUMMARY_LINE = /(\d+) of (\d+) (?:people|person) (?:is|are) ready for phishing-resistant sign-in\./
+// content/render.ts pluralise may bend the noun and the verb to the count. The
+// counted are people, guests, or people and guests: the total is 2 + 3.
+const SUMMARY_LINE = /(\d+) of (\d+) (?:people|person|guests?)(?: and (\d+) guests?)? (?:is|are) ready for phishing-resistant sign-in\./
 
 // The states the bar and the groups name, read from the words the page ships
 // rather than copied here (prompt 62).
@@ -357,7 +358,7 @@ try {
   const legend = (await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].map((li) => li.textContent)`)).map((x) => { const m = flat(x).match(/^(.*) (\d+)$/); return m ? { title: m[1], n: Number(m[2]) } : { title: flat(x), n: NaN } })
   check(
     'MFA Readiness: the legend names states by their words and sums to the active people',
-    legend.length > 0 && legend.every((g) => STATE_TITLES.includes(g.title)) && !!summaryLine && legend.reduce((a, g) => a + g.n, 0) === Number(summaryLine[2]),
+    legend.length > 0 && legend.every((g) => STATE_TITLES.includes(g.title)) && !!summaryLine && legend.reduce((a, g) => a + g.n, 0) === Number(summaryLine[2]) + Number(summaryLine[3] ?? 0),
     legend.map((g) => `${g.title} ${g.n}`).join(' | '),
   )
   check('MFA Readiness: no stat tiles, no progress strip, no dialog, no ladder', (await evaluate(`document.querySelectorAll('main.page .summary-stat, main.page .progress-strip, main.page dialog, main.page .ladder, main.page .rung-badge').length`)) === 0)

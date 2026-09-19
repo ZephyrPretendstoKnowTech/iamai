@@ -118,6 +118,8 @@ export type EngineWords = {
   detectionGap: { groups: string; policies: string }
   /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */
   readiness: { notMeasured: string }
+  /** One cohort's words wherever it is counted: people, guests, or both (derive/whoLine.ts cohortWords). */
+  cohort: { people: string; guests: string; both: string }
   /** Why an existing policy that is the goal's policy does not put it in place (coverage/coverage.ts). */
   coverage: {
     reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }

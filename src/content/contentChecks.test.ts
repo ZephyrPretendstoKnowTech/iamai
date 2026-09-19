@@ -17,6 +17,7 @@ import { contentFindings } from '../../scripts/walkContent.mjs'
 import { AUTHORITIES, RE, headerTabsLine, readinessStatTitles, staticFindings, textAt } from './contentChecks.ts'
 import { content } from './content.ts'
 import { fillText } from './render.ts'
+import { cohortWords } from '../derive/whoLine.ts'
 
 const PINNED = 'baselines/jhope188-conditionalaccesspolicies.pinned.json'
 const CONTRACTS = 'docs/qa/page-contracts.json'
@@ -54,12 +55,20 @@ test('the header names the five destinations, the plan before the readiness diag
 })
 
 test('the readiness summary reads in the shape the walk reads, at a count of one and above', () => {
-  const one = fillText(textAt('pages.readiness.summary'), { ready: 1, active: 1 })
-  const many = fillText(textAt('pages.readiness.summary'), { ready: 2, active: 3 })
-  assert.match(one, RE.readinessSummary)
-  assert.match(many, RE.readinessSummary)
+  const one = fillText(textAt('pages.readiness.summary'), { ready: 1, cohort: cohortWords(1, 0) })
+  const many = fillText(textAt('pages.readiness.summary'), { ready: 2, cohort: cohortWords(3, 0) })
+  // Guests are counted and named beside the people (owner, 2026-09-19).
+  const withGuest = fillText(textAt('pages.readiness.summary'), { ready: 4, cohort: cohortWords(31, 1) })
+  const oneWithGuest = fillText(textAt('pages.readiness.summary'), { ready: 1, cohort: cohortWords(31, 1) })
+  const guestsOnly = fillText(textAt('pages.readiness.summary'), { ready: 1, cohort: cohortWords(1, 1) })
+  for (const line of [one, many, withGuest, oneWithGuest, guestsOnly]) assert.match(line, RE.readinessSummary)
   assert.match(one, /^1 of 1 person is ready for phishing-resistant sign-in\.$/)
   assert.match(many, /^2 of 3 people are ready for phishing-resistant sign-in\.$/)
+  assert.equal(withGuest, '4 of 30 people and 1 guest are ready for phishing-resistant sign-in.')
+  assert.equal(oneWithGuest, '1 of 30 people and 1 guest is ready for phishing-resistant sign-in.')
+  assert.equal(guestsOnly, '1 of 1 guest is ready for phishing-resistant sign-in.')
+  const m = withGuest.match(RE.readinessSummary)!
+  assert.equal(Number(m[2]) + Number(m[3] ?? 0), 31, 'the walk reads the whole cohort: people plus guests')
   assert.match(textAt('pages.readiness.summaryNone'), RE.readinessSummaryNone)
 })
 

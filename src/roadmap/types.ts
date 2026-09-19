@@ -395,7 +395,12 @@ export type Step = {
   directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
   configurationFindings?: ConfigurationFinding[]
-  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[] }
+  /**
+   * A preparation cohort. `guestIds` are the guests among `ids`: guests stay in the MFA
+   * campaign (owner, 2026-09-19) and every count of the cohort names them beside the
+   * people (derive/whoLine.ts cohortWords).
+   */
+  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[] }
   /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
   methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }
 

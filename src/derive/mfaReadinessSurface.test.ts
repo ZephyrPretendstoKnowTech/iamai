@@ -28,7 +28,7 @@ import { READINESS_STATES, isQualifying, isReady } from '../scoring/phishingResi
 import { adminUserIds } from '../roles.ts'
 import { adminReady, goalFamily, mfaReady } from '../roadmap/readiness.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
-import { affectedIds } from './whoLine.ts'
+import { affectedIds, cohortWords } from './whoLine.ts'
 import { reached } from './population.ts'
 import { nextCell, rowCells, stateTitle } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
@@ -54,8 +54,7 @@ test('the page reads the one readiness authority, not a second reading of the sa
     for (const state of READINESS_STATES) {
       for (const p of l.states[state]) {
         const row = v.rows.find((x) => x.user.id === p.id)!
-        // A guest is scored for the Plan's gates and spoken for at tenant level here (option B), never counted.
-        if (row.guest) { assert.equal(row.state, null, `${name}/${p.id}: a guest is not counted`); continue }
+        // A guest is counted here as on the Plan (owner, 2026-09-19): one partition for both.
         assert.equal(row.state, state, `${name}/${p.id}: ${state}`)
         assert.equal(mfaReady(p.viability), isReady(state), `${name}/${p.id}: only Ready and Seamless are ready for the gate`)
       }
@@ -373,8 +372,8 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   assert.equal(headerTabsLine(), `${headerTabs.connect} · ${headerTabs.plan} · ${headerTabs.readiness} · ${headerTabs.export} · ${headerTabs.how}`)
   assert.doesNotMatch(walk, /Today . Plan . Export/, 'and holds no retired tab name')
   const T = pages.readiness as unknown as { summary: string }
-  const one = fillText(T.summary, { ready: 1, active: 30 })
-  const many = fillText(T.summary, { ready: 4, active: 30 })
+  const one = fillText(T.summary, { ready: 1, cohort: cohortWords(31, 1) })
+  const many = fillText(T.summary, { ready: 4, cohort: cohortWords(31, 1) })
   assert.match(one, RE.readinessSummary, 'the walk reads the summary at a count of one')
   assert.match(many, RE.readinessSummary, 'the walk reads it above one')
   assert.doesNotMatch(walk, /ready for phishing-resistant sign-in\\\./, 'and holds no copy of the sentence')

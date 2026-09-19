@@ -278,16 +278,17 @@ test('a guest is told, in one shared sentence, why this tenant issues them no Te
   assert.ok(risks.some((r) => r.text === '{guestNoTap}'), 'the campaign references the shared sentence rather than retyping it')
   assert.equal(fillText('{guestNoTap}', {}), MG.guest, 'and it fills to that sentence')
   assert.ok(whole('{guestNoTap}', {}), 'a shared reference is not a hole')
-  // MFA Readiness never asks anything of a guest (option B: spoken for at tenant
-  // level), so no row can offer one a pass.
+  // MFA Readiness counts guests with everyone else (owner, 2026-09-19): a guest
+  // row is never offered a pass, nor asked to set up a passkey, which guests
+  // can't use yet; Microsoft Authenticator is what it asks for.
   let guests = 0
   for (const name of TENANTS) {
     const f = fixture(name)
     for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-      if (row.explained !== 'guest') continue
+      if (!row.guest || !row.active) continue
       guests++
-      assert.equal(row.state, null, `${name}/${row.user.id}: a guest is not counted`)
-      assert.equal(nextCell(row), '', `${name}/${row.user.id}: nothing is asked of a guest`)
+      assert.notEqual(row.state, null, `${name}/${row.user.id}: an active guest is counted`)
+      assert.doesNotMatch(nextCell(row), /Temporary Access Pass|passkey in|phone passkey|Windows Hello|security key on/, `${name}/${row.user.id}: a guest is asked for nothing a guest can't use`)
     }
   }
   assert.ok(guests > 0, 'the fixtures hold an active guest')

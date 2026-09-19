@@ -238,7 +238,11 @@ function pluralise(text: string): string {
   // The verb a count of one governs: the first verb after the count, and one
   // joined to it by "and", up to the end of the clause ("1 person holds a
   // directory role and uses that same account").
-  return nouns.replace(SUBJECT_RE, (m, rest: string) => {
+  return nouns.replace(SUBJECT_RE, (m, rest: string, offset: number, whole: string) => {
+    // A count joined to another by "and" is half of a plural subject: "30
+    // people and 1 guest are", "1 person and 3 guests are" (derive/whoLine.ts
+    // cohortWords). Its noun is singular; the verb stays with the whole subject.
+    if (/^ and \d/.test(rest) || /\d[\d,]* [A-Za-z-]+ and $/.test(whole.slice(0, offset))) return m
     let first = true
     const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
       const before = rest.slice(0, offset)
