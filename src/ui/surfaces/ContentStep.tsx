@@ -74,6 +74,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
+import { policySubjectsOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -265,9 +266,13 @@ export function ContentStep({
   const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
-  // The emergency task projections (stepBody.ts emergencyAccountTasks) belong to
-  // the Emergency Access group's steps; the drill is a Cleanup row, never drawn here.
-  const isEmergencyTaskStep = isGroupMember(step.id, EMERGENCY_ACCESS_GROUP)
+  // Which steps draw the task anatomy (the Tasks Remaining cards and the
+  // Implementation task frame): the Emergency Access group's steps — the drill is
+  // a Cleanup row, never drawn here — and the one policy step piloted on the same
+  // anatomy (policyTasks.ts), which keeps its own group. Both are fed by the same
+  // projection (stepBody.ts emergencyAccountTasks) and draw the same components.
+  const isPolicyTaskStep = usesPolicyTaskAnatomy(step.id)
+  const isEmergencyTaskStep = isGroupMember(step.id, EMERGENCY_ACCESS_GROUP) || isPolicyTaskStep
   // The four task-step headings, for any member of a group that uses them (stepGroups.ts).
   const taskHead = taskHeadingsOf(step.id)
   // The three decision-step headings, for a member of a decision-anatomy group (Decide Your Tenant's Direction).
@@ -359,13 +364,15 @@ export function ContentStep({
     // under the roadmap row that opened it, with the head above and the main
     // column and its action column below.
     <article className="step panel panel-key" data-step-id={step.id}>
+      {/* A task-anatomy step draws no lifecycle track: the Emergency Access
+          steps have none, and the piloted policy step is drawn as they are. */}
       <StepHead eyebrow={eyebrow} title={title} sub={<>
             {/* The one supporting line the step already carried under its
                 title: what this change is, and the step it is done with. */}
             <Line s={cs.changeLine} ex={ex} cls="step-sub" />
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
             {partnerLink !== null && <p className="step-sub partner"><a className="inline-link" href={partnerLink.href}>{partnerLink.label}</a></p>}
-          </>} badge={badgeLabel(contract)} tone={laneView.tone} fact={contract.state.fact} track={contract.track}>
+          </>} badge={badgeLabel(contract)} tone={laneView.tone} fact={contract.state.fact} track={isPolicyTaskStep ? [] : contract.track}>
         {/* What happens next: the track caption, above the track it captions. */}
         <StepState contract={contract} />
         <PolicyMembers members={contract.members} />
@@ -401,7 +408,7 @@ export function ContentStep({
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isEmergencyTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
-            subjects={emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
+            subjects={isPolicyTaskStep ? policySubjectsOf(displayedReadiness, emergencyAccountTasks) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
             printing={printing}
             barMain={displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}

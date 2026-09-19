@@ -1,8 +1,10 @@
 import { requiredModels } from '../../roadmap/passkeySettings.ts'
 import { emergencyAccountAiInfo, emergencyAccountPowerShell, emergencyImplementation } from './emergencyImplementation.ts'
 import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
+import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
+import { policyTasksOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import { initialDomain } from '../../validation/rules.ts'
@@ -400,6 +402,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
   const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step))
+  // A policy step piloted on the Emergency Access task anatomy (policyTasks.ts,
+  // owner 2026-09-19): its Implementation Tasks are the Entra procedure the
+  // portal channel above already carries, so the task frame draws exactly what
+  // this step drew. Every other step is untouched.
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (usesPolicyTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts) : null)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null
@@ -475,7 +482,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     rail,
     eyebrow,
     artifacts,
-    emergencyAccountTasks,
+    emergencyAccountTasks: taskProjection,
     previewNote,
     notes,
     showImplementation,

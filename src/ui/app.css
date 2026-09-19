@@ -2222,13 +2222,15 @@ footer.app a {
 .step[data-step-id='s-prereq-break-glass'] .step-main-rest,
 .step[data-step-id='s-prereq-exclusion-group'] .step-main-rest,
 .step[data-step-id='s-prereq-passkey-settings'] .step-main-rest,
-.step[data-step-id='cleanup-drill'] .step-main {
+.step[data-step-id='cleanup-drill'] .step-main,
+.step[data-step-id='s-goal-admin-session'] .step-main-rest {
   padding-bottom: 4px;
 }
 .step[data-step-id='s-prereq-break-glass'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
 .step[data-step-id='s-prereq-exclusion-group'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
 .step[data-step-id='s-prereq-passkey-settings'] .step-main-rest > .step-section:last-of-type .done-line:last-child,
-.step[data-step-id='cleanup-drill'] .step-main > .step-section:last-of-type .done-line:last-child {
+.step[data-step-id='cleanup-drill'] .step-main > .step-section:last-of-type .done-line:last-child,
+.step[data-step-id='s-goal-admin-session'] .step-main-rest > .step-section:last-of-type .done-line:last-child {
   margin-bottom: 0;
 }
 /* The lead's last section keeps its rule: the rest continues the column under it. */
@@ -4964,13 +4966,13 @@ th .th-sort:focus-visible,
 
 
 /* Passkey configuration has several concrete settings; preserve their full labels. */
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .readiness-strip {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .readiness-strip {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .readiness-strip.tiles-1 {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .readiness-strip.tiles-1 {
   grid-template-columns: minmax(0, 1fr);
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary {
   display: grid;
   grid-template-columns: 19px minmax(0, 1fr) 14px;
   align-items: start;
@@ -4978,12 +4980,12 @@ th .th-sort:focus-visible,
   row-gap: 5px;
   padding-block: 12px;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary .readiness-status {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary .readiness-status {
   grid-column: 1;
   grid-row: 1 / 3;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary .key-label,
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary strong {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary .key-label,
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary strong {
   grid-column: 2;
   min-width: 0;
   overflow: visible;
@@ -4992,44 +4994,44 @@ th .th-sort:focus-visible,
   overflow-wrap: normal;
   word-break: normal;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary .key-label { grid-row: 1; }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary strong { grid-row: 2; }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-summary .tile-chevron {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary .key-label { grid-row: 1; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary strong { grid-row: 2; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-summary .tile-chevron {
   grid-column: 3;
   grid-row: 1 / 3;
   align-self: center;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-detail p { overflow-wrap: break-word; }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .passkey-methodology ul { padding-left: 1.25rem; }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .passkey-methodology li + li { margin-top: .65rem; }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .impl-preview {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-detail p { overflow-wrap: break-word; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .passkey-methodology ul { padding-left: 1.25rem; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .passkey-methodology li + li { margin-top: .65rem; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .impl-preview {
   height: auto;
   min-height: 12rem;
   max-height: 32rem;
   overflow: auto;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .preview-actions {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .preview-actions {
   position: sticky;
   top: 8px;
   justify-content: flex-end;
   margin: 8px 8px 0;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .impl-preview .preview-text {
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .impl-preview .preview-text {
   padding: 12px 16px 16px;
   font-size: var(--t-1);
   line-height: 1.65;
   overflow: visible;
   overflow-wrap: break-word;
 }
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .impl-preview ol.preview-text { padding-left: 36px; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .impl-preview ol.preview-text { padding-left: 36px; }
 @media (max-width: 640px) {
-  .step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .readiness-strip { grid-template-columns: minmax(0, 1fr); }
+  .step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .readiness-strip { grid-template-columns: minmax(0, 1fr); }
 }
 @media print {
-  .step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .impl-preview { max-height: none; overflow: visible; }
+  .step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .impl-preview { max-height: none; overflow: visible; }
 }
 
-.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill']) .tile-detail p { white-space: pre-line; }
+.step:is([data-step-id='s-prereq-break-glass'], [data-step-id='s-prereq-exclusion-group'], [data-step-id='s-prereq-passkey-settings'], [data-step-id='cleanup-drill'], [data-step-id='s-goal-admin-session']) .tile-detail p { white-space: pre-line; }
 
 /* Prepare Emergency Access Accounts: Entra is an account-specific SOP. The
    selector and actions occupy one toolbar, so the instruction body begins at
