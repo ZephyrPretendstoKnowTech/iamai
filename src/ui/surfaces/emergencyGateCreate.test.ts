@@ -62,11 +62,14 @@ test('an unstarted policy waiting only on emergency access: its action, executab
       checked += 1
     }
   }
-  assert.ok(checked >= 20, `gated creates checked: ${checked}`)
+  // The floor keeps the sweep meaningful. Since prompt 60 the getiamai fixture's emergency access is complete (as on
+  // the live tenant), so fewer policies wait on it: ten across the fixtures.
+  assert.ok(checked >= 10, `gated creates checked: ${checked}`)
 })
 
 test('controls: a wait on anything but emergency access still holds the create; a held gate wait keeps its hold wording', () => {
-  const { r } = planOf('getiamai')
+  // The first fixture whose policies still wait on emergency access (getiamai's no longer do since prompt 60).
+  const { r } = ['getiamai', 'demo', 'small', 'mid'].map(planOf).find((p) => gatedCreates(p.r.steps).length > 0)!
   const base = gatedCreates(r.steps)[0]!
   assert.ok(base, 'a gated create to vary')
   // A maker step the policy waits on: the action still waits, and nothing is executable.

@@ -286,7 +286,7 @@ export function ContentStep({
     return upn ? [[id, upn] as const] : []
   }))
   const displayedReadiness = isEmergencyTaskStep ? consolidateEmergencyReadiness(baseReadiness, emergencyAccountTasks, emergencyAccountUpns, !printing) : baseReadiness
-  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: 'Select the group containing your emergency accounts for policy exclusions.' } : rail
+  const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)
   const [emergencyTaskId, setEmergencyTaskId] = useState<string | null>(() => readEmergencyTaskPreference(emergencyTaskPreferenceKey).taskId ?? null)

@@ -184,7 +184,8 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
   const memberRows = choice.actionableId ? ctx.groups?.get(choice.actionableId) : null
   const missing = memberRows && !memberRows.sampled && memberRows.memberIds.length >= memberRows.memberCount ? mapping.breakGlassUserIds.filter(id => !memberRows.memberIds.includes(id)) : []
   const extra = memberRows && !memberRows.sampled ? memberRows.memberIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : []
-  const policies = (step.configurationFindings ?? []).find(f => f.key === 'group-policies')?.items?.filter(i => !i.value.includes('Group already excluded')) ?? []
+  // Each policy is two items (Mode, Group exclusion) named in subjectLabel: list the policies whose exclusion is missing.
+  const policies = (step.configurationFindings ?? []).find(f => f.key === 'group-policies')?.items?.filter(i => i.label === 'Group exclusion' && i.outcome !== 'pass') ?? []
   return [
     numbered([
       groupName ? `Open the saved group ${group} in Entra ID → Groups → All groups. Verify the object ID ${choice.actionableId} before editing.` : `Review the suggested group ${group} and search for an existing dedicated group before creating another. Save the intended Exclusions Group in this step; that saves the identity the plan will use in its instructions.`,
@@ -194,7 +195,7 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
       ...(extra.length ? [`Review these members outside the saved emergency selection: ${extra.map(name).join(', ')}. Confirm any genuinely dedicated emergency account in Emergency Access Accounts first. Otherwise remove only the reviewed extra members; removal restores policy coverage for them.`] : []),
       ...(memberRows?.sampled ? ['The membership read is incomplete. Resolve that finding and rescan before concluding that members are missing or removing members.'] : []),
     ]),
-    ...(policies.length ? ['**Policies missing the group exclusion**\n\n' + bullets(policies.map(p => `${oneLine(p.label)} — ${p.value}`))] : []),
+    ...(policies.length ? ['**Policies missing the group exclusion**\n\n' + bullets(policies.map(p => `${oneLine(p.subjectLabel ?? p.label)} — ${p.value}`))] : []),
     numbered([
       `For each policy listed as missing the group exclusion, open Entra ID → Conditional Access → Policies → the named policy → Users → Exclude → Users and groups. Add ${group}. Preserve all other exclusions and settings; use the group rather than new direct account exclusions.`,
       'Keep the policy’s current mode when saving. An On policy correction takes effect now. A Report-only policy does not restrict access yet; prepare its group reference before enforcement.',

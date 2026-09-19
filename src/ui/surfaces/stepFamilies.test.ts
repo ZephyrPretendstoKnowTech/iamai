@@ -201,6 +201,9 @@ test('every family draws the one milestone at the head of its action column, and
     if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
   assert.equal(CONTENT_STEP.split('<StepActionColumn rail={displayRail}>').length - 1, 1, 'the action column is gated, or drawn twice')
+  // The one rail line a step overrides is content (U3: words from content.json), never English in the component.
+  assert.match(CONTENT_STEP, /sub: app\.plan\.exclusionsGroupRailSub/)
+  assert.doesNotMatch(CONTENT_STEP, /sub: '[A-Z][^']+'/, 'a rail line written in the component')
 })
 
 // ------------------------------------ implementation is not always the action

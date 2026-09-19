@@ -342,6 +342,8 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   if (step.id === EMERGENCY_ACCOUNTS) {
     lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyAccountTasksOf(step, ctx)).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
+    // The export opens with the screen's action, as every artifact does (013.A).
+    if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }
   // The completion, from the contract, for every step. Nothing here implies the
   // policy can be rolled out while it cannot be written: where a reason holds
