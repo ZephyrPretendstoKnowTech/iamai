@@ -215,7 +215,7 @@ const SINGULAR: Record<string, string> = {
 // count; a past tense ("signed in") is the same either way.
 const SINGULAR_VERB: Record<string, string> = {
   hold: 'holds', have: 'has', use: 'uses', are: 'is', were: 'was', do: 'does', sign: 'signs', need: 'needs', own: 'owns', read: 'reads', work: 'works',
-  open: 'opens', keep: 'keeps', register: 'registers', appear: 'appears', remain: 'remains', carry: 'carries', wait: 'waits', share: 'shares', run: 'runs', belong: 'belongs', get: 'gets', see: 'sees', stay: 'stays',
+  look: 'looks', open: 'opens', keep: 'keeps', register: 'registers', appear: 'appears', remain: 'remains', carry: 'carries', wait: 'waits', share: 'shares', run: 'runs', belong: 'belongs', get: 'gets', see: 'sees', stay: 'stays',
 }
 // A whole word only: "sign" inside "sign-in" is a noun, not the verb.
 const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})(?![\\w-])`, 'g')
