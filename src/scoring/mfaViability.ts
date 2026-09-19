@@ -5,7 +5,7 @@
 // (active / dormant / neverSignedIn) and MFA state — evidence rules apply only
 // to active users.
 import { releasesBehind } from './platform.ts'
-import { emptyReadinessContext, personReadiness } from './phishingResistant.ts'
+import { emptyReadinessContext, isPhishingResistantRegistered, personReadiness } from './phishingResistant.ts'
 import type { DeviceSeen, PersonHistory, PersonReadiness, PlatformSeen, ProofRecord, ReadinessContext } from './phishingResistant.ts'
 
 // §10.1 constants
@@ -104,14 +104,8 @@ const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', '
 
 /** The tier a registration-report method name belongs to; null for a method that is not MFA (email, a security question). */
 export function methodTier(method: string): MethodTier | null {
-  if (
-    method.startsWith('passKeyDeviceBound') ||
-    method === 'fido2SecurityKey' ||
-    method === 'windowsHelloForBusiness' ||
-    method === 'x509Certificate'
-  ) {
-    return 'phishingResistant'
-  }
+  // The one phishing-resistant set (scoring/phishingResistant.ts): synced passkeys included.
+  if (isPhishingResistantRegistered(method)) return 'phishingResistant'
   if (method === 'microsoftAuthenticatorPasswordless') return 'passwordless'
   if (method === 'microsoftAuthenticatorPush') return 'push'
   if (method === 'softwareOneTimePasscode' || method === 'hardwareOneTimePasscode') return 'otp'

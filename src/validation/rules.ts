@@ -24,6 +24,7 @@ import { effectOf } from '../roadmap/operations.ts'
 // Pure: no DOM, no network. Runs in Node tests, in the worker and in the UI.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts'
+import { isPhishingResistantKind } from '../scoring/phishingResistant.ts'
 import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
@@ -201,7 +202,6 @@ const pass = (finding: string | null = null): RuleEval => ({ outcome: 'pass', fi
 // ---- shared facts ----------------------------------------------------------
 
 export const GLOBAL_ADMIN_ROLE = '62e90394-69f5-4237-9190-012177145e10'
-const PHISHING_RESISTANT = new Set(['fido2', 'passkey', 'windowsHelloForBusiness'])
 const NON_MFA_KINDS = new Set(['password', 'email', 'other'])
 /** Exchange Online plans: a licence that puts a mailbox on the account. */
 const MAILBOX_PLANS = new Set([
@@ -522,7 +522,7 @@ const bgPhishingResistant: ValidationRule = {
     const methods = methodsOf(ctx, id)
     if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
     const kinds = mfaKinds(methods)
-    if (kinds.some((k) => PHISHING_RESISTANT.has(k))) return PASS
+    if (kinds.some(isPhishingResistantKind)) return PASS
     if (kinds.length > 0 && kinds.every((k) => k === 'phone')) return fail(F.bgSmsOnly)
     return fail(F.bgNoPhishingResistant)
   },

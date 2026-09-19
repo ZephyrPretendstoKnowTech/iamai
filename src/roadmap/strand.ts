@@ -4,6 +4,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { accountApplicability, isOpenPolicy, stepEffects, strengthLookupOf } from './operations.ts'
 import type { Applicability, Narrowing, PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import type { Step } from './types.ts'
+import { isPhishingResistantRegistered } from '../scoring/phishingResistant.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
 
@@ -25,15 +26,6 @@ export type StrandContext = ScopeEvidence & {
 
 /** The sign-in risk levels Identity Protection's records actually carry. */
 const MEASURED_RISK_LEVELS = new Set(['high', 'medium'])
-
-const PHISHING_RESISTANT = new Set([
-  'fido2SecurityKey',
-  'passKeyDeviceBound',
-  'passKeyDeviceBoundAuthenticator',
-  'windowsHelloForBusiness',
-  'x509Certificate',
-  'microsoftAuthenticatorPasswordless',
-])
 
 /**
  * Steps that can deny or interrupt access when enforced (roadmap-v2.md §1):
@@ -108,7 +100,8 @@ export function promptsPeople(step: Step): boolean {
  */
 const COMBINATION_PARTS: Record<string, (m: ReadonlySet<string>) => boolean> = {
   password: () => true,
-  fido2: (m) => m.has('fido2securitykey') || [...m].some((x) => x.startsWith('passkeydevicebound')),
+  // Every passkey the registration report names, synced ones included (the one phishing-resistant set, scoring/phishingResistant.ts).
+  fido2: (m) => [...m].some((x) => x === 'fido2securitykey' || x.startsWith('passkey')),
   windowshelloforbusiness: (m) => m.has('windowshelloforbusiness'),
   x509certificatemultifactor: (m) => m.has('x509certificate'),
   x509certificatesinglefactor: (m) => m.has('x509certificate'),
@@ -531,7 +524,8 @@ export function accountVerdict(family: Step['readiness']['family'], accountId: s
         : { stranded: true, unknown: false, reason: 'the account has no MFA method' }
     case 'admin':
       if (!registrationKnown) return { stranded: false, unknown: true, reason: 'registration data was not readable' }
-      return methods.some((m) => PHISHING_RESISTANT.has(m))
+      // The one phishing-resistant set (scoring/phishingResistant.ts): a synced passkey counts, Authenticator phone sign-in does not.
+      return methods.some(isPhishingResistantRegistered)
         ? { stranded: false, unknown: false, reason: 'the account holds a phishing-resistant method' }
         : { stranded: true, unknown: false, reason: 'the account has no phishing-resistant method' }
     case 'device': {
