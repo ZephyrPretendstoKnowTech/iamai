@@ -68,6 +68,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { CONTRACT, stepContract } from './stepContract.ts'
 import { appliedMapping } from './pickerRows.ts'
 import { stepExportView, stepLines } from './stepExport.ts'
+import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { rowReason, rowWhen } from './rowWhen.ts'
@@ -248,7 +249,13 @@ test('needs decision: no channel hands over a policy while the exclusions group 
   assert.deepEqual(stepOperations(c.step), [])
   assert.equal(jsonOffered(c.step), false)
   assert.equal(/(New|Update)-MgIdentityConditionalAccessPolicy/.test(powershellFor(stepOperations(c.step))), false, 'no PowerShell mutates a policy')
-  assert.equal(stepExportView(c.step, c.ctx).whatToDo.some((l) => CREATING.test(l)), false, 'the export does not carry the create instructions either')
+  // The export prints the task text the screen prints (overnight review B5): every
+  // Implementation Task, the optional "Create an emergency exclusions group" among
+  // them. What it must not carry is the content's own create instructions, and the
+  // task it asks for is choosing one of the groups found, not creating another.
+  assert.equal(stepExportView(c.step, c.ctx).whatToDo.some((l) => /Name it |Create one if/i.test(l)), false, 'the export does not carry the content create instructions either')
+  const tasks = emergencyGroupTasksOf(c.step, c.ctx).tasks
+  assert.deepEqual(tasks.filter((t) => t.required).map((t) => t.id), ['choose-exclusions-group'], 'choosing a found group is the task; creating one is not required')
   // And no step in the plan does, because every policy the plan would write
   // names the group nobody has chosen (Foundation A).
   assert.deepEqual(c.run.steps.filter((s) => implementationOffered(s)).map((s) => s.id), [])
