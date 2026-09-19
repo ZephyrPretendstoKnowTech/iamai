@@ -32,10 +32,11 @@ test('emergency access is on every plan: Ready with one failing check on the dem
   const bg1 = day1.steps.find((s) => s.id === BG)!
   assert.ok(bg1, 'present on day one')
   assert.equal(bg1.status, 'ready', 'Ready: the second account sits inside one report-only policy')
-  // Day one: the second account is inside one enabled policy, and both accounts
-  // signed in ten days before the scan with no drill recorded (E3): who and why.
-  // The passphrase storage and sign-in alerting attestations nobody has given are hardening lines too (owner, 2026-09-11).
-  assert.deepEqual(bg1.checks?.items.map((i) => i.fix).sort(), ['credential-storage', 'drill-due', 'drill-due', 'excluded-everywhere', 'recent-sign-in', 'recent-sign-in', 'sign-in-alerting'], `the failing checks (${bg1.checks?.items.map((i) => i.fix).join(', ')})`)
+  // Day one: the accounts are set up, and their recovery passkeys are not yet
+  // prepared. Since the connected journey (c1cacf21) Step 1 states its facts as
+  // configuration findings, and policy exclusions belong to the exclusions step.
+  assert.deepEqual(bg1.configurationFindings?.filter((f) => f.outcome !== 'pass').map((f) => f.key), ['recovery-methods'], 'the one open fact on day one')
+  assert.deepEqual(day1.steps.find((s) => s.id === 's-prereq-exclusion-group')?.checks?.items.map((i) => i.fix), ['excluded-from-every-policy'], 'the missing exclusion is the exclusions step\'s')
   const week2 = runFixture(fixture('demo-week2'))
   const bg2 = week2.steps.find((s) => s.id === BG)!
   assert.equal(bg2.status, 'done', 'In place on week two: the group is excluded and the sign-in is a recorded drill')
