@@ -1,7 +1,7 @@
-// The one policy step piloted on the Establish Emergency Access anatomy (owner,
-// 2026-09-19): it draws the task headings, the Tasks Remaining cards and the
-// Implementation task frame, from its own Readiness tiles and its own Entra
-// procedure — and no other step moves.
+// Every policy step on the Establish Emergency Access anatomy (owner,
+// 2026-09-19): it draws the task headings, the Tasks Remaining cards — its own
+// policy first, then its Readiness tiles — and the Implementation task frame,
+// from its own Entra procedure. A step of another kind does not move.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -10,8 +10,9 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { POLICY_SETTINGS_STEP_IDS, POLICY_TASK_STEP_IDS, drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { POLICY_SETTINGS_STEP_IDS, drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
@@ -24,15 +25,25 @@ function bodyOf(stepId: string, name: FixtureName = 'demo') {
   return { step, body: stepBodyOf(step, ctx) }
 }
 
-test('the pilot is one step, and it is the only policy step drawn with the task anatomy', () => {
-  assert.deepEqual([...POLICY_TASK_STEP_IDS], [PILOT])
+test('every policy step draws the task anatomy, and no other step does', () => {
+  for (const name of ['demo', 'demo-week2', 'midflight', 'messy', 'hostile', 'large', 'mid', 'small'] as FixtureName[]) {
+    const value = fixture(name)
+    for (const step of runFixture(value).steps) {
+      const kind = (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null
+      assert.equal(usesPolicyTaskAnatomy(step.id), kind === 'policy', `${name}/${step.id} (kind ${kind})`)
+    }
+  }
   assert.equal(usesPolicyTaskAnatomy(PILOT), true)
-  assert.equal(usesPolicyTaskAnatomy('s-goal-mfa-all-users'), false)
+  assert.equal(usesPolicyTaskAnatomy('s-goal-mfa-all-users'), true)
+  assert.equal(usesPolicyTaskAnatomy('s-shared-devices'), true)
+  assert.equal(usesPolicyTaskAnatomy('s-check-dormant-accounts'), false)
+  assert.equal(usesPolicyTaskAnatomy('s-direction-use'), false)
 })
 
-test('the pilot draws the four task headings; another policy step keeps its defaults', () => {
+test('every policy step draws the four task headings; a step of another kind keeps its defaults', () => {
   assert.deepEqual(taskHeadingsOf(PILOT), TASK_HEAD)
-  assert.equal(taskHeadingsOf('s-goal-mfa-all-users'), null)
+  assert.deepEqual(taskHeadingsOf('s-goal-mfa-all-users'), TASK_HEAD)
+  assert.equal(taskHeadingsOf('s-check-dormant-accounts'), null)
   // The Emergency Access group's own steps are untouched.
   assert.deepEqual(taskHeadingsOf('s-prereq-break-glass'), TASK_HEAD)
 })
@@ -55,9 +66,39 @@ test('the pilot projects one Implementation Task, and it is the Entra procedure 
   assert.ok((task.facts ?? []).some((fact) => fact.label === 'Name'))
 })
 
-test('no other policy step gains a task projection', () => {
-  assert.equal(bodyOf('s-goal-mfa-all-users').body.emergencyAccountTasks, null)
-  assert.equal(bodyOf('s-goal-block-legacy-auth').body.emergencyAccountTasks, null)
+test('another policy step gains its own task projection, from its own Entra procedure', () => {
+  for (const id of ['s-goal-mfa-all-users', 's-goal-block-legacy-auth', 's-goal-token-protection']) {
+    const { body } = bodyOf(id)
+    assert.equal(body.emergencyAccountTasks?.tasks.length, 1, `${id} projects its one procedure`)
+    const portal = body.artifacts.find((a) => a.id === 'portal')!
+    assert.deepEqual(body.emergencyAccountTasks!.tasks[0].steps, portalProcedureOf(portal.text()).steps, `${id} carries its own lines`)
+  }
+  // A step whose baseline contradicts itself has no task: nothing done in the portal resolves it.
+  const conflict = bodyOf('s-goal-admin-portals-protected')
+  assert.equal(conflict.body.contract.state.condition, 'baseline-conflict', 'the premise')
+  assert.equal(conflict.body.emergencyAccountTasks, null)
+  const [card] = policySubjectsOf(conflict.body.contract, conflict.body.readiness, conflict.body.emergencyAccountTasks)
+  assert.equal(card.instruction, '', 'a step with nothing to do points at no task')
+})
+
+test('a goal the tenant already delivers has a satisfied policy card and no tasks remaining', () => {
+  const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
+  assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  assert.equal(cards.every((item) => item.satisfied), true)
+  assert.equal(cards[0].title, 'In place')
+  assert.equal(cards[0].instruction, '')
+  assert.deepEqual(cards[0].completed, ['Report-only', 'Ready to enforce', 'Enforced'])
+  assert.equal(policyBarOf(cards), 'Every task on this step is complete.')
+})
+
+test('a policy in report-only states the stage it has reached and the one it has not', () => {
+  const { body } = bodyOf('s-goal-token-protection', 'demo-week2')
+  const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  assert.equal(card.title, 'Enforced', 'the next stage')
+  assert.deepEqual(card.completed, ['Report-only', 'Ready to enforce'])
+  assert.equal(card.remainingCount, 1)
+  assert.equal(card.instruction, 'Follow Turn the policy on in Implementation Tasks.')
 })
 
 test('the Entra procedure is read back as its numbered steps and the settings under its heading', () => {
@@ -101,7 +142,7 @@ test('the policy has a card of its own: its name, its rollout stages, the next o
   assert.equal(card.remainingCount, 3)
   assert.deepEqual(card.completed, [])
   assert.equal(card.title, 'Report-only', 'the next stage is the next check')
-  assert.equal(card.detail, body.contract.milestone.label, 'what that stage means is the contract’s own milestone')
+  assert.equal(card.detail, body.contract.whatToDo.text, 'what that stage means is the step’s own one action')
   assert.equal(card.instruction, 'Follow Create the policy in Report-only in Implementation Tasks.')
   assert.equal(card.satisfied, false)
   assert.ok(rest.length > 0, 'the Readiness tiles still follow the policy’s own card')
@@ -124,6 +165,7 @@ test('a policy that has reached its last stage with nothing left to submit is a 
     track: (['not-deployed', 'report-only', 'ready-to-enforce', 'enforced'] as const).map((key, i) => ({ key, label: ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced'][i], reached: true, current: key === 'enforced' })),
     state: { lifecycle: 'enforced' as const, stage: 'In place', word: 'Completed' },
     milestone: { label: 'No change needed.' },
+    whatToDo: { kind: 'preserve' as const, text: 'This is in place already: nothing to create. Keep the policy as it is.' },
     existing: null,
   } as unknown as Parameters<typeof policyCardsOf>[0]
   const [card] = policyCardsOf(contract, null)

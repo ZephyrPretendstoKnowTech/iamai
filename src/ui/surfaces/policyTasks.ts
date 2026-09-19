@@ -1,14 +1,15 @@
 // A policy step drawn with the Establish Emergency Access anatomy (owner,
 // 2026-09-19: "there will be ZERO lack of uniformity among UI that SHOULD be
-// identical"). One step is piloted and the set below is the whole gate, so no
-// other step moves.
+// identical"). Every policy step is, after the one-step pilot: the gate is the
+// step's own content kind, and no step of another kind moves.
 //
 // Nothing here is a new surface, and nothing here decides anything.
 //
-// The Tasks Remaining cards are the step's own Readiness tiles through the
-// adapter Steps 2-3 already use (emergencyReadiness.ts emergencySubjectTileOf);
-// the only thing added back is the tile's own link, which the strip drew and the
-// card would otherwise drop.
+// The Tasks Remaining cards are the step's own policy — the subject an account
+// is on Step 1 — followed by its Readiness tiles through the adapter Steps 2-3
+// already use (emergencyReadiness.ts emergencySubjectTileOf); the only thing
+// added back is the tile's own link, which the strip drew and the card would
+// otherwise drop.
 //
 // The Implementation Tasks are the step's own Entra procedure — the portal
 // artifact stepBody.ts already built for this step, read back as the numbered
@@ -20,18 +21,21 @@
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
+import { contentStepForPackage } from '../../content/stepTitle.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 
-/** The one policy step piloted on the task anatomy. Adding a step is adding an id here. */
-export const POLICY_TASK_STEP_IDS: readonly string[] = ['s-goal-admin-session']
-
-/** Whether this step draws the Emergency Access task anatomy although it is a policy step. */
+/**
+ * Whether this step draws the Emergency Access task anatomy although it is a
+ * policy step. Every policy step does (owner, 2026-09-19, after the one-step
+ * pilot): the gate is the step's own content kind, so there is no second list
+ * of ids to keep in step with the content.
+ */
 export function usesPolicyTaskAnatomy(stepId: string): boolean {
-  return POLICY_TASK_STEP_IDS.includes(stepId)
+  return (contentStepForPackage(stepId) as { kind?: string } | undefined)?.kind === 'policy'
 }
 
 /**
@@ -97,9 +101,13 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
 /**
  * This step's Implementation Tasks: one task, because the step has one Entra
  * procedure. A step whose portal channel has no procedure gets no projection and
- * keeps the body it always drew.
+ * keeps the body it always drew — and so does a step whose baseline contradicts
+ * itself, because nothing anybody does in the portal resolves that (stepContract
+ * `fixOf`: such a step asks for nothing), and a task there would be work offered
+ * over a step that says there is none.
  */
 export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[]): EmergencyTaskProjection | null {
+  if (step.state.condition === 'baseline-conflict') return null
   const portal = artifacts.find((a) => a.id === 'portal')
   if (!portal) return null
   const { steps, facts } = portalProcedureOf(portal.text())
@@ -179,15 +187,26 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     : [{ key: 'policy', heading: POLICY_SUBJECT, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
   return subjects.map((subject) => {
     const stages = stagesOf(contract.track, subject.lifecycle)
-    const satisfied = stages.remaining === 0 && task === null
+    // Nothing is left on the policy itself when the goal is already delivered
+    // (Foundation B's own `satisfied`: "nothing to create; keep it as it is"),
+    // or when it has reached its last stage with nothing left to submit.
+    const satisfied = contract.state.satisfied || (stages.remaining === 0 && task === null)
     const here = contract.state.stage || contract.state.word
+    // Where the step has no rollout to draw — a goal with no policy of its own,
+    // a step set aside — the next check is the task itself; there is no stage to
+    // name it by.
+    const next = stages.next ?? (contract.track.length === 0 ? task?.title ?? null : null)
     return {
       key: subject.key,
       accountId: null,
       heading: subject.heading,
       upn: subject.name,
-      title: satisfied ? here : stages.next ?? here,
-      detail: contract.milestone.label,
+      title: satisfied ? here : next ?? here,
+      // What that check means, in the contract's own words for this step: its one
+      // action (Foundation B's milestone where nothing overrules it, and the more
+      // specific sentence where something does — "this policy names an object
+      // Contoso does not have yet", "in place already: nothing to create").
+      detail: contract.whatToDo.text,
       instruction: satisfied || task === null ? '' : `Follow ${task.title} in Implementation Tasks.`,
       completed: stages.completed,
       remainingCount: stages.remaining !== null && stages.remaining > 0 ? stages.remaining : null,
