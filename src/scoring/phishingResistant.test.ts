@@ -443,7 +443,8 @@ test('the demo exercises every readiness case the page draws', () => {
   has('Needs a method', (r) => r.state === 'method')
   has('A contractor', (r) => !!r.readiness?.devices.some((d) => d.os === 'Windows' && d.trust === 'registered' && d.best !== 'windowsHello'))
   has('A separate admin account', (r) => r.admin && !!r.readiness?.devices.some((d) => d.whyNot === 'otherAccount'))
-  has('A script account', (r) => r.readiness?.automated === true)
+  // A script account is listed under Not counted (owner item 3), never among the counted people.
+  assert.ok(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.some((r) => r.readiness?.automated === true && r.state === null && r.explained === 'script'), 'A script account, not counted')
   has('Unknown', (r) => r.state === 'unknown' && methodsCell(r).main === unread)
   // Week two: three more people are Ready.
   const w2 = readinessView(fixture('demo-week2').snapshot, fixture('demo-week2').snapshot.asOf, fixture('demo-week2').mapping)

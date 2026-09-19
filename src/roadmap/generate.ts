@@ -2198,7 +2198,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
     const candidates = campaignIds(viability, snapshot, mapping)
-    const adminCandidates = [...new Set([...Object.keys(snapshot.roles.active), ...Object.keys(snapshot.roles.eligible ?? {})])].filter(id => viabilityById.has(id) && !excluded.has(id))
+    // A role holder that signs in only to scripting tools is a script, not a person to prepare (owner item 3, derive/population.ts isActivePerson).
+    const adminCandidates = [...new Set([...Object.keys(snapshot.roles.active), ...Object.keys(snapshot.roles.eligible ?? {})])].filter(id => viabilityById.has(id) && !excluded.has(id) && !viabilityById.get(id)!.readiness.automated)
     const targetEffects = [...(methodTargets.get('mfa-all-users') ?? []), ...(methodTargets.get('admins-phishing-resistant') ?? [])]
     const preparation = methodPreparation(targetEffects, [...new Set([...candidates, ...adminCandidates])], snapshot, strandContext, methodPreparationCache)
     const preparationIds = preparation.completeScope ? preparation.ids : [...new Set([...candidates, ...adminCandidates])]

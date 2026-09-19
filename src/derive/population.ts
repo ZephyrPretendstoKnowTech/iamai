@@ -71,9 +71,15 @@ export function campaignBucket(v: MfaViability, mfaEnforced: boolean): ReturnTyp
   return mfaEnforced && bucket === 'unproven' ? 'proven' : bucket
 }
 
-/** One of the plan's active people: enabled, signed in within the window (the rollout has a bucket for them). */
+/**
+ * One of the plan's active people: enabled, signed in within the window (the
+ * rollout has a bucket for them), and not an account that signs in only to
+ * scripting tools. Such an account is not a person who will register a passkey
+ * (owner item 3): MFA Readiness lists it under Not counted, and no readiness
+ * count or gate counts it.
+ */
 export function isActivePerson(v: MfaViability): boolean {
-  return rolloutBucket(v) !== null
+  return rolloutBucket(v) !== null && !v.readiness.automated
 }
 
 /** The active people among a scored set: enabled person accounts (Today's rows) with a rollout bucket. */

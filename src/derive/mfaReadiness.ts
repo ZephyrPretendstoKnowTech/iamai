@@ -3,7 +3,8 @@
 // directory once. Every active person carries their readiness
 // (scoring/phishingResistant.ts personReadiness, through the scored person); an
 // enabled person outside the activity window is explained (never signed in,
-// looks retired, new). A guest is counted like anybody else and tagged Guest:
+// looks retired, new), and so is an account that signs in only to scripting
+// tools (looks like a script: not a person who will register a passkey). A guest is counted like anybody else and tagged Guest:
 // guests stay in the MFA campaign (owner, 2026-09-19, superseding option B), so
 // this page and the Plan count one set. An account that is not a person
 // (emergency access, a service account, a shared device, sign-in disabled) is
@@ -46,9 +47,9 @@ export function showKeyOf(value: string | null | undefined): ShowKey | null {
   return EVERY_SHOW_KEY.includes(value) ? (value as ShowKey) : null
 }
 
-/** Why an enabled person is not counted: never signed in, signed in long ago, new, or activity unread. */
-export type Explained = 'never' | 'retired' | 'new' | 'unread'
-export const EXPLAINED: readonly Explained[] = ['never', 'retired', 'new', 'unread']
+/** Why an enabled person is not counted: never signed in, signed in long ago, new, signs in only to scripting tools, or activity unread. */
+export type Explained = 'never' | 'retired' | 'new' | 'script' | 'unread'
+export const EXPLAINED: readonly Explained[] = ['never', 'retired', 'new', 'script', 'unread']
 
 export type ReadinessRow = {
   user: UserRow
@@ -99,6 +100,8 @@ const DAY = 86_400_000
 export function explainedOf(u: UserRow, v: MfaViability | undefined, now: string): Explained {
   if (!v || v.activity === 'unknown') return 'unread'
   if (v.activity === 'dormant') return 'retired'
+  // Active, but only ever seen signing in to scripting tools: a script, not a person (owner item 3).
+  if (v.activity === 'active' && v.readiness.automated) return 'script'
   const created = u.createdDateTime ? Date.parse(u.createdDateTime) : Number.NaN
   if (Number.isFinite(created) && Date.parse(now) - created <= 30 * DAY) return 'new'
   return 'never'

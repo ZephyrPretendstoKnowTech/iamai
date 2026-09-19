@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when device readiness reaches 80% (now 29%)",
+  "reason": "when device readiness reaches 80% (now 30%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "29% of devices compliant"
+      "state": "30% of devices compliant"
     },
     {
       "label": "Waiting on your direction",
