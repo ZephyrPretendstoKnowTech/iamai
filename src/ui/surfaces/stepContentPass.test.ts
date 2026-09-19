@@ -120,7 +120,7 @@ test("a Cleanup row's instructions sit under Implementation, with the not-assess
   const src = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
   assert.match(src, /<StepSection heading=\{CONTRACT\.implementation\.heading\}>/)
   assert.doesNotMatch(src, /HEAD\.whatToDo/)
-  assert.doesNotMatch(src, /has-rail/, 'a Cleanup row draws no action column')
+  assert.match(src, /className=\{`step-body\$\{row\.kind === 'drill' \? ' has-rail' : ''\}`\}/, 'only the verification row (Emergency Access Step 4) draws an action column')
   const main = src.indexOf('<div className="step-main">')
   assert.ok(main > 0 && src.indexOf('entry.whatToDo', main) > main && src.indexOf('A.notAssessedLabel', main) > main, 'the rename list and the notes are in the main column')
 })
