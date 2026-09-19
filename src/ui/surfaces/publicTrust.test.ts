@@ -15,6 +15,7 @@ import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { CONSENT_SCREEN_ORDER, SCOPE_COPY, SIGN_IN_SCOPES, consentRows } from '../../copy/permissions.ts'
 import { app, pages } from '../../content/content.ts'
 import { signInTile, stages } from '../scan/connectView.ts'
+import { findingsIn, loadFingerprints } from '../../../scripts/tenant-guard.mjs'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
 const CONNECT = read('src/ui/surfaces/Connect.tsx')
@@ -253,7 +254,7 @@ test('dependabot is configured for the one npm project at the root, weekly', () 
 test("the wording review's example operator is admin@contoso.com", () => {
   const render = read('src/content/render.ts')
   assert.match(render, /upn: 'admin@contoso\.com'/, 'the review renders a generic operator')
-  assert.ok(!render.includes('Lachlan@getiamai.com'), "the owner's own sign-in address is not the example")
+  assert.deepEqual(findingsIn(render, loadFingerprints()), [], "the owner's own sign-in address is not the example")
 })
 
 // ---- Analytics truth ----

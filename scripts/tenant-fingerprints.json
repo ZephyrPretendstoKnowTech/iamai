@@ -1,0 +1,11 @@
+{
+  "$comment": "SHA-256 of values from the owner's test tenant that must never be committed: account addresses and object ids. Each entry is the hash of the value lower-cased and trimmed, so this list blocks the values without publishing them. scripts/tenant-guard.mjs hashes every GUID and email address in the tracked files and fails on a match. To block a new value, add its hash here: node -e \"console.log(require('crypto').createHash('sha256').update(process.argv[1].trim().toLowerCase()).digest('hex'))\" '<value>'.",
+  "sha256": [
+    "e3e0a506fee6669cc2e2434db34663ce2d4430f01972669d001b33b091800855",
+    "9dea2aef14dbf68c8634e38dd12e19ebb21bf588644515e20d6ba3cbb2b2191b",
+    "010b2882f0bf5e1e815af95b49a78293791720d660e84782561133fdddfdf2a7",
+    "7923c2b74867cc9c2cf2e89d3051034b46fe0ab0a3b7af766321d9824257bb6a",
+    "cc80255509f9ef0d77c3fda4484f9abdade629bc01e687835cc5b6cf094ab04c",
+    "d5638d112e05149f17cbf2a1862150b9be866358314487848f668f0455dc0cc1"
+  ]
+}
