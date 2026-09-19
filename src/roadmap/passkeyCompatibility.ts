@@ -22,6 +22,17 @@ const attestationMatch = (method: AuthMethodSummary, required: boolean): boolean
 const profileAttestationRequirement = (value: unknown): boolean | null =>
   value === 'registrationOnly' ? true : value === 'disabled' ? false : null
 
+/**
+ * The snapshot as it would read with one registered key for one account: what a
+ * per-key policyCompatibility call judges. policyCompatibility reads only that
+ * account's methods, so the copy carries only them; copying every account's
+ * methods per key made the tenant-wide projection quadratic (about 1.7 s of the
+ * large fixture's roadmap after e54f1590).
+ */
+function oneKey(snapshot: TenantSnapshot, accountId: string, method: AuthMethodSummary): TenantSnapshot {
+  return { ...snapshot, authMethods: { [accountId]: [method] } }
+}
+
 function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], policy: Fido2Configuration | null, groups: GroupMembers, unreadReason = 'policyUnread', purpose: 'approval' | 'runtime' = 'approval'): PasskeyCompatibility[] {
   return ids.map(accountId => {
     const result = (state: PasskeyCompatibility['state'], reason: string): PasskeyCompatibility => ({ accountId, state, reason })
@@ -129,7 +140,7 @@ export function compatiblePasskeyMethodIds(snapshot: TenantSnapshot, accountId: 
   let unknown = false
   const ids: string[] = []
   for (const method of methods.filter(isPasskey)) {
-    const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+    const one = oneKey(snapshot, accountId, method)
     const now = policyCompatibility(one, [accountId], current.current, groups)[0]
     const next = policyCompatibility(one, [accountId], planned.resolution.target, groups)[0]
     if (now.state === 'unknown' || next.state === 'unknown' || !method.id) unknown = true
@@ -151,7 +162,7 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
   if (!candidates.length) return { state: 'incompatible', ids: [], reason: 'No registered passkey can be used for recovery.' }
   const ids: string[] = []
   for (const method of candidates) {
-    const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+    const one = oneKey(snapshot, accountId, method)
     const runtime = policyCompatibility(one, [accountId], current.current, groups, 'policyUnread', 'runtime')[0]
     if (runtime.state === 'unknown') return { state: 'unknown', ids: [], reason: 'A potentially usable registered passkey could not be evaluated completely.' }
     if (runtime.state !== 'eligible') continue
@@ -177,7 +188,7 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
     const keys = methods.filter(isPasskey)
     if (!keys.length) continue
     const states = keys.map(method => {
-      const one = { ...snapshot, authMethods: { ...snapshot.authMethods, [accountId]: [method] } }
+      const one = oneKey(snapshot, accountId, method)
       return { method, current: policyCompatibility(one, [accountId], reading.current, groups, 'policyUnread', 'runtime')[0], future: policyCompatibility(one, [accountId], target, groups, 'policyUnread', 'runtime')[0] }
     })
     if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
