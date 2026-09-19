@@ -30,7 +30,7 @@ type Words = {
   readyUntil: string
   options: Record<SignInOption, string>
   next: {
-    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
+    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
@@ -180,11 +180,17 @@ export function nextWords(n: NextAction): string {
   }
 }
 
+/** The next actions that ask a person to set up a passkey or another built-in method. */
+const GUEST_SETUP: ReadonlySet<NextAction['kind']> = new Set(['seamless', 'setUp', 'addDevice', 'updateOs'])
+
 /** The Next step cell: the baseline's next action, or, for somebody Ready, the Seamless recommendation. */
 export function nextCell(r: ReadinessRow): string {
   const rd = r.readiness
   if (!rd || r.state === null) return ''
-  if (rd.next.kind === 'none') return rd.recommended ? nextWords(rd.recommended) : T.next.none
+  // A guest is in the campaign (owner, 2026-09-19): Microsoft Authenticator works
+  // for them and a passkey does not yet, so a guest is never asked to set one up.
+  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return T.next.guest
+  if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
   return nextWords(rd.next)
 }
 

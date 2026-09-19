@@ -16,6 +16,7 @@
 // sentences it reads — never a sweep of every product literal.
 import { content, stepById } from './content.ts'
 import { fillText } from './render.ts'
+import { cohortWords } from '../derive/whoLine.ts'
 import * as readinessModel from '../derive/mfaReadiness.ts'
 
 export type Finding = { level: 'P0' | 'P1' | 'P2'; text: string }
@@ -76,8 +77,11 @@ export const RE = {
   gateWindowClosed: /the window closed \S.*\d{4}\./,
   /** The Done when of a row reading Ready · Ready to enforce: the evidence gate says ready now. */
   gateReadyNow: /ready now: 0 failures in \d+ days/,
-  /** The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count. */
-  readinessSummary: /(\d+) of (\d+) (?:people|person) (?:is|are) ready for phishing-resistant sign-in\./,
+  /**
+   * The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count.
+   * The counted are people, guests, or people and guests (derive/whoLine.ts cohortWords): the total is 2 + 3.
+   */
+  readinessSummary: /(\d+) of (\d+) (?:people|person|guests?)(?: and (\d+) guests?)? (?:is|are) ready for phishing-resistant sign-in\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
 }
@@ -185,13 +189,15 @@ export function staticFindings(): Finding[] {
   // The readiness summary reads in either tense, and its empty and unknown forms
   // are the sentences the page check looks for.
   for (const [vals, label] of [
-    [{ ready: 1, active: 1 }, 'a count of one'],
-    [{ ready: 2, active: 3 }, 'a count above one'],
+    [{ ready: 1, cohort: cohortWords(1, 0) }, 'a count of one'],
+    [{ ready: 2, cohort: cohortWords(3, 0) }, 'a count above one'],
+    [{ ready: 4, cohort: cohortWords(31, 1) }, 'people and a guest'],
+    [{ ready: 1, cohort: cohortWords(1, 1) }, 'one guest'],
   ] as [Record<string, unknown>, string][]) {
     const got = fillText(textAt('pages.readiness.summary'), vals)
     if (!RE.readinessSummary.test(got)) add(`content pages.readiness.summary: with ${label} it reads "${got}", which the readiness check cannot read`)
   }
-  if (fillText(textAt('pages.readiness.summary'), { ready: 1, active: 1 }) === fillText(textAt('pages.readiness.summary'), { ready: 2, active: 3 })) {
+  if (fillText(textAt('pages.readiness.summary'), { ready: 1, cohort: cohortWords(1, 0) }) === fillText(textAt('pages.readiness.summary'), { ready: 2, cohort: cohortWords(3, 0) })) {
     add('content pages.readiness.summary: the sentence does not change with the count; the pluraliser is not bending its verb')
   }
   if (!RE.readinessSummaryNone.test(textAt('pages.readiness.summaryNone'))) {

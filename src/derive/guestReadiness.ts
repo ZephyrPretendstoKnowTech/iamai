@@ -1,7 +1,7 @@
-// Guests on MFA Readiness (owner decision, 2026-09-18: option B). A B2B guest
-// signs in with MFA from their home organisation, so this tenant cannot see
-// their methods and the page does not list them as people. What it can say is
-// tenant-level: how many guests sign in, whether this tenant trusts MFA from
+// Guests on MFA Readiness. Guests stay in the MFA campaign (owner, 2026-09-19,
+// superseding 2026-09-18 option B): the page counts and lists them with
+// everyone else, tagged Guest. This tile adds what is tenant-level: how many
+// guests sign in, whether this tenant trusts MFA from
 // their home organisation (the cross-tenant access settings), and whether the
 // Plan's Require MFA for Guests is in place — with the suggestion, never a
 // requirement, to ask guests for phishing-resistant MFA where their

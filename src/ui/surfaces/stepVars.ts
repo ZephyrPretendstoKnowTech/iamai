@@ -22,6 +22,7 @@ import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
+import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -160,6 +161,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // The step's people: the active ones it touches, or, for a check step, the
     // accounts it checks (the dormant accounts are by definition not active).
     n: step.preparation ? step.preparation.ids.length : step.kind === 'check' ? step.population.total : view?.active,
+    // A preparation cohort in the row's own words: "30 people and 1 guest" (derive/whoLine.ts cohortWords).
+    cohort: step.preparation ? cohortWords(step.preparation.ids.length, guestsAmong(step.preparation.ids, step.preparation.guestIds)) : undefined,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names: this

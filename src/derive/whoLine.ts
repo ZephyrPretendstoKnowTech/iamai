@@ -6,7 +6,8 @@
 // exactly what the page renders.
 import type { StepPopulation } from '../roadmap/types.ts'
 import { count } from '../copy/statements.ts'
-import { pages } from '../content/content.ts'
+import { engine, pages } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 /**
  * The Impact words that are not a count (owner, 2026-09-11): a reach nobody
@@ -25,6 +26,26 @@ const GAP_CHARS = 40
 /** The people a step's row and step name: its active in-scope set (the dormant step names its own accounts). */
 export function affectedIds(pop: StepPopulation): string[] {
   return pop.activeIds ?? pop.ids
+}
+
+/**
+ * One cohort in the same words wherever it is counted (owner, 2026-09-19):
+ * guests stay in the MFA campaign and are named beside the people — "30 people
+ * and 1 guest" — never dropped from one count and kept in another. `total`
+ * counts everyone, guests included; a cohort of guests alone reads "1 guest".
+ */
+export function cohortWords(total: number, guests: number): string {
+  const W = engine.cohort
+  const people = Math.max(0, total - guests)
+  if (guests <= 0) return fillText(W.people, { n: total })
+  if (people === 0) return fillText(W.guests, { n: guests })
+  return fillText(W.both, { people, guests })
+}
+
+/** The guests among a cohort's ids, counted against the ids the cohort holds now. */
+export function guestsAmong(ids: readonly string[], guestIds: readonly string[]): number {
+  const guests = new Set(guestIds)
+  return ids.filter((id) => guests.has(id)).length
 }
 
 /** A row's gap suffix: one shortened clause, ≤40 characters (the full sentence is on the step). */

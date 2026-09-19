@@ -664,7 +664,7 @@ async function walkFixture(fx) {
         if (stats.length !== 3 || stats.some((g, k) => g.title !== STAT_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(stats.map((g) => g.title))}; ${JSON.stringify(STAT_TITLES)}`)
         else if (summary) {
           const ready = Number(summary[1])
-          const active = Number(summary[2])
+          const active = Number(summary[2]) + Number(summary[3] ?? 0)
           const total = ready + stats.reduce((x, g) => x + g.n, 0)
           if (total !== active) add('P0', `${label}: Ready and the three counts sum to ${total} and the summary counts ${active} active people`)
           const rowsShown = () => evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)

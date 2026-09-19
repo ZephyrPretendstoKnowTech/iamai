@@ -120,7 +120,8 @@ test('Step 5: the Impact column says who a step reaches, never the state, and a 
       } else {
         const head = impact.split(' · ')[0]
         const fallback = implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? null
-        assert.ok(/^\d+ (person|people)$/.test(head) || ['No user impact', structuralWords.impactDefault, s.impactLabel, ...Object.values(structuralWords.impactLabels), fallback].includes(head), `${where}: "${impact}"`)
+        // A preparation cohort names its guests beside its people (derive/whoLine.ts cohortWords).
+        assert.ok(/^(\d+ (person|people)( and \d+ guests?)?|\d+ guests?)$/.test(head) || ['No user impact', structuralWords.impactDefault, s.impactLabel, ...Object.values(structuralWords.impactLabels), fallback].includes(head), `${where}: "${impact}"`)
       }
     }
   }

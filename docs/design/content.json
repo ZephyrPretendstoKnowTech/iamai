@@ -319,6 +319,12 @@
       "readiness": {
         "notMeasured": "not measured"
       },
+      "cohort": {
+        "$comment": "One cohort, one set of words wherever it is counted (owner, 2026-09-19): guests stay in the MFA campaign and are named beside the people, never dropped from one count and kept in another. derive/whoLine.ts cohortWords is the one caller.",
+        "people": "{n} people",
+        "guests": "{n} guests",
+        "both": "{people} people and {guests} guests"
+      },
       "coverage": {
         "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
         "reason": {
@@ -823,9 +829,9 @@
       "eyebrow": "Tenant evidence",
       "lead": "Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone, Windows Hello on the computer, and nothing to reach for.",
       "summaryLabel": "Readiness answer",
-      "summary": "{ready} of {active} people are ready for phishing-resistant sign-in.",
+      "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
       "summaryNone": "No active people to count.",
-      "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof.",
+      "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
       "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
@@ -1003,6 +1009,7 @@
         "confirm": "Sign in once with {method}",
         "confirmOn": "Sign in once with {method} on {device}",
         "returnConfirm": "Confirm on return",
+        "guest": "Set up Microsoft Authenticator; passkeys don’t work for guests yet",
         "addDevice": "Add {option} on {device}",
         "updateOs": "Update {device} to {version}, or use a security key on it",
         "replaceKey": "Replace the key with an approved model",
@@ -1142,7 +1149,6 @@
         "retired": "Looks retired: no sign-in in 90 days, still enabled.",
         "new": "New this month, hasn’t signed in yet.",
         "unread": "Activity not read.",
-        "guest": "Guest: MFA happens in their home organisation.",
         "emergency": "Emergency access accounts",
         "service": "Service accounts",
         "shared": "Shared devices",
@@ -1158,9 +1164,9 @@
         "individually": "people read individually for the older part of the window"
       },
       "guests": {
-        "$comment": "Guests (owner decision, option B): spoken for at tenant level, never listed as people. derive/guestReadiness.ts is the reading.",
+        "$comment": "Guests (owner decision, 2026-09-19, superseding option B): counted and listed with everyone else, tagged Guest, and in the MFA campaign; this tile adds the tenant-level reading. derive/guestReadiness.ts is the reading.",
         "title": "Guests",
-        "count": "{n} active guests sign in to this tenant. Their MFA happens in their home organisation, so IAMAI can’t see their methods and doesn’t list them as people.",
+        "count": "{n} active guests sign in to this tenant. They’re counted and listed with everyone else, tagged Guest, and are part of the MFA campaign: Microsoft Authenticator works for guests; passkeys don’t yet.",
         "trustOn": "This tenant trusts MFA from their home organisation.",
         "trustOff": "This tenant doesn’t trust MFA from their home organisation, so guests are asked to register a method here.",
         "trustUnknown": "Cross-tenant access settings weren’t read.",
@@ -1170,7 +1176,7 @@
         "suggestion": "Suggested: trust MFA from guests’ home organisations and ask guests for phishing-resistant MFA. This works only where their organisation uses phishing-resistant MFA."
       },
       "footer": {
-        "counted": "Counted: the {active} people who signed in during the last 90 days. Ready looks at the last 30.",
+        "counted": "Counted: the {cohort} who signed in during the last 90 days. Ready looks at the last 30.",
         "plan": "The Plan’s MFA steps follow their own policy requirements. This page holds the higher bar."
       },
       "inventory": "Every account and policy the scan read →",
@@ -1178,10 +1184,10 @@
       "emptyFilter": "No people match this view.",
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
-        "filtered": "Filtered to the {n} people {step} is waiting on.",
+        "filtered": "Filtered to the {cohort} {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "uncounted": "{n} of them aren’t counted on this page: guests, or no sign-in in the last 90 days."
+        "uncounted": "{n} of them aren’t counted on this page: no sign-in in the last 90 days, or not a person’s account."
       }
     },
     "export": {
@@ -3778,7 +3784,7 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
       "who": {
-        "lead": "{n} people are included in this preparation step.",
+        "lead": "{cohort} are included in this preparation step.",
         "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",

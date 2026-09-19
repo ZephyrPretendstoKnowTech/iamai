@@ -118,9 +118,8 @@ test('042.2: every count reconciles with the rows it claims to be about', () => 
     // Needs action is every active person who is not Ready or Seamless: the five
     // other states, the people whose evidence could not be read among them.
     assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: the needs-action filter and the five counts describe different people`)
-    // The partition's not Ready yet (the printed plan's) also holds the active guests the page speaks for at tenant level (option B).
-    const guestsNotReady = rows.filter((r) => r.explained === 'guest' && !isReady(r.readiness!.state)).length
-    assert.equal(notReady(facts), READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0) + guestsNotReady, `${c.label}: not Ready yet is the needs-action population and the active guests`)
+    // The partition's not Ready yet (the printed plan's) is the needs-action population: guests are in both (owner, 2026-09-19).
+    assert.equal(notReady(facts), READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + counts[s], 0), `${c.label}: not Ready yet is the needs-action population`)
     // Not Ready yet is a subset of the active people and never a second score.
     assert.ok(notReady(facts) <= facts.active, `${c.label}: more people not Ready than there are active people`)
     // A step's count is the ids behind it, and a step whose reach is unknown has

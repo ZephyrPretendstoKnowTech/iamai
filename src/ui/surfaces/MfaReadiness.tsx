@@ -1,5 +1,6 @@
 import type { Step } from '../../roadmap/types.ts'
 import { reached } from '../../derive/population.ts'
+import { cohortWords } from '../../derive/whoLine.ts'
 // MFA Readiness (prompt 62): phishing-resistant sign-in for everyone, seamless
 // on every device.
 //
@@ -209,16 +210,20 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const q = query.trim().toLowerCase()
   const scoped = context?.ids ? new Set(context.ids) : null
   const inScope = (r: ReadinessRow): boolean => !context || scoped === null || scoped.has(r.user.id)
-  // The step's people this page doesn't count: guests (spoken for at tenant level) and people outside the activity window.
+  // The step's people this page doesn't count: outside the activity window, or not a person's account.
   const uncountedInScope = scoped ? view.rows.filter((r) => scoped.has(r.user.id) && r.state === null).length : 0
+  // The step's cohort in the Plan row's words: its guests named beside its people (derive/whoLine.ts cohortWords).
+  const scopedCohort = context?.ids ? cohortWords(context.ids.length, view.rows.filter((r) => scoped?.has(r.user.id) && r.guest).length) : ''
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
-  // Scoped to the Plan step's people where the page was opened from one; guests are never counted.
+  // Scoped to the Plan step's people where the page was opened from one. Guests
+  // are counted with everyone else and named beside the people (owner, 2026-09-19).
   const active = counted.length
+  const cohort = cohortWords(active, counted.filter((r) => r.guest).length)
   const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
-  const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { active }) : fillText(T.summary, { ready, active })
+  const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
   const goal = goalLine(counted)
   // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
   const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
@@ -404,8 +409,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const unreadMethods = counted.filter((r) => r.readiness?.unknown === 'methods').length
   const days = covered ? Math.max(1, Math.round((Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000)) : 0
   const models = view.context.step3.models
-  // Guests (option B): spoken for once, at tenant level, never as people.
-  const guests = guestReadingOf(snapshot, view.explained.guest, guestStep)
+  // Guests are counted and listed with everyone else; this tile adds what the tenant says about them.
+  const guests = guestReadingOf(snapshot, view.guests, guestStep)
   const G = T.guests
   const Cnt = T.counted
 
@@ -438,7 +443,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       <p className="line intro">{T.lead}</p>
       {context && (
         <p className="line scope-line">
-          {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}{' '}
+          {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { cohort: scopedCohort, step: context.title })}{' '}
           {uncountedInScope > 0 && <>{fillText(T.planContext.uncounted, { n: uncountedInScope })}{' '}</>}
           <a href={stepHref(context.stepId)}>{T.planContext.back}</a>
         </p>
@@ -587,12 +592,6 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                   </dd>
                 </div>
               ))}
-              {view.explained.guest > 0 && (
-                <div style={{ display: 'contents' }}>
-                  <dt>{view.explained.guest}</dt>
-                  <dd>{Cnt.guest}</dd>
-                </div>
-              )}
               {KINDS.filter((k) => view.facts.kinds[k] > 0).map((k) => (
                 <div key={k} style={{ display: 'contents' }}>
                   <dt>{view.facts.kinds[k]}</dt>
@@ -672,7 +671,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </div>
 
       <div className="footer-note">
-        <span>{fillText(T.footer.counted, { active })}</span>
+        <span>{fillText(T.footer.counted, { cohort })}</span>
         <span>{T.footer.plan}</span>
         <a href="#/inventory">{T.inventory}</a>
       </div>

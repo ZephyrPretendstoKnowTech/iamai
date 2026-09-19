@@ -123,7 +123,7 @@ test('the answer is one panel: the sentence, the Seamless goal, the change since
     assert.ok(next > at, `the answer does not draw ${part} in the pack's order`)
     at = next
   }
-  assert.equal(W.summary, '{ready} of {active} people are ready for phishing-resistant sign-in.')
+  assert.equal(W.summary, '{ready} of {cohort} are ready for phishing-resistant sign-in.', 'the counted are named as one cohort: people, and guests beside them')
   assert.match(SURFACE, /const ready = counts\.ready \+ counts\.seamless/, 'Seamless is not counted as Ready in the sentence')
   assert.match(cssRule('.readiness-answer .answer-top'), /display: flex/)
   assert.match(packRule('.answer-top'), /display:flex/)
@@ -270,7 +270,7 @@ test("the rail is the pack's four tiles: tenant setup, approved models, not coun
   assert.match(PACK, /<h3>Evidence read<\/h3>/)
   assert.deepEqual([W.rail.setup, W.rail.models, W.rail.counted, W.rail.evidence], ['Tenant setup', 'Approved passkey models', 'Not counted', 'Evidence read'])
   const rail = SURFACE.slice(SURFACE.indexOf('<aside className="readiness-rail"'), SURFACE.indexOf('</aside>', SURFACE.indexOf('<aside className="readiness-rail"')))
-  // Guests (owner decision, option B) is the one tile the pack does not draw: shown only when guests sign in.
+  // Guests is the one tile the pack does not draw: shown only when guests sign in (they are counted with everyone else).
   assert.deepEqual([...rail.matchAll(/<section className="readiness-tile panel" aria-labelledby="readiness-([a-z]+)">/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'guests', 'evidence'])
   // Shown when guests sign in, and kept on a page scoped to the guest step (audit item 6).
   assert.match(rail, /\{guests\.active > 0 && \(!context \|\| context\.stepId === GUEST_STEP_ID\) && \(\s*<section className="readiness-tile panel" aria-labelledby="readiness-guests">/)

@@ -187,7 +187,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
     steps.push({
       ...STEP_EXTRAS,
       ...(item.id === 'authenticator-over-sms' ? {
-        preparation: { ids: f.replacement.ids, readyIds: f.replacement.readyIds, missingIds: [...f.replacement.missingIds, ...f.replacement.unknownIds], unknownIds: f.replacement.unknownIds },
+        preparation: { ids: f.replacement.ids, readyIds: f.replacement.readyIds, missingIds: [...f.replacement.missingIds, ...f.replacement.unknownIds], unknownIds: f.replacement.unknownIds, guestIds: [] },
         configurationFindings: [
           { key: 'weakMethods', label: 'SMS and Voice', value: f.weakMethodsOff ? 'Disabled' : f.weakMethodsOn.length ? 'Still enabled' : 'Not fully read', detail: 'Both methods must be disabled after replacement methods are available.', outcome: f.weakMethodsOff ? 'pass' as const : f.weakMethodsOn.length ? 'fail' as const : 'unknown' as const },
           { key: 'replacementMethods', label: 'Replacement Methods', value: `${f.replacement.readyIds.length} of ${f.replacement.ids.length} accounts ready`, detail: f.replacement.unknownIds.length ? `Method targeting or registration is unread for ${f.replacement.unknownIds.length} accounts.` : f.replacement.missingIds.length ? `A usable Authenticator or passkey registration is missing for ${f.replacement.missingIds.length} accounts.` : 'Registered replacements are allowed by their current method targeting and passkey profiles.', outcome: f.replacement.complete ? 'pass' as const : f.replacement.missingIds.length ? 'fail' as const : 'unknown' as const },

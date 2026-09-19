@@ -5,7 +5,7 @@
 import type { Step } from '../../roadmap/types.ts'
 import { app, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { IMPACT, whoLine } from '../../derive/whoLine.ts'
+import { IMPACT, cohortWords, guestsAmong, whoLine } from '../../derive/whoLine.ts'
 import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
@@ -28,7 +28,8 @@ const ACCOUNT_REVIEW_STEPS = new Set([
   's-shared-devices',
 ])
 export function rowWho(step: Step): string {
-  if (step.preparation) return step.preparation.ids.length ? `${step.preparation.ids.length} ${step.preparation.ids.length === 1 ? 'person' : 'people'}` : 'User Authentication'
+  // A preparation cohort names its guests beside its people (owner, 2026-09-19): the lead reads the same words.
+  if (step.preparation) return step.preparation.ids.length ? cohortWords(step.preparation.ids.length, guestsAmong(step.preparation.ids, step.preparation.guestIds)) : 'User Authentication'
   if (ACCOUNT_REVIEW_STEPS.has(step.id) && step.population.total > 0) {
     return `${step.population.total} ${step.population.total === 1 ? 'account' : 'accounts'}`
   }
