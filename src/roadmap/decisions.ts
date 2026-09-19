@@ -12,6 +12,7 @@ import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
+import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -187,7 +188,9 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     next.wizardAnswered[q] = true
     next.assumed![q] = provenance
   }
-  for (const [stepId, d] of Object.entries(stepDecisions)) {
+  // A Direction step's decision applies as the decisions its answers have always
+  // been saved as (directionAnswers.ts), in its place in the saved order.
+  for (const [stepId, d] of expandDirectionDecisions(stepDecisions)) {
     if (!d) continue
     if (stepId === PASSKEY_MODELS_STEP) {
       if (provenance === 'confirmed' && d.option === PASSKEY_MODELS_ACCEPT) {
@@ -219,7 +222,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       }
       continue
     }
-    if (stepId === 's-confirm-workloads') {
+    if (stepId === WORKFLOW_DECISION_STEP) {
       if (provenance !== 'confirmed') continue
       next.workflowConfirmedAt = d.at
       next.workflowAnswers = { ...(next.workflowAnswers ?? {}) }

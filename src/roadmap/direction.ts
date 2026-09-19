@@ -1,0 +1,296 @@
+// Decide Your Tenant's Direction (docs/plans/direction-spec.md): the Plan's
+// second pinned group. Four decision steps, answers only; nothing changes in
+// Entra.
+//
+//   D1 s-direction-use        Confirm What You Use
+//   D2 s-direction-accounts   Identify Service and Shared Accounts
+//   D3 s-direction-devices    Decide How People and Devices Sign In
+//   D4 s-direction-locations  Decide Where People Sign In From
+//
+// Every question has a suggestion and nothing is hidden on evidence alone:
+//   * a "what you use" question is pre-filled with today's state, from the scan;
+//   * a "how it should work" question with the baseline's recommendation, today
+//     shown beside it;
+//   * with no signal, the safe answer: a service is Yes (it keeps its policy),
+//     an exception is None or Not used (no exception is granted), and the tile
+//     says the suggestion is a default and not something the scan saw.
+// Only data the snapshot already holds is read: no Graph permission, no new
+// collection.
+//
+// A step is done when every answer in it is saved (directionAnswers.ts reads
+// where each one lives). A completed step reopens only when new evidence
+// contradicts a saved answer — a service answered No that the scan now sees in
+// use — and never because evidence went missing.
+//
+// A policy waits only on the answers it depends on (`gateOnDirection`): until
+// they are saved it carries a decision blocker naming the Direction step, which
+// the lane engine reads as On Hold · Waiting on your direction
+// (ui/surfaces/planLanes.ts observe). A policy that depends on no answer is
+// unaffected.
+//
+// Pure: no DOM, no network.
+import goals from '../../data/goals.json' with { type: 'json' }
+import { directionWords } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+import type { NotAssessed } from '../coverage/types.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { MappingState } from '../mapping/types.ts'
+import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
+import { suggestCountries } from '../mapping/countries.ts'
+import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
+import { setState } from './lifecycle.ts'
+import { DEVICE_GOALS } from './deviations.ts'
+import { checkStep, serviceOf, serviceReading } from './workflows.ts'
+import type { ServiceSignal } from './workflows.ts'
+import { DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
+import type { DirectionQuestion, Step } from './types.ts'
+
+const W = directionWords
+const Q = W.questions
+
+type Answer = { value: string; picked: string[] }
+const answer = (value: string, picked: readonly string[] = []): Answer => ({ value, picked: [...picked] })
+const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] => Object.entries(words).map(([value, label]) => ({ value, label }))
+
+/** The step a Direction step's decision blocker names, on a policy that waits on it. */
+export const DIRECTION_BLOCKER = 'direction:'
+/** The Direction step a blocker waits on, or null for a blocker that is not one. */
+export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
+  if (b.kind !== 'decision' || !b.label.startsWith(DIRECTION_BLOCKER)) return null
+  const id = b.label.slice(DIRECTION_BLOCKER.length)
+  return isDirectionStep(id) ? id : null
+}
+
+type Context = { snapshot: TenantSnapshot; mapping: MappingState }
+
+function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
+  return { key, today: null, note: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
+}
+
+// ---- D1 Confirm What You Use ----
+
+function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): DirectionQuestion {
+  const saved = savedAnswerOf(`service:${key}`, ctx.mapping)
+  // A saved No the scan now contradicts reopens the step; a saved answer whose
+  // evidence merely went missing does not (the basis it was saved against says
+  // whether that usage was already known).
+  const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
+  const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
+  const label = (Q.services as Record<string, string>)[key] ?? key
+  return {
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: signal.used || signal.complete ? signal.evidence : W.defaultEvidence }),
+    needsReview,
+    basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
+    ...(needsReview ? { evidence: fillText(W.reopened, { evidence: signal.evidence }) } : {}),
+  }
+}
+
+const signInsRead = (s: TenantSnapshot): boolean => s.sources.signInEvidence?.status === 'ok' || s.sources.signInEvidence?.status === 'partial'
+
+function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }): DirectionQuestion[] {
+  const { snapshot } = ctx
+  const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), ctx))
+  // Devices or apps that send mail by signing in: the accounts the old-protocol records show sending by SMTP.
+  const legacy = signInsRead(snapshot) ? snapshot.scenarioEvidence?.legacyClients ?? null : null
+  const senders = legacy ? Object.entries(legacy.byPerson).filter(([, clients]) => clients.some((c) => /smtp/i.test(c))).map(([id]) => id).sort() : []
+  out.push(question('mailDevices', ctx, {
+    label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.mailDevices.options), pickedWith: 'some',
+    suggested: senders.length > 0 ? answer('some', senders) : answer('none'),
+    evidence: legacy === null ? W.defaultEvidence : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
+  }))
+  const code = snapshot.evidenceUsage?.deviceCode ?? null
+  out.push(question('deviceCode', ctx, {
+    label: Q.deviceCode.label, control: 'choice', options: optionsOf(Q.deviceCode.options),
+    suggested: answer(code !== null && code.count > 0 ? 'used' : 'unused'),
+    evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(Q.deviceCode.seen, { n: code.userIds.length || code.count }) : Q.deviceCode.notSeen,
+  }))
+  const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
+  out.push(question('partner', ctx, {
+    label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
+    suggested: answer(partners !== null && partners.count > 0 ? 'yes' : 'no'),
+    evidence: partners === null || !signInsRead(snapshot) ? W.defaultEvidence : partners.count > 0 ? fillText(Q.partner.seen, { n: partners.people.length || partners.count }) : Q.partner.notSeen,
+  }))
+  const methods = snapshot.config.authMethodsPolicy?.status === 'ok' ? (snapshot.config.authMethodsPolicy.rows ?? []) : null
+  const external = methods === null ? null : methods.some((row) => ((row as { authenticationMethodConfigurations?: { '@odata.type'?: string; state?: string }[] }).authenticationMethodConfigurations ?? []).some((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
+  out.push(question('externalMethods', ctx, {
+    label: Q.externalMethods.label, control: 'choice', options: optionsOf(Q.externalMethods.options),
+    suggested: answer(external ? 'yes' : 'no'),
+    evidence: external === null ? W.defaultEvidence : external ? Q.externalMethods.seen : Q.externalMethods.notSeen,
+  }))
+  return out
+}
+
+// ---- D2 Identify Service and Shared Accounts ----
+
+function accountQuestions(ctx: Context, nameOf: (id: string) => string): DirectionQuestion[] {
+  const { snapshot, mapping } = ctx
+  const usersRead = snapshot.sources.users?.status === 'ok'
+  const candidates = detectServiceAccounts(snapshot, [...mapping.breakGlassUserIds, ...mapping.serviceAccountRejectedIds]).map((c) => c.id)
+  const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !mapping.breakGlassUserIds.includes(id))
+  const setAside = mapping.breakGlassUserIds.length > 0 ? fillText(W.alreadySetAside, { accounts: mapping.breakGlassUserIds.map(nameOf).join(', ') }) : null
+  return [
+    question('serviceAccounts', ctx, {
+      label: Q.serviceAccounts.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
+      suggested: candidates.length > 0 ? answer('some', candidates) : answer('none'),
+      evidence: !usersRead ? W.defaultEvidence : candidates.length > 0 ? fillText(Q.serviceAccounts.seen, { n: candidates.length }) : Q.serviceAccounts.notSeen,
+      note: setAside,
+    }),
+    question('sharedDevices', ctx, {
+      label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
+      suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
+      evidence: !usersRead ? W.defaultEvidence : shared.length > 0 ? fillText(Q.sharedDevices.seen, { n: shared.length }) : Q.sharedDevices.notSeen,
+    }),
+  ]
+}
+
+// ---- D3 Decide How People and Devices Sign In ----
+
+function deviceQuestions(ctx: Context): DirectionQuestion[] {
+  const evidence = ctx.snapshot.scenarioEvidence ?? null
+  const unjoined = evidence?.unjoinedComputers?.people.length
+  const phones = evidence?.phoneSignIns?.people.length
+  return [
+    question('computers', ctx, {
+      label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
+      suggested: answer('managed'), evidence: W.baselineEvidence,
+      today: unjoined === undefined ? null : unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : Q.computers.todayNone,
+    }),
+    question('phones', ctx, {
+      label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
+      suggested: answer('apps'), evidence: W.baselineEvidence,
+      today: phones === undefined ? null : phones > 0 ? fillText(Q.phones.today, { n: phones }) : Q.phones.todayNone,
+    }),
+    question('deviceExceptions', ctx, {
+      label: Q.deviceExceptions.label, control: 'choice', options: optionsOf(Q.deviceExceptions.options),
+      suggested: answer('none'), evidence: W.defaultEvidence,
+    }),
+  ]
+}
+
+// ---- D4 Decide Where People Sign In From ----
+
+function locationQuestions(ctx: Context): DirectionQuestion[] {
+  const { snapshot, mapping } = ctx
+  const read = snapshot.config.namedLocations?.status === 'ok'
+  const trusted = read ? (snapshot.config.namedLocations.rows ?? []).map((raw) => raw as { id?: string; isTrusted?: boolean; '@odata.type'?: string }).filter((l) => typeof l.id === 'string' && l.isTrusted === true && String(l['@odata.type'] ?? '').includes('ipNamedLocation')).map((l) => l.id as string) : []
+  const seen = suggestCountries(snapshot).countries.filter((c) => c.users > 0).map((c) => c.code)
+  const countries = seen.length > 0 ? seen : mapping.allowedCountries.map((c) => c.toUpperCase())
+  return [
+    question('officeNetwork', ctx, {
+      label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
+      suggested: trusted.length > 0 ? answer('office', trusted) : answer('remote'),
+      evidence: !read ? W.defaultEvidence : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length }) : Q.officeNetwork.notSeen,
+    }),
+    question('workCountries', ctx, {
+      label: Q.workCountries.label, control: 'countries', options: [], pickedWith: 'some',
+      suggested: answer('some', countries),
+      evidence: seen.length > 0 ? fillText(Q.workCountries.seen, { countries: seen.join(', ') }) : W.defaultEvidence,
+    }),
+    question('travel', ctx, {
+      label: Q.travel.label, control: 'choice', options: optionsOf(Q.travel.options),
+      suggested: answer('allowed'), evidence: W.baselineEvidence,
+    }),
+  ]
+}
+
+// ---- the steps ----
+
+const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string }>> = {
+  [DIRECTION_STEP.use]: W.steps.use,
+  [DIRECTION_STEP.accounts]: W.steps.accounts,
+  [DIRECTION_STEP.devices]: W.steps.devices,
+  [DIRECTION_STEP.locations]: W.steps.locations,
+}
+
+/** Done: every answer saved, and none contradicted by new evidence. */
+export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
+
+function directionStep(id: DirectionStepId, questions: DirectionQuestion[], savedAt: string | null): Step {
+  const words = STEP_WORDS[id]
+  const step = checkStep(id, words.title, words.why)
+  step.directionQuestions = questions
+  step.guidance = { id, kind: 'check', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done] }
+  if (directionComplete(questions)) {
+    setState(step, { satisfied: true, inPlace: true, condition: 'healthy' })
+    if (savedAt !== null && Date.parse(savedAt) <= Date.now()) step.history = [{ at: savedAt, from: 'blocked', to: 'done', note: W.done }]
+  } else {
+    // Waiting on a person (owner, 2026-09-11): it reads Decision, never Create.
+    step.blockers = [{ kind: 'decision', label: 'direction', binding: W.notSure }]
+    setState(step, { condition: 'needs-decision' })
+  }
+  return step
+}
+
+export type DirectionInput = {
+  snapshot: TenantSnapshot
+  mapping: MappingState
+  /** The baseline policies IAMAI does not assess (their services are D1 questions). */
+  notAssessed: readonly NotAssessed[]
+  /** The goals this plan can hold (licence-limited ones are not asked about). */
+  availableGoalIds: readonly string[]
+  nameOf?: (id: string) => string
+  /** When each Direction step was last approved (stepDecisions[id].at), where the caller knows it. */
+  approvedAt?: Readonly<Partial<Record<DirectionStepId, string>>>
+}
+
+/** The four Direction steps, built from the snapshot and the saved answers. */
+export function directionSteps(input: DirectionInput): Step[] {
+  const ctx = { snapshot: input.snapshot, mapping: input.mapping }
+  const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds)
+  const nameOf = input.nameOf ?? ((id: string) => input.snapshot.users.find((u) => u.id === id)?.displayName ?? id)
+  const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
+  return [
+    directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),
+    directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts)),
+    directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
+    directionStep(DIRECTION_STEP.locations, locationQuestions(ctx), at(DIRECTION_STEP.locations)),
+  ]
+}
+
+// ---- per-answer gating ----
+
+/** The Direction answers each goal's policy depends on (docs/plans/direction-spec.md, owner decision 3). */
+const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
+  'block-legacy-auth': ['mailDevices'],
+  'block-device-code': ['deviceCode'],
+  'guests-mfa': ['partner'],
+  'geo-restriction': ['partner', 'workCountries', 'travel'],
+  'service-accounts-trusted-network': ['serviceAccounts', 'officeNetwork'],
+  'register-info-protected': ['officeNetwork'],
+  ...Object.fromEntries([...DEVICE_GOALS].map((g) => [g, ['computers', 'phones', 'deviceExceptions'] as const])),
+}
+/** A goal whose applicability is a D1 service depends on that service's answer. */
+const SERVICE_GOAL: ReadonlyMap<string, string> = new Map(goals.goals.filter((g) => typeof g.applicability === 'string' && (SERVICE_KEYS as readonly string[]).includes(String(g.applicability))).map((g) => [g.id, String(g.applicability)]))
+
+/** The Direction questions a step's policy depends on: its goal's, or a review row's service. */
+export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineReviewSource'>): DirectionQuestionKey[] {
+  const out: DirectionQuestionKey[] = [...(GOAL_DEPENDS[step.goalId] ?? [])]
+  const service = SERVICE_GOAL.get(step.goalId) ?? (step.baselineReviewSource ? serviceOf(step.baselineReviewSource) : null)
+  if (service !== null && (SERVICE_KEYS as readonly string[]).includes(service)) out.push(`service:${service}`)
+  return out
+}
+
+/**
+ * Per-answer gating (owner decision 3): every open step whose policy depends on
+ * a Direction answer nobody has saved waits on the Direction step that asks it,
+ * as a decision blocker the lane engine holds the step on (planLanes.ts
+ * observe) and the row reads as Waiting on your direction. A dependency the plan
+ * does not ask (a service this baseline has nothing for) waits on nothing, and
+ * a step that depends on no answer is left exactly as it was.
+ */
+export function gateOnDirection(steps: Step[]): void {
+  const questions = new Map<string, DirectionQuestion>()
+  for (const s of steps) if (isDirectionStep(s.id)) for (const q of s.directionQuestions ?? []) questions.set(q.key, q)
+  if (questions.size === 0) return
+  for (const step of steps) {
+    if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied) continue
+    const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
+    if (waiting.length === 0) continue
+    for (const id of waiting) {
+      if (!step.blockedBy.includes(id)) step.blockedBy.push(id)
+      step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
+    }
+    if (step.state.condition === 'healthy') setState(step, { condition: 'blocked' })
+  }
+}

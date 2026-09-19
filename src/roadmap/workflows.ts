@@ -12,62 +12,59 @@ import { setState, stateFields } from './lifecycle.ts'
 import type { Step } from './types.ts'
 import { MANUAL_REVIEW_ID } from './manualWork.ts'
 
-export const WORKFLOW_STEP = 's-confirm-workloads'
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
 const W = workflowWords
 const services: [string, RegExp][] = [['sharepoint', /sharepoint|onedrive/i], ['avd', /\bAVD\b|virtual.desktop/i], ['inforcer', /inforcer/i], ['agents', /agent/i], ['azureManagement', /WindowsAzureAD|BaselineScopes/i]]
-function serviceOf(policy: NotAssessed): string | null { return services.find(([, re]) => re.test(policy.name))?.[0] ?? null }
+/** The service a baseline policy IAMAI does not assess protects, by its name; null for none. */
+export function serviceOf(policy: Pick<NotAssessed, 'name'>): string | null { return services.find(([, re]) => re.test(policy.name))?.[0] ?? null }
 function idOf(name: string): string {
   let hash = 2166136261
   for (const char of name) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619)
   return `s-review-baseline-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${(hash >>> 0).toString(36)}`
 }
-function base(id: string, title: string, why: string): Step {
+/** A bare check step: the shape the review rows and the Direction steps start from. */
+export function checkStep(id: string, title: string, why: string): Step {
   return { ...STEP_EXTRAS, id, goalId: id, phase: 0, kind: 'check', title, why, ...stateFields({}), blockedBy: [], blockers: [], unblockNotes: [], population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }, readiness: { family: 'other', percent: null, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] }, history: [], skipReason: null, deliveredBy: [] }
 }
-export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], snapshot: TenantSnapshot, mapping: MappingState, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, availableGoalIds?: string[]): void {
-  const existing = new Set(availableGoalIds ?? steps.map((s) => s.goalId))
-  const goalFacets = new Map(goals.goals.filter((g) => existing.has(g.id) && g.applicability).map((g) => [g.id, String(g.applicability)]))
-  const keys = [...new Set([...goalFacets.values(), ...policies.map(serviceOf).filter((s): s is string => s !== null)])].sort()
+
+/** What the scan read of a service: seen in use, whether the read was complete enough to say it is not, and the evidence in one line. */
+export type ServiceSignal = { used: boolean; complete: boolean; evidence: string }
+
+/**
+ * The services this plan's baseline has something to protect (a goal whose
+ * applicability is the service, or a baseline policy IAMAI does not assess),
+ * and what the scan read of each. The Direction step asks about them
+ * (roadmap/direction.ts); the answers persist as workflowAnswers.
+ */
+export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotAssessed[], availableGoalIds: readonly string[]): { keys: string[]; signal: (key: string) => ServiceSignal } {
+  const existing = new Set(availableGoalIds)
+  const goalFacets = goals.goals.filter((g) => existing.has(g.id) && g.applicability).map((g) => String(g.applicability))
+  const keys = [...new Set([...goalFacets, ...policies.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name)).map(serviceOf).filter((s): s is string => s !== null)])].sort()
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
-  const answer = (key: string): string => mapping.workflowAnswers?.[key] ?? (mapping.facetOverrides[key] ? mapping.facetOverrides[key].on ? 'yes' : 'no' : 'unsure')
-  const signal = (key: string): { used: boolean; complete: boolean; evidence: string } => {
+  const signal = (key: string): ServiceSignal => {
     if (key === 'intune') return { used: false, complete: snapshot.config.subscribedSkus?.status === 'ok', evidence: detected.intune.reason }
     if (key === 'workload') return { used: detected.workload.observedUsage === true && snapshot.config.roleAssignments?.status === 'ok', complete: snapshot.config.roleAssignments?.status === 'ok', evidence: detected.workload.evidence ?? detected.workload.reason }
     const complete = snapshot.sources.appSignInSummary?.status === 'ok' && snapshot.sources.spActivity?.status === 'ok'
     return { used: reliable[key as Facet]?.observedUsage === true, complete, evidence: reliable[key as Facet]?.evidence ?? reliable[key as Facet]?.reason ?? W.noSignal }
   }
-  const needsReview = (key: string): boolean => answer(key) === 'no' && signal(key).used && mapping.workflowEvidenceBasis?.[key] !== 'present'
-  if (keys.length) {
-    const step = base(WORKFLOW_STEP, W.title, W.why)
-    step.workflowChoices = keys.map((key) => {
-      const evidence = signal(key)
-      const saved = answer(key)
-      const initial = !Object.hasOwn(mapping.workflowAnswers ?? {}, key) && !mapping.facetOverrides[key]
-      return { key, label: (W.names as Record<string, string>)[key] ?? key, evidence: needsReview(key) ? `New usage detected. Your saved choice is No. ${evidence.evidence}` : evidence.evidence, answer: initial ? evidence.used ? 'yes' : evidence.complete ? 'no' : 'unsure' : saved, suggested: initial && evidence.used, needsReview: needsReview(key), evidenceBasis: evidence.used ? 'present' : evidence.complete ? 'absent' : 'unread' }
-    }).sort((a, b) => Number(b.suggested) - Number(a.suggested))
-    const complete = !!mapping.workflowConfirmedAt && keys.every((key) => answer(key) !== 'unsure' && !needsReview(key))
-    setState(step, { satisfied: complete, inPlace: complete, condition: complete ? 'healthy' : 'needs-decision' })
-    if (complete && mapping.workflowConfirmedAt && Date.parse(mapping.workflowConfirmedAt) <= Date.now()) step.history = [{ at: mapping.workflowConfirmedAt, from: 'blocked', to: 'done', note: W.done }]
-    if (!complete) step.blockers = [{ kind: 'decision', label: W.title, binding: `after: ${W.title}` }]
-    step.guidance = { id: step.id, kind: 'check', title: W.title, why: W.why, whatToDo: { steps: [W.instructions] }, doneWhen: [W.done] }
-    steps.unshift(step)
-  }
-  for (const step of steps) {
-    const key = goalFacets.get(step.goalId)
-    if (key && answer(key) === 'unsure' && !step.state.satisfied) {
-      step.blockedBy = [...new Set([...step.blockedBy, WORKFLOW_STEP])]
-      setState(step, { condition: 'blocked' })
-    }
-  }
+  return { keys, signal }
+}
+
+/**
+ * One review row per baseline policy IAMAI does not assess. A row's service is
+ * a Direction question (roadmap/direction.ts): answered No, the row is set
+ * aside; unanswered, it waits on that answer (direction.ts gateOnDirection).
+ */
+export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping: MappingState, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}): void {
+  const answer = (key: string): string => mapping.workflowAnswers?.[key] ?? (mapping.facetOverrides[key] ? mapping.facetOverrides[key].on ? 'yes' : 'no' : 'unsure')
   for (const policy of policies) {
     if (HIDDEN_AGENT_POLICY.test(policy.name)) continue
     const key = serviceOf(policy)
     const name = key ? (W.names as Record<string, string>)[key] : policy.name
     const title = fillText(W.reviewTitle, { service: name, policy: policy.name })
-    const step = base(idOf(policy.name), title, fillText(W.reviewWhy, { service: name }))
+    const step = checkStep(idOf(policy.name), title, fillText(W.reviewWhy, { service: name }))
     step.impactLabel = name
     step.baselineReviewSource = { name: policy.name, json: policy.json, reason: policy.reason }
     // The source and the tenant evidence define the review. Old catch-all Done dates never approve a new individual policy.
@@ -82,7 +79,6 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], snapsho
     const words = W.policies.find((p: { pattern: string }) => new RegExp(p.pattern, 'i').test(policy.name))
     step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/overview' } }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
-    else if (applicable === 'unsure') { step.blockedBy = [WORKFLOW_STEP]; setState(step, { condition: 'blocked' }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user
     // purpose has not been established. An acknowledgement cannot turn that

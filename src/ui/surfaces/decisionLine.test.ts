@@ -1,9 +1,10 @@
 // A decision block shows its open line or its answered line, never both
-// (stepExport.ts decisionLine): the device decision on the fixtures.
+// (stepExport.ts decisionLine): the device decision's content block, on the demo.
+// The device step itself is retired (its questions are Direction's D3); its
+// content block still carries the words its stored answers are read against.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
@@ -12,11 +13,9 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { decisionLine, stepLines } from './stepExport.ts'
 
-const NAMES: FixtureName[] = ['demo', 'mid', 'small', 'messy']
-const withDevice = NAMES.map((n) => ({ f: fixture(n), r: runFixture(fixture(n)) })).find(({ r }) => r.steps.some((s) => s.id === PREREQ_STEP_ID.devicePlan))
-assert.ok(withDevice, 'a fixture carries the device decision')
-const { f, r } = withDevice
-const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.devicePlan)!
+const f = fixture('demo')
+const r = runFixture(f)
+const step = { ...structuredClone(r.steps.find((s) => s.id === 's-check-dormant-accounts')!), id: PREREQ_STEP_ID.devicePlan, goalId: PREREQ_STEP_ID.devicePlan }
 const d = (contentStepFor(step) as { decision: Record<string, unknown> }).decision
 const help = String(d.help)
 const effects = d.effect as string[]

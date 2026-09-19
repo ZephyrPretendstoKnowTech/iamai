@@ -7,7 +7,8 @@ import { stepExportView } from './stepExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { emergencyPasskeyCompatibility } from '../../roadmap/passkeyCompatibility.ts'
 import { resolvePasskeyTarget } from '../../roadmap/passkeySettings.ts'
-import { addWorkflowSteps, WORKFLOW_STEP } from '../../roadmap/workflows.ts'
+import { directionSteps } from '../../roadmap/direction.ts'
+import { DIRECTION_STEP } from '../../roadmap/directionAnswers.ts'
 import { currentAnswerText, devicePlanOf, deviceScopeOf, parseAnswer, questionOptions, QUESTION_STEP } from '../../roadmap/answers.ts'
 import { redactText } from '../../redactSnapshot.ts'
 import { deviceChip } from './readinessCells.ts'
@@ -33,22 +34,16 @@ test('legacy inventory reviews track observed legacy accounts and protocols, not
  applyManualReviews([step],f.snapshot,{[step.id]:{[MANUAL_REVIEW_ID]:{at:record.at,basis:record.basis}}})
  assert.equal(step.state.satisfied,false,'old generic acknowledgement is not a scoped dependency review')
 })
-test('device decision offers technical AI context before a choice and no executable channel',()=>{
- const {run,ctx}=setup(); const step=run.steps.find(s=>s.id===QUESTION_STEP.devices)!; assert.ok(step)
- const body=stepBodyOf(step,ctx);const ai=body.artifacts.find(a=>a.id==='ai')!;
- assert.notEqual(ai.unavailable,true);assert.match(ai.text(),/hybrid join/i);assert.match(ai.text(),/Enrollment alone/);assert.match(ai.text(),/app protection/i)
- assert.ok(body.artifacts.every(a=>a.id!=='ps'&&a.id!=='json'))
-})
 test('emergency account guidance has no Email placeholder',()=>{
  const {run,ctx}=setup();const body=stepBodyOf(run.steps.find(s=>s.id==='s-prereq-break-glass')!,ctx)
  assert.ok(body.artifacts.every(a=>a.id!=='email'));assert.ok(body.artifacts.some(a=>a.id==='ai'&&!a.unavailable))
 })
+const useQuestions=(f:ReturnType<typeof fixture>,goalIds?:string[])=>{const r=runFixture(f);return directionSteps({snapshot:f.snapshot,mapping:f.mapping,notAssessed:r.coverage.organisation.notAssessed,availableGoalIds:goalIds??r.coverage.results.filter(x=>x.status!=='licence-limited').map(x=>x.goal.id)}).find(s=>s.id===DIRECTION_STEP.use)!.directionQuestions!}
 test('services suggest actual activity without saving it, and preserve a saved No',()=>{
- const f=fixture('demo');const make=()=>{const r=runFixture(f);const steps=structuredClone(r.steps).filter(s=>s.id!==WORKFLOW_STEP);addWorkflowSteps(steps,r.coverage.organisation.notAssessed,f.snapshot,f.mapping);return steps.find(s=>s.id===WORKFLOW_STEP)!}
- const first=make().workflowChoices!.find(c=>c.key==='sharepoint')!;assert.equal(first.suggested,true);assert.equal(first.answer,'yes')
- f.mapping.workflowAnswers={sharepoint:'no'};const saved=make().workflowChoices!.find(c=>c.key==='sharepoint')!;assert.equal(saved.answer,'no');assert.equal(saved.suggested,false)
+ const f=fixture('demo');const first=useQuestions(f).find(c=>c.key==='service:sharepoint')!;assert.equal(first.suggested.value,'yes');assert.equal(first.saved,null)
+ f.mapping.workflowAnswers={sharepoint:'no'};const saved=useQuestions(f).find(c=>c.key==='service:sharepoint')!;assert.equal(saved.saved?.value,'no')
 })
-test('licence alone is not suggested service use',()=>{const f=fixture('demo');const r=runFixture(f);const steps=structuredClone(r.steps).filter(s=>s.id!==WORKFLOW_STEP);addWorkflowSteps(steps,r.coverage.organisation.notAssessed,f.snapshot,f.mapping);assert.notEqual(steps.find(s=>s.id===WORKFLOW_STEP)!.workflowChoices!.find(c=>c.key==='intune')?.suggested,true)})
+test('licence alone is not suggested service use',()=>{const f=fixture('demo');assert.equal(useQuestions(f).some(c=>c.key==='service:intune'),false)})
 
 test('all nine device choices preserve their saved scope through a second save',()=>{
  for(const [phoneIndex,phone] of questionOptions(QUESTION_STEP.devices,'decision').entries()) for(const [computerIndex,computer] of questionOptions(QUESTION_STEP.devices,'question').entries()){
@@ -61,10 +56,8 @@ test('all nine device choices preserve their saved scope through a second save',
 })
 
 test('sync service suggestion explains the detected role independently of licensing',()=>{
- const f=fixture('demo');const r=runFixture(f);const steps=structuredClone(r.steps).filter(s=>s.id!==WORKFLOW_STEP)
- addWorkflowSteps(steps,r.coverage.organisation.notAssessed,f.snapshot,f.mapping,{},['workload-identity-block'])
- const choice=steps.find(s=>s.id===WORKFLOW_STEP)!.workflowChoices!.find(c=>c.key==='workload')!
- assert.equal(choice.suggested,true);assert.match(choice.evidence,/Directory Synchronization Accounts role found/)
+ const f=fixture('demo');const choice=useQuestions(f,['workload-identity-block']).find(c=>c.key==='service:workload')!
+ assert.equal(choice.suggested.value,'yes');assert.match(choice.evidence,/Directory Synchronization Accounts role found/)
  assert.doesNotMatch(choice.evidence,/no.*licence/)
 })
 test('old mail exception and device answers still resolve after labels change',()=>{

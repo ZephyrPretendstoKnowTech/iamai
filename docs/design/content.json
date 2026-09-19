@@ -2323,6 +2323,10 @@
               "seen": "The authentication methods policy has an external method enabled.",
               "notSeen": "The authentication methods policy has no external method enabled."
             },
+            "accountOptions": {
+              "none": "None",
+              "some": "Pick accounts"
+            },
             "serviceAccounts": {
               "label": "Service accounts (includes script accounts)",
               "seen": "{n} accounts look like service accounts (names, non-interactive use).",

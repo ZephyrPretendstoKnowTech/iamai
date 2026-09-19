@@ -74,7 +74,7 @@ test('machine resources follow supported step capability, including useful prere
   const demo = named('demo')
   assert.deepEqual(tabs(demo.get('s-prereq-break-glass')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
   assert.deepEqual(tabs(demo.get('s-prereq-exclusion-group')), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
-  assert.ok(demo.get('s-prereq-device-plan')!.artifacts.every(a => a.id !== 'json' && a.id !== 'ps'))
+  assert.ok(demo.get('s-direction-devices')!.artifacts.every(a => a.id !== 'json' && a.id !== 'ps'))
 })
 
 test('retained baseline conflict remains a conflict and has no deployment operation', () => {

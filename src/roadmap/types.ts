@@ -299,6 +299,32 @@ export type Blocker =
    */
   | { kind: 'decision'; label: string; binding?: string }
 
+/**
+ * One Direction question (roadmap/direction.ts): its answer as saved, or null;
+ * the suggestion the scan, the baseline or the safe default pre-fills; and the
+ * one line of evidence behind the suggestion. `pickedWith` is the option whose
+ * answer carries a list (accounts, locations, countries).
+ */
+export type DirectionQuestion = {
+  key: string
+  label: string
+  control: 'choice' | 'accounts' | 'locations' | 'countries'
+  options: { value: string; label: string }[]
+  pickedWith: string | null
+  suggested: { value: string; picked: string[] }
+  /** Why suggested, in one line; or that the suggestion is a default the scan did not see. */
+  evidence: string
+  /** A how-it-should-work question's today, beside the baseline's recommendation. */
+  today: string | null
+  /** Anything else the tile says (the emergency accounts already set aside). */
+  note: string | null
+  saved: { value: string; picked: string[] } | null
+  /** A saved answer new evidence contradicts: a saved No, and the scan now sees it in use. */
+  needsReview: boolean
+  /** A service's evidence basis (present, absent, unread), saved with its answer. */
+  basis: string | null
+}
+
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
 
@@ -364,8 +390,9 @@ export type Step = {
   impactLabel?: string
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
-  workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean; needsReview?: boolean; evidenceBasis?: string }[]
   dormantChoices?: { id: string; name: string; outcome: 'keep' | 'disable' | 'investigate' | ''; reason: string; disabled: boolean }[]
+  /** A Decide Your Tenant's Direction step's questions (roadmap/direction.ts), one tile each. */
+  directionQuestions?: DirectionQuestion[]
   authenticationStrengthTarget?: { allowedCombinations: string[] }
   configurationFindings?: ConfigurationFinding[]
   preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[] }

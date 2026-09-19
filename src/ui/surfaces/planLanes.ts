@@ -1,6 +1,5 @@
 import { EXCLUSION_GROUP_STEP_ID } from '../../roadmap/stepIds.ts'
 import { workflowReviewIsCurrent } from '../../roadmap/lifecycle.ts'
-import { WORKFLOW_STEP } from '../../roadmap/workflows.ts'
 import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // The Plan's lanes: the actionability engine (src/actionability) read over the
 // plan as this scan left it (S3).
@@ -387,17 +386,6 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
-  // The static dependency catalogue predates the workload confirmation. Carry its runtime edge into the same reading.
-  for (const step of steps.filter((s) => s.blockedBy.includes(WORKFLOW_STEP))) {
-    const r = out.get(step.id)
-    const dep = out.get(WORKFLOW_STEP)
-    if (!r || !dep || dep.lane === 'Completed' || r.lane === 'Completed' || r.lane === 'Deferred' || (r.lane === 'On Hold' && r.reason !== null)) continue
-    const reason: HoldBlocker = { kind: 'step', id: WORKFLOW_STEP, milestone: null, condition: null, abnormal: false, ordinal: 0 }
-    r.lane = dep.lane === 'Ready' ? 'Up Next' : 'On Hold'
-    r.substatus = null
-    r.reason = reason
-    r.blockers = [...r.blockers, reason]
-  }
   for (const step of steps) {
     const reading = out.get(step.id)
     // Reviewing an unread or unsupported configuration is available now; this

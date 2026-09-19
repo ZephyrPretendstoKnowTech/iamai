@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { addWorkflowSteps, WORKFLOW_STEP } from './workflows.ts'
+import { addWorkflowSteps } from './workflows.ts'
+import { directionSteps } from './direction.ts'
+import { DIRECTION_STEP } from './directionAnswers.ts'
 import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
 import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis, recoveryAccountBasis } from './cleanupDone.ts'
 import type { VerifiedRecoveryEvidence } from './cleanupDone.ts'
@@ -24,18 +26,19 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
   const original = runFixture(f)
   const policies = original.coverage.organisation.notAssessed
   assert.ok(policies.length > 1)
-  const render = () => { const steps: Step[] = []; addWorkflowSteps(steps, policies, f.snapshot, f.mapping); return steps }
+  const render = () => { const steps: Step[] = []; addWorkflowSteps(steps, policies, f.mapping); return steps }
   f.mapping.facetOverrides = {}
   const first = render()
-  const chooser = first.find((s) => s.id === WORKFLOW_STEP)!
-  assert.ok(chooser.workflowChoices!.some((c) => c.answer === 'yes'), 'observed services are proposed in use')
-  assert.ok(chooser.workflowChoices!.some((c) => c.answer === 'no'), 'unobserved services are opt-in')
+  const chooser = directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: policies, availableGoalIds: [] }).find((s) => s.id === DIRECTION_STEP.use)!
+  const services = chooser.directionQuestions!.filter((c) => c.key.startsWith('service:'))
+  assert.ok(services.some((c) => c.suggested.value === 'yes'), 'observed services are proposed in use')
+  assert.ok(services.every((c) => c.saved === null), 'a suggestion is not an answer')
   assert.equal(chooser.state.satisfied, false, 'defaults need confirmation')
   assert.ok(first.filter((s) => s.manualReview).every((s) => !s.manualReview!.readyToConfirm))
   assert.equal(new Set(first.map((s) => s.id)).size, first.length)
-  f.mapping.workflowAnswers = Object.fromEntries(chooser.workflowChoices!.map((c) => [c.key, 'no' as const]))
+  f.mapping.workflowAnswers = Object.fromEntries([...services.map((c) => [c.key.slice('service:'.length), 'no' as const]), ['agents', 'no' as const]])
   assert.ok(render().filter((s) => s.manualReview).every((s) => s.doesntApply))
-  f.mapping.workflowAnswers = Object.fromEntries(chooser.workflowChoices!.map((c) => [c.key, 'yes' as const]))
+  f.mapping.workflowAnswers = Object.fromEntries([...services.map((c) => [c.key.slice('service:'.length), 'yes' as const]), ['agents', 'yes' as const]])
   const enabled = render()
   assert.equal(enabled.filter((s) => s.manualReview?.readyToConfirm).length, policies.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name) && !/AVD.*Exclude.*AllowedAVDUsers/i.test(p.name)).length)
   assert.ok(enabled.filter((s) => s.manualReview).every((s) => Array.isArray(s.guidance?.whatToDo?.steps)))
@@ -47,18 +50,18 @@ test('manual policy review survives unrelated scan changes and reopens if its ba
   const policies = runFixture(f).coverage.organisation.notAssessed
   f.mapping.workflowAnswers = { sharepoint: 'yes', avd: 'yes', inforcer: 'yes', agents: 'yes', azureManagement: 'yes' }
   const first: Step[] = []
-  addWorkflowSteps(first, policies, f.snapshot, f.mapping)
+  addWorkflowSteps(first, policies, f.mapping)
   const target = first.find((s) => s.manualReview?.readyToConfirm)!
   const confirmations = { [target.id]: { [MANUAL_REVIEW_ID]: { at, basis: target.manualReview!.basis } } }
   f.snapshot.asOf = '2026-09-15T12:00:00Z'
   f.snapshot.config.caPolicies.rows.push({ id: 'unrelated', displayName: 'Unrelated policy', state: 'disabled' })
   const next: Step[] = []
-  addWorkflowSteps(next, policies, f.snapshot, f.mapping, confirmations)
+  addWorkflowSteps(next, policies, f.mapping, confirmations)
   assert.equal(next.find((s) => s.id === target.id)!.status, 'done')
   const changed = structuredClone(policies)
   changed.find((p) => target.manualReview!.basis.includes(p.name))!.json = { changed: true } as never
   const last: Step[] = []
-  addWorkflowSteps(last, changed, f.snapshot, f.mapping, confirmations)
+  addWorkflowSteps(last, changed, f.mapping, confirmations)
   assert.notEqual(last.find((s) => s.id === target.id)!.status, 'done')
 })
 

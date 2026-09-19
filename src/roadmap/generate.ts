@@ -1,6 +1,7 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { addWorkflowSteps } from './workflows.ts'
+import { directionSteps } from './direction.ts'
 import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -1130,31 +1131,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(step)
   }
 
-  // The device decision (E2): how phones and computers are managed, asked in
-  // Preparation when phone sign-ins or unjoined computer sign-ins exist and the
-  // tenant holds Intune (without Intune the device steps are Not licensed and
-  // nothing asks). In place once answered; while open, the compliant-device,
-  // app-protection and Intune-enrolment steps wait on it (the goal loop), and
-  // nothing else does.
-  const deviceStepId = PREREQ_STEP_ID.devicePlan
-  const phoneIds = snapshot.scenarioEvidence?.phoneSignIns?.people ?? []
-  const unjoinedIds = snapshot.scenarioEvidence?.unjoinedComputers?.people ?? []
-  if (canUseConditionalAccess && (devicePlan !== null || phoneIds.length > 0 || unjoinedIds.length > 0)) {
-    const s = prereq(deviceStepId)
-    s.kind = 'check'
-    s.action = { ...s.action, kind: 'check' }
-    s.population = population([...new Set([...phoneIds, ...unjoinedIds])].filter((id) => !excluded.has(id)), popIndex)
-    if (devicePlanComplete(devicePlan) && devicePlan) {
-      setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = [devicePlan.phonesText, ...(devicePlan.computersText ? [devicePlan.computersText] : [])]
-    } else {
-      // Open, the step waits on a person (owner, 2026-09-11): it reads Needs
-      // decision, never Ready, and its next milestone is the decision itself.
-      s.blockers = [...s.blockers, { kind: 'decision', label: 'device-plan', binding: BLOCKED_REASON.devicePlan }]
-      setState(s, { condition: conditionFor(s.blockers) })
-    }
-    steps.push(s)
-  }
+  // The device decision (E2) is Decide Your Tenant's Direction's D3
+  // (roadmap/direction.ts): always asked with Conditional Access, never hidden
+  // on evidence, and the device steps wait on its answers (gateOnDirection).
 
   // Passkey settings (A5, RUN-CONTEXT-A decision 9): the authentication-method
   // foundation the verification campaign and the phishing-resistant enforcements
@@ -1768,8 +1747,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Named dependencies (prompt 12 §B).
     if (!state.satisfied) {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
-      // The device steps wait on the device decision while it is open (E2); nothing else does.
-      if (DEVICE_GOALS.has(goal.id) && steps.some((s) => s.id === deviceStepId && s.status !== 'done')) blockByStep(deviceStepId, 'device-decision')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
@@ -2486,7 +2463,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { setAside: true })
   }
   if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
-  if (canUseConditionalAccess) addWorkflowSteps(steps, input.coverage.organisation.notAssessed, snapshot, mapping, input.manualConfirmations, input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id))
+  // Decide Your Tenant's Direction (roadmap/direction.ts): the four decision
+  // steps, and the review rows whose services D1 asks about.
+  if (canUseConditionalAccess) {
+    steps.push(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
+    addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
+  }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, input.cleanupRecord?.records ?? [], input.groupMembers, input.reviewNow ?? snapshot.asOf, new Set(campaignIds(viability, snapshot, mapping)))
   for (const s of steps.filter(s => ['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(s.id))) {
     const dormantIds = new Set(dormant.map(u => u.id))

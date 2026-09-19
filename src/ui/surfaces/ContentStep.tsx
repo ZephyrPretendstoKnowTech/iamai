@@ -464,7 +464,6 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
-          {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
           {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
@@ -1291,15 +1290,6 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
       {step.status === 'skipped' && <p className="actions"><Button variant="tertiary" onClick={onUnskip}>{app.plan.putBack}</Button></p>}
     </details>
   )
-}
-
-
-function WorkflowDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
-  const choices = step.workflowChoices ?? []
-  const [draft, setDraft] = useState<Record<string, string>>({})
-  const W = workflowWords
-  const choiceOf = (c: typeof choices[number]) => draft[c.key] ?? c.answer
-  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.needsReview ? `New activity found. ${c.evidence}` : c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={choiceOf(c)} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.flatMap((c) => [[c.key, choiceOf(c)], [`evidence:${c.key}`, c.evidenceBasis ?? ""]])) }); setDraft({}) }}>{W.save}</Button>}</section>
 }
 
 function DeviceDecision({ mapping, saved, onDecide, printing }: { mapping: StepVarContext['mapping']; saved: StepDecision | null; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {

@@ -37,8 +37,8 @@ test('100 identities remain stable across deployment stages; drift reopens the a
 })
 test('completed decisions retain their completion criteria without claiming report-only history',()=>{
   const {body}=setup('configured')
-  assert.match(body('s-confirm-workloads').contract.doneWhen.join(' '),/confirmed which listed services/)
-  assert.deepEqual(railOf(body('s-confirm-workloads').contract,'Confirm the services'),{metric:'Completed',sub:''})
+  assert.equal(body('s-direction-use').contract.doneWhen.join(' '),'Every answer is approved.')
+  assert.deepEqual(railOf(body('s-direction-use').contract,'Confirm What You Use'),{metric:'Completed',sub:''})
   assert.doesNotMatch(body('s-goal-mfa-all-users').contract.doneWhen.join(' '),/report-only period|every active person.*signing/)
 })
 test('account review evidence describes accounts, not policy prompts',()=>{
@@ -102,6 +102,6 @@ test('supporting mail and partner reviews offer useful owner emails while their 
   assert.match(body('s-question-mail-devices').artifacts.find(a=>a.id==='email')!.text(),/Please confirm the authentication and TLS capabilities/)
   assert.match(body('s-question-partner').artifacts.find(a=>a.id==='email')!.text(),/Please confirm the accounts and access method/)
   assert.match(body('s-question-partner').artifacts.find(a=>a.id==='portal')!.text(),/do not recreate a policy/)
-  const services=body('s-confirm-workloads')
+  const services=body('s-direction-use')
   assert.doesNotMatch(services.readiness.satisfied.map(t=>t.note).join(' '),/existing control/)
 })

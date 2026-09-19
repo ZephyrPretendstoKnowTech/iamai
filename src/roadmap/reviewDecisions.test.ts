@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { addWorkflowSteps, WORKFLOW_STEP } from './workflows.ts'
+import { addWorkflowSteps } from './workflows.ts'
+import { directionSteps } from './direction.ts'
+import { DIRECTION_STEP } from './directionAnswers.ts'
+import { directionWords } from '../content/content.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, devicePlanOf, devicePlanComplete } from './answers.ts'
 import { manualBasis, applyManualReviews, MANUAL_REVIEW_ID } from './manualWork.ts'
@@ -12,34 +15,34 @@ import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 import { resolveTenantPolicy } from './resolvePolicy.ts'
 import { buildCreateAction } from './generate.ts'
 
-test('service defaults propose detected use without confirming and preserve incomplete evidence', () => {
+const useStep = (f: ReturnType<typeof fixture>, notAssessed: never[] | never, goalIds: string[] = []): Step => directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed, availableGoalIds: goalIds }).find(s => s.id === DIRECTION_STEP.use)!
+const service = (step: Step, key: string) => step.directionQuestions!.find(q => q.key === `service:${key}`)!
+
+test('service defaults propose detected use without confirming, and an unread service keeps its policy by default', () => {
   const f = fixture('demo')
   f.mapping.workflowAnswers = {}; f.mapping.facetOverrides = {}; delete f.mapping.workflowConfirmedAt
-  const steps: Step[] = []
-  addWorkflowSteps(steps, [], f.snapshot, f.mapping, {}, ['mobile-app-protection'])
-  const service = steps.find(s => s.id === WORKFLOW_STEP)!
-  assert.ok(service.workflowChoices!.some(c => c.key === 'intune' && c.answer === 'no'), 'licence alone does not approve use')
-  assert.equal(service.state.satisfied, false, 'defaults still need Save')
+  const licensed = useStep(f, [] as never, ['mobile-app-protection'])
+  assert.equal(licensed.directionQuestions!.some(q => q.key === 'service:intune'), false, 'Intune follows the device answers, not a service question')
+  assert.equal(licensed.state.satisfied, false, 'defaults still need approval')
   const source = [{ name: 'IAC - APP - SharePoint', json: {}, reason: 'unmapped' }] as never
-  const known: Step[] = []
-  addWorkflowSteps(known, source, f.snapshot, f.mapping)
-  assert.equal(known[0].workflowChoices![0].answer, 'yes')
+  const known = service(useStep(f, source), 'sharepoint')
+  assert.equal(known.suggested.value, 'yes')
+  assert.equal(known.saved, null, 'a suggestion is not an answer')
   f.snapshot.sources.appSignInSummary.status = 'error'
-  const unread: Step[] = []
-  addWorkflowSteps(unread, source, f.snapshot, f.mapping)
-  assert.equal(unread[0].workflowChoices![0].answer, 'unsure')
+  const unread = service(useStep(f, source), 'sharepoint')
+  assert.equal(unread.suggested.value, 'yes')
+  assert.equal(unread.evidence, directionWords.defaultEvidence)
 })
 
 test('a saved No contradicted by new use needs review; acknowledging that evidence stops repeated churn', () => {
   const f = fixture('demo')
   f.mapping.workflowAnswers = { sharepoint: 'no' }; f.mapping.facetOverrides = {}; f.mapping.workflowConfirmedAt = f.snapshot.asOf
   const source = [{ name: 'SharePoint', json: {}, reason: 'unmapped' }] as never
-  const steps: Step[] = []; addWorkflowSteps(steps, source, f.snapshot, f.mapping)
-  assert.equal(steps[0].workflowChoices![0].needsReview, true)
-  assert.equal(steps[0].workflowChoices![0].answer, 'no', 'saved choice remains visible')
-  const mapping = applyStepDecisions(f.mapping, { [WORKFLOW_STEP]: { at: f.snapshot.asOf, answers: { sharepoint: 'no', 'evidence:sharepoint': 'present' } } })
-  const again: Step[] = []; addWorkflowSteps(again, source, f.snapshot, mapping)
-  assert.equal(again[0].state.satisfied, true)
+  const first = service(useStep(f, source), 'sharepoint')
+  assert.equal(first.needsReview, true)
+  assert.equal(first.saved?.value, 'no', 'saved choice remains visible')
+  const mapping = applyStepDecisions(f.mapping, { 's-confirm-workloads': { at: f.snapshot.asOf, answers: { sharepoint: 'no', 'evidence:sharepoint': 'present' } } })
+  assert.equal(service(useStep({ ...f, mapping }, source), 'sharepoint').needsReview, false)
 })
 
 test('split device choices distinguish registered, app-protected and blocked phones', () => {
@@ -159,9 +162,9 @@ test('unresolved allowed-AVD-user definition cannot become completed through a g
   const f = fixture('demo')
   f.mapping.workflowAnswers = { avd: 'yes' }
   const source = [{ name: 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers', json: { conditions: { users: { includeUsers: ['All'], excludeGroups: ['unknown'] } } }, reason: 'unmapped' }] as never
-  const first: Step[] = []; addWorkflowSteps(first, source, f.snapshot, f.mapping)
+  const first: Step[] = []; addWorkflowSteps(first, source, f.mapping)
   const row = first.find(s => s.id.startsWith('s-review-baseline'))!
-  const next: Step[] = []; addWorkflowSteps(next, source, f.snapshot, f.mapping, { [row.id]: { [MANUAL_REVIEW_ID]: { at: f.snapshot.asOf, basis: row.manualReview?.basis ?? '' } } })
+  const next: Step[] = []; addWorkflowSteps(next, source, f.mapping, { [row.id]: { [MANUAL_REVIEW_ID]: { at: f.snapshot.asOf, basis: row.manualReview?.basis ?? '' } } })
   const current = next.find(s => s.id === row.id)!
   assert.equal(current.state.satisfied, false)
   assert.equal(current.state.condition, 'blocked')

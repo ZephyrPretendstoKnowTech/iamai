@@ -205,8 +205,8 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   assert.equal(note(on), `${gate.value} of admins have a qualifying method.`)
 })
 
-test('U11: the demo Devices step reads Ready · Decision; the bar keeps its sentence', () => {
-  const s = stepSnapshotsOf('demo')['s-prereq-device-plan']
+test('U11: the demo Devices step (Direction D3) reads Ready · Decision; the bar keeps its sentence', () => {
+  const s = stepSnapshotsOf('demo')['s-direction-devices']
   assert.equal(s.substatus, 'Decision')
   assert.equal(s.badge, 'Ready · Decision')
   assert.equal(s.bar, 'Needs a decision')
