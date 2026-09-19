@@ -180,10 +180,17 @@ test('the final verification report exists and names its authority and its evide
 
   // The program's hashes, so the report cannot claim conformance against bytes
   // it never read. A surface re-approved after 041 is not the report's to carry.
+  // Connect was rehashed by the owner-approved tenant-data scrub (c7ab3f67,
+  // 2026-09-19); the dated report keeps the hash it verified.
+  const VERIFIED_BEFORE_REHASH: Record<string, string> = {
+    connect: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b',
+  }
   for (const surface of PROGRAM) {
-    const sha = (JSON.parse(read('docs/design/approved/manifest.json')) as { surfaces: { surface: string; sha256: string }[] }).surfaces.find(
-      (s) => s.surface === surface.surface,
-    )!.sha256
+    const sha =
+      VERIFIED_BEFORE_REHASH[surface.surface] ??
+      (JSON.parse(read('docs/design/approved/manifest.json')) as { surfaces: { surface: string; sha256: string }[] }).surfaces.find(
+        (s) => s.surface === surface.surface,
+      )!.sha256
     assert.ok(text.includes(sha), `the report does not carry ${surface.surface}'s canonical hash`)
   }
 

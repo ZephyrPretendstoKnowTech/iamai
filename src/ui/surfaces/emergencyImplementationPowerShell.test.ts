@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { emergencyAccountPowerShell } from './emergencyImplementation.ts'
 
+const PWSH = process.platform === 'win32' ? 'pwsh.exe' : 'pwsh'
 const work = mkdtempSync(join(tmpdir(), 'iamai-emergency-powershell-'))
 const scriptPath = join(work, 'emergency-account.ps1')
 const parserPath = join(work, 'parse.ps1')
@@ -84,13 +85,13 @@ after(() => rmSync(work, { recursive: true, force: true }))
 
 type RunResult = { success: boolean; writes: number; error: string | null; result: Record<string, unknown>[] | null }
 function run(scenario: string, mode = 'VerifyIdentityAndRole'): RunResult {
-  const result = spawnSync('pwsh.exe', ['-NoProfile', '-File', harnessPath, scenario, scriptPath, mode], { encoding: 'utf8' })
+  const result = spawnSync(PWSH, ['-NoProfile', '-File', harnessPath, scenario, scriptPath, mode], { encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr || result.stdout)
   return JSON.parse(result.stdout.trim()) as RunResult
 }
 
 test('generated emergency-account PowerShell parses with the installed parser', () => {
-  const result = spawnSync('pwsh.exe', ['-NoProfile', '-File', parserPath, scriptPath], { encoding: 'utf8' })
+  const result = spawnSync(PWSH, ['-NoProfile', '-File', parserPath, scriptPath], { encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr || result.stdout)
 })
 
