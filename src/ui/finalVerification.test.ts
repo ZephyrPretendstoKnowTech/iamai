@@ -96,6 +96,9 @@ test('Jon Hope is named as the baseline author and never as the product author',
 
 // ------------------------------------ 2. the two authority records agree
 
+/** The surfaces the 031-040 restoration program restored (and 041 verified). */
+const PROGRAM = DESIGN.surfaces.filter((s) => Number(String(s.restorationPack).split('-').at(-1)) <= 40)
+
 test('the design manifest and the brand manifest tell the same story about what landed', () => {
   // Until task 041 they did not. The design manifest said every surface was
   // `restoration-pending` and the brand manifest said `pageCompositionRestored:
@@ -103,8 +106,11 @@ test('the design manifest and the brand manifest tell the same story about what 
   // stating something false about their own repository, with two tests pinning
   // the falsehood in place.
   assert.equal(BRAND.production.pageCompositionRestored, true)
-  const packs = DESIGN.surfaces.map((s) => s.restorationPack)
-  assert.deepEqual([...packs].sort(), ['032', '033-036', '037', '038'])
+  // The restoration program (031-040) restored all four surfaces; MFA Readiness
+  // has since been rebuilt on its approved v3 pack (prompt 62, 346cd698), which
+  // its own anatomy tests verify. The program's records cover the program.
+  assert.deepEqual(DESIGN.surfaces.map((s) => s.restorationPack).sort(), ['032', '033-036', '038', '062'])
+  const packs = PROGRAM.map((s) => s.restorationPack)
 
   for (const s of DESIGN.surfaces) {
     assert.equal(s.implementationState, 'restored', `${s.surface} is not recorded as restored`)
@@ -172,9 +178,9 @@ test('the final verification report exists and names its authority and its evide
   assert.ok(existsSync(REPORT), `${REPORT} is this task's artifact and is not optional`)
   const text = read(REPORT)
 
-  // The four hashes, so the report cannot claim conformance against bytes it
-  // never read.
-  for (const surface of DESIGN.surfaces) {
+  // The program's hashes, so the report cannot claim conformance against bytes
+  // it never read. A surface re-approved after 041 is not the report's to carry.
+  for (const surface of PROGRAM) {
     const sha = (JSON.parse(read('docs/design/approved/manifest.json')) as { surfaces: { surface: string; sha256: string }[] }).surfaces.find(
       (s) => s.surface === surface.surface,
     )!.sha256
