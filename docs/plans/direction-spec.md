@@ -15,7 +15,7 @@ It follows the V1 standard (`v1-procedure.md` §3) and "intent over evidence":
 - **Pre-fill:**
   - "What you use" questions are pre-filled with **today's state**, from the scan.
   - "How it should work" questions are pre-filled with **the baseline's recommendation**, with today's state shown beside it ("Today: 3 of 12 computers are joined").
-- **No signal:** where the scan has no evidence for a question, the suggestion is the stricter answer (No, None, Not used). The step says it's a default, not something seen. Building Direction adds no Graph permission; a pre-fill IAMAI can't read today uses this default.
+- **No signal:** where the scan has no evidence for a question, the suggestion is the safer answer. A service defaults to Yes, which keeps its policy; an exception defaults to None or Not used, so no exception is granted. The step says it's a default, not something seen. Building Direction adds no Graph permission; a pre-fill IAMAI can't read today uses this default.
 - **Approving:** one **Approve answers** button per step saves every answer at once. A person can change any single answer before or after approving.
 - **No "Not sure" option.** Every question has a suggested answer, and the step says: "Not sure? Keep the suggestion. You can change it any time." Today "Not sure" blocks policies indefinitely.
 - **Done:** the step is complete when every answer is saved.
