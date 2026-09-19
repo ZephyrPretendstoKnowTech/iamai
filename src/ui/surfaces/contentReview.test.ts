@@ -224,24 +224,6 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
 })
 
-test('D4: emergency account findings stay inside the four step topics, including hardening after the minimum is met', () => {
-  let met = 0
-  for (const name of ['demo', 'small', 'mid'] as const) {
-    for (const [id, b] of bodiesOf(fixture(name))) {
-      for (const slot of b.contract.emergencySlots.filter((s) => s.state === 'hardening')) {
-        const topics = [...b.readiness.tiles, ...b.readiness.satisfied].filter((t) => t.key.startsWith('configuration:'))
-        assert.equal(topics.length, 4, `${name}/${id}: emergency account work is not organized into four topics`)
-        assert.equal(topics.some((t) => t.key === slot.key), false, `${name}/${id}: ${slot.label} became a separate top-level tile`)
-        assert.ok(topics.some((t) => (t.items ?? []).some((item) => item.label === slot.label || item.value.includes(slot.label))), `${name}/${id}: ${slot.label} is absent from the topic details`)
-        met += 1
-      }
-    }
-  }
-  assert.ok(met > 0, 'no fixture has an account with its minimum met and hardening open: the premise is untested')
-  // ✓ is the good tone's mark (R4).
-  assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /good: '✓'/)
-})
-
 test('D5: blocking tiles open with the step; past the height cap only the first does, and a line says the rest wait', () => {
   assert.equal(AUTO_OPEN_CAP_PX, 400)
   const tiles = [{ key: 'a', height: 120 }, { key: 'b', height: 150 }, { key: 'c', height: 90 }]

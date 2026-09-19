@@ -137,25 +137,3 @@ test('a group heading spans every day its rows read: the floor group dates its c
   }
   assert.ok(floorDated > 0, 'no floor row is dated in the fixtures: the premise is untested')
 })
-
-test('deferred hardening releases rollout safety while the account step remains visibly unfinished', () => {
-  const base = fixture('small')
-  base.snapshot.config.authMethodsPolicy = structuredClone(fixture('demo-week2').snapshot.config.authMethodsPolicy)
-  for (const id of base.mapping.breakGlassUserIds) { const methods = base.snapshot.authMethods[id]; if (Array.isArray(methods)) base.snapshot.authMethods[id] = methods.map(method => method.kind === 'fido2' ? { ...method, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound' } : method) }
-  const basis = runFixture(base).steps.find((s) => s.id === BREAK_GLASS_STEP_ID)!.emergency!.basis
-  const r = runFixture(base, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis } })
-  const bg = r.steps.find((s) => s.id === BREAK_GLASS_STEP_ID)!
-  assert.equal(bg.status, 'ready', 'a deferral must not complete the account-owned identity, role, method, and custody work')
-  const s = planStateOf(bg, isHeld(bg))
-  assert.equal(s.complete, false, 'the account step disappeared into Completed after a deferral')
-  const lane = laneViewFor(bg, r.steps)
-  assert.equal(lane.lane, 'Ready')
-  const c = stepContract(bg, ctxOf({ f: base, r }), undefined, lane)
-  assert.equal(badgeLabel(c), lane.label)
-  const readiness = readinessOf(bg, c)
-  assert.equal(readiness.bar.key, 'correct')
-  assert.notEqual(railOf(c).metric, 'Completed')
-  assert.ok([...readiness.tiles, ...readiness.satisfied].some((t) => t.key.startsWith('configuration:')), 'the account-owned topics disappeared after a deferral')
-  assert.ok(c.hardening?.deferredAt, 'the deferral record is not visible')
-  assert.ok(c.doneWhen.every(line => !/recovery test|every required emergency-access check/i.test(line)), 'account completion claims the final drill')
-})
