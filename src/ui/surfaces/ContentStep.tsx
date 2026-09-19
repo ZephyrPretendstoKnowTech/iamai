@@ -38,6 +38,7 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
+import { EMERGENCY_ACCESS_GROUP, isGroupMember } from '../../roadmap/stepGroups.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
@@ -58,7 +59,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
-import { HEAD } from './stepHeadings.ts'
+import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
@@ -263,8 +264,11 @@ export function ContentStep({
   const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
-  const isEmergencyTaskStep = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings'].includes(step.id)
-  const isEmergencyJourneyStep = isEmergencyTaskStep || step.id === 'cleanup-drill'
+  // The emergency task projections (stepBody.ts emergencyAccountTasks) belong to
+  // the Emergency Access group's steps; the drill is a Cleanup row, never drawn here.
+  const isEmergencyTaskStep = isGroupMember(step.id, EMERGENCY_ACCESS_GROUP)
+  // The four task-step headings, for any member of a group that uses them (stepGroups.ts).
+  const taskHead = taskHeadingsOf(step.id)
   const displayedScenarios: TroubleshootingScenario[] = isEmergencyAccounts ? [...scenarios, {
     id: 'emergency-temporary-access-pass', title: 'Temporary Access Pass',
     symptom: 'The emergency account cannot complete the sign-in needed to register its approved passkey.', likelyCauses: [],
@@ -372,7 +376,7 @@ export function ContentStep({
               has one, and the engine's where it does not, ending in the step's
               Microsoft Learn link (RUN-CONTEXT-B decision 14). */}
           <section className="step-section">
-            <h4>{isEmergencyJourneyStep ? 'About this Step' : HEAD.why}</h4>
+            <h4>{taskHead?.why ?? HEAD.why}</h4>
             <p>
               {contract.why}{' '}
               {learnUrl && (
@@ -399,7 +403,7 @@ export function ContentStep({
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
           /> : <ReadinessSection
             readiness={displayedReadiness}
-            heading={isEmergencyJourneyStep ? 'Tasks Remaining' : undefined}
+            heading={taskHead?.remaining}
             showClosedCount={!isEmergencyTaskStep}
             lead={instructed || hasPasskeyFindings ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
@@ -488,7 +492,7 @@ export function ContentStep({
               chosenTaskId={isEmergencyTaskStep ? emergencyTaskId : null}
               onChooseTask={isEmergencyTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isEmergencyTaskStep ? emergencyTaskPreferenceKey : null}
-              heading={isEmergencyJourneyStep ? 'Implementation Tasks' : undefined}
+              heading={taskHead?.implementation}
             />
           )}
 
@@ -501,7 +505,7 @@ export function ContentStep({
           {step.id === 's-ladder-break-glass-accounts' && !printing && <p className="step-section"><a href="#/plan/cleanup-drill">Test Emergency Access and Record the Result →</a></p>}
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
-          <DoneWhen heading={isEmergencyJourneyStep ? 'Completion Criteria' : HEAD.doneWhen} lines={contract.doneWhen} />
+          <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
           {step.manualReview && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={printing} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
 
           {/* The printed plan is the whole step: the evidence and More stand on

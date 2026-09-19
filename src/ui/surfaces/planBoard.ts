@@ -29,7 +29,9 @@ import { schedulingWords } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
-import { pages } from '../../content/content.ts'
+import { content, pages } from '../../content/content.ts'
+import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, membersOf, pinnedGroups } from '../../roadmap/stepGroups.ts'
+import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
@@ -387,19 +389,56 @@ export type BoardItem = {
   order: number
 }
 
-/** The four existing rows that form the shared emergency-access foundation. */
-export const EMERGENCY_STEP_IDS = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'] as const
+/** The four existing rows that form the shared emergency-access foundation (stepGroups.ts). */
+export const EMERGENCY_STEP_IDS: readonly string[] = membersOf(EMERGENCY_ACCESS_GROUP)
 
-/** Partition the canonical row set without cloning or dropping an id. */
-export function partitionEmergencyItems(items: readonly BoardItem[]): { emergency: BoardItem[]; remaining: BoardItem[]; complete: boolean } {
-  const ids = new Set<string>(EMERGENCY_STEP_IDS)
-  const emergency = EMERGENCY_STEP_IDS.map(id => items.find(item => item.id === id)).filter((item): item is BoardItem => item !== undefined)
-  return {
-    emergency,
-    remaining: items.filter(item => !ids.has(item.id)),
-    complete: emergency.length === EMERGENCY_STEP_IDS.length && emergency.every(item => item.lane === 'Completed'),
-  }
+/** One group's rows out of the board's row set: its members in the group's order, and whether every member is Completed. */
+export type GroupPartition = { group: StepGroup; items: BoardItem[]; complete: boolean }
+
+function partitionGroup(items: readonly BoardItem[], group: StepGroup): GroupPartition {
+  const members = group.members.map(id => items.find(item => item.id === id)).filter((item): item is BoardItem => item !== undefined)
+  return { group, items: members, complete: members.length === group.members.length && members.every(item => item.lane === 'Completed') }
 }
+
+/** Partition the canonical row set into the pinned groups and the rest, without cloning or dropping an id. */
+export function partitionPinnedGroups(items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): { pinned: GroupPartition[]; remaining: BoardItem[] } {
+  const pinned = pinnedGroups(groups).map(group => partitionGroup(items, group))
+  const ids = new Set(pinned.flatMap(p => p.group.members))
+  return { pinned, remaining: items.filter(item => !ids.has(item.id)) }
+}
+
+/** Partition the canonical row set without cloning or dropping an id: the Emergency Access group alone. */
+export function partitionEmergencyItems(items: readonly BoardItem[]): { emergency: BoardItem[]; remaining: BoardItem[]; complete: boolean } {
+  const { pinned: [emergency], remaining } = partitionPinnedGroups(items, STEP_GROUPS.filter(g => g.key === EMERGENCY_ACCESS_GROUP))
+  return { emergency: emergency.items, remaining, complete: emergency.complete }
+}
+
+/** A group's title, read from its content key (stepGroups.ts titleKey / completedTitleKey). */
+export function groupTitleOf(group: StepGroup, complete: boolean): string {
+  const path = complete ? group.completedTitleKey : group.titleKey
+  const words = path.split('.').reduce<unknown>((at, key) => (at as Record<string, unknown> | undefined)?.[key], content)
+  if (typeof words !== 'string') throw new Error(`content.json has no ${path}`)
+  return words
+}
+
+/**
+ * The board groups the pinned groups draw: an open group above the lanes, and a
+ * completed one in the aside only when completed work is asked for (Show
+ * completed, the Completed summary) or one of its members is the open step.
+ */
+export function pinnedBoardGroups(pinned: readonly GroupPartition[], show: { completed: boolean; open: string | null }): { active: BoardGroup[]; completed: BoardGroup[] } {
+  const active: BoardGroup[] = []
+  const completed: BoardGroup[] = []
+  for (const p of pinned) {
+    if (!p.complete && p.items.length > 0) active.push({ key: p.group.key, label: groupTitleOf(p.group, false), secondary: false, closed: false, items: p.items })
+    if (p.complete && (show.completed || (show.open !== null && p.group.members.includes(show.open)))) completed.push({ key: `${p.group.key}-complete`, label: groupTitleOf(p.group, true), secondary: true, closed: false, items: p.items })
+  }
+  return { active, completed }
+}
+
+/** Whether the open step belongs to a pinned group still open, so it is drawn above the lanes and under no tab. */
+export const openInActivePinnedGroup = (pinned: readonly GroupPartition[], open: string | null): boolean =>
+  open !== null && pinned.some(p => !p.complete && p.group.members.includes(open))
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
