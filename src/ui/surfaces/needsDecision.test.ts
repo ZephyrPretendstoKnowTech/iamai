@@ -206,7 +206,7 @@ test('needs decision: a single candidate is a strong recommendation and still no
   const ex = stepVars(c.step, c.ctx) as Record<string, unknown>
   assert.deepEqual(ex.suggestedGroup, [OTHER_CANDIDATE])
   // The recommendation says out loud that it is not a selection.
-  assert.ok(stepLines(c.step, c.ctx).some((l) => /IAMAI suggests/.test(l) && /Nothing uses it until you choose it/.test(l)))
+  assert.ok(stepLines(c.step, c.ctx).some((l) => /Suggested:/.test(l) && /nothing uses it until you choose it/.test(l)))
   assert.equal(stepLines(c.step, c.ctx).some((l) => /\bSelected\b|\bConfirmed\b/.test(l)), false)
 })
 
@@ -229,7 +229,7 @@ test('needs decision: the state, the word, the next milestone, the action and th
   assert.equal(contract.whatToDo.kind, 'decide')
   // The step's own completion (S-EG-5, B8), not the shared decision sentence.
   // Editorial batch C: the register's completion, and the policy references as a human check each policy step confirms.
-  assert.deepEqual(contract.doneWhen, ['The exclusions group is confirmed and contains only the selected emergency access accounts.', 'The next scan verifies assigned membership, the group settings and the required policy exclusions.', 'Each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan.'])
+  assert.deepEqual(contract.doneWhen, ["The scan verifies the selected group's configuration, membership and required policy exclusions."])
   // The question is the step's What to do, not something to fix (owner, 2026-09-11).
   assert.deepEqual(contract.fix.map((x) => x.text), [])
   // The collapsed row says the same, without the step being opened.
