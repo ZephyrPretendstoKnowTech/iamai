@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Create",
-  "reason": null,
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "Ready · Create",
   "bar": "Ready now",
@@ -16,6 +16,10 @@
     {
       "label": "Device code sign-in",
       "state": "Confirm no legitimate use"
+    },
+    {
+      "label": "Before enforcement",
+      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

@@ -16,6 +16,10 @@
     {
       "label": "Threshold",
       "state": "75% MFA-ready"
+    },
+    {
+      "label": "Before enforcement",
+      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

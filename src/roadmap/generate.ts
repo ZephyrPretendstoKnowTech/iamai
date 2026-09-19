@@ -1343,6 +1343,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
   let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
   if (gate === null && bgStanding && bgAccountStanding && (bgStanding.minimum.length > 0 || (bgAccountStanding.hardening.length > 0 && !hardeningDeferred(bgAccountStanding.hardening, input.hardeningDeferral)))) gate = gateFor('breakGlass')
+  // Accounts not yet prepared are an unverified escape hatch too: since the
+  // connected journey (c1cacf21) Step 1 is done only with an approved recovery
+  // passkey on each account, which no validation check carries, so the reports
+  // alone released every deny-capable step while Step 1 still read Ready.
+  if (gate === null && bgStep && bgStep.status !== 'done') gate = gateFor('breakGlass')
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
