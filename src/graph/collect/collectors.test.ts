@@ -149,6 +149,21 @@ test('item 2: a beta row that reports lastUsedDateTime as null marks the passkey
   }
 })
 
+test('item 11: a Mac’s Platform SSO credential is read as its own method, never "other"', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/v1.0/$batch') && !url.includes('fido2')) return new Response(JSON.stringify({ responses: [{ id: '0', status: 200, body: { value: [{ id: 'pc-1', '@odata.type': '#microsoft.graph.platformCredentialAuthenticationMethod', displayName: 'MacBook Pro', createdDateTime: '2026-09-01T00:00:00Z' }] } }] }), { status: 200 })
+    return new Response('{}', { status: 404 })
+  }) as typeof fetch
+  try {
+    const result = await collectMethodsForUsers(ctx, ['user-1'])
+    assert.deepEqual(result['user-1'], [{ kind: 'platformCredential', id: 'pc-1', displayName: 'MacBook Pro', createdDateTime: '2026-09-01T00:00:00Z' }])
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
 test('dedicated FIDO reads merge exact credential fields and endpoint provenance', async () => {
   const original = globalThis.fetch
   let v1Batch = 0

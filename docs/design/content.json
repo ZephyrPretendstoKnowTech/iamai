@@ -847,7 +847,7 @@
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
       "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
-      "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device they use. Seamless means that sign-in is built into each device.",
+      "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello, Platform SSO or certificate) on every kind of device they use, within 30 days. Seamless means that sign-in is built into each device.",
       "change": {
         "title": "Since the {date} scan",
         "ready": "Ready",
@@ -995,6 +995,7 @@
       "methods": {
         "passkey": "Passkey",
         "windowsHello": "Windows Hello",
+        "platformCredential": "Platform SSO",
         "certificate": "Certificate",
         "authenticator": "Authenticator",
         "oath": "One-time code",
@@ -1017,6 +1018,7 @@
         "$comment": "A method's name mid-sentence (next steps): capitals kept for product names.",
         "passkey": "the passkey",
         "windowsHello": "Windows Hello for Business",
+        "platformCredential": "Platform SSO",
         "certificate": "the certificate",
         "authenticator": "Microsoft Authenticator",
         "oath": "the one-time code",

@@ -12,7 +12,7 @@
 // the fixtures every surface is rendered from.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTHENTICATOR_AAGUIDS, READINESS_STATES, emptyReadinessContext, isPhishingResistantKind, isPhishingResistantRegistered, isReady, passkeyAllowed, personReadiness, readSignIn } from './phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, PLATFORM_CREDENTIAL_AAGUID, READINESS_STATES, emptyReadinessContext, isPhishingResistantKind, isPhishingResistantRegistered, isReady, passkeyAllowed, personReadiness, readSignIn } from './phishingResistant.ts'
 import { passkeyPolicyOf, personPasskeyPolicy } from '../derive/readinessContext.ts'
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
 import type { GroupMembers } from '../coverage/population.ts'
@@ -43,7 +43,7 @@ const LATER = '2026-09-05T10:00:00.000Z'
 const OLD = '2026-07-01T10:00:00.000Z'
 const CTX: ReadinessContext = emptyReadinessContext(NOW)
 const OPEN: PasskeyPolicy = { read: true, enabled: true, selfService: true, attestation: false, restriction: 'unrestricted', aaguids: [] }
-const METHOD: Record<MethodClass, string> = { passkey: 'Passkey (device-bound)', windowsHello: 'Windows Hello for Business', certificate: 'X.509 Certificate', authenticator: 'Mobile app notification', oath: 'OATH verification code', phone: 'Text message' }
+const METHOD: Record<MethodClass, string> = { passkey: 'Passkey (device-bound)', windowsHello: 'Windows Hello for Business', platformCredential: 'Windows Hello for Business', certificate: 'X.509 Certificate', authenticator: 'Mobile app notification', oath: 'OATH verification code', phone: 'Text message' }
 const proof = (cls: MethodClass, os: Platform | null, at = AT): ProofRecord => ({ cls, os, at, method: METHOD[cls] })
 const seen = (...os: Platform[]) => os.map((o) => ({ os: o, at: AT }))
 const device = (os: Platform, over: Partial<DeviceSeen> = {}): DeviceSeen => ({ os, at: AT, trust: null, managed: null, deviceIds: [], version: null, ...over })
@@ -156,7 +156,8 @@ test('a passkey or Windows Hello sign-in is proof of that credential', () => {
   for (const method of ['Passkey (device-bound)', 'FIDO2 security key', 'Windows Hello for Business']) {
     const read = readSignIn(row({ authenticationRequirement: 'singleFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: method }], os: 'macOS' }))
     assert.equal(read.proof?.os, 'macOS', method)
-    assert.ok(read.proof && (read.proof.cls === 'passkey' || read.proof.cls === 'windowsHello'), method)
+    // On a Mac, a Windows Hello for Business record is the Mac's Platform SSO credential (owner item 11).
+    assert.ok(read.proof && (read.proof.cls === 'passkey' || read.proof.cls === (method.startsWith('Windows Hello') ? 'platformCredential' : 'windowsHello')), method)
   }
 })
 
@@ -628,4 +629,41 @@ test('item 9: each person’s passkeys are read against the profiles scoped to t
   const src = readFileSync('src/derive/readinessContext.ts', 'utf8')
   assert.match(src, /passkeyProfilesFor/)
   assert.match(src, /passkeyTargetsReach/)
+})
+
+test('item 11: a Mac’s Platform SSO credential is a method, a macOS "Windows Hello for Business" sign-in is its proof, and no Mac is Ready without one', () => {
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
+  const pssoMethod: AuthMethodSummary = { kind: 'platformCredential', id: 'pc1', displayName: 'MacBook Pro' }
+  // The registered credential counts as a phishing-resistant method (it fell to "other" before).
+  assert.equal(isPhishingResistantKind('platformCredential'), true)
+  // Microsoft represents it under Windows Hello for Business: on a Mac, that sign-in is the Mac's built-in credential.
+  const signIn = readSignIn({ createdDateTime: AT, status: { errorCode: 0 }, authenticationRequirement: 'multiFactorAuthentication', os: 'macOS', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Windows Hello for Business' }] })
+  assert.equal(signIn.proof?.cls, 'platformCredential')
+  assert.equal(readSignIn({ createdDateTime: AT, status: { errorCode: 0 }, os: 'Windows', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Windows Hello for Business' }] }).proof?.cls, 'windowsHello', 'on Windows it stays Windows Hello')
+  const mac = device('macOS', { trust: 'registered', deviceIds: ['m1'] })
+  // Held, no recognised sign-in: Confirm it, never Ready, and the next step is one Platform SSO sign-in on the Mac.
+  const held = personReadiness(input({ userId: 'me', methods: [pssoMethod], signIns: { read: true, proofs: [], platforms: [], devices: [mac] }, context: ctx }))
+  assert.equal(held.state, 'confirm')
+  assert.deepEqual(held.qualifying, ['platformCredential'])
+  assert.deepEqual(held.next, { kind: 'confirm', cls: 'platformCredential', os: 'macOS' })
+  assert.equal(held.devices[0].best, 'platformSso')
+  // With the sign-in (a record kept before this reading still says windowsHello on macOS): Ready, and built in, so Seamless.
+  const proven = personReadiness(input({ userId: 'me', methods: [pssoMethod], signIns: { read: true, proofs: [{ cls: 'windowsHello', os: 'macOS', at: AT, method: 'Windows Hello for Business' }], platforms: [], devices: [mac] }, context: ctx }))
+  assert.equal(proven.state, 'seamless')
+  assert.equal(proven.devices[0].proof?.cls, 'platformCredential')
+  // The sign-in without the credential registered proves nothing held.
+  const notHeld = personReadiness(input({ userId: 'me', methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [proof('platformCredential', 'macOS')], platforms: [], devices: [mac] }, context: ctx }))
+  assert.equal(isReady(notHeld.state), false)
+  // Passkey key restrictions must allow its model, as they must the Windows Hello ones.
+  const allowOnly = (aaguids: string[]): ReadinessContext => ({ ...ctx, passkey: { ...OPEN, restriction: 'allow', aaguids } })
+  const blocked = personReadiness(input({ userId: 'me', methods: [pssoMethod], signIns: { read: true, proofs: [], platforms: [], devices: [mac] }, context: allowOnly([AUTHENTICATOR_AAGUIDS[0]]) }))
+  assert.equal(blocked.credentials[0].allowedNow, 'no')
+  assert.equal(blocked.devices[0].whyNot, 'notAllowed')
+  assert.equal(isReady(blocked.state), false)
+  const allowed = personReadiness(input({ userId: 'me', methods: [pssoMethod], signIns: { read: true, proofs: [], platforms: [], devices: [mac] }, context: allowOnly([PLATFORM_CREDENTIAL_AAGUID]) }))
+  assert.equal(allowed.credentials[0].allowedNow, 'yes')
+  assert.equal(PLATFORM_CREDENTIAL_AAGUID, '7FD635B3-2EF9-4542-8D9D-164F2C771EFC'.toLowerCase())
+  // The page names it.
+  const row = { user: { id: 'me', displayName: 'Me' }, kind: 'person', active: true, state: held.state, explained: null, admin: false, guest: false, readiness: held, methods: held.methods, viability: null } as unknown as Parameters<typeof methodsCell>[0]
+  assert.equal(methodsCell(row).main, (pages.readiness as unknown as { methods: { platformCredential: string } }).methods.platformCredential)
 })

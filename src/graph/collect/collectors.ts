@@ -360,6 +360,8 @@ const KIND_BY_TYPE: Record<string, MethodKind> = {
   passkeyAuthenticationMethod: 'passkey',
   fido2AuthenticationMethod: 'fido2',
   windowsHelloForBusinessAuthenticationMethod: 'windowsHelloForBusiness',
+  // A Mac's Platform SSO credential (Platform Credential for macOS): phishing-resistant, counted as that Mac's built-in method.
+  platformCredentialAuthenticationMethod: 'platformCredential',
   phoneAuthenticationMethod: 'phone',
   softwareOathAuthenticationMethod: 'softwareOath',
   temporaryAccessPassAuthenticationMethod: 'temporaryAccessPass',
@@ -375,7 +377,8 @@ function mapMethod(raw: unknown, sourceVersion: 'v1.0' | 'beta' = 'v1.0'): AuthM
   const kind = KIND_BY_TYPE[type] ?? 'other'
   const out: AuthMethodSummary = { kind }
   // The qualifying methods keep their id, so a later scan can tell one that disappeared from one that did not (scoring/mfaHistory.ts).
-  if ((kind === 'passkey' || kind === 'fido2' || kind === 'windowsHelloForBusiness') && typeof m.id === 'string') out.id = m.id
+  if ((kind === 'passkey' || kind === 'fido2' || kind === 'windowsHelloForBusiness' || kind === 'platformCredential') && typeof m.id === 'string') out.id = m.id
+  if (kind === 'platformCredential' && typeof m.displayName === 'string') out.displayName = m.displayName
   // Graph's method resources name the date createdDateTime; the list-methods example shows creationDateTime. Either is the same fact.
   const created = typeof m.createdDateTime === 'string' ? m.createdDateTime : m.creationDateTime
   if (typeof created === 'string') out.createdDateTime = created
