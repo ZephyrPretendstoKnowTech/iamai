@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, nextCell, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -54,6 +54,7 @@ import { scan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { COVERS_PAGE, inertOutside, keepTabInside } from '../modalPanel.ts'
+import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 
 type Words = {
   h1: string
@@ -62,6 +63,7 @@ type Words = {
   summary: string
   summaryNone: string
   summaryUnmeasured: string
+  summaryNoP1: string
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
@@ -74,6 +76,7 @@ type Words = {
   nextLabel: string
   nextSetupWho: string
   groups: Record<ReadinessState, { title: string; why: string }>
+  groupNoP1: { title: string; why: string }
   groupAction: string
   sub: { admins: string; adminsWhy: string; intro: string; groupBy: string; byDevices: string; byDepartment: string; noDepartment: string; noDevices: string; showing: string; showMore: string }
   columns: string[]
@@ -252,7 +255,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
-  const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
+  // Without Entra ID P1 there are no sign-in records to read: said here, once, not on every row (owner item 4).
+  const summary = active === 0 ? T.summaryNone : signInsNeedP1(snapshot) ? fillText(T.summaryNoP1, { cohort }) : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
   const goal = goalLine(counted)
   // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
   const seen = computersSeen(view.rows)
@@ -301,8 +305,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               {T.chip.noPhone}
             </span>
           )}
-          {chips.chips.length === 0 && r.state !== null && (
-            <span className="dev off">{r.readiness?.unknown === 'signIns' ? T.chip.unread : T.sub.noDevices}</span>
+          {chips.chips.length === 0 && r.state !== null && noDevicesWord(r) && (
+            <span className="dev off">{noDevicesWord(r)}</span>
           )}
         </div>
         <div className="methods">
@@ -393,7 +397,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   }
   const setupStep = planSteps.has(SETUP_STEP) ? SETUP_STEP : null
   const groupView = ({ state, rows }: { state: ReadinessState; rows: ReadinessRow[] }): ReactNode => {
-    const G = T.groups[state]
+    // A group of people only the missing licence leaves unconfirmed is not "couldn't read these people".
+    const G = state === 'unknown' && rows.every(signInsUnavailableFor) ? T.groupNoP1 : T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
     const body = groupBodyLine(state, seen)

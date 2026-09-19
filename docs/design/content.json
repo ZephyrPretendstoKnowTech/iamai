@@ -838,6 +838,12 @@
       "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
       "summaryNone": "No active people to count.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
+      "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
+      "groupNoP1": {
+        "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
+        "title": "Sign-in not confirmed",
+        "why": "They hold a phishing-resistant method. Nothing to do until sign-in records can be read"
+      },
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
       "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
