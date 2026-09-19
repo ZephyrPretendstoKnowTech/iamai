@@ -2230,6 +2230,157 @@
           "emergencyAccess": {
             "title": "Establish Emergency Access",
             "completedTitle": "Establish Emergency Access"
+          },
+          "direction": {
+            "title": "Decide Your Tenant's Direction",
+            "completedTitle": "Decide Your Tenant's Direction"
+          }
+        },
+        "direction": {
+          "$comment": "Decide Your Tenant's Direction (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
+          "headings": {
+            "why": "About this Step",
+            "questions": "Questions",
+            "doneWhen": "Completion Criteria"
+          },
+          "notSure": "Not sure? Keep the suggestion. You can change it any time.",
+          "approve": "Approve answers",
+          "done": "Every answer is approved.",
+          "waiting": "Waiting on your direction",
+          "waitingNote": "Answer it in {step}.",
+          "answeredIn": "Answered in {step}",
+          "notAnswered": "Not answered yet: the suggestion is {answer}.",
+          "suggested": "Suggested",
+          "approved": "Approved",
+          "defaultEvidence": "A default, not something the scan saw.",
+          "baselineEvidence": "The baseline's recommendation.",
+          "reopened": "You said No, but the scan now sees it in use. {evidence}",
+          "alreadySetAside": "The Emergency Access accounts are already set aside: {accounts}.",
+          "none": "None",
+          "steps": {
+            "use": {
+              "title": "Confirm What You Use",
+              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't."
+            },
+            "accounts": {
+              "title": "Identify Service and Shared Accounts",
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules."
+            },
+            "devices": {
+              "title": "Decide How People and Devices Sign In",
+              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced."
+            },
+            "locations": {
+              "title": "Decide Where People Sign In From",
+              "why": "Tell us where your people work from. This sets which countries are allowed and which network counts as the office."
+            }
+          },
+          "questions": {
+            "services": {
+              "avd": "Azure Virtual Desktop",
+              "sharepoint": "SharePoint and OneDrive from outside the office",
+              "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
+              "inforcer": "Inforcer",
+              "workload": "Sync from on-premises Active Directory (Entra Connect)"
+            },
+            "serviceOptions": {
+              "yes": "Yes",
+              "no": "No"
+            },
+            "mailDevices": {
+              "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",
+              "options": {
+                "none": "None",
+                "some": "Some"
+              },
+              "seen": "{n} accounts used old-protocol email sign-ins in the last 30 days.",
+              "notSeen": "No old-protocol email sign-ins in the last 30 days."
+            },
+            "deviceCode": {
+              "label": "Device code sign-in (CLI tools, meeting-room devices)",
+              "options": {
+                "unused": "Not used",
+                "used": "In use"
+              },
+              "seen": "{n} people used device code sign-in in the last 30 days.",
+              "notSeen": "No device code sign-ins in the last 30 days."
+            },
+            "partner": {
+              "label": "Partner or MSP technicians who sign in to your tenant",
+              "options": {
+                "no": "No",
+                "yes": "Yes"
+              },
+              "seen": "{n} service-provider accounts signed in to this tenant.",
+              "notSeen": "No service-provider sign-ins in the last 30 days."
+            },
+            "externalMethods": {
+              "label": "External authentication methods (a third-party MFA provider)",
+              "options": {
+                "no": "No",
+                "yes": "Yes"
+              },
+              "seen": "The authentication methods policy has an external method enabled.",
+              "notSeen": "The authentication methods policy has no external method enabled."
+            },
+            "serviceAccounts": {
+              "label": "Service accounts (includes script accounts)",
+              "seen": "{n} accounts look like service accounts (names, non-interactive use).",
+              "notSeen": "No account looks like a service account."
+            },
+            "sharedDevices": {
+              "label": "Shared device accounts",
+              "seen": "{n} accounts look like shared-device accounts.",
+              "notSeen": "No account looks like a shared-device account."
+            },
+            "computers": {
+              "label": "Company computers",
+              "options": {
+                "managed": "Managed (joined to Entra and enrolled)",
+                "hybrid": "Hybrid joined",
+                "unmanaged": "Left unmanaged"
+              },
+              "today": "Today: {n} people signed in from computers that aren't joined.",
+              "todayNone": "Today: no sign-ins from unjoined computers were seen."
+            },
+            "phones": {
+              "label": "Phones",
+              "options": {
+                "enrolled": "Enrolled in Intune",
+                "apps": "App protection only",
+                "unmanaged": "Unmanaged",
+                "blocked": "Blocked from company data"
+              },
+              "today": "Today: {n} people signed in from phones.",
+              "todayNone": "Today: no phone sign-ins were seen."
+            },
+            "deviceExceptions": {
+              "label": "Devices that can't meet the rule (kiosks, lab machines)",
+              "options": {
+                "none": "None",
+                "some": "Some"
+              }
+            },
+            "officeNetwork": {
+              "label": "The office network",
+              "options": {
+                "office": "Trusted locations",
+                "remote": "Everyone works remotely"
+              },
+              "seen": "{n} named locations are marked trusted.",
+              "notSeen": "No named location is marked trusted."
+            },
+            "workCountries": {
+              "label": "Work countries",
+              "seen": "Sign-ins in the last 30 days came from {countries}."
+            },
+            "travel": {
+              "label": "Travel outside those countries",
+              "options": {
+                "allowed": "Allowed, with notice (a temporary travellers group)",
+                "never": "Never"
+              }
+            }
           }
         }
       },

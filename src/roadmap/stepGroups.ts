@@ -7,12 +7,22 @@
 // under pages.app.plan.groups in content.json; nothing else names a group's ids.
 //
 // Only membership is here. What a member *means* (the emergency gate, the
-// drill's evidence, the emergency task projections) stays with the code that
-// owns that meaning. roadmap/blockerSteps.ts EMERGENCY_ACCESS_STEP_IDS is a
-// different set with a different meaning (steps that can never be skipped or
-// marked Doesn't apply), and is not this.
+// drill's evidence, the emergency task projections, the Direction questions)
+// stays with the code that owns that meaning. roadmap/blockerSteps.ts
+// EMERGENCY_ACCESS_STEP_IDS is a different set with a different meaning (steps
+// that can never be skipped or marked Doesn't apply), and is not this.
 //
 // Pure: no DOM, no network.
+
+/**
+ * The headings a group's members draw.
+ *
+ * `task`: About this Step, Tasks Remaining, Implementation Tasks, Completion
+ * Criteria (Establish Emergency Access). `decision`: About this Step, Questions,
+ * Completion Criteria, and no Implementation, because nothing is built
+ * (Decide Your Tenant's Direction, docs/plans/direction-spec.md).
+ */
+export type GroupAnatomy = 'task' | 'decision'
 
 export type StepGroup = {
   /** Stable key; also the board group's key and its `plan-group-<key>` id. */
@@ -25,11 +35,15 @@ export type StepGroup = {
   members: readonly string[]
   /** Drawn above the lanes, out of the tabs, until every member is Completed. */
   pinned: boolean
-  /** Members draw the task-step headings: About this Step, Tasks Remaining, Implementation Tasks, Completion Criteria. */
-  taskAnatomy: boolean
+  /** Which headings the members draw (GroupAnatomy). */
+  anatomy: GroupAnatomy
 }
 
 export const EMERGENCY_ACCESS_GROUP = 'emergency-access'
+export const DIRECTION_GROUP = 'direction'
+
+/** The four Direction steps, in the order the group draws them (roadmap/direction.ts builds them). */
+export const DIRECTION_STEP_IDS = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations'] as const
 
 export const STEP_GROUPS: readonly StepGroup[] = [
   {
@@ -38,7 +52,15 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.emergencyAccess.completedTitle',
     members: ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'],
     pinned: true,
-    taskAnatomy: true,
+    anatomy: 'task',
+  },
+  {
+    key: DIRECTION_GROUP,
+    titleKey: 'pages.app.plan.groups.direction.title',
+    completedTitleKey: 'pages.app.plan.groups.direction.completedTitle',
+    members: DIRECTION_STEP_IDS,
+    pinned: true,
+    anatomy: 'decision',
   },
 ]
 
@@ -58,9 +80,19 @@ export function membersOf(key: string, groups: readonly StepGroup[] = STEP_GROUP
   return groups.find((g) => g.key === key)?.members ?? []
 }
 
-/** Whether a step draws the task-step headings (its group's `taskAnatomy`). */
+/** The anatomy a step draws: its group's, or null for a step in no group (drawn with the defaults). */
+export function anatomyOf(stepId: string, groups: readonly StepGroup[] = STEP_GROUPS): GroupAnatomy | null {
+  return groupOf(stepId, groups)?.anatomy ?? null
+}
+
+/** Whether a step draws the task-step headings (its group's anatomy is `task`). */
 export function usesTaskAnatomy(stepId: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
-  return groupOf(stepId, groups)?.taskAnatomy === true
+  return anatomyOf(stepId, groups) === 'task'
+}
+
+/** Whether a step draws the decision-step headings (its group's anatomy is `decision`). */
+export function usesDecisionAnatomy(stepId: string, groups: readonly StepGroup[] = STEP_GROUPS): boolean {
+  return anatomyOf(stepId, groups) === 'decision'
 }
 
 /** The pinned groups, in registry order. */

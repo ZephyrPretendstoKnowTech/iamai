@@ -130,5 +130,8 @@ export const engine = shared.engine as unknown as EngineWords
 
 export const workflowWords = contentJson.pages.app.plan.workflows
 
+/** Decide Your Tenant's Direction (roadmap/direction.ts, DirectionStep.tsx): the four steps' words, their questions and the hold the dependent policies read. */
+export const directionWords = contentJson.pages.app.plan.direction
+
 export const structuralWords = contentJson.pages.app.plan
 export const schedulingWords = contentJson.pages.plan.when
