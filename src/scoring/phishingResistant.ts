@@ -242,7 +242,7 @@ export type DeviceReading = {
   /** Whether the best option is possible here. */
   possible: Verdict
   /** Why a built-in option is not possible. */
-  whyNot: 'notJoined' | 'otherAccount' | 'notProvisioned' | 'attestation' | 'osTooOld' | 'notAllowed' | null
+  whyNot: 'notJoined' | 'otherAccount' | 'attestation' | 'osTooOld' | 'notAllowed' | null
   /** The latest phishing-resistant sign-in on this device family inside the window. */
   proof: { cls: MethodClass; at: string } | null
   /** Signed in here with the best option (or, where nothing is built in, with any phishing-resistant method). */
@@ -352,9 +352,6 @@ export type ReadinessContext = {
   /** Emergency Access Step 3's intended models; `applied` where the tenant's allow list already equals them. */
   step3: { models: readonly { name: string; aaguid: string }[]; applied: boolean }
   modelNames: ReadonlyMap<string, string>
-  /** Windows Hello for Business provisioning (Intune); unknown where Intune could not be read. */
-  whfb: 'enabled' | 'disabled' | 'notConfigured' | 'unknown'
-  platformSso: 'configured' | 'none' | 'unknown'
   /** Whether security-info registration is limited to trusted locations or managed devices. */
   registration: 'open' | 'trustedOnly' | 'unknown'
   /** Entra device id → its registered owners' object ids. */
@@ -436,8 +433,6 @@ export function emptyReadinessContext(now: string): ReadinessContext {
     passkey: { read: false, enabled: null, selfService: null, attestation: null, restriction: null, aaguids: [] },
     step3: { models: [], applied: true },
     modelNames: new Map(),
-    whfb: 'unknown',
-    platformSso: 'unknown',
     registration: 'unknown',
     deviceOwners: new Map(),
     windowsDirectory: 'unknown',
@@ -478,8 +473,9 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     if (d.trust === 'joined' || d.trust === 'hybrid') {
       const owners = d.deviceIds.flatMap((id) => ctx.deviceOwners.get(id.toLowerCase()) ?? [])
       if (userId && owners.length > 0 && !owners.some((o) => o.toLowerCase() === userId.toLowerCase())) return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'otherAccount' }
-      if (ctx.whfb === 'disabled') return { best: 'windowsHello', builtIn: true, possible: 'no', whyNot: 'notProvisioned' }
-      return { best: 'windowsHello', builtIn: true, possible: ctx.whfb === 'unknown' ? 'unknown' : 'yes', whyNot: null }
+      // IAMAI reads no Intune settings (owner, 2026-09-18), so whether Windows Hello for Business is provisioned
+      // on a joined computer is unknown until a Windows Hello sign-in shows it.
+      return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
     }
     // Join state unreported: unknown, unless the directory holds no joined Windows computer.
     if (d.trust === null && ctx.windowsDirectory !== 'none' && ctx.windowsDirectory !== 'notJoined') return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
@@ -488,7 +484,6 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'notJoined' }
   }
   if (d.os === 'macOS') {
-    if (d.managed && ctx.platformSso === 'configured') return { best: 'platformSso', builtIn: true, possible: 'yes', whyNot: null }
     if (ctx.passkey.attestation === false && ctx.passkey.restriction === 'unrestricted') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: ctx.passkey.attestation === true ? 'attestation' : null }
   }
@@ -530,7 +525,6 @@ function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, 
   // Nothing built in, or the built-in option is impossible here: Ready is as far as this device goes.
   if (!builtIn || possible === 'no') return false
   if (best === 'windowsHello') return false
-  if (best === 'platformSso') return true
   if (cls !== 'passkey') return false
   const need = FORM_OF[best]
   return need !== undefined && (forms.has(need) || forms.has('unknown'))

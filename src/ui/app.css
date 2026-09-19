@@ -3884,20 +3884,6 @@ footer.app a {
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
-.surface .ledger {
-  margin: 6px 0 0;
-  color: var(--secondary-text);
-}
-.surface .ledger .quiet {
-  margin-left: 8px;
-  color: var(--quiet-text);
-  font-size: var(--t-2);
-}
-/* The word for an account the page does not count, in the readiness cell. */
-td .not-person {
-  font-size: var(--t-2);
-  color: var(--quiet-text);
-}
 /* A pressed filter carries `aria-pressed` for a screen reader and a check mark
    for anyone who cannot separate the accent from the hairline: the state is
    never the colour alone (task 017). */

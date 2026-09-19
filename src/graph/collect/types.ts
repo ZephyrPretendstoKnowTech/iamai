@@ -290,14 +290,6 @@ export type BlockedTodayEntry = {
   userIds: string[]
 }
 
-/** What IAMAI could read of Intune's sign-in settings; anything but `read` leaves eligibility on the join state. */
-export type IntuneReading = {
-  status: 'read' | 'notGranted' | 'unlicensed' | 'error'
-  whfb: 'enabled' | 'disabled' | 'notConfigured' | 'unknown'
-  platformSso: 'configured' | 'none' | 'unknown'
-  reason: string | null
-}
-
 export type RecoveryDirectoryAudit = {
   id: string
   at: string
@@ -332,12 +324,6 @@ export type TenantSnapshot = {
   evidenceAggregates?: EvidenceAggregates | null
   /** The lockout-scenario derivations (prompt 48 item 3), from the rows; null until Lane B has run. */
   scenarioEvidence?: import('../../derive/evidence.ts').ScenarioEvidence | null
-  /**
-   * Intune's Windows Hello for Business and macOS Platform SSO settings, for MFA
-   * Readiness's device eligibility (prompt 62). Absent where the scan did not
-   * read them; `status` says why a read gave nothing.
-   */
-  intune?: IntuneReading | null
   /** What earlier scans established about each person's qualifying methods and proof (scoring/mfaHistory.ts), merged with this scan. */
   mfaHistory?: MfaHistory | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).

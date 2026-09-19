@@ -1029,7 +1029,6 @@
         "best": "Best option",
         "now": "Now",
         "allowed": "Allowed",
-        "afterStep3": "After Step 3",
         "lastConfirmed": "Last confirmed",
         "noneRegistered": "None registered yet.",
         "noDevices": "No sign-in in the last 30 days.",
@@ -1044,7 +1043,6 @@
         "whyNot": {
           "notJoined": "Windows Hello for Business needs a joined computer.",
           "otherAccount": "This computer belongs to another account, so its Windows Hello can’t sign this one in.",
-          "notProvisioned": "Windows Hello for Business is turned off in Intune.",
           "attestation": "Attestation blocks synced passkeys here.",
           "osTooOld": "A passkey in Authenticator needs iOS 17 or Android 14.",
           "notAllowed": "Your passkey settings don’t allow this model."
@@ -1113,11 +1111,7 @@
         "windowsHello": {
           "seen": "Windows Hello for Business is working here: people sign in with it",
           "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
-          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
-          "pass": "Windows Hello for Business is provisioned",
-          "fail": "Windows Hello for Business is turned off in Intune",
-          "failText": "Turn it on in Intune: Devices, Enrollment, Windows Hello for Business.",
-          "unknown": "IAMAI can’t see Windows Hello for Business settings. Check Intune: Devices, Enrollment, Windows Hello for Business."
+          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet"
         },
         "tap": {
           "pass": "Temporary Access Pass is enabled",
@@ -2234,15 +2228,9 @@
         }
       },
       "readiness": {
-        "lineNoRecords": "no sign-in records",
         "lineNoRecordsReason": "no sign-in records ({reason})",
-        "lineNoPeople": "no enabled people · {admins} admins · {records}",
-        "showLabel": "Show:",
-        "admin": "Admin",
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
-        "lineNoRecordsLine": "{active} active people of {enabled} enabled · {admins} admins · {records}",
-        "lineRecords": "sign-ins {from} → {to}",
         "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."
       },
       "export": {

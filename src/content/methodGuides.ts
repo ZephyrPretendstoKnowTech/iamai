@@ -58,9 +58,6 @@ export const TENANT_PREREQUISITE = M.prereq
 export const GUIDE_POINTER = M.pointer
 /** The one end-user sentence the campaign email carries ({passkeySetupShort}). */
 export const USER_INSTRUCTION = M.userInstruction
-/** Why a guest is offered no Temporary Access Pass, and what they do instead; the campaign's risk line is the same sentence ({guestNoTap}). */
-export const GUEST_NOTE = M.guest
-
 /**
  * The guides that end by using the method and scanning again — the two shared
  * closing lines. Windows Hello is not one of them: it never reaches the page's
