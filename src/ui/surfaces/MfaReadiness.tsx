@@ -28,7 +28,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
-import { DEFAULT_SHOW, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
+import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
@@ -619,7 +619,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           <section className="readiness-tile panel" aria-labelledby="readiness-counted">
             <h3 id="readiness-counted">{T.rail.counted}</h3>
             <dl className="ledger-list">
-              {(['never', 'retired', 'new', 'unread'] as const).filter((e) => view.explained[e] > 0).map((e) => (
+              {EXPLAINED.filter((e) => view.explained[e] > 0).map((e) => (
                 <div key={e} style={{ display: 'contents' }}>
                   <dt>{view.explained[e]}</dt>
                   <dd>

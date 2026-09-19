@@ -37,7 +37,7 @@ export type Ladder = {
   active: number
   /** The active people by readiness state; they sum to `active`. */
   states: Record<ReadinessState, LadderPerson[]>
-  /** Enabled people outside the count: no sign-in in the window, or none on record. */
+  /** Enabled people outside the count: no sign-in in the window, none on record, or signing in only to scripting tools. */
   notActive: UserRow[]
   /** The accounts that are not people, by kind. */
   kinds: Record<Kind, UserRow[]>

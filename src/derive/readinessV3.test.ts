@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { GROUP_ORDER, SUB_GROUP_AT, readinessView, scoredPeople, subGroupsOf } from './mfaReadiness.ts'
+import { GROUP_ORDER, SUB_GROUP_AT, readinessView, scoredPeople, shows, subGroupsOf } from './mfaReadiness.ts'
 import type { ReadinessRow, ReadinessView } from './mfaReadiness.ts'
 import { nextCheck, tenantSetupChecks } from './readinessSetup.ts'
 import type { SetupCheck } from './readinessSetup.ts'
@@ -16,7 +16,9 @@ import { isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
-import { checkWords, deviceChips, goalLine, methodsCell, nextCell, nextWords, searchText, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { checkWords, deviceChips, goalLine, methodsCell, nextCell, nextWords, rowCells, rowNote, searchText, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { mfaReady } from '../roadmap/readiness.ts'
+import { campaignIds } from './population.ts'
 import { fillText } from '../content/render.ts'
 import { readFileSync } from 'node:fs'
 import { readinessContextOf } from './readinessContext.ts'
@@ -74,9 +76,22 @@ test('somebody on leave reads Confirm on return, never missing', () => {
   assert.equal(r.readiness!.devices.length, 0, 'no device inside the window is asked for anything')
 })
 
-test('an account that signs in only to scripting tools carries the service-account note, never a state of its own', () => {
-  const r = person(demoView, (x) => x.readiness?.automated === true)
-  assert.ok(r.state !== null)
+test('item 3: an account that signs in only to scripting tools is listed under Not counted, never counted as a person', () => {
+  const r = demoView.rows.find((x) => x.readiness?.automated === true)
+  assert.ok(r, 'the demo holds a script account')
+  assert.equal(r.state, null, 'no readiness state: it is not counted')
+  assert.equal(r.active, false)
+  assert.equal(r.explained, 'script')
+  assert.equal(shows(r, 'notActive'), true, 'it is on the Not counted list')
+  assert.equal(shows(r, 'all'), false, 'and not among the people')
+  assert.equal(rowCells(r)[3], (pages.readiness as unknown as { counted: { script: string } }).counted.script, 'its row says why')
+  assert.equal(rowNote(r), (pages.readiness as unknown as { notes: { automated: string } }).notes.automated, 'with the service-account note')
+  // One set: the Plan's campaign and facts leave it out exactly as the page does.
+  assert.equal(demoView.explained.script, 1)
+  assert.equal(demoView.people, demoView.facts.active)
+  const scored = scoredPeople(demo.snapshot, demo.mapping)
+  assert.ok(!campaignIds(scored, demo.snapshot, demo.mapping).includes(r.user.id), 'the campaign’s people leave it out')
+  assert.ok(!scored.some((v) => v.userId === r.user.id && mfaReady(v)), 'no MFA gate counts it')
 })
 
 test('every Unknown names what was missing, and every uncounted person is explained', () => {

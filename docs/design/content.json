@@ -1173,6 +1173,7 @@
         "never": "Never signed in.",
         "retired": "Looks retired: no sign-in in 90 days, still enabled.",
         "new": "New this month, hasn’t signed in yet.",
+        "script": "Looks like a script: signs in only from PowerShell or Graph tools.",
         "unread": "Activity not read.",
         "emergency": "Emergency access accounts",
         "service": "Service accounts",

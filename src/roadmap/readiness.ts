@@ -33,7 +33,12 @@ const LOCATION_GOALS = new Set(['geo-restriction'])
  * read this one state.
  */
 export function mfaReady(v: Pick<MfaViability, 'activity' | 'readiness'>): boolean {
-  return v.activity === 'active' && isReady(v.readiness.state)
+  return counted(v) && isReady(v.readiness.state)
+}
+
+/** A person the MFA gates count: active, and not an account that signs in only to scripting tools (derive/population.ts isActivePerson). */
+function counted(v: Pick<MfaViability, 'activity' | 'readiness'>): boolean {
+  return v.activity === 'active' && !v.readiness.automated
 }
 
 /**
@@ -106,7 +111,7 @@ export function readinessFor(
   }
   const pop = new Set(populationIds)
   const rows = viability.length === populationIds.length && viability.every((v, i) => v.userId === populationIds[i]) ? viability : viability.filter((v) => pop.has(v.userId))
-  const active = rows.filter((v) => v.activity === 'active')
+  const active = rows.filter(counted)
 
   if (family === 'mfa' || family === 'guest') {
     let good = 0
