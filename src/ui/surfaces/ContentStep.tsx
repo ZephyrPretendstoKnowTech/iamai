@@ -1,7 +1,6 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
 import { PASSKEY_METHODOLOGY, passkeyReadiness } from './passkeyPresentation.ts'
 import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
-import { DEVICE_ANSWER_KEYS, devicePlanOf } from '../../roadmap/answers.ts'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
 // A step opened in place: the one body the Plan draws for every step it has, and
 // the only one (task 011).
@@ -59,7 +58,9 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
-import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
+import { HEAD, decisionHeadingsOf, taskHeadingsOf } from './stepHeadings.ts'
+import { AnsweredInDirection, DirectionQuestions } from './DirectionQuestions.tsx'
+import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
 import type { Artifact, Channel } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
@@ -269,6 +270,8 @@ export function ContentStep({
   const isEmergencyTaskStep = isGroupMember(step.id, EMERGENCY_ACCESS_GROUP)
   // The four task-step headings, for any member of a group that uses them (stepGroups.ts).
   const taskHead = taskHeadingsOf(step.id)
+  // The three decision-step headings, for a member of a decision-anatomy group (Decide Your Tenant's Direction).
+  const decisionHead = decisionHeadingsOf(step.id)
   const displayedScenarios: TroubleshootingScenario[] = isEmergencyAccounts ? [...scenarios, {
     id: 'emergency-temporary-access-pass', title: 'Temporary Access Pass',
     symptom: 'The emergency account cannot complete the sign-in needed to register its approved passkey.', likelyCauses: [],
@@ -376,7 +379,7 @@ export function ContentStep({
               has one, and the engine's where it does not, ending in the step's
               Microsoft Learn link (RUN-CONTEXT-B decision 14). */}
           <section className="step-section">
-            <h4>{taskHead?.why ?? HEAD.why}</h4>
+            <h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>
             <p>
               {contract.why}{' '}
               {learnUrl && (
@@ -395,7 +398,8 @@ export function ContentStep({
               bar that says where the step stands with its one action under it,
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
-          {isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
+          {decisionHead ? <DirectionQuestions key={JSON.stringify((step.directionQuestions ?? []).map((q) => q.saved))} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
+          : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isEmergencyTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
             subjects={emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
             printing={printing}
@@ -464,7 +468,8 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={displayRail}>
-          {step.id === 's-prereq-device-plan' ? <DeviceDecision mapping={ctx.mapping} saved={decision} onDecide={onDecide} printing={printing} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
+          {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -504,7 +509,7 @@ export function ContentStep({
           {step.id === 's-ladder-break-glass-accounts' && !printing && <p className="step-section"><a href="#/plan/cleanup-drill">Test Emergency Access and Record the Result →</a></p>}
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
-          <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
+          <DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
           {step.manualReview && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={printing} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
 
           {/* The printed plan is the whole step: the evidence and More stand on
@@ -1290,18 +1295,6 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
       {step.status === 'skipped' && <p className="actions"><Button variant="tertiary" onClick={onUnskip}>{app.plan.putBack}</Button></p>}
     </details>
   )
-}
-
-function DeviceDecision({ mapping, saved, onDecide, printing }: { mapping: StepVarContext['mapping']; saved: StepDecision | null; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
-  const existing = devicePlanOf(mapping)
-  const initial: Record<string, string> = { phoneManagement: existing?.phoneManagement ?? '', phoneAppProtection: existing?.phoneAppProtection ?? '', computerManagement: existing?.computers === 'enrol' ? 'enrolled' : existing?.computers ?? '', ...saved?.answers }
-  const [draft, setDraft] = useState(initial)
-  const fields = [
-    { key: DEVICE_ANSWER_KEYS.phoneManagement, label: 'Phone Management', options: [['registered', 'Registered in Entra'], ['enrolled', 'Enrolled in Intune'], ['unmanaged', 'No Device Management'], ['blocked', 'No Company Data on Phones']] },
-    { key: DEVICE_ANSWER_KEYS.phoneAppProtection, label: 'Phone App Protection', options: [['required', 'Require Protection for Company Apps'], ['not-required', 'No App Protection Required']] },
-    { key: DEVICE_ANSWER_KEYS.computers, label: 'Computer Management', options: [['enrolled', 'Enrolled in Intune'], ['hybrid', 'Hybrid-joined Windows Computers'], ['unmanaged', 'Unmanaged Computers']] },
-  ]
-  return <div className="decision-form device-decision"><div className="decision">{fields.map(field => <label key={field.key}><span className="dlabel">{field.label}</span>{printing ? <p>{field.options.find(([key]) => key === draft[field.key])?.[1] ?? 'Not Chosen'}</p> : <select value={draft[field.key]} onChange={e => { setDraft({ ...draft, [field.key]: e.target.value }) }}><option value="">Choose…</option>{field.options.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}</label>)}{!printing && <Button variant="primary" disabled={fields.some(field => !draft[field.key])} onClick={() => { onDecide?.({ answers: draft }) }}>Save Device Choices</Button>}</div></div>
 }
 
 function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {

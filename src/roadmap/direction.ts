@@ -36,10 +36,12 @@ import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
-import { suggestCountries } from '../mapping/countries.ts'
+import { countryName, suggestCountries } from '../mapping/countries.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
+import { QUESTION_STEP } from './answers.ts'
+import { PREREQ_STEP_ID } from './stepIds.ts'
 import { checkStep, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
@@ -248,6 +250,57 @@ export function directionSteps(input: DirectionInput): Step[] {
     directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
     directionStep(DIRECTION_STEP.locations, locationQuestions(ctx), at(DIRECTION_STEP.locations)),
   ]
+}
+
+// ---- an answer in words ----
+
+/**
+ * An answer as the page says it: its option's label, and for an answer that
+ * carries a list, the names picked (accounts, locations, countries), through
+ * `nameOf`. A list answer with nothing picked reads None.
+ */
+export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith' | 'control'>, a: { value: string; picked: readonly string[] }, nameOf: (id: string) => string): string {
+  const option = q.options.find((o) => o.value === a.value)?.label ?? null
+  const names = a.picked.map(nameOf).join(', ')
+  if (q.control === 'countries') return names || W.none
+  if (q.pickedWith !== null && a.value === q.pickedWith) return names || W.none
+  return option ?? a.value
+}
+
+/**
+ * The steps whose question moved to Direction, and which questions: each one
+ * shows "Answered in <Direction step>" with the answer and a link, where it used
+ * to ask (docs/plans/direction-spec.md, Retire or fold).
+ */
+export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
+  [PREREQ_STEP_ID.trustedLocation]: ['officeNetwork'],
+  [PREREQ_STEP_ID.allowedCountries]: ['workCountries', 'travel'],
+  [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts'],
+  's-shared-devices': ['sharedDevices'],
+  [QUESTION_STEP.mailDevices]: ['mailDevices'],
+  [QUESTION_STEP.deviceCode]: ['deviceCode'],
+  [QUESTION_STEP.partner]: ['partner'],
+}
+
+export type AnsweredIn = { step: DirectionStepId; title: string; lines: { key: string; label: string; value: string; saved: boolean }[] }
+
+/**
+ * Where a step's moved question is answered now, and what the answer is: the
+ * saved answer, or that it is not answered yet and what the suggestion is.
+ * Null for a step whose questions never moved.
+ */
+export function answeredInOf(stepId: string, ctx: { snapshot: TenantSnapshot; mapping: MappingState; nameOf: (id: string) => string }): AnsweredIn | null {
+  const keys = ANSWERED_IN[stepId]
+  if (!keys) return null
+  const questions = directionSteps({ snapshot: ctx.snapshot, mapping: ctx.mapping, notAssessed: [], availableGoalIds: [], nameOf: ctx.nameOf }).flatMap((s) => s.directionQuestions ?? [])
+  const locations = new Map((ctx.snapshot.config.namedLocations?.rows ?? []).map((raw) => raw as { id?: string; displayName?: string }).filter((l) => typeof l.id === 'string').map((l) => [l.id as string, l.displayName ?? (l.id as string)]))
+  const lines = keys.map((key) => questions.find((q) => q.key === key)).filter((q): q is DirectionQuestion => q !== undefined).map((q) => {
+    const nameOf = q.control === 'countries' ? countryName : q.control === 'locations' ? (id: string) => locations.get(id) ?? id : ctx.nameOf
+    const value = answerTextOf(q, q.saved ?? q.suggested, nameOf)
+    return { key: q.key, label: q.label, value: q.saved ? value : fillText(W.notAnswered, { answer: value }), saved: q.saved !== null }
+  })
+  const step = directionStepOf(keys[0])
+  return { step, title: directionTitleOf(step), lines }
 }
 
 // ---- per-answer gating ----

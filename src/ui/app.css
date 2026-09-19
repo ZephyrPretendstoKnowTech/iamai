@@ -4885,6 +4885,8 @@ th .th-sort:focus-visible,
 .workflow-choice { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .workflow-choice .reason { grid-column: 1; }
 .workflow-choice select { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 100%; }
+/* A Direction question (DirectionQuestions.tsx): the answer's list picker spans the tile under its lines. */
+.workflow-choice .direction-question-picker { grid-column: 1 / -1; }
 /* A seven-question form needs the step's available width. Keep DOM and focus
    order: evidence, milestone and choices, then implementation. */
 .step-body.has-rail:has(.workflow-choices) { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 0; }
