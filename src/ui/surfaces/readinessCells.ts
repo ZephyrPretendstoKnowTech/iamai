@@ -15,14 +15,20 @@ import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 
+/** The computers seen in the tenant: they choose the words that name a computer's built-in option (owner, 2026-09-19). */
+export type ComputersSeen = 'windows' | 'mac' | 'both' | 'none'
+/** One sentence per set of computers seen. */
+type ByComputers = Record<ComputersSeen, string>
+
 type Words = {
+  lead: ByComputers
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
   methodsInline: Record<MethodClass, string>
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
-  groups: Record<ReadinessState, { title: string; why: string; body?: string }>
+  groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
   chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
@@ -82,6 +88,30 @@ export function listWords(xs: readonly string[]): string {
 /** A platform family as people say it: an iPhone and an Android phone, the computers by name. */
 export function osWord(os: Platform): string {
   return os === 'iOS' ? 'iPhone' : os === 'Android' ? 'Android' : os
+}
+
+/**
+ * Which computers the tenant's people were seen signing in from: Windows, Mac,
+ * both or neither. The words that name a computer's built-in option follow it,
+ * so a Mac-only tenant is never told about Windows Hello. Every row's devices
+ * count, counted or not: the words describe the tenant, not a filter.
+ */
+export function computersSeen(rows: readonly ReadinessRow[]): ComputersSeen {
+  const seen = new Set(rows.flatMap((r) => (r.readiness?.devices ?? []).filter((d) => d.type === 'computer').map((d) => d.os)))
+  const windows = seen.has('Windows')
+  const mac = seen.has('macOS')
+  return windows && mac ? 'both' : windows ? 'windows' : mac ? 'mac' : 'none'
+}
+
+/** The page's opening line, in the words for the computers seen. */
+export function leadLine(seen: ComputersSeen): string {
+  return T.lead[seen]
+}
+
+/** A group's body under its summary, where it has one, in the words for the computers seen. */
+export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): string | null {
+  const body = T.groups[state].body
+  return body === undefined ? null : typeof body === 'string' ? body : body[seen]
 }
 
 /**

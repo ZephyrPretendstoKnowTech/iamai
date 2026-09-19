@@ -29,7 +29,9 @@ import { DEFAULT_SHOW, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, show
 import type { ShowKey } from '../../derive/mfaReadiness.ts'
 import { READINESS_STATES, isReady } from '../../scoring/phishingResistant.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { nextCell, roleWord, rowCells, showWord, stateTitle } from './readinessCells.ts'
+import { computersSeen, groupBodyLine, leadLine, nextCell, roleWord, rowCells, showWord, stateTitle } from './readinessCells.ts'
+import type { ComputersSeen } from './readinessCells.ts'
+import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
 import { pages } from '../../content/content.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
@@ -314,6 +316,42 @@ test('every sentence the page carries is 25 words or fewer: the goal line, the d
   assert.match(R.define, /^Ready means a phishing-resistant sign-in \(passkey, security key, Windows Hello or certificate\) confirmed in the last 30 days on every kind of device they use\. /)
   assert.match(JSON.stringify(R.lead), /Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
   assert.match(JSON.stringify(W.groups.method.body), /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
+})
+
+test('the words that name a computer’s built-in option follow the computers seen: Windows, Mac, both or neither (owner, 2026-09-19)', () => {
+  const row = (...devices: [string, 'computer' | 'phone'][]): ReadinessRow => ({ readiness: { devices: devices.map(([os, type]) => ({ os, type })) } }) as unknown as ReadinessRow
+  const uncounted = { readiness: null } as unknown as ReadinessRow
+  assert.equal(computersSeen([row(['Windows', 'computer'], ['iOS', 'phone']), uncounted]), 'windows')
+  assert.equal(computersSeen([row(['macOS', 'computer']), row(['Android', 'phone'])]), 'mac')
+  assert.equal(computersSeen([row(['Windows', 'computer']), row(['macOS', 'computer'], ['iOS', 'phone'])]), 'both')
+  assert.equal(computersSeen([row(['iOS', 'phone']), row(['Linux', 'computer']), uncounted]), 'none')
+  assert.equal(computersSeen([]), 'none')
+
+  const seen: ComputersSeen[] = ['windows', 'mac', 'both', 'none']
+  for (const c of seen) {
+    const lead = leadLine(c)
+    const method = groupBodyLine('method', c) ?? ''
+    const device = groupBodyLine('device', c) ?? ''
+    // The smoke's opening words, and the phone passkey, hold whatever the computers.
+    assert.match(lead, /^Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
+    assert.match(method, /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
+    assert.match(device, /On a phone that is a passkey in Microsoft Authenticator/)
+    // Windows Hello only where a Windows computer signs in; the Mac's option only where a Mac does.
+    for (const [words, where] of [[lead, 'lead'], [method, 'Needs a method'], [device, 'Needs a device']] as const) {
+      if (c === 'windows' || c === 'both') assert.match(words, /Windows Hello/, `${c}: the ${where} words don't name Windows Hello`)
+      else assert.doesNotMatch(words, /Windows/, `${c}: the ${where} words assume Windows`)
+      if (c === 'mac' || c === 'both') assert.match(words, /synced passkey/, `${c}: the ${where} words don't name the Mac's option`)
+      else assert.doesNotMatch(words, /Mac|synced/, `${c}: the ${where} words assume a Mac`)
+    }
+  }
+  // A group with one body for every tenant keeps it; a group with none has none.
+  assert.equal(groupBodyLine('seamless', 'mac'), null)
+  // The page reads the tenant's computers once, and uses them for the lead and the next group's body.
+  assert.match(SURFACE, /const seen = computersSeen\(view\.rows\)/)
+  assert.match(SURFACE, /<p className="line intro">\{leadLine\(seen\)\}<\/p>/)
+  assert.match(SURFACE, /const body = groupBodyLine\(state, seen\)/)
+  assert.match(SURFACE, /\{isNext && body && \(\s*<div className="next-body">\s*<p>\{body\}<\/p>/)
+  assert.doesNotMatch(SURFACE, /T\.lead|G\.body/, 'the page reads a Windows-only sentence directly')
 })
 
 test('a large group splits into sub-groups, admins first and open, each shown a page at a time', () => {

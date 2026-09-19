@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, nextCell, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, stateTitle, whyLine, goalLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, nextCell, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -58,7 +58,6 @@ import { COVERS_PAGE, inertOutside, keepTabInside } from '../modalPanel.ts'
 type Words = {
   h1: string
   eyebrow: string
-  lead: string
   summaryLabel: string
   summary: string
   summaryNone: string
@@ -74,7 +73,7 @@ type Words = {
   exportCsv: string
   nextLabel: string
   nextSetupWho: string
-  groups: Record<ReadinessState, { title: string; why: string; body?: string }>
+  groups: Record<ReadinessState, { title: string; why: string }>
   groupAction: string
   sub: { admins: string; adminsWhy: string; intro: string; groupBy: string; byDevices: string; byDepartment: string; noDepartment: string; noDevices: string; showing: string; showMore: string }
   columns: string[]
@@ -255,6 +254,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
   const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { cohort }) : fillText(T.summary, { ready, cohort })
   const goal = goalLine(counted)
+  // The computers the tenant signs in from choose the words that name a built-in option: no Windows Hello for a Mac-only tenant.
+  const seen = computersSeen(view.rows)
   // Scoped from a Plan step, the next check counts that step's people, not the tenant's.
   const scopedView = context ? { ...view, rows: view.rows.filter(inScope), counts } : { ...view, counts }
   const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
@@ -395,6 +396,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     const G = T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
+    const body = groupBodyLine(state, seen)
     // The group's title is in its summary, which heading navigation can't reach: a visually hidden heading
     // before each group names it for a screen reader (owner, 2026-09-19).
     return (
@@ -411,9 +413,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             <span className="group-count">{rows.length}</span>
             <Icon k="chev" />
           </summary>
-          {isNext && G.body && (
+          {isNext && body && (
             <div className="next-body">
-              <p>{G.body}</p>
+              <p>{body}</p>
               {setupStep && (
                 <div className="next-actions">
                   <a className="btn btn-primary" href={stepHref(setupStep)}>{T.groupAction}</a>
@@ -475,7 +477,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   return (
     <section className="surface readiness">
       {heading}
-      <p className="line intro">{T.lead}</p>
+      <p className="line intro">{leadLine(seen)}</p>
       {context && (
         <p className="line scope-line">
           {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { cohort: scopedCohort, step: context.title })}{' '}
