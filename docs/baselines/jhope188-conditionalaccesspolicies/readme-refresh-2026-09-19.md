@@ -120,3 +120,10 @@ All names below drop the `SG-` prefix.
 6. **Device Code, Countries, Device Registration, Admin Portal:** no change.
 
 **Pin:** moving it to `0a69db9` changes no policy. It would only make the README count as evidence for the seven ids `interpretation.json` still marks unknown. The owner decides.
+
+## Owner decisions (2026-09-19)
+
+1. **Admin and PIM strength:** single-use TAP (Jon's chat), not the README's "no TAP". The README stance is noted as a stricter option.
+2. **Medium-Risk Users:** risk remediation (the README), not password change. It matches his high-risk policy and works for passwordless people.
+3. **Service Accounts:** the Directory Sync role is not added. The Entra Connect sync account keeps its own step.
+4. **Protect Sign-in Method Registration** (no decision needed): since 6 July 2026, the policy applies during Windows Hello for Business and macOS Platform SSO setup (Microsoft Learn, "Control security information registration with Conditional Access"). The step must not block that setup for remote workers; the wave 3 design covers it.
