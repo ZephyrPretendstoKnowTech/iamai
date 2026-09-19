@@ -40,6 +40,16 @@ All 31 items in the review list are approved, except these:
 - He's testing new policies he may add to the baseline soon ("DFCA"). The pin stays at `90d9b89` for V1; a re-pin is a deliberate, owner-approved event.
 - He'd like feedback on the sign-in log feature of his **CA Policy Analyzer**. He's still working on making its results match the Entra portal's sign-in log filters. IAMAI reads the same logs (MFA Readiness evidence), so our lessons may help him: 30-day windows, the method as logged per sign-in, the Platform SSO method appearing as Windows Hello for Business. Post-launch.
 
+## Later: Connect's scan screen (owner, 2026-09-19)
+
+The owner likes the scan screen in Jon's CA Policy Analyzer:
+- a shield icon;
+- "Ready to Analyze" with "Connected as <name>";
+- a live checklist of each read (a tick when done, a spinner while running, greyed out while waiting);
+- a progress bar with "Step 7 of 14".
+
+**For IAMAI:** Connect's scan becomes a live list of what's being read (policies, named locations, sign-in logs, methods, and so on), fed by the collector's per-source progress. A source that fails shows as "couldn't read" in place, instead of only surfacing on MFA Readiness later. The design goes to the owner first. It's a Sunday stretch goal if time allows; otherwise it's the first post-launch item.
+
 ## Before the public deployment (owner does these)
 
 - [ ] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
