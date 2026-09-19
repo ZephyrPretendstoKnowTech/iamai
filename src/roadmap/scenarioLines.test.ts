@@ -46,7 +46,8 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   const day1 = runFixture(fixture('demo'))
   const week2 = runFixture(fixture('demo-week2'))
   // Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts), over the active people.
-  const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state === 'ready').length
+  // Ready counts Seamless too (isReady): a person is Ready or better.
+  const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && (v.readiness.state === 'ready' || v.readiness.state === 'seamless')).length
   const inPlace =(r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
   // A policy in report-only is in-report-only, or ready-to-enforce once one of its two gates is met (tracking.ts); both read Report-only.
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only' || s.status === 'ready-to-enforce').length

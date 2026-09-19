@@ -18,6 +18,7 @@ import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
 import { checkWords, goalLine, nextCell, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
 import { readinessContextOf } from './readinessContext.ts'
+import { passkeyReadingOf } from '../roadmap/passkeySettings.ts'
 import { pages } from '../content/content.ts'
 
 const demo = fixture('demo')
@@ -58,7 +59,9 @@ test('a key off Emergency Access Step 3’s approved list is flagged before it s
   const key = r.readiness!.credentials.find((c) => c.key === 'demo-key-offlist')!
   assert.equal(key.allowedNow, 'yes', 'today’s unrestricted settings allow it')
   assert.equal(key.afterStep3, 'no', 'Step 3’s approved models do not')
-  assert.equal(r.readiness!.next.kind === 'replaceKey' || r.readiness!.recommended?.kind === 'replaceKey', true)
+  // Until Step 3 is in place any passkey counts (owner decision): flagged on the credential, and a recommendation once Ready, never the only next step.
+  assert.notEqual(r.readiness!.next.kind, 'replaceKey')
+  if (r.state === 'ready') assert.equal(r.readiness!.recommended?.kind, 'replaceKey')
 })
 
 test('somebody on leave reads Confirm on return, never missing', () => {
@@ -237,4 +240,36 @@ test('the answer never sets a Seamless target a tenant cannot reach: personal co
     { ...r.readiness.devices[0], os: 'Windows' as const, builtIn: false, possible: 'yes' as const, seamless: false },
   ] } } : r))
   assert.equal(goalLine(phoneAndPc), W.seamlessNotPossible)
+})
+
+test('audit 8, 14, 25 and B2: passkeys for some groups only, passkeys off, a guest-only registration policy, and Step 3 in place', () => {
+  const snap = structuredClone(demo.snapshot)
+  const policy = snap.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }
+  const fido = () => policy.authenticationMethodConfigurations.find((c) => String(c.id).toLowerCase() === 'fido2') as Record<string, unknown>
+  const checks = () => tenantSetupChecks(snap, readinessView(snap, snap.asOf, demo.mapping))
+  // 8: on for a pilot group only is a note, never "on for everyone".
+  fido().includeTargets = [{ id: 'pilot-group', targetType: 'group' }]
+  assert.deepEqual([checks().find((c) => c.key === 'passkeyOn')!.outcome, checks().find((c) => c.key === 'passkeyOn')!.reason], ['note', 'targeted'])
+  // 14: passkeys off is one failure; the phone check does not fail beside it with the wrong remedy.
+  fido().state = 'disabled'
+  assert.equal(checks().find((c) => c.key === 'passkeyOn')!.outcome, 'fail')
+  assert.equal(checks().find((c) => c.key === 'phonePasskey'), undefined)
+  // 25: a registration policy scoped to guests blocks no member.
+  const scoped = structuredClone(demo.snapshot)
+  scoped.config.caPolicies = { ...scoped.config.caPolicies, status: 'ok', rows: [{ state: 'enabled', conditions: { users: { includeUsers: ['GuestsOrExternalUsers'] }, applications: { includeUserActions: ['urn:user:registersecurityinfo'] }, locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }, grantControls: { builtInControls: ['block'] } }] } as typeof scoped.config.caPolicies
+  assert.equal(readinessContextOf(scoped).registration, 'open')
+  const everyone = structuredClone(scoped)
+  ;(everyone.config.caPolicies.rows[0] as { conditions: { users: { includeUsers: string[] } } }).conditions.users.includeUsers = ['All']
+  assert.equal(readinessContextOf(everyone).registration, 'trustedOnly')
+})
+
+test('audit B2: Step 3 is in place for MFA Readiness exactly when Emergency Access Step 3 reads it so (one reading)', () => {
+  let inPlace = 0
+  for (const name of ['demo', 'demo-week2', 'small', 'mid', 'getiamai'] as const) {
+    const f = fixture(name)
+    const expected = passkeyReadingOf(f.snapshot, f.mapping).state === 'inPlace'
+    if (expected) inPlace++
+    assert.equal(readinessContextOf(f.snapshot, f.mapping).step3.applied, expected, name)
+  }
+  assert.ok(inPlace >= 0)
 })

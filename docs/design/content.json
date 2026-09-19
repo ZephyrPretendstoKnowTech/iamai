@@ -974,6 +974,15 @@
       "lastConfirmed": "Last confirmed {date}",
       "beforeWindow": "Last confirmed {date}, before the window",
       "readyUntil": "Ready until {date}",
+      "methodsInline": {
+        "$comment": "A method's name mid-sentence (next steps): capitals kept for product names.",
+        "passkey": "the passkey",
+        "windowsHello": "Windows Hello for Business",
+        "certificate": "the certificate",
+        "authenticator": "Microsoft Authenticator",
+        "oath": "the one-time code",
+        "phone": "a text or call"
+      },
       "options": {
         "windowsHello": "Windows Hello for Business",
         "windowsHelloPasskey": "a Windows Hello passkey",
@@ -987,10 +996,12 @@
         "none": "Nothing to do",
         "seamless": "Add {option} on {device}",
         "setUp": "Set up {option}",
-        "restore": "Restore the {method}",
-        "confirm": "Sign in once with the {method}",
+        "restore": "Restore {method}",
+        "confirm": "Sign in once with {method}",
+        "confirmOn": "Sign in once with {method} on {device}",
         "returnConfirm": "Confirm on return",
         "addDevice": "Add {option} on {device}",
+        "updateOs": "Update {device} to {version}, or use a security key on it",
         "replaceKey": "Replace the key with an approved model",
         "waitSetup": {
           "passkeyOff": "Waiting: passkeys are off",
@@ -1047,7 +1058,7 @@
         },
         "step3": {
           "yes": "Allowed by Step 3",
-          "no": "Blocked by Step 3’s approved list",
+          "no": "Not on Step 3’s approved list: stops working once Step 3 is applied",
           "unknown": "Model not reported"
         },
         "never": "Never seen in a sign-in",
@@ -1078,6 +1089,7 @@
       },
       "checks": {
         "passkeyOn": {
+          "targeted": "Passkeys are on for selected groups only: people outside them can’t register one. IAMAI doesn’t check group membership, so their rows may suggest a passkey.",
           "pass": "Passkey registration is on",
           "fail": "Passkey registration is off",
           "failText": "Turn on Passkey (FIDO2) in Authentication methods and allow self-service setup.",
@@ -1111,7 +1123,7 @@
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "migration": {
-          "noState": "Nothing to migrate: the authentication methods policy reports no legacy MFA or SSPR settings",
+          "noState": "Nothing to migrate: Microsoft retired the legacy MFA and SSPR method settings, and this tenant reports no migration state",
           "pass": "The authentication-methods migration is complete",
           "fail": "The authentication-methods migration isn’t complete",
           "failText": "Legacy MFA and self-service password reset settings still govern some methods. Finish the migration in Authentication methods.",

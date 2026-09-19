@@ -19,6 +19,7 @@ type Words = {
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
+  methodsInline: Record<MethodClass, string>
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string }>
@@ -29,7 +30,7 @@ type Words = {
   readyUntil: string
   options: Record<SignInOption, string>
   next: {
-    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; addDevice: string; replaceKey: string
+    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
@@ -157,10 +158,13 @@ export function nextWords(n: NextAction): string {
     case 'none': return N.none
     case 'seamless': return fillText(N.seamless, { option: T.options[n.option], device: deviceNoun(n.os) })
     case 'setUp': return fillText(N.setUp, { option: T.options[n.option] })
-    case 'restore': return fillText(N.restore, { method: classWord(n.cls).toLowerCase() })
-    case 'confirm': return fillText(N.confirm, { method: classWord(n.cls).toLowerCase() })
+    // Method names keep their capitals mid-sentence (Windows Hello for Business, never "windows hello").
+    case 'restore': return fillText(N.restore, { method: T.methodsInline[n.cls] })
+    case 'confirm': return n.os ? fillText(N.confirmOn, { method: T.methodsInline[n.cls], device: deviceNoun(n.os) }) : fillText(N.confirm, { method: T.methodsInline[n.cls] })
     case 'returnConfirm': return N.returnConfirm
     case 'addDevice': return fillText(N.addDevice, { option: T.options[n.option], device: deviceNoun(n.os) })
+    // A passkey in Authenticator needs iOS 17 or Android 14 (the eligibility floor).
+    case 'updateOs': return fillText(N.updateOs, { device: deviceNoun(n.os), version: n.os === 'iOS' ? 'iOS 17' : 'Android 14' })
     case 'replaceKey': return N.replaceKey
     case 'waitSetup': return N.waitSetup[n.reason]
     case 'rescan': return N.rescan[n.reason]
@@ -212,7 +216,9 @@ export function whyLine(r: ReadinessRow): string {
   const W = T.panel.why
   if (rd.next.kind === 'replaceKey' || rd.recommended?.kind === 'replaceKey') return W.replaceKey
   if (rd.onLeave) return W.onLeave
-  if (r.state === 'device' && rd.next.kind === 'addDevice') return fillText(W.device, { device: deviceNoun(rd.next.os) })
+  // Needs a device names the device the gap is on, whatever the next action there is.
+  const gap = rd.devices.find((d) => d.proof === null)
+  if (r.state === 'device' && gap) return fillText(W.device, { device: deviceNoun(gap.os) })
   return W[r.state] ?? ''
 }
 

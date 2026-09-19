@@ -107,10 +107,17 @@ test('proof does not transfer from one method to another', () => {
   // A certificate sign-in beside a registered passkey proves the certificate, not the passkey.
   const cert = readSignIn(row({ authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'X.509 Certificate' }], os: 'Windows' }))
   assert.equal(cert.proof?.cls, 'certificate')
-  const r = personReadiness(input({ methods: m('passkey'), proofs: cert.proof ? [cert.proof] : [], platforms: ['Windows'] }))
+  // The registration report read, with no certificate: the certificate is not theirs to count.
+  const r = personReadiness(input({ methods: m('passkey'), registered: ['passKeyDeviceBound'], proofs: cert.proof ? [cert.proof] : [], platforms: ['Windows'] }))
   assert.equal(r.state, 'confirm', 'a certificate sign-in does not prove the passkey')
   assert.equal(r.credentials[0].lastConfirmed, null)
   assert.equal(r.devices[0].proof, null)
+  // No registration row at all: the certificate sign-in shows a certificate is held (the method rows never list one),
+  // and it is the certificate that is confirmed, never the passkey.
+  const unreported = personReadiness(input({ methods: m('passkey'), proofs: cert.proof ? [cert.proof] : [], platforms: ['Windows'] }))
+  assert.equal(unreported.state, 'ready')
+  assert.equal(unreported.credentials.find((c) => c.cls === 'passkey')?.lastConfirmed, null)
+  assert.equal(unreported.devices[0].proof?.cls, 'certificate')
   // Windows Hello proven on Windows says nothing about the phone they also sign in from.
   const two = personReadiness(input({ methods: m('passkey', 'windowsHelloForBusiness'), proofs: [proof('windowsHello', 'Windows')], platforms: ['Windows', 'iOS'] }))
   assert.equal(two.state, 'device')
@@ -241,18 +248,24 @@ test('partial coverage without the person\'s records reads Unknown (not covered)
 const OFF_LIST = 'cb69481e-8ff7-4039-93ec-0a2729a154a8'
 const STEP3: ReadinessContext['step3'] = { models: [{ name: 'Microsoft Authenticator (iOS)', aaguid: AUTHENTICATOR_AAGUIDS[0] }, { name: 'Microsoft Authenticator (Android)', aaguid: AUTHENTICATOR_AAGUIDS[1] }], applied: false }
 
-test('a key off Step 3\'s list works now, stops after Step 3, and is replaced where it is the only usable key', () => {
+test('a key off Step 3\'s list works now, stops after Step 3, and is flagged, never the only next step while Step 3 is not in place', () => {
   const ctx: ReadinessContext = { ...CTX, passkey: OPEN, step3: STEP3 }
   const key: AuthMethodSummary = { kind: 'passkey', id: 'k1', aaGuid: OFF_LIST }
   const r = personReadiness(input({ methods: [key], platforms: ['iOS'], context: ctx }))
   assert.equal(r.credentials[0].allowedNow, 'yes')
   assert.equal(r.credentials[0].afterStep3, 'no')
+  // Owner decision: until Step 3 is in place any passkey counts, so the key is confirmed like any other.
   assert.equal(r.state, 'confirm')
-  assert.deepEqual(r.next, { kind: 'replaceKey', model: null, aaguid: OFF_LIST })
+  assert.deepEqual(r.next, { kind: 'confirm', cls: 'passkey', os: 'iOS' })
   // Proven everywhere: still Ready today, and the replacement is the recommendation.
   const proven = personReadiness(input({ methods: [key], proofs: [proof('passkey', 'iOS')], platforms: ['iOS'], context: ctx }))
   assert.equal(isReady(proven.state), true)
-  assert.deepEqual(proven.recommended, { kind: 'replaceKey', model: null, aaguid: OFF_LIST })
+  // A carried key on an iPhone is Ready, not Seamless: the passkey in Authenticator (on Step 3's list) is recommended, which also replaces the key.
+  assert.equal(proven.state, 'ready')
+  assert.deepEqual(proven.recommended, { kind: 'seamless', os: 'iOS', option: 'authenticatorPasskey' })
+  // Where no built-in upgrade is possible (a Linux computer), the replacement is the recommendation.
+  const linux = personReadiness(input({ methods: [key], proofs: [proof('passkey', 'Linux')], platforms: ['Linux'], context: ctx }))
+  assert.deepEqual(linux.recommended, { kind: 'replaceKey', model: null, aaguid: OFF_LIST })
   // A second, listed key: the off-list one is flagged, but nothing needs replacing.
   const two = personReadiness(input({ methods: [key, { kind: 'passkey', id: 'k2', aaGuid: AUTHENTICATOR_AAGUIDS[0] }], platforms: ['iOS'], context: ctx }))
   assert.deepEqual(two.credentials.map((c) => c.afterStep3), ['no', 'yes'])
@@ -274,14 +287,19 @@ test('a key the current settings do not allow is not a usable method', () => {
 // --------------------------------------------------------------- eligibility
 
 test('a contractor\'s registered Windows computer asks for no Windows Hello for Business', () => {
-  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  // An allow list naming a Windows Hello passkey model, attestation off: the built-in option on a personal PC.
+  const ctx: ReadinessContext = { ...CTX, passkey: { ...OPEN, restriction: 'allow', aaguids: [...AUTHENTICATOR_AAGUIDS, '6028b017-b1d4-4c02-b4b3-afcdafc96bb2'] }, whfb: 'enabled' }
   const contractor = personReadiness(input({ methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'registered' })] }, context: ctx }))
   assert.equal(contractor.state, 'method')
   assert.notEqual(contractor.devices[0].best, 'windowsHello')
   assert.equal(contractor.devices[0].best, 'windowsHelloPasskey', 'the Windows Hello passkey, where attestation is off')
   assert.deepEqual(contractor.next, { kind: 'setUp', option: 'windowsHelloPasskey', os: 'Windows' })
   // Attestation on: no built-in option, and still not Windows Hello for Business.
-  const attested = personReadiness(input({ methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'registered' })] }, context: { ...ctx, passkey: { ...OPEN, attestation: true } } }))
+  // Unrestricted: a Windows Hello passkey must be named in an allow list (Microsoft Learn), so it is not offered either.
+  const unrestricted = personReadiness(input({ methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'registered' })] }, context: { ...ctx, passkey: OPEN } }))
+  assert.notEqual(unrestricted.devices[0].best, 'windowsHelloPasskey')
+  assert.notEqual(unrestricted.devices[0].best, 'windowsHello')
+  const attested = personReadiness(input({ methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'registered' })] }, context: { ...ctx, passkey: { ...OPEN, attestation: true, restriction: 'allow', aaguids: ['08987058-cadc-4b81-b6e1-30de50dcbe96'] } } }))
   assert.equal(attested.devices[0].whyNot, 'notJoined')
   assert.equal(attested.devices[0].builtIn, false)
   assert.notEqual(attested.devices[0].best, 'windowsHello')
@@ -419,7 +437,8 @@ test('the demo exercises every readiness case the page draws', () => {
   has('Needs a device', (r) => r.state === 'device' && r.readiness?.next.kind === 'addDevice')
   has('Confirm it', (r) => r.state === 'confirm' && r.readiness?.next.kind === 'confirm')
   has('On leave', (r) => r.state === 'confirm' && r.readiness?.onLeave === true && r.readiness.next.kind === 'returnConfirm')
-  has('An off-list key', (r) => r.readiness?.next.kind === 'replaceKey' && r.readiness.credentials.some((c) => c.afterStep3 === 'no'))
+  // Until Step 3 is in place any passkey counts: the off-list key is confirmed like any other, and flagged on the credential.
+  has('An off-list key', (r) => r.readiness?.credentials.some((c) => c.afterStep3 === 'no') === true && r.readiness.next.kind !== 'replaceKey')
   has('Needs a method', (r) => r.state === 'method')
   has('A contractor', (r) => !!r.readiness?.devices.some((d) => d.os === 'Windows' && d.trust === 'registered' && d.best !== 'windowsHello'))
   has('A separate admin account', (r) => r.admin && !!r.readiness?.devices.some((d) => d.whyNot === 'otherAccount'))
@@ -445,14 +464,62 @@ test('a Windows computer whose sign-ins report no join state is settled by the d
   assert.equal(none.devices[0].seamless, false)
   assert.equal(none.recommended, null)
   assert.deepEqual(none.next, { kind: 'none' })
-  // Windows computers in the directory, none joined: still never Windows Hello for Business; the join state stays unreported.
-  const notJoined = passkeyPc('notJoined')
-  assert.equal(notJoined.devices[0].trust, null)
-  assert.equal(notJoined.devices[0].whyNot, 'notJoined')
-  // A joined computer exists, or the directory was not read in full: the computer may be joined, so it stays unknown.
-  for (const w of ['joined', 'unknown'] as const) {
-    const open = passkeyPc(w)
-    assert.equal(open.devices[0].best, 'windowsHello', w)
-    assert.equal(open.devices[0].possible, 'unknown', w)
+  // Microsoft reports a sign-in's deviceId only for a registered device: records that never named one mean a
+  // personal computer whatever the directory holds (the audit's contractor case, 2026-09-18).
+  for (const w of ['notJoined', 'joined', 'unknown'] as const) {
+    const pc = passkeyPc(w)
+    assert.equal(pc.devices[0].trust, 'none', w)
+    assert.notEqual(pc.devices[0].best, 'windowsHello', w)
   }
+  // A computer that identified itself but whose join state went unreported, in a tenant with joined computers: may be joined.
+  const identified = personReadiness(input({ methods: m('passkey'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { deviceIds: ['d1'] })] }, context: { ...CTX, passkey: OPEN, windowsDirectory: 'joined' } }))
+  assert.equal(identified.devices[0].best, 'windowsHello')
+  assert.equal(identified.devices[0].possible, 'unknown')
+  // The same with no Windows computer joined anywhere: not joined.
+  const noneJoined = personReadiness(input({ methods: m('passkey'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { deviceIds: ['d1'] })] }, context: { ...CTX, passkey: OPEN, windowsDirectory: 'notJoined' } }))
+  assert.equal(noneJoined.devices[0].whyNot, 'notJoined')
+})
+
+// ------------------------------------------------- audit 2026-09-18 (post-ship)
+
+test('audit 2: a security key carried to an iPhone or a Mac is Ready, not Seamless; the built-in passkey held is', () => {
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
+  const yubi: AuthMethodSummary = { kind: 'passkey', id: 'y1', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' }
+  const iphoneKey = personReadiness(input({ methods: [yubi], signIns: { read: true, proofs: [proof('passkey', 'iOS')], platforms: [], devices: [device('iOS', { version: 'Ios 17.4' })] }, context: ctx }))
+  assert.equal(iphoneKey.state, 'ready')
+  assert.equal(iphoneKey.devices[0].seamless, false)
+  const authenticator: AuthMethodSummary = { kind: 'passkey', id: 'a1', aaGuid: AUTHENTICATOR_AAGUIDS[0] }
+  const iphonePasskey = personReadiness(input({ methods: [authenticator], signIns: { read: true, proofs: [proof('passkey', 'iOS')], platforms: [], devices: [device('iOS', { version: 'Ios 17.4' })] }, context: ctx }))
+  assert.equal(iphonePasskey.state, 'seamless')
+})
+
+test('audit 4: the next step on the device without proof is one the person can take there', () => {
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  const joinedPc = device('Windows', { trust: 'joined', deviceIds: ['d1'] })
+  // (a) An Authenticator passkey already held; the iPhone signed in silently: sign in once with it there, never "add" it.
+  const held = personReadiness(input({ userId: 'me', methods: [{ kind: 'passkey', id: 'a1', aaGuid: AUTHENTICATOR_AAGUIDS[0] }, { kind: 'windowsHelloForBusiness' }], signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [joinedPc, device('iOS')] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
+  assert.equal(held.state, 'device')
+  assert.deepEqual(held.next, { kind: 'confirm', cls: 'passkey', os: 'iOS' })
+  // (b) An Android phone too old for a passkey in Authenticator: update it (or use a key), never "add a passkey".
+  const old = personReadiness(input({ userId: 'me', methods: m('windowsHelloForBusiness', 'microsoftAuthenticator'), signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [joinedPc, device('Android', { version: 'Android 12' })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
+  assert.deepEqual(old.next, { kind: 'updateOs', os: 'Android' })
+  // (c) Passkeys off tenant-wide: the phone waits on the tenant, so the person is Blocked, not told to add one.
+  const off = personReadiness(input({ userId: 'me', methods: m('windowsHelloForBusiness', 'microsoftAuthenticator'), signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [joinedPc, device('iOS')] }, context: { ...ctx, passkey: { ...OPEN, enabled: false }, deviceOwners: new Map([['d1', ['me']]]) } }))
+  assert.equal(off.state, 'blocked')
+  assert.deepEqual(off.next, { kind: 'waitSetup', reason: 'passkeyOff' })
+})
+
+test('audit 5: an unreadable method list still shows the devices the person signs in from', () => {
+  const r = personReadiness(input({ methods: 'unknown', signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows'), device('iOS')] } }))
+  assert.equal(r.state, 'unknown')
+  assert.deepEqual(r.devices.map((d) => d.os), ['Windows', 'iOS'])
+  assert.ok(r.devices.every((d) => d.proof === null))
+})
+
+test('audit 11: Ready lasts until the latest phishing-resistant sign-in on each device leaves the window, not the seamless one', () => {
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  const early = '2026-08-15T10:00:00.000Z'
+  const r = personReadiness(input({ userId: 'me', methods: [{ kind: 'windowsHelloForBusiness' }, { kind: 'passkey', id: 'y1', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' }], signIns: { read: true, proofs: [proof('windowsHello', 'Windows', early), proof('passkey', 'Windows', LATER)], platforms: [], devices: [device('Windows', { trust: 'joined', deviceIds: ['d1'] })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
+  assert.equal(r.state, 'seamless')
+  assert.equal(r.readyUntil, new Date(Date.parse(LATER) + 30 * 86_400_000).toISOString())
 })
