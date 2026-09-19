@@ -29,10 +29,16 @@ function methodConfig(snapshot: TenantSnapshot, id: string): { read: boolean; st
   return { read: true, state: typeof c?.state === 'string' ? c.state : null }
 }
 
-function migrationState(snapshot: TenantSnapshot): string | null {
+/**
+ * The policy's migration state: undefined where the policy was not read; null
+ * where it was read and reports none (a tenant created after Microsoft retired the
+ * legacy MFA and SSPR settings has nothing to migrate).
+ */
+function migrationState(snapshot: TenantSnapshot): string | null | undefined {
   const section = snapshot.config.authMethodsPolicy
   const row = section?.status === 'ok' || section?.status === 'partial' ? object(section.rows?.[0]) : null
-  return typeof row?.policyMigrationState === 'string' ? row.policyMigrationState : null
+  if (!row) return undefined
+  return typeof row.policyMigrationState === 'string' ? row.policyMigrationState : null
 }
 
 const countWhere = (rows: readonly ReadinessRow[], f: (r: ReadinessRow) => boolean): number => rows.filter((r) => r.state !== null && f(r)).length
@@ -71,8 +77,8 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   checks.push({ key: 'tap', outcome: tapOutcome, affects: tapOutcome === 'fail' ? countWhere(rows, (r) => needs(r) && r.viability?.mfaCapable === false) : 0, reason: !tap.read ? 'methodsPolicyUnread' : null })
   // 6. The authentication-methods policy migration is complete.
   const mig = migrationState(snapshot)
-  const migOutcome: SetupOutcome = mig === null ? 'unknown' : mig === 'migrationComplete' ? 'pass' : 'fail'
-  checks.push({ key: 'migration', outcome: migOutcome, affects: 0, reason: mig === null ? 'methodsPolicyUnread' : null })
+  const migOutcome: SetupOutcome = mig === undefined ? 'unknown' : mig === null || mig === 'migrationComplete' ? 'pass' : 'fail'
+  checks.push({ key: 'migration', outcome: migOutcome, affects: 0, reason: mig === undefined ? 'methodsPolicyUnread' : mig === null ? 'noState' : null })
   // 7. Emergency Access Step 3's passkey settings are the tenant's: keys are checked against them.
   checks.push({ key: 'step3', outcome: ctx.step3.applied ? 'pass' : 'note', affects: 0, reason: null })
   // 8. Attestation's consequence: never a failure.

@@ -91,6 +91,12 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
   modelNames.set(WINDOWS_HELLO_AAGUID, 'Windows Hello')
   const deviceOwners = new Map<string, string[]>()
   for (const d of snapshot.devices ?? []) if (d.deviceId) deviceOwners.set(d.deviceId.toLowerCase(), d.ownerIds)
+  // Directory trustType: AzureAd is joined, ServerAd hybrid joined, Workplace registered.
+  // Absence settles nothing unless the directory was read in full.
+  const windows = (snapshot.devices ?? []).filter((d) => /^windows/i.test(d.operatingSystem ?? ''))
+  const windowsDirectory: ReadinessContext['windowsDirectory'] = windows.some((d) => /^(azuread|serverad)$/i.test(d.trustType ?? ''))
+    ? 'joined'
+    : snapshot.sources?.devices?.status !== 'ok' ? 'unknown' : windows.length === 0 ? 'none' : 'notJoined'
   const changes = (snapshot.recoveryDirectoryAudits ?? []).filter((a) => /authentication method.*polic|polic.*authentication method/i.test(a.activity)).map((a) => a.at).sort()
   const intune = snapshot.intune ?? null
   return {
@@ -105,6 +111,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     platformSso: intune?.status === 'read' ? intune.platformSso : 'unknown',
     registration: registrationRestriction(snapshot),
     deviceOwners,
+    windowsDirectory,
     policyChangedAt: changes[changes.length - 1] ?? null,
   }
 }

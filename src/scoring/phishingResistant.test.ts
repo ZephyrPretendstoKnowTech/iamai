@@ -430,3 +430,26 @@ test('the demo exercises every readiness case the page draws', () => {
   const d1 = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.equal(w2.counts.ready + w2.counts.seamless - (d1.counts.ready + d1.counts.seamless), 3)
 })
+
+test('a Windows computer whose sign-ins report no join state is settled by the directory: none there means not joined, and never Windows Hello for Business', () => {
+  // Live GetIAMAI, 2026-09-18: a personal Windows PC signs in with a phone passkey; the
+  // record carries no join state and the directory holds no Windows computer.
+  const passkeyPc = (windowsDirectory: ReadinessContext['windowsDirectory']) =>
+    personReadiness(input({ methods: m('passkey'), signIns: { read: true, proofs: [proof('passkey', 'Windows')], platforms: [], devices: [device('Windows', { version: 'Windows10' })] }, context: { ...CTX, passkey: { ...OPEN, attestation: true }, windowsDirectory } }))
+  const none = passkeyPc('none')
+  assert.equal(none.devices[0].trust, 'none', 'no Windows computer in the directory: neither joined nor registered')
+  assert.equal(none.devices[0].whyNot, 'notJoined')
+  assert.notEqual(none.devices[0].best, 'windowsHello')
+  assert.equal(none.state, 'seamless', 'the best this computer allows is in use: nothing left to add')
+  assert.notEqual(none.recommended?.kind, 'seamless')
+  // Windows computers in the directory, none joined: still never Windows Hello for Business; the join state stays unreported.
+  const notJoined = passkeyPc('notJoined')
+  assert.equal(notJoined.devices[0].trust, null)
+  assert.equal(notJoined.devices[0].whyNot, 'notJoined')
+  // A joined computer exists, or the directory was not read in full: the computer may be joined, so it stays unknown.
+  for (const w of ['joined', 'unknown'] as const) {
+    const open = passkeyPc(w)
+    assert.equal(open.devices[0].best, 'windowsHello', w)
+    assert.equal(open.devices[0].possible, 'unknown', w)
+  }
+})

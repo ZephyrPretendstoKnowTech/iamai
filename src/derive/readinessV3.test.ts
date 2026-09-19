@@ -16,7 +16,8 @@ import { isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
-import { nextCell, stateTitle } from '../ui/surfaces/readinessCells.ts'
+import { checkWords, nextCell, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { readinessContextOf } from './readinessContext.ts'
 import { pages } from '../content/content.ts'
 
 const demo = fixture('demo')
@@ -185,4 +186,36 @@ test('the run a Plan computes and the page agree on who is active', () => {
   const active = new Set(demoView.rows.filter((r) => r.state !== null).map((r) => r.user.id))
   const scoredActive = run.viability.filter((v) => v.activity === 'active' && active.has(v.userId))
   assert.equal(scoredActive.length, active.size)
+})
+
+test('the directory decides what an unreported Windows join state can be: joined anywhere, none at all, or registered only', () => {
+  const snap = structuredClone(demo.snapshot)
+  const win = (trustType: string) => ({ id: `d-${trustType}`, displayName: 'PC', isCompliant: null, isManaged: null, trustType, ownerIds: [], operatingSystem: 'Windows' })
+  const of = (devices: typeof snap.devices, status = 'ok') => readinessContextOf({ ...snap, devices, sources: { ...snap.sources, devices: { ...snap.sources.devices, status } as typeof snap.sources.devices } }).windowsDirectory
+  assert.equal(of([]), 'none')
+  assert.equal(of([win('Workplace')]), 'notJoined')
+  assert.equal(of([win('Workplace'), win('AzureAd')]), 'joined')
+  assert.equal(of([win('ServerAd')]), 'joined', 'hybrid joined counts as joined')
+  assert.equal(of([], 'partial'), 'unknown', 'absence settles nothing unless the directory was read in full')
+})
+
+test('the migration check passes when the policy reports no migration state, and is unknown only when the policy was not read', () => {
+  const snap = structuredClone(demo.snapshot)
+  const row = snap.config.authMethodsPolicy.rows[0] as Record<string, unknown>
+  const check = (s: typeof snap) => tenantSetupChecks(s, readinessView(s, s.asOf, demo.mapping)).find((c) => c.key === 'migration')!
+  row.policyMigrationState = null
+  assert.deepEqual([check(snap).outcome, check(snap).reason], ['pass', 'noState'])
+  assert.equal(checkWords(check(snap)).line, (pages.readiness as unknown as { checks: { migration: { noState: string } } }).checks.migration.noState)
+  row.policyMigrationState = 'migrationInProgress'
+  assert.equal(check(snap).outcome, 'fail')
+  const unread = { ...snap, config: { ...snap.config, authMethodsPolicy: { ...snap.config.authMethodsPolicy, status: 'error', rows: [] } } } as typeof snap
+  assert.deepEqual([check(unread).outcome, check(unread).reason], ['unknown', 'methodsPolicyUnread'])
+})
+
+test('a device is named with its version as people say it: Windows 10, never Windows10', () => {
+  assert.equal(versionWord('Windows', 'Windows10'), 'Windows 10')
+  assert.equal(versionWord('Windows', 'Windows 11'), 'Windows 11')
+  assert.equal(versionWord('iOS', 'Ios 17.4'), 'iOS 17')
+  assert.equal(versionWord('Android', 'Android'), 'Android', 'no version: the family word')
+  assert.equal(versionWord('iOS', null), 'iPhone')
 })

@@ -1110,6 +1110,7 @@
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "migration": {
+          "noState": "Nothing to migrate: the authentication methods policy reports no legacy MFA or SSPR settings",
           "pass": "The authentication-methods migration is complete",
           "fail": "The authentication-methods migration isn’t complete",
           "failText": "Legacy MFA and self-service password reset settings still govern some methods. Finish the migration in Authentication methods.",
