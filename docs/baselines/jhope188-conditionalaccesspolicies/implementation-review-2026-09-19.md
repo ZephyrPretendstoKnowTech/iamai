@@ -187,3 +187,28 @@ His baseline has no source policy for these IAMAI goals:
 > 8. **BreakGlass - TrustedLocations:** the README says break-glass is only allowed from trusted locations, but the policy requires the strength outside them rather than blocking. Which did you intend?
 >
 > No rush. Thanks!
+
+---
+
+## 5. Jon's answers (19 September 2026, by chat)
+
+In his words, lightly trimmed, then what each one changes for IAMAI.
+
+1. **Groups.** "Documentation is probably out of date as my standards have been updated… I am going to update it with new standard names and clean up old group conventions as I have migrated twice now. The correct group should be SG-Entra-AUG-CAP-BreakglassAccounts. I will have Claude resolve all GUIDs to names in the documentation."
+   - **For IAMAI:** the two break-glass ids (`b63c3682`, `5628ad67`) come from his two migrations. Both mean the break-glass exclusion, which IAMAI already replaces with the customer's emergency exclusions group on every policy.
+   - The standing exclusions nobody can name (`62d67e66` and the other old conventions) are migration leftovers. Per the owner's rule, a reference with no basis is dropped.
+   - His name-resolved documentation, due next week, will confirm or flip the rest.
+2. **The Admin Portal block is a Zero Trust (ZTCA) policy, used for incident response.** "This is a hard block for the org… extremely hard to deploy without impact. I use all the ZTCA as an incident response mechanism, so they are in place and created ahead of time but not on. In the event of mass compromise, immediately turn on the ZTCA with only explicit access from a trusted source and everyone else gets blocked. You don't want to be building that logic during the event."
+   - **For IAMAI:** the three ZTCA policies are a lockdown kit, not rollout policies:
+     - Admin Portal;
+     - AllApps - Exclude CA-Global;
+     - Intune AllApps - ExcludeTrustedLocation.
+   - They're created ahead of time, never switched on by the plan, and paired with a runbook for switching them on. They leave the "Protect admins" wave.
+3. **Revoking tokens at scale.** He wrote a script for it, but "that's gotten easier with Entra and honestly Inforcer". **For IAMAI:** it's a runbook line in the lockdown kit ("revoke every session"), not a step.
+4. **Multi-use TAP.** "I have started to change my stance on multi-use TAP and changed to single use."
+   - **For IAMAI:** the recreated "Modern MFA + TAP" strength allows the one-time TAP only.
+   - This is an author-confirmed change from the pinned export, and it's shown beside the baseline's version.
+5. **Guests and risk.** "My intention is to block guest accounts from Risk. I have no way to satisfy risk in my tenant, and if they are risky in their own tenant, then I don't want them interacting in mine."
+   - **For IAMAI:** a risky guest is blocked by design, which is what the exported risk policies already do.
+   - The step says so plainly, so an admin doesn't read it as a lockout bug.
+6. **Still open:** the passkey registration question (issue E). He asked which README was meant. The follow-up names the file.
