@@ -4425,7 +4425,8 @@ footer.app a {
   color: var(--secondary-text);
 }
 
-/* The person panel: non-modal, beside the list rather than over it. */
+/* The person panel: non-modal, beside the list rather than over it; below 760px it
+   covers the page, and MfaReadiness.tsx makes it modal there. */
 .readiness-panel.panel {
   position: fixed;
   top: 0;

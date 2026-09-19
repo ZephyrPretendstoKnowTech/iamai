@@ -381,6 +381,69 @@ test('closing the readiness detail puts focus back on the control that opened it
   assert.match(readiness, /if \(trigger\.current\?\.isConnected\) trigger\.current\.focus\(\)/)
 })
 
+test('below 760px the readiness panel covers the page, so it is modal there: inert behind, Tab kept inside, Escape back to the row (owner, 2026-09-19)', async () => {
+  const { COVERS_PAGE, inertOutside, keepTabInside } = await import('./modalPanel.ts')
+  // The width is the pack's stacked-row breakpoint, where the panel stops sitting beside the list.
+  assert.equal(COVERS_PAGE, '(max-width: 760px)')
+  // Modal only where it covers the page; beside the list on a wide screen it stays non-modal.
+  assert.match(readiness, /const modal = isOpen && narrow/)
+  assert.match(readiness, /useState\(\(\) => window\.matchMedia\?\.\(COVERS_PAGE\)\.matches \?\? false\)/)
+  assert.match(readiness, /mq\.addEventListener\('change', onChange\)/, 'a window resized across 760 does not change the panel')
+  assert.match(readiness, /aria-modal=\{modal\}/)
+  assert.match(readiness, /uninert\.current = inertOutside\(panel\)/)
+  assert.match(readiness, /else if \(modal && panelRef\.current\) keepTabInside\(e, panelRef\.current\)/)
+  // Focus moves into it on open, and the page comes back before focus returns to the row that opened it.
+  assert.match(readiness, /if \(openId !== null\) closeRef\.current\?\.focus\(\)/)
+  const close = readiness.slice(readiness.indexOf('const close = (): void => {'), readiness.indexOf('const closeRefFn'))
+  assert.ok(close.indexOf('uninert.current?.()') > -1 && close.indexOf('uninert.current?.()') < close.indexOf('trigger.current.focus()'), 'focus returns to a row that is still inert')
+  assert.match(readiness, /if \(e\.key === 'Escape' && !field\) closeRefFn\.current\(\)/)
+
+  // inertOutside: every sibling of the panel and of each ancestor goes inert, and the undo restores only those.
+  type N = { name: string; inert: boolean; parentElement: N | null; children: N[] }
+  const node = (name: string, inert = false): N => ({ name, inert, parentElement: null, children: [] })
+  const adopt = (parent: N, ...kids: N[]): N => {
+    for (const k of kids) k.parentElement = parent
+    parent.children.push(...kids)
+    return parent
+  }
+  const panel = node('panel')
+  const list = node('list')
+  const header = node('header')
+  const already = node('already', true)
+  const surface = adopt(node('surface'), list, panel)
+  const main = adopt(node('main'), surface)
+  const body = adopt(node('body'), header, main, already)
+  adopt(node('html'), body)
+  const undo = inertOutside(panel as unknown as HTMLElement)
+  assert.deepEqual([list, header, already, surface, main, body, panel].map((n) => n.inert), [true, true, true, false, false, false, false])
+  undo()
+  undo()
+  assert.deepEqual([list, header, already].map((n) => n.inert), [false, false, true], 'the undo touched what it did not change')
+
+  // keepTabInside: past the last control to the first, before the first to the last; anything else is the browser's.
+  const doc: { activeElement: unknown } = { activeElement: null }
+  const focusable = (name: string): { name: string; focus: () => void } => {
+    const f = { name, focus: () => { doc.activeElement = f } }
+    return f
+  }
+  const first = focusable('Close')
+  const last = focusable('link')
+  const box = { ownerDocument: doc, querySelectorAll: () => [first, last], contains: (n: unknown) => n === first || n === last } as unknown as HTMLElement
+  const press = (key: string, shiftKey = false): boolean => {
+    let prevented = false
+    keepTabInside({ key, shiftKey, preventDefault: () => { prevented = true } }, box)
+    return prevented
+  }
+  doc.activeElement = last
+  assert.equal(press('Tab'), true)
+  assert.equal(doc.activeElement, first, 'Tab from the last control left the panel')
+  assert.equal(press('Tab', true), true)
+  assert.equal(doc.activeElement, last, 'Shift+Tab from the first control left the panel')
+  doc.activeElement = first
+  assert.equal(press('Tab'), false, 'Tab between controls inside the panel is the browser’s')
+  assert.equal(press('ArrowDown'), false)
+})
+
 test('closing Plan settings puts focus back on the link that opened it', () => {
   // Close is inside the panel, and closing unmounts the panel: without this the
   // focused button leaves the document and focus falls to the body, which on a
@@ -472,9 +535,9 @@ test('every expanded/collapsed state sits on a control a keyboard reaches, and n
   // A person's Details opens the one person panel (prompt 62) and says so: what it opens, and that it is a dialog.
   // Details names its person, says whether it's open, and points at the panel only while the panel exists.
   assert.match(readiness, /aria-haspopup="dialog"\s+aria-label=\{fillText\(T\.detailsFor[^}]*\}\)\}\s+aria-expanded=\{openId === r\.user\.id\}\s+aria-controls=\{openId === r\.user\.id \? PANEL_ID : undefined\}/)
-  assert.match(readiness, /id=\{PANEL_ID\} role="dialog" aria-modal="false"/, 'the panel the control names is not the non-modal dialog')
+  assert.match(readiness, /id=\{PANEL_ID\} ref=\{panelRef\} role="dialog" aria-modal=\{modal\}/, 'the panel the control names is not the dialog')
   // The groups and sub-groups open and close as native disclosures, which carry their own expanded state.
-  assert.match(readiness, /<details key=\{state\} className=\{`readiness-group/)
+  assert.match(readiness, /<details className=\{`readiness-group/)
   assert.match(readiness, /<details className="readiness-sub"/)
   assert.match(read('src/ui/surfaces/Plan.tsx'), /aria-expanded=\{showSettings\} aria-controls=\{PLAN_SETTINGS_ID\}/)
   assert.match(read('src/ui/surfaces/Connect.tsx'), /false && open && !locked/, 'custom baseline controls remain hidden in V1')

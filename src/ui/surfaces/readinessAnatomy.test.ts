@@ -162,8 +162,8 @@ test("the worklist is the pack's groups in its order, the next check first and o
   assert.match(PACK, /<summary><span class="dot"[^>]*><\/span>\s*<span>\$\{isNext\?'<span class="next-label">Next check<\/span>':''\}<span class="title">\$\{gr\.title\}<\/span><span class="why">\$\{gr\.why\}<\/span><\/span>\s*<span class="count">/)
   assert.match(PACK, /const ordered = lead \? \[lead, \.\.\.GROUPS\.filter\(g=>g!==lead\)\] : GROUPS/, 'the pack no longer leads with the next check')
   // Production draws the same.
-  assert.match(SURFACE, /<details key=\{state\} className=\{`readiness-group panel\$\{isNext \? ' next' : ''\}\$\{quiet \? ' quiet' : ''\}`\} open=\{isNext \|\| openAll \|\| undefined\}/)
-  const summary = SURFACE.slice(SURFACE.indexOf('<details key={state}'), SURFACE.indexOf('</summary>', SURFACE.indexOf('<details key={state}')))
+  assert.match(SURFACE, /<details className=\{`readiness-group panel\$\{isNext \? ' next' : ''\}\$\{quiet \? ' quiet' : ''\}`\} open=\{isNext \|\| openAll \|\| undefined\}/)
+  const summary = SURFACE.slice(SURFACE.indexOf('<details className={`readiness-group'), SURFACE.indexOf('</summary>', SURFACE.indexOf('<details className={`readiness-group')))
   const parts = ['<span className={`state-dot s-${state}`} aria-hidden="true" />', '{isNext && <span className="next-label">{T.nextLabel}</span>}', '<span className="group-title">{G.title}</span>', '<span className="group-why">{G.why}</span>', '<span className="group-count">{rows.length}</span>', '<Icon k="chev" />']
   let at = -1
   for (const p of parts) {
@@ -242,10 +242,10 @@ test("the status vocabulary is the pack's seven words, each a word beside its do
   for (const r of demo.rows) if (r.state !== null) assert.equal(rowCells(r)[3], stateTitle(r.state), `${r.user.id}: the CSV state is not the word`)
 })
 
-test('the person detail is one non-modal panel: the next step, the devices seen and the phishing-resistant methods', () => {
+test('the person detail is one panel, non-modal beside the list: the next step, the devices seen and the phishing-resistant methods', () => {
   assert.match(PACK, /<aside class="panel" id="panel" aria-labelledby="p-name" aria-hidden="true">/)
   assert.deepEqual([...PACK.matchAll(/<section><h3>([^<]+)<\/h3>/g)].map((m) => m[1]), [W.panel.next, W.panel.devices, W.panel.methods], "the panel's sections are not the pack's")
-  assert.match(SURFACE, /<aside className="readiness-panel panel" id=\{PANEL_ID\} role="dialog" aria-modal="false" aria-labelledby="readiness-panel-name">/)
+  assert.match(SURFACE, /<aside className="readiness-panel panel" id=\{PANEL_ID\} ref=\{panelRef\} role="dialog" aria-modal=\{modal\} aria-labelledby="readiness-panel-name">/)
   const panel = SURFACE.slice(SURFACE.indexOf('<aside className="readiness-panel panel"'))
   assert.deepEqual([...panel.matchAll(/<h3>\{T\.panel\.([a-z]+)\}<\/h3>/g)].map((m) => m[1]), ['next', 'devices', 'methods'])
   assert.match(panel, /<div className="todo">\s*<strong>\{nextCell\(openRow\)\}<\/strong>/, "the panel's next step is not the row's")
@@ -260,6 +260,21 @@ test('the person detail is one non-modal panel: the next step, the devices seen 
   assert.doesNotMatch(SURFACE, /<dialog|detail-block|readiness-detail/, 'the modal Why/Next dialog came back')
   // No second dashboard, no guide panel, no callout, no tip.
   for (const gone of [/RemediationPanel/, /guide-panel/, /<Callout/, /<PageTip/, /methodGuide\(/]) assert.doesNotMatch(SURFACE, gone, `${gone} is back on the page`)
+})
+
+test('each group has a visually hidden heading, so heading navigation reaches the worklist (owner, 2026-09-19)', () => {
+  // The title a sighted reader sees is inside <summary>, which is not a heading; a hidden h3 before each group names it.
+  const group = SURFACE.slice(SURFACE.indexOf('const groupView = '), SURFACE.indexOf('const setupNext = '))
+  assert.match(group, /<Fragment key=\{state\}>\s*<h3 className="sr-only">\{G\.title\}<\/h3>\s*<details className=\{`readiness-group panel/, 'a group has no heading of its own')
+  assert.equal((group.match(/<h3 /g) ?? []).length, 1, 'one heading per group, and no visible one beside the summary')
+  // The heading sits under "What to do" (h2), a level beside the next setup check (h3): the outline never skips a level.
+  assert.match(SURFACE, /<h2>\{T\.worklist\}<\/h2>/)
+  assert.match(SURFACE, /<h3 id="readiness-setup-next">/)
+  // The project's one visually hidden role: clipped to a pixel, kept in the accessibility tree.
+  const srOnly = cssRule('.sr-only')
+  assert.match(srOnly, /position: absolute;/)
+  assert.match(srOnly, /clip: rect\(0 0 0 0\);/)
+  assert.doesNotMatch(srOnly, /display: none|visibility: hidden/, 'the hidden heading is hidden from a screen reader too')
 })
 
 test("the rail is the pack's four tiles: tenant setup, approved models, not counted and evidence read, with Guests beside them when guests sign in", () => {
