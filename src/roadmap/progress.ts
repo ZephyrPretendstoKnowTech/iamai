@@ -5,6 +5,7 @@ import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
 import { markHoldChains } from './holds.ts'
+import { gateOnDirection } from './direction.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
@@ -114,7 +115,13 @@ export function applyProgress(
 ): Step[] {
   // A wait on a held step is a hold before tracking asks who is ready (roadmap/holds.ts).
   markHoldChains(steps)
-  return trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
+  trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
+  // Per-answer gating (roadmap/direction.ts), once every lifecycle is this
+  // scan's and every skip applied: an enforced, delivered or set-aside policy
+  // carries no wait on a Direction answer, and the schedule and tracking never
+  // read one.
+  gateOnDirection(steps)
+  return steps
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----

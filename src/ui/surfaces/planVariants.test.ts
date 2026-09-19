@@ -389,7 +389,6 @@ const INVENTORY: string[] = [
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-block-legacy-auth
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo/s-goal-mfa-all-users
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
-  'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
   'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
@@ -401,7 +400,6 @@ const INVENTORY: string[] = [
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-token-protection
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
-  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo-week2+no-ca/s-goal-block-legacy-auth
   'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
 ]
 

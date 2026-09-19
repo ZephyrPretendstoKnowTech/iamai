@@ -1,7 +1,7 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { directionSteps, gateOnDirection } from './direction.ts'
+import { directionSteps } from './direction.ts'
 import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -2482,9 +2482,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { satisfied: complete, inPlace: complete })
     if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
   }
-  // Per-answer gating (roadmap/direction.ts): a policy waits only on the
-  // Direction answers it depends on, before the schedule reads what is held.
-  gateOnDirection(steps)
+  // Per-answer gating (roadmap/direction.ts gateOnDirection) runs once tracking
+  // has settled each policy's lifecycle (roadmap/progress.ts applyProgress): an
+  // enforced policy is never held by it, and the schedule never reads it.
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,

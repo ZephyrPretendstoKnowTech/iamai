@@ -352,13 +352,17 @@ export function gateOnDirection(steps: Step[]): void {
   for (const s of steps) if (isDirectionStep(s.id)) for (const q of s.directionQuestions ?? []) questions.set(q.key, q)
   if (questions.size === 0) return
   for (const step of steps) {
-    if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied) continue
+    // An already enforced policy is never held by it: it asks its question where
+    // it is (unsavedInputs), so it carries no wait at all.
+    if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied || step.state.lifecycle === 'enforced') continue
     const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
     if (waiting.length === 0) continue
-    // The wait is the lane engine's to read (planLanes.ts observe), not a
-    // condition of the step's own nor an edge the schedule sequences on: its
-    // lifecycle, its tracking, its readiness and its dates are what they are, and
-    // an already enforced policy is never held by it.
+    // The wait is the lane engine's to read (planLanes.ts observe), and not an
+    // edge the schedule sequences on: its lifecycle, its tracking and its dates
+    // are what they are (holds.ts).
     for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
+    // A step that waits is not Ready (lifecycle.ts conditionFor): it reads
+    // Blocked, as a step waiting on another step does.
+    if (step.state.condition === 'healthy') setState(step, { condition: 'blocked' })
   }
 }
