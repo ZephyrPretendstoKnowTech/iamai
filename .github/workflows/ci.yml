@@ -40,6 +40,8 @@ jobs:
             range="$BEFORE..HEAD"
           fi
           node scripts/check-change-scope.mjs --range "$range"
+      - name: Tenant data guard
+        run: node scripts/tenant-guard.mjs
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Unit tests

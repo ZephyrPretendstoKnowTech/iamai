@@ -43,6 +43,10 @@ const runParallel = async (commands) => {
   }
 }
 
+// Every mode first proves no tracked file carries the owner's tenant data
+// (scripts/tenant-guard.mjs); CI runs the same check before its typecheck.
+run('Tenant data guard', ['scripts/tenant-guard.mjs'])
+
 if (prepush) {
   // Build before the parallel phase so the generated site is complete before
   // Chrome starts. The smoke walk spends most of its time waiting on rendered
