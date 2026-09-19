@@ -73,7 +73,10 @@ test('Save writes the selected group and its confirmed chip uses the saved group
 
 test('decision picker state remounts when navigation changes the step', () => {
   const source = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
-  assert.equal(source.match(/<Decision key=\{step\.id\}/g)?.length, 2)
+  // One decision picker since 333aa3f4 folded the emergency branch into it; every one is keyed by the step.
+  const keyed = source.match(/<Decision key=\{step\.id\}/g)?.length ?? 0
+  assert.ok(keyed > 0)
+  assert.equal(keyed, source.match(/<Decision /g)?.length)
 })
 
 test('U24: where two groups qualify nothing opens pre-filled, and a saved decision always wins', () => {
