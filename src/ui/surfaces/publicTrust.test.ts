@@ -211,32 +211,31 @@ test('How credits CA Policy Analyzer and the baseline without claiming an endors
 
 // ---- K, L, M. the housekeeping the public claims rest on ----
 
-// Production publishes reviewed `main`, gated walk → build → deploy. The retired
-// night-1 preview is gone, and no branch or path can reach the live site around
-// the walk. The gate holds only if the commit the build publishes is the commit
-// the walk judged, so every job pins the run's own SHA rather than the movable
-// `main` ref, and nothing but `main` gets past the walk.
-test('the deploy workflow publishes the validated main artifact only after the walk', () => {
-  const ci = read('.github/workflows/ci.yml')
-  const wf = read('.github/workflows/deploy-pages.yml')
-  const config = wf.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
-  assert.match(ci, /branches: \[main\]/)
+// Production publishes the exact commit pushed to main (bb385cd0, a0284f8a):
+// deploy-pages.yml checks out that SHA, builds the site and deploys it; a
+// failed install or build deploys nothing. ci.yml validates the same pushes and
+// every pull request beside the deploy (7e99ffb4) and never gates it. The walk
+// runs in neither: the retired walk gate is not asserted any more.
+test('the deploy workflow publishes the pushed main commit, and CI validates beside it', () => {
+  const uncommented = (yml: string): string => yml.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
+  const ci = uncommented(read('.github/workflows/ci.yml'))
+  const config = uncommented(read('.github/workflows/deploy-pages.yml'))
+  // Deploy: main only, the run's own commit, built then published.
+  assert.match(config, /on:\n  push:\n    branches: \[main\]/)
+  assert.doesNotMatch(config, /pull_request/, 'a pull request can publish')
+  const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
+  assert.equal(checkouts.length, 1)
+  assert.equal((config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length, checkouts.length, 'the build is not pinned to the pushed commit')
+  assert.ok(config.indexOf('npm run build:site') > 0 && config.indexOf('npm run build:site') < config.indexOf('actions/deploy-pages@'), 'the site is deployed without being built first')
+  assert.doesNotMatch(config, /npm run walk|workflow_call|night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
+  // CI: pull requests and main, both jobs required, reporting beside the deploy.
   assert.match(ci, /pull_request:/)
+  assert.match(ci, /push:\n    branches: \[main\]/)
+  assert.match(ci, /run: npx tsc --noEmit/)
+  assert.match(ci, /npm test/)
   assert.match(ci, /name: ci\n    needs: \[checks, browser\]/, 'both independently retryable jobs remain required')
   assert.match(ci, /test "\$CHECKS" = success && test "\$BROWSER" = success/)
-  assert.match(ci, /release:\n    needs: ci/)
-  assert.match(ci, /if: github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request'\n    uses: \.\/\.github\/workflows\/deploy-pages.yml/)
-  assert.match(config, /workflow_call:/, 'publication is called by validated CI')
-  assert.match(config, /deploy:\n    needs: walk/, 'a walk failure blocks publication')
-  assert.match(config, /npm run walk/)
-  assert.doesNotMatch(config, /night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
-  const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
-  assert.equal((config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length, checkouts.length)
-  assert.equal(checkouts.length, 2)
-  assert.equal((config.match(/if: github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request'/g) ?? []).length, 2)
-  assert.equal((config.match(/name: site-\$\{\{ github\.sha \}\}/g) ?? []).length, 2)
-  assert.equal((config.match(/node scripts\/release-artifact.mjs verify "\$GITHUB_SHA"/g) ?? []).length, 2)
-  assert.doesNotMatch(config, /npm test|npm run build:site/, 'deployment reuses the validated build')
+  assert.doesNotMatch(ci, /deploy-pages\.yml|npm run walk/, 'CI gates the deploy or runs the walk')
   assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/)
 })
 test('dependabot is configured for the one npm project at the root, weekly', () => {
