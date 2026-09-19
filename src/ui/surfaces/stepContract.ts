@@ -1224,10 +1224,10 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
   if (s.setAside) return null
   if (step.manualReview?.confirmedAt) return { key: 'review', label: CONTRACT.foundLabel.observation, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
-  if (s.satisfied && (step.workflowChoices || step.id === 's-prereq-device-plan')) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
+  if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
-  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: step.id === 's-prereq-device-plan' ? 'Choose device management' : t.decisionValue, note: step.id === 's-prereq-device-plan' ? 'Save your choices for Phone Management, Phone App Protection and Computer Management.' : c.decisionNote }
+  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
   const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string }
   if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote }
@@ -1282,7 +1282,6 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 
 /** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
 function peopleTile(c: StepContract): ReadinessTile | null {
-  if (c.id === 's-prereq-device-plan') return null
   if (c.who === null || (!c.who.known && c.who.text.startsWith('Policy applicability is not fully resolved.'))) return null
   const t = R().tiles
   const peopleNote = c.policy ? t.peopleNote : (t as unknown as { peopleStepNote: string }).peopleStepNote

@@ -255,7 +255,7 @@ test('a blocked policy with authored implementation shows its planning preview w
 })
 
 test('every step draws its Implementation region, a decision and a check included (content review D2)', () => {
-  const { f, step, c } = opened('demo', 's-prereq-device-plan')
+  const { f, step, c } = opened('demo', 's-direction-devices')
   assert.equal(plannedPackageStateOf(step, c, f.snapshot), null)
   assert.equal(c.policy, false, 'a decision step is read as a policy')
   assert.equal(opened('demo', 's-goal-device-registration-mfa').c.policy, true)
@@ -283,7 +283,7 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
 })
 
 test('Decide How Devices Are Managed: Decision until answered, one structure per part, US spelling, and saved answers still count', () => {
-  const { c, lane } = opened('demo', 's-prereq-device-plan')
+  const { c, lane } = opened('demo', 's-direction-devices')
   assert.equal(lane.label, `${BOARD.lanes.ready} · Decision`, 'an unanswered decision is not Ready · Decision')
   assert.equal(railOf(c).sub, '')
   assert.notEqual(railOf(c).metric, lane.label, 'the milestone repeats the lane label (content review R1)')

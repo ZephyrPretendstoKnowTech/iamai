@@ -362,7 +362,7 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, lane: L
     if (lane.lane === 'Ready' && lane.substatus === 'Review') return schedulingWords.reviewNow
     return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
   }
-  return step.manualReview || step.workflowChoices ? fillText(schedulingWords.estimate, { date: result }) : result
+  return step.manualReview || step.directionQuestions ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 
 /** The reason under a row (rowWhen.ts rowReason). The When cell never names a step, so nothing here is said twice. */
@@ -509,7 +509,7 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
  * tab; `asideGroupsFor` draws those. Pure.
  */
 export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup[] {
-  const priority = (i: BoardItem): number => tab !== 'ready' ? 0 : i.id === 's-prereq-passkey-settings' ? -3 : i.id === 's-prereq-break-glass' ? -2 : i.id === 's-confirm-workloads' ? -1 : 0
+  const priority = (i: BoardItem): number => tab !== 'ready' ? 0 : i.id === 's-prereq-passkey-settings' ? -3 : i.id === 's-prereq-break-glass' ? -2 : 0
   const sorted = [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order)
   const out: BoardGroup[] = []
   const own = sorted.filter((i) => TAB_OF[i.lane] === tab)

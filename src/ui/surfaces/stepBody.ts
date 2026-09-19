@@ -202,7 +202,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const deployNow = cs.kind !== 'policy' || implementationIsCurrent(step)
   const manualLines = cs.kind !== 'policy' ? instructions.steps.filter((l): l is string => typeof l === 'string').map((l) => fillText(l, ex)).filter((l) => !/\{[^}]+\}/.test(l)) : []
   const hasPortal = (portal !== null && portal.length + before.length > 0) || manualLines.length > 0
-  const channels = step.workflowChoices ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
+  const channels = step.directionQuestions ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
   const portalLines = hasPortal ? [...before, ...(portal ?? manualLines)] : []
   const hasSteps = instructions.steps.length > 0
   // The step's implementation-content package, where one is active
@@ -305,7 +305,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   }
   // An explanatory-only package must not replace a supporting step's existing
   // portal instructions with an unavailable placeholder.
-  if (!machine && !step.workflowChoices && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) {
+  if (!machine && !step.directionQuestions && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) {
     supported.add('portal')
     produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
   }

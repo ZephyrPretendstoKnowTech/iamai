@@ -66,7 +66,7 @@ test('passkey evidence translates the Graph all-users identifier', () => {
 
 test('service confirmation keeps its choices without adding a redundant Entra procedure', () => {
   const {r,ctx}=setup(fixture('demo'))
-  const step=r.steps.find(s=>s.id==='s-confirm-workloads')!
-  assert.ok(step.workflowChoices)
+  const step=r.steps.find(s=>s.id==='s-direction-use')!
+  assert.ok(step.directionQuestions)
   assert.equal(stepBodyOf(step,ctx).artifacts.some(a=>a.id==='portal'),false)
 })

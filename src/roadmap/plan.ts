@@ -135,7 +135,7 @@ export function fileStep(s: Step): Step {
   return {
     ...s,
     guidance: undefined,
-    workflowChoices: undefined,
+    directionQuestions: undefined,
     comms: null,
     forManager: '',
     unblockNotes: [],

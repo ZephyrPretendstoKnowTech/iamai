@@ -28,7 +28,7 @@
 // identifiable by design, and the redacted exports are a separate, explicit choice.
 // Pure: no DOM, no network. It reads the step's export view and its already-projected
 // JSON channel; it never renders the step body.
-import { workflowWords, shared } from '../../content/content.ts'
+import { directionWords, workflowWords, shared } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
@@ -237,9 +237,10 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   const focus = typeof i.cs.aiFocus === 'string' && i.cs.aiFocus.trim() !== '' ? `${W.focus}: ${i.cs.aiFocus}` : null
   section(S.implementation, [...(c.policy && i.json ? i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`) : []), focus])
 
-  if (i.step.id === 's-prereq-device-plan') section((shared.deviceBriefing as { options: string }).options, (shared.deviceBriefing as { details: string[] }).details)
+  if (i.step.id === 's-direction-devices') section((shared.deviceBriefing as { options: string }).options, (shared.deviceBriefing as { details: string[] }).details)
   if (text('emergency.passkey.compatibility')) section((shared.passkeyCompatibility as Record<string, string>).heading, [text('emergency.passkey.compatibility')])
-  if (i.step.workflowChoices) section(workflowWords.choiceContext, i.step.workflowChoices.map((choice) => `${choice.label}: ${choice.suggested ? workflowWords.suggestionContext : workflowWords.answers[choice.answer as keyof typeof workflowWords.answers] ?? choice.answer}. ${choice.evidence}`))
+  // A Direction step's questions: each answer as saved, or the suggestion and that it is one, with its evidence.
+  if (i.step.directionQuestions) section(workflowWords.choiceContext, i.step.directionQuestions.map((q) => { const a = q.saved ?? q.suggested; const label = q.options.find((o) => o.value === a.value)?.label ?? a.picked.join(', '); return `${q.label}: ${label}${q.saved ? '' : ` (${directionWords.suggested})`}. ${q.evidence}` }))
   if (i.step.baselineReviewSource) section(workflowWords.baselineContext, [i.step.baselineReviewSource.name, i.step.baselineReviewSource.reason, i.step.baselineReviewSource.json])
   if (sections.length === 0) return ''
   return [W.heading, W.boundary, ...sections.map((s) => s.join('\n'))].join('\n\n')
