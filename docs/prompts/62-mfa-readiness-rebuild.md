@@ -412,22 +412,35 @@ Built and shipped: segments 1–7, except the Intune read and the backfill of ol
   - The success-only sign-in filter is not applied: it was not verified against a
     real tenant.
 
-- **The Intune read is held on a contradiction.** `SPEC.md` §2 (a hard decision:
-  "One admin-consent screen with the full read scope set. No staged consent")
-  contradicts this brief's incremental consent. Microsoft also documents two scopes,
-  not one: `DeviceManagementServiceConfig.Read.All` for the Windows Hello for
-  Business enrollment configuration, and `DeviceManagementConfiguration.Read.All`
-  for the settings catalog (Windows Hello and macOS Platform SSO policies).
-  - Until the owner chooses, the snapshot type carries `intune` (IntuneReading).
-  - The Windows Hello setup check reads unknown, with the "IAMAI can't see Windows
-    Hello for Business settings; check Intune" wording.
-  - Eligibility falls back to the join state.
-  - The choice is between:
-    - adding both scopes to the one consent screen, which forces existing tenants
-      to consent again;
-    - amending SPEC §2 to allow the incremental path described above.
-- **Page contracts.** `docs/qa/page-contracts.json` is not edited (Claude Code never
-  edits it). The proposed readiness entry is
-  `docs/qa/page-contracts-readiness-v3-proposal.md`.
+- **Intune: resolved without a permission (owner, 2026-09-18).** `SPEC.md` §2's
+  single consent screen stands; IAMAI asks for no Intune scope. The Windows Hello
+  setup check (`derive/readinessSetup.ts`) is judged by the outcome instead:
+  - it passes when somebody is seen signing in with Windows Hello for Business;
+  - it asks the admin to confirm the Intune setting when joined computers show no
+    Windows Hello sign-in (never a failure);
+  - it does not apply when no joined computer is seen.
+  The snapshot type still carries `intune` (IntuneReading), which nothing collects.
+  Eligibility falls back to the join state.
+- **Guests: option B (owner, 2026-09-18).** An active guest is not a counted person
+  on this page: their MFA happens in their home organisation. They are listed under
+  Not counted, and a Guests tile in the rail gives the count, whether this tenant
+  trusts their home MFA (`derive/guestReadiness.ts`, the one reading the scenario
+  lines share), whether Require MFA for Guests is in place, and the suggested
+  setting. The partition's facts stay one function for every surface; the view's
+  `people` is the partition's active people less the active guests.
+- **Page contracts: applied (owner approval, 2026-09-18).** The `readiness` entry in
+  `docs/qa/page-contracts.json` is built from `pages.readiness` words, and
+  `.readiness-row` joins the global repeaters, so a row's controls are items. Two
+  things are deliberately left uncovered, with no catch-all:
+  - the person panel's heading, which is the person's name;
+  - sub-group headers grouped by department, which are tenant data. The walk sees
+    neither: the panel is closed and the grouping is by device.
+  The budget (45 sentences, 480 words) is the demo's measured peak of 38 and 370
+  with the panel open, plus room for failing setup checks. Three sentences in the
+  approved copy run over the 25-word rule: the goal line, the definition of Ready
+  and the Needs a method body. They are left as the owner approved them.
+- **The walk is not in CI.** No workflow runs `scripts/walk.mjs`, and its readiness
+  block still reads the retired three stat tiles and progress strips. It gates
+  nothing today; it would report P0s if run locally.
 - **The layout** is promoted to `docs/design/approved/anatomy/mfa-readiness-v3.html`.
   v2 is in `docs/design/superseded/`.
