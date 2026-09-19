@@ -56,7 +56,8 @@ test('Dormant Accounts: the briefing carries every account IAMAI observed, with 
     seen.push(words)
   }
   assert.notDeepEqual(seen[0], seen[1], 'the two tenants give the same accounts: the facts are not the tenant’s')
-  assert.equal(seen[0].length, 3)
+  // Activity is the later of the directory date and the sign-in records (7d914ba5): one demo account the directory called dormant signed in.
+  assert.equal(seen[0].length, 2)
   assert.equal(seen[1].length, 14)
 })
 
