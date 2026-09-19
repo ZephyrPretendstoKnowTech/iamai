@@ -4,7 +4,7 @@
 // wants it goes unknown, never "could not be read".
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { collectConfigSection, collectMethodsForUsers, collectUsers } from './collectors.ts'
+import { collectConfigSection, collectMethodsForUsers, collectRegistrationForUsers, collectUsers, registrationGaps } from './collectors.ts'
 import { RETRY_MAX_5XX } from './constants.ts'
 
 const tokens = { get: () => 't', refresh: async () => 't' }
@@ -258,5 +258,40 @@ test('re-reads are bounded: a person still failing stays unknown, and a second f
     assert.equal(singles.length, 2 * RETRY_MAX_5XX, 'two people, each through the retry policy once; the third is not asked')
   } finally {
     f.restore()
+  }
+})
+
+test('a person whose method read still failed gets their own row of the registration report', async () => {
+  const methods = { u0: [], u1: 'unknown' as const, u2: 'unknown' as const, u3: 'unknown' as const }
+  // u2 already has a row in the tenant-wide report; it stands in without another read.
+  const gaps = registrationGaps(methods, [{ id: 'u2' } as never])
+  assert.deepEqual(gaps, ['u1', 'u3'])
+  const asked: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    assert.equal(String(input), 'https://graph.microsoft.com/v1.0/$batch')
+    const { requests } = JSON.parse(String(init?.body)) as { requests: { url: string }[] }
+    asked.push(...requests.map((r) => r.url))
+    return new Response(JSON.stringify({ responses: [
+      { id: '0', status: 200, body: { id: 'u1', methodsRegistered: ['passKeyDeviceBound'], isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: true } },
+      { id: '1', status: 404, body: { error: { code: 'NotFound' } } },
+    ] }), { status: 200 })
+  }) as typeof fetch
+  try {
+    const rows = await collectRegistrationForUsers(ctx, gaps)
+    assert.deepEqual(asked, ['/reports/authenticationMethods/userRegistrationDetails/u1', '/reports/authenticationMethods/userRegistrationDetails/u3'])
+    assert.deepEqual(rows.map((r) => [r.id, r.methodsRegistered]), [['u1', ['passKeyDeviceBound']]], 'a person the report cannot answer for stays unknown')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('a refused registration fallback leaves the people unknown and never fails the scan', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = (async () => new Response(JSON.stringify({ error: { message: 'premium licence required' } }), { status: 403 })) as typeof fetch
+  try {
+    assert.deepEqual(await collectRegistrationForUsers(ctx, ['u1']), [])
+  } finally {
+    globalThis.fetch = original
   }
 })
