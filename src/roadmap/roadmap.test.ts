@@ -142,7 +142,9 @@ function withExclusions(mapping: MappingState): MappingState {
     records: { ...mapping.records, [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(undefined, XGROUP) },
   }
 }
-const exclusionsMembers = (): GroupMembers => new Map([[XGROUP, { memberIds: ['u9'], memberCount: 1, sampled: false, displayName: 'CA - Exclusions', membershipRule: null, mailEnabled: false }]])
+// Read in full, as the scan reads a group: since d4821b75 an exclusions group whose
+// security, type and direct membership are unread is not a usable exclusion.
+const exclusionsMembers = (): GroupMembers => new Map([[XGROUP, { memberIds: ['u9'], memberCount: 1, sampled: false, directMembers: 'complete', directMemberIds: ['u9'], displayName: 'CA - Exclusions', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] }]])
 
 function build(args: {
   tenantPolicies?: P[]
