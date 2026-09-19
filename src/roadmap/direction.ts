@@ -32,6 +32,7 @@
 import goals from '../../data/goals.json' with { type: 'json' }
 import { directionWords, workflowWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { BLOCKED_REASON } from '../copy/reasons.ts'
 import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -232,7 +233,7 @@ function directionStep(id: DirectionStepId, questions: DirectionQuestion[], save
     if (savedAt !== null && Date.parse(savedAt) <= Date.now()) step.history = [{ at: savedAt, from: 'blocked', to: 'done', note: W.done }]
   } else {
     // Waiting on a person (owner, 2026-09-11): it reads Decision, never Create.
-    step.blockers = [{ kind: 'decision', label: 'direction', binding: W.notSure }]
+    step.blockers = [{ kind: 'decision', label: 'direction', binding: BLOCKED_REASON.direction }]
     setState(step, { condition: 'needs-decision' })
   }
   return step
@@ -359,8 +360,9 @@ export function gateOnDirection(steps: Step[]): void {
     if (waiting.length === 0) continue
     // The wait is the lane engine's to read (planLanes.ts observe), and not an
     // edge the schedule sequences on: its lifecycle, its tracking and its dates
-    // are what they are (holds.ts).
-    for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
+    // are what they are (holds.ts). Its reason names the Direction step, in the
+    // shape a wait on another step reads.
+    for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: BLOCKED_REASON.after(directionTitleOf(id)) })
     // A step that waits is not Ready (lifecycle.ts conditionFor): it reads
     // Blocked, as a step waiting on another step does.
     if (step.state.condition === 'healthy') setState(step, { condition: 'blocked' })
