@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, latestRecoveryTest, recoveryCandidateReadings, reconcileAutomaticRecovery, withCleanupDone, recoveryAccountBasis, RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_INVALIDATION_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, latestRecoveryTest, recoveryCandidateReadings, reconcileAutomaticRecovery, withCleanupDone, recoveryAccountBasis, recoveryEvidenceOf, RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_INVALIDATION_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { renameLine } from './cleanupPhase.ts'
 import { supersededPolicies } from './generate.ts'
@@ -494,4 +494,26 @@ test('an unproved baseline set at scan time moves back to the last change; routi
   const preparation = cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0])).at(-1)!
   assert.equal(preparation.configurationObservedAt, plus(-240), 'the last change up to the original baseline scan')
   assert.equal(proofs(checkpoints, ids[0]).length, 1, 'a sign-in before that scan now counts; the edit after it does not reset anything')
+})
+
+// Overnight review B4: after an account or group change, Step 4's start is the
+// change time, not the scan time, so a passkey sign-in between the change and the
+// scan counts (EMERGENCY-ACCESS-HANDOFF Step 4: the last relevant change).
+test('after an account change the new baseline starts at the change, and a sign-in before the scan counts on that scan', () => {
+  const { f, ids, at, plus, windows, signIn, proofs } = anchoredCase()
+  f.snapshot.recoveryDirectoryAudits = []
+  let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
+  const first = cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0])).at(-1)!
+  // The account is changed 30 minutes after the first scan, signs in with its passkey 15 minutes later, and IAMAI scans 15 minutes after that.
+  f.snapshot.recoveryDirectoryAudits = [{ id: 'audit-account-change', at: plus(30), activity: 'Update user', category: 'UserManagement', result: 'success', targets: [{ id: ids[0], type: 'User' }] }]
+  signIn(0, 'between-change-and-scan', 45)
+  windows(plus(60))
+  checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: plus(60) })
+  const records = cleanupRecord(checkpoints).records!
+  const preparation = records.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW && record.accountIds?.includes(ids[0])).at(-1)!
+  assert.notEqual(preparation.recoveryGeneration, first.recoveryGeneration, 'the change starts a new generation')
+  assert.equal(preparation.configurationObservedAt, plus(30), 'the start is the change time, not the scan at ' + plus(60))
+  assert.equal(proofs(checkpoints, ids[0]).filter(record => record.recoveryGeneration === preparation.recoveryGeneration).length, 1, 'the sign-in after the change counts on this scan')
+  const { configuredAt } = recoveryEvidenceOf(f.snapshot, f.mapping, f.groups, records, plus(60), ids[0])
+  assert.equal(configuredAt, plus(30), 'Step 4 states the change time as the start')
 })
