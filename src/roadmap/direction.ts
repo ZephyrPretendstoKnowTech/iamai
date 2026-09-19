@@ -42,7 +42,8 @@ import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { checkStep, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+export { DIRECTION_BLOCKER } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
 
@@ -53,8 +54,6 @@ type Answer = { value: string; picked: string[] }
 const answer = (value: string, picked: readonly string[] = []): Answer => ({ value, picked: [...picked] })
 const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] => Object.entries(words).map(([value, label]) => ({ value, label }))
 
-/** The step a Direction step's decision blocker names, on a policy that waits on it. */
-export const DIRECTION_BLOCKER = 'direction:'
 /** The Direction step a blocker waits on, or null for a blocker that is not one. */
 export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
   if (b.kind !== 'decision' || !b.label.startsWith(DIRECTION_BLOCKER)) return null
@@ -203,6 +202,9 @@ const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string 
   [DIRECTION_STEP.locations]: W.steps.locations,
 }
 
+/** A Direction step's title (content.json pages.app.plan.direction.steps). */
+export const directionTitleOf = (id: DirectionStepId): string => STEP_WORDS[id].title
+
 /** Done: every answer saved, and none contradicted by new evidence. */
 export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
 
@@ -275,7 +277,8 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
  * Per-answer gating (owner decision 3): every open step whose policy depends on
  * a Direction answer nobody has saved waits on the Direction step that asks it,
  * as a decision blocker the lane engine holds the step on (planLanes.ts
- * observe) and the row reads as Waiting on your direction. A dependency the plan
+ * observe) and the row reads as Waiting on your direction. A policy already
+ * enforced is not held by it: the engine asks its questions there instead. A dependency the plan
  * does not ask (a service this baseline has nothing for) waits on nothing, and
  * a step that depends on no answer is left exactly as it was.
  */
@@ -287,10 +290,12 @@ export function gateOnDirection(steps: Step[]): void {
     if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied) continue
     const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
     if (waiting.length === 0) continue
+    // The wait is the lane engine's to read (planLanes.ts observe), not a
+    // condition of the step's own: its lifecycle, its tracking and its readiness
+    // are what they are, and an already enforced policy is never held by it.
     for (const id of waiting) {
       if (!step.blockedBy.includes(id)) step.blockedBy.push(id)
       step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: W.waiting })
     }
-    if (step.state.condition === 'healthy') setState(step, { condition: 'blocked' })
   }
 }

@@ -211,3 +211,47 @@ test('(g) the retired steps are gone as rows, and D3 shows even with no device s
   assert.equal(ids.includes(PREREQ_STEP_ID.devicePlan), false)
   for (const id of Object.values(DIRECTION_STEP)) assert.ok(ids.includes(id), id)
 })
+
+test('(e) a policy with an unanswered Direction dependency is held Waiting on your direction; one with none is not', async () => {
+  const { laneReadings } = await import('../ui/surfaces/planLanes.ts')
+  const { laneViewOf, readinessBlockersOf } = await import('../ui/surfaces/planBoard.ts')
+  const f = fixture('demo')
+  f.mapping.questionAnswers = {}
+  const r = runFixture(f)
+  const readings = laneReadings(r.steps)
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
+  // The device goals wait on D3, and only on D3.
+  const device = r.steps.find((s) => s.goalId === 'require-managed-device')!
+  assert.equal(device.state.lifecycle, 'not-deployed', 'the premise')
+  assert.deepEqual(device.blockers.filter((b) => b.kind === 'decision').map((b) => b.label), [`direction:${DIRECTION_STEP.devices}`])
+  const reading = readings.get(device.id)!
+  assert.equal(reading.lane, 'On Hold')
+  assert.equal(laneViewOf(reading, titleOf).tail, W.waiting)
+  const tile = readinessBlockersOf(reading, titleOf).find((b) => b.id === DIRECTION_STEP.devices)!
+  assert.equal(tile.label, W.waiting)
+  assert.equal(tile.title, 'Decide How People and Devices Sign In', 'the tile names, and links to, the Direction step')
+  // geo-restriction waits on both D1 (partner) and D4 (countries, travel).
+  const geo = r.steps.find((s) => s.goalId === 'geo-restriction')
+  if (geo) assert.deepEqual(geo.blockers.filter((b) => b.kind === 'decision').map((b) => b.label).sort(), [`direction:${DIRECTION_STEP.locations}`, `direction:${DIRECTION_STEP.use}`])
+  // A policy that depends on no answer is untouched.
+  for (const goal of ['mfa-all-users', 'admins-phishing-resistant', 'block-auth-transfer']) {
+    const s = r.steps.find((x) => x.goalId === goal)
+    if (!s) continue
+    assert.ok(!s.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), goal)
+    assert.ok(!Object.values(DIRECTION_STEP).some((id) => s.blockedBy.includes(id)), goal)
+    assert.notEqual(readings.get(s.id)?.reason?.kind, 'decision', goal)
+  }
+  // A policy already enforced is never held by it: its question is asked where it is, as before.
+  const code = r.steps.find((s) => s.goalId === 'block-device-code')!
+  assert.equal(code.state.lifecycle, 'enforced', 'the premise: the demo already blocks device code')
+  assert.notEqual(readings.get(code.id)?.lane, 'On Hold')
+  assert.ok((code.unsavedInputs ?? []).length > 0, 'it still asks its question until it is answered')
+  // Saving the one answer it depends on releases it; the rest of D1 can stay open.
+  const saved = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] }, deviceExceptions: { value: 'none', picked: [] } }), at: AT } })
+  const after = runFixture({ ...f, mapping: saved }).steps
+  const released = after.find((s) => s.goalId === 'require-managed-device')!
+  assert.ok(!released.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')))
+  assert.notEqual(laneReadings(after).get(released.id)?.reason?.kind, 'decision')
+  assert.equal(after.find((s) => s.id === DIRECTION_STEP.devices)!.status, 'done')
+  assert.ok(after.find((s) => s.goalId === 'geo-restriction')?.blockers.some((b) => b.kind === 'decision') ?? true, 'a policy waiting on another step\'s answers still waits')
+})

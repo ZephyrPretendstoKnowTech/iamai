@@ -47,6 +47,8 @@ import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
+import { directionBlockerStep } from '../../roadmap/direction.ts'
+import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 
 const GRAPH = buildGraph(data as DependencyData)
@@ -155,6 +157,15 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     // earns by being watched (§8.4: a fact still to be established holds).
     else if (b.kind === 'evidence' && b.unverified === true) blockers.push({ kind: 'fact', id: `fact:${b.label}` })
     else if (b.kind === 'evidence' && !conflict) gates.push({ id: `evidence:${b.label}`, satisfied: false, minDays: null, reason: b.binding ?? b.label })
+    // A Direction answer the step depends on and nobody has saved holds it whole
+    // (owner decision 3, roadmap/direction.ts): the step's own policy is written
+    // from that answer, so neither its creation nor its enforcement can go first.
+    // An enforced policy is not held back by it: its correction and its recorded
+    // inputs are available now (the engine's own rule for an enforced policy).
+    else if (b.kind === 'decision' && lifecycle !== 'enforced') {
+      const direction = directionBlockerStep(b)
+      if (direction !== null && !blockers.some((x) => x.kind === 'decision' && x.id === direction)) blockers.push({ kind: 'decision', id: direction })
+    }
   }
   if (policy && open && step.action.readinessGate && !gates.some((g) => g.id.startsWith('evidence:readiness:'))) {
     gates.push({ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null })
@@ -374,10 +385,14 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // an engine row (S4): the row carries the blocker as its reason, so the board
     // reads "Baseline references an unmapped group" here too.
     const mapping = reading.lane === 'On Hold' ? (observe(s, byId).blockers ?? []).find((b) => b.kind === 'sourceMapping') : undefined
-    const dependency = s.blockedBy.map((id) => byId.get(id)).find((d) => d && d.status !== 'done')
-    const prerequisite: HoldBlocker | null = dependency ? { kind: 'step', id: dependency.id, milestone: null, condition: null, abnormal: false, ordinal: 0 } : null
+    // A Direction answer this row depends on holds it, as it holds an engine row (observe),
+    // unless its policy is already enforced; it outranks a wait on ordinary work.
+    const open = s.blockedBy.map((id) => byId.get(id)).filter((d): d is Step => d !== undefined && d.status !== 'done')
+    const direction = s.state.lifecycle === 'enforced' ? undefined : open.find((d) => isDirectionStep(d.id) && s.blockers.some((b) => directionBlockerStep(b) === d.id))
+    const dependency = direction ?? open.find((d) => !isDirectionStep(d.id))
+    const prerequisite: HoldBlocker | null = direction ? { kind: 'decision', id: direction.id, milestone: null, condition: null, abnormal: true, ordinal: 0 } : dependency ? { kind: 'step', id: dependency.id, milestone: null, condition: null, abnormal: false, ordinal: 0 } : null
     const reason: HoldBlocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : prerequisite
-    if (dependency && !mapping && reading.lane !== 'Completed' && reading.lane !== 'Deferred') { reading.lane = (out.get(dependency.id) ?? fallbackOf(planStateOf(dependency, isHeld(dependency)))).lane === 'Ready' ? 'Up Next' : 'On Hold'; reading.substatus = null }
+    if (dependency && !mapping && reading.lane !== 'Completed' && reading.lane !== 'Deferred') { reading.lane = direction ? 'On Hold' : (out.get(dependency.id) ?? fallbackOf(planStateOf(dependency, isHeld(dependency)))).lane === 'Ready' ? 'Up Next' : 'On Hold'; reading.substatus = null }
     rest.push({ id: s.id, reading: { ...reading, reason, blockers: reason ? [reason] : [], gates: [] } })
   }
   for (const r of rows) {

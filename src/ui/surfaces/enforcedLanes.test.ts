@@ -24,6 +24,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
 import { BOARD, laneViewFor } from './planBoard.ts'
 import { stepExportView } from './stepExport.ts'
+import { directionWords } from '../../content/content.ts'
 
 const graph = buildGraph(data as DependencyData)
 const LEGACY = 's-goal-block-legacy-auth'
@@ -119,10 +120,14 @@ test('U20: on the demo Follow-up scan with its saved answers every enforced poli
     if (s.manualReview && !s.manualReview.confirmedAt) assert.equal(readings.get(s.id)?.substatus, 'Review', s.id)
   }
   const intune = readings.get('s-goal-intune-enrollment-reauth')
-  assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'fact'], 'the session-loop configuration guard is not cleared by waiting for more evidence')
+  // Week two leaves the device answers open (roadmap/fixtures/index.ts), so the
+  // Direction wait is the primary blocker (§15: a decision before a fact); the
+  // session-loop guard is still there beside it.
+  assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'decision'])
+  assert.ok(intune?.blockers.some((b) => b.kind === 'fact'), 'the session-loop configuration guard is not cleared by waiting for more evidence')
   const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), run.steps)
   assert.equal(view.label, BOARD.lanes.onHold)
-  assert.equal(view.tail, BOARD.blockers.fact)
+  assert.equal(view.tail, directionWords.waiting)
 })
 
 test('U28: a step whose conditional input nobody saved does not read Completed even when the scan delivers it; a Save clears it', () => {

@@ -29,6 +29,7 @@ import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import { isHeld } from './holds.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { applyStepDecisions } from './decisions.ts'
 import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
 import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
@@ -1141,8 +1142,11 @@ function pairPlan(): { bare: typeof W2.snapshot; run: ReturnType<typeof runFixtu
   // prerequisite (roadmap/operations.ts readinessGate), so the tenant's guests are
   // Ready first (Step 7: a passkey proven on the platform they use). Without it the
   // guests gate holds the step and every case would be testing the hold.
-  const viability = guestsReady(runFixture({ ...W2, snapshot: bare }, { snapshot: bare } as never).viability, bare)
-  return { bare, run: runFixture({ ...W2, snapshot: bare }, { snapshot: bare, viability } as never) }
+  // Nor about the Direction answer the guests policy depends on (roadmap/direction.ts):
+  // the partner question is answered No, which leaves the baseline's pair as it is.
+  const mapping = applyStepDecisions(W2.mapping, { 's-direction-use': { answers: { partner: 'no' }, at: W2.snapshot.asOf } })
+  const viability = guestsReady(runFixture({ ...W2, snapshot: bare, mapping }, { snapshot: bare, mapping } as never).viability, bare)
+  return { bare, run: runFixture({ ...W2, snapshot: bare, mapping }, { snapshot: bare, viability, mapping } as never) }
 }
 
 const READY_GUEST = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })

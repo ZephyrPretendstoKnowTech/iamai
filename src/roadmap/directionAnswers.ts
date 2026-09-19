@@ -35,6 +35,9 @@ export type DirectionStepId = (typeof DIRECTION_STEP_IDS)[number]
 
 export const isDirectionStep = (id: string): id is DirectionStepId => (DIRECTION_STEP_IDS as readonly string[]).includes(id)
 
+/** The label prefix of the decision blocker a policy carries while it waits on a Direction answer (direction.ts gateOnDirection). */
+export const DIRECTION_BLOCKER = 'direction:'
+
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */

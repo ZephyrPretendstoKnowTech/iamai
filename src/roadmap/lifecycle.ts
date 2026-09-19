@@ -35,6 +35,7 @@ import { implementationOffered, operationsOf, unavailableReason } from './operat
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
+import { DIRECTION_BLOCKER } from './directionAnswers.ts'
 
 const MILESTONE = engine.milestone
 
@@ -234,7 +235,8 @@ export function stateForStatus(status: StepStatus): Partial<StepState> {
 export function conditionFor(blockers: Blocker[]): Condition {
   if (blockers.some((b) => b.label === 'baseline-conflict')) return 'baseline-conflict'
   if (blockers.length === 0) return 'healthy'
-  if (blockers.every((b) => b.kind === 'setup' || b.kind === 'decision' || b.label === 'device-decision')) return 'needs-decision'
+  // A wait on a Direction answer is asked on the Direction step, not here: it holds this step (roadmap/direction.ts).
+  if (blockers.every((b) => b.kind === 'setup' || (b.kind === 'decision' && !b.label.startsWith(DIRECTION_BLOCKER)) || b.label === 'device-decision')) return 'needs-decision'
   return 'blocked'
 }
 
