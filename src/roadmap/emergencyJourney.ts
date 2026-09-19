@@ -15,6 +15,12 @@ import type { CleanupCheckpoint, RecoveryCandidateReading } from './cleanupDone.
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
 import { displayZone } from '../copy/dates.ts'
+import { app } from '../content/content.ts'
+
+// A failing finding's value. "Needs attention" is a retired state word
+// (oneProducer.test, stateAgreement.test); the Plan's own word for a fact that
+// must be corrected is this one.
+const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: { needsCorrection: string } } }).stepContract.stateWords.needsCorrection
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -124,7 +130,7 @@ export function emergencyMethodFinding(snapshot: TenantSnapshot, mapping: Mappin
   })
   return {
     key: 'recovery-methods', label: 'Emergency Recovery Methods',
-    value: !ids.length ? 'Select emergency accounts' : results.every(r => r.outcome === 'pass') ? 'Verified' : results.some(r => r.outcome === 'fail') ? 'Needs attention' : 'Could not verify',
+    value: !ids.length ? 'Select emergency accounts' : results.every(r => r.outcome === 'pass') ? 'Verified' : results.some(r => r.outcome === 'fail') ? NEEDS_CORRECTION : 'Could not verify',
     outcome: !ids.length ? 'unknown' : results.some(r => r.outcome === 'fail') ? 'fail' : results.some(r => r.outcome === 'unknown') ? 'unknown' : 'pass',
     detail: !ids.length ? 'Select the emergency accounts so IAMAI can compare their registered keys with these settings. Review the approved recovery models before registering a key.' : 'Resolve the listed account findings before tightening restrictions. A registered compatible key still needs a recovery sign-in test.',
     items: results.flatMap(result => result.items),
@@ -152,7 +158,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   if (modelProblems.length && models.outcome === 'pass') { models.outcome = modelProblems.some(f => f.outcome === 'fail') ? 'fail' : 'unknown'; models.value = 'Required models need attention' }
   const modelIssueOutcomes = [...raw.filter(f => f.key.endsWith('.restrictions') && f.outcome !== 'pass'), ...modelProblems].map(f => f.outcome)
   models.value = !modelIssueOutcomes.length ? 'Configured'
-    : modelIssueOutcomes.includes('fail') && modelIssueOutcomes.includes('unknown') ? 'Needs attention'
+    : modelIssueOutcomes.includes('fail') && modelIssueOutcomes.includes('unknown') ? NEEDS_CORRECTION
       : modelIssueOutcomes.includes('fail') ? 'Needs a change'
         : 'Could not verify'
   models.detail = ''
@@ -207,11 +213,11 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   protection.value = protectionProblems.length === 0 ? 'Configured'
     : protectionProblems.every(item => item.factLabel === 'Current attestation' && item.value === 'Disabled') ? 'Attestation off'
       : protectionProblems.every(item => item.outcome === 'unknown') ? 'Could not verify'
-        : 'Needs attention'
+        : NEEDS_CORRECTION
   protection.label = 'Passkey Protections'
   const protectionOutcomes = [protection.outcome, models.outcome, ...restrictionProblems.map(row => row.outcome)]
   protection.outcome = protectionOutcomes.includes('fail') ? 'fail' : protectionOutcomes.includes('unknown') ? 'unknown' : 'pass'
-  protection.value = protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? 'Needs attention' : 'Could not verify'
+  protection.value = protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? NEEDS_CORRECTION : 'Could not verify'
   const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
   const affectedFinding: ConfigurationFinding = {
     key: 'affected-passkeys',
@@ -301,7 +307,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   const identityPending = identityResults.filter(({ result }) => result.outcome !== 'pass')
   const identity: ConfigurationFinding = {
     key: 'account-setup', label: 'Accounts and Identity',
-    value: identityPending.some(({ result }) => result.outcome === 'fail') ? 'Needs attention' : identityPending.length ? 'Could not verify' : 'Verified',
+    value: identityPending.some(({ result }) => result.outcome === 'fail') ? NEEDS_CORRECTION : identityPending.length ? 'Could not verify' : 'Verified',
     outcome: identityPending.some(({ result }) => result.outcome === 'fail') ? 'fail' : identityPending.length ? 'unknown' : 'pass',
     detail: mapping.breakGlassUserIds.length ? '' : 'Select the intended accounts so IAMAI can evaluate their identity and role evidence.',
     items: identityItems,
@@ -335,13 +341,13 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
     })),
   ]
   if (settings.outcome !== 'pass') { choice.outcome = settings.outcome; choice.value = settings.value; choice.detail = `${choice.detail} ${settings.detail}`.trim() }
-  if (choice.items.some(item => item.outcome !== 'pass')) { choice.outcome = choice.items.some(item => item.outcome === 'fail') ? 'fail' : 'unknown'; choice.value = choice.outcome === 'fail' ? 'Needs attention' : 'Could not verify' }
+  if (choice.items.some(item => item.outcome !== 'pass')) { choice.outcome = choice.items.some(item => item.outcome === 'fail') ? 'fail' : 'unknown'; choice.value = choice.outcome === 'fail' ? NEEDS_CORRECTION : 'Could not verify' }
   choice.taskSafe = exclusionGroupPolicySafety(report).safe
   const memberResults = results.filter(result => ['xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.sizeReasonable'].includes(result.id))
   const memberLabels: Record<string, string> = { 'xg.containsEmergency': 'Selected emergency accounts', 'xg.membersApproved': 'Other members', 'xg.noExtraAdmins': 'Other active administrators', 'xg.sizeReasonable': 'Members' }
   const memberPending = memberResults.filter(result => result.outcome !== 'pass')
   const members: ConfigurationFinding = {
-    key: 'group-members', label: 'Emergency account membership', value: memberPending.some(result => result.outcome === 'fail') ? 'Needs attention' : memberPending.length ? 'Could not verify' : 'Membership verified',
+    key: 'group-members', label: 'Emergency account membership', value: memberPending.some(result => result.outcome === 'fail') ? NEEDS_CORRECTION : memberPending.length ? 'Could not verify' : 'Membership verified',
     outcome: memberPending.some(result => result.outcome === 'fail') ? 'fail' : memberPending.length ? 'unknown' : 'pass', detail: '',
     items: [
       { label: 'Direct member count', factLabel: 'Direct member count', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.directMembers === 'complete' ? String(groupReading.directMemberIds?.length ?? 0) : 'Could not verify', outcome: groupReading?.directMembers === 'complete' ? 'pass' as const : 'unknown' as const, issueKeys: ['group:memberCount'] },
@@ -368,7 +374,7 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
     })
     const pending = policies.items.filter(item => item.outcome !== 'pass')
     policies.outcome = pending.some(item => item.outcome === 'fail') ? 'fail' : pending.length ? 'unknown' : 'pass'
-    policies.value = policies.outcome === 'fail' ? 'Needs attention' : policies.outcome === 'unknown' ? 'Could not verify' : 'Required references present'
+    policies.value = policies.outcome === 'fail' ? NEEDS_CORRECTION : policies.outcome === 'unknown' ? 'Could not verify' : 'Required references present'
   }
   return [choice, members, policies]
 }
