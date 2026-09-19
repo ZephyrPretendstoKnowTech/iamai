@@ -1,8 +1,10 @@
 // Which Conditional Access policies need the emergency exclusions group: the one
-// rule (owner, 2026-09-19 overnight review item 13). Every applicable policy —
-// On or Report-only, any state but Off — that reaches an emergency account needs
-// the group in its excluded groups. A Report-only policy is one mode change away
-// from enforcing, so it is held to the same rule as an On one.
+// rule (owner, 2026-09-19 overnight review item 13, and the owner's answer that
+// afternoon: "all policies — that's the intent from Jon's baseline"). Every
+// policy that is On or Report-only needs the group in its excluded groups,
+// whether or not it reaches an emergency account today: a group membership or a
+// scope change later must never be what locks the way back in. A Report-only
+// policy is one mode change away from enforcing, so it is held to the same rule.
 //
 // Step 2's completion (xg.usedConsistently), Step 2's Policy exclusions tile and
 // its task, and Step 4's configuration baseline all read this. Before it, Step 2
@@ -23,11 +25,11 @@ export type ExclusionsGroupPolicy = {
   name: string
   /** The policy's mode as the tile states it; null when the state was not a known mode. */
   mode: 'On' | 'Report-only' | null
-  /** Whether the policy reaches an emergency account; null when a targeted group was not read in full. */
+  /** Whether the policy reaches an emergency account today; null when a targeted group was not read in full. Reported, never a reason to leave a policy out. */
   applies: boolean | null
   /** Whether the policy excludes the exclusions group; null when its excluded groups were not read. */
   excluded: boolean | null
-  /** pass: the group is excluded. fail: the policy reaches an account and lacks it. unknown: either fact is unread. */
+  /** pass: the group is excluded. fail: the policy lacks it. unknown: its excluded groups were not read. */
   outcome: 'pass' | 'fail' | 'unknown'
 }
 
@@ -61,22 +63,19 @@ function appliesToAccounts(policy: PolicyRow, input: ExclusionsGroupPolicyInput)
 }
 
 /**
- * The policies that need the exclusions group, each with whether it has it.
- * Off policies and policies that reach no emergency account are left out; a
- * policy whose reach could not be read stays in, as unknown unless it already
- * excludes the group.
+ * The policies that need the exclusions group, each with whether it has it:
+ * every policy but an Off one.
  */
 export function exclusionsGroupPolicies(input: ExclusionsGroupPolicyInput): ExclusionsGroupPolicy[] {
   return (input.policies as PolicyRow[]).flatMap((policy, index) => {
     if (!policy || typeof policy !== 'object' || policy.state === 'disabled') return []
     const applies = appliesToAccounts(policy, input)
-    if (applies === false) return []
     const excludeGroups = policy.conditions?.users?.excludeGroups
     const excluded = Array.isArray(excludeGroups) ? strings(excludeGroups).some(id => same(id, input.groupId)) : null
     const id = typeof policy.id === 'string' && policy.id.trim() ? policy.id : null
     const name = typeof policy.displayName === 'string' && policy.displayName.trim() ? policy.displayName : id ?? `Unnamed policy ${index + 1}`
     const mode = policy.state === 'enabled' ? 'On' as const : policy.state === 'enabledForReportingButNotEnforced' ? 'Report-only' as const : null
-    const outcome = excluded === true ? 'pass' as const : excluded === false && applies === true ? 'fail' as const : 'unknown' as const
+    const outcome = excluded === true ? 'pass' as const : excluded === false ? 'fail' as const : 'unknown' as const
     return [{ id, name, mode, applies, excluded, outcome }]
   })
 }
