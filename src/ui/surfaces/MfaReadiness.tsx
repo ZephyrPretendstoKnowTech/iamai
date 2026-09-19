@@ -150,6 +150,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const [show, setShow] = useState<ShowKey>(() => showKeyOf(showFromReadinessHash(window.location.hash)) ?? DEFAULT_SHOW)
   const [groupBy, setGroupBy] = useState<SubGroupBy>('devices')
   const [limits, setLimits] = useState<Record<string, number>>({})
+  // Sub-groups the person has opened or closed; admins start open, the rest closed.
+  const [openSubs, setOpenSubs] = useState<Record<string, boolean>>({})
   // The panel is held by the account id the row carries, never the display name.
   const [openId, setOpenId] = useState<string | null>(null)
   const trigger = useRef<HTMLElement | null>(null)
@@ -330,8 +332,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
         {subs.map((g) => {
           const key = `${state}|${groupBy}|${g.key}`
           const shown = Math.min(g.rows.length, limitOf(key, g.admins ? 3 : SUB_GROUP_AT))
+          const isOpen = openSubs[key] ?? g.admins
           return (
-            <details className="readiness-sub" key={key} open={g.admins || undefined}>
+            <details className="readiness-sub" key={key} open={isOpen || undefined} onToggle={(e) => { const open = e.currentTarget.open; setOpenSubs((o) => (o[key] === open ? o : { ...o, [key]: open })) }}>
               <summary>
                 <span>
                   <span className="group-title">{subTitle(g)}</span>
@@ -340,8 +343,12 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                 <span className="group-count">{g.rows.length}</span>
                 <Icon k="chev" />
               </summary>
-              <div className="readiness-rows">{head}{g.rows.slice(0, shown).map(rowView)}</div>
-              {moreLine(key, shown, g.rows.length)}
+              {isOpen && (
+                <>
+                  <div className="readiness-rows">{head}{g.rows.slice(0, shown).map(rowView)}</div>
+                  {moreLine(key, shown, g.rows.length)}
+                </>
+              )}
             </details>
           )
         })}
