@@ -30,7 +30,7 @@
 //
 // Pure: no DOM, no network.
 import goals from '../../data/goals.json' with { type: 'json' }
-import { directionWords } from '../content/content.ts'
+import { directionWords, workflowWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -79,11 +79,14 @@ function serviceQuestion(key: string, signal: ServiceSignal, ctx: Context): Dire
   const needsReview = saved?.value === 'no' && signal.used && ctx.mapping.workflowEvidenceBasis?.[key] !== 'present'
   const suggested = signal.used ? answer('yes') : signal.complete ? answer('no') : answer('yes')
   const label = (Q.services as Record<string, string>)[key] ?? key
+  const E = Q.serviceEvidence
+  const service = (workflowWords.names as Record<string, string>)[key] ?? label
+  const seen = key === 'workload' ? (signal.used ? E.syncSeen : E.syncNotSeen) : fillText(signal.used ? E.seen : E.notSeen, { service })
   return {
-    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: signal.used || signal.complete ? signal.evidence : W.defaultEvidence }),
+    ...question(`service:${key}`, ctx, { label, control: 'choice', options: optionsOf(Q.serviceOptions), suggested, evidence: signal.used || signal.complete ? seen : W.defaultEvidence }),
     needsReview,
     basis: signal.used ? 'present' : signal.complete ? 'absent' : 'unread',
-    ...(needsReview ? { evidence: fillText(W.reopened, { evidence: signal.evidence }) } : {}),
+    ...(needsReview ? { evidence: fillText(W.reopened, { evidence: seen }) } : {}),
   }
 }
 
@@ -210,11 +213,20 @@ export const directionTitleOf = (id: DirectionStepId): string => STEP_WORDS[id].
 /** Done: every answer saved, and none contradicted by new evidence. */
 export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
 
+/** After approving one Direction step: the next one, in order and wrapping round, whose answers are not all approved yet; null for none. */
+export function nextDirectionStep(id: string, steps: readonly Step[]): DirectionStepId | null {
+  const order = Object.values(DIRECTION_STEP) as DirectionStepId[]
+  const at = order.indexOf(id as DirectionStepId)
+  if (at < 0) return null
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  return [...order.slice(at + 1), ...order.slice(0, at)].find((next) => { const s = byId.get(next); return s !== undefined && !directionComplete(s.directionQuestions ?? []) }) ?? null
+}
+
 function directionStep(id: DirectionStepId, questions: DirectionQuestion[], savedAt: string | null): Step {
   const words = STEP_WORDS[id]
   const step = checkStep(id, words.title, words.why)
   step.directionQuestions = questions
-  step.guidance = { id, kind: 'check', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done] }
+  step.guidance = { id, kind: 'decision', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done] }
   if (directionComplete(questions)) {
     setState(step, { satisfied: true, inPlace: true, condition: 'healthy' })
     if (savedAt !== null && Date.parse(savedAt) <= Date.now()) step.history = [{ at: savedAt, from: 'blocked', to: 'done', note: W.done }]

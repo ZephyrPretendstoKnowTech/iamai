@@ -1529,6 +1529,7 @@
             "object": "Preparation step",
             "blocker": "Preparation step",
             "check": "Check step",
+            "decision": "Decision step",
             "campaign": "Campaign step",
             "ladder": "Hardening step",
             "resolution": "Resolution step"
@@ -2101,7 +2102,6 @@
             "copilot": "Copilot",
             "azureDevOps": "Azure DevOps"
           },
-          "noSignal": "IAMAI has no reliable usage signal for this service.",
           "answers": {
             "yes": "In use",
             "no": "Not in use",
@@ -2286,6 +2286,12 @@
             "serviceOptions": {
               "yes": "Yes",
               "no": "No"
+            },
+            "serviceEvidence": {
+              "seen": "{service} sign-ins were seen in the last 30 days.",
+              "notSeen": "No {service} sign-ins in the last 30 days.",
+              "syncSeen": "An account holds the Directory Synchronization Accounts role, so a sync service is likely in use.",
+              "syncNotSeen": "No account holds the Directory Synchronization Accounts role."
             },
             "mailDevices": {
               "label": "Devices or apps that send email by signing in (printers, scanners, line-of-business apps)",

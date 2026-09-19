@@ -42,7 +42,7 @@ import { autoOpenTiles } from './tileExpansion.ts'
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, open, onToggle }: {
+export function PlanRow({ lane, tone, chip = null, wave = null, stepId, title, who, when, open, onToggle }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
@@ -51,6 +51,8 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
   chip?: string | null
   /** The phase the finished plan places the step in, carried on the row as data only: a secondary projection the lane never reads. */
   wave?: number | null
+  /** The step the row opens: where the Plan moves the page to (Plan.tsx after a Direction answer). */
+  stepId?: string
   title: string
   who: string
   /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
@@ -69,6 +71,7 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
       aria-expanded={open}
       tabIndex={0}
       data-wave={wave ?? undefined}
+      data-step={stepId}
       onClick={onToggle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
