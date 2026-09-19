@@ -245,7 +245,7 @@ test('the person detail is one non-modal panel: the next step, the devices seen 
   for (const gone of [/RemediationPanel/, /guide-panel/, /<Callout/, /<PageTip/, /methodGuide\(/]) assert.doesNotMatch(SURFACE, gone, `${gone} is back on the page`)
 })
 
-test("the rail is the pack's four tiles: tenant setup, approved models, not counted and evidence read", () => {
+test("the rail is the pack's four tiles: tenant setup, approved models, not counted and evidence read, with Guests beside them when guests sign in", () => {
   assert.match(PACK, /<aside class="rail" aria-label="[^"]+">/)
   assert.match(PACK, /<h3>Tenant setup<\/h3>/)
   assert.match(PACK, /<h3 id="models">Approved passkey models<\/h3>/)
@@ -253,7 +253,9 @@ test("the rail is the pack's four tiles: tenant setup, approved models, not coun
   assert.match(PACK, /<h3>Evidence read<\/h3>/)
   assert.deepEqual([W.rail.setup, W.rail.models, W.rail.counted, W.rail.evidence], ['Tenant setup', 'Approved passkey models', 'Not counted', 'Evidence read'])
   const rail = SURFACE.slice(SURFACE.indexOf('<aside className="readiness-rail"'), SURFACE.indexOf('</aside>', SURFACE.indexOf('<aside className="readiness-rail"')))
-  assert.deepEqual([...rail.matchAll(/<section className="readiness-tile panel" aria-labelledby="readiness-([a-z]+)">/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'evidence'])
+  // Guests (owner decision, option B) is the one tile the pack does not draw: shown only when guests sign in.
+  assert.deepEqual([...rail.matchAll(/<section className="readiness-tile panel" aria-labelledby="readiness-([a-z]+)">/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'guests', 'evidence'])
+  assert.match(rail, /\{guests\.active > 0 && !context && \(\s*<section className="readiness-tile panel" aria-labelledby="readiness-guests">/)
   assert.deepEqual([...rail.matchAll(/<h3 id="readiness-[a-z]+">\{T\.rail\.([a-z]+)\}<\/h3>/g)].map((m) => m[1]), ['setup', 'models', 'counted', 'evidence'])
   assert.match(cssRule('.readiness-layout'), /grid-template-columns: minmax\(0, 1fr\) 320px/)
   assert.match(packRule('.layout'), /grid-template-columns:minmax\(0,1fr\) 320px/)
@@ -328,7 +330,7 @@ test('a filter decides which rows are on screen and nothing else', () => {
   }
   for (const s of READINESS_STATES) assert.equal(v.rows.filter((r) => shows(r, s)).length, v.counts[s], `${s}: the filter and the count differ`)
   assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, READINESS_STATES.filter((s) => !isReady(s)).reduce((n, s) => n + v.counts[s], 0))
-  assert.equal(v.rows.filter((r) => shows(r, 'all')).length, v.facts.active)
+  assert.equal(v.rows.filter((r) => shows(r, 'all')).length, v.people)
   assert.match(SURFACE, /shows\(r, show, view\.lapsing\)/, 'the filter is not a predicate over the rows')
   // The answer and the bar count the whole selected cohort, independently of the filter and the search.
   assert.match(SURFACE, /const counted = view\.rows\.filter\(\(r\) => r\.state !== null && inScope\(r\)\)/, 'the counts must use the full selected cohort, independently of table filters')
@@ -340,8 +342,8 @@ test('a filter decides which rows are on screen and nothing else', () => {
 test('a tenant whose methods could not be read is Unknown, and nobody in it is told to set anything up', () => {
   const f = fixture('hostile')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  assert.ok(v.facts.active > 0, 'the hostile fixture has active people')
-  assert.equal(v.counts.unknown, v.facts.active)
+  assert.ok(v.people > 0, 'the hostile fixture has active people')
+  assert.equal(v.counts.unknown, v.people)
   assert.equal(v.counts.method, 0)
   assert.equal(v.counts.ready + v.counts.seamless, 0)
   for (const r of v.rows.filter((x) => x.state === 'unknown')) {

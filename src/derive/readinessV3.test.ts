@@ -29,7 +29,7 @@ const person = (v: ReadinessView, f: (r: ReadinessRow) => boolean): ReadinessRow
 
 test('the states partition the active people, and the answer counts Ready with Seamless', () => {
   const sum = GROUP_ORDER.reduce((n, s) => n + demoView.counts[s], 0)
-  assert.equal(sum, demoView.facts.active)
+  assert.equal(sum, demoView.people)
   const ready = demoView.rows.filter((r) => r.state !== null && isReady(r.state)).length
   assert.equal(ready, demoView.counts.ready + demoView.counts.seamless)
   // Every state has its own word, and no two share one.
@@ -111,16 +111,25 @@ test('the next check is the largest group people can act on, unless a setup chec
   assert.deepEqual(nextCheck(demoView, [{ ...blocking, affects: demoView.counts[largest] - 1 }]), { kind: 'group', state: largest })
 })
 
-test('setup checks read the tenant: phones without the Authenticator models fail, and Intune unread is unknown, never a failure', () => {
+test('setup checks read the tenant: phones without the Authenticator models fail, and Windows Hello is judged by whether it is seen working', () => {
   const snap = structuredClone(demo.snapshot)
   const policy = snap.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }
   policy.authenticationMethodConfigurations = policy.authenticationMethodConfigurations.map((c) => (String(c.id).toLowerCase() === 'fido2' ? { ...c, state: 'enabled', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: ['cb69481e-8ff7-4039-93ec-0a2729a154a8'] } } : c))
   const v = readinessView(snap, snap.asOf, demo.mapping)
   const checks = tenantSetupChecks(snap, v)
   assert.equal(checks.find((c) => c.key === 'phonePasskey')!.outcome, 'fail')
+  // No Intune permission (owner decision): somebody signing in with Windows Hello proves it works here.
   const wh = checks.find((c) => c.key === 'windowsHello')!
-  assert.equal(wh.outcome, 'unknown')
-  assert.ok(wh.reason, 'an unknown check says why')
+  assert.deepEqual([wh.outcome, wh.reason], ['pass', 'seen'])
+  // Joined computers where nobody is seen using it: a thing to confirm, never a failure.
+  const unseen = { ...v, rows: v.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.map((d) => (d.proof?.cls === 'windowsHello' ? { ...d, proof: null } : d)) } } : r)) }
+  const joined = unseen.rows.some((r) => r.state !== null && (r.readiness?.devices ?? []).some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid')))
+  assert.ok(joined, 'the demo has a joined Windows computer')
+  const notSeen = tenantSetupChecks(snap, unseen).find((c) => c.key === 'windowsHello')!
+  assert.deepEqual([notSeen.outcome, notSeen.reason, notSeen.affects], ['unknown', 'notSeen', 0])
+  // No joined computer at all: nothing to do.
+  const none = { ...unseen, rows: unseen.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.filter((d) => d.os !== 'Windows') } } : r)) }
+  assert.equal(tenantSetupChecks(snap, none).find((c) => c.key === 'windowsHello')!.reason, 'noJoined')
 })
 
 test('registration limited to trusted places blocks people who never sign in from one', () => {

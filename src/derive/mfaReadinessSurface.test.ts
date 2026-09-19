@@ -54,6 +54,8 @@ test('the page reads the one readiness authority, not a second reading of the sa
     for (const state of READINESS_STATES) {
       for (const p of l.states[state]) {
         const row = v.rows.find((x) => x.user.id === p.id)!
+        // A guest is scored for the Plan's gates and spoken for at tenant level here (option B), never counted.
+        if (row.guest) { assert.equal(row.state, null, `${name}/${p.id}: a guest is not counted`); continue }
         assert.equal(row.state, state, `${name}/${p.id}: ${state}`)
         assert.equal(mfaReady(p.viability), isReady(state), `${name}/${p.id}: only Ready and Seamless are ready for the gate`)
       }
@@ -85,7 +87,7 @@ test('a method inventory nobody could read leaves readiness unknown, never Needs
   const f = fixture('hostile')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.equal(v.counts.method + v.counts.blocked, 0, 'nothing is claimed about a method nobody could look for')
-  assert.equal(v.counts.unknown, v.facts.active, 'every active person is explicitly Unknown')
+  assert.equal(v.counts.unknown, v.people, 'every active person is explicitly Unknown')
   for (const r of v.rows) if (r.active) {
     assert.equal(r.readiness?.unknown, 'methods', `${r.user.id}: unknown because the methods were not read`)
     assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, `${r.user.id}: the fix is the next scan, never a finding`)
@@ -94,7 +96,7 @@ test('a method inventory nobody could read leaves readiness unknown, never Needs
   const read = fixture('demo')
   const dv = readinessView(read.snapshot, read.snapshot.asOf, read.mapping)
   const unknown = dv.rows.filter((r) => r.state === 'unknown')
-  assert.ok(unknown.length > 0 && unknown.length < dv.facts.active)
+  assert.ok(unknown.length > 0 && unknown.length < dv.people)
   for (const r of unknown) assert.equal(read.snapshot.authMethods[r.user.id], 'unknown', `${r.user.id}: unknown only where the methods read failed`)
 })
 
@@ -104,7 +106,7 @@ test('Ready plus the rest is the active people, and no emergency or service acco
   for (const name of TENANTS) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.facts.active, `${name}: the states are the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.people, `${name}: the states are the active people`)
     // The active people are the campaign's population, which is the partition's:
     // the emergency accounts and the service accounts are outside it (task 001).
     for (const id of f.mapping.breakGlassUserIds) {

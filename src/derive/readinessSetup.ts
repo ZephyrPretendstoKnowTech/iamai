@@ -54,9 +54,17 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   // 3. People can register from where they work.
   const reg: SetupOutcome = ctx.registration === 'open' ? 'pass' : ctx.registration === 'trustedOnly' ? 'fail' : 'unknown'
   checks.push({ key: 'registration', outcome: reg, affects: reg === 'fail' ? countWhere(rows, (r) => r.readiness?.blocked === 'registrationLocation') : 0, reason: reg === 'unknown' ? 'policiesUnread' : null })
-  // 4. Windows Hello for Business is provisioned (Intune). Not visible without the Intune read.
-  const wh: SetupOutcome = ctx.whfb === 'enabled' || ctx.whfb === 'notConfigured' ? 'pass' : ctx.whfb === 'disabled' ? 'fail' : 'unknown'
-  checks.push({ key: 'windowsHello', outcome: wh, affects: wh === 'fail' ? countWhere(rows, (r) => (r.readiness?.devices ?? []).some((d) => d.whyNot === 'notProvisioned')) : 0, reason: wh === 'unknown' ? (snapshot.intune?.status ?? 'intuneNotRead') : null })
+  // 4. Windows Hello for Business works on joined computers. Judged by the outcome
+  // (owner decision, 2026-09-18: no Intune permission): somebody signing in with it on
+  // a Windows computer proves it is switched on here; joined computers where nobody
+  // does are a thing to confirm, never a failure; no joined computer, nothing to do.
+  const devices = rows.filter((r) => r.state !== null).flatMap((r) => r.readiness?.devices ?? [])
+  const seen = devices.some((d) => d.os === 'Windows' && d.proof?.cls === 'windowsHello')
+  const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid'))
+  if (ctx.whfb === 'disabled') checks.push({ key: 'windowsHello', outcome: 'fail', affects: countWhere(rows, (r) => (r.readiness?.devices ?? []).some((d) => d.whyNot === 'notProvisioned')), reason: null })
+  else if (seen || ctx.whfb === 'enabled') checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'seen' })
+  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'notSeen' })
+  else checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
   // 5. Temporary Access Pass, for somebody with no method at all.
   const tap = methodConfig(snapshot, 'temporaryaccesspass')
   const tapOutcome: SetupOutcome = !tap.read ? 'unknown' : tap.state === 'enabled' ? 'pass' : 'fail'

@@ -272,17 +272,19 @@ test('a guest is told, in one shared sentence, why this tenant issues them no Te
   assert.ok(risks.some((r) => r.text === '{guestNoTap}'), 'the campaign references the shared sentence rather than retyping it')
   assert.equal(fillText('{guestNoTap}', {}), MG.guest, 'and it fills to that sentence')
   assert.ok(whole('{guestNoTap}', {}), 'a shared reference is not a hole')
-  // A guest who needs a method is asked to set one up, never handed a pass.
+  // MFA Readiness never asks anything of a guest (option B: spoken for at tenant
+  // level), so no row can offer one a pass.
   let guests = 0
   for (const name of TENANTS) {
     const f = fixture(name)
     for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-      if (!row.guest || row.state === null) continue
+      if (row.explained !== 'guest') continue
       guests++
-      assert.doesNotMatch(nextCell(row), /Temporary Access Pass/, `${name}/${row.user.id}: a guest is offered no pass`)
+      assert.equal(row.state, null, `${name}/${row.user.id}: a guest is not counted`)
+      assert.equal(nextCell(row), '', `${name}/${row.user.id}: nothing is asked of a guest`)
     }
   }
-  assert.ok(guests > 0, 'the fixtures hold a counted guest')
+  assert.ok(guests > 0, 'the fixtures hold an active guest')
 })
 
 // ---- E / F. the platforms, and the security key --------------------------------

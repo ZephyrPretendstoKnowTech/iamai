@@ -361,11 +361,13 @@ test('the page and the campaign share one readiness; Plan gates use their actual
     const where = name
     // One population: the page's active people are the campaign's.
     assert.equal(view.facts.active, campaignIds(run.viability, f.snapshot, f.mapping).length, `${where}: active people`)
-    // The counts are the rows, and they partition the active people.
+    // The counts are the rows, and they partition the active people less the guests (option B).
     const counted = view.rows.filter((r) => r.state !== null)
-    assert.equal(counted.length, view.facts.active, `${where}: counted rows`)
+    const guests = (s: string) => view.rows.filter((r) => r.explained === 'guest' && r.readiness?.state === s).length
+    assert.equal(counted.length, view.people, `${where}: counted rows`)
+    assert.equal(view.people + view.explained.guest, view.facts.active, `${where}: the guests are the difference`)
     for (const s of READINESS_STATES) assert.equal(counted.filter((r) => r.state === s).length, view.counts[s], `${where}: ${s}`)
-    assert.equal(READINESS_STATES.reduce((n, s) => n + view.counts[s], 0), view.facts.active, `${where}: the states sum to the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + view.counts[s], 0), view.people, `${where}: the states sum to the counted people`)
     // Policy readiness measures accepted registered methods in its exact target
     // cohort; this page independently measures phishing-resistant sign-in proof.
     const step = run.steps.find((s) => s.id === 's-goal-mfa-all-users')
@@ -377,13 +379,14 @@ test('the page and the campaign share one readiness; Plan gates use their actual
     }
     const gate = readinessFor('mfa-all-users', [...view.ladder.viability.keys()], [...view.ladder.viability.values()], f.snapshot)
     if (gate.percent !== null) {
-      assert.equal(gate.percent >= READINESS_THRESHOLD_MFA_PERCENT, view.counts.ready + view.counts.seamless >= readyNeeded(view.facts.active, READINESS_THRESHOLD_MFA_PERCENT), `${where}: the page and the gate agree on met`)
+      assert.equal(gate.percent >= READINESS_THRESHOLD_MFA_PERCENT, view.counts.ready + view.counts.seamless + guests('ready') + guests('seamless') >= readyNeeded(view.facts.active, READINESS_THRESHOLD_MFA_PERCENT), `${where}: the page and the gate agree on met`)
     }
-    // The campaign's groups are the page's states.
+    // The campaign's groups are the page's states, plus the active guests the page
+    // speaks for at tenant level (option B): the campaign is the partition's.
     const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
-    assert.equal(lists.noMethod.length + lists.needsSetup.length, view.counts.method + view.counts.blocked, `${where}: campaign needs setup`)
-    assert.equal(lists.needsProof.length, view.counts.confirm + view.counts.device, `${where}: campaign needs proof`)
-    assert.equal(lists.readinessUnknown.length, view.counts.unknown, `${where}: campaign unknown`)
+    assert.equal(lists.noMethod.length + lists.needsSetup.length, view.counts.method + view.counts.blocked + guests('method') + guests('blocked'), `${where}: campaign needs setup`)
+    assert.equal(lists.needsProof.length, view.counts.confirm + view.counts.device + guests('confirm') + guests('device'), `${where}: campaign needs proof`)
+    assert.equal(lists.readinessUnknown.length, view.counts.unknown + guests('unknown'), `${where}: campaign unknown`)
   }
 })
 

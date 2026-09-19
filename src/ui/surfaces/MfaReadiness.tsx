@@ -31,6 +31,7 @@ import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/m
 import { nextCheck, remainingChecks, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { progressOf } from '../../derive/readinessProgress.ts'
+import { GUEST_STEP_ID, guestReadingOf } from '../../derive/guestReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { KINDS } from '../../derive/ladder.ts'
 import { READINESS_STATES, isReady } from '../../scoring/phishingResistant.ts'
@@ -88,6 +89,7 @@ type Words = {
   emptyFilter: string
   planContext: { filtered: string; unknown: string; back: string }
   show: Record<string, string>
+  guests: { title: string; count: string; trustOn: string; trustOff: string; trustUnknown: string; policyInPlace: string; policyNotInPlace: string; policyLink: string; suggestion: string }
 }
 const T = pages.readiness as unknown as Words
 
@@ -118,7 +120,8 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   const cohort = step?.preparation?.ids ?? step?.methodPreparation?.ids ?? null
   const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (cohort ?? reached(step)?.ids ?? null) } : null
   const stepIds = new Set(steps.map((s) => s.id))
-  return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} />
+  const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
+  return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} guestStep={guestStep} />
 }
 
 const Icon = ({ k }: { k: 'computer' | 'phone' | 'key' | 'chev' }): ReactNode => (
@@ -133,7 +136,7 @@ const Icon = ({ k }: { k: 'computer' | 'phone' | 'key' | 'chev' }): ReactNode =>
 /** The bar's and the legend's order: the done states first, then the work, as the pack draws it. */
 const LEGEND_ORDER: readonly ReadinessState[] = ['seamless', 'ready', 'confirm', 'device', 'method', 'blocked', 'unknown']
 
-function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnapshot | null; context: PlanContext | null; planSteps: ReadonlySet<string> }) {
+function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: TenantSnapshot | null; context: PlanContext | null; planSteps: ReadonlySet<string>; guestStep: { status: string } | null }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
   const again = useAction()
@@ -197,7 +200,7 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
   const inScope = (r: ReadinessRow): boolean => !context || scoped === null || scoped.has(r.user.id)
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
-  const active = counted.length
+  const active = view.people
   const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
@@ -379,6 +382,9 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
   const unreadMethods = counted.filter((r) => r.readiness?.unknown === 'methods').length
   const days = covered ? Math.max(1, Math.round((Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000)) : 0
   const models = view.context.step3.models
+  // Guests (option B): spoken for once, at tenant level, never as people.
+  const guests = guestReadingOf(snapshot, view.explained.guest, guestStep)
+  const G = T.guests
   const Cnt = T.counted
 
   const panelList = (items: PanelItem[], empty: string): ReactNode =>
@@ -558,6 +564,12 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
                   </dd>
                 </div>
               ))}
+              {view.explained.guest > 0 && (
+                <div style={{ display: 'contents' }}>
+                  <dt>{view.explained.guest}</dt>
+                  <dd>{Cnt.guest}</dd>
+                </div>
+              )}
               {KINDS.filter((k) => view.facts.kinds[k] > 0).map((k) => (
                 <div key={k} style={{ display: 'contents' }}>
                   <dt>{view.facts.kinds[k]}</dt>
@@ -568,6 +580,21 @@ function ReadinessPage({ snapshot, context, planSteps }: { snapshot: TenantSnaps
               ))}
             </dl>
           </section>
+
+          {guests.active > 0 && !context && (
+            <section className="readiness-tile panel" aria-labelledby="readiness-guests">
+              <h3 id="readiness-guests">{G.title}</h3>
+              <p>{fillText(G.count, { n: guests.active })}</p>
+              <p>{guests.trust === 'on' ? G.trustOn : guests.trust === 'off' ? G.trustOff : G.trustUnknown}</p>
+              {guests.policy !== 'absent' && (
+                <p>
+                  {guests.policy === 'inPlace' ? G.policyInPlace : G.policyNotInPlace}{' '}
+                  {planSteps.has(GUEST_STEP_ID) && <a href={stepHref(GUEST_STEP_ID)}>{G.policyLink}</a>}
+                </p>
+              )}
+              <p className="models">{G.suggestion}</p>
+            </section>
+          )}
 
           <section className="readiness-tile panel" aria-labelledby="readiness-evidence">
             <h3 id="readiness-evidence">{T.rail.evidence}</h3>
