@@ -105,7 +105,6 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     ? 'joined'
     : snapshot.sources?.devices?.status !== 'ok' ? 'unknown' : windows.length === 0 ? 'none' : 'notJoined'
   const changes = (snapshot.recoveryDirectoryAudits ?? []).filter((a) => /authentication method.*polic|polic.*authentication method/i.test(a.activity)).map((a) => a.at).sort()
-  const intune = snapshot.intune ?? null
   return {
     now,
     windowStart,
@@ -115,8 +114,6 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     passkey,
     step3: { models, applied },
     modelNames,
-    whfb: intune?.status === 'read' ? intune.whfb : 'unknown',
-    platformSso: intune?.status === 'read' ? intune.platformSso : 'unknown',
     registration: registrationRestriction(snapshot),
     deviceOwners,
     windowsDirectory,

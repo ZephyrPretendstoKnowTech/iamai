@@ -32,7 +32,6 @@ export function recoveryWaitingLine(configuredAt: string | null, readings: reado
   const latest = [...readings].sort((a, b) => Date.parse(b.candidate.at) - Date.parse(a.candidate.at))[0]
   return latest && !latest.qualifies && latest.reason ? `${waiting} Last sign-in seen ${recoveryTime(latest.candidate.at, timeZone)} did not count: ${latest.reason}` : waiting
 }
-export const RECOVERY_DRILL = 'cleanup-drill'
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
 const accountLabel = (snapshot: TenantSnapshot, id: string): string => {

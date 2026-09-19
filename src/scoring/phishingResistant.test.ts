@@ -288,7 +288,7 @@ test('a key the current settings do not allow is not a usable method', () => {
 
 test('a contractor\'s registered Windows computer asks for no Windows Hello for Business', () => {
   // An allow list naming a Windows Hello passkey model, attestation off: the built-in option on a personal PC.
-  const ctx: ReadinessContext = { ...CTX, passkey: { ...OPEN, restriction: 'allow', aaguids: [...AUTHENTICATOR_AAGUIDS, '6028b017-b1d4-4c02-b4b3-afcdafc96bb2'] }, whfb: 'enabled' }
+  const ctx: ReadinessContext = { ...CTX, passkey: { ...OPEN, restriction: 'allow', aaguids: [...AUTHENTICATOR_AAGUIDS, '6028b017-b1d4-4c02-b4b3-afcdafc96bb2'] } }
   const contractor = personReadiness(input({ methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'registered' })] }, context: ctx }))
   assert.equal(contractor.state, 'method')
   assert.notEqual(contractor.devices[0].best, 'windowsHello')
@@ -306,7 +306,7 @@ test('a contractor\'s registered Windows computer asks for no Windows Hello for 
   // Their own joined computer: Windows Hello for Business.
   const joined = personReadiness(input({ userId: 'me', methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'joined', deviceIds: ['d1'] })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
   assert.equal(joined.devices[0].best, 'windowsHello')
-  assert.equal(joined.devices[0].possible, 'yes')
+  assert.equal(joined.devices[0].possible, 'unknown', 'provisioning is unknown until a Windows Hello sign-in shows it (no Intune read)')
   // A separate admin account on a computer somebody else owns cannot use its Windows Hello.
   const admin = personReadiness(input({ userId: 'admin', methods: m('microsoftAuthenticator'), signIns: { read: true, proofs: [], platforms: [], devices: [device('Windows', { trust: 'joined', deviceIds: ['d1'] })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
   assert.equal(admin.devices[0].whyNot, 'otherAccount')
@@ -314,7 +314,7 @@ test('a contractor\'s registered Windows computer asks for no Windows Hello for 
 })
 
 test('Ready with a passkey on a joined computer recommends Windows Hello; the recommendation never changes the state', () => {
-  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
   const devices = [device('Windows', { trust: 'joined' })]
   const r = personReadiness(input({ methods: m('passkey'), signIns: { read: true, proofs: [proof('passkey', 'Windows')], platforms: [], devices }, context: ctx }))
   assert.equal(r.state, 'ready')
@@ -494,7 +494,7 @@ test('audit 2: a security key carried to an iPhone or a Mac is Ready, not Seamle
 })
 
 test('audit 4: the next step on the device without proof is one the person can take there', () => {
-  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
   const joinedPc = device('Windows', { trust: 'joined', deviceIds: ['d1'] })
   // (a) An Authenticator passkey already held; the iPhone signed in silently: sign in once with it there, never "add" it.
   const held = personReadiness(input({ userId: 'me', methods: [{ kind: 'passkey', id: 'a1', aaGuid: AUTHENTICATOR_AAGUIDS[0] }, { kind: 'windowsHelloForBusiness' }], signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [joinedPc, device('iOS')] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
@@ -517,7 +517,7 @@ test('audit 5: an unreadable method list still shows the devices the person sign
 })
 
 test('audit 11: Ready lasts until the latest phishing-resistant sign-in on each device leaves the window, not the seamless one', () => {
-  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, whfb: 'enabled' }
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN }
   const early = '2026-08-15T10:00:00.000Z'
   const r = personReadiness(input({ userId: 'me', methods: [{ kind: 'windowsHelloForBusiness' }, { kind: 'passkey', id: 'y1', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' }], signIns: { read: true, proofs: [proof('windowsHello', 'Windows', early), proof('passkey', 'Windows', LATER)], platforms: [], devices: [device('Windows', { trust: 'joined', deviceIds: ['d1'] })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
   assert.equal(r.state, 'seamless')
