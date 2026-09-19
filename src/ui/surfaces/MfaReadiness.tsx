@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, needsActionWords, nextCell, noDevicesWord, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -265,7 +265,6 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const next = nextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks)
   const remaining = remainingChecks(checks)
   const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note')
-  const action = active - ready
   const matches = (r: ReadinessRow): boolean => inScope(r) && shows(r, show, view.lapsing) && (!q || searchText(r).includes(q))
 
   // The worklist: the next check's group first, the rest in the fixed order. The
@@ -555,7 +554,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             <input type="search" placeholder={T.search} aria-label={T.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
             {SHOW_KEYS.map((k) => (
               <Button key={k} variant="tertiary" className="pill" aria-pressed={show === k} onClick={() => select(k)}>
-                {k === 'needsAction' ? `${T.show.needsAction} · ${action}` : T.show[k]}
+                {k === 'needsAction' ? needsActionWords(counted) : T.show[k]}
               </Button>
             ))}
             {!SHOW_KEYS.includes(show) && (

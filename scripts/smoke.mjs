@@ -371,7 +371,9 @@ try {
   )
   // The worklist is grouped by next action: each group names its action and its count, and the counts are the people who need action.
   const groups = await evaluate(`[...document.querySelectorAll('main.page details.readiness-group')].map((d) => ({ state: d.dataset.state, next: d.classList.contains('next'), open: d.open, n: Number(((d.querySelector('.group-count') || {}).textContent || '').trim()), title: ((d.querySelector('.group-title') || {}).textContent || '').trim() }))`)
-  const needsAction = Number(((await pressedWord()).match(/(\d+)$/) ?? [])[1] ?? NaN)
+  // "Needs action · 21" or, with people IAMAI could not read counted apart, "Needs action · 21, 1 not read": the groups hold both.
+  const pill = (await pressedWord()).match(/· (\d+)(?:, (\d+) not read)?$/) ?? []
+  const needsAction = Number(pill[1] ?? NaN) + Number(pill[2] ?? 0)
   check('MFA Readiness: the groups name their action and count the people who need action', groups.every((g) => g.title.length > 0 && Number.isFinite(g.n)) && (groups.length === 0 || groups.reduce((a, g) => a + g.n, 0) === needsAction), JSON.stringify(groups))
   check('MFA Readiness: the next check is the first group, and it is open', groups.length === 0 || (await evaluate(`!!document.querySelector('main.page .readiness-setup-next')`)) || (groups[0].next && groups[0].open), JSON.stringify(groups[0] ?? null))
   check('MFA Readiness: the rail holds tenant setup, approved models, the uncounted and the evidence read', (await evaluate(`document.querySelectorAll('main.page .readiness-rail .readiness-tile').length`)) >= 4 && /Tenant setup/.test(t) && /Evidence read/.test(t))
