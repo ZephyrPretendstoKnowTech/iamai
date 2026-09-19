@@ -4,13 +4,14 @@
 // procedure — and no other step moves.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { POLICY_TASK_STEP_IDS, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { POLICY_TASK_STEP_IDS, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
@@ -135,4 +136,24 @@ test('a policy that has reached its last stage with nothing left to submit is a 
   const withTask = policyCardsOf(contract, { tasks: [{ id: 'policy-procedure', accountId: null, title: 'Update the policy settings', targetUpn: null, required: true, readinessKey: '', evidence: null, actionLabel: '', facts: [], steps: ['Open it.'] }], recommendedTaskId: 'policy-procedure' })
   assert.equal(withTask[0].satisfied, false)
   assert.equal(withTask[0].instruction, 'Follow Update the policy settings in Implementation Tasks.')
+})
+
+const read = (p: string): string => readFileSync(p, 'utf8')
+
+test('one label for one control: finished work folds under Completed checks wherever the task anatomy draws it', () => {
+  const contentStep = read('src/ui/surfaces/ContentStep.tsx')
+  assert.equal(/Satisfied · \{/.test(contentStep), false, 'the task anatomy still has a second word for finished work')
+  assert.equal((contentStep.match(/Completed checks · \{/g) ?? []).length, 2, 'the card’s fold and the section’s fold do not read alike')
+})
+
+test('the bar over the evidence link instructs, as Prepare Emergency Access Accounts does', () => {
+  const card = (satisfied: boolean) => ({ key: 'policy', accountId: null, heading: 'Conditional Access policy', upn: null, title: satisfied ? 'In place' : 'Report-only', instruction: '', completed: [], remainingCount: null, satisfied })
+  assert.equal(policyBarOf([card(false)]), 'Complete the next task shown for each item.')
+  assert.equal(policyBarOf([card(true)]), 'Every task on this step is complete.')
+  // Not the status word the bar used to show, which the step's badge already says.
+  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /barMain=\{isPolicyTaskStep \? policyBarOf\(taskSubjects\) : displayedReadiness\.bar\.main\}/)
+})
+
+test('one card fills the row, on every step that draws these cards', () => {
+  assert.match(read('src/ui/app.css'), /\.emergency-account-status-grid:has\(> \.emergency-account-status:only-child\) \{\n {2}grid-template-columns: minmax\(0, 1fr\);/)
 })

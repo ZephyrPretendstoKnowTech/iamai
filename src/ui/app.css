@@ -5099,6 +5099,12 @@ th .th-sort:focus-visible,
   align-items: start;
   gap: 10px;
 }
+/* One subject fills the row rather than leaving the second column empty. The
+   same rule on every step that draws these cards, so a step with one account
+   and a step with one policy are still drawn alike. */
+.emergency-account-status-grid:has(> .emergency-account-status:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
 .emergency-account-status {
   min-width: 0;
   padding: 14px 16px;
