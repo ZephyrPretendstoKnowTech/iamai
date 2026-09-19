@@ -1,4 +1,3 @@
-import { PASSKEY_TARGET } from '../passkeySettings.ts'
 // Synthetic tenants for the roadmap property tests (roadmap-v2.md §7).
 // Every fixture is a seeded generator, never committed JSON: deterministic,
 // small in the repo, and free of real identifiers. docs/design/fixtures.md
@@ -19,7 +18,9 @@ import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
-import { withCleanupDone, cleanupBasis, recoveryAccountBasis, recoveryCredentialBasis, RECOVERY_PREPARATION_WORKFLOW } from '../cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
+import { observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
+import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
@@ -745,9 +746,7 @@ export function buildFixture(spec: Spec): Fixture {
   if (spec.demo && spec.week2) {
     // The follow-up fixture represents completed passkey configuration and
     // registered compatible emergency keys, before recording recovery tests.
-    const methodsPolicy = snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: {id: string}[] }
-    methodsPolicy.authenticationMethodConfigurations = methodsPolicy.authenticationMethodConfigurations.map(c => c.id === 'Fido2' ? { ...structuredClone(PASSKEY_TARGET), id: 'Fido2', excludeTargets: [], includeTargets: [{id:'all_users',targetType:'group',allowedPasskeyProfiles:[]}] } : c)
-    for (const [index, id] of bgIds.entries()) snapshot.authMethods[id] = [...(Array.isArray(snapshot.authMethods[id]) ? snapshot.authMethods[id] : []).filter(m => m.kind !== 'fido2'), {kind: 'fido2', id: `demo-emergency-passkey-${index + 1}`, aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound', attestationLevel: 'attested'}]
+    withPreparedPasskeys(snapshot, bgIds)
     for (const [index, id] of bgIds.entries()) {
       const at = users.find(user => user.id === id)?.lastSuccessfulSignIn ?? daysAgo(10)
       signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }), recoveryCandidates: [{ schema: 1, eventId: `demo-recovery-${index + 1}`, userId: id, at, success: true, isInteractive: true, appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', app: 'Microsoft Entra admin center', resource: 'Microsoft Graph', method: 'Passkey (FIDO2)', authenticationAt: at, resourceTenantId: tenantId, freshMethod: true, credentialId: `demo-emergency-passkey-${index + 1}` }] }
@@ -772,8 +771,9 @@ export function buildFixture(spec: Spec): Fixture {
     if (drillAt) {
       const accountBasis = recoveryAccountBasis(snapshot, bgIds, mapping, groups)
       const configurationObservedAt = new Date(Date.parse(drillAt) - 3_600_000).toISOString()
-      checkpoints = withCleanupDone([], 'drill', configurationObservedAt.slice(0, 10), configurationObservedAt, { accountIds: [...bgIds], workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId, configurationObservedAt, accountBasis, timeZone: 'UTC' })
-      checkpoints = withCleanupDone(checkpoints, 'drill', drillAt.slice(0, 10), NOW, { accountIds: [...bgIds], outcome: 'passed', purpose: 'final', workflow: 'Emergency administrator sign-in and recovery', accountBasis, recoveryEvidence: Object.fromEntries(bgIds.map((id) => { const candidate = snapshot.signInEvidence[id]?.recoveryCandidates?.[0]!; return [id, { schema: 1, purpose: 'final', tenantId, accountId: id, eventId: candidate.eventId, eventAt: candidate.at, appId: candidate.appId, resourceId: candidate.resourceId, method: 'Passkey (FIDO2)', provenance: 'observed-sign-in', recoveryConfirmed: true, credentialConfirmed: true, configurationObservedAt }] })), signInAtByAccount: Object.fromEntries(bgIds.flatMap(id => { const at = users.find(u => u.id === id)?.lastSuccessfulSignIn; return at ? [[id, at]] : [] })), timeZone: 'UTC', basis: cleanupBasis('drill', { emergencyAccounts: bgIds.map((id) => users.find((u) => u.id === id)?.displayName ?? id) }, bgIds) })
+      // Step 4's proof as the scan records it: the prepared baseline, then each account's observed passkey sign-in.
+      const candidateSetBasis = Object.fromEntries(bgIds.map(id => { const set = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups); return [id, set.state === 'complete' ? JSON.stringify([...set.ids].sort()) : ''] }))
+      checkpoints = observedRecoveryRecords({ tenantId, events: Object.fromEntries(bgIds.map(id => [id, snapshot.signInEvidence[id]!.recoveryCandidates![0]])), configurationObservedAt, at: NOW, accountBasis, candidateSetBasis })
     }
   }
   if (mapping.breakGlassAnswers?.credentialStorage === true) mapping.breakGlassCustodyBasis = recoveryCredentialBasis(snapshot, bgIds)

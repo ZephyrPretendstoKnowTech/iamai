@@ -184,6 +184,30 @@ export function latestRecoveryTest(accountId: string, records: readonly CleanupC
 
 export type RecoveryCandidateReading = { candidate: RecoverySignInCandidate; qualifies: boolean; reason: string | null }
 
+/**
+ * The one recovery-evidence reading for an account, built the same way for every
+ * caller (Step 4, the validation rules, manual work): the account's current
+ * configuration basis, when its prepared baseline starts, and the full context
+ * Step 4's proof is judged with, sign-in source and candidate set included. A
+ * caller that built its own context without them could never see the proof.
+ */
+export function recoveryEvidenceOf(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, records: readonly CleanupCheckpoint[], now: string, accountId: string): { basis: string | undefined; configuredAt: string | null; context: RecoveryEvidenceContext } {
+  const basis = recoveryAccountBasis(snapshot, [accountId], mapping, groups)[accountId]
+  const configuredAt = recoveryPreparation(accountId, records, now, basis, snapshot.tenantId)?.configurationObservedAt ?? null
+  const candidateSet = recoveryPasskeyCandidateSet(snapshot, accountId, mapping, groups ?? new Map())
+  return {
+    basis,
+    configuredAt,
+    context: {
+      readings: recoveryCandidateReadings(snapshot, accountId, now, configuredAt),
+      tenantId: snapshot.tenantId,
+      currentSnapshotObservedAt: snapshot.asOf,
+      signInSource: recoveryEvidenceSource(snapshot),
+      candidateSetBasis: candidateSet.state === 'complete' ? JSON.stringify([...candidateSet.ids].sort()) : undefined,
+    },
+  }
+}
+
 export function recoveryCredentialBasis(snapshot: TenantSnapshot, accountIds: readonly string[]): Record<string, string> {
   const out: Record<string, string> = {}
   for (const id of accountIds) {

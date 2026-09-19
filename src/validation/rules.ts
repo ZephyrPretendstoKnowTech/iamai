@@ -28,7 +28,7 @@ import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
-import { isRecordedDrill, latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryCredentialBasis } from '../roadmap/cleanupDone.ts'
+import { isRecordedDrill, latestRecoveryTest, recoveryCredentialBasis, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
 import type { MappingState } from '../mapping/types.ts'
 
 // ---- the model -------------------------------------------------------------
@@ -600,10 +600,8 @@ const bgDrilled: ValidationRule = {
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    const basis = recoveryAccountBasis(ctx.snapshot, [id], ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])))[id]
-    const configuredAt = recoveryPreparation(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, ctx.snapshot.tenantId)?.configurationObservedAt ?? null
-    const readings = recoveryCandidateReadings(ctx.snapshot, id, ctx.snapshot.asOf, configuredAt)
-    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, { readings, tenantId: ctx.snapshot.tenantId, currentSnapshotObservedAt: ctx.snapshot.asOf })
+    const { basis, context } = recoveryEvidenceOf(ctx.snapshot, ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])), ctx.drillRecords ?? [], ctx.snapshot.asOf, id)
+    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, context)
     if (!testedAt) return fail(F.bgNoRecordedDrill)
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(testedAt)) / 86_400_000)
     return days > BREAK_GLASS_DRILL_DAYS
@@ -670,9 +668,8 @@ const bgLastSignIn: ValidationRule = {
   evaluate: (id, ctx) => {
     const at = userOf(ctx, id)?.lastSuccessfulSignIn ?? null
     if (at === null) return pass()
-    const basis = recoveryAccountBasis(ctx.snapshot, [id], ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])))[id]
-    const configuredAt = recoveryPreparation(id, ctx.drillRecords ?? [], ctx.snapshot.asOf, basis, ctx.snapshot.tenantId)?.configurationObservedAt ?? null
-    if (isRecordedDrill(at, ctx.drillDates, id, ctx.drillRecords ?? [], { readings: recoveryCandidateReadings(ctx.snapshot, id, ctx.snapshot.asOf, configuredAt), tenantId: ctx.snapshot.tenantId, currentSnapshotObservedAt: ctx.snapshot.asOf })) return pass(F.bgLastSignInDrill(absoluteDate(at)))
+    const { context } = recoveryEvidenceOf(ctx.snapshot, ctx.mapping, new Map(ctx.groupMembers.map(group => [group.groupId, group])), ctx.drillRecords ?? [], ctx.snapshot.asOf, id)
+    if (isRecordedDrill(at, ctx.drillDates, id, ctx.drillRecords ?? [], context)) return pass(F.bgLastSignInDrill(absoluteDate(at)))
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(at)) / 86_400_000)
     if (days <= BREAK_GLASS_DRILL_DAYS) return fail(F.bgLastSignInUnrecorded(absoluteDate(at)), { ago: relative(at, Date.parse(ctx.snapshot.asOf)) })
     return pass(F.bgLastSignIn(absoluteDate(at)))

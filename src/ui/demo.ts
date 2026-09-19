@@ -70,7 +70,10 @@ export function demoTenant(week2 = false): DemoTenant {
   const retag = (v: unknown): unknown => (typeof v === 'string' ? v.replaceAll(`[IAMAI:${f.planId}:`, `[IAMAI:${planIdFor(DEMO_TENANT_ID)}:`) : v)
   const caPolicies = f.snapshot.config.caPolicies
   const rows = (caPolicies?.rows ?? []).map((p) => ({ ...(p as Record<string, unknown>), description: retag((p as { description?: unknown }).description) }))
-  const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID, config: { ...f.snapshot.config, caPolicies: { ...caPolicies, rows } } }, offset)
+  // A recovery sign-in names the tenant it signed in to: it moves with the tenant id.
+  const retenant = (id: string | null | undefined): string | null | undefined => (id && id.toLowerCase() === f.snapshot.tenantId.toLowerCase() ? DEMO_TENANT_ID : id)
+  const signInEvidence = Object.fromEntries(Object.entries(f.snapshot.signInEvidence).map(([id, e]) => [id, e.recoveryCandidates ? { ...e, recoveryCandidates: e.recoveryCandidates.map(c => ({ ...c, resourceTenantId: retenant(c.resourceTenantId) ?? null })) } : e]))
+  const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID, signInEvidence, config: { ...f.snapshot.config, caPolicies: { ...caPolicies, rows } } }, offset)
   const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID }
   // The group members carry no dates, so they travel unshifted; they are what
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
@@ -86,7 +89,7 @@ export function demoTenant(week2 = false): DemoTenant {
     const dated = { ...shifted, date: shiftDates(c.date, calendarOffset) }
     if (dated.cleanup !== 'drill') return dated
     const accountIds = dated.accountIds ?? []
-    return { ...dated, tenantId: dated.tenantId ? DEMO_TENANT_ID : undefined, accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping, f.groups), recoveryEvidence: dated.recoveryEvidence ? Object.fromEntries(Object.entries(dated.recoveryEvidence).map(([id, evidence]) => [id, { ...evidence, tenantId: DEMO_TENANT_ID }])) : undefined }
+    return { ...dated, tenantId: dated.tenantId ? DEMO_TENANT_ID : undefined, accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping, f.groups), recoveryEvidence: dated.recoveryEvidence ? Object.fromEntries(Object.entries(dated.recoveryEvidence).map(([id, evidence]) => [id, { ...evidence, tenantId: DEMO_TENANT_ID, ...(evidence.resourceTenantId ? { resourceTenantId: retenant(evidence.resourceTenantId) ?? undefined } : {}) }])) : undefined }
   }) ?? null
   return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions, checkpoints }
 }

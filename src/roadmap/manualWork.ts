@@ -2,7 +2,7 @@ import { adminUserIds } from '../roles.ts'
 import { emergencyPasskeyCompatibility } from './passkeyCompatibility.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
-import { latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation } from './cleanupDone.ts'
+import { latestRecoveryTest, recoveryEvidenceOf } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -263,8 +263,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const methodChecks = emergencyPasskeyCompatibility(snapshot, ids, groups)
       step.configurationFindings = methodChecks.map(c => ({ key: `recovery-method-${c.accountId}`, label: snapshot.users.find(u => u.id === c.accountId)?.displayName || c.accountId, value: c.state === 'eligible' ? 'Registered key allowed' : c.state === 'unknown' ? 'Method settings not fully read' : 'Recovery key needs attention', detail: c.state === 'eligible' ? 'The registered key is permitted by the effective authentication method settings. The recovery drill is recorded separately.' : ({ disabled: 'Passkey authentication is disabled.', excluded: 'This account is excluded from passkey authentication.', notTargeted: 'Passkey authentication does not include this account.', newKey: 'No registered passkey or security key was found for this account.', modelRestricted: 'The registered key model is not allowed by the effective passkey profile.', membershipUnread: 'Group membership could not establish this account’s effective passkey settings.', methodsUnread: 'Registered authentication methods could not be read.', modelsUnread: 'The registered key model or effective restrictions could not be fully read.', profileOrPartial: 'The assigned passkey profile could not be fully read.', policyUnread: 'Authentication method settings could not be read.' } as Record<string, string>)[c.reason] ?? 'Check the effective passkey profile and registered key for this account.', outcome: c.state === 'eligible' ? 'pass' as const : c.state === 'unknown' ? 'unknown' as const : 'fail' as const }))
       const factsReady = ids.length >= 2 && methodChecks.every(c => c.state === 'eligible') && ids.every(id => { const u = snapshot.users.find(u => u.id === id); return u?.accountEnabled && u.onPremisesSyncEnabled !== true && (snapshot.roles.active[id] ?? []).includes(GLOBAL_ADMIN_ROLE_ID) })
-      const fingerprints = recoveryAccountBasis(snapshot, ids, mapping, groups)
-      const dates = ids.map(id => { const configuredAt = recoveryPreparation(id, recoveryRecords, reviewNow, fingerprints[id], snapshot.tenantId)?.configurationObservedAt ?? null; const readings = recoveryCandidateReadings(snapshot, id, reviewNow, configuredAt); return fingerprints[id] ? latestRecoveryTest(id, recoveryRecords, reviewNow, fingerprints[id], { readings, tenantId: snapshot.tenantId, currentSnapshotObservedAt: snapshot.asOf }) : null })
+      const dates = ids.map(id => { const { basis, context } = recoveryEvidenceOf(snapshot, mapping, groups, recoveryRecords, reviewNow, id); return basis ? latestRecoveryTest(id, recoveryRecords, reviewNow, basis, context) : null })
       const tested = factsReady && dates.every(day => day && Date.parse(reviewNow) - Date.parse(day) <= BREAK_GLASS_DRILL_DAYS * 86400000)
       if (tested) {
         delete step.manualReview

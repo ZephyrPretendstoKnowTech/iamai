@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Ready to enforce",
   "reason": "ready now: 0 failures in 7 days",
   "fact": "Report-only",
-  "badge": "Up Next",
-  "bar": "Prerequisite on hold",
+  "badge": "Ready · Ready to enforce",
+  "bar": "Ready to enforce",
   "rail": "Sep 15, 2026",
   "headings": [
     "Why",
@@ -12,12 +12,7 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Prerequisite · To do",
-      "state": "cleanup-drill"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",

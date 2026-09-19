@@ -1,4 +1,6 @@
-import { recoveryAccountBasis, RECOVERY_PREPARATION_WORKFLOW } from '../roadmap/cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCredentialBasis } from '../roadmap/cleanupDone.ts'
+import { recoveryPasskeyCandidateSet } from '../roadmap/passkeyCompatibility.ts'
+import { observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from '../roadmap/fixtures/recoveryRecords.ts'
 // One test per rule, pass and fail and unknown; a worst-state fixture per
 // subject; and the registry regression test that makes dropping a rule fail the
 // build (validation-rules.md §6).
@@ -117,18 +119,23 @@ type Base = { snapshot: TenantSnapshot; state: MappingState; groups: GroupFacts[
 function base(): Base {
   const f = fixture('small')
   const snapshot = structuredClone(f.snapshot)
-  for (const [index, id] of f.mapping.breakGlassUserIds.entries()) {
-    const eventAt = snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!
-    snapshot.signInEvidence[id] = { ...(snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `test-event-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Microsoft Azure portal', resource: 'Microsoft Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
-  }
+  const groups = new Map([...f.groups.entries()].map(([id, g]) => [id, structuredClone(g)]))
+  const ids = f.mapping.breakGlassUserIds
+  // The healthy tenant's emergency accounts hold approved passkeys and signed in
+  // with them ten days ago, after the prepared baseline: Step 4's proof, as the scan records it.
+  withPreparedPasskeys(snapshot, ids, (i) => `test-passkey-${i}`)
+  const events = Object.fromEntries(ids.map((id, index) => [id, recoveryCandidate(id, snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!, snapshot.tenantId, `test-event-${index}`)]))
+  for (const id of ids) snapshot.signInEvidence[id] = { ...(snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: events[id].at, lastMfaSuccess: null }), recoveryCandidates: [events[id]] }
+  const candidateSetBasis = Object.fromEntries(ids.map(id => [id, JSON.stringify([...recoveryPasskeyCandidateSet(snapshot, id, f.mapping, groups).ids].sort())]))
+  const configurationObservedAt = new Date(Math.min(...ids.map(id => Date.parse(events[id].at))) - 3_600_000).toISOString()
   return {
     snapshot,
-    state: structuredClone(f.mapping),
-    groups: [...f.groups.entries()].map(([groupId, g]) => structuredClone({ groupId, ...g })),
+    // The custody the operator confirmed is for these credentials.
+    state: { ...structuredClone(f.mapping), breakGlassCustodyBasis: f.mapping.breakGlassAnswers?.credentialStorage === true ? recoveryCredentialBasis(snapshot, ids) : f.mapping.breakGlassCustodyBasis },
+    groups: [...groups.entries()].map(([groupId, g]) => ({ groupId, ...g })),
     viability: [],
-    // The healthy tenant's emergency accounts signed in ten days ago, on a recorded drill (E3).
-    drillRecords: f.mapping.breakGlassUserIds.flatMap((id) => { const event = snapshot.signInEvidence[id]!.recoveryCandidates![0]; const configurationObservedAt = new Date(Date.parse(event.at) - 3_600_000).toISOString(); const accountBasis = recoveryAccountBasis(snapshot, [id], f.mapping, f.groups); return [{ cleanup: 'drill' as const, at: configurationObservedAt, date: configurationObservedAt, accountIds: [id], workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final' as const, tenantId: snapshot.tenantId, configurationObservedAt, accountBasis, timeZone: 'UTC' }, { cleanup: 'drill' as const, at: snapshot.asOf, date: event.at, accountIds: [id], outcome: 'passed' as const, purpose: 'final' as const, accountBasis, recoveryEvidence: { [id]: { schema: 1 as const, purpose: 'final' as const, tenantId: snapshot.tenantId, accountId: id, eventId: event.eventId, eventAt: event.at, appId: event.appId, resourceId: event.resourceId, method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } }, signInAtByAccount: { [id]: event.at }, timeZone: 'UTC' }] }),
-    drillDates: [...new Set(f.mapping.breakGlassUserIds.map((id) => f.snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn).filter((d): d is string => typeof d === 'string'))],
+    drillRecords: observedRecoveryRecords({ tenantId: snapshot.tenantId, events, configurationObservedAt, at: snapshot.asOf, accountBasis: recoveryAccountBasis(snapshot, ids, f.mapping, groups), candidateSetBasis }),
+    drillDates: [...new Set(ids.map((id) => f.snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn).filter((d): d is string => typeof d === 'string'))],
   }
 }
 
