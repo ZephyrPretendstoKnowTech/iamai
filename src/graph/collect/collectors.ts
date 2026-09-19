@@ -1,7 +1,7 @@
 // Lane 0 + Lane A collectors (docs/design/collection.md §2). Worker-safe: no
 // DOM, no MSAL. Every collector maps failures instead of throwing outward —
 // a 403/licence error disables its section, never the scan.
-import { GraphRequestError, graphPaged, graphRequest, SectionDisabledError, V1, BETA } from './http.ts'
+import { GraphRequestError, graphPaged, graphRequest, retryAfterMs, SectionDisabledError, sleep, V1, BETA } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
 import { deriveAuthenticatorPlatform } from '../../scoring/platform.ts'
@@ -19,6 +19,8 @@ import type {
 export type Ctx = {
   tokens: TokenSource
   signal: AbortSignal
+  /** The retry policy's wait; injectable so tests run it without sleeping (http.ts sleep otherwise). */
+  wait?: (ms: number, signal?: AbortSignal) => Promise<void>
 }
 
 // ---------- Lane 0: config reads ----------
@@ -361,39 +363,85 @@ function mapMethod(raw: unknown, sourceVersion: 'v1.0' | 'beta' = 'v1.0'): AuthM
   return out
 }
 
-// One $batch per 20 users; an inner 403/error marks that user's methods
-// 'unknown' — it never fails the section.
+/** A $batch answer worth asking again: throttled, a server error, an expired token, or none at all. A 403 or 404 is an answer. */
+const transientSubrequest = (status: number | undefined): boolean => status === undefined || status === 401 || status === 429 || status >= 500
+/** How many people in one batch may still fail their own read before the rest of that batch waits for the next scan. */
+export const METHOD_REREAD_FAILURES = 2
+
+// One $batch per 20 users. A person whose read failed for a passing reason
+// (throttling, a server error, a failed page, the batch itself failing) is read
+// again on their own through the retry policy, after the batch's Retry-After.
+// A person still unread after that, or refused (403), is 'unknown': the
+// registration report stands in (scoring/phishingResistant.ts inventory), and
+// it never fails the section.
 export async function collectMethodsForUsers(ctx: Ctx, userIds: string[]): Promise<MethodsByUser> {
   const out: MethodsByUser = {}
   for (let i = 0; i < userIds.length; i += 20) {
     const chunk = userIds.slice(i, i + 20)
-    const body = await graphRequest(ctx.tokens, `${V1}/$batch`, {
-      signal: ctx.signal,
-      method: 'POST',
-      jsonBody: {
-        requests: chunk.map((id, n) => ({
-          id: String(n),
-          method: 'GET',
-          url: `/users/${id}/authentication/methods`,
-        })),
-      },
-    })
-    for (const r of Array.isArray(body.responses) ? body.responses : []) {
-      const userId = chunk[Number(r?.id)]
-      if (!userId) continue
-      const responseBody = r.body as { value?: unknown[]; '@odata.nextLink'?: unknown } | undefined
-      let value = responseBody?.value
-      if (r.status === 200 && Array.isArray(value) && typeof responseBody?.['@odata.nextLink'] === 'string') {
-        try {
-          value = [...value, ...await graphPaged(ctx.tokens, responseBody['@odata.nextLink'], { signal: ctx.signal })]
-        } catch {
-          value = undefined
+    const again = new Set<string>()
+    let pauseMs = 0
+    try {
+      const body = await graphRequest(ctx.tokens, `${V1}/$batch`, {
+        signal: ctx.signal,
+        wait: ctx.wait,
+        method: 'POST',
+        jsonBody: {
+          requests: chunk.map((id, n) => ({
+            id: String(n),
+            method: 'GET',
+            url: `/users/${id}/authentication/methods`,
+          })),
+        },
+      })
+      for (const r of Array.isArray(body.responses) ? body.responses : []) {
+        const userId = chunk[Number(r?.id)]
+        if (!userId) continue
+        const responseBody = r.body as { value?: unknown[]; '@odata.nextLink'?: unknown } | undefined
+        let value = responseBody?.value
+        if (r.status === 200 && Array.isArray(value) && typeof responseBody?.['@odata.nextLink'] === 'string') {
+          try {
+            value = [...value, ...await graphPaged(ctx.tokens, responseBody['@odata.nextLink'], { signal: ctx.signal, wait: ctx.wait })]
+          } catch (error) {
+            if (ctx.signal.aborted) throw error
+            value = undefined
+          }
+        }
+        if (r.status === 200 && Array.isArray(value)) {
+          out[userId] = value.map(item => mapMethod(item))
+          continue
+        }
+        out[userId] = 'unknown'
+        if (r.status === 200 || transientSubrequest(r.status)) again.add(userId)
+        if (r.status === 429) {
+          const retryAfter = Object.entries(r.headers ?? {}).find(([k]) => k.toLowerCase() === 'retry-after')?.[1]
+          pauseMs = Math.max(pauseMs, retryAfterMs(retryAfter))
         }
       }
-      out[userId] = r.status === 200 && Array.isArray(value) ? value.map(item => mapMethod(item)) : 'unknown'
+    } catch (error) {
+      // A refused batch is a permission answer and a cancelled scan stops; anything else is read again per person.
+      if (ctx.signal.aborted || error instanceof SectionDisabledError) throw error
     }
     // A user the batch answered nothing for is unread, never a person with no methods.
-    for (const id of chunk) out[id] ??= 'unknown'
+    for (const id of chunk) {
+      if (out[id] !== undefined) continue
+      out[id] = 'unknown'
+      again.add(id)
+    }
+    if (again.size === 0) continue
+    // The batch's Retry-After is honoured before a throttled person is asked again.
+    if (pauseMs > 0) await (ctx.wait ?? sleep)(pauseMs, ctx.signal)
+    let failed = 0
+    for (const id of again) {
+      try {
+        const value = await graphPaged(ctx.tokens, `${V1}/users/${encodeURIComponent(id)}/authentication/methods`, { signal: ctx.signal, wait: ctx.wait })
+        out[id] = value.map(item => mapMethod(item))
+      } catch (error) {
+        if (ctx.signal.aborted) throw error
+        // Still unread after the retry policy: unknown, never a person with no methods.
+        // Two such in one batch is Graph having a bad minute; the rest wait for the next scan.
+        if (++failed >= METHOD_REREAD_FAILURES) break
+      }
+    }
   }
   // Read the concrete FIDO2 collection from v1.0 for every user. The generic
   // authentication-method list remains the complete inventory; this dedicated

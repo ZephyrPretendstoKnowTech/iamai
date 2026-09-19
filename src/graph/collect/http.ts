@@ -57,7 +57,7 @@ type GraphBody = {
   value?: unknown[]
   '@odata.nextLink'?: string
   error?: { code?: string; message?: string }
-  responses?: { id: string; status: number; body?: unknown }[]
+  responses?: { id: string; status: number; body?: unknown; headers?: Record<string, string> }[]
   // Set when the response body is a bare number (e.g. a $count endpoint).
   count?: number
 }
@@ -78,7 +78,8 @@ function jitter(ms: number): number {
   return ms * (1 + Math.random() * JITTER_FRACTION)
 }
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+/** The retry policy's wait: resolves after `ms`, rejects when the scan is cancelled. */
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const onAbort = () => {
       clearTimeout(t)
@@ -94,6 +95,11 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 
 // Graph's Retry-After is honoured up to five minutes (collection.md §6).
 const RETRY_AFTER_MAX_S = 300
+
+/** How long a Retry-After header asks for, in ms, capped as the retry policy caps it; 30 s where it names none. */
+export function retryAfterMs(value: unknown): number {
+  return Math.min(Number(value) || 30, RETRY_AFTER_MAX_S) * 1000
+}
 
 export async function graphRequest(tokens: TokenSource, url: string, opts: GraphRequestOpts = {}): Promise<GraphBody> {
   const abortMs = opts.abortMs ?? LANE_A_ABORT_MS
@@ -135,8 +141,7 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
     }
     if (res && res.status === 429 && count429 < RETRY_MAX_429 - 1) {
       count429 += 1
-      const retryAfter = Number(res.headers.get('Retry-After')) || 30
-      await wait(jitter(Math.min(retryAfter, RETRY_AFTER_MAX_S) * 1000), opts.signal)
+      await wait(jitter(retryAfterMs(res.headers.get('Retry-After'))), opts.signal)
       continue
     }
     if ((timedOut || (res && res.status >= 500)) && count5xx < RETRY_MAX_5XX - 1) {
