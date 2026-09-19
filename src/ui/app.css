@@ -945,7 +945,7 @@ footer.app a {
 
 /* The panel table (task 040). Two of the four packs draw a table the same way —
    `plan-step-v1.html` gives `th` an uppercase 11px on the secondary surface,
-   `mfa-readiness-v2.html` an uppercase 10px on the same surface, both inside
+   the MFA Readiness v2 pack (archived 2026-09-19) an uppercase 10px on the same surface, both inside
    one bordered, rounded panel with the rows divided by top hairlines — so the
    treatment is shared on the evidence standard the rest of this section uses
    (src/ui/primitives.test.ts): two packs, drawn alike.

@@ -170,9 +170,9 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector) || /\.readiness-status\b/.test(r.selector) || /\.icon-btn\b/.test(r.selector) || /\.state-dot\b/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
-      // MFA pack's readiness cell are both `border-radius:999px`
+      // MFA pack's filter pill are both `border-radius:999px`
       // (docs/design/approved/anatomy/plan-step-v1.html `.badge`,
-      // docs/design/approved/anatomy/mfa-readiness-v2.html `.status`), which is a full
+      // docs/design/approved/anatomy/mfa-readiness-v3.html `.pill`), which is a full
       // round rather than a value on the 4/8/12 shape hierarchy.
       // and the approved Connect step's numbered badge, which that pack draws as
       // a full round rather than a value on the 4/8/12 hierarchy
@@ -241,17 +241,13 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    beside its own word (docs/design/approved/anatomy/connect-v3.html)
   //   .rung-*, .stat-n a ladder rung and the count it names, both labelled
   //   .stage-*         a lifecycle stage, whose name is under the bar
-  //   .role-admin      the admin role's own NAME, set in the admin colour
-  //                    (docs/design/approved/anatomy/mfa-readiness-v2.html)
   //   .plan-controls .dot-*
   //                    the dot inside a focus control, whose own label is the
   //                    state it filters to ("Needs attention", "Up next"). The
   //                    dot is `aria-hidden` and the word is the control's name,
   //                    so nothing here is carried by the colour.
-  //   .proof-mark-*    MFA Readiness's proof mark (docs/design/approved/reference/
-  //                    iamai-mfa-readiness-final.html `.mark`): a ✓ ? × ! glyph
-  //                    beside the proof line it marks, so the glyph and the
-  //                    line's words both say it and the colour says it a third time.
+  //   (The v2 admin role name and the Step 7 proof mark were allowed here until
+  //   their designs were archived on 2026-09-19; production draws neither.)
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
   //   .readiness-status-*
   //                    the opened Plan step's readiness mark (docs/design/approved/
@@ -268,7 +264,7 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    the Admin tag: the role's own NAME in the admin colour
   //   .readiness-tile li .ok
   //                    the check mark beside a completed check's own words
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.print-|\.plan-controls \.dot-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))

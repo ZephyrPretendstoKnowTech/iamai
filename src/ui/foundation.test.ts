@@ -255,12 +255,13 @@ test('the task 030 report exists and names its evidence', () => {
   // docs/design/approved/anatomy/ when the design folder was cleaned, and a
   // report written in the past is a record of what a past task did: it is not
   // edited to keep a later directory layout true. What must stay true is that
-  // the report names the four authorities it worked against, and the hash.
+  // the report names the authorities it worked against, and the hash. The MFA
+  // Readiness pack it worked against was archived on 2026-09-19 (item 22), so
+  // only the three that are still current are held here.
   for (const needed of [
     'home-v2.html',
     'connect-v3.html',
     'plan-step-v1.html',
-    'mfa-readiness-v2.html',
     '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50',
     'scripts/render-design.mjs',
     'src/ui/tokens.ts',

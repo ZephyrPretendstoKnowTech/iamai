@@ -40,9 +40,28 @@ const SUPERSEDED_COPIES = [
   'iamai-connect-design-pack-v3.html',
   'iamai-plan-step-design-pack.html',
   'iamai-mfa-readiness-design-pack-v2.html',
-  // Prompt 62: v3 replaced v2, which now lives in docs/design/superseded/ as a record.
-  'mfa-readiness-v2.html',
 ] as const
+
+/**
+ * The MFA Readiness design files the owner archived on 2026-09-19 (item 22):
+ * prompt 62's v3 pack replaced all three, and nothing current renders from
+ * them. They are records now, so the only way a live file may name one is by
+ * its archive path.
+ */
+const ARCHIVED = [
+  'archive/design/iamai-mfa-readiness-final.html',
+  'archive/design/iamai-mfa-readiness-approved-comparison-reference.html',
+  'archive/design/mfa-readiness-v2.html',
+] as const
+
+/**
+ * Where a retired name may still appear as written: the archive itself, the
+ * numbered task reports under docs/design/reports/, and any dated record (a
+ * file or folder named for its day). Each is history of what a past task
+ * worked against, and history is not edited to keep a later layout true.
+ */
+const HISTORY = (path: string): boolean =>
+  path.startsWith('archive/') || path.startsWith('docs/design/reports/') || /\d{4}-\d{2}-\d{2}/.test(path)
 
 /**
  * The owner's decision, written out here rather than read from the manifest:
@@ -128,6 +147,33 @@ test('one file per surface: the upload-named copies are gone and cannot come bac
   }
   const html = readdirSync(DIR).filter((f) => f.endsWith('.html')).sort()
   assert.deepEqual(html, [...APPROVED.map((a) => a.file)].sort(), `${DIR} holds exactly the four canonical packs`)
+})
+
+test('the archived MFA Readiness files are records: no live file names one except by its archive path', () => {
+  // Item 22 (2026-09-19). The reference manifest named the Step 7 page as the
+  // authority after prompt 62 had made v3 the pack, and three tests still read
+  // the retired files. A live reference to an archived file is how a record
+  // becomes an authority again, so none may survive outside history.
+  let files: string[]
+  try {
+    files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .split('\n')
+      .filter((f) => f && existsSync(f) && /\.(ts|tsx|mjs|cjs|js|json|md|html|css|ya?ml|txt|svg)$/.test(f) && !HISTORY(f))
+  } catch {
+    return
+  }
+  assert.ok(files.length > 100, 'the live file list is implausibly short, so the scan below proves nothing')
+  const offenders: string[] = []
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8')
+    for (const archived of ARCHIVED) {
+      const name = archived.slice(archived.lastIndexOf('/') + 1)
+      for (let at = text.indexOf(name); at !== -1; at = text.indexOf(name, at + name.length)) {
+        if (!text.slice(0, at).endsWith(archived.slice(0, -name.length))) offenders.push(`${file}: ${name}`)
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], 'a live file names an archived MFA Readiness design file; point it at the v3 pack, or at the archive path if it only records history')
 })
 
 test('no task edits an approved byte: the working tree is what the commit holds', () => {

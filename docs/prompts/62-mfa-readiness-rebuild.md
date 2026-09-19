@@ -443,4 +443,4 @@ Built and shipped: segments 1–7, except the Intune read and the backfill of ol
   block still reads the retired three stat tiles and progress strips. It gates
   nothing today; it would report P0s if run locally.
 - **The layout** is promoted to `docs/design/approved/anatomy/mfa-readiness-v3.html`.
-  v2 is in `docs/design/superseded/`.
+  v2 was in `docs/design/superseded/` and moved to `archive/design/` on 2026-09-19.

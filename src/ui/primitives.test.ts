@@ -34,13 +34,15 @@ const PACKS = {
 } as const
 
 /**
- * The evidence the shared roles were established on (task 031): the four packs
- * as they stood, with MFA Readiness's v2. The v3 pack (prompt 62) draws its own
- * sentence-case kicker and grouped rows rather than v2's eyebrow, key head,
- * status pill and callout; the superseded v2 remains the record those roles were
- * drawn from, and production's other surfaces still use them.
+ * The evidence the shared roles still stand on. Task 031 established them over
+ * the four packs as they stood, with MFA Readiness's v2 as a second witness for
+ * the eyebrow, the key head, the pill and the callout. The v3 pack (prompt 62)
+ * draws its own sentence-case kicker and grouped rows instead, and v2 was
+ * archived on 2026-09-19 (item 22), so a test no longer reads it: the roles
+ * rest on the current packs that still draw them, and production's other
+ * surfaces still use them.
  */
-const ROLE_EVIDENCE = { ...PACKS, mfa: 'docs/design/superseded/mfa-readiness-v2.html' } as const
+const ROLE_EVIDENCE = { home: PACKS.home, connect: PACKS.connect, plan: PACKS.plan } as const
 
 const APP = 'src/ui/app.css'
 
@@ -83,7 +85,7 @@ function allRuleBodies(css: string, selector: string): string[] {
 
 // ------------------------------------------------- what the evidence shares
 
-test('the eyebrow is shared because all four packs declare it, and they declare it identically', () => {
+test('the eyebrow is shared because the Home, Connect and Plan packs declare it, and they declare it identically', () => {
   const declared = Object.entries(ROLE_EVIDENCE).map(([surface, path]) => ({ surface, body: ruleBody(read(path), '.eyebrow', { solo: true }) }))
   for (const { surface, body } of declared) assert.ok(body, `${surface} no longer declares .eyebrow — the shared role has lost its evidence`)
   const [first, ...rest] = declared
@@ -105,14 +107,13 @@ test('the eyebrow is shared because all four packs declare it, and they declare 
   assert.match(role, /color: var\(--quiet-text\)/)
 })
 
-test('the key label is shared by the two packs that draw a field key, at the smaller step', () => {
+test('the key label is the field key the Plan pack draws twice, at the smaller step', () => {
   const plan = read(PACKS.plan)
-  const mfa = read(ROLE_EVIDENCE.mfa)
-  // The Plan's side-block label and readiness tile label, and MFA's person-table head.
+  // The Plan's side-block label and readiness tile label. The archived MFA
+  // Readiness v2 person-table head was the other pack's witness.
   for (const [where, body] of [
     ['plan .side-label', ruleBody(plan, '.side-label', { solo: true })],
     ['plan .readiness-tile-label', ruleBody(plan, '.readiness-tile-label', { solo: true })],
-    ['mfa .table-head', ruleBody(mfa, '.table-head', { solo: true })],
   ] as const) {
     assert.ok(body, `${where} is gone`)
     assert.match(body, /font-size:\s*10px/, `${where} is no longer 10px`)
@@ -126,13 +127,13 @@ test('the key label is shared by the two packs that draw a field key, at the sma
   assert.notEqual(role, ruleBody(read(APP), '.eyebrow', { solo: true }))
 })
 
-test('the pill is shape only: two packs draw the same geometry, and neither the shape nor this role chooses a state', () => {
+test('the pill is shape only: the Plan badge draws the geometry, and neither the shape nor this role chooses a state', () => {
+  // The archived MFA Readiness v2 readiness cell was the second witness; the
+  // v3 pack's filter pill is a full round too (design-lint.test.ts).
   const badge = ruleBody(read(PACKS.plan), '.badge', { solo: true })
-  const cell = ruleBody(read(ROLE_EVIDENCE.mfa), '.status', { solo: true })
-  assert.ok(badge && cell, 'the Plan state badge or the MFA readiness cell is gone')
+  assert.ok(badge, 'the Plan state badge is gone')
   for (const [where, body] of [
     ['plan .badge', badge],
-    ['mfa .status', cell],
   ] as const) {
     assert.match(body, /border-radius:\s*999px/, `${where} is no longer a full round`)
     assert.match(body, /padding:\s*5px 8px/, `${where} no longer has the shared padding`)
@@ -155,15 +156,13 @@ test('the pill is shape only: two packs draw the same geometry, and neither the 
   assert.match(read('src/ui/components/Status.tsx'), /\{children\}/, 'a status must render its word: state is never colour alone')
 })
 
-test('the attention panel is shared by the two packs that draw it, and it is now actually drawn', () => {
-  // The Plan calls it .attention and MFA calls it .callout; both are a 1px
-  // tone border over a tone tint at a control radius.
+test('the attention panel is the one the Plan pack draws, and it is now actually drawn', () => {
+  // The Plan calls it .attention: a 1px tone border over a tone tint at a
+  // control radius. The archived MFA Readiness v2 `.callout` drew the same.
   const planAttention = ruleBody(read(PACKS.plan), '.attention', { solo: true })
-  const mfaCallout = ruleBody(read(ROLE_EVIDENCE.mfa), '.callout', { solo: true })
-  assert.ok(planAttention && mfaCallout, 'a pack stopped drawing the attention panel')
+  assert.ok(planAttention, 'the Plan pack stopped drawing the attention panel')
   for (const [where, body] of [
     ['plan .attention', planAttention],
-    ['mfa .callout', mfaCallout],
   ] as const) {
     assert.match(body, /border:\s*1px solid/, `${where} lost its tone border`)
     assert.match(body, /background:/, `${where} lost its tint`)

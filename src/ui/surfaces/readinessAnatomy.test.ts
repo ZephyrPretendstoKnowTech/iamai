@@ -34,8 +34,6 @@ import { pages } from '../../content/content.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-/** The old final reference: its hash stays recorded in the reference manifest. */
-const REFERENCE = 'docs/design/approved/reference/iamai-mfa-readiness-final.html'
 /** The approved anatomy this surface is built against (prompt 62). */
 const PACK_PATH = 'docs/design/approved/anatomy/mfa-readiness-v3.html'
 const PACK = read(PACK_PATH)
@@ -70,13 +68,30 @@ const cssMedia = (w: number): string => CSS.match(new RegExp(`@media \\(max-widt
 
 // ------------------------------------------------------- the authority itself
 
-test('the reference this file reads is the one the manifest records, byte for byte', () => {
-  const manifest = JSON.parse(read('docs/design/approved/reference/REFERENCE-MANIFEST.json')) as { files: Record<string, string>; mfaReadiness: { file: string; sha256: string; supersedes: string[] } }
-  const got = createHash('sha256').update(readFileSync(REFERENCE)).digest('hex')
-  assert.equal(manifest.mfaReadiness.file, 'iamai-mfa-readiness-final.html')
-  assert.equal(manifest.mfaReadiness.sha256, got, 'the final MFA Readiness reference changed')
-  assert.equal(manifest.files[manifest.mfaReadiness.file], got)
-  assert.ok(manifest.mfaReadiness.supersedes.some((s) => s.includes('mfa-readiness-v2.html')), 'the manifest does not record what the reference supersedes')
+test('the reference manifest records its old MFA Readiness authority as superseded by the v3 pack', () => {
+  // Item 22 (2026-09-19): the Step 7 reference was still recorded as the
+  // authority after prompt 62 made v3 the page's pack. The owner archived the
+  // old files, so the reference manifest now says, as values, that its block is
+  // superseded and by what — the same file and bytes the design manifest holds.
+  const reference = JSON.parse(read('docs/design/approved/reference/REFERENCE-MANIFEST.json')) as {
+    files: Record<string, string>
+    canonicalSources: Record<string, string>
+    mfaReadiness: { status: string; supersededOn: string; supersededBy: string; supersededBySha256: string; file: string }
+  }
+  const design = JSON.parse(read('docs/design/approved/manifest.json')) as { surfaces: { surface: string; path: string; sha256: string; approvalState: string }[] }
+  const current = design.surfaces.find((s) => s.surface === 'mfa-readiness' && s.approvalState === 'current')!
+  const got = createHash('sha256').update(readFileSync(PACK_PATH)).digest('hex')
+  const old = reference.mfaReadiness
+  assert.equal(old.status, 'superseded')
+  assert.equal(old.supersededOn, '2026-09-19')
+  assert.equal(old.supersededBy, current.path, 'the reference manifest does not hand over to the authority manifest.json records')
+  assert.equal(old.supersededBy, PACK_PATH)
+  assert.equal(old.supersededBySha256, current.sha256)
+  assert.equal(old.supersededBySha256, got, 'the recorded v3 hash is not the bytes on disk')
+  assert.equal(reference.canonicalSources['mfa-readiness'], current.sha256, 'the reference manifest names a retired canonical MFA Readiness pack')
+  // The old reference is a record now, not a file the reference pack holds.
+  assert.ok(old.file.startsWith('archive/design/'), 'the superseded reference is not in the archive')
+  assert.ok(!Object.keys(reference.files).some((f) => f.includes('mfa-readiness')), 'the reference pack still lists an MFA Readiness file of its own')
 })
 
 test('the surface names the v3 pack as its authority', () => {
