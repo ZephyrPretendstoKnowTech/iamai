@@ -3968,7 +3968,7 @@ footer.app a {
   text-transform: none;
   letter-spacing: 0;
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .surface.readiness .line.intro {
   max-width: 66ch;
@@ -4080,7 +4080,7 @@ footer.app a {
   padding-top: 12px;
   border-top: 1px solid var(--line);
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 
 /* The worklist and its rail. */
@@ -4148,7 +4148,7 @@ footer.app a {
 .readiness-group .group-why {
   display: block;
   font-size: var(--t-2);
-  color: var(--muted-text);
+  color: var(--quiet-text);
   font-weight: var(--weight-body);
 }
 .readiness-group .group-count {
@@ -4159,7 +4159,7 @@ footer.app a {
 .readiness-group .chev {
   width: 16px;
   height: 16px;
-  color: var(--muted-text);
+  color: var(--quiet-text);
   transition: transform var(--motion-disclosure);
 }
 .readiness-group[open] > summary .chev,
@@ -4235,7 +4235,7 @@ footer.app a {
   padding: 10px 16px;
   border-top: 1px solid var(--line);
   font-size: var(--t-2);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-sub {
   border-top: 1px solid var(--line);
@@ -4252,7 +4252,7 @@ footer.app a {
   padding: 10px 16px;
   border-top: 1px solid var(--line);
   font-size: var(--t-2);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 
 /* The rows. */
@@ -4276,7 +4276,7 @@ footer.app a {
   padding-top: 9px;
   padding-bottom: 9px;
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
   background: var(--secondary-surface);
 }
 .readiness-row:not(.head):hover {
@@ -4289,7 +4289,7 @@ footer.app a {
 }
 .readiness-row .person-upn {
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
   overflow-wrap: anywhere;
 }
 .surface.readiness .tag {
@@ -4306,7 +4306,7 @@ footer.app a {
 .readiness-row .cell-note {
   display: block;
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-row .next-step {
   font-size: var(--t-2);
@@ -4339,7 +4339,7 @@ footer.app a {
 .surface.readiness .dev svg {
   width: 15px;
   height: 15px;
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .surface.readiness .dev .dev-word {
   font-weight: var(--weight-strong);
@@ -4347,7 +4347,7 @@ footer.app a {
 .surface.readiness .dev.off {
   border-style: dashed;
   background: none;
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 
 /* The rail: the Tasks Remaining tile standard. */
@@ -4363,7 +4363,7 @@ footer.app a {
 .readiness-rail .readiness-tile .remain {
   margin: 0 0 10px;
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-rail .readiness-tile .check {
   margin: 0 0 4px;
@@ -4397,7 +4397,7 @@ footer.app a {
   color: var(--secondary-text);
 }
 .readiness-rail .readiness-tile li .info {
-  color: var(--muted-text);
+  color: var(--quiet-text);
   font-weight: var(--weight-strong);
 }
 .readiness-rail .readiness-tile li .ok {
@@ -4405,7 +4405,7 @@ footer.app a {
 }
 .readiness-rail .readiness-tile .models {
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-rail .readiness-tile .ledger-list {
   margin: 0;
@@ -4457,7 +4457,7 @@ footer.app a {
 .readiness-panel .panel-head p {
   margin: 4px 0 0;
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
   overflow-wrap: anywhere;
 }
 .readiness-panel .panel-state {
@@ -4511,7 +4511,7 @@ footer.app a {
 .readiness-panel .item svg {
   width: 18px;
   height: 18px;
-  color: var(--muted-text);
+  color: var(--quiet-text);
   margin-top: 2px;
 }
 .readiness-panel .item-name {
@@ -4519,7 +4519,7 @@ footer.app a {
 }
 .readiness-panel .item-sub {
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-panel .facts {
   grid-column: 2;
@@ -4530,7 +4530,7 @@ footer.app a {
   margin: 4px 0 0;
 }
 .readiness-panel .facts dt {
-  color: var(--muted-text);
+  color: var(--quiet-text);
 }
 .readiness-panel .facts dd {
   margin: 0;
@@ -4542,7 +4542,7 @@ footer.app a {
   padding-top: 14px;
   border-top: 1px solid var(--line);
   font-size: var(--t-1);
-  color: var(--muted-text);
+  color: var(--quiet-text);
   display: flex;
   flex-wrap: wrap;
   gap: 6px 24px;
