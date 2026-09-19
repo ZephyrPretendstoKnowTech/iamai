@@ -79,17 +79,32 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 
   Checked on the demo: approving D1 took Completed from 3/42 to 4/39 and On Hold from 14 to 8, with no console errors.
 
-## In flight (2026-09-19 afternoon session)
+## Afternoon session (2026-09-19): landed
 
-- `3a85c604`: CI's Linux-only reds were two, not seven: the PowerShell harness spawned `pwsh.exe` (Linux has `pwsh`), and the 041 report test compared against Connect's post-scrub hash (the dated report keeps the hash it verified).
-- `75e83b97`: Direction polish (Next 3): evidence lines from content, "Decision step" eyebrow, tiles that don't stretch, Approve moves to the next open Direction step (checked on the demo).
-- `2ff15dae`: planAnatomy and planVariants read the Direction code as it is.
-- **CI on `3a85c604` showed 21 reds, not 11.** The Direction commits broke 13 more (holds, stepSchedule, blockedReason, rescanDurability, semanticIntegrity, readinessTiles, aiGrounding and others). An agent is on them.
-- Agents in worktrees: free-tier EA path removal; guests in the campaign ("30 people and 1 guest"); Direction reds; Emergency Access 12–15 and 18; item 22 archive.
+- `3a85c604`: the two Linux-only reds (`pwsh` by platform; the 041 report keeps Connect's pre-scrub hash).
+- `75e83b97`, `2ff15dae`: Direction polish (content evidence, "Decision step" eyebrow, tiles that don't stretch, Approve moves to the next open Direction step) and the source-reading tests.
+- `1d3a1490`, `39c18f18`: free tenants. The free-tier Emergency Access rung is gone; the Plan says first that Conditional Access needs Entra ID P1.
+- `e1d28362`, `37067a3e`: item 22. The old MFA Readiness design files are archived; REFERENCE-MANIFEST hands over to v3.
+- `b3113b3a`: guests stay in the MFA campaign. One cohort, "30 people and 1 guest" on the Plan and MFA Readiness; guest rows ask for Microsoft Authenticator, never a passkey.
+- `664217da`..`666e294b`: the 14 reds the Direction commits caused. Engine fix: Direction gating runs after tracking, so an enforced policy never waits and a waiting step reads Blocked, never Ready.
+- `05450e85`..`233db2b6`: MFA Readiness items 5–7. Hidden group headings, the panel is modal below 760px, words by the computers seen (Windows / Mac / both / none), every sentence within 25 words.
+- `19490ed8`..`b301954a`: item 4, "not read" as our evidence problem. Per-person method retries, registration-report fallback, longer sign-in retries, the full 30 days, no-P1 said once, "Needs action · 26, 1 not read".
+- `2069e30f`..`df5f23e9`: Emergency Access 12–15 and 18. Recorded Test only for legacy records; one exclusions-group rule; Step 4 starts at the change time; exports print the screen's tasks; wording and sentence-case tiles.
+
+## For the owner to confirm (decided so work could continue)
+
+1. **Direction waits and dates:** a policy waiting on a Direction answer keeps its date (the device policy on the demo shows "On Hold · Waiting on your direction" beside a date). If a wait should hold the date back, the Direction exception in `holdOf` (`src/roadmap/holds.ts`) comes out.
+2. **The week-two demo leaves D3 open** (from the Direction build).
+3. **Exclusions group rule (item 13):** "applicable" means a policy that reaches an emergency account (All users, the account, one of its roles, or a group it is in), On or Report-only. An On policy that targets only other users does not hold Step 2. Step 4 already worked this way.
+4. **Step 2's export** prints every task the screen shows, including the optional "Create an emergency exclusions group". One line to print required tasks only.
+5. **Free tier:** "Review Global Administrator access" no longer requires two selected emergency accounts (nothing can select them now).
+6. **The walk's heading list** (`docs/qa/page-contracts.json`, owner-owned) needs the four hidden MFA Readiness group headings, or the walk flags them.
+7. **Still Windows-worded on a Mac-only tenant:** `seamlessNone` and the "Needs a method" reason ("No passkey, security key or Windows Hello yet").
+8. **Loose ends:** the device-plan reason and tile words are unused now; on the demo's first visit the trusted-location step reads Ready with a "Choose your office networks" tile although that question lives in D4. A very large tenant can still stop before 30 days at the 50,000-row ceiling.
 
 ## Next (in order)
 
-1. **Check CI for `840abc1e`.** The triage push had 11 failures on CI against 4 locally. The 7 extra are Linux-only:
+1. ~~**Check CI for `840abc1e`.**~~ Done (see the afternoon session). The triage push had 11 failures on CI against 4 locally. The 7 extra are Linux-only:
    - the PowerShell parser and role-page tests;
    - "the final verification report exists" (probably filename case);
    - "the campaign lists… derive from Today";
@@ -97,10 +112,10 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
    - "MFA preparation row… whole cohort".
 
    Fix them.
-2. **The last 4 red tests, with the owner's answers:**
+2. ~~**The last 4 red tests, with the owner's answers:**~~ Done.
    - **Free tenants:** without P1, the Plan says Conditional Access needs Entra ID P1. Remove the free-tier Emergency Access path and its test (`structuralCorrections` "free-licence emergency accounts…").
    - **Guests "the way Jon envisioned":** guests STAY in the MFA campaign and its preparation (Authenticator nudges work for guests; passkeys don't until late 2026). Reconcile the numbers with the same words everywhere ("30 people and 1 guest") instead of dropping guests. Tests: `planStrip`, `variableLayer`, `preparationPresentation`.
-3. **Direction polish,** seen on the demo:
+3. ~~**Direction polish,** seen on the demo:~~ Done; the two open Direction decisions are in "For the owner to confirm".
    - the eyebrow reads "CHECK STEP"; it should be a decision step;
    - the evidence lines are raw engine reasons ("no sign-in activity for inforcer"); they should come from content, capitalised, as plain sentences;
    - odd spacing on the Entra Connect tile;
@@ -109,7 +124,7 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
    Open the Direction agent's decisions for the owner:
    - the week-two demo leaves D3 open;
    - a Direction wait adds no date change.
-4. **The approved review items:**
+4. **The approved review items:** all landed except items 1, 2, 3, 9, 10, 11 (readiness rules; an agent is on them):
    - MFA Readiness items 1–7 and 9–11, including Mac Platform SSO: a macOS sign-in reading "Windows Hello for Business" counts as the Mac's built-in proof, plus the key restriction needs AAGUID `7FD635B3-2EF9-4542-8D9D-164F2C771EFC`;
    - "not read" as an evidence fix;
    - Emergency Access bugs 12–15 and 18;
