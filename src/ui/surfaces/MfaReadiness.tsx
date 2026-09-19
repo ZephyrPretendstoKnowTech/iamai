@@ -9,7 +9,8 @@ import { cohortWords } from '../../derive/whoLine.ts'
 // the Seamless goal, the progress since the last scan) over one bar of people by
 // state; the worklist grouped by next action with the next check first and open,
 // large groups split admins first; a rail of tenant setup, approved models, the
-// uncounted and the evidence read; a non-modal person panel. It owns none of the
+// uncounted and the evidence read; a person panel, non-modal beside the list and
+// modal below 760px, where it covers the page. It owns none of the
 // words (pages.readiness) and none of the truth.
 //
 // The truth is one derivation. Every person's state, devices, credentials and
@@ -23,7 +24,7 @@ import { cohortWords } from '../../derive/whoLine.ts'
 // The Plan handoff: #/readiness/step/<id> scopes the worklist to the people one
 // step is waiting on (derive/stepMfaReadiness.ts). The hash carries the step's
 // id and nothing else; who it reaches is resolved from the plan computed here.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
@@ -52,6 +53,7 @@ import { exportDownload, unredactedFrom } from '../exportGuard.ts'
 import { scan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
+import { COVERS_PAGE, inertOutside, keepTabInside } from '../modalPanel.ts'
 
 type Words = {
   h1: string
@@ -174,7 +176,34 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   useEffect(() => {
     if (openId !== null) closeRef.current?.focus()
   }, [openId])
+  // Below the pack's 760 the panel covers the page, so there it is modal (owner, 2026-09-19): the page
+  // behind goes inert and Tab stays inside. Wider, it sits beside the list and the list stays usable.
+  const [narrow, setNarrow] = useState(() => window.matchMedia?.(COVERS_PAGE).matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.(COVERS_PAGE)
+    if (!mq) return
+    const onChange = (): void => setNarrow(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const modal = isOpen && narrow
+  const panelRef = useRef<HTMLElement>(null)
+  const uninert = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!modal || !panel) return
+    uninert.current = inertOutside(panel)
+    // A window narrowed while the panel was open: focus was on the page that just went inert.
+    if (!panel.contains(document.activeElement)) closeRef.current?.focus()
+    return () => {
+      uninert.current?.()
+      uninert.current = null
+    }
+  }, [modal])
   const close = (): void => {
+    // The page comes back before focus returns to it: an inert row can't take focus.
+    uninert.current?.()
+    uninert.current = null
     setOpenId(null)
     // The row that opened the panel, or, where a filter has since removed it, the worklist.
     if (trigger.current?.isConnected) trigger.current.focus()
@@ -187,10 +216,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     const onKey = (e: KeyboardEvent): void => {
       const field = e.target instanceof HTMLElement && e.target.closest('input, textarea, select') !== null
       if (e.key === 'Escape' && !field) closeRefFn.current()
+      else if (modal && panelRef.current) keepTabInside(e, panelRef.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen])
+  }, [isOpen, modal])
 
   const heading = (
     <>
@@ -365,30 +395,35 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     const G = T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     const quiet = isReady(state)
+    // The group's title is in its summary, which heading navigation can't reach: a visually hidden heading
+    // before each group names it for a screen reader (owner, 2026-09-19).
     return (
-      <details key={state} className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || undefined} data-state={state}>
-        <summary>
-          <span className={`state-dot s-${state}`} aria-hidden="true" />
-          <span>
-            {isNext && <span className="next-label">{T.nextLabel}</span>}
-            <span className="group-title">{G.title}</span>
-            <span className="group-why">{G.why}</span>
-          </span>
-          <span className="group-count">{rows.length}</span>
-          <Icon k="chev" />
-        </summary>
-        {isNext && G.body && (
-          <div className="next-body">
-            <p>{G.body}</p>
-            {setupStep && (
-              <div className="next-actions">
-                <a className="btn btn-primary" href={stepHref(setupStep)}>{T.groupAction}</a>
-              </div>
-            )}
-          </div>
-        )}
-        {groupBody(state, rows)}
-      </details>
+      <Fragment key={state}>
+        <h3 className="sr-only">{G.title}</h3>
+        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || undefined} data-state={state}>
+          <summary>
+            <span className={`state-dot s-${state}`} aria-hidden="true" />
+            <span>
+              {isNext && <span className="next-label">{T.nextLabel}</span>}
+              <span className="group-title">{G.title}</span>
+              <span className="group-why">{G.why}</span>
+            </span>
+            <span className="group-count">{rows.length}</span>
+            <Icon k="chev" />
+          </summary>
+          {isNext && G.body && (
+            <div className="next-body">
+              <p>{G.body}</p>
+              {setupStep && (
+                <div className="next-actions">
+                  <a className="btn btn-primary" href={stepHref(setupStep)}>{T.groupAction}</a>
+                </div>
+              )}
+            </div>
+          )}
+          {groupBody(state, rows)}
+        </details>
+      </Fragment>
     )
   }
   const setupNext = next.kind === 'setup' && show !== 'lapsing' && show !== 'admins' ? next.check : null
@@ -677,7 +712,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
       </div>
 
       {openRow && (
-        <aside className="readiness-panel panel" id={PANEL_ID} role="dialog" aria-modal="false" aria-labelledby="readiness-panel-name">
+        <aside className="readiness-panel panel" id={PANEL_ID} ref={panelRef} role="dialog" aria-modal={modal} aria-labelledby="readiness-panel-name">
           <div className="panel-head">
             <div>
               <h2 id="readiness-panel-name">{openRow.user.displayName ?? openRow.user.userPrincipalName}</h2>
