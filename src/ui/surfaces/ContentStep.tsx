@@ -408,7 +408,7 @@ export function ContentStep({
           {decisionHead ? <DirectionQuestions key={directionDraftKey(step)} step={step} ctx={ctx} heading={decisionHead.questions} onDecide={onDecide} printing={printing} saving={saveStatus === 'saving'} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? 'Complete the next task shown for each account.' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
           : isEmergencyTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
-            subjects={isPolicyTaskStep ? policySubjectsOf(displayedReadiness, emergencyAccountTasks) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
+            subjects={isPolicyTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)}
             printing={printing}
             barMain={displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}

@@ -19,8 +19,9 @@
 //
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
+import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import type { ContractReadiness } from './stepContract.ts'
+import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
@@ -106,21 +107,83 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   return { tasks: [task], recommendedTaskId: task.id, printAll: true }
 }
 
+/** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */
+const POLICY_SUBJECT = 'Conditional Access policy'
+
 /**
- * This step's Tasks Remaining cards: its Readiness tiles, remaining then
- * satisfied, as the subject tiles Steps 2-3 draw — with the tile's own link kept
- * as the card's one action.
+ * A policy's own checks: the rollout stages the step's track already records
+ * (stepContract.ts `stepTrack`), read for one policy. Nothing is classified
+ * here — `reached`/`current` are the track's, and the stage a policy has not
+ * got to yet is the next check.
+ *
+ * The first stage is where every policy starts, so it is never a check anybody
+ * completed and never counted as one remaining.
+ */
+function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null): { completed: string[]; remaining: number | null; next: string | null } {
+  const at = track.findIndex((stage) => stage.key === lifecycle)
+  const index = at >= 0 ? at : track.findIndex((stage) => stage.current)
+  if (track.length === 0 || index < 0) return { completed: [], remaining: null, next: null }
+  return {
+    completed: track.filter((_, i) => i > 0 && i <= index).map((stage) => stage.label),
+    remaining: track.length - 1 - index,
+    next: track[index + 1]?.label ?? null,
+  }
+}
+
+/**
+ * The step's own work as Tasks Remaining cards: one card per policy the step
+ * delivers, drawn by the same component an Emergency Access account is drawn by,
+ * because the policy is this step's subject the way an account is that step's.
+ *
+ * Every line is already somewhere in the contract: the policy's name is its
+ * member's (Foundation B), its checks are the step's own rollout stages, the
+ * next stage is the next check, what that stage means is Foundation B's own
+ * milestone, and the one action is the matching Implementation Task, directed to
+ * in the words emergencyReadiness.ts already uses. No taxonomy is invented.
+ *
+ * A card is satisfied only when the policy has reached the last stage and the
+ * step has no task left to do, so "No tasks remaining" cannot be shown over work
+ * that Implementation Tasks still lists.
+ */
+export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
+  const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
+  const subjects = contract.members.length > 0
+    ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? POLICY_SUBJECT, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
+    : [{ key: 'policy', heading: POLICY_SUBJECT, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
+  return subjects.map((subject) => {
+    const stages = stagesOf(contract.track, subject.lifecycle)
+    const satisfied = stages.remaining === 0 && task === null
+    const here = contract.state.stage || contract.state.word
+    return {
+      key: subject.key,
+      accountId: null,
+      heading: subject.heading,
+      upn: subject.name,
+      title: satisfied ? here : stages.next ?? here,
+      detail: contract.milestone.label,
+      instruction: satisfied || task === null ? '' : `Follow ${task.title} in Implementation Tasks.`,
+      completed: stages.completed,
+      remainingCount: stages.remaining !== null && stages.remaining > 0 ? stages.remaining : null,
+      satisfied,
+    }
+  })
+}
+
+/**
+ * This step's Tasks Remaining cards: its own policy first, then its Readiness
+ * tiles, remaining then satisfied, as the subject tiles Steps 2-3 draw — with
+ * the tile's own link kept as the card's one action.
  *
  * Which tiles are out of the way is the contract's answer and not a second
  * reading of a tone here: a tile the contract put under `satisfied` is a
- * satisfied card, so it folds under Satisfied the way it folded under the
- * strip's own disclosure.
+ * satisfied card, so it folds under the completed disclosure the way it folded
+ * under the strip's own.
  */
-export function policySubjectsOf(readiness: ContractReadiness, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
+export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
   const card = (tile: ContractReadiness['tiles'][number], satisfied: boolean): EmergencySubjectTile => {
     const subject = emergencySubjectTileOf(tile, projected)
     const link = tile.link && 'href' in tile.link ? tile.link : null
     return { ...subject, satisfied, ...(link && !subject.link ? { link } : {}) }
   }
-  return [...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
+  return [...policyCardsOf(contract, projected), ...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
 }
