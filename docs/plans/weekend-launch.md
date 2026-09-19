@@ -100,6 +100,13 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 - **The exclusions group goes on every On or Report-only policy**, whatever it reaches today: "that's the intent from Jon's baseline" (`7467521e`; replaces item 3 below). The GetIAMAI live check should confirm Emergency Access still reads Completed.
 - **"Never used" passkeys:** keep the flag; verify it against GetIAMAI on Sunday.
 
+## For the next gate: needs the owner
+
+- **Require MFA for Everyone on the demo's first visit reads "Ready · Correct" but offers nothing and has no date.** The tenant's enforced policy needs a correction that only adds the exclusions group. The lane treats the readiness threshold as met (already enforced); the operations layer withholds any change to an enforced policy until readiness is 90% (`readinessGate.test`, `sequence.test`). The tenant's policy also names an emergency account in `excludeUsers`, which a correction body would carry (CLAUDE.md: never an emergency account by name).
+  - **A (recommended):** a correction that only adds exclusions to an enforced policy isn't held by readiness: it can't stop anyone, it only makes the way back in safer. The body keeps the tenant's existing exclusions, and a Cleanup row asks to remove the by-name exclusion once the group covers the account. Prototype: scratchpad `bug1-optionA.patch`.
+  - **B:** keep it withheld; the row reads On Hold, undated.
+- Fixed meanwhile (`7d156f3d`): an enforced policy awaiting its workflow test read "On Hold · Not supported"; it now reads In place / Ready · Decision.
+
 ## For the owner to confirm (decided so work could continue)
 
 1. **Direction waits and dates:** a policy waiting on a Direction answer keeps its date (the device policy on the demo shows "On Hold · Waiting on your direction" beside a date). If a wait should hold the date back, the Direction exception in `holdOf` (`src/roadmap/holds.ts`) comes out.
