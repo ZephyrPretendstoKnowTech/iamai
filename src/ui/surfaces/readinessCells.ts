@@ -36,6 +36,8 @@ type Words = {
   lastConfirmed: string
   beforeWindow: string
   readyUntil: string
+  usedRecently: string
+  unusedKey: { never: string; stale: string }
   options: Record<SignInOption, string>
   next: {
     none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
@@ -54,6 +56,9 @@ type Words = {
     verdict: Record<'yes' | 'no' | 'unknown', string>
     step3: Record<'yes' | 'no' | 'unknown', string>
     never: string
+    lastUsed: string
+    lastUsedDate: string
+    unused: { never: string; stale: string }
     retained: string
     unlisted: string
     why: Record<string, string>
@@ -184,8 +189,13 @@ export function methodsCell(r: ReadinessRow): { main: string; note: string } {
   const main = qualifying.length > 0 ? listWords(qualifying.map(classWord)) : others.length > 0 ? fillText(T.methods.only, { method: listWords(others.map(classWord)) }) : T.methods.none
   if (blocked.length > 0) return { main, note: fillText(T.methods.notAllowed, { method: listWords(blocked.map(classWord)) }) }
   if (!rd) return { main, note: '' }
+  // Microsoft's last-use date is supporting evidence only (owner item 2): it says "used recently", never Ready.
+  if (rd.usedRecently) return { main, note: fillText(T.usedRecently, { date: monthDay(rd.usedRecently) }) }
   if (rd.onLeave) return { main, note: T.notes.onLeave }
   const last = rd.lastConfirmed
+  // Not Ready, nothing confirmed, and a usable passkey Microsoft says is unused: it may be gone.
+  const unused = !isReadyState(rd.state) && !last ? rd.credentials.find((c) => c.unused !== null && c.allowedNow !== 'no') : undefined
+  if (unused) return { main, note: unused.unused === 'stale' && unused.lastUsed ? fillText(T.unusedKey.stale, { date: monthDay(unused.lastUsed) }) : T.unusedKey.never }
   const note = !last ? '' : last.retained ? fillText(T.beforeWindow, { date: monthDay(last.at) }) : isReadyState(rd.state) && rd.readyUntil ? fillText(T.readyUntil, { date: monthDay(rd.readyUntil) }) : fillText(T.lastConfirmed, { date: monthDay(last.at) })
   return { main, note }
 }
@@ -284,7 +294,10 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const model = c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
     const allowed = c.afterStep3 !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[c.afterStep3]}.` : `${P.verdict[c.allowedNow]}.`
     const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
-    return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts: [[P.allowed, allowed], [P.lastConfirmed, last]] }
+    // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.
+    const used = c.unused === 'never' ? P.unused.never : c.unused === 'stale' && c.lastUsed ? fillText(P.unused.stale, { date: monthDay(c.lastUsed) }) : c.lastUsed ? fillText(P.lastUsedDate, { date: monthDay(c.lastUsed) }) : null
+    const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
+    return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
 }
 
@@ -294,6 +307,7 @@ export function whyLine(r: ReadinessRow): string {
   if (!rd || r.state === null) return ''
   const W = T.panel.why
   if (rd.next.kind === 'replaceKey' || rd.recommended?.kind === 'replaceKey') return W.replaceKey
+  if (rd.usedRecently) return fillText(W.usedRecently, { date: monthDay(rd.usedRecently) })
   if (rd.onLeave) return W.onLeave
   // Needs a device names the device the gap is on (a device type with no proof), whatever the next action there is.
   const gap = rd.devices.find((d) => !d.covered)

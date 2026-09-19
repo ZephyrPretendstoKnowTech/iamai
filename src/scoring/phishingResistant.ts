@@ -233,6 +233,8 @@ export function isReady(state: ReadinessState): boolean {
 
 /** The window readiness is judged over. */
 export const READINESS_WINDOW_DAYS = 30
+/** A passkey not used for this long is flagged "registered but not used, may be gone" (owner item 2). */
+export const UNUSED_PASSKEY_DAYS = 90
 const DAY = 86_400_000
 
 export type DeviceType = 'computer' | 'phone'
@@ -288,6 +290,10 @@ export type CredentialReading = {
   afterStep3: Verdict | null
   /** The latest confirmed sign-in with this class of method, in the window or kept from earlier scans. */
   lastConfirmed: { at: string; os: Platform | null; retained: boolean } | null
+  /** A passkey's last use as Microsoft reports it: supporting evidence only, it never makes anybody Ready (owner item 2). */
+  lastUsed: string | null
+  /** A passkey registered but never used, or not used for UNUSED_PASSKEY_DAYS: it may be gone. Null where the date was not read, or its use is seen. */
+  unused: 'never' | 'stale' | null
 }
 
 export type UnknownReason = 'methods' | 'signIns' | 'notCovered'
@@ -342,8 +348,14 @@ export type PersonReadiness = {
   lost: { cls: MethodClass; lastSeen: string }[]
   /** The latest MFA sign-in in the window that was not phishing-resistant. */
   other: ProofLine | null
-  /** Signs in only to scripting clients: probably a service account. A note, never a state. */
+  /** Signs in only to scripting clients: probably a service account, and not counted (derive/population.ts isActivePerson). */
   automated: boolean
+  /**
+   * Confirm it only: the latest date inside the window Microsoft reports a usable
+   * passkey was used, where no sign-in with it shows. Supporting evidence: the
+   * page says "used recently", and the state stays Confirm it (owner item 2).
+   */
+  usedRecently: string | null
   next: NextAction
   /** Non-blocking: the Seamless upgrade for somebody Ready. It never changes `state`. */
   recommended: NextAction | null
@@ -585,7 +597,7 @@ function inventory(input: ReadinessInput): { classes: Set<MethodClass>; rows: In
 export function personReadiness(input: ReadinessInput): PersonReadiness {
   const ctx = input.context ?? emptyReadinessContext(new Date().toISOString())
   const inv = inventory(input)
-  const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null }
+  const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null, usedRecently: null }
   const apps = input.signIns.apps ?? []
   const automated = apps.length > 0 && apps.every((a) => SCRIPTING.test(a))
   const inWindow = (at: string): boolean => at >= ctx.windowStart
@@ -636,6 +648,15 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   }
   const seenWorking = (cls: MethodClass): boolean => windowProofs.some((p) => p.cls === cls && (ctx.policyChangedAt === null || p.at >= ctx.policyChangedAt))
   const step3 = new Set(ctx.step3.models.map((m) => m.aaguid.toLowerCase()))
+  // Microsoft's last-use date (owner item 2): a passkey never used, or unused for 90 days, may be gone. One passkey
+  // whose class is seen working in the window is in use whatever the date says.
+  const staleBefore = new Date(Date.parse(ctx.now) - UNUSED_PASSKEY_DAYS * DAY).toISOString()
+  const onlyPasskeySeen = inv.rows.filter((r) => r.cls === 'passkey').length === 1 && windowProofs.some((p) => p.cls === 'passkey')
+  const unusedOf = (m: AuthMethodSummary | null): CredentialReading['unused'] => {
+    if (!m || onlyPasskeySeen) return null
+    if (m.lastUsedDateTime) return m.lastUsedDateTime < staleBefore ? 'stale' : null
+    return m.lastUsedSourceVersion === 'beta' ? 'never' : null
+  }
   // The passkey forms held, and those usable now: whether a passkey proof can be a device's built-in one.
   const forms = new Set<PasskeyForm>()
   const usableForms = new Set<PasskeyForm>()
@@ -659,6 +680,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       allowedNow,
       afterStep3,
       lastConfirmed: last ? { at: last.at, os: last.os, retained: last.retained } : null,
+      lastUsed: cls === 'passkey' ? (m?.lastUsedDateTime ?? null) : null,
+      unused: cls === 'passkey' ? unusedOf(m) : null,
     }
   }).sort((a, b) => byClass(a.cls, b.cls))
   const usable = credentials.filter((c) => c.allowedNow !== 'no')
@@ -676,6 +699,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const other: ProofLine | null = otherRecord ? { cls: otherRecord.cls, os: otherRecord.os, at: otherRecord.at, retained: false } : null
   const lastConfirmed = qualifying.map(latestOf).filter((p): p is ProofLine => p !== null).sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null
   const common = { credentials, lost, other, automated, methods, qualifying, hasPasskey, lastConfirmed }
+  // Supporting evidence for Confirm it only: a usable passkey Microsoft says was used inside the window.
+  const usedRecently = credentials.filter((c) => c.cls === 'passkey' && c.allowedNow !== 'no' && c.lastUsed !== null && inWindow(c.lastUsed)).map((c) => c.lastUsed as string).sort().pop() ?? null
 
   // What each device can do, and its latest phishing-resistant sign-in (the seamless one first).
   const read: DeviceReading[] = inWindowDevices.map((d) => {
@@ -730,7 +755,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     const last = input.lastSuccessfulSignIn ?? null
     const gap = input.signIns.individuallyRead !== true && ctx.coveredFrom !== null && ctx.coveredFrom > ctx.windowStart && last !== null && last >= ctx.windowStart && last < ctx.coveredFrom
     if (gap) return { ...base, ...common, devices, state: 'unknown', unknown: 'notCovered', next: { kind: 'rescan', reason: 'notCovered' } }
-    return { ...base, ...common, devices, state: 'confirm', onLeave: true, next: { kind: 'returnConfirm' } }
+    return { ...base, ...common, devices, state: 'confirm', onLeave: true, usedRecently, next: { kind: 'returnConfirm' } }
   }
 
   // A key that stops working under Step 3's settings, where it is the only usable method.
@@ -741,7 +766,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     // like any other, and the off-list model is flagged on the credential and, once Ready, as a recommendation.
     const cls = qualifying[0]
     const os = (cls === 'windowsHello' ? devices.find((d) => d.os === 'Windows') : devices[0])?.os ?? null
-    return { ...base, ...common, devices, state: 'confirm', next: { kind: 'confirm', cls, os } }
+    return { ...base, ...common, devices, state: 'confirm', usedRecently, next: { kind: 'confirm', cls, os } }
   }
   const missing = devices.filter((d) => !d.covered)
   if (missing.length > 0) {

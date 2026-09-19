@@ -535,10 +535,14 @@ export async function collectMethodsForUsers(ctx: Ctx, userIds: string[]): Promi
         const userId = chunk[Number(response?.id)]
         const values = (response?.body as { value?: unknown[] } | undefined)?.value
         if (!userId || response?.status !== 200 || !Array.isArray(values) || !Array.isArray(out[userId])) continue
-        const detailed = new Map(values.map(value => mapMethod(value, 'beta')).filter(method => method.id).map(method => [method.id!, method]))
+        // Only a row that reports the field says anything: a date is its last use, and an explicit null
+        // is "never used" (the marker without a date); a row without the field leaves it unknown.
+        const reported = values.filter(value => value !== null && typeof value === 'object' && 'lastUsedDateTime' in (value as Record<string, unknown>))
+        const detailed = new Map(reported.map(value => mapMethod(value, 'beta')).filter(method => method.id).map(method => [method.id!, method]))
         out[userId] = out[userId].map(method => {
           const beta = method.id ? detailed.get(method.id) : undefined
-          return beta?.lastUsedDateTime ? { ...method, lastUsedDateTime: beta.lastUsedDateTime, lastUsedSourceVersion: 'beta' as const } : method
+          if (!beta) return method
+          return beta.lastUsedDateTime ? { ...method, lastUsedDateTime: beta.lastUsedDateTime, lastUsedSourceVersion: 'beta' as const } : { ...method, lastUsedSourceVersion: 'beta' as const }
         })
       }
     } catch {

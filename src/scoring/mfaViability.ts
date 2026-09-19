@@ -39,7 +39,9 @@ export type AuthMethodSummary = {
   aaGuid?: string
   attestationLevel?: string
   passkeyType?: string
+  /** Microsoft's last-use date for a passkey (beta fido2Methods): supporting evidence only, never proof. */
   lastUsedDateTime?: string
+  /** Set where the beta read reported the field: with no date beside it, Microsoft says the passkey was never used. */
   lastUsedSourceVersion?: 'beta'
   sourceVersion?: 'v1.0' | 'beta'
   phoneType?: 'mobile' | 'alternateMobile' | 'office'
