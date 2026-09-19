@@ -9,8 +9,8 @@ import { ruleText } from '../validation/rules.ts'
 import type { RuleResult } from '../validation/rules.ts'
 import type { ConfigurationFinding, ConfigurationFindingItem } from './types.ts'
 import { assignedPasskeyProfiles, passkeyFindingsOf, passkeyReadingOf, requiredModels } from './passkeySettings.ts'
-import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility, recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
-import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
+import { affectedPasskeysByProposedChange, emergencyPasskeyCompatibility, emergencyProposedPasskeyCompatibility } from './passkeyCompatibility.ts'
+import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryEvidenceOf } from './cleanupDone.ts'
 import type { CleanupCheckpoint, RecoveryCandidateReading } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
@@ -394,16 +394,11 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   const method = emergencyMethodFinding(snapshot, mapping, groups)
   const finalPolicy = journeyPasskeyFindings(snapshot, mapping, groups).filter(finding => finding.key === 'registration' || finding.key === 'protection')
   const ids = mapping.breakGlassUserIds
-  const basis = recoveryAccountBasis(snapshot, ids, mapping, groups)
-  const candidateSetBasis = Object.fromEntries(ids.flatMap(id => {
-    const candidateSet = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups)
-    return candidateSet.state === 'complete' ? [[id, JSON.stringify([...candidateSet.ids].sort())]] : []
-  }))
   const tests = ids.map(id => {
-    const configuredAt = recoveryPreparation(id, records, now, basis[id], snapshot.tenantId)?.configurationObservedAt ?? null
-    const readings = recoveryCandidateReadings(snapshot, id, now, configuredAt)
-    const source = recoveryEvidenceSource(snapshot)
-    const date = basis[id] ? latestRecoveryTest(id, records, now, basis[id], { readings, tenantId: snapshot.tenantId, currentSnapshotObservedAt: snapshot.asOf, signInSource: source, candidateSetBasis: candidateSetBasis[id] }) : null
+    const { basis, configuredAt, context } = recoveryEvidenceOf(snapshot, mapping, groups, records, now, id)
+    const { readings } = context
+    const source = context.signInSource!
+    const date = basis ? latestRecoveryTest(id, records, now, basis, context) : null
     const current = !!date && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86400000
     const verifiedAt = current ? recoveryTime(date!, mapping.displayTimeZone) : null
     const sourceFailure = source.status !== 'ok'

@@ -7,7 +7,8 @@ import { ownerConfirmationOf } from './decisions.ts'
 import type { OwnerConfirmation } from './decisions.ts'
 import type { Step } from './types.ts'
 import { setState } from './lifecycle.ts'
-import { cleanupRecord, withCleanupDone, isRecordedDrill, latestRecoveryTest, cleanupComplete, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
+import { cleanupRecord, withCleanupDone, isRecordedDrill, latestRecoveryTest, cleanupComplete } from './cleanupDone.ts'
+import { observedContext, observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from './fixtures/recoveryRecords.ts'
 
 const at = '2026-09-01T12:00:00Z'
 function setup(id: string) {
@@ -92,14 +93,11 @@ test('a dated successful recovery test never exempts every same-day sign-in', ()
   let records = cleanupRecord(withCleanupDone([], 'drill', '2026-08-31', at, details)).records!
   assert.equal(latestRecoveryTest('a', records, at), null, 'a legacy Passed date has no qualifying event evidence')
   assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records), false)
-  const configurationObservedAt = '2026-08-31T09:00:00Z'
-  const evidence = { a: { schema: 1 as const, purpose: 'final' as const, tenantId: 'tenant', accountId: 'a', eventId: 'event-a', eventAt: '2026-08-31T10:00:00Z', appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } }
-  const candidate = { schema: 1 as const, eventId: 'event-a', userId: 'a', at: evidence.a.eventAt, success: true, isInteractive: true, appId: evidence.a.appId, resourceId: evidence.a.resourceId, app: 'Portal', resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }
-  let checkpoints = withCleanupDone([], 'drill', '2026-08-31', configurationObservedAt, { accountIds: ['a'], workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final' as const, tenantId: 'tenant', configurationObservedAt })
-  checkpoints = withCleanupDone(checkpoints, 'drill', '2026-08-31', at, { ...details, purpose: 'final', recoveryEvidence: evidence, signInAtByAccount: { a: '2026-08-31T10:00:00Z' } })
-  records = cleanupRecord(checkpoints).records!
-  const context = { readings: [{ candidate, qualifies: true, reason: null }], tenantId: 'tenant', currentSnapshotObservedAt: at }
-  assert.equal(latestRecoveryTest('a', records, at, undefined, context), '2026-08-31T12:00:00.000Z')
+  // The scan's own record of the one observed passkey sign-in (schema 2).
+  const candidate = recoveryCandidate('a', '2026-08-31T10:00:00Z', 'tenant', 'event-a')
+  records = cleanupRecord(observedRecoveryRecords({ tenantId: 'tenant', events: { a: candidate }, configurationObservedAt: '2026-08-31T09:00:00Z', at, candidateSetBasis: { a: '["key-a"]' } })).records!
+  const context = observedContext(candidate, 'tenant', at, '["key-a"]')
+  assert.equal(latestRecoveryTest('a', records, at, undefined, context), '2026-08-31T10:00:00Z')
   assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'a', records, context), true)
   assert.equal(isRecordedDrill('2026-08-31T11:00:00Z', [], 'a', records, context), false)
   assert.equal(isRecordedDrill('2026-08-31T10:00:00Z', [], 'b', records, context), false)
@@ -201,14 +199,17 @@ test('free-tier emergency check reuses scoped recovery tests and does not offer 
   step.population.ids = [...f.mapping.breakGlassUserIds]
   f.snapshot.config.securityDefaults = { status: 'ok', reason: null, rows: [{ isEnabled: true }] }
   f.snapshot.config.caPolicies = { status: 'disabled', rows: [], reason: 'Free tenant' }
+  withPreparedPasskeys(f.snapshot, step.population.ids)
   const { recoveryAccountBasis } = await import('./cleanupDone.ts')
+  const { recoveryPasskeyCandidateSet } = await import('./passkeyCompatibility.ts')
   const accountBasis = recoveryAccountBasis(f.snapshot, step.population.ids, f.mapping, f.groups)
   assert.equal(Object.keys(accountBasis).length, step.population.ids.length)
   const eventAt = new Date(Date.parse(f.snapshot.asOf) - 3_600_000).toISOString()
   const configurationObservedAt = new Date(Date.parse(eventAt) - 3_600_000).toISOString()
-  for (const [index, id] of step.population.ids.entries()) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [{ schema: 1, eventId: `free-tier-${index}`, userId: id, at: eventAt, success: true, isInteractive: true, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', app: 'Portal', resource: 'Azure management', method: 'Passkey (FIDO2)', freshMethod: true }] }
-  const preparation = { cleanup: 'drill' as const, date: configurationObservedAt, at: configurationObservedAt, workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final' as const, tenantId: f.snapshot.tenantId, configurationObservedAt, accountIds: step.population.ids, accountBasis }
-  const records = [preparation, ...step.population.ids.map((id, index) => ({ cleanup: 'drill' as const, date: f.snapshot.asOf, at: f.snapshot.asOf, outcome: 'passed' as const, purpose: 'final' as const, accountIds: [id], accountBasis, recoveryEvidence: { [id]: { schema: 1 as const, purpose: 'final' as const, tenantId: f.snapshot.tenantId, accountId: id, eventId: `free-tier-${index}`, eventAt, appId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', resourceId: '797f4846-ba00-4fd7-ba43-dac1f8f63013', method: 'Passkey (FIDO2)' as const, provenance: 'observed-sign-in' as const, recoveryConfirmed: true as const, credentialConfirmed: true as const, configurationObservedAt } } }))]
+  const events = Object.fromEntries(step.population.ids.map((id, index) => [id, recoveryCandidate(id, eventAt, f.snapshot.tenantId, `free-tier-${index}`)]))
+  for (const id of step.population.ids) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [events[id]] }
+  const candidateSetBasis = Object.fromEntries(step.population.ids.map(id => [id, JSON.stringify([...recoveryPasskeyCandidateSet(f.snapshot, id, f.mapping, f.groups).ids].sort())]))
+  const records = observedRecoveryRecords({ tenantId: f.snapshot.tenantId, events, configurationObservedAt, at: f.snapshot.asOf, accountBasis, candidateSetBasis })
   applyManualReviews([step], f.snapshot, {}, f.mapping, records, f.groups)
   assert.equal(step.manualReview, undefined)
   assert.equal(step.state.satisfied, true)
