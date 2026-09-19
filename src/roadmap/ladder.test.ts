@@ -75,15 +75,15 @@ test('what Graph does not expose is said plainly, never guessed', () => {
 })
 
 test('a phase 0 step that already covers a ladder item takes its place, and its position', () => {
-  const withBreakGlassStep = ladderSteps(freeSnapshot(), mapping(), ['s-prereq-break-glass'])
-  assert.equal(withBreakGlassStep.steps.some((s) => s.id === ladderStepId('break-glass-accounts')), false)
-  assert.equal(withBreakGlassStep.order.get('s-prereq-break-glass'), 1)
-  assert.equal(withBreakGlassStep.steps.length, LADDER_ITEMS.length - 1)
+  const withPerUserStep = ladderSteps(freeSnapshot(), mapping(), ['s-prereq-per-user-mfa'])
+  assert.equal(withPerUserStep.steps.some((s) => s.id === ladderStepId('per-user-mfa-cleanup')), false)
+  assert.equal(withPerUserStep.order.get('s-prereq-per-user-mfa'), LADDER_ITEMS.findIndex((i) => i.id === 'per-user-mfa-cleanup'))
+  assert.equal(withPerUserStep.steps.length, LADDER_ITEMS.length - 1)
 })
 
 test('facts come from the directory, not from anything the operator types', () => {
   const base = freeSnapshot()
-  const f = ladderFacts(base, mapping())
+  const f = ladderFacts(base)
   assert.equal(f.enabledUsers, base.users.filter((u) => u.userType === 'member' && u.accountEnabled !== false).length)
   assert.equal(f.guests, base.users.filter((u) => u.userType === 'guest').length)
 })
@@ -96,6 +96,9 @@ test('a free tenant gets the ladder as its plan, in ladder order, and no Conditi
   assert.equal(ladder.length, LADDER_ITEMS.length, 'every rung is a step')
   assert.deepEqual(ladder.map((s) => s.id), LADDER_ITEMS.map((i) => ladderStepId(i.id)), 'ladder order is the plan order')
   assert.equal(steps.indexOf(ladder[0]), 0, 'the ladder leads the plan')
+  // No free-tier Emergency Access path (owner, 2026-09-19): no rung, and no emergency step from anywhere else.
+  assert.equal(LADDER_ITEMS.some((i) => /break-glass|emergency/i.test(i.id)), false)
+  assert.equal(steps.some((s) => /break-glass|emergency/i.test(s.id)), false, 'a free tenant has no Emergency Access step')
   // Objects that exist only to be referenced by a policy have nothing to serve.
   for (const id of ['s-prereq-exclusion-group', 's-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-security-defaults']) {
     assert.equal(steps.some((s) => s.id === id), false, `${id} is not asked for without Conditional Access`)

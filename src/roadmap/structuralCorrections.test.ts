@@ -8,8 +8,7 @@ import { DIRECTION_STEP } from './directionAnswers.ts'
 import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
 import { cleanupRecord, withCleanupDone, isRecordedDrill, validCompletionDate, cleanupBasis, recoveryAccountBasis } from './cleanupDone.ts'
 import type { VerifiedRecoveryEvidence } from './cleanupDone.ts'
-import { observedContext, observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from './fixtures/recoveryRecords.ts'
-import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
+import { observedContext, observedRecoveryRecords, recoveryCandidate } from './fixtures/recoveryRecords.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { buildPlanFile, parsePlanFile, sameBaselineSource, trimCheckpoints } from './plan.ts'
 import { absoluteDate, setDisplayTimeZone } from '../copy/dates.ts'
@@ -210,44 +209,6 @@ test('uploaded baselines are identified by content, never the display name', asy
   assert.equal(sameBaselineSource(source, { ...source, contentHash: await baselineContentHash([{ ...files[0], text: '{"a":2}' }, files[1]]) }), false)
   assert.equal(sameBaselineSource(source, { kind: 'upload', fileName: source.fileName }), false)
 })
-
-test('free-licence emergency accounts need explicit selection and the shared scoped recovery record', async () => {
-  const { applyStepDecisions } = await import('./decisions.ts')
-  const { ladderSteps, GLOBAL_ADMIN_ROLE_ID } = await import('./ladder.ts')
-  const { contentStepFor } = await import('../content/stepTitle.ts')
-  const f = fixture('micro')
-  const known = fixture('small')
-  f.snapshot.config.authMethodsPolicy = structuredClone(known.snapshot.config.authMethodsPolicy)
-  f.snapshot.config.roleAssignments = { status: 'ok', reason: null, rows: [] }
-  const users = f.snapshot.users.slice(0, 2)
-  for (const u of users) { u.accountEnabled = true; u.onPremisesSyncEnabled = false; f.snapshot.roles.active[u.id] = [GLOBAL_ADMIN_ROLE_ID]; f.snapshot.authMethods[u.id] = [] }
-  withPreparedPasskeys(f.snapshot, users.map(u => u.id))
-  const id = 's-ladder-break-glass-accounts'
-  const mapping = applyStepDecisions(f.mapping, { [id]: { picked: users.map((u) => u.id), at } })
-  assert.deepEqual(mapping.breakGlassUserIds, users.map((u) => u.id))
-  const generate = () => ladderSteps(f.snapshot, mapping, []).steps.find((s) => s.id === id)!
-  const first = generate()
-  assert.ok(contentStepFor(first)?.decision)
-  applyManualReviews([first], f.snapshot, {}, mapping)
-  assert.notEqual(first.status, 'done', 'selection alone cannot certify a recovery test')
-  assert.equal(first.manualReview, undefined, 'the existing Test Emergency Access owner records the test')
-  const eventAt = '2026-09-14T03:00:00Z'
-  const events = Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, recoveryCandidate(id, eventAt, f.snapshot.tenantId)]))
-  for (const id of mapping.breakGlassUserIds) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [events[id]] }
-  const accountBasis = recoveryAccountBasis(f.snapshot, mapping.breakGlassUserIds, mapping, f.groups)
-  const candidateSetBasis = Object.fromEntries(mapping.breakGlassUserIds.map(id => [id, JSON.stringify([...recoveryPasskeyCandidateSet(f.snapshot, id, mapping, f.groups).ids].sort())]))
-  const configurationObservedAt = '2026-09-14T02:00:00.000Z'
-  const records = cleanupRecord(observedRecoveryRecords({ tenantId: f.snapshot.tenantId, events, configurationObservedAt, at, accountBasis, candidateSetBasis })).records!
-  f.snapshot.asOf = at
-  const confirmed = generate()
-  applyManualReviews([confirmed], f.snapshot, {}, mapping, records, f.groups, at)
-  assert.equal(confirmed.status, 'done', 'a post-event scan can complete the matching prepared recovery test')
-  users[0].accountEnabled = false
-  const disabled = generate()
-  applyManualReviews([disabled], f.snapshot, {}, mapping, records, f.groups, at)
-  assert.notEqual(disabled.status, 'done', 'the old test cannot override a disabled emergency account')
-})
-
 
 /** A hand-recorded result in the retired schema-1 format: history, never proof on its own. */
 const legacyRecoveryEvidence = (accountIds: string[], tenantId: string, eventAt: string): Record<string, VerifiedRecoveryEvidence> => Object.fromEntries(accountIds.map(accountId => [accountId, {

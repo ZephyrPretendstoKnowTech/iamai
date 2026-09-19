@@ -8,7 +8,7 @@ import type { OwnerConfirmation } from './decisions.ts'
 import type { Step } from './types.ts'
 import { setState } from './lifecycle.ts'
 import { cleanupRecord, withCleanupDone, isRecordedDrill, latestRecoveryTest, cleanupComplete } from './cleanupDone.ts'
-import { observedContext, observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from './fixtures/recoveryRecords.ts'
+import { observedContext, observedRecoveryRecords, recoveryCandidate } from './fixtures/recoveryRecords.ts'
 
 const at = '2026-09-01T12:00:00Z'
 function setup(id: string) {
@@ -189,34 +189,6 @@ test('PIM workflow account choices show active or eligible role holders, and rep
   assert.ok(choices.length < f.snapshot.users.length)
   for (const choice of choices) assert.ok((f.snapshot.roles.active[choice.value]?.length ?? 0) + (f.snapshot.roles.eligible[choice.value]?.length ?? 0) > 0)
   assert.deepEqual(step.manualReview!.pendingAccountIds, [])
-})
-
-
-test('free-tier emergency check reuses scoped recovery tests and does not offer a duplicate confirmation', async () => {
-  const f = fixture('small')
-  const step = structuredClone(runFixture(f).steps[0])
-  step.id = 's-ladder-break-glass-accounts'
-  step.population.ids = [...f.mapping.breakGlassUserIds]
-  f.snapshot.config.securityDefaults = { status: 'ok', reason: null, rows: [{ isEnabled: true }] }
-  f.snapshot.config.caPolicies = { status: 'disabled', rows: [], reason: 'Free tenant' }
-  withPreparedPasskeys(f.snapshot, step.population.ids)
-  const { recoveryAccountBasis } = await import('./cleanupDone.ts')
-  const { recoveryPasskeyCandidateSet } = await import('./passkeyCompatibility.ts')
-  const accountBasis = recoveryAccountBasis(f.snapshot, step.population.ids, f.mapping, f.groups)
-  assert.equal(Object.keys(accountBasis).length, step.population.ids.length)
-  const eventAt = new Date(Date.parse(f.snapshot.asOf) - 3_600_000).toISOString()
-  const configurationObservedAt = new Date(Date.parse(eventAt) - 3_600_000).toISOString()
-  const events = Object.fromEntries(step.population.ids.map((id, index) => [id, recoveryCandidate(id, eventAt, f.snapshot.tenantId, `free-tier-${index}`)]))
-  for (const id of step.population.ids) f.snapshot.signInEvidence[id] = { ...(f.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: eventAt, lastMfaSuccess: null }), recoveryCandidates: [events[id]] }
-  const candidateSetBasis = Object.fromEntries(step.population.ids.map(id => [id, JSON.stringify([...recoveryPasskeyCandidateSet(f.snapshot, id, f.mapping, f.groups).ids].sort())]))
-  const records = observedRecoveryRecords({ tenantId: f.snapshot.tenantId, events, configurationObservedAt, at: f.snapshot.asOf, accountBasis, candidateSetBasis })
-  applyManualReviews([step], f.snapshot, {}, f.mapping, records, f.groups)
-  assert.equal(step.manualReview, undefined)
-  assert.equal(step.state.satisfied, true)
-  const changed = records.map(r => ({ ...r, outcome: 'failed' as const }))
-  applyManualReviews([step], f.snapshot, {}, f.mapping, changed, f.groups)
-  assert.equal(step.state.satisfied, false)
-  assert.equal(step.manualReview, undefined)
 })
 
 

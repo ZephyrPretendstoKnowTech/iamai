@@ -25,7 +25,7 @@ const IMPACT_TOPICS: Record<string, string> = {
 const ACCOUNT_REVIEW_STEPS = new Set([
   's-check-dormant-accounts', 's-ladder-stale-accounts', 's-prereq-per-user-mfa',
   's-ladder-per-user-mfa-cleanup', 's-check-separate-admin-accounts',
-  's-shared-devices', 's-ladder-break-glass-accounts',
+  's-shared-devices',
 ])
 export function rowWho(step: Step): string {
   if (step.preparation) return step.preparation.ids.length ? `${step.preparation.ids.length} ${step.preparation.ids.length === 1 ? 'person' : 'people'}` : 'User Authentication'

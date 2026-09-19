@@ -2469,7 +2469,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
   }
-  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, input.cleanupRecord?.records ?? [], input.groupMembers, input.reviewNow ?? snapshot.asOf, new Set(campaignIds(viability, snapshot, mapping)))
+  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, new Set(campaignIds(viability, snapshot, mapping)))
   for (const s of steps.filter(s => ['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(s.id))) {
     const dormantIds = new Set(dormant.map(u => u.id))
     const reviewed = mapping.dormantAccountChoices ?? {}

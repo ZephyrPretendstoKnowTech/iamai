@@ -39,7 +39,7 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
-  for (const id of ['s-ladder-break-glass-accounts', 's-confirm-workloads', 'cleanup-alerting']) {
+  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting']) {
     assert.equal(groupOf(id), null, id)
     assert.equal(isGroupMember(id), false, id)
     assert.equal(usesTaskAnatomy(id), false, id)

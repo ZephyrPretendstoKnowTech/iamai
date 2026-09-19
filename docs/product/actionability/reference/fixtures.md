@@ -460,7 +460,7 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
 **Rows the lane adapter reads from the Plan's own state** (`fromEngine: false`: the dependency graph does not know them), seen across these runs:
 - `cleanup-alerting`, `cleanup-consolidation`, `cleanup-naming`
 - `s-blocker-allowed-countries`
-- `s-ladder-app-passwords`, `s-ladder-guest-review`, `s-ladder-legacy-auth-inventory`, `s-ladder-stale-accounts`, `s-ladder-admin-accounts-separate`, `s-ladder-authenticator-over-sms`, `s-ladder-break-glass-accounts`, `s-ladder-global-admin-count`, `s-ladder-per-user-mfa-cleanup`, `s-ladder-security-defaults`
+- `s-ladder-app-passwords`, `s-ladder-guest-review`, `s-ladder-legacy-auth-inventory`, `s-ladder-stale-accounts`, `s-ladder-admin-accounts-separate`, `s-ladder-authenticator-over-sms`, `s-ladder-global-admin-count`, `s-ladder-per-user-mfa-cleanup`, `s-ladder-security-defaults`
 
 `s-prereq-source-references` is a row on none of them.
 

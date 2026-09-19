@@ -1,10 +1,5 @@
 import { adminUserIds } from '../roles.ts'
-import { emergencyPasskeyCompatibility } from './passkeyCompatibility.ts'
-import type { GroupMembers } from '../coverage/population.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
-import { latestRecoveryTest, recoveryEvidenceOf } from './cleanupDone.ts'
-import type { CleanupCheckpoint } from './cleanupDone.ts'
-import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
@@ -13,8 +8,8 @@ import type { MappingState } from '../mapping/types.ts'
 import { CARVE_OUT_STEP_ID, QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
 
 export const MANUAL_REVIEW_ID = 'manual-review'
-const REVIEWS = new Set(['break-glass-accounts', 'legacy-auth-inventory', 'app-passwords', 'guest-review', 'stale-accounts', 'admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
-const SCAN_REQUIRED = new Set(['break-glass-accounts', 'admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms'])
+const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'stale-accounts', 'admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
+const SCAN_REQUIRED = new Set(['admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms'])
 const FOLLOW_UPS = new Set<string>(Object.values(CARVE_OUT_STEP_ID))
 
 function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
@@ -51,7 +46,7 @@ const POLICY_WORKFLOWS: Record<string, string> = {
   's-goal-block-device-code': 'Device-Code Client and Workflow Tested',
 }
 const ADMIN_SEPARATION = new Set(['s-ladder-admin-accounts-separate', 's-check-separate-admin-accounts'])
-const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts','s-ladder-break-glass-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-question-mail-devices', 's-question-partner', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
+const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-question-mail-devices', 's-question-partner', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
 /** Only the existing manual steps receive scoped evidence inputs. */
@@ -60,7 +55,7 @@ export function manualEvidenceFields(stepId: string): ManualEvidenceField[] {
   const fields: ManualEvidenceField[] = [
     { key: 'accountIds', label: ADMIN_SEPARATION.has(stepId) ? 'Reviewed Accounts' : stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' },
   ]
-  if (stepId !== 's-ladder-guest-review') fields.push({ key: 'workflow', label: POLICY_WORKFLOWS[stepId] ?? ({ 's-ladder-break-glass-accounts': 'Recovery Method and Administrative Task Tested', 's-ladder-global-admin-count': 'Purpose of Retained Global Administrator Assignments', 's-ladder-authenticator-over-sms': 'Replacement Sign-in and Recovery Test', 's-ladder-legacy-auth-inventory': 'Dependency Owners and Replacement or Follow-up Plans' } as Record<string, string>)[stepId] ?? (stepId === 's-question-mail-devices' ? 'Mail Job and Delivery Route' : stepId === 's-question-partner' ? 'Provider Access Path' : stepId === 's-shared-devices' ? 'Work Task Tested' : stepId === 's-ladder-app-passwords' ? 'Credential Retirement and Creation Restriction' : 'Dedicated Use or Handover Test'), type: 'text', required: true })
+  if (stepId !== 's-ladder-guest-review') fields.push({ key: 'workflow', label: POLICY_WORKFLOWS[stepId] ?? ({ 's-ladder-global-admin-count': 'Purpose of Retained Global Administrator Assignments', 's-ladder-authenticator-over-sms': 'Replacement Sign-in and Recovery Test', 's-ladder-legacy-auth-inventory': 'Dependency Owners and Replacement or Follow-up Plans' } as Record<string, string>)[stepId] ?? (stepId === 's-question-mail-devices' ? 'Mail Job and Delivery Route' : stepId === 's-question-partner' ? 'Provider Access Path' : stepId === 's-shared-devices' ? 'Work Task Tested' : stepId === 's-ladder-app-passwords' ? 'Credential Retirement and Creation Restriction' : 'Dedicated Use or Handover Test'), type: 'text', required: true })
   if (ADMIN_SEPARATION.has(stepId)) fields.push({ key: 'replacementAccountId', label: 'Dedicated Administrator Account', type: 'accounts', required: true, whenOutcome: ['passed'] }, { key: 'roleIds', label: 'Required Roles', type: 'accounts', required: true, whenOutcome: ['passed'] })
   if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'roleIds', label: 'Roles Tested', type: 'accounts', required: true }, { key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
   if (stepId === 's-goal-service-accounts-trusted-network') fields.push({ key: 'networkId', label: 'Named Network Tested', type: 'select', required: true })
@@ -101,11 +96,11 @@ function scopedBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingStat
   const additional = POLICY_WORKFLOWS[step.id] ? [strengths, step.id === 's-goal-device-registration-mfa' ? (snapshot.config.deviceRegistrationPolicy?.rows ?? []) : null, step.id === 's-goal-guests-mfa' ? (snapshot.config.crossTenantAccess?.rows ?? []) : null]
     : step.id === CARVE_OUT_STEP_ID.partner ? [mapping ? answerOf(mapping, QUESTION_STEP.partner, 'question')?.index : null, (snapshot.config.crossTenantAccess?.rows ?? [])]
     : step.id === CARVE_OUT_STEP_ID.mailDevices ? [mapping ? mailDevicesOf(mapping) : []]
-    : ['s-ladder-break-glass-accounts', 's-ladder-authenticator-over-sms'].includes(step.id) ? [snapshot.config.authMethodsPolicy?.rows ?? [], snapshot.config.securityDefaults?.rows ?? []]
+    : step.id === 's-ladder-authenticator-over-sms' ? [snapshot.config.authMethodsPolicy?.rows ?? [], snapshot.config.securityDefaults?.rows ?? []]
     : step.id === 's-ladder-legacy-auth-inventory' ? [Object.keys(snapshot.evidenceUsage?.legacyAuth.byDetail ?? {}).sort()]
     : step.id === 's-ladder-app-passwords' ? [ids.map(id => [id, snapshot.perUserMfa?.[id]?.state ?? 'unknown'])]
     : []
-  const accountEvidence = ['s-check-separate-admin-accounts', 's-ladder-admin-accounts-separate', 's-ladder-break-glass-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
+  const accountEvidence = ['s-check-separate-admin-accounts', 's-ladder-admin-accounts-separate', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
   const accountKey = `${accountEvidence}:${step.id === 's-ladder-guest-review'}`
   let accounts = accountCache?.get(accountKey)
   if (!accounts) {
@@ -149,9 +144,9 @@ export function scopeManualBasis(basis: string, record: Pick<OwnerConfirmation, 
 function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (snapshot.sources.users?.status !== 'ok') return false
   if (step.id === 's-ladder-legacy-auth-inventory' && snapshot.sources.signInEvidence?.status !== 'ok') return false
-  if (['s-ladder-break-glass-accounts', 's-ladder-global-admin-count'].includes(step.id) && snapshot.config.roleAssignments?.status !== 'ok') return false
+  if (step.id === 's-ladder-global-admin-count' && snapshot.config.roleAssignments?.status !== 'ok') return false
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.pimEligibility?.status !== 'ok') return false
-  if (['s-ladder-break-glass-accounts', 's-ladder-authenticator-over-sms'].includes(step.id) && (snapshot.config.authMethodsPolicy?.status !== 'ok' || scopedPeople(step, snapshot).some(id => !Array.isArray(snapshot.authMethods[id])))) return false
+  if (step.id === 's-ladder-authenticator-over-sms' && (snapshot.config.authMethodsPolicy?.status !== 'ok' || scopedPeople(step, snapshot).some(id => !Array.isArray(snapshot.authMethods[id])))) return false
   if ((POLICY_WORKFLOWS[step.id] && snapshot.config.caPolicies?.status !== 'ok') || ['s-shared-devices', CARVE_OUT_STEP_ID.mailDevices, CARVE_OUT_STEP_ID.partner].includes(step.id) && snapshot.config.caPolicies?.status !== 'ok') return false
   if ((step.id === CARVE_OUT_STEP_ID.partner || step.id === 's-goal-guests-mfa') && snapshot.config.crossTenantAccess?.status !== 'ok') return false
   if (step.id === 's-goal-service-accounts-trusted-network' && snapshot.config.namedLocations?.status !== 'ok') return false
@@ -195,8 +190,8 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
     return JSON.stringify([step.id, [...step.population.ids].sort(), policies, locations])
   }
   const item = step.id.replace('s-ladder-', '')
-  const people = snapshot.users.filter((u) => item === 'break-glass-accounts' ? step.population.ids.includes(u.id) : item === 'guest-review' ? u.userType === 'guest' : ['admin-accounts-separate', 'global-admin-count'].includes(item) ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
-  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, item === 'break-glass-accounts' ? u.onPremisesSyncEnabled : null, item === 'admin-accounts-separate' ? u.assignedPlans.map((p) => [p.servicePlanId, p.capabilityStatus]).sort() : null, item === 'stale-accounts' ? (!u.lastSuccessfulSignIn || Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) >= 90 * 86_400_000) : null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+  const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : ['admin-accounts-separate', 'global-admin-count'].includes(item) ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
+  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, item === 'admin-accounts-separate' ? u.assignedPlans.map((p) => [p.servicePlanId, p.capabilityStatus]).sort() : null, item === 'stale-accounts' ? (!u.lastSuccessfulSignIn || Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) >= 90 * 86_400_000) : null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
   const roles = Object.fromEntries(Object.entries(snapshot.roles.active).filter(([id]) => people.some((u) => u.id === id)).map(([id, rs]) => [id, [...rs].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))))
   const basis: unknown[] = [step.id, users, SCAN_REQUIRED.has(item) ? [item === 'authenticator-over-sms' ? snapshot.config.authMethodsPolicy?.rows : null, roles] : null]
   if (item === 'guest-review') basis.push(people.map(u => [u.id, u.externalUserState]).sort())
@@ -207,7 +202,7 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
   return JSON.stringify(basis)
 }
 
-export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, mapping?: MappingState, recoveryRecords: CleanupCheckpoint[] = [], groups: GroupMembers = new Map(), reviewNow = snapshot.asOf, activeReviewPeople?: ReadonlySet<string>): void {
+export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, mapping?: MappingState, activeReviewPeople?: ReadonlySet<string>): void {
   const accountCache = new Map<string, string>()
   for (const step of steps) {
     const item = step.id.replace('s-ladder-', '')
@@ -258,29 +253,10 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
         step.configurationFindings = [{ key: 'global-admin-scope', label: 'Global Administrator Assignments', value: `${active} active · ${ids.length - active} eligible only`, detail: 'Review the purpose of each assignment and preserve dedicated emergency access. The recommended account count is guidance, not proof that these assignments are appropriate.', outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
       }
     }
-    if (item === 'break-glass-accounts') {
-      const ids = step.population.ids
-      const methodChecks = emergencyPasskeyCompatibility(snapshot, ids, groups)
-      step.configurationFindings = methodChecks.map(c => ({ key: `recovery-method-${c.accountId}`, label: snapshot.users.find(u => u.id === c.accountId)?.displayName || c.accountId, value: c.state === 'eligible' ? 'Registered key allowed' : c.state === 'unknown' ? 'Method settings not fully read' : 'Recovery key needs attention', detail: c.state === 'eligible' ? 'The registered key is permitted by the effective authentication method settings. The recovery drill is recorded separately.' : ({ disabled: 'Passkey authentication is disabled.', excluded: 'This account is excluded from passkey authentication.', notTargeted: 'Passkey authentication does not include this account.', newKey: 'No registered passkey or security key was found for this account.', modelRestricted: 'The registered key model is not allowed by the effective passkey profile.', membershipUnread: 'Group membership could not establish this account’s effective passkey settings.', methodsUnread: 'Registered authentication methods could not be read.', modelsUnread: 'The registered key model or effective restrictions could not be fully read.', profileOrPartial: 'The assigned passkey profile could not be fully read.', policyUnread: 'Authentication method settings could not be read.' } as Record<string, string>)[c.reason] ?? 'Check the effective passkey profile and registered key for this account.', outcome: c.state === 'eligible' ? 'pass' as const : c.state === 'unknown' ? 'unknown' as const : 'fail' as const }))
-      const factsReady = ids.length >= 2 && methodChecks.every(c => c.state === 'eligible') && ids.every(id => { const u = snapshot.users.find(u => u.id === id); return u?.accountEnabled && u.onPremisesSyncEnabled !== true && (snapshot.roles.active[id] ?? []).includes(GLOBAL_ADMIN_ROLE_ID) })
-      const dates = ids.map(id => { const { basis, context } = recoveryEvidenceOf(snapshot, mapping, groups, recoveryRecords, reviewNow, id); return basis ? latestRecoveryTest(id, recoveryRecords, reviewNow, basis, context) : null })
-      const tested = factsReady && dates.every(day => day && Date.parse(reviewNow) - Date.parse(day) <= BREAK_GLASS_DRILL_DAYS * 86400000)
-      if (tested) {
-        delete step.manualReview
-        step.deliveredBy = ['Every selected emergency account has a recent successful recovery drill for its current account and authentication configuration.']
-        setState(step, { satisfied: true, inPlace: true })
-        continue
-      }
-      delete step.manualReview
-      step.deliveredBy = ['Record one successful recovery test for each selected account in Test Emergency Access. The same record completes this check.']
-      step.action.portalSteps = [...step.action.portalSteps, 'Open Test Emergency Access in this plan and record a successful recovery test for each selected account.']
-      setState(step, { satisfied: false, inPlace: false })
-      continue
-    }
     const basis = manualBasis(step, snapshot, mapping, accountCache)
     const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup' : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa' : null
     const confirmation = confirmations[step.id]?.[MANUAL_REVIEW_ID] ?? (alias ? confirmations[alias]?.[MANUAL_REVIEW_ID] : undefined)
-    const readyToConfirm = ADMIN_SEPARATION.has(step.id) ? evidenceRead(step, snapshot) : item === 'global-admin-count' ? evidenceRead(step, snapshot) && (mapping?.breakGlassUserIds ?? []).length >= 2 && (mapping?.breakGlassUserIds ?? []).every(id => snapshot.users.some(u => u.id === id && u.accountEnabled) && (snapshot.roles.active[id] ?? []).includes(GLOBAL_ADMIN_ROLE_ID)) : POLICY_WORKFLOWS[step.id] ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
+    const readyToConfirm = ADMIN_SEPARATION.has(step.id) ? evidenceRead(step, snapshot) : item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
     const confirmedAt = readyToConfirm && confirmation?.basis === basis && Date.parse(confirmation.at) <= Date.now() ? confirmation.at : null
     if (SCOPED_MANUAL.has(step.id)) {
       const populationIds = new Set(step.population.ids)
@@ -291,7 +267,6 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const pendingAccountIds = POLICY_WORKFLOWS[step.id] || step.id === CARVE_OUT_STEP_ID.partner || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id) && !(ADMIN_SEPARATION.has(step.id) && (confirmation?.outcome === 'passed' && id === confirmation.replacementAccountId || mapping?.breakGlassUserIds.includes(id))))
       const matching = confirmation?.basis === (confirmation ? scopeManualBasis(basis, confirmation) : basis)
       let observedDefect = !readyToConfirm
-      if (step.id === 's-ladder-break-glass-accounts' && confirmation?.testedAt) observedDefect ||= Date.parse(snapshot.asOf) - Date.parse(confirmation.testedAt) > BREAK_GLASS_DRILL_DAYS * 86400000
       if (step.id === 's-goal-service-accounts-trusted-network' && confirmation?.networkId) {
         const network = (snapshot.config.namedLocations?.rows ?? []).find(raw => (raw as Record<string, unknown>).id === confirmation.networkId) as Record<string, unknown> | undefined
         const locations = relevantPolicies(step, snapshot).flatMap(raw => { const locations = ((raw as unknown[])[2] as Record<string, any>)?.locations; return [...(locations?.includeLocations ?? []), ...(locations?.excludeLocations ?? [])] })

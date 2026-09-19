@@ -28,8 +28,7 @@ type Ex = Record<string, unknown>
 
 /**
  * Above this many names the default step states the count and the names move to
- * More. It is the number the engine already counts to before it stops listing
- * and starts summarising (roadmap/ladder.ts NAME_LIMIT).
+ * More.
  */
 export const NAMES_INLINE = 5
 
