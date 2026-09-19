@@ -22,10 +22,9 @@ import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
-import { EmergencySubjectReadiness, Implementation } from './ContentStep.tsx'
+import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
 import type { Artifact, Channel } from './stepBody.ts'
 import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationPowerShell, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
-import { exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { consolidateEmergencyReadiness, recoverySubjectsOf } from './emergencyReadiness.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
@@ -106,7 +105,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   // A Cleanup row in a task-anatomy group (the drill, stepGroups.ts) draws the task-step headings.
   const taskHead = taskHeadingsOf(`cleanup-${row.kind}`)
   const doneWhen = entry.doneWhen.filter(whole)
-  const copyArtifact = (id: string, value: string): void => { void exportClipboard(value, unredactedFrom('implementation-artifact')).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
+  const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
   return (
     // The same frame the Plan draws for a step (task 034): attached under the row
     // that opened it, its head above the body. A Cleanup row is not a policy,

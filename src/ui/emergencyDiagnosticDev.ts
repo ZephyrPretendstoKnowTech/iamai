@@ -1,4 +1,5 @@
 import { loadMappingState } from '../mapping/store.ts'
+import { exportDownload, REDACTED } from './exportGuard.ts'
 import { exclusionsGroupIdToVerify } from '../mapping/safetyChoice.ts'
 import { captureEmergencyAccessDiagnostic, evaluateDiagnosticPair } from '../../work/emergency-access-diagnostic-core.ts'
 import type { EmergencyDiagnosticArtifact } from '../../work/emergency-access-diagnostic-core.ts'
@@ -81,6 +82,6 @@ export async function downloadEmergencyDiagnosticPair(
   const snapshot = await loadSnapshot(tenantId); if (pair !== active || generation !== expectedGeneration) throw new Error('The saved diagnostic pair was superseded while preparing the download.')
   const accounts = [...mapping.breakGlassUserIds]; const groupId = exclusionsGroupIdToVerify(mapping); const models = requiredModels(mapping).map(model => model.aaguid)
   const payload = emergencyDiagnosticPairPayload(active, diagnosticBinding(tenantId, accounts, groupId, models, passkeyBindings(snapshot, mapping)))
-  const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' }))
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = `iamai-emergency-diagnostic-${new Date().toISOString().replace(/[:.]/g, '-')}.json`; anchor.click(); URL.revokeObjectURL(url)
+  // Through the guard, redacted: a download that skips it is how identifiers leave unannounced (exportGuard.test).
+  exportDownload(`iamai-emergency-diagnostic-${new Date().toISOString().replace(/[:.]/g, '-')}.json`, JSON.stringify(payload, null, 2) + '\n', 'application/json', REDACTED)
 }
