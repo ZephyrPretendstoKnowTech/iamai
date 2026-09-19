@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": null,
+  "reason": "Waiting on your direction",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
