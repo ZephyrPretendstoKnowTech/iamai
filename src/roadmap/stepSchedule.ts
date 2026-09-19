@@ -17,10 +17,11 @@
 //
 // Readiness gates enforcement, not creation (owner decision, 2026-09-11): a policy
 // held only by a readiness threshold, whose create Foundation A hands over as safe
-// preparation and which waits on no open decision, keeps its report-only creation
-// day. Its enforcement stays gated and undated. Nothing else a hold covers is
-// scheduled: a missing object, an unverified way back in, a baseline conflict, a
-// decision, a review or unresolved evidence still leaves the step waiting.
+// preparation and which waits on no open decision (a Direction answer included),
+// keeps its report-only creation day. Its enforcement stays gated and undated.
+// Nothing else a hold covers is scheduled: a missing object, an unverified way
+// back in, a baseline conflict, a decision, a review or unresolved evidence still
+// leaves the step waiting.
 //
 // What the schedule placed is kept on the step (`basis`); everything else is read
 // from the step as it is now (`scheduleOf`), so a step that changes after the plan
@@ -31,6 +32,7 @@ import type { Step } from './types.ts'
 import type { Schedule, WaveSchedule } from './schedule.ts'
 import { toWeekday } from './schedule.ts'
 import { holdOf } from './holds.ts'
+import { directionBlockerStep } from './directionAnswers.ts'
 import type { HoldKind } from './holds.ts'
 import { awaitsWorkflowRecord, implementationOffered } from './operations.ts'
 
@@ -71,7 +73,7 @@ export type ScheduleBasis = {
   waveStarts: { wave: number; start: string }[]
   /** The steps it is sequenced after: its hard dependencies in the schedule's graph. */
   after: string[]
-  /** It waits on a step whose own decision is still open. */
+  /** It waits on a step whose own decision is still open, or on a Direction answer nobody has approved. */
   decisionOpen: boolean
   /** The day the plan was read on (Schedule.today); absent or null where none was given. */
   today?: string | null
@@ -118,7 +120,9 @@ export function basisOf(step: Step, schedule: Schedule, byId: ReadonlyMap<string
     forecastWave: forecast !== null && schedule.waves.some((w) => w.wave === forecast) ? forecast : null,
     waveStarts: schedule.waves.map((w) => ({ wave: w.wave, start: w.start })),
     after: (schedule.graph[step.id] ?? []).filter((d) => d.kind === 'hard').map((d) => d.stepId),
-    decisionOpen: step.blockers.some((b) => b.kind === 'step' && byId.get(b.stepId)?.state.condition === 'needs-decision'),
+    // A Direction answer is a decision too (owner, 2026-09-19): until it is approved
+    // the policy is undated, its report-only creation included (roadmap/direction.ts).
+    decisionOpen: step.blockers.some((b) => (b.kind === 'step' && byId.get(b.stepId)?.state.condition === 'needs-decision') || directionBlockerStep(b) !== null),
     today: schedule.today ?? null,
   }
 }

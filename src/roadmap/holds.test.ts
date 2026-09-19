@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs'
 import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
-import { DIRECTION_STEP } from './directionAnswers.ts'
+import { DIRECTION_STEP, directionBlockerStep } from './directionAnswers.ts'
 import { observationsOf } from './tracking.ts'
 import { holdOf, isHeld, markHoldChains } from './holds.ts'
 import { heldForReview, nextMilestone, raiseCondition } from './lifecycle.ts'
@@ -326,7 +326,8 @@ test('Step 4 F: a step already in place has no future date and no calendar entry
 // ---- final correction 1: a scheduled dependency never reads Held ----
 
 test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is dated and never Held; one waiting on an unresolved one is Held and undated', () => {
-  const g = planOf(curatedFixture('getiamai'))
+  // Its one Direction answer (mail-sending devices) is approved: an open one holds it (owner, 2026-09-19).
+  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
   const sequenced = stepOf(g, 's-goal-block-legacy-auth')
   assert.ok(sequenced.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the premise: it waits on emergency access, which Preparation schedules')
   assert.equal(isHeld(sequenced), false)
@@ -404,7 +405,8 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
 // ---- final correction 4: a hold chain ----
 
 test('Step 4 correction 4: a step waiting on a held step is held too; waiting on a scheduled one it is sequenced', () => {
-  const g = planOf(curatedFixture('getiamai'))
+  // Its one Direction answer (mail-sending devices) is approved: an open one holds it (owner, 2026-09-19).
+  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
   const a = stepOf(g, 's-prereq-break-glass')
   const b = stepOf(g, 's-goal-block-legacy-auth')
   assert.ok(b.blockers.some((x) => x.kind === 'step' && x.stepId === a.id), 'the premise: B waits on A')
@@ -460,4 +462,35 @@ test('Step 4: no row says now unless the step is work a person can do today', ()
       assert.ok(s.kind === 'prerequisite' || s.kind === 'check' || s.status === 'ready', `${where}: a ${s.kind} step at ${s.status} reads now`)
     }
   }
+})
+
+// ---- a Direction answer holds the step (owner, 2026-09-19) ----
+
+test('Step 4: on the demo first visit a policy waiting only on a Direction answer is undated in the row, the schedule and the calendar; approving that step dates it', () => {
+  const DEVICE = 's-goal-require-managed-device'
+  const d = demoTenant(false)
+  const f: Fixture = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  const first = planOf(f)
+  const waiting = stepOf(first, DEVICE)
+  assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How People and Devices Sign In')
+  assert.ok(isHeld(waiting), 'the wait holds it')
+  assert.equal(scheduleOf(waiting).class, 'waiting')
+  assert.equal(scheduleOf(waiting).at, null, 'the schedule gives it no day')
+  assert.equal(waiting.reportOnlyAt, null, 'not even its report-only creation')
+  assert.equal(phased(first).has(DEVICE), false, 'it sits in no numbered phase')
+  assert.doesNotMatch(rowWhen(waiting), YEAR, `the row dates it (${rowWhen(waiting)})`)
+  assert.equal(nextMilestone(waiting).at, null, 'its next milestone has no day')
+  assert.equal(scheduledEventOf(waiting), null)
+  assert.equal(booked(first, DEVICE), false, 'the calendar books nothing for it')
+  // Approved, the wait is gone and the plan dates its report-only creation again.
+  const approved = planOf(withDirectionApproved(f, [DIRECTION_STEP.devices]))
+  const dated = stepOf(approved, DEVICE)
+  assert.equal(dated.blockers.some((b) => directionBlockerStep(b) !== null), false, 'the premise: nothing waits on Direction')
+  assert.equal(scheduleOf(dated).class, 'scheduled')
+  assert.ok(scheduleOf(dated).at !== null, 'the schedule gives it a day')
+  assert.match(rowWhen(dated), YEAR, 'the row dates it')
+  assert.equal(nextMilestone(dated).at, scheduleOf(dated).at, 'its next milestone is that day')
+  assert.ok(booked(approved, DEVICE), 'and the calendar books it')
+  // The rollout's estimate is the schedule as drawn before anything was withdrawn: the wait does not move it.
+  assert.equal(first.r.schedule.estimate?.targetEnd, approved.r.schedule.estimate?.targetEnd)
 })

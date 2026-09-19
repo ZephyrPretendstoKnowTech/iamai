@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when device readiness reaches 80% (now 30%)",
+  "reason": null,
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
-  "rail": "Aug 31, 2026",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -40,5 +40,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "After prerequisites"
 }

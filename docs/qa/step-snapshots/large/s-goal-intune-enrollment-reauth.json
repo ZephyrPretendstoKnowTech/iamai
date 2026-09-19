@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Decide How People and Devices Sign In",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
-  "rail": "Aug 31, 2026",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -20,6 +20,10 @@
     {
       "label": "Waiting on your direction",
       "state": "Decide How People and Devices Sign In"
+    },
+    {
+      "label": "Fresh sign-in proof",
+      "state": "Unknown"
     }
   ],
   "channels": [
@@ -28,5 +32,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "After prerequisites"
 }

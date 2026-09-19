@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": null,
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
-  "rail": "Aug 31, 2026",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -26,6 +26,18 @@
       "state": "Prepare Emergency Access Accounts"
     },
     {
+      "label": "Prerequisites",
+      "state": "when 1 Temporary Access Pass policy exist (now 0)"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "when people without a method reaches 0 (now 7)"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "when 1 trusted location exist (now 0)"
+    },
+    {
       "label": "Waiting on your direction",
       "state": "Decide Where People Sign In From"
     }
@@ -36,5 +48,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "After prerequisites"
 }

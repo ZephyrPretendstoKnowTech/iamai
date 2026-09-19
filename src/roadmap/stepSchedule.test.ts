@@ -134,7 +134,7 @@ test('a real prerequisite still holds creation: a missing object, an unverified 
   }
   // An open decision: the exclusions group nobody has chosen. The device goals used to be the case
   // here, waiting on the retired device-plan step; their wait is on Decide How People and Devices
-  // Sign In now, which holds the row and not the schedule (roadmap/direction.ts gateOnDirection).
+  // Sign In now, a Direction answer (roadmap/direction.ts gateOnDirection), covered below.
   const open = runFixture(noExclusionsAnswer(omitted(fixture('demo'))))
   assert.equal(open.steps.find((s) => s.id === EXCLUSIONS)!.state.condition, 'needs-decision', 'the premise: the decision is open')
   const waiting = open.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.blockers.some((b) => b.kind === 'step' && b.stepId === EXCLUSIONS))

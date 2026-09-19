@@ -24,9 +24,9 @@
 //
 // A policy waits only on the answers it depends on (`gateOnDirection`): until
 // they are saved it carries a decision blocker naming the Direction step, which
-// the lane engine reads as On Hold · Waiting on your direction
-// (ui/surfaces/planLanes.ts observe). A policy that depends on no answer is
-// unaffected.
+// holds it undated (roadmap/holds.ts) and the lane engine reads as On Hold ·
+// Waiting on your direction (ui/surfaces/planLanes.ts observe). A policy that
+// depends on no answer is unaffected.
 //
 // Pure: no DOM, no network.
 import goals from '../../data/goals.json' with { type: 'json' }
@@ -46,7 +46,7 @@ import { PREREQ_STEP_ID } from './stepIds.ts'
 import { checkStep, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
 import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
-export { DIRECTION_BLOCKER } from './directionAnswers.ts'
+export { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
 
@@ -56,13 +56,6 @@ const Q = W.questions
 type Answer = { value: string; picked: string[] }
 const answer = (value: string, picked: readonly string[] = []): Answer => ({ value, picked: [...picked] })
 const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] => Object.entries(words).map(([value, label]) => ({ value, label }))
-
-/** The Direction step a blocker waits on, or null for a blocker that is not one. */
-export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
-  if (b.kind !== 'decision' || !b.label.startsWith(DIRECTION_BLOCKER)) return null
-  const id = b.label.slice(DIRECTION_BLOCKER.length)
-  return isDirectionStep(id) ? id : null
-}
 
 type Context = { snapshot: TenantSnapshot; mapping: MappingState }
 
@@ -358,10 +351,11 @@ export function gateOnDirection(steps: Step[]): void {
     if (isDirectionStep(step.id) || step.status === 'done' || step.status === 'skipped' || step.doesntApply != null || step.state.satisfied || step.state.lifecycle === 'enforced') continue
     const waiting = [...new Set(directionDependenciesOf(step).filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null }).map(directionStepOf))]
     if (waiting.length === 0) continue
-    // The wait is the lane engine's to read (planLanes.ts observe), and not an
-    // edge the schedule sequences on: its lifecycle, its tracking and its dates
-    // are what they are (holds.ts). Its reason names the Direction step, in the
-    // shape a wait on another step reads.
+    // The wait holds the step (holds.ts; owner, 2026-09-19): it is undated until
+    // the answer is approved, like every other hold. The schedule withdraws it once
+    // the plan is finished (forecast.ts settleForecast, which runs after this), and
+    // the lane engine reads it as Waiting on your direction (planLanes.ts observe).
+    // Its reason names the Direction step, in the shape a wait on another step reads.
     for (const id of waiting) step.blockers.push({ kind: 'decision', label: `${DIRECTION_BLOCKER}${id}`, binding: BLOCKED_REASON.after(directionTitleOf(id)) })
     // A step that waits is not Ready (lifecycle.ts conditionFor): it reads
     // Blocked, as a step waiting on another step does.

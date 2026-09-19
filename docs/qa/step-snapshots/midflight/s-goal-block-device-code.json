@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Confirm What You Use",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
-  "rail": "Aug 31, 2026",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -32,5 +32,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "After prerequisites"
 }
