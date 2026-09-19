@@ -233,9 +233,14 @@ export function whyLine(r: ReadinessRow): string {
 
 const capital = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 
-/** What the search box matches: the person, their devices, methods, state and next step. */
+const SEARCH = new WeakMap<ReadinessRow, string>()
+/** What the search box matches: the person, their devices, methods, state and next step. Built once per row. */
 export function searchText(r: ReadinessRow): string {
-  return [r.user.displayName ?? '', r.user.userPrincipalName ?? '', r.user.department ?? '', roleWord(r), methodsCell(r).main, ...deviceChips(r).chips.map((c) => `${c.os} ${c.word}`), r.state ? stateTitle(r.state) : '', nextCell(r)].join(' ').toLowerCase()
+  const held = SEARCH.get(r)
+  if (held !== undefined) return held
+  const text = [r.user.displayName ?? '', r.user.userPrincipalName ?? '', r.user.department ?? '', roleWord(r), methodsCell(r).main, ...deviceChips(r).chips.map((c) => `${c.os} ${c.word}`), r.state ? stateTitle(r.state) : '', nextCell(r)].join(' ').toLowerCase()
+  SEARCH.set(r, text)
+  return text
 }
 
 /** A setup check's words: the line, and what to do where it fails. */

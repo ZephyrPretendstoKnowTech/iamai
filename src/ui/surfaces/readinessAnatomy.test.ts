@@ -270,7 +270,10 @@ test('a large group splits into sub-groups, admins first and open, each shown a 
   assert.equal(SUB_GROUP_AT, 50)
   assert.match(SURFACE, /if \(rows\.length <= SUB_GROUP_AT\) return <div className="readiness-rows">/)
   assert.match(SURFACE, /<div className="readiness-subbar">/)
-  assert.match(SURFACE, /<details className="readiness-sub" key=\{key\} open=\{g\.admins \|\| undefined\}>/)
+  // Admins start open (the pack), the rest closed; a closed sub-group mounts no rows (audit 29c).
+  assert.match(SURFACE, /const isOpen = openSubs\[key\] \?\? g\.admins/)
+  assert.match(SURFACE, /<details className="readiness-sub" key=\{key\} open=\{isOpen \|\| undefined\} onToggle=/)
+  assert.match(SURFACE, /\{isOpen && \(\s*<>\s*<div className="readiness-rows">/)
   // Admins first, every row in exactly one sub-group.
   const f = fixture('demo')
   const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null)

@@ -158,8 +158,19 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
  * scoring as the number that holds it.
  */
 export function scoredPeople(snapshot: TenantSnapshot, mapping: LadderMapping, now: string = snapshot.asOf): MfaViability[] {
-  return [...ladder(snapshot, mapping, now).viability.values()]
+  // Snapshots and mappings are never mutated once built, so the same objects score the same people: each
+  // held step's handoff reads one scoring instead of re-scoring the tenant (about 250 ms at 25,000 people).
+  const byMapping = SCORED.get(snapshot) ?? new WeakMap<LadderMapping, Map<string, MfaViability[]>>()
+  SCORED.set(snapshot, byMapping)
+  const byNow = byMapping.get(mapping) ?? new Map<string, MfaViability[]>()
+  byMapping.set(mapping, byNow)
+  const held = byNow.get(now)
+  if (held) return held
+  const scored = [...ladder(snapshot, mapping, now).viability.values()]
+  byNow.set(now, scored)
+  return scored
 }
+const SCORED = new WeakMap<TenantSnapshot, WeakMap<LadderMapping, Map<string, MfaViability[]>>>()
 
 /** Whether a row is shown under a filter. A filter narrows what is on screen and nothing else. */
 export function shows(r: ReadinessRow, key: ShowKey, lapsing: readonly string[] = []): boolean {

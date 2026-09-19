@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { GROUP_ORDER, SUB_GROUP_AT, readinessView, subGroupsOf } from './mfaReadiness.ts'
+import { GROUP_ORDER, SUB_GROUP_AT, readinessView, scoredPeople, subGroupsOf } from './mfaReadiness.ts'
 import type { ReadinessRow, ReadinessView } from './mfaReadiness.ts'
 import { nextCheck, tenantSetupChecks } from './readinessSetup.ts'
 import type { SetupCheck } from './readinessSetup.ts'
@@ -16,7 +16,7 @@ import { isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
-import { checkWords, deviceChips, goalLine, methodsCell, nextCell, nextWords, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { checkWords, deviceChips, goalLine, methodsCell, nextCell, nextWords, searchText, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
 import { fillText } from '../content/render.ts'
 import { readFileSync } from 'node:fs'
 import { readinessContextOf } from './readinessContext.ts'
@@ -314,4 +314,12 @@ test('audit 28: the Plan preview and MFA Readiness name the same methods: a cert
   snap.registrationDetails.find((r) => r.id === id)!.methodsRegistered.push('x509Certificate')
   assert.ok(methodClassesOf(snap, id)!.includes('certificate'))
   assert.ok(readinessView(snap, snap.asOf, demo.mapping).rows.find((r) => r.user.id === id)!.methods!.includes('certificate'))
+})
+
+test('audit 29: every Plan handoff reads one scoring of the tenant, and a row builds its search text once', () => {
+  const a = scoredPeople(demo.snapshot, demo.mapping, demo.snapshot.asOf)
+  assert.equal(scoredPeople(demo.snapshot, demo.mapping, demo.snapshot.asOf), a, 'the same snapshot and mapping score once')
+  assert.notEqual(scoredPeople(structuredClone(demo.snapshot), demo.mapping, demo.snapshot.asOf), a, 'a different snapshot scores afresh')
+  const row = demoView.rows.find((r) => r.state !== null)!
+  assert.equal(searchText(row), searchText(row))
 })
