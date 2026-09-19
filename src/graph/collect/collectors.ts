@@ -185,25 +185,67 @@ export async function collectRegistrationDetails(ctx: Ctx): Promise<Registration
     `${V1}/reports/authenticationMethods/userRegistrationDetails?$top=999`,
     { signal: ctx.signal },
   )
-  return rows.map((raw) => {
-    const r = raw as Record<string, unknown>
-    return {
-      id: String(r.id ?? ''),
-      userPrincipalName: typeof r.userPrincipalName === 'string' ? r.userPrincipalName : null,
-      isMfaCapable: r.isMfaCapable === true,
-      isMfaRegistered: r.isMfaRegistered === true,
-      isPasswordlessCapable: r.isPasswordlessCapable === true,
-      methodsRegistered: Array.isArray(r.methodsRegistered) ? r.methodsRegistered.map(String) : [],
-      defaultMfaMethod: typeof r.defaultMfaMethod === 'string' ? r.defaultMfaMethod : null,
-      userPreferredMethodForSecondaryAuthentication:
-        typeof r.userPreferredMethodForSecondaryAuthentication === 'string'
-          ? r.userPreferredMethodForSecondaryAuthentication
-          : null,
-      isAdmin: r.isAdmin === true,
-      userType: r.userType === 'guest' ? 'guest' : 'member',
-      complete: typeof r.isMfaCapable === 'boolean' && typeof r.isMfaRegistered === 'boolean' && typeof r.isPasswordlessCapable === 'boolean' && Array.isArray(r.methodsRegistered),
+  return rows.map(mapRegistration)
+}
+
+/**
+ * The people whose method read failed even after it was read again, and whom
+ * the registration report has no row for: the report is where their methods
+ * can still come from (scoring/phishingResistant.ts inventory).
+ */
+export function registrationGaps(methods: MethodsByUser, rows: readonly RegistrationRow[]): string[] {
+  const held = new Set(rows.map((r) => r.id))
+  return Object.keys(methods).filter((id) => methods[id] === 'unknown' && !held.has(id))
+}
+
+/**
+ * Those people's rows of the registration report, read one person at a time in
+ * batches of 20 (the tenant-wide read failed, or it had no row for them). A
+ * person the report cannot answer for is left out: they stay unknown.
+ */
+export async function collectRegistrationForUsers(ctx: Ctx, userIds: readonly string[]): Promise<RegistrationRow[]> {
+  const out: RegistrationRow[] = []
+  for (let i = 0; i < userIds.length; i += 20) {
+    const chunk = userIds.slice(i, i + 20)
+    try {
+      const body = await graphRequest(ctx.tokens, `${V1}/$batch`, {
+        signal: ctx.signal,
+        wait: ctx.wait,
+        method: 'POST',
+        jsonBody: { requests: chunk.map((id, n) => ({ id: String(n), method: 'GET', url: `/reports/authenticationMethods/userRegistrationDetails/${encodeURIComponent(id)}` })) },
+      })
+      for (const r of Array.isArray(body.responses) ? body.responses : []) {
+        const id = chunk[Number(r?.id)]
+        const row = r?.status === 200 && r.body && typeof r.body === 'object' ? mapRegistration(r.body) : null
+        // Only the person asked about, and only a row that says which methods they hold.
+        if (id && row && row.id === id && Array.isArray((r.body as Record<string, unknown>).methodsRegistered)) out.push(row)
+      }
+    } catch (error) {
+      // A refused or failed batch leaves these people unknown; the report is a fallback, never a failure of the scan.
+      if (ctx.signal.aborted) throw error
     }
-  })
+  }
+  return out
+}
+
+function mapRegistration(raw: unknown): RegistrationRow {
+  const r = raw as Record<string, unknown>
+  return {
+    id: String(r.id ?? ''),
+    userPrincipalName: typeof r.userPrincipalName === 'string' ? r.userPrincipalName : null,
+    isMfaCapable: r.isMfaCapable === true,
+    isMfaRegistered: r.isMfaRegistered === true,
+    isPasswordlessCapable: r.isPasswordlessCapable === true,
+    methodsRegistered: Array.isArray(r.methodsRegistered) ? r.methodsRegistered.map(String) : [],
+    defaultMfaMethod: typeof r.defaultMfaMethod === 'string' ? r.defaultMfaMethod : null,
+    userPreferredMethodForSecondaryAuthentication:
+      typeof r.userPreferredMethodForSecondaryAuthentication === 'string'
+        ? r.userPreferredMethodForSecondaryAuthentication
+        : null,
+    isAdmin: r.isAdmin === true,
+    userType: r.userType === 'guest' ? 'guest' : 'member',
+    complete: typeof r.isMfaCapable === 'boolean' && typeof r.isMfaRegistered === 'boolean' && typeof r.isPasswordlessCapable === 'boolean' && Array.isArray(r.methodsRegistered),
+  }
 }
 
 function mapUser(raw: unknown): UserRow {

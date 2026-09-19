@@ -22,10 +22,12 @@ import {
   collectMethodsForUsers,
   collectPerUserMfaForUsers,
   collectRegistrationDetails,
+  collectRegistrationForUsers,
   collectSpActivity,
   collectUsers,
   deriveRoles,
   isMicrosoftManagedPolicy,
+  registrationGaps,
 } from './collectors.ts'
 import type { Ctx } from './collectors.ts'
 import { SectionDisabledError } from './http.ts'
@@ -283,6 +285,17 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
       }),
   ]
 
+  // A person whose method read failed even when read again: their own row of the
+  // registration report, where the tenant-wide read had none (owner item 4,
+  // 2026-09-19). The report needs Entra ID P1, so a tenant known to lack it is not asked.
+  const readRegistrationGaps = async (): Promise<void> => {
+    if (licenceKnown && !caps.entraP1.enabled) return
+    const gaps = registrationGaps(methods, snapshot.registrationDetails)
+    if (gaps.length === 0) return
+    const rows = await collectRegistrationForUsers(runCtx, gaps).catch(() => [])
+    snapshot.registrationDetails = [...snapshot.registrationDetails, ...rows]
+  }
+
   const finishAggregates = (): void => {
     snapshot.microsoftManagedPolicyIds = (config.caPolicies?.rows ?? [])
       .filter(isMicrosoftManagedPolicy)
@@ -324,6 +337,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
       reason: snapshot.sources.signInEvidence.reason ?? undefined,
     })
     await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
+    await readRegistrationGaps()
     finishAggregates()
     snapshot.asOf = new Date().toISOString()
     post({ type: 'state', value: 'done' })
@@ -378,6 +392,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
       snapshot.sources.signInEvidence = { ...source, targeted: done }
     }
   }
+  await readRegistrationGaps()
   post({ type: 'state', value: 'done' })
   finishAggregates()
 
