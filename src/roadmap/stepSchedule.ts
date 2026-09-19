@@ -29,6 +29,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import type { Schedule, WaveSchedule } from './schedule.ts'
+import { toWeekday } from './schedule.ts'
 import { holdOf } from './holds.ts'
 import type { HoldKind } from './holds.ts'
 import { implementationOffered } from './operations.ts'
@@ -72,6 +73,8 @@ export type ScheduleBasis = {
   after: string[]
   /** It waits on a step whose own decision is still open. */
   decisionOpen: boolean
+  /** The day the plan was read on (Schedule.today); absent or null where none was given. */
+  today?: string | null
 }
 
 export type StepSchedule = {
@@ -92,6 +95,13 @@ export type StepSchedule = {
   after: string[]
   /** What the schedule decided, or null on a step no finished plan settled. */
   basis: ScheduleBasis | null
+  /**
+   * The next milestone's day has passed and nothing has recorded it: a report-only
+   * window whose review day is gone with no scan since. `at` then reads today
+   * (the next working day on a weekend), never the day that passed, and the row
+   * says the review is due.
+   */
+  overdue: boolean
 }
 
 const time = (iso: string): number => Date.parse(iso)
@@ -109,6 +119,7 @@ export function basisOf(step: Step, schedule: Schedule, byId: ReadonlyMap<string
     waveStarts: schedule.waves.map((w) => ({ wave: w.wave, start: w.start })),
     after: (schedule.graph[step.id] ?? []).filter((d) => d.kind === 'hard').map((d) => d.stepId),
     decisionOpen: step.blockers.some((b) => b.kind === 'step' && byId.get(b.stepId)?.state.condition === 'needs-decision'),
+    today: schedule.today ?? null,
   }
 }
 
@@ -135,7 +146,7 @@ function waveContaining(basis: ScheduleBasis, at: string): number {
 export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSchedule {
   const hold = holdOf(step)
   const placed = basis?.placed ?? null
-  const base = { hold: hold?.kind ?? null, after: basis?.after ?? [], earliest: placed?.start ?? null, basis }
+  const base = { hold: hold?.kind ?? null, after: basis?.after ?? [], earliest: placed?.start ?? null, basis, overdue: false }
   const none = { transition: null, at: null, range: null, wave: null } as const
   if (step.status === 'done') return { ...base, ...none, class: 'complete', enforcement: 'none' }
   if (step.status === 'skipped' || step.state.setAside) return { ...base, ...none, wave: basis?.wave ?? null, class: 'setAside', enforcement: 'none' }
@@ -165,11 +176,16 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
     // not clear it is an evidence hold (above), so an open window is all this is.
     const readyOn = step.tracking?.readyOn ?? null
     const closed = readyOn !== null && step.tracking?.noticedAt != null && time(readyOn) <= time(step.tracking.noticedAt)
-    const at = closed ? null : readyOn
+    // A review day that has passed with no scan since is due, not past: the
+    // result reads today (the next working day on a weekend), never the day that
+    // went by, and says so. A later scan closes the window (above) or moves it on.
+    const today = basis?.today ?? null
+    const overdue = !closed && readyOn !== null && today !== null && readyOn.slice(0, 10) < today.slice(0, 10)
+    const at = closed ? null : overdue && today !== null ? toWeekday(today) : readyOn
     // Its enforcement was taken off the plan (roadmap/forecast.ts): it belongs to
     // the phase that enforcement was forecast in while that phase stands, else the
     // phase its review day falls in.
-    return { ...base, at, range: at === null ? null : { start: at, end: at }, wave: wave ?? basis?.forecastWave ?? byDay(at), class: 'observing', transition: 'review', enforcement: 'forecast' }
+    return { ...base, at, range: at === null ? null : { start: at, end: at }, wave: wave ?? basis?.forecastWave ?? byDay(at), class: 'observing', transition: 'review', enforcement: 'forecast', overdue }
   }
   if (lifecycle === 'ready-to-enforce') {
     const at = step.events?.enforce.at ?? placed?.start ?? null
