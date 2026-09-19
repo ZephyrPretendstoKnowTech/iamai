@@ -47,6 +47,12 @@ export function canonicalBlockerStepId(subject: RuleSubject): string {
  * the break-glass blocker today would flip every held deny-capable step to
  * "safe today" and drop the hard scheduling edges that keep the exclusion group
  * ahead of the policies that reference it.
+ *
+ * This is not the Establish Emergency Access group (stepGroups.ts), and the two
+ * sets differ on purpose: this one is about safety (never skipped, never
+ * Doesn't apply) and so holds the ladder's break-glass step and the blocker ids
+ * too, and leaves out passkey settings and the drill, which the group only
+ * draws together.
  */
 export function isEmergencyAccess(step: { id: string; goalId?: string }): boolean {
   return EMERGENCY_ACCESS_STEP_IDS.has(step.id)

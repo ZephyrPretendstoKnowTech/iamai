@@ -2225,6 +2225,12 @@
           "naming": "Policy names",
           "consolidation": "Overlapping policies",
           "notAssessed": "Baseline policies"
+        },
+        "groups": {
+          "emergencyAccess": {
+            "title": "Establish Emergency Access",
+            "completedTitle": "Establish Emergency Access"
+          }
         }
       },
       "readiness": {
