@@ -150,8 +150,8 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved|hybrid Azure AD/)
   // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
   const b = bodyOf('demo', DEVICE)
-  // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share.
-  assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '29% of devices compliant')
+  // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share; the script account left the people counted in 8b71ec1a (29% -> 30%).
+  assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of devices compliant')
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
   for (const t of prerequisites) assert.ok(['Before enforcement', 'Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
   assert.ok(prerequisites.some(t => t.label === 'Before enforcement'), 'the safe report-only path is not distinguished from enforcement prerequisites')
