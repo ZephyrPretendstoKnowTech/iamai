@@ -36,7 +36,8 @@ import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewFor } from './planBoard.ts'
-import { HEAD } from './stepHeadings.ts'
+import { DECISION_HEAD, HEAD } from './stepHeadings.ts'
+import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
@@ -415,7 +416,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Every step draws its Implementation region, a decision, a question and a check
   // included (content review D2, which replaces the owner's 2026-09-11 rule that a
   // step with nothing to implement by design draws none).
-  const showImplementation = artifacts.length > 0
+  const showImplementation = artifacts.length > 0 && !usesDecisionAnatomy(step.id)
   // A held projection says why, by the reason it holds: a check to confirm first,
   // a difference no correction covers, content the runtime could not project, or
   // a value IAMAI does not hold. None of them is ever offered an artifact.
@@ -494,6 +495,8 @@ export type StepBody = ReturnType<typeof stepBodyOf>
  * contract has lines. No step draws What to do (U1).
  */
 export function headingsOf(b: StepBody): string[] {
+  // A decision-anatomy step (Decide Your Tenant's Direction) draws its own three: nothing is built.
+  if (usesDecisionAnatomy(b.contract.id)) return [DECISION_HEAD.why, DECISION_HEAD.questions, ...(b.contract.doneWhen.length > 0 ? [DECISION_HEAD.doneWhen] : [])]
   return [
     HEAD.why,
     CONTRACT.readiness.heading,
