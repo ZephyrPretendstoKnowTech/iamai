@@ -294,6 +294,28 @@ test("the rail is the pack's four tiles: tenant setup, approved models, not coun
   assert.match(packRule('.layout'), /grid-template-columns:minmax\(0,1fr\) 320px/)
 })
 
+test('every sentence the page carries is 25 words or fewer: the goal line, the definition of Ready and the group bodies included (owner, 2026-09-19)', () => {
+  // The rule and the sentence split are the page contract's and the walk's (docs/qa/page-contracts.json, scripts/walk.mjs).
+  const max = (JSON.parse(read('docs/qa/page-contracts.json')) as { rules: { sentenceMaxWords: number } }).rules.sentenceMaxWords
+  assert.equal(max, 25)
+  const sentences = (text: string): string[] => text.split(/(?<=[.!?])\s+(?=[A-Z0-9"'])/).map((x) => x.trim()).filter((x) => x.length > 1)
+  const over: string[] = []
+  const walk = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      for (const s of sentences(node)) if (s.split(/\s+/).length > max) over.push(`${path} (${s.split(/\s+/).length}): ${s}`)
+    } else if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) if (k !== '$comment') walk(v, `${path}.${k}`)
+    }
+  }
+  walk(pages.readiness, 'pages.readiness')
+  assert.deepEqual(over, [], 'a sentence on MFA Readiness is over the 25-word rule')
+  // The three the owner approved in the pack and then asked to trim keep their meaning.
+  const R = pages.readiness as unknown as { lead: unknown; define: string }
+  assert.match(R.define, /^Ready means a phishing-resistant sign-in \(passkey, security key, Windows Hello or certificate\) confirmed in the last 30 days on every kind of device they use\. /)
+  assert.match(JSON.stringify(R.lead), /Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone/)
+  assert.match(JSON.stringify(W.groups.method.body), /A passkey in Microsoft Authenticator signs them in on their phone and from any computer\./)
+})
+
 test('a large group splits into sub-groups, admins first and open, each shown a page at a time', () => {
   assert.match(PACK, /<details class="sub" open><summary><span><span class="title">Admins<\/span>/, 'the pack no longer opens the admins first')
   assert.match(PACK, /<div class="subbar">/)
