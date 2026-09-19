@@ -386,7 +386,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     // for (they hold a phishing-resistant method) are read one by one.
     const source = snapshot.sources.signInEvidence
     const windowStart = new Date(Date.now() - EVIDENCE_WINDOW_DAYS * 86_400_000).toISOString()
-    const ids = source.status === 'partial' ? targetedReadCandidates(snapshot.users, snapshot.authMethods, source.coveredWindow, windowStart) : []
+    const ids = source.status === 'partial' ? targetedReadCandidates(snapshot.users, methods, source.coveredWindow, windowStart) : []
     if (ids.length > 0 && source.coveredWindow) {
       const done = await readTargeted(runCtx, snapshot.signInEvidence, ids, windowStart, source.coveredWindow.from).catch(() => ({ read: 0, remaining: ids.length }))
       snapshot.sources.signInEvidence = { ...source, targeted: done }

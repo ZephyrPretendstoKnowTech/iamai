@@ -88,6 +88,27 @@ test('time budget: stop is labelled and coverage decides partial', async () => {
   assert.match(r.reason ?? '', /covers the most recent/)
 })
 
+test('no time budget by default: a slow read runs to the end of the 30-day window (owner item 4, 2026-09-19)', async () => {
+  // Twenty pages at a minute each: past the old ten-minute budget, and still the whole window.
+  const pages = Array.from({ length: 20 }, (_, n) => ({ value: [row({ hoursAgo: 30 * n + 1 })], next: true }))
+  pages.push({ value: [row({ hoursAgo: 31 * 24 })], next: false })
+  let clockMs = 0
+  let i = 0
+  const d = deps([], {
+    clock: () => clockMs,
+    fetchPage: () => {
+      clockMs += 60_000
+      const page = pages[i++]
+      return Promise.resolve({ value: page.value, '@odata.nextLink': page.next ? `page-${i}` : null })
+    },
+  })
+  const r = await runLaneB(d)
+  assert.equal(r.status, 'ok')
+  assert.equal(i, pages.length, 'every page up to the window start was read')
+  assert.equal(r.covered?.from, iso(30 * 24))
+  assert.equal(r.rows, 20)
+})
+
 test('insufficient: budget stop with under 24 h covered', async () => {
   const pages = Array.from({ length: 10 }, () => ({ value: [row({ hoursAgo: 2 })], next: true }))
   const r = await runLaneB(deps(pages, { budgetMs: 100 }))

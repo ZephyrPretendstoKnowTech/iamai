@@ -92,6 +92,27 @@ test('a sign-in read retries server errors past the default ceiling, and stops a
   }
 })
 
+test('a person’s read follows nextLink to the start of the window, so a busy person is read whole', async () => {
+  const signIn = (id: string, at: string) => ({ id, createdDateTime: at, userId: 'u-1', status: { errorCode: 0 }, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)' }], deviceDetail: { operatingSystem: 'Windows', trustType: 'Azure AD joined', deviceId: 'dev-1' } })
+  const asked: string[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    asked.push(url)
+    return url === 'https://graph.microsoft.com/beta/next-page'
+      ? new Response(JSON.stringify({ value: [signIn('older', '2026-08-25T09:00:00Z')] }), { status: 200 })
+      : new Response(JSON.stringify({ value: [signIn('newer', '2026-09-05T09:00:00Z')], '@odata.nextLink': 'https://graph.microsoft.com/beta/next-page' }), { status: 200 })
+  }) as typeof fetch
+  try {
+    const perUser: Record<string, UserEvidence> = {}
+    assert.deepEqual(await readTargeted(signInCtx([]), perUser, ['u-1'], START, FROM), { read: 1, remaining: 0 })
+    assert.equal(asked.length, 2)
+    assert.equal(perUser['u-1'].signInCount, 2, 'both pages joined the evidence')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
 test('a partial read without the targeted read is Unknown; with it, the person is judged on their sign-ins', () => {
   const context = { ...emptyReadinessContext(NOW), coveredFrom: FROM, windowStart: START }
   const methods = [{ kind: 'passkey' as const, createdDateTime: '2026-01-01T00:00:00Z' }]
