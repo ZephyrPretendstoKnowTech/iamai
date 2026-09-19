@@ -827,7 +827,7 @@
       "$comment": "MFA Readiness (prompt 62, docs/design/approved/anatomy/mfa-readiness-v3.html): phishing-resistant sign-in for everyone, seamless on every device. Every state, device reading, credential and next action is scoring/phishingResistant.ts personReadiness; the groups, the setup checks and the progress are derive/mfaReadiness.ts, derive/readinessSetup.ts and derive/readinessProgress.ts. These are only their words (surfaces/readinessCells.ts).",
       "h1": "MFA Readiness",
       "eyebrow": "Tenant evidence",
-      "lead": "Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone, Windows Hello on the computer, and nothing to reach for.",
+      "lead": "Phishing-resistant sign-in for everyone, and seamless where the device allows it: a passkey on the phone and Windows Hello on the computer.",
       "summaryLabel": "Readiness answer",
       "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
       "summaryNone": "No active people to count.",
@@ -835,7 +835,7 @@
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
       "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
-      "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device the person uses. Seamless means that sign-in is built into each device.",
+      "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device they use. Seamless means that sign-in is built into each device.",
       "change": {
         "title": "Since the {date} scan",
         "ready": "Ready",
@@ -900,7 +900,7 @@
         "method": {
           "title": "Set up a phishing-resistant method",
           "why": "No passkey, security key or Windows Hello yet",
-          "body": "Each sets up the option named on their row. A passkey in Microsoft Authenticator signs them in on their phone and from any computer; on their own joined Windows computer, Windows Hello for Business signs them in with nothing to carry."
+          "body": "Each sets up the option named on their row. A passkey in Microsoft Authenticator signs them in on their phone and from any computer. On their own joined Windows computer, Windows Hello for Business signs them in with nothing to carry."
         },
         "confirm": {
           "title": "Confirm the method still exists",
@@ -910,7 +910,7 @@
         "device": {
           "title": "Add a passkey to the device they use",
           "why": "Confirmed on one device, but another signs in without it",
-          "body": "Each sets up the option named on their row on the device that still signs in without it: a passkey in Microsoft Authenticator on a phone, Windows Hello for Business on a joined computer."
+          "body": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business."
         },
         "unknown": {
           "title": "IAMAI couldn’t read these people",
