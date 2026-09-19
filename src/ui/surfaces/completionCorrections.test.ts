@@ -57,7 +57,7 @@ test('all nine device choices preserve their saved scope through a second save',
 
 test('sync service suggestion explains the detected role independently of licensing',()=>{
  const f=fixture('demo');const choice=useQuestions(f,['workload-identity-block']).find(c=>c.key==='service:workload')!
- assert.equal(choice.suggested.value,'yes');assert.match(choice.evidence,/Directory Synchronization Accounts role found/)
+ assert.equal(choice.suggested.value,'yes');assert.match(choice.evidence,/holds the Directory Synchronization Accounts role/)
  assert.doesNotMatch(choice.evidence,/no.*licence/)
 })
 test('old mail exception and device answers still resolve after labels change',()=>{
