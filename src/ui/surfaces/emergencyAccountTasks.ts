@@ -222,8 +222,6 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
   return rows
 }
 
-const fixSet = (step: Step, id: string): Set<string> => new Set((step.checks?.items ?? []).filter(item => item.target?.toLowerCase() === id.toLowerCase()).map(item => item.fix))
-
 /** Structured task projection for this one step. */
 export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): EmergencyAccountTasks {
   const domain = initialDomain(ctx.snapshot)

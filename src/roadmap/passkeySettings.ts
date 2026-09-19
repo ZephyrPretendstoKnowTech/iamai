@@ -207,7 +207,7 @@ const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is
 const targetIds = (v: unknown): string[] => (Array.isArray(v) ? strings(v.map((t) => (t as { id?: unknown } | null)?.id)) : [])
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** The approved Microsoft Authenticator AAGUIDs, as pinned (lower case, sorted). */
+/** The approved default model AAGUIDs (Microsoft Authenticator and YubiKey), as pinned (lower case, sorted). */
 export const PASSKEY_TARGET_AAGUIDS: readonly string[] = strings(PASSKEY_TARGET.keyRestrictions?.aaGuids)
 
 /**

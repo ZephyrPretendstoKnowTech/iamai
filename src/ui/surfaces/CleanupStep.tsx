@@ -80,10 +80,8 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   const [taskId, setTaskId] = useState<string | null>(null)
   const [implementationOpen, setImplementationOpen] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
-  if (!entry) return null
   const ex = cleanupVars(phase, row, notes)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
-  const doneWhen = entry.doneWhen.filter(whole)
   const policies: string[] = row.kind === 'notAssessed' ? row.lists.policies ?? [] : []
   const verificationTasks = useMemo(() => emergencyVerificationTasksOf(phase), [phase])
   const recoveryTiles = (phase.recoveryFindings ?? []).flatMap(finding => {
@@ -103,6 +101,9 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
     { id: 'json', form: 'code', lines: [], text: () => emergencyVerificationJson(phase), note: 'Evidence and context only; not a Graph write payload.' },
     { id: 'ai', form: 'markdown', lines: [], text: () => emergencyVerificationAiInfo(phase), note: null },
   ], [phase])
+  // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
+  if (!entry) return null
+  const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void exportClipboard(value, unredactedFrom('implementation-artifact')).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
   return (
     // The same frame the Plan draws for a step (task 034): attached under the row

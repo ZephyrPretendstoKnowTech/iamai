@@ -25,7 +25,6 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
     if (issues.includes('group:membershipRuleProcessingState')) return [{ label: 'Mismatch', value: 'This group uses dynamic membership.' }]
     if (issues.includes('group:assignedLicenses')) return [{ label: 'Mismatch', value: 'This group has assigned licenses.' }]
     if (issues.includes('group:securityEnabled')) return [{ label: 'Mismatch', value: 'This group is not a security group.' }]
-    if (issues.includes('group:isAssignableToRole')) return [{ label: 'Mismatch', value: 'This group is role-assignable.' }]
     return item.value ? [{ label: 'Mismatch', value: `${item.label}: ${item.value}.` }] : []
   })
   const unsuitableGroup = choice.status === 'confirmed' && groupMismatchFacts.length > 0

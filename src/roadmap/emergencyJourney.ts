@@ -35,7 +35,7 @@ export function recoveryWaitingLine(configuredAt: string | null, readings: reado
 const link = (id: string, label: string) => ({ href: '#/plan/' + id, label })
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
 const accountLabel = (snapshot: TenantSnapshot, id: string): string => {
-  const user = snapshot.users.find(u => u.id === id)
+  const user = snapshot.users.find(u => u.id.toLowerCase() === id.toLowerCase())
   const upn = user?.userPrincipalName?.trim()
   return upn || id
 }
@@ -421,7 +421,6 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   const visibleConfigurationOutcome = configurationParts.some(f => f.outcome === 'fail') ? 'fail' : configurationParts.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass'
   const configurationOutcome = visibleConfigurationOutcome === 'fail' || stateValues.includes('incorrect') ? 'fail' : visibleConfigurationOutcome === 'unknown' || stateValues.includes('unread') ? 'unknown' : 'pass'
   const confirmationPassed = ids.length > 0 && tests.every(r => r.current)
-  const signInsPassed = ids.length > 0 && tests.every(r => r.current)
   const ownerRows = configurationParts.flatMap<ConfigurationFindingItem>(finding => {
     if (finding.outcome === 'pass') return []
     const rows = (finding.items ?? []).filter(item => item.outcome !== 'pass')
@@ -455,10 +454,8 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
     items: pendingOwnerRows,
   }
   const showSignInRows = configurationOutcome === 'pass' || snapshot.sources.signInEvidence?.status !== 'ok'
-  const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : signInsPassed ? 'Verified' : 'Evidence needed', outcome: signInsPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
+  const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : confirmationPassed ? 'Verified' : 'Evidence needed', outcome: confirmationPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
   const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification Results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: [] }
-  const verified = configurationOutcome === 'pass' && signInsPassed && confirmationPassed
-  confirmation.value = verified ? 'Passed' : confirmation.value
   return [
     configuration,
     signInFinding,
