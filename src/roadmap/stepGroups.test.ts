@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, isGroupMember, membersOf, pinnedGroups, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
+import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, groupPositions, isGroupMember, membersOf, pinnedGroups, positionInGroup, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
 import type { StepGroup } from './stepGroups.ts'
 import { EMERGENCY_STEP_IDS, groupTitleOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups } from '../ui/surfaces/planBoard.ts'
 import type { BoardItem } from '../ui/surfaces/planBoard.ts'
@@ -16,7 +16,7 @@ const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devic
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, hold: null, workType: 'setup', order: 0 })
 
 test('the registry lists the four Emergency Access steps in order, pinned, with the task anatomy', () => {
-  assert.deepEqual(STEP_GROUPS.map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP])
+  assert.deepEqual(STEP_GROUPS.slice(0, 2).map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'the two pinned groups lead the registry')
   assert.deepEqual([...membersOf(EMERGENCY_ACCESS_GROUP)], EA)
   assert.deepEqual([...EMERGENCY_STEP_IDS], EA, 'the board reads its emergency ids from the registry')
   const g = groupOf('s-prereq-exclusion-group')
@@ -39,14 +39,62 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
-  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting']) {
-    assert.equal(groupOf(id), null, id)
-    assert.equal(isGroupMember(id), false, id)
+  // A step outside the two pinned groups is in one of the rollout's own groups
+  // now, and draws its OWN headings there: grouping a step says where it sits on
+  // the board and nothing about what its interior draws (anatomy null).
+  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything']) {
+    assert.notEqual(groupOf(id), null, `${id} is in no group`)
+    assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
+    assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
     assert.equal(usesTaskAnatomy(id), false, id)
+    assert.equal(usesDecisionAnatomy(id), false, id)
     assert.equal(anatomyOf(id), null, id)
     assert.equal(taskHeadingsOf(id), null, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
+})
+
+test('every step is in exactly one group: a listed id beats a prefix, a prefix beats the catch-all, and only the last entry is the catch-all', () => {
+  const seen = new Map<string, string>()
+  for (const g of STEP_GROUPS) {
+    for (const id of g.members) {
+      assert.equal(seen.has(id), false, `${id} is listed by both ${seen.get(id)} and ${g.key}`)
+      seen.set(id, g.key)
+    }
+  }
+  const catchAlls = STEP_GROUPS.filter((g) => g.catchAll === true)
+  assert.equal(catchAlls.length, 1, 'there is not exactly one catch-all')
+  assert.equal(catchAlls[0].key, STEP_GROUPS.at(-1)!.key, 'the catch-all is not the last group')
+  assert.equal(catchAlls[0].pinned, false, 'the catch-all is pinned above the lanes')
+
+  // The three ways of claiming a step, in order.
+  assert.equal(groupOf('s-goal-block-legacy-auth')!.key, 'close-doors', 'a listed id')
+  assert.equal(groupOf('s-review-baseline-iac-app-block-avd-nontrustedlocations-1qsycmx')!.key, catchAlls[0].key, 'a prefix family')
+  assert.equal(groupOf('s-something-nobody-placed')!.key, catchAlls[0].key, 'the catch-all')
+  // Every group the Plan can draw has both of its title keys in content.json.
+  for (const g of STEP_GROUPS) for (const complete of [false, true]) assert.ok(groupTitleOf(g, complete).length > 0, `${g.key}: no title`)
+  // Only the two pinned groups carry an anatomy; the rest leave the step's own.
+  for (const g of STEP_GROUPS) assert.equal(g.anatomy !== null, g.pinned, `${g.key}: anatomy and pinning disagree`)
+})
+
+test('a number is a place in the group, not a place in the list: it comes from the registry and survives a filter', () => {
+  const ids = ['s-goal-block-auth-transfer', 's-goal-block-legacy-auth', 's-review-baseline-one', 's-review-baseline-two', 's-goal-mfa-all-users']
+  const all = groupPositions(ids)
+  // Listed members take their registry positions, whatever order they arrive in.
+  assert.equal(all.get('s-goal-block-legacy-auth'), 1)
+  assert.equal(all.get('s-goal-block-auth-transfer'), 4)
+  assert.equal(positionInGroup('s-goal-block-auth-transfer'), 4)
+  assert.equal(all.get('s-goal-mfa-all-users'), 5)
+  // A prefix member has no registry position: it numbers after every listed one, in the order handed over.
+  const ongoing = STEP_GROUPS.at(-1)!
+  assert.equal(positionInGroup('s-review-baseline-one'), null)
+  assert.equal(all.get('s-review-baseline-one'), ongoing.members.length + 1)
+  assert.equal(all.get('s-review-baseline-two'), ongoing.members.length + 2)
+  // The gaps are honest: a filtered set gives the same numbers, not 1, 2, 3.
+  const filtered = groupPositions(['s-goal-block-legacy-auth', 's-goal-block-auth-transfer'])
+  assert.equal(filtered.get('s-goal-block-legacy-auth'), 1)
+  assert.equal(filtered.get('s-goal-block-auth-transfer'), 4)
+  assert.equal(positionInGroup('s-goal-nobody-placed-this'), null, 'a catch-all member has no registry position either')
 })
 
 test("(a) Decide Your Tenant's Direction is the second pinned group: its four steps in order, with the decision anatomy", () => {
