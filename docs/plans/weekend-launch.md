@@ -100,13 +100,11 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 - **The exclusions group goes on every On or Report-only policy**, whatever it reaches today: "that's the intent from Jon's baseline" (`7467521e`; replaces item 3 below). The GetIAMAI live check should confirm Emergency Access still reads Completed.
 - **"Never used" passkeys:** keep the flag; verify it against GetIAMAI on Sunday.
 
-## For the next gate: needs the owner
+## Owner answers at Gate 1 (CI fully green at `c7682fb5`, 2026-09-19 evening)
 
-- **Require MFA for Everyone on the demo's first visit reads "Ready · Correct" but offers nothing and has no date.** The tenant's enforced policy needs a correction that only adds the exclusions group. The lane treats the readiness threshold as met (already enforced); the operations layer withholds any change to an enforced policy until readiness is 90% (`readinessGate.test`, `sequence.test`). The tenant's policy also names an emergency account in `excludeUsers`, which a correction body would carry (CLAUDE.md: never an emergency account by name).
-  - **A (recommended):** a correction that only adds exclusions to an enforced policy isn't held by readiness: it can't stop anyone, it only makes the way back in safer. The body keeps the tenant's existing exclusions, and a Cleanup row asks to remove the by-name exclusion once the group covers the account. Prototype: scratchpad `bug1-optionA.patch`.
-  - **B:** keep it withheld; the row reads On Hold, undated.
-- **A not-deployed policy waiting on Direction** (now undated, `2acbd97f`) still says "Create the policy in report-only now; it is not turned on while this step is held" (the held-create wording from plan Step 5), while its lane reads "On Hold · Waiting on your direction". Recommend: while a Direction answer that shapes the policy is open, it says "Answer {Direction step} first" instead of offering creation.
-- Fixed meanwhile (`7d156f3d`): an enforced policy awaiting its workflow test read "On Hold · Not supported"; it now reads In place / Ready · Decision.
+- **Require MFA for Everyone (and any enforced policy):** a correction that only adds exclusions is offered now, not held by readiness. The body keeps the tenant's existing exclusions; a Cleanup row asks to remove a by-name emergency-account exclusion once the group covers it. An agent is building it.
+- **A not-deployed policy waiting on Direction** says "Answer {Direction step} first" and offers no creation. Same agent.
+- Landed since Gate 2: `7d156f3d` (an enforced policy awaiting its workflow test no longer reads "Not supported"), `2acbd97f` (Direction waits are undated), `1e1528b2`/`c7682fb5` (smoke runs against its own production build; the cause of the blank-Plan flake was Chrome's `ERR_INSUFFICIENT_RESOURCES` on hundreds of dev-server modules). The walk still starts a dev server and needs the same move before its next local run.
 
 ## For the owner to confirm (decided so work could continue)
 
