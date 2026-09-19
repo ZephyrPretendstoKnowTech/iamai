@@ -43,7 +43,7 @@ test('U2/U5: the action column sits between Readiness and Implementation, and ho
     assert.ok(i >= 0, `${s} is not in ContentStep.tsx`)
     return i
   }
-  const order = ['<div className="step-body has-rail">', '<div className="step-main step-main-lead">', '<h4>{taskHead?.why ?? HEAD.why}</h4>', '<ReadinessSection', '<StepActionColumn rail={displayRail}>', '<div className="step-main step-main-rest">', '<Implementation', '<DoneWhen'].map(at)
+  const order = ['<div className="step-body has-rail">', '<div className="step-main step-main-lead">', '<h4>{taskHead?.why ?? decisionHead?.why ?? HEAD.why}</h4>', '<ReadinessSection', '<StepActionColumn rail={displayRail}>', '<div className="step-main step-main-rest">', '<Implementation', '<DoneWhen'].map(at)
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'the DOM order is not Why → Readiness → action column → Implementation → Done when')
   const column = CONTENT_STEP.slice(at('<StepActionColumn rail={displayRail}>'), at('</StepActionColumn>'))
   assert.match(column, /decides && <Decision /, 'the decision controls are not children of the action column')

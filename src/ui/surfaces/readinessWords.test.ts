@@ -76,11 +76,8 @@ test('P0-11: the exclusions step owns policy exclusions and states the shared co
 })
 
 test('P1-1: the Decision tile reads Decision, explains the ask, and names the one group IAMAI found', () => {
-  const devices = bodiesOf(fixture('demo')).get('s-prereq-device-plan')!
-  const decision = devices.readiness.tiles.find((t) => t.key === 'decision')!
-  assert.equal(decision.value, 'Choose device management')
-  // Editorial batch C: the help also says the inventory informs the choice and does not make it.
-  assert.equal(decision.note, 'Save your choices for Phone Management, Phone App Protection and Computer Management.')
+  // The device-plan step's Decision tile ("Choose device management") left with the step: its
+  // questions are Decide How People and Devices Sign In's, which draws Questions and no Readiness.
   const f = oneGroup()
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')

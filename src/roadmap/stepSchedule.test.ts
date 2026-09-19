@@ -5,7 +5,7 @@
 // deployment.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture } from './fixtures/index.ts'
+import { curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -19,7 +19,7 @@ import type { Step } from './types.ts'
 
 const SOURCE = BASELINE_MAPPINGS_KEY
 const DEVICE_REGISTRATION = 's-goal-device-registration-mfa'
-const MANAGED_DEVICE = 's-goal-require-managed-device'
+const EXCLUSIONS = 's-prereq-exclusion-group'
 const DAY = 86_400_000
 
 /** The fixture with every one of the baseline's unanswered references answered "none needed here", through the real decision path. */
@@ -132,10 +132,17 @@ test('a real prerequisite still holds creation: a missing object, an unverified 
     assert.equal(s.scheduled!.at, null, s.id)
     assert.equal(s.reportOnlyAt, null, `${s.id} keeps a creation day`)
   }
-  const device = r.steps.find((s) => s.id === MANAGED_DEVICE)!
-  assert.equal(holdOf(device)?.kind, 'readiness', 'the premise: a threshold holds it')
-  assert.ok(device.blockers.some((b) => b.kind === 'step' && r.steps.find((x) => x.id === b.stepId)?.state.condition === 'needs-decision'), 'the premise: it waits on an open decision')
-  assert.equal(device.scheduled!.class, 'waiting', 'a decision that may redefine the policy comes before it is created')
+  // An open decision: the exclusions group nobody has chosen. The device goals used to be the case
+  // here, waiting on the retired device-plan step; their wait is on Decide How People and Devices
+  // Sign In now, which holds the row and not the schedule (roadmap/direction.ts gateOnDirection).
+  const open = runFixture(noExclusionsAnswer(omitted(fixture('demo'))))
+  assert.equal(open.steps.find((s) => s.id === EXCLUSIONS)!.state.condition, 'needs-decision', 'the premise: the decision is open')
+  const waiting = open.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.blockers.some((b) => b.kind === 'step' && b.stepId === EXCLUSIONS))
+  assert.ok(waiting.length > 0, 'the premise: policies wait on the open decision')
+  for (const s of waiting) {
+    assert.equal(s.scheduled!.class, 'waiting', `${s.id}: a decision that may redefine the policy comes before it is created`)
+    assert.equal(s.scheduled!.at, null, s.id)
+  }
 })
 
 test('answering the references recalculates the phases, and taking the answers back withdraws them', () => {

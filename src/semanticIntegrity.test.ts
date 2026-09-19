@@ -43,6 +43,7 @@ import { contentStepFor } from './content/stepTitle.ts'
 import { shows } from './derive/mfaReadiness.ts'
 import { READINESS_STATES, isReady } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
+import { directionBlockerStep } from './roadmap/direction.ts'
 import { factsOf, notReady, stepFacts } from './derive/facts.ts'
 import { deviceChips, methodsCell, nextCell, roleWord, rowCells, stateTitle } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
@@ -223,8 +224,10 @@ test('042.5: whether an implementation is offered has exactly one answer', () =>
         // A readiness threshold or a prerequisite step gates turning on a policy
         // already in report-only and nothing else (A1a: the lane reads Observing,
         // the milestone reads observe); the condition names the gate. Anything
-        // else blocking a policy that is only watching is a contradiction.
-        const gated = step.blockers.length > 0 && step.blockers.every((b) => b.kind === 'readiness' || b.kind === 'step')
+        // else blocking a policy that is only watching is a contradiction. A wait
+        // on a Direction step's answer is a wait on a prerequisite step: it took
+        // over from the retired device-plan step (roadmap/direction.ts).
+        const gated = step.blockers.length > 0 && step.blockers.every((b) => b.kind === 'readiness' || b.kind === 'step' || directionBlockerStep(b) !== null)
         if (!gated) assert.notEqual(step.state.condition, 'blocked', `${c.label}/${step.id}: a policy waiting for its window reads as blocked`)
       }
       // A blocker never becomes informational. The distinction the contract

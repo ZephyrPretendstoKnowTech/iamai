@@ -23,6 +23,9 @@ import { annotateStateReasons } from '../stateReason.ts'
 import { applyProgress } from '../progress.ts'
 import { settleForecast } from '../forecast.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
+import { applyStepDecisions } from '../decisions.ts'
+import { DIRECTION_STEP, directionDecisionOf } from '../directionAnswers.ts'
+import type { DirectionStepId } from '../directionAnswers.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -153,4 +156,22 @@ export function adminsAtRung5(viability: MfaViability[], at: string): MfaViabili
         }
       : v,
   )
+}
+
+/**
+ * The same tenant with Decide Your Tenant's Direction approved as the plan
+ * suggests it (roadmap/direction.ts): every question of each named step at its
+ * saved answer, else its suggestion, saved as Approve answers saves it. A case
+ * about what a policy does once nothing is waiting on a person's direction
+ * starts here, or it is testing the wait instead. All four steps by default.
+ */
+export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[] = Object.values(DIRECTION_STEP)): Fixture {
+  const steps = runFixture(f).steps
+  const decisions = Object.fromEntries(ids.map((id) => {
+    const questions = steps.find((s) => s.id === id)?.directionQuestions ?? []
+    const answers = Object.fromEntries(questions.map((q) => [q.key, q.saved ?? q.suggested]))
+    const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis!]))
+    return [id, { ...directionDecisionOf(answers, basis), at: f.snapshot.asOf }]
+  }))
+  return { ...f, mapping: applyStepDecisions(f.mapping, decisions) }
 }
