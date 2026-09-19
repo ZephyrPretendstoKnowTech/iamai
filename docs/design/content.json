@@ -827,7 +827,7 @@
       "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof.",
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
-      "seamlessNotPossible": "Nobody can be seamless on the devices in use: none offers a built-in option this tenant allows.",
+      "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
       "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device the person uses. Seamless means that sign-in is built into each device.",
       "change": {
         "title": "Since the {date} scan",
