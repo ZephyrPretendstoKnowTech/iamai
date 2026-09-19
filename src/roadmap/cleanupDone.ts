@@ -125,6 +125,14 @@ export const RECOVERY_PREPARATION_WORKFLOW = 'Emergency recovery configuration p
 export const RECOVERY_INVALIDATION_WORKFLOW = 'Emergency recovery configuration invalidated'
 export const RECOVERY_AUTOMATIC_WORKFLOW = 'Emergency passkey sign-in observed'
 
+/** A drill record written by the earlier manual Done control, not by the scan's
+ * automatic reconciliation (baseline, invalidation or observed sign-in). Only
+ * these are shown as a Recorded Test: Step 4's Sign-in evidence tile already
+ * states each account's automatic result. */
+export function isLegacyManualDrillRecord(record: CleanupCheckpoint): boolean {
+  return record.cleanup === 'drill' && record.workflow !== RECOVERY_AUTOMATIC_WORKFLOW && record.workflow !== RECOVERY_PREPARATION_WORKFLOW && record.workflow !== RECOVERY_INVALIDATION_WORKFLOW
+}
+
 /** Audit failures affect recovery verification, never unrelated sign-in uses. */
 export function recoveryEvidenceSource(snapshot: TenantSnapshot): TenantSnapshot['sources']['signInEvidence'] {
   if (snapshot.sources.signInEvidence.status !== 'ok') return snapshot.sources.signInEvidence

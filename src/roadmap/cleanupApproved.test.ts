@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { consolidationVerified, replacementPolicyBasis, namingVerified } from './cleanupDone.ts'
+import { consolidationVerified, replacementPolicyBasis, namingVerified, isLegacyManualDrillRecord, RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_INVALIDATION_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { cleanupExportView } from '../ui/surfaces/cleanupExport.ts'
@@ -68,4 +68,28 @@ test('resolved deferred hardening remains completed and a manual date cannot hid
   assert.equal(passed.rows.find(r => r.kind === 'hardening')!.done, now)
   const failed = cleanupPhaseFor({ ...input, hardeningTracked: true, hardeningVerified: false, hardening: ['Alert delivery needs verification'], records: [{ at: now, date: now, cleanup: 'hardening' }] })!
   assert.equal(failed.rows.find(r => r.kind === 'hardening')!.done, null)
+})
+
+// Overnight review B1: Step 4's Recorded Test is a legacy manual record only. The
+// automatic per-account records (baseline, invalidation, observed sign-in) are
+// already stated by the Sign-in evidence tile, and one of them read as a test of
+// one account that "does not cover the current accounts".
+test('Step 4 shows a Recorded Test only for a legacy manual record, never for the automatic sign-in records', () => {
+  const accounts = { emergencyAccountIds: ['bg-a', 'bg-b'], emergencyAccounts: ['Breakglass A', 'Breakglass B'], emergencyAccountUpns: ['a@contoso.onmicrosoft.com', 'b@contoso.onmicrosoft.com'] }
+  const automatic: CleanupCheckpoint[] = [
+    { at: now, date: now, cleanup: 'drill', workflow: RECOVERY_PREPARATION_WORKFLOW, purpose: 'final', tenantId: 't', accountIds: ['bg-a'], configurationObservedAt: now },
+    { at: now, date: now, cleanup: 'drill', workflow: RECOVERY_AUTOMATIC_WORKFLOW, outcome: 'passed', purpose: 'final', tenantId: 't', accountIds: ['bg-a'], signInAtByAccount: { 'bg-a': now } },
+    { at: now, date: now, cleanup: 'drill', workflow: RECOVERY_INVALIDATION_WORKFLOW, purpose: 'final', tenantId: 't', accountIds: ['bg-b'] },
+  ]
+  const phase = cleanupPhaseFor({ ...input, ...accounts, records: automatic })!
+  const drill = phase.rows.find(r => r.kind === 'drill')!
+  assert.equal(drill.record, undefined, 'no Recorded Test section')
+  assert.equal(drill.verificationReason, undefined, 'and no "does not cover the current accounts"')
+  assert.deepEqual(cleanupExportView(phase, drill)!.manualEvidence, [], 'the export says the same')
+  const legacy: CleanupCheckpoint = { at: now, date: now, cleanup: 'drill', outcome: 'passed', accountIds: ['bg-a', 'bg-b'] }
+  const withLegacy = cleanupPhaseFor({ ...input, ...accounts, records: [legacy, ...automatic] })!
+  const legacyRow = withLegacy.rows.find(r => r.kind === 'drill')!
+  assert.equal(legacyRow.record, legacy, 'a legacy manual record is still shown as history')
+  assert.equal(isLegacyManualDrillRecord(legacy), true)
+  assert.equal(automatic.some(isLegacyManualDrillRecord), false)
 })
