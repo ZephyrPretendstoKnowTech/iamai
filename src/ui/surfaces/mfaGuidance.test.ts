@@ -31,7 +31,7 @@ import { fillText, whole } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { GUIDE_POINTER, METHOD_GUIDES, PASSKEY_TARGET, TENANT_PREREQUISITE, USER_INSTRUCTION, guideText, methodGuide, reachesTarget } from '../../content/methodGuides.ts'
 import type { MethodGuideId } from '../../content/methodGuides.ts'
-import { classWord, deviceChips, methodsCell, nextCell, panelDevices, panelMethods, whyLine } from './readinessCells.ts'
+import { classWord, deviceChips, methodsCell, nextCell, panelDevices, panelMethods, whyLine, deviceNoun } from './readinessCells.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -152,7 +152,10 @@ test('the next step a person is offered follows their readiness, the panel agree
         assert.doesNotMatch(next, /^Set up/, `${where}: confirm, not register`)
       } else if (row.state === 'device') {
         assert.ok(rd.qualifying.length > 0, `${where}: confirmed on one device`)
-        assert.equal(rd.next.kind, 'addDevice', `${where}: the next step is the device that signs in without it`)
+        // The next step is on the device that signs in without it: confirm a credential they hold that works there, set one up, or update the phone.
+        assert.ok(['addDevice', 'confirm', 'updateOs'].includes(rd.next.kind), `${where}: the next step is the device that signs in without it (${rd.next.kind})`)
+        const gapOs = (rd.next as { os?: string | null }).os
+        assert.ok(rd.devices.some((d) => d.proof === null && d.os === gapOs), `${where}: the next step names a device with no confirmed sign-in`)
         assert.ok(rd.devices.some((d) => d.proof !== null) && rd.devices.some((d) => d.proof === null), `${where}: confirmed on one device and not another`)
       } else if (row.state === 'method') {
         assert.equal(rd.qualifying.length, 0, `${where}: no qualifying method`)
@@ -179,7 +182,10 @@ test('a registered method with no confirmed sign-in is asked to be confirmed, on
       const rd = row.readiness
       if (row.state !== 'confirm' || !rd || rd.next.kind !== 'confirm') continue
       seen++
-      assert.equal(nextCell(row), fillText((pages.readiness as unknown as { next: { confirm: string } }).next.confirm, { method: classWord(rd.next.cls).toLowerCase() }))
+      // The method keeps its capitals mid-sentence, and the device is named where one is known.
+      const W = pages.readiness as unknown as { next: { confirm: string; confirmOn: string }; methodsInline: Record<string, string> }
+      assert.equal(nextCell(row), rd.next.os ? fillText(W.next.confirmOn, { method: W.methodsInline[rd.next.cls], device: deviceNoun(rd.next.os) }) : fillText(W.next.confirm, { method: W.methodsInline[rd.next.cls] }))
+      assert.doesNotMatch(nextCell(row), /windows hello/, 'never a lower-cased product name')
       // Every device in use reads Not confirmed, on the chip and in the panel's Now.
       for (const c of deviceChips(row).chips) assert.equal(c.word, (pages.readiness as unknown as { chip: { notConfirmed: string } }).chip.notConfirmed)
       for (const d of panelDevices(row)) assert.deepEqual(d.facts.find(([k]) => k === P.now)?.[1], P.proofNow.none)

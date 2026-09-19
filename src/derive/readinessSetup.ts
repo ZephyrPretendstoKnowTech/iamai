@@ -51,12 +51,16 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   const p = ctx.passkey
   const checks: SetupCheck[] = []
   // 1. Passkey registration is on for everyone.
-  const on: SetupOutcome = !p.read ? 'unknown' : p.enabled === true && p.selfService !== false ? 'pass' : p.enabled === false || p.selfService === false ? 'fail' : 'unknown'
-  checks.push({ key: 'passkeyOn', outcome: on, affects: on === 'fail' ? countWhere(rows, needs) : 0, reason: !p.read ? 'passkeySettingsUnread' : null })
-  // 2. Phones can hold a passkey: both Microsoft Authenticator models allowed.
-  const phone = AUTHENTICATOR_AAGUIDS.map((a) => passkeyAllowed(p, a))
-  const phoneOutcome: SetupOutcome = phone.every((v) => v === 'yes') ? 'pass' : phone.some((v) => v === 'no') ? 'fail' : 'unknown'
-  checks.push({ key: 'phonePasskey', outcome: phoneOutcome, affects: phoneOutcome === 'fail' ? countWhere(rows, (r) => needs(r) && (r.readiness?.devices ?? []).some((d) => d.type === 'phone')) : 0, reason: phoneOutcome === 'unknown' ? 'passkeySettingsUnread' : null })
+  const on: SetupOutcome = !p.read ? 'unknown' : p.enabled === true && p.selfService !== false ? (p.targetsAll === false ? 'note' : 'pass') : p.enabled === false || p.selfService === false ? 'fail' : 'unknown'
+  // On for some groups only: people outside them can't register one, and IAMAI doesn't place people in the groups.
+  checks.push({ key: 'passkeyOn', outcome: on, affects: on === 'fail' ? countWhere(rows, needs) : 0, reason: !p.read ? 'passkeySettingsUnread' : on === 'note' ? 'targeted' : null })
+  // 2. Phones can hold a passkey: both Microsoft Authenticator models allowed. Passkeys off
+  // altogether is the one failure above, never a second one here with the wrong remedy.
+  if (on !== 'fail') {
+    const phone = AUTHENTICATOR_AAGUIDS.map((a) => passkeyAllowed(p, a, null, 'register'))
+    const phoneOutcome: SetupOutcome = phone.every((v) => v === 'yes') ? 'pass' : phone.some((v) => v === 'no') ? 'fail' : 'unknown'
+    checks.push({ key: 'phonePasskey', outcome: phoneOutcome, affects: phoneOutcome === 'fail' ? countWhere(rows, (r) => needs(r) && (r.readiness?.devices ?? []).some((d) => d.type === 'phone')) : 0, reason: phoneOutcome === 'unknown' ? 'passkeySettingsUnread' : null })
+  }
   // 3. People can register from where they work.
   const reg: SetupOutcome = ctx.registration === 'open' ? 'pass' : ctx.registration === 'trustedOnly' ? 'fail' : 'unknown'
   checks.push({ key: 'registration', outcome: reg, affects: reg === 'fail' ? countWhere(rows, (r) => r.readiness?.blocked === 'registrationLocation') : 0, reason: reg === 'unknown' ? 'policiesUnread' : null })

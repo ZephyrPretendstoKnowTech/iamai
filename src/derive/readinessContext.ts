@@ -9,7 +9,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
-import { READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUID } from '../scoring/phishingResistant.ts'
+import { READINESS_WINDOW_DAYS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishingResistant.ts'
 import type { PasskeyPolicy, ReadinessContext } from '../scoring/phishingResistant.ts'
 
 const DAY = 86_400_000
@@ -22,6 +22,8 @@ export function passkeyPolicyOf(current: Fido2Configuration | null, read: boolea
   if (!read || !current) return { read, enabled: read && !current ? false : null, selfService: null, attestation: null, restriction: null, aaguids: [] }
   const enabled = current.state === 'enabled' ? true : current.state === 'disabled' ? false : null
   const selfService = typeof current.isSelfServiceRegistrationAllowed === 'boolean' ? current.isSelfServiceRegistrationAllowed : null
+  const targets = Array.isArray(current.includeTargets) ? (current.includeTargets as unknown[]).map((t) => String(object(t)?.id ?? '').toLowerCase()) : null
+  const targetsAll = targets === null ? null : targets.includes('all_users')
   // Profile mode: the profiles assigned to any target, together. A model any assigned
   // profile allows is allowed; the attestation is enforced only where every profile enforces it.
   const assigned = Array.isArray(current.passkeyProfiles) && current.passkeyProfiles.length > 0 ? assignedPasskeyProfiles(current) : null
@@ -37,6 +39,7 @@ export function passkeyPolicyOf(current: Fido2Configuration | null, read: boolea
       attestation: attest.every((a) => a === true) ? true : attest.some((a) => a === false) ? false : null,
       restriction: unrestricted ? 'unrestricted' : allows.length > 0 ? 'allow' : null,
       aaguids: [...new Set(allows.flatMap((r) => lower(r?.aaGuids)))],
+      targetsAll,
     }
   }
   const kr = current.keyRestrictions
@@ -48,6 +51,7 @@ export function passkeyPolicyOf(current: Fido2Configuration | null, read: boolea
     attestation: typeof current.isAttestationEnforced === 'boolean' ? current.isAttestationEnforced : null,
     restriction,
     aaguids: lower(kr?.aaGuids),
+    targetsAll,
   }
 }
 
@@ -67,6 +71,8 @@ export function registrationRestriction(snapshot: TenantSnapshot): ReadinessCont
     if (!actions.includes(REGISTER_SECURITY_INFO)) continue
     const grant = object(p.grantControls)
     const controls = lower(grant?.builtInControls)
+    // Only a policy that reaches everyone limits everyone: one scoped to guests or a group doesn't block a member.
+    if (!lower(object(conditions?.users)?.includeUsers).includes('all')) continue
     const locations = object(conditions?.locations)
     const excludesTrusted = lower(locations?.excludeLocations).length > 0
     const device = (c: string): boolean => c === 'compliantdevice' || c === 'domainjoineddevice'
@@ -85,10 +91,11 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
   const reading = passkeyReadingOf(snapshot, (mapping ?? undefined) as MappingState | undefined)
   const passkey = passkeyPolicyOf(reading.current, reading.state !== 'unread')
   const models = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
-  const step3Set = new Set(models.map((m) => m.aaguid.toLowerCase()))
-  const applied = passkey.restriction === 'allow' && passkey.aaguids.length === step3Set.size && passkey.aaguids.every((a) => step3Set.has(a))
+  // Step 3 is in place exactly when Emergency Access Step 3 reads it so (one reading, roadmap/passkeySettings.ts),
+  // which counts the extra models the operator accepted there.
+  const applied = reading.state === 'inPlace'
   const modelNames = new Map<string, string>([...PASSKEY_DEFAULT_MODELS, ...models].map((m) => [m.aaguid.toLowerCase(), m.name]))
-  modelNames.set(WINDOWS_HELLO_AAGUID, 'Windows Hello')
+  for (const a of WINDOWS_HELLO_AAGUIDS) modelNames.set(a, 'Windows Hello')
   const deviceOwners = new Map<string, string[]>()
   for (const d of snapshot.devices ?? []) if (d.deviceId) deviceOwners.set(d.deviceId.toLowerCase(), d.ownerIds)
   // Directory trustType: AzureAd is joined, ServerAd hybrid joined, Workplace registered.

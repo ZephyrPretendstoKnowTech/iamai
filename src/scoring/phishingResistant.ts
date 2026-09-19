@@ -280,6 +280,7 @@ export type BlockReason = 'passkeyOff' | 'authenticatorNotAllowed' | 'registrati
  *   confirm     a usable method not confirmed in the window: sign in once with it
  *   returnConfirm  no sign-in in the window at all (on leave): confirm on return
  *   addDevice   confirmed elsewhere: set up the best option on this device
+ *   updateOs    confirmed elsewhere: this phone is too old for a passkey in Authenticator
  *   replaceKey  the only usable key stops working under Step 3's settings
  *   waitSetup   blocked: the admin change it waits on
  *   rescan      unknown: the read that was missing
@@ -288,6 +289,7 @@ export type NextAction =
   | { kind: 'none' }
   | { kind: 'seamless'; os: Platform; option: SignInOption }
   | { kind: 'setUp'; option: SignInOption; os: Platform | null }
+  | { kind: 'updateOs'; os: Platform }
   | { kind: 'restore'; cls: MethodClass }
   | { kind: 'confirm'; cls: MethodClass; os: Platform | null }
   | { kind: 'returnConfirm' }
@@ -332,6 +334,8 @@ export type PasskeyPolicy = {
   attestation: boolean | null
   restriction: 'unrestricted' | 'allow' | 'block' | null
   aaguids: readonly string[]
+  /** Whether passkeys are targeted at all users; false where only some groups; null where not read. */
+  targetsAll?: boolean | null
 }
 
 /** What readiness reads once per tenant: the window, the settings and the device facts (derive/readinessContext.ts). */
@@ -366,14 +370,29 @@ export type ReadinessContext = {
 
 /** Microsoft Authenticator's passkey models (iOS, Android): a phone passkey needs one of them allowed. */
 export const AUTHENTICATOR_AAGUIDS: readonly string[] = ['90a3ccdf-635c-4729-a248-9b709135078f', 'de1e552d-db1d-4423-a619-566b625cdc84']
-/** Windows Hello's passkey model (not Windows Hello for Business). */
-export const WINDOWS_HELLO_AAGUID = '08987058-cadc-4b81-b6e1-30de50dcbe96'
+/**
+ * Microsoft Entra passkey on Windows (a passkey in Windows Hello, not Windows Hello
+ * for Business): hardware, VBS hardware and software. Microsoft Learn (2026-09-03):
+ * they must be explicitly allowed in a passkey profile, the profile can't enforce
+ * attestation, and the computer need not be joined or registered.
+ */
+export const WINDOWS_HELLO_AAGUIDS: readonly string[] = ['08987058-cadc-4b81-b6e1-30de50dcbe96', '9ddd1817-af5a-4672-a2b9-3e3dd95000a9', '6028b017-b1d4-4c02-b4b3-afcdafc96bb2']
+export const WINDOWS_HELLO_AAGUID = WINDOWS_HELLO_AAGUIDS[0]
 
-/** Whether the tenant's current passkey settings let this model and storage register and sign in. */
-export function passkeyAllowed(p: PasskeyPolicy, aaguid: string | null, passkeyType: string | null = null): Verdict {
+/**
+ * Whether the tenant's current passkey settings let this model and storage sign in
+ * (`use`, a credential already held) or register (`register`, one to set up).
+ * Attestation is enforced only at registration (Microsoft Learn: users who
+ * registered without it aren't blocked from sign-in when it is turned on later);
+ * key restrictions apply to both. A Windows Hello passkey registers only where
+ * an allow list names it, and never under enforced attestation.
+ */
+export function passkeyAllowed(p: PasskeyPolicy, aaguid: string | null, passkeyType: string | null = null, purpose: 'use' | 'register' = 'use'): Verdict {
   if (!p.read) return 'unknown'
   if (p.enabled === false) return 'no'
-  if (p.attestation === true && /synced/i.test(passkeyType ?? '')) return 'no'
+  const hello = aaguid !== null && WINDOWS_HELLO_AAGUIDS.includes(aaguid.toLowerCase())
+  if (purpose === 'register' && p.attestation === true && (hello || /synced/i.test(passkeyType ?? ''))) return 'no'
+  if (purpose === 'register' && hello && p.restriction !== 'allow') return p.restriction === null ? 'unknown' : 'no'
   if (p.restriction === 'unrestricted') return p.enabled === true ? 'yes' : 'unknown'
   if (p.restriction === null) return 'unknown'
   if (!aaguid) return 'unknown'
@@ -443,14 +462,14 @@ const versionMajor = (v: string | null): number | null => {
 
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
 function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | undefined): Pick<DeviceReading, 'best' | 'builtIn' | 'possible' | 'whyNot'> {
-  const phonePasskey = passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[0]) === 'yes' || passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[1]) === 'yes'
+  const phonePasskey = passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[0], null, 'register') === 'yes' || passkeyAllowed(ctx.passkey, AUTHENTICATOR_AAGUIDS[1], null, 'register') === 'yes'
   const fallback: SignInOption = phonePasskey ? 'phonePasskey' : 'securityKey'
   if (d.os === 'iOS' || d.os === 'Android') {
     const major = versionMajor(d.version)
     const floor = d.os === 'iOS' ? 17 : 14
     if (major !== null && major < floor) return { best: 'authenticatorPasskey', builtIn: true, possible: 'no', whyNot: 'osTooOld' }
     const aaguid = d.os === 'iOS' ? AUTHENTICATOR_AAGUIDS[0] : AUTHENTICATOR_AAGUIDS[1]
-    const allowed = passkeyAllowed(ctx.passkey, aaguid)
+    const allowed = passkeyAllowed(ctx.passkey, aaguid, null, 'register')
     return { best: 'authenticatorPasskey', builtIn: true, possible: allowed, whyNot: allowed === 'no' ? 'notAllowed' : null }
   }
   if (d.os === 'Windows') {
@@ -462,8 +481,8 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
     }
     // Join state unreported: unknown, unless the directory holds no joined Windows computer.
     if (d.trust === null && ctx.windowsDirectory !== 'none' && ctx.windowsDirectory !== 'notJoined') return { best: 'windowsHello', builtIn: true, possible: 'unknown', whyNot: null }
-    const hello = passkeyAllowed(ctx.passkey, WINDOWS_HELLO_AAGUID)
-    if (ctx.passkey.attestation !== true && hello === 'yes') return { best: 'windowsHelloPasskey', builtIn: true, possible: 'yes', whyNot: null }
+    // Not joined: a passkey in Windows Hello, where an allow list names one of its models.
+    if (WINDOWS_HELLO_AAGUIDS.some((a) => passkeyAllowed(ctx.passkey, a, null, 'register') === 'yes')) return { best: 'windowsHelloPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: 'notJoined' }
   }
   if (d.os === 'macOS') {
@@ -475,21 +494,51 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
   return { best: 'securityKey', builtIn: false, possible: 'yes', whyNot: null }
 }
 
-/** Whether a proof on this device is its seamless option (the class its best option signs in with). */
-function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, cls: MethodClass): boolean {
+/**
+ * The kind of passkey a credential is, from its model or storage: in Microsoft
+ * Authenticator, in Windows Hello, synced, a security key, or unknown (no AAGUID).
+ */
+type PasskeyForm = 'authenticator' | 'windowsHelloPasskey' | 'synced' | 'key' | 'unknown'
+function passkeyForm(m: AuthMethodSummary | null, registered: string | null): PasskeyForm {
+  const aaguid = m?.aaGuid?.toLowerCase() ?? null
+  if (aaguid && AUTHENTICATOR_AAGUIDS.includes(aaguid)) return 'authenticator'
+  if (aaguid && WINDOWS_HELLO_AAGUIDS.includes(aaguid)) return 'windowsHelloPasskey'
+  if (/synced/i.test(m?.passkeyType ?? '')) return 'synced'
+  if (aaguid) return 'key'
+  if (registered) {
+    if (/authenticator/i.test(registered)) return 'authenticator'
+    if (/windowshello/i.test(registered)) return 'windowsHelloPasskey'
+    if (/synced/i.test(registered)) return 'synced'
+    return 'key'
+  }
+  return 'unknown'
+}
+/** The passkey form a built-in option signs in with. */
+const FORM_OF: Partial<Record<SignInOption, PasskeyForm>> = { authenticatorPasskey: 'authenticator', windowsHelloPasskey: 'windowsHelloPasskey', syncedPasskey: 'synced' }
+
+/**
+ * Whether a proof on this device is its seamless option: the class its best
+ * option signs in with, and, for a passkey, a credential of that built-in form
+ * held (a security key carried to an iPhone or a Mac is Ready, not Seamless).
+ * Where a credential's form can't be told (no AAGUID), it is not held against them.
+ */
+function seamlessProof(best: SignInOption, builtIn: boolean, possible: Verdict, cls: MethodClass, forms: ReadonlySet<PasskeyForm> = new Set(['unknown'])): boolean {
   // Windows Hello is built into the device it signed in on, whatever join state the record reported.
   if (cls === 'windowsHello') return true
   // Nothing built in, or the built-in option is impossible here: Ready is as far as this device goes.
   if (!builtIn || possible === 'no') return false
   if (best === 'windowsHello') return false
   if (best === 'platformSso') return true
-  return cls === 'passkey'
+  if (cls !== 'passkey') return false
+  const need = FORM_OF[best]
+  return need !== undefined && (forms.has(need) || forms.has('unknown'))
 }
 
 /** The method classes held now, with each credential: the method rows where read, else the registration report; null where neither was. */
-function inventory(input: ReadinessInput): { classes: Set<MethodClass>; rows: { cls: MethodClass; m: AuthMethodSummary | null }[] } | null {
+type InventoryRow = { cls: MethodClass; m: AuthMethodSummary | null; reg?: string }
+function inventory(input: ReadinessInput): { classes: Set<MethodClass>; rows: InventoryRow[] } | null {
   const classes = new Set<MethodClass>()
-  const rows: { cls: MethodClass; m: AuthMethodSummary | null }[] = []
+  const rows: InventoryRow[] = []
   if (Array.isArray(input.methods)) {
     for (const m of input.methods) {
       const c = classOfKind(m.kind)
@@ -509,7 +558,7 @@ function inventory(input: ReadinessInput): { classes: Set<MethodClass>; rows: { 
     const c = classOfRegistered(name)
     if (!c) continue
     classes.add(c)
-    if (isQualifying(c) && !rows.some((r) => r.cls === c)) rows.push({ cls: c, m: null })
+    if (isQualifying(c) && !rows.some((r) => r.cls === c && r.reg === name)) rows.push({ cls: c, m: null, reg: name })
   }
   return { classes, rows }
 }
@@ -520,11 +569,35 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const base: Omit<PersonReadiness, 'state' | 'methods' | 'qualifying' | 'hasPasskey' | 'next' | 'automated'> = { unknown: null, blocked: null, devices: [], credentials: [], onLeave: false, readyUntil: null, lastConfirmed: null, lost: [], other: null, recommended: null }
   const apps = input.signIns.apps ?? []
   const automated = apps.length > 0 && apps.every((a) => SCRIPTING.test(a))
-  if (inv === null) return { ...base, automated, state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
-  const methods = [...inv.classes].sort(byClass)
-  const history = input.history
   const inWindow = (at: string): boolean => at >= ctx.windowStart
   const current = input.signIns.proofs ?? []
+
+  // The devices used inside the window, before any method is weighed: an unreadable
+  // method list still shows where the person signs in, never "no sign-in".
+  const fromRecords = !!input.signIns.devices && input.signIns.devices.length > 0
+  const seenDevices: DeviceSeen[] = fromRecords
+    ? [...(input.signIns.devices as DeviceSeen[])]
+    : input.signIns.platforms.map((p) => ({ os: p.os, at: p.at, trust: null, managed: null, deviceIds: [], version: null }))
+  // Join state. Microsoft reports a sign-in's deviceId only for a device registered
+  // in Entra ID, so a device whose records never named one is neither joined nor
+  // registered; and with no Windows computer in the directory, none of them is.
+  const settled = (d: DeviceSeen): DeviceSeen =>
+    d.trust !== null ? d
+    : fromRecords && d.deviceIds.length === 0 ? { ...d, trust: 'none' }
+    : d.os === 'Windows' && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' }
+    : d
+  const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
+  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId), proof: null, seamless: false })
+
+  if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
+  // The method rows never list certificates; where the registration report has no
+  // row either, a certificate sign-in in the window shows one is held.
+  if (input.registered === null && !inv.classes.has('certificate') && current.some((p) => p.cls === 'certificate' && inWindow(p.at))) {
+    inv.classes.add('certificate')
+    inv.rows.push({ cls: 'certificate', m: null })
+  }
+  const methods = [...inv.classes].sort(byClass)
+  const history = input.history
   // Proof stands for a method held now: its class is held, and a method of that
   // class existed when the proof was made (a passkey registered after the last
   // passkey sign-in has not been seen working).
@@ -544,10 +617,17 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   }
   const seenWorking = (cls: MethodClass): boolean => windowProofs.some((p) => p.cls === cls && (ctx.policyChangedAt === null || p.at >= ctx.policyChangedAt))
   const step3 = new Set(ctx.step3.models.map((m) => m.aaguid.toLowerCase()))
-  const credentials: CredentialReading[] = inv.rows.map(({ cls, m }) => {
+  // The passkey forms held, and those usable now: whether a passkey proof can be a device's built-in one.
+  const forms = new Set<PasskeyForm>()
+  const usableForms = new Set<PasskeyForm>()
+  const credentials: CredentialReading[] = inv.rows.map(({ cls, m, reg }) => {
     const aaguid = m?.aaGuid ? m.aaGuid.toLowerCase() : null
-    const settled = seenWorking(cls)
-    const allowedNow: Verdict = cls !== 'passkey' ? 'yes' : settled ? 'yes' : passkeyAllowed(ctx.passkey, aaguid, m?.passkeyType ?? null)
+    const seen = seenWorking(cls)
+    const allowedNow: Verdict = cls !== 'passkey' ? 'yes' : seen ? 'yes' : passkeyAllowed(ctx.passkey, aaguid, m?.passkeyType ?? null, 'use')
+    if (cls === 'passkey') {
+      forms.add(passkeyForm(m, reg ?? null))
+      if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
+    }
     const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied || step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
     const last = latestOf(cls)
     return {
@@ -578,17 +658,12 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const lastConfirmed = qualifying.map(latestOf).filter((p): p is ProofLine => p !== null).sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null
   const common = { credentials, lost, other, automated, methods, qualifying, hasPasskey, lastConfirmed }
 
-  // The devices used inside the window, and what each can do.
-  const seenDevices: DeviceSeen[] = input.signIns.devices && input.signIns.devices.length > 0
-    ? [...input.signIns.devices]
-    : input.signIns.platforms.map((p) => ({ os: p.os, at: p.at, trust: null, managed: null, deviceIds: [], version: null }))
-  // A Windows computer whose sign-ins never reported a join state, in a tenant
-  // whose directory holds no Windows computer at all, is neither joined nor registered.
-  const settled = (d: DeviceSeen): DeviceSeen => (d.os === 'Windows' && d.trust === null && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' } : d)
-  const devices: DeviceReading[] = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled).map((d) => {
-    const e = eligibility(d, ctx, input.userId)
-    const p = windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).sort((a, b) => (seamlessProof(e.best, e.builtIn, e.possible, b.cls) ? 1 : 0) - (seamlessProof(e.best, e.builtIn, e.possible, a.cls) ? 1 : 0) || (a.at < b.at ? 1 : -1))[0]
-    return { os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...e, proof: p ? { cls: p.cls, at: p.at } : null, seamless: !!p && seamlessProof(e.best, e.builtIn, e.possible, p.cls) }
+  // What each device can do, and its latest phishing-resistant sign-in (the seamless one first).
+  const devices: DeviceReading[] = inWindowDevices.map((d) => {
+    const e = bare(d)
+    const seamlessOf = (cls: MethodClass): boolean => seamlessProof(e.best, e.builtIn, e.possible, cls, forms)
+    const p = windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).sort((a, b) => (seamlessOf(b.cls) ? 1 : 0) - (seamlessOf(a.cls) ? 1 : 0) || (a.at < b.at ? 1 : -1))[0]
+    return { ...e, proof: p ? { cls: p.cls, at: p.at } : null, seamless: !!p && seamlessOf(p.cls) }
   })
 
   // The best thing to set up first: the phone passkey where a phone is used
@@ -640,20 +715,38 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const onlyKey = usable.length === 1 && usable[0].cls === 'passkey' && usable[0].afterStep3 === 'no' ? usable[0] : null
   const proven = devices.filter((d) => d.proof !== null)
   if (proven.length === 0) {
-    if (onlyKey) return { ...base, ...common, devices, state: 'confirm', next: { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } }
+    // Until Step 3 is in place any passkey counts (owner decision): the key is confirmed
+    // like any other, and the off-list model is flagged on the credential and, once Ready, as a recommendation.
     const cls = qualifying[0]
-    const os = devices.find((d) => (cls === 'windowsHello' ? d.os === 'Windows' : cls === 'passkey' ? d.type === 'phone' || true : true))?.os ?? null
+    const os = (cls === 'windowsHello' ? devices.find((d) => d.os === 'Windows') : devices[0])?.os ?? null
     return { ...base, ...common, devices, state: 'confirm', next: { kind: 'confirm', cls, os } }
   }
   const missing = devices.filter((d) => d.proof === null)
   if (missing.length > 0) {
-    const d = missing.find((x) => x.possible !== 'no') ?? missing[0]
-    return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: d.os, option: d.best } }
+    // The one action that closes the gap on a device, in order: sign in once with a
+    // credential they already hold that works there; set up the best option; update
+    // a phone too old for it; and only where every gap waits on a tenant setting, Blocked.
+    const holdsFor = (d: DeviceReading): MethodClass | null => {
+      if (d.type === 'phone') return usableForms.has('authenticator') || (usableForms.has('synced') && d.best === 'syncedPasskey') ? 'passkey' : null
+      if (d.builtIn && d.possible !== 'no') return null
+      return qualifying.includes('passkey') ? 'passkey' : qualifying.includes('certificate') ? 'certificate' : null
+    }
+    const confirmable = missing.find((d) => holdsFor(d) !== null)
+    if (confirmable) return { ...base, ...common, devices, state: 'device', next: { kind: 'confirm', cls: holdsFor(confirmable) as MethodClass, os: confirmable.os } }
+    const settable = missing.find((d) => d.possible !== 'no')
+    if (settable) return { ...base, ...common, devices, state: 'device', next: { kind: 'addDevice', os: settable.os, option: settable.best } }
+    const old = missing.find((d) => d.whyNot === 'osTooOld')
+    if (old) return { ...base, ...common, devices, state: 'device', next: { kind: 'updateOs', os: old.os } }
+    const reason: BlockReason = ctx.passkey.enabled === false ? 'passkeyOff' : 'authenticatorNotAllowed'
+    return { ...base, ...common, devices, state: 'blocked', blocked: reason, next: { kind: 'waitSetup', reason } }
   }
-  const readyUntil = devices.map((d) => new Date(Date.parse((d.proof as { at: string }).at) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
+  // Ready until the oldest device's latest phishing-resistant sign-in leaves the window
+  // (its latest, not its seamless one: a later key sign-in keeps the device Ready).
+  const latestOn = (d: DeviceReading): string => windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).map((x) => x.at).sort().pop() as string
+  const readyUntil = devices.map((d) => new Date(Date.parse(latestOn(d)) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
   // Recommend only what the device can have: a built-in option that is not ruled out.
   const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no')
   const seamless = devices.length > 0 && devices.every((d) => d.seamless)
-  const recommended: NextAction | null = onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : null
+  const recommended: NextAction | null = upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : null
   return { ...base, ...common, devices, readyUntil, state: seamless ? 'seamless' : 'ready', next: { kind: 'none' }, recommended }
 }
