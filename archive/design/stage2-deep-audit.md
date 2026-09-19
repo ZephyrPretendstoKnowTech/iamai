@@ -84,7 +84,7 @@ The engine knows the right things: it predicts lockouts per person, gates enforc
 
 | As shown | Finding | Tag |
 |---|---|---|
-| "Signed in to GetIAMAI as Lachlan@getiamai.com · Sign out" | Fine. |
+| "Signed in to GetIAMAI as admin@contoso.com · Sign out" | Fine. |
 | "Baseline: Jon Hope — Defense in Depth (46 policies) · change" | Round 1: the baseline explained in place, three lines. Still one unexplained name. | owner |
 | "Scan complete · 13 people · 10 policies · sign-ins Aug 1 → Aug 31" | "13 people" contradicts Today's "12 enabled". The scan was 17 h old and nothing on the page offers to re-scan; only the header does. | defect |
 | "Open the plan →" | Round 2/3: after the scan the page shows what IAMAI found as a readable list with confirm/change, then Open the plan. Not present. | owner |

@@ -54,7 +54,7 @@
       "produces": "#/connect",
       "ownerApprovedSourceName": "iamai-connect-design-pack-v3.html",
       "path": "docs/design/approved/anatomy/connect-v3.html",
-      "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
+      "sha256": "d899bd2a99f65bd68e6af6ac156dd765591f06d0df5c53750b8148236becb793",
       "declaredTitle": "IAMAI Connect Design Pack v1",
       "declaredTitleNote": "The <title> inside the file still says v1; the owner's file name, and this record, say v3. The bytes and the hash are the identity — a stale title element inside an approved file is not a reason to edit the file.",
       "observed": {

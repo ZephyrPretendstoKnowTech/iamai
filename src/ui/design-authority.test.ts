@@ -60,7 +60,7 @@ const APPROVED = [
     surface: 'connect',
     file: 'connect-v3.html',
     sourceName: 'iamai-connect-design-pack-v3.html',
-    sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b',
+    sha256: 'd899bd2a99f65bd68e6af6ac156dd765591f06d0df5c53750b8148236becb793',
   },
   {
     // The owner's upload was named plan-step-design-pack(1).html. The (1) is

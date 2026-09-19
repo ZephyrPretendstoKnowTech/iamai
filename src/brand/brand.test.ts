@@ -117,7 +117,7 @@ const DARK: Hexes = {
 /** Task 028's four approved application authorities, by name and by bytes. */
 const APPROVED = [
   { surface: 'home', path: 'docs/design/approved/anatomy/home-v2.html', sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50' },
-  { surface: 'connect', path: 'docs/design/approved/anatomy/connect-v3.html', sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b' },
+  { surface: 'connect', path: 'docs/design/approved/anatomy/connect-v3.html', sha256: 'd899bd2a99f65bd68e6af6ac156dd765591f06d0df5c53750b8148236becb793' },
   { surface: 'plan', path: 'docs/design/approved/anatomy/plan-step-v1.html', sha256: '43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39' },
   { surface: 'mfa-readiness', path: 'docs/design/approved/anatomy/mfa-readiness-v3.html', sha256: '39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4' },
 ] as const

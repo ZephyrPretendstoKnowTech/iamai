@@ -132,7 +132,7 @@ Reason: The semicolon-prefixed fragment is confusing. Explain what happens when 
 ## Implementation — Entra channel
 
 CURRENT →
-Open the exact resolved policy by stable tenant ID b004f962-6d9d-4a8f-9503-760da3ccc71c. If it is On, move that same policy to Report-only before changing any access-affecting assignment or condition. Replace the complete conditions object with the IAMAI-resolved canonical target; do not create a replacement policy.
+Open the exact resolved policy by stable tenant ID 00000000-0000-0000-0000-000000000001. If it is On, move that same policy to Report-only before changing any access-affecting assignment or condition. Replace the complete conditions object with the IAMAI-resolved canonical target; do not create a replacement policy.
 
 Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.
 
@@ -153,12 +153,12 @@ Reason: C6 — the current text is developer-spec language ("stable tenant ID", 
 ## Implementation — AI Info channel
 
 CURRENT →
-Policy b004f962-6d9d-4a8f-9503-760da3ccc71c has these mismatches for Block Legacy Authentication: conditions.canonical. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
+Policy 00000000-0000-0000-0000-000000000001 has these mismatches for Block Legacy Authentication: conditions.canonical. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
 
 TARGET →
 This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.
 
-Reason: C6/C7 — "Policy b004f962-…", "conditions.canonical", "API-safe corrections" are developer terms. Rewritten for a tech audience.
+Reason: C6/C7 — "Policy 00000000-…", "conditions.canonical", "API-safe corrections" are developer terms. Rewritten for a tech audience.
 
 ---
 

@@ -141,7 +141,7 @@ Each has a recommendation. Where it says "default", I'd proceed that way if you 
 20. **Git history holds two live UPNs.** One is in the prompt 60 file (11d3650); the other is the audit reference redacted tonight. The repository is public.
     - Rewriting public history is disruptive.
     - **Recommend** leaving history as it is, since these are your own tenant's accounts, unless you want a `filter-repo` pass.
-21. **Your admin address in two approved design packs.** `admin@getiamai.com` appears in `connect-v3.html` and its reference copy. They're hash-locked, so changing them needs your approval. **Recommend** a placeholder ("admin@contoso.com") the next time you revise those packs.
+21. **Your admin address in two approved design packs.** The owner's admin address appears in `connect-v3.html` and its reference copy. They're hash-locked, so changing them needs your approval. **Recommend** a placeholder ("admin@contoso.com") the next time you revise those packs.
 22. **REFERENCE-MANIFEST.json** still names the old "final" MFA Readiness page as the authority, and `manifest.json` names v3. **Recommend** marking the old entry superseded.
 
 ---

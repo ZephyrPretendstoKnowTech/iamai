@@ -739,7 +739,7 @@ Each checklist item is scored across all 32 steps, and every exception is named.
 
 - **4.7c.1 · W** — **Preamble explaining the payload**
 
-  Only a method and URL line (for example `PATCH https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/58153371-…`), with no sentence on what it does or how to send it. Device Registration uses a relative `POST /identity/conditionalAccess/policies`.
+  Only a method and URL line (for example `PATCH https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/00000000-…`), with no sentence on what it does or how to send it. Device Registration uses a relative `POST /identity/conditionalAccess/policies`.
 
 - **4.7c.2 · F** — **Valid JSON**
 
@@ -760,7 +760,7 @@ Each checklist item is scored across all 32 steps, and every exception is named.
   The explainers are good (Auth strength, Trusted network, MFA for everyone, Token protection, Intune, Medium/High risk). Others are instructions from IAMAI's own pipeline.
 
   > Guest policy mismatches: pair.canonical. Explain the smallest corrections to the exact strong/mixed policy identities…
-  > Policy 58153371-724c-45d0-8b87-b17639eb23a9 has these mismatches for Block Device Code Sign-in: conditions.canonical.
+  > Policy 00000000-0000-0000-0000-000000000002 has these mismatches for Block Device Code Sign-in: conditions.canonical.
 
 - **4.7d.2 · F** — **Internal terms**
 
