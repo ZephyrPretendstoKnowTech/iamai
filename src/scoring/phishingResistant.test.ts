@@ -22,7 +22,7 @@ import { mfaReady, readinessFor, readyNeeded } from '../roadmap/readiness.ts'
 import { readinessView, showKeyOf, shows } from '../derive/mfaReadiness.ts'
 import { campaignIds } from '../derive/population.ts'
 import { contentLists } from '../derive/contentLists.ts'
-import { methodsCell, nextCell, nextWords } from '../ui/surfaces/readinessCells.ts'
+import { deviceChip, methodsCell, nextCell, nextWords } from '../ui/surfaces/readinessCells.ts'
 import { pages } from '../content/content.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -520,4 +520,21 @@ test('audit 11: Ready lasts until the latest phishing-resistant sign-in on each 
   const r = personReadiness(input({ userId: 'me', methods: [{ kind: 'windowsHelloForBusiness' }, { kind: 'passkey', id: 'y1', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c' }], signIns: { read: true, proofs: [proof('windowsHello', 'Windows', early), proof('passkey', 'Windows', LATER)], platforms: [], devices: [device('Windows', { trust: 'joined', deviceIds: ['d1'] })] }, context: { ...ctx, deviceOwners: new Map([['d1', ['me']]]) } }))
   assert.equal(r.state, 'seamless')
   assert.equal(r.readyUntil, new Date(Date.parse(LATER) + 30 * 86_400_000).toISOString())
+})
+
+test('item 1: proof is required once per device type, so a joined Windows laptop and a Linux box need it once, for "computer"', () => {
+  const ctx: ReadinessContext = { ...CTX, passkey: OPEN, deviceOwners: new Map([['d1', ['me']]]) }
+  const laptop = device('Windows', { trust: 'joined', deviceIds: ['d1'] })
+  const r = personReadiness(input({ userId: 'me', methods: m('windowsHelloForBusiness'), signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [laptop, device('Linux')] }, context: ctx }))
+  assert.equal(r.state, 'ready', 'the Linux box is a computer, and the computer is proven')
+  const linux = r.devices.find((d) => d.os === 'Linux')!
+  assert.equal(linux.proof, null, 'no proof is invented on the Linux box')
+  assert.equal(linux.covered, true)
+  assert.equal(deviceChip(linux, r.state).word, (pages.readiness as unknown as { chip: { covered: string } }).chip.covered)
+  assert.equal(r.readyUntil, new Date(Date.parse(AT) + 30 * 86_400_000).toISOString())
+  // A phone is its own device type: proof on the computers never covers it.
+  const phone = personReadiness(input({ userId: 'me', methods: m('windowsHelloForBusiness'), signIns: { read: true, proofs: [proof('windowsHello', 'Windows')], platforms: [], devices: [laptop, device('Linux'), device('iOS', { version: 'Ios 17.4' })] }, context: ctx }))
+  assert.equal(phone.state, 'device')
+  assert.equal(phone.next.kind === 'addDevice' && phone.next.os, 'iOS')
+  assert.equal(phone.devices.find((d) => d.os === 'iOS')!.covered, false)
 })
