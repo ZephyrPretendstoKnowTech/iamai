@@ -1325,8 +1325,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   // The exclusions group is defined by the selected emergency accounts. With
   // no selected accounts there is no safe membership target to create or
-  // approve, so Step 3 waits on Step 2 instead of presenting an empty group as
-  // actionable or complete.
+  // approve, so Configure Emergency Exclusions waits on Prepare Emergency Access
+  // Accounts instead of presenting an empty group as actionable or complete.
   if (geStep && bgStep && mapping.breakGlassUserIds.length === 0) {
     if (!geStep.blockers.some(blocker => blocker.kind === 'step' && blocker.stepId === bgStep.id)) geStep.blockers.push({ kind: 'step', stepId: bgStep.id, label: 'select-emergency-accounts', held: true })
     setState(geStep, { satisfied: false, inPlace: false, condition: conditionFor(geStep.blockers) })

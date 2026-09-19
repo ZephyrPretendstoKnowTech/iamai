@@ -1,10 +1,9 @@
-// Cleanup completion (E3). Each Cleanup row has a Done control that records the
-// date in the plan's checkpoints (PlanDecisions.checkpoints, in the plan file):
-// one small entry per press, `{ at, cleanup, date }`, beside the scan
-// checkpoints a save writes. The row then reads "done <date>", and the drill's
-// recorded dates exempt the matching emergency sign-ins from the emergency-access
-// step's recent-sign-in check only when an exact account/event association was
-// recorded; the same calendar day alone never identifies a drill sign-in.
+// Cleanup completion (E3). Emergency access verification (Step 4) is automatic:
+// the configuration baseline and each account's observed passkey sign-in after
+// it are reconciled from the scan (reconcileAutomaticRecovery); nothing is
+// recorded by hand. Dates recorded by the earlier Done control are history. A
+// drill sign-in is identified only by an exact account and event association,
+// never by the calendar day alone.
 //
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -411,7 +410,7 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
   }
   const out: Record<string, string> = {}
   for (const id of accountIds) {
-    const u = snapshot.users.find(u => u.id === id)
+    const u = snapshot.users.find(u => u.id.toLowerCase() === id.toLowerCase())
     const methods = snapshot.authMethods[id]
     if (!u || !methods || methods === 'unknown' || snapshot.config.authMethodsPolicy.fido2Read?.status === 'error') continue
     let unresolvedTarget = false

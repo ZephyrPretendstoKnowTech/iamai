@@ -172,8 +172,8 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
-    <p className="emergency-account-scan-note">After making changes, select <strong>Scan to update the plan</strong>.</p>
-    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div><button type="button" className="inline-link" onClick={onWhy}>Why IAMAI says this →</button></div>}
+    <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
+    {onWhy && <div className="readiness-bar"><div className="readiness-bar-main"><span className="readiness-bar-head">{barMain}</span></div><button type="button" className="inline-link" onClick={onWhy}>{CONTRACT.readiness.why}</button></div>}
   </section>
 }
 
@@ -374,9 +374,7 @@ export function ContentStep({
           <section className="step-section">
             <h4>{isEmergencyJourneyStep ? 'About this Step' : HEAD.why}</h4>
             <p>
-              {isEmergencyAccounts
-                ? 'Prepare at least two dedicated emergency access accounts with approved passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.'
-                : contract.why}{' '}
+              {contract.why}{' '}
               {learnUrl && (
                 <a href={learnUrl} target="_blank" rel="noopener noreferrer">
                   Learn →
@@ -402,7 +400,7 @@ export function ContentStep({
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={isEmergencyJourneyStep ? 'Tasks Remaining' : undefined}
-            showClosedCount={!['s-prereq-passkey-settings', 's-prereq-break-glass', 's-prereq-exclusion-group'].includes(step.id)}
+            showClosedCount={!isEmergencyTaskStep}
             lead={instructed || hasPasskeyFindings ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}

@@ -5,10 +5,8 @@ Updated 2026-09-18. Read this first. This handoff describes the current reposito
 ## Release and checkout
 
 - Repository: https://github.com/ZephyrPretendstoKnowTech/iamai
-- Local working copy: `C:/Users/Owner/Documents/Codex/2026-09-13/files-pasted-by-the-user-iamai/work/continuation-20260914-061243/tenant100-candidate`
-- Reviewed base: `ecc180307823f33db8e4d6f41d542fd0aadc4319`.
+- Local working copy: `C:/Dev/IAMAI`, on `main`; production is remote `main`.
 - This document ships with the automatic emergency verification release. Use `git log -1` and `git status --short` to identify the checkout you actually have.
-- The local feature branch is `feat/emergency-access-journey`; production is remote `main`.
 - Untracked `work/` logs and `graphify-out/` are local review artifacts, not release inputs. Do not blindly add them.
 - Production: https://getiamai.com/planner/
 - Registered local authentication callback: `http://localhost:5173/planner/`. A preview on another port can run demo mode but must not assume its callback is registered.
@@ -153,9 +151,9 @@ Do these in order. No UI redesign or added permissions is authorized by this han
 
 ## Verification and release procedure
 
-Latest focused command (83 passed, 0 failed):
+Focused command (every emergency-access test file; all pass as of 2026-09-19):
 ```powershell
-node --test --test-isolation=none src/graph/collect/laneBCore.test.ts src/roadmap/cleanupDone.test.ts src/roadmap/emergencyJourney.test.ts src/ui/surfaces/emergencyPasskeyTasks.test.ts src/ui/surfaces/emergencyNextSteps.test.ts src/ui/surfaces/cleanupExports.test.ts src/roadmap/cleanupPhase.test.ts src/ui/emergencyDiagnosticDev.test.ts
+node --test --test-isolation=none src/graph/collect/laneBCore.test.ts src/roadmap/cleanupDone.test.ts src/roadmap/emergencyJourney.test.ts src/ui/surfaces/emergencyPasskeyTasks.test.ts src/ui/surfaces/emergencyNextSteps.test.ts src/ui/surfaces/cleanupExports.test.ts src/roadmap/cleanupPhase.test.ts src/ui/emergencyDiagnosticDev.test.ts src/ui/surfaces/emergencyGroupTasks.test.ts src/ui/surfaces/emergencyGateCreate.test.ts src/ui/surfaces/emergencySubjectTiles.test.ts src/ui/surfaces/emergencyAccountTasks.test.ts src/ui/surfaces/emergencyInstructions.test.ts src/ui/surfaces/emergencyAccounts.test.ts src/ui/surfaces/emergencyImplementationPowerShell.test.ts
 npx tsc --noEmit
 npm run build:site
 git diff --check
