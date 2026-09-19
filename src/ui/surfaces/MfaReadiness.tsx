@@ -40,7 +40,7 @@ import { app, pages } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, listWords, methodsCell, nextCell, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, stateTitle, whyLine } from './readinessCells.ts'
+import { checkWords, deviceChips, listWords, methodsCell, nextCell, osWord, panelDevices, panelMethods, rowCells, rowNote, searchText, stateTitle, whyLine, goalLine } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -62,6 +62,7 @@ type Words = {
   summaryUnmeasured: string
   seamlessLine: string
   seamlessNone: string
+  seamlessNotPossible: string
   define: string
   change: { title: string; ready: string; seamless: string; none: string; lapse: string; show: string }
   legendLabel: string
@@ -200,12 +201,13 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const inScope = (r: ReadinessRow): boolean => !context || scoped === null || scoped.has(r.user.id)
   const counted = view.rows.filter((r) => r.state !== null && inScope(r))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, counted.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
-  const active = view.people
+  // Scoped to the Plan step's people where the page was opened from one; guests are never counted.
+  const active = counted.length
   const ready = counts.ready + counts.seamless
   // The one proof-read check Connect and the Plan's gate make (scoring/fromSnapshot.ts): records read AND carrying
   // proof. A scan that holds no proof is unmeasured, never "0 of N".
   const summary = active === 0 ? T.summaryNone : !signInProofRead(snapshot) ? fillText(T.summaryUnmeasured, { active }) : fillText(T.summary, { ready, active })
-  const goal = counts.seamless > 0 ? fillText(T.seamlessLine, { seamless: counts.seamless }) : T.seamlessNone
+  const goal = goalLine(counted)
   const scopedView = { ...view, counts }
   const next = nextCheck(scopedView, checks)
   const remaining = remainingChecks(checks)

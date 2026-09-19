@@ -827,6 +827,7 @@
       "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof.",
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
+      "seamlessNotPossible": "Nobody can be seamless on the devices in use: none offers a built-in option this tenant allows.",
       "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello or certificate) confirmed in the last 30 days on every kind of device the person uses. Seamless means that sign-in is built into each device.",
       "change": {
         "title": "Since the {date} scan",
@@ -909,8 +910,8 @@
           "why": "Each row says what was missing. The next scan retries."
         },
         "ready": {
-          "title": "Could be seamless",
-          "why": "Ready. A built-in credential would remove the extra device"
+          "title": "Ready",
+          "why": "Confirmed in the last 30 days. A row names a built-in option where the device has one"
         },
         "seamless": {
           "title": "Seamless",

@@ -16,7 +16,7 @@ import { isReady } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
-import { checkWords, nextCell, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
+import { checkWords, goalLine, nextCell, stateTitle, versionWord } from '../ui/surfaces/readinessCells.ts'
 import { readinessContextOf } from './readinessContext.ts'
 import { pages } from '../content/content.ts'
 
@@ -218,4 +218,17 @@ test('a device is named with its version as people say it: Windows 10, never Win
   assert.equal(versionWord('iOS', 'Ios 17.4'), 'iOS 17')
   assert.equal(versionWord('Android', 'Android'), 'Android', 'no version: the family word')
   assert.equal(versionWord('iOS', null), 'iPhone')
+})
+
+test('the answer never sets a Seamless target a tenant cannot reach: personal computers only are told so', () => {
+  const W = pages.readiness as unknown as { seamlessNone: string; seamlessNotPossible: string; seamlessLine: string }
+  const counted = demoView.rows.filter((r) => r.state !== null)
+  assert.ok(counted.some((r) => r.state === 'seamless'))
+  assert.match(goalLine(counted), /are seamless|is seamless/)
+  // Nobody seamless, and a device that offers a built-in option: the target line.
+  const notYet = counted.filter((r) => r.state !== 'seamless')
+  assert.equal(goalLine(notYet), W.seamlessNone)
+  // Nobody seamless, and no device offers one (personal PCs, attestation on): said plainly, with no target.
+  const noneBuiltIn = notYet.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.map((d) => ({ ...d, builtIn: false })) } } : r))
+  assert.equal(goalLine(noneBuiltIn), W.seamlessNotPossible)
 })
