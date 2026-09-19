@@ -906,7 +906,7 @@ export function reviewBody(): string {
   )
   body.push('<div class="phase"><h3>Preparation · Sep 1 → Sep 7</h3></div>')
   for (const x of [...prep, ...sharedDev]) body.push(renderStep(x, ENGINE_TITLE[x.id]))
-  body.push('<div class="phase"><h3>The free-tier ladder</h3><p class="sub">The plan for a tenant with no Entra ID P1: no policy can exist, so these are the steps instead. Their titles and Why come from the engine.</p></div>')
+  body.push('<div class="phase"><h3>The free-tier ladder</h3><p class="sub">The plan for a tenant with no Entra ID P1: no policy can exist, so these are the steps instead. Their titles and Why come from the engine.</p>' + p(C.pages.plan.conditionalAccessNeedsP1, {}) + '</div>')
   for (const x of rungs) body.push(renderStep(x, ENGINE_TITLE[x.id]))
   body.push('<div class="phase"><h3>Phase 1 · Sep 8 → Sep 13 &nbsp;/&nbsp; Phase 2 · Sep 15 → Sep 20 &nbsp;/&nbsp; Phase 3 · Sep 22 → Sep 27</h3><p class="sub">Policy steps, one box each; which phase a step lands in is the engine&#8217;s call.</p></div>')
   for (const x of pol) body.push(renderStep(x))
