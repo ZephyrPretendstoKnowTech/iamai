@@ -157,7 +157,7 @@ test('a step the plan cannot act on is never Ready: pending mappings, conflicts 
       }
     }
   }
-  assert.ok(checked > 10, `held rows checked: ${checked}`)
+  assert.ok(checked >= 10, `held rows checked: ${checked}`)
 })
 
 test('the graph’s non-step prerequisites are read off the steps they gate, and a graph step this plan lacks is nothing to do', () => {

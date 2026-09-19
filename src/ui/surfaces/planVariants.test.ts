@@ -369,9 +369,10 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
-  'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // small/s-goal-block-device-code
+  // Delivered by the tenant's enforced policy, awaiting its workflow record, with a Direction answer unsaved: decide (enforcedInPlaceRow.test.ts).
+  'policy · create · enforced · healthy · open · do:decide · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // small/s-goal-block-device-code
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-inforcer-mfa
-  'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // small/s-goal-guests-mfa
+  'policy · create · enforced · healthy · open · do:decide · track · no-implementation · found · no-fix · one-policy · who-unknown', // small/s-goal-guests-mfa
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
