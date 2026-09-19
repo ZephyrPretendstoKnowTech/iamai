@@ -22,7 +22,11 @@ All 31 items in the review list are approved, except these:
   - retry failed per-person method reads, then fall back to the registration report;
   - retry the sign-in logs; without P1, say it once at the page level;
   - always read the full 30 days.
-- **11:** there's no Mac to test with. Count the registered Platform SSO credential as a method. Never make a Mac Ready without a recognised sign-in. Check the sign-in wording on Microsoft Learn.
+- **11:** there's no Mac to test with. Count the registered Platform SSO credential as a method. Never make a Mac Ready without a recognised sign-in.
+  - **Microsoft Learn** (Platform Credential for macOS, updated 2026-03-27; the authentication strength known issue):
+    - Platform Credential for macOS is "represented in authentication strength under Windows Hello For Business". So a macOS sign-in whose method reads as Windows Hello for Business is the Mac's built-in phishing-resistant credential, and should count as that device's built-in proof.
+    - Its WebAuthn AAGUID is `7FD635B3-2EF9-4542-8D9D-164F2C771EFC`. A tenant with passkey key restrictions must allow it, just like the three Windows Hello AAGUIDs (`WINDOWS_HELLO_AAGUIDS` in `phishingResistant.ts`).
+  - Sources: https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-platform-credential-for-macos and https://learn.microsoft.com/en-us/answers/questions/1680330/macos-platform-sso-secure-enclave-entra-id-sign-on
 - **20:** no history rewrite. The owner renames the break-glass account in the tenant.
 - **21:** scrub the owner's tenant data from the tree, and add a guard (a fingerprint list, pre-commit, CI).
 - **22:** archive the old files.
