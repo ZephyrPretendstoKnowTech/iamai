@@ -28,7 +28,8 @@ import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
-import { initialDomain, policiesNotExcludingGroup } from '../../validation/rules.ts'
+import { initialDomain } from '../../validation/rules.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -381,13 +382,13 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // The policies that do not yet exclude the exclusions group (the emergency
     // step's who line): the group the operator chose and this scan read, and the
     // list that group's own check names (validation/rules.ts
-    // policiesNotExcludingGroup). It was read from the accounts' checks, which
+    // exclusionsGroupPolicies, the one rule). It was read from the accounts' checks, which
     // count an account excluded through any group at all, so the emergency step
     // named one policy for "the exclusions group" while the exclusions step named
     // five. With no group in use there is no such group to name policies for.
     if (DECISION_STEPS.emergency.has(step.id)) {
       const groupId = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }).actionableId
-      const notExcluding = groupId === null ? [] : policiesNotExcludingGroup(ctx.snapshot.config.caPolicies?.rows ?? [], groupId)
+      const notExcluding = groupId === null ? [] : exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies?.rows ?? [], groupId, accountIds: ctx.mapping.breakGlassUserIds, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) }).filter(p => p.outcome !== 'pass').map(p => p.name)
       if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
     }
     v.operator = ctx.operatorId ? ctx.nameOf(ctx.operatorId) : undefined

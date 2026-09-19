@@ -11,6 +11,7 @@ import type { RecoverySignInCandidate } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { requiredModels } from './passkeySettings.ts'
 import { passkeyReadingOf } from './passkeySettings.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
@@ -315,23 +316,13 @@ export function automaticRecoveryPreparationStates(snapshot: TenantSnapshot, map
   const selected = decision ? ([...groups].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
   const passkey = passkeyReadingOf(snapshot, mapping)
   const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
-  const activePolicies = snapshot.config.caPolicies?.status === 'ok' ? (snapshot.config.caPolicies.rows as Record<string, any>[]).filter(policy => policy.state !== 'disabled') : []
-  const targetState = (policy: Record<string, any>): boolean | null => {
-    const users = policy.conditions?.users ?? {}
-    if ((users.includeUsers ?? []).some((value: string) => value === 'All' || ids.some(id => id.toLowerCase() === value.toLowerCase()))) return true
-    if ((users.includeRoles ?? []).some((role: string) => ids.some(id => (snapshot.roles.active[id] ?? []).some(active => active.toLowerCase() === role.toLowerCase())))) return true
-    let unknown = false
-    for (const groupId of users.includeGroups ?? []) {
-      const group = [...groups].find(([id]) => id.toLowerCase() === String(groupId).toLowerCase())?.[1]
-      if (!group || group.sampled === true) { unknown = true; continue }
-      if (group.memberIds.some(member => ids.some(id => id.toLowerCase() === member.toLowerCase()))) return true
-    }
-    return unknown ? null : false
-  }
-  const targetStates = activePolicies.map(targetState)
-  const applicablePolicies = activePolicies.filter((_policy, index) => targetStates[index] === true)
-  const sharedUnread = !decision || !selected || typeof selected.securityEnabled !== 'boolean' || typeof selected.mailEnabled !== 'boolean' || selected.directMembers !== 'complete' || !Array.isArray(selected.directMemberIds) || !Array.isArray(selected.groupTypes) || !Array.isArray(selected.assignedLicenseSkuIds) || snapshot.config.caPolicies?.status !== 'ok' || targetStates.includes(null) || passkey.state === 'unread' || passkey.state === 'review'
-  const exclusionsCorrect = !!decision && applicablePolicies.every(policy => Array.isArray(policy.conditions?.users?.excludeGroups) && policy.conditions.users.excludeGroups.some((id: string) => id.toLowerCase() === decision.id.toLowerCase()))
+  // The one rule (validation/exclusionsGroupPolicies.ts): every applicable policy,
+  // Report-only included, excludes the group, as Step 2's completion reads it.
+  const needing = decision && snapshot.config.caPolicies?.status === 'ok'
+    ? exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId: decision.id, accountIds: ids, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups) })
+    : []
+  const sharedUnread = !decision || !selected || typeof selected.securityEnabled !== 'boolean' || typeof selected.mailEnabled !== 'boolean' || selected.directMembers !== 'complete' || !Array.isArray(selected.directMemberIds) || !Array.isArray(selected.groupTypes) || !Array.isArray(selected.assignedLicenseSkuIds) || snapshot.config.caPolicies?.status !== 'ok' || needing.some(policy => policy.outcome === 'unknown') || passkey.state === 'unread' || passkey.state === 'review'
+  const exclusionsCorrect = !!decision && needing.every(policy => policy.outcome === 'pass')
   const sharedIncorrect = !sharedUnread && (securityDefaults || selected!.securityEnabled !== true || selected!.mailEnabled === true || !!selected!.membershipRule || selected!.groupTypes!.some(type => type.toLowerCase() === 'dynamicmembership') || selected!.assignedLicenseSkuIds!.length > 0 || !sameMembers(selected!.directMemberIds!, ids) || !exclusionsCorrect || passkey.state !== 'inPlace')
   const shared: RecoveryPreparationState = sharedUnread ? 'unread' : sharedIncorrect ? 'incorrect' : 'ready'
   const preparations = new Map(emergencyAccountPreparationOf(snapshot, mapping, groups).map(row => [row.accountId.toLowerCase(), row]))

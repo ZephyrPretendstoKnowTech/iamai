@@ -30,6 +30,7 @@ import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 import { isRecordedDrill, latestRecoveryTest, recoveryCredentialBasis, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { exclusionsGroupPolicies } from './exclusionsGroupPolicies.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -306,19 +307,6 @@ type PolicyShape = {
 }
 function livePolicies(ctx: ValidationContext): PolicyShape[] {
   return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state !== 'disabled')
-}
-
-/**
- * The enabled and report-only policies that do not exclude this group, by name.
- * The one reading of "a policy that does not yet exclude the exclusions group":
- * the group's own check says it, and the emergency step names the same policies,
- * rather than inferring them from how each account happens to be excluded.
- */
-export function policiesNotExcludingGroup(tenantPolicies: readonly unknown[], groupId: string): string[] {
-  return (tenantPolicies as PolicyShape[])
-    .filter((p) => p.state !== 'disabled')
-    .filter((p) => !(p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === groupId.toLowerCase()))
-    .map((p) => p.displayName ?? '(unnamed)')
 }
 
 /** Policies that actually deny: Microsoft says report-only ones need no exclusion. */
@@ -809,13 +797,15 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
   needs: ['caPolicies'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    // Current recovery exclusions are owned here. Report-only preparation stays
-    // with that policy's transition and is checked again before enforcement.
-    const live = enforcingPolicies(ctx)
-    if (live.length === 0) return PASS
-    const missing = live.filter((p) => !(p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === entry.groupId.toLowerCase())).map((p) => p.displayName ?? '(unnamed)')
-    if (missing.length === 0) return PASS
-    return fail(F.xgInconsistent(live.length - missing.length, live.length), { policies: missing })
+    // One rule for Step 2, its tile and Step 4 (validation/exclusionsGroupPolicies.ts):
+    // every applicable policy, Report-only included, excludes the group.
+    const needing = exclusionsGroupPolicies({ policies: ctx.tenantPolicies, groupId: entry.groupId, accountIds: ctx.breakGlassIds, activeRoles: ctx.snapshot.roles.active, membersOf: (id) => ctx.groupMembers.find((g) => g.groupId.toLowerCase() === id.toLowerCase()) })
+    if (needing.length === 0) return PASS
+    const missing = needing.filter((p) => p.outcome === 'fail').map((p) => p.name)
+    if (missing.length > 0) return fail(F.xgInconsistent(needing.length - missing.length, needing.length), { policies: missing })
+    const unverified = needing.filter((p) => p.outcome === 'unknown').map((p) => p.name)
+    if (unverified.length > 0) return unknown(F.xgExclusionUnverified(unverified))
+    return PASS
   },
 }
 

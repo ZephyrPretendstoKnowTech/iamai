@@ -14,6 +14,7 @@ import { automaticRecoveryPreparationStates, latestRecoveryTest, recoveryEvidenc
 import type { CleanupCheckpoint, RecoveryCandidateReading } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
+import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { displayZone } from '../copy/dates.ts'
 import { app } from '../content/content.ts'
 
@@ -318,7 +319,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   return [identity, authentication]
 }
 
-export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers): ConfigurationFinding[] {
+export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers, accountIds: readonly string[] = []): ConfigurationFinding[] {
   const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions group', value: selected ? 'Verified' : 'Choose an exclusions group', detail: selected ? '' : 'Select a group under Exclusions group, then Save. To create one, follow Create an emergency exclusions group in Implementation Tasks.', outcome: selected ? 'pass' : 'unknown', items: selected && name ? [{ label: 'Selection', factLabel: 'Selection', value: 'Saved', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: 'pass', issueKeys: ['group:choice'] }] : [], taskSafe: false }
   if (!report) {
     if (selected) { choice.outcome = 'unknown'; choice.value = 'Could not verify'; choice.detail = 'IAMAI could not read the saved group for this scan. The saved selection has been kept.' }
@@ -357,18 +358,18 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
   const policies = reportFinding(report, 'group-policies', 'Policy exclusions', r => r.id === 'xg.usedConsistently', 'Required references present', true)
   policies.detail = ''
   if (groupId && snapshot?.config.caPolicies.status === 'ok') {
-    const rows = snapshot.config.caPolicies.rows as { displayName?: string; id?: string; state?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]
-    policies.items = rows.filter(p => p.state !== 'disabled').flatMap(p => {
-      const excluded = p.conditions?.users?.excludeGroups
-      const exclusionKnown = Array.isArray(excluded)
-      const present = exclusionKnown && excluded.some(id => id.toLowerCase() === groupId.toLowerCase())
+    // The one rule (validation/exclusionsGroupPolicies.ts): the policies that reach
+    // the emergency accounts, On or Report-only, as Step 2's completion reads them.
+    const needing = exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId, accountIds, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups) })
+    policies.items = needing.flatMap(p => {
+      const subjectId = p.id || p.name
       return [{
-      label: 'Mode', factLabel: 'Mode', subjectId: p.id || p.displayName || 'unknown-policy', subjectLabel: p.displayName || p.id || 'Unnamed policy',
-      value: p.state === 'enabled' ? 'On' : p.state === 'enabledForReportingButNotEnforced' ? 'Report-only' : 'Could not verify', outcome: p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced' ? 'pass' as const : 'unknown' as const,
+      label: 'Mode', factLabel: 'Mode', subjectId, subjectLabel: p.name,
+      value: p.mode ?? 'Could not verify', outcome: p.mode ? 'pass' as const : 'unknown' as const,
       issueKeys: [`group-policy:${p.id || 'unknown'}:mode`],
     }, {
-      label: 'Group exclusion', factLabel: 'Group exclusion', subjectId: p.id || p.displayName || 'unknown-policy', subjectLabel: p.displayName || p.id || 'Unnamed policy',
-      value: !exclusionKnown ? 'Could not verify' : present ? 'Present' : 'Missing', outcome: !exclusionKnown ? 'unknown' as const : present ? 'pass' as const : 'fail' as const,
+      label: 'Group exclusion', factLabel: 'Group exclusion', subjectId, subjectLabel: p.name,
+      value: p.outcome === 'pass' ? 'Present' : p.outcome === 'fail' ? 'Missing' : 'Could not verify', outcome: p.outcome,
       issueKeys: [`group-policy:${p.id || 'unknown'}:exclusion`],
     }]
     })
