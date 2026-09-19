@@ -346,8 +346,11 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, lane: L
     return at ? dayLabel(at) : schedulingWords.done
   }
   const when = rowWhen(step, waveStart)
-  const words = when === '' || rowWhenWraps(step) || when === WHEN_WORDS.now || when === WHEN_WORDS.readyNow || when.startsWith(READY_ON_PREFIX)
   const scheduled = step.scheduled ? scheduleOf(step) : null
+  // A review day that has passed with no scan since reads that it is due, never
+  // the day that went by, and is no estimate (roadmap/stepSchedule.ts `overdue`).
+  if (scheduled?.overdue) return when
+  const words = when === '' || rowWhenWraps(step) || when === WHEN_WORDS.now || when === WHEN_WORDS.readyNow || when.startsWith(READY_ON_PREFIX)
   // The generic `now` reads the step's own scheduled day, which is the phase's first day for preparation work.
   const day = scheduled?.at ?? (when === WHEN_WORDS.now ? waveStart : null)
   const result = boardWhen(when, {

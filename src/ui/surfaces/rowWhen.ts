@@ -13,7 +13,7 @@ import { list } from '../../copy/statements.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import { holdOf, isHeld } from '../../roadmap/holds.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { pages } from '../../content/content.ts'
+import { pages, schedulingWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { awaitingDeployment } from '../../roadmap/forecast.ts'
@@ -74,6 +74,9 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // policy nothing may turn on, and never "now". The reason line under the row
   // says what it waits on (rowReason below).
   if (isHeld(step)) return ''
+  // A report-only window whose review day has passed with no scan since is due
+  // now (roadmap/stepSchedule.ts `overdue`): never "ready Sep 14" on Sep 19.
+  if (scheduled?.overdue) return schedulingWords.reviewNow
   const ready = readyWhen(step)
   // A policy still being watched reads the day its window closes: that is the
   // next thing that happens to it. One whose gates have closed is not waiting on

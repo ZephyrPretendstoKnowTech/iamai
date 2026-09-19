@@ -91,7 +91,10 @@ export type Schedule = {
   bandSource: 'auto' | 'override'
   activeUsers: number
   expectedDays: number
+  /** The plan's start as recorded: kept when it has passed, while the placement runs from today (`today`). */
   start: string
+  /** The day the plan was read on (ScheduleOptions.today); null where no day was given. */
+  today?: string | null
   targetEnd: string
   totalDays: number
   weeks: number
@@ -188,6 +191,14 @@ export type ScheduleOptions = {
    * start. Absent: the start itself.
    */
   firstDeployment?: string | null
+  /**
+   * Today, the day the plan is read on (generate.ts: the review instant in the
+   * display zone, at noon UTC). Nothing unfinished is placed before it: a start
+   * that has passed keeps its record (`Schedule.start`), and the work still to do
+   * is placed from today, or the next working day, with everything sequenced
+   * after it shifting with it. Absent: the start itself is the floor.
+   */
+  today?: string | null
 }
 
 /**
@@ -503,18 +514,26 @@ export function buildSchedule(
   const byId = new Map(steps.map((s) => [s.id, s]))
   const graph = dependencyGraph(steps)
 
+  // ---- The now floor ----
+  // An estimated day is never in the past. A plan started ten working days ago
+  // keeps that start as its record (`start` below), and everything not yet done
+  // is placed from today: preparation, creation, the registration window and the
+  // enforcement that follows them all move together, so order is kept. On a
+  // start still to come the floor is the start.
+  const anchor = options.today ? max(day0, toWeekday(options.today)) : day0
+
   // ---- Day 0: foundation work takes real days before any policy can be created ----
   const foundationWork = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
   // Foundation and window edges land on a working day (prompt 49.1 item 11): a
   // window that opens or closes on a weekend reads wrong on the plan.
-  const day0End = toWeekday(addDays(day0, day0Days))
+  const day0End = toWeekday(addDays(anchor, day0Days))
 
   // ---- First deployment (owner, 2026-09-11) ----
   // Preparation begins on the start. Deployment-capable work — the report-only
   // policies, and the registration window that opens with them — begins on the
   // first deployment day, never before the start.
-  const creationDay = options.firstDeployment ? max(day0, toWeekday(options.firstDeployment)) : day0
+  const creationDay = options.firstDeployment ? max(anchor, toWeekday(options.firstDeployment)) : anchor
 
   // ---- Registration window (target-state §9) ----
   // Sized by the generator from who still needs a proven method: five a
@@ -592,7 +611,7 @@ export function buildSchedule(
     // Prerequisites finish inside day 0; the campaign ends with its window.
     for (const s of steps) {
       if (!isWork(s)) continue
-      if (s.kind === 'prerequisite' || s.kind === 'check') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
+      if (s.kind === 'prerequisite' || s.kind === 'check') placed.set(s.id, { start: anchor, end: day0End, reason: { kind: 'prerequisites', ref: null } })
       if (s.kind === 'verify') placed.set(s.id, { start: verification.start, end: verification.end, reason: { kind: 'verification', ref: null } })
     }
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
@@ -641,7 +660,7 @@ export function buildSchedule(
       const ownObservationEnd = addDays(observationStart, observationDaysFor(s))
       // Never on the day Day 0 closes, nor before it (review-08 C2, prompt 40
       // §21): the foundation work has to be finished, not finishing.
-      const afterDay0 = day0Days > 0 ? addDays(day0End, 1) : day0
+      const afterDay0 = day0Days > 0 ? addDays(day0End, 1) : anchor
       let earliest = max(s.kind === 'create' ? ownObservationEnd : creation, afterDay0)
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
       // Phase order (ux-review-07 §3): phases begin in order, so a step starts no
@@ -747,7 +766,7 @@ export function buildSchedule(
   // Land on the band (§1 table) by relaxing, in order: the longer soak of the
   // biggest tenants, then the same-people rule; each relaxation is reported.
   const relaxed: string[] = []
-  const limit = Date.parse(addDays(day0, expectedDays + 7))
+  const limit = Date.parse(addDays(anchor, expectedDays + 7))
   const endOf = (r: { placed: Map<string, Placed> }): string => [...r.placed.values()].reduce((m, p) => (p.end > m ? p.end : m), day0End)
   let result = attempt(false)
   const longestSoak = Math.max(0, ...steps.flatMap((s) => s.rings.map((r) => r.soakDays)))
@@ -782,7 +801,8 @@ export function buildSchedule(
   const placement: Placement = {
     placed: Object.fromEntries(placed),
     context: {
-      start: day0,
+      // The placement's own first day: the now floor, never a day already gone.
+      start: anchor,
       day0End,
       day0Days,
       verification,
@@ -804,6 +824,7 @@ export function buildSchedule(
     activeUsers,
     expectedDays,
     start: day0,
+    today: options.today ?? null,
     verification,
     waitingOnSetup,
     waitingOnSetupQuestions,

@@ -74,6 +74,7 @@ import { collidingGuestIds } from '../names.ts'
 import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate, displayZone } from '../copy/dates.ts'
 import { detectHighCare } from '../derive/highCare.ts'
+import { proposedStart } from '../derive/planStart.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
   READINESS_THRESHOLD_ADMINS_PERCENT,
@@ -2499,6 +2500,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     rhythm,
     registrationDays: registration.workingDays,
     firstDeployment: input.firstDeployment ?? null,
+    // Today in the display zone, from the one review instant (the scan's own time
+    // where none is given, as every other "now" here): nothing unfinished is
+    // placed before it, however long ago the plan was started.
+    today: proposedStart(mapping.displayTimeZone ?? null, new Date(input.reviewNow ?? snapshot.asOf)),
   })
   schedule.rhythm = rhythm
   // Cleanup (target-state §5, §9): dated after the last enforcement window, one
