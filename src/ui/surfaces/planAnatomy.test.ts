@@ -114,7 +114,7 @@ test('the pack draws a four-zone roadmap row, and so does production', () => {
   // correctness one.
   const row = rule('.plan-row')
   assert.match(row, /display: grid;/, 'the roadmap row is not a grid')
-  assert.match(row, /grid-template-columns: 126px minmax\(0, 1fr\) 240px 125px;/, 'production lost the four-zone grid')
+  assert.match(row, /grid-template-columns: 28px 126px minmax\(0, 1fr\) 240px 125px;/, 'production lost the four-zone grid under its number column')
   // 14px, not the pack's 18px. The pack draws the row on its own; the final
   // organisation reference draws it under a column head in a group, and sets
   // `gap:14px` on both so the head and the rows it names share one track set
@@ -122,7 +122,7 @@ test('the pack draws a four-zone roadmap row, and so does production', () => {
   // `.column-head,.row`). That file owns the board; the pack still owns the
   // opened step, and neither supersedes the other.
   assert.match(row, /gap: 14px;/)
-  assert.match(rule('.plan-column-head'), /grid-template-columns: 126px minmax\(0, 1fr\) 240px 125px;/, 'the column head does not sit on the row’s tracks')
+  assert.match(rule('.plan-column-head'), /grid-template-columns: 28px 126px minmax\(0, 1fr\) 240px 125px;/, 'the column head does not sit on the row’s tracks')
   assert.match(rule('.plan-column-head'), /gap: 14px;/, 'the column head and the rows under it are on different gaps')
   assert.match(row, /min-height: 64px;/)
   assert.match(row, /padding: 0 17px;/)
@@ -162,7 +162,7 @@ test('the row collapses at the breakpoint the pack collapses at, and drops nothi
   // children in two tracks is how the pack itself moves the metadata and the
   // date below the state and the title; nothing is hidden to make room.
   const narrow = atWidth(940)
-  assert.match(narrow, /\.plan-row \{[\s\S]*grid-template-columns: 110px minmax\(0, 1fr\);/, 'the row does not collapse to two tracks')
+  assert.match(narrow, /\.plan-row \{[\s\S]*grid-template-columns: 28px 110px minmax\(0, 1fr\);/, 'the row does not collapse to the number and two tracks')
   assert.match(narrow, /text-align: left;/, 'the moved zones do not left-align')
   // Nothing is hidden ON THE ROW. The rule reads the row's own declarations
   // rather than the whole breakpoint, because the COLUMN HEAD does drop its
@@ -173,7 +173,7 @@ test('the row collapses at the breakpoint the pack collapses at, and drops nothi
   const rowAtNarrow = narrow.match(/\.plan-row \{[^}]*\}/)?.[0] ?? ''
   assert.ok(rowAtNarrow !== '', 'the row has no rule at the narrow width')
   assert.equal(/display:\s*none/.test(rowAtNarrow), false, 'a zone is hidden at the narrow width instead of moved')
-  assert.match(narrow, /\.plan-column-head \{[\s\S]*grid-template-columns: 110px minmax\(0, 1fr\);/, 'the column head does not follow the row it heads')
+  assert.match(narrow, /\.plan-column-head \{[\s\S]*grid-template-columns: 28px 110px minmax\(0, 1fr\);/, 'the column head does not follow the row it heads')
 })
 
 // ------------------------------------------------ the row presents truth, it does not compute it

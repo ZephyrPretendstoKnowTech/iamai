@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -203,6 +203,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // A prerequisite tile's label is the prerequisite's own lane (decision 12).
   const prerequisiteLabel = prerequisiteLabelFor(readings)
+  // The number each row shows in its group's list (planBoard.ts rowNumbersOf),
+  // taken over every row the board has before a tab or a focus filters one out:
+  // a step's number is its place in its group, not its place in what is on
+  // screen, so the Ready tab reads 1, 3, 6 rather than renumbering to 1, 2, 3.
+  const rowNumbers = rowNumbersOf([...rowSteps, ...cleanupRows])
 
   // ---- one canonical row set ----
   // Built once, in the engine's order, with the lane the engine read for each
@@ -230,7 +235,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -247,7 +252,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         workType: 'setup',
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -516,11 +521,13 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
         </button>
       </div>
       <div className="plan-group-rows" id={id} hidden={closed}>
-        {/* The four zones, named once per group. It is a real row of headings
+        {/* The five zones, named once per group. The leading `#` heads the
+            group position each row carries (planBoard.ts rowNumbersOf). It is a real row of headings
             over real columns, so the board says what the numbers on the right
             are — Impact is a population and When is a date, and before this they
             were two unlabelled columns of grey text. */}
         <div className="plan-column-head" aria-hidden="true">
+          <span>{BOARD.columns.number}</span>
           <span>{BOARD.columns.state}</span>
           <span>{BOARD.columns.step}</span>
           <span>{BOARD.columns.impact}</span>
@@ -533,11 +540,13 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
 }
 
 /** A Cleanup row (§5): the content title, its lane, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
+function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /** The row's one state reading (planBoard.ts laneViewOf): the row and the opened head say its label. */
   lane: LaneView
+  /** Its place in its group's full order (planBoard.ts rowNumbersOf), or null. */
+  number: number | null
   /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
   answers: { signInMonitoring: boolean | null } | null
   open: boolean
@@ -563,7 +572,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
-      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
+      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )
@@ -571,10 +580,12 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, number, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
+  /** Its place in its group's full order (planBoard.ts rowNumbersOf), or null where the step is in no group. */
+  number: number | null
   /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
   blockers: PrerequisiteBlocker[]
   /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor). */
@@ -627,6 +638,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
         stepId={step.id}
         lane={lane.label}
         tone={lane.tone}
+        number={number}
         chip={factOf(step)}
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}

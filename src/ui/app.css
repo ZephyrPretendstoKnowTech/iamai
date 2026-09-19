@@ -1906,7 +1906,7 @@ footer.app a {
    compact label on this board is --t-micro (10px); nothing goes below it. */
 .plan-column-head {
   display: grid;
-  grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
+  grid-template-columns: 28px 126px minmax(0, 1fr) 240px 125px;
   gap: 14px;
   align-items: center;
   min-height: 30px;
@@ -1917,7 +1917,7 @@ footer.app a {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.plan-column-head > span:nth-child(n + 3) {
+.plan-column-head > span:nth-child(n + 4) {
   text-align: right;
 }
 .plan-group-rows {
@@ -1940,7 +1940,7 @@ footer.app a {
 .plan-row {
   scroll-margin-top: calc(var(--header) + 8px);
   display: grid;
-  grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
+  grid-template-columns: 28px 126px minmax(0, 1fr) 240px 125px;
   gap: 14px;
   align-items: center;
   min-height: 64px;
@@ -2009,6 +2009,35 @@ footer.app a {
 }
 .plan-row-title {
   min-width: 0;
+}
+/* The group position, in the lane's own tone and nothing else: `--success-text`
+   for Ready and Completed, `--attention-text` for Up Next, `--danger-text` for
+   On Hold, the quiet ink for Deferred — the four the status dot beside it
+   already uses (`.status.status-ok::before` and its siblings above), so the
+   board has one colour vocabulary for a state and not two.
+
+   The colour is the SECOND cue and never the only one: the state's words sit in
+   the next column, unchanged, so the row reads the same without it (WCAG 1.4.1).
+   Each of the four is a `*-text` role, which is the derived set tokens.ts proves
+   AA on every surface text sits on, in both themes (src/ui/tokens.test.ts). */
+.plan-row-number {
+  font-size: var(--t-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  text-align: right;
+  color: var(--quiet-text);
+}
+.plan-row-number.number-ok {
+  color: var(--success-text);
+}
+.plan-row-number.number-wait {
+  color: var(--attention-text);
+}
+.plan-row-number.number-stop {
+  color: var(--danger-text);
+}
+.plan-row-number.number-idle {
+  color: var(--quiet-text);
 }
 /* Row hierarchy (item 13): the title carries the weight; status, who and date recede. */
 .plan-row .step-title {
@@ -4570,7 +4599,7 @@ footer.app a {
     --display-size: var(--d-6);
   }
   .plan-row {
-    grid-template-columns: 110px minmax(0, 1fr);
+    grid-template-columns: 28px 110px minmax(0, 1fr);
     padding: 12px 17px;
   }
   /* The controls stack, and the lens strip takes the full width so the three
@@ -4584,9 +4613,9 @@ footer.app a {
   /* The column head follows the row: two tracks, and the two zones that moved
      under the title are no longer columns to head. */
   .plan-column-head {
-    grid-template-columns: 110px minmax(0, 1fr);
+    grid-template-columns: 28px 110px minmax(0, 1fr);
   }
-  .plan-column-head > span:nth-child(n + 3) {
+  .plan-column-head > span:nth-child(n + 4) {
     display: none;
   }
   .plan-row .who,

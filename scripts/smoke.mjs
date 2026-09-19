@@ -555,7 +555,11 @@ try {
   // answer — both are checked below, so nothing is lost by not looking for a pill
   // the board no longer draws.
   check('Plan: groups render as sections with rows', (await evaluate(`document.querySelectorAll('main.page .plan-group').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3)
-  check('Plan: the four zones are named over the rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-column-head')].slice(0, 1).flatMap((h) => [...h.children].map((c) => (c.textContent || '').trim())).join('|')`)) === 'State|Step|Impact|When')
+  check('Plan: the five zones are named over the rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-column-head')].slice(0, 1).flatMap((h) => [...h.children].map((c) => (c.textContent || '').trim())).join('|')`)) === '#|State|Step|Impact|When')
+  // Every row in a group's list carries its number, and the number is tinted
+  // with the row's own lane tone (src/ui/surfaces/StepSections.tsx PlanRow).
+  const numbered = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].map((r) => { const n = r.querySelector('.plan-row-number'); return n ? \`\${(n.textContent || '').trim()}:\${[...n.classList].find((c) => c.startsWith('number-')) || ''}\` : 'missing' })`)
+  check('Plan: every row in a group list is numbered, in its lane tone', Array.isArray(numbered) && numbered.length >= 3 && numbered.every((t) => /^\d+:number-(ok|wait|stop|idle)$/.test(t)), JSON.stringify(numbered.slice(0, 6)))
   // The board draws one lane at a time (S3, src/ui/surfaces/planBoard.ts): Ready is
   // the default tab, and the three are one tab set. A check that reads every row
   // reads the three tabs in turn.

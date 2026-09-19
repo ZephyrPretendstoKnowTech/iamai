@@ -246,6 +246,12 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    state it filters to ("Needs attention", "Up next"). The
   //                    dot is `aria-hidden` and the word is the control's name,
   //                    so nothing here is carried by the colour.
+  //   .plan-row-number.number-*
+  //                    a Plan row's place in its group, tinted with the row's own
+  //                    lane tone. The lane label ("Ready · Create", "On Hold ·
+  //                    Baseline conflict") is the next zone along, in body ink and
+  //                    unchanged, so the state is in words on the same row; the
+  //                    numeral is `aria-hidden` and is a second cue only.
   //   (The v2 admin role name and the Step 7 proof mark were allowed here until
   //   their designs were archived on 2026-09-19; production draws neither.)
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
@@ -264,7 +270,7 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    the Admin tag: the role's own NAME in the admin colour
   //   .readiness-tile li .ok
   //                    the check mark beside a completed check's own words
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.print-|\.plan-controls \.dot-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
+  const CARRIES_A_WORD = /\.status|\.callout-|\.plan-row-number\.number-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.print-|\.plan-controls \.dot-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))

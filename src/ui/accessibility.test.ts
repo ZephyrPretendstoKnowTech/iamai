@@ -19,6 +19,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { statusOf } from './surfaces/statusWord.ts'
 import { CONTRACT } from './surfaces/stepContract.ts'
+import { DARK, LIGHT, contrastRatio, resolveColourVar } from './tokens.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const css = read('src/ui/app.css')
@@ -637,6 +638,39 @@ test('an active filter says so in shape as well as colour', () => {
   assert.match(readiness, /!SHOW_KEYS\.includes\(show\) && \([\s\S]{0,120}className="pill" aria-pressed=\{true\}/, 'a filter from a link is not shown pressed')
 })
 
+test("the Plan row's group number is tinted with the lane tone, and the tint is never the only cue", () => {
+  // WCAG 1.4.1. The numeral repeats a state the row already spells out: the
+  // lane label ("Ready · Create", "On Hold · Baseline conflict") sits in the
+  // next column in body ink, unchanged, so nothing on the row is said in
+  // colour alone. The numeral itself is aria-hidden, because a bare ordinal
+  // read before every title is noise and the row's words are complete without it.
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  assert.match(sections, /<span className=\{`plan-row-number number-\$\{tone\}`\} aria-hidden="true">\{number \?\? ''\}<\/span>/, 'the numeral is not drawn from the lane tone, or is not hidden from the reading')
+  assert.match(sections, /<span className=\{`lane lane-\$\{tone\}`\}>\{compactLane\(lane\)\}<\/span>/, 'the row lost the state word the numeral is a second cue for')
+
+  // The four tones paint with the four roles the status dot beside them uses
+  // (`.status.status-ok::before` and its siblings): one colour vocabulary for a
+  // state on this board, not two.
+  const dot = (tone: string): string => (rule(css, `.status.status-${tone}::before`) ?? '').match(/background:\s*var\((--[a-z-]+)\)/)?.[1] ?? ''
+  for (const tone of ['ok', 'wait', 'stop', 'idle']) {
+    const numeral = (rule(css, `.plan-row-number.number-${tone}`) ?? '').match(/color:\s*var\((--[a-z-]+)\)/)?.[1] ?? ''
+    assert.ok(numeral !== '', `.number-${tone} sets no colour`)
+    if (tone === 'idle') assert.equal(numeral, '--quiet-text', 'the Deferred numeral is text, so it takes the quiet INK and not the component fill the dot uses')
+    else assert.equal(numeral, dot(tone), `.number-${tone} and the ${tone} dot are two different colours for one state`)
+
+    // And it is legible as text on every surface a row sits on — the canvas of
+    // a collapsed row, the open row's surface, the hover fill — in both themes.
+    const role = resolveColourVar(numeral)
+    assert.ok(role, `${numeral} is not a palette colour`)
+    for (const [name, p] of [['light', LIGHT], ['dark', DARK]] as const) {
+      for (const key of ['canvas', 'surface', 'secondarySurface'] as const) {
+        const r = contrastRatio(p[role!], p[key])
+        assert.ok(r >= 4.5, `number-${tone} on ${name} ${key} = ${r.toFixed(2)}`)
+      }
+    }
+  }
+})
+
 test("Connect's progression marks the current stage with a word", () => {
   assert.match(read('src/ui/surfaces/Connect.tsx'), /stage === 'current' && <span className="next">\{W\.next\}<\/span>/)
 })
@@ -720,7 +754,7 @@ test('the narrow layouts collapse rather than compress', () => {
   // The Plan row collapses at the pack's own breakpoint: four zones become two,
   // and who and when drop under the state and the title rather than being
   // squeezed into slivers of one line (task 033).
-  assert.match(narrow(940), /\.plan-row \{[\s\S]*grid-template-columns:\s*110px minmax\(0, 1fr\)/, 'the roadmap row does not collapse to two tracks')
+  assert.match(narrow(940), /\.plan-row \{[\s\S]*grid-template-columns:\s*28px 110px minmax\(0, 1fr\)/, 'the roadmap row does not collapse to the number and two tracks')
   assert.match(narrow(940), /\.plan-row \.who,\s*\n\s*\.plan-row \.when \{[\s\S]*text-align:\s*left/, 'who and when do not left-align once they move below')
   assert.match(narrow(940), /\.plan-row \.status[\s\S]*white-space:\s*normal/, 'the status column gives way to a long status word')
   assert.match(narrow(700), /\.tiles[\s\S]*grid-template-columns:\s*repeat\(2/, 'the stat tiles halve')
