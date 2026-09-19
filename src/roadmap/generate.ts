@@ -52,7 +52,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
-import { campaignIds } from '../derive/population.ts'
+import { campaignIds, isActivePerson } from '../derive/population.ts'
 import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
@@ -304,7 +304,8 @@ import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
   return {
-    active: new Set(viability.filter((v) => v.activity === 'active').map((v) => v.userId)),
+    // The plan's active people (derive/population.ts isActivePerson): a step's reach counts the people MFA Readiness counts.
+    active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
     admins: adminUserIds(snapshot.roles),
     guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
   }
@@ -2319,7 +2320,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const registrationStep = steps.find((s) => s.goalId === 'register-info-protected')
   if (registrationStep) {
     if (tapEnabled === false) blockLate(registrationStep, 'registration-no-tap', BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0))
-    const withoutMethod = viability.filter((v) => v.activity === 'active' && v.mfa === 'none').length
+    const withoutMethod = viability.filter((v) => isActivePerson(v) && v.mfa === 'none').length
     // A reason, not a dependency edge: the campaign sits in a later phase, and
     // pointing a phase 0 step at it would order the plan against itself.
     if (withoutMethod > 0) blockLate(registrationStep, 'registration-coverage', BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
@@ -2413,7 +2414,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextWorkingDay(snapshot.asOf)
-  const activeTotal = viability.filter((v) => v.activity === 'active').length
+  const activeTotal = viability.filter(isActivePerson).length
   const ringCtx = {
     snapshot,
     viability: viabilityById,

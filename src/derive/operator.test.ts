@@ -10,7 +10,8 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { operatorUserId } from './operator.ts'
 import { OPERATOR_PASSKEY_STEP_ID } from '../roadmap/passkeySettings.ts'
-import { activeUsers, notActiveUsers, personAccounts } from './sets.ts'
+import { notActiveUsers, personAccounts } from './sets.ts'
+import { activePeopleIds } from './population.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { facts } from './facts.ts'
 import { contentLists } from './contentLists.ts'
@@ -58,7 +59,7 @@ test('the operator is a person like any other: a stale directory sign-in reads N
   const me = s.users.find((u) => u.id === 'u-1')!
   me.lastSuccessfulSignIn = new Date(Date.parse(s.asOf) - 200 * 86_400_000).toISOString()
   delete s.signInEvidence['u-1']
-  assert.ok(!activeUsers(s, s.asOf).some((u) => u.id === 'u-1'), 'not active by the directory')
+  assert.ok(!activePeopleIds(s, s.asOf).includes('u-1'), 'not active by the directory')
   assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
   const row = readinessView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
   assert.equal(row.active, false)

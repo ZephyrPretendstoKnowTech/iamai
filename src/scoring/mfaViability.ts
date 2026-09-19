@@ -350,8 +350,11 @@ export type RolloutSummary = { active: number; proven: number; noMethod: number;
 
 export function rolloutBucket(r: MfaViability): RolloutBucket | null {
   // Not active is not in the rollout: a person who never signs in cannot be
-  // prompted to register, and cannot be locked out either.
-  if (!r.enabled || r.activity !== 'active') return null
+  // prompted to register, and cannot be locked out either. Nor is an account
+  // that signs in only to scripting tools: a script, not a person who will
+  // register a passkey (owner item 3). derive/population.ts isActivePerson
+  // reads this one boundary.
+  if (!r.enabled || r.activity !== 'active' || r.readiness.automated) return null
   if (r.evidence) return 'proven'
   if (!r.mfaCapable) return 'noMethod'
   return 'unproven'

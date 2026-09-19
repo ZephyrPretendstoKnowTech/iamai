@@ -131,26 +131,6 @@ export function enabledUsers(snapshot: TenantSnapshot, confirmedServiceAccountId
 }
 
 /**
- * Enabled people who have signed in inside the activity window. One rule, one
- * window (INACTIVE_DAYS), and `now` is passed in so two surfaces rendering the
- * same plan cannot disagree because they asked the clock at different moments.
- *
- * A user with no recorded sign-in is not active: absence of evidence is not
- * evidence of activity, and counting them as active is what makes a readiness
- * denominator larger than the number of people who could possibly be ready.
- */
-export function activeUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
-  const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
-  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
-    // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
-    const last = lastSuccessOf(snapshot, u)
-    if (!last) return false
-    const at = Date.parse(last)
-    return Number.isFinite(at) && at >= cutoff
-  })
-}
-
-/**
  * A person's last successful sign-in: the later of the directory's
  * signInActivity and the newest successful sign-in in the records (prompt 62).
  * The directory's date lags, and an account seen signing in is not "never
@@ -173,29 +153,30 @@ export function adminUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds:
 }
 
 /**
- * Enabled people who are not active: never signed in, or inactive 90+ days
- * (target-state §8.1, prompt 46 item 7). Shown, listed, never in a
- * denominator, and never a reason to delay enforcement — nothing can lock out
- * an account nobody signs into. They carry a risk of a different kind: whoever
- * signs in first registers the MFA method. Wave 0 asks the operator to decide
- * on each.
+ * Enabled people with no sign-in inside the activity window: never signed in,
+ * or inactive 90+ days (target-state §8.1, prompt 46 item 7) — the dormant
+ * step's accounts. One rule, one window (INACTIVE_DAYS), and `now` is passed
+ * in so two surfaces rendering the same plan cannot disagree because they
+ * asked the clock at different moments. A user with no recorded sign-in is
+ * not active: absence of evidence is not evidence of activity.
+ *
+ * Shown, listed, never in a denominator, and never a reason to delay
+ * enforcement — nothing can lock out an account nobody signs into. They carry
+ * a risk of a different kind: whoever signs in first registers the MFA method.
+ * Wave 0 asks the operator to decide on each.
+ *
+ * This is not the complement of the active people: an account that signs in
+ * only to scripting tools is neither dormant nor an active person. The active
+ * people are one set, derive/population.ts activePeopleIds.
  */
 export function notActiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
-  const active = new Set(activeUsers(snapshot, now, confirmedServiceAccountIds).map((u) => u.id))
-  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => !active.has(u.id))
-}
-
-/** Every people-count on one screen, over one directory, at one instant. */
-export type PeopleCounts = { directory: number; enabled: number; active: number; notActive: number; admins: number }
-
-export function peopleCounts(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): PeopleCounts {
-  return {
-    directory: personAccounts(snapshot, confirmedServiceAccountIds).length,
-    enabled: enabledUsers(snapshot, confirmedServiceAccountIds).length,
-    active: activeUsers(snapshot, now, confirmedServiceAccountIds).length,
-    notActive: notActiveUsers(snapshot, now, confirmedServiceAccountIds).length,
-    admins: adminUsers(snapshot, confirmedServiceAccountIds).length,
-  }
+  const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
+  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
+    // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+    const last = lastSuccessOf(snapshot, u)
+    const at = last ? Date.parse(last) : Number.NaN
+    return !(Number.isFinite(at) && at >= cutoff)
+  })
 }
 
 // ---------- steps ----------

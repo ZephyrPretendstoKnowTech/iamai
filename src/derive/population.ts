@@ -9,7 +9,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { enabledUsers, notPeopleIds } from './sets.ts'
+import { adminUsers, enabledUsers, notPeopleIds, personAccounts } from './sets.ts'
 import { affectedIds } from './whoLine.ts'
 import { effectsOf } from '../roadmap/strand.ts'
 import type { StepPopulation } from '../roadmap/types.ts'
@@ -76,10 +76,11 @@ export function campaignBucket(v: MfaViability, mfaEnforced: boolean): ReturnTyp
  * rollout has a bucket for them), and not an account that signs in only to
  * scripting tools. Such an account is not a person who will register a passkey
  * (owner item 3): MFA Readiness lists it under Not counted, and no readiness
- * count or gate counts it.
+ * count, gate or step reach counts it. The boundary is the rollout's
+ * (scoring/mfaViability.ts rolloutBucket); every active-people count reads it here.
  */
 export function isActivePerson(v: MfaViability): boolean {
-  return rolloutBucket(v) !== null && !v.readiness.automated
+  return rolloutBucket(v) !== null
 }
 
 /** The active people among a scored set: enabled person accounts (Today's rows) with a rollout bucket. */
@@ -98,7 +99,22 @@ export function activePeopleIds(snapshot: TenantSnapshot, now: string, notPeople
   return activeAmong(buildViabilityInputs(snapshot, now, notPeople).map(scoreMfaViability), snapshot, notPeople)
 }
 
-type CampaignMapping = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
+/** Every people-count on one screen, over one directory, at one instant. `notActive` is the enabled people outside the active set: dormant, never signed in, or a script (MFA Readiness's Not counted). */
+export type PeopleCounts = { directory: number; enabled: number; active: number; notActive: number; admins: number }
+
+export function peopleCounts(snapshot: TenantSnapshot, now: string, notPeople: ReadonlySet<string> = new Set()): PeopleCounts {
+  const enabled = enabledUsers(snapshot, notPeople).length
+  const active = activePeopleIds(snapshot, now, notPeople).length
+  return {
+    directory: personAccounts(snapshot, notPeople).length,
+    enabled,
+    active,
+    notActive: enabled - active,
+    admins: adminUsers(snapshot, notPeople).length,
+  }
+}
+
+type CampaignMapping ={ breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
 
 /** The campaign's population over rows already scored: the plan's active people, through the one person boundary (sets.ts accountKinds). */
 export function campaignIds(viability: readonly MfaViability[], snapshot: TenantSnapshot, mapping: CampaignMapping): string[] {

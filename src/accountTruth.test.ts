@@ -9,8 +9,8 @@ import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from './roadmap/fixtures/index.ts'
 import type { Fixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
-import { accountKinds, activeUsers, notPeopleIds, personAccounts } from './derive/sets.ts'
-import { activePeopleIds, campaignIdsFor } from './derive/population.ts'
+import { accountKinds, notPeopleIds, personAccounts } from './derive/sets.ts'
+import { activePeopleIds, campaignIdsFor, isActivePerson, peopleCounts } from './derive/population.ts'
 import { facts } from './derive/facts.ts'
 import { ladder } from './derive/ladder.ts'
 import { readinessView } from './derive/mfaReadiness.ts'
@@ -64,10 +64,10 @@ for (const name of ['demo', 'demo-week2'] as const) {
     const active = facts(f.snapshot, f.mapping).active
     assert.equal(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeople).length, active, 'the plan’s active people (tracking) are the facts’ active people')
     assert.equal(campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, active, 'the campaign counts the same people')
-    assert.equal(activeUsers(f.snapshot, f.snapshot.asOf, notPeople).length, active, 'the sets module counts the same people')
+    assert.equal(peopleCounts(f.snapshot, f.snapshot.asOf, notPeople).active, active, 'the people counts count the same people')
     assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, active, 'MFA Readiness counts the same people')
     const run = runFixture(f)
-    assert.equal(run.viability.filter((v) => v.activity === 'active').length, active, 'the plan scores exactly those active people')
+    assert.equal(run.viability.filter(isActivePerson).length, active, 'the plan scores exactly those active people')
   })
 
   test(`${name}: no account that is not a person reaches a scored row or a step's people`, () => {
