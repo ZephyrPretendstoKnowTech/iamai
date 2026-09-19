@@ -27,6 +27,8 @@ import { BACKOFF_MS, MAX_ATTEMPTS, probe } from '../src/testing/transient.ts'
 // The steps a group draws with its own anatomy (the Emergency Access tasks, the
 // Direction decisions): the registry says which, so the smoke does not keep a list.
 import { STEP_GROUPS } from '../src/roadmap/stepGroups.ts'
+// What a page that never drew leaves behind, and the deadline on every DevTools call.
+import { CDP_DEADLINE_MS, pageEvidence, withDeadline } from './smokeEvidence.mjs'
 
 // The authority whose metadata the sign-in warm fetches (src/graph/msal.ts).
 // Asked directly only to tell a wobbling Microsoft apart from a broken IAMAI.
@@ -109,10 +111,15 @@ const tailOf = (limit = 40) => {
 }
 
 // ---- dev server ----
+// The dependency optimizer narrates its runs (vite:deps): when it re-bundles and
+// reloads the page mid-walk, the dev server's lines in the evidence say so. They
+// are kept in the tail below and printed only when a check fails.
 const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], {
   stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, DEBUG: process.env.DEBUG ?? 'vite:deps' },
 })
-const viteOut = tailOf()
+// Longer than Chrome's: the dev server's recent lines are the evidence printed when a page never drew (smokeEvidence.mjs).
+const viteOut = tailOf(120)
 vite.stdout?.on('data', (d) => viteOut.push(d))
 vite.stderr?.on('data', (d) => viteOut.push(d))
 let up = false
@@ -167,6 +174,7 @@ await new Promise((r) => (ws.onopen = r))
 let id = 0
 const pending = new Map()
 const consoleErrors = []
+const logErrors = []
 ws.onmessage = (m) => {
   const msg = JSON.parse(m.data)
   if (msg.id && pending.has(msg.id)) {
@@ -176,14 +184,31 @@ ws.onmessage = (m) => {
     consoleErrors.push(msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text)
   } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
     consoleErrors.push(msg.params.args.map((a) => a.value ?? a.description ?? '').join(' '))
+  } else if (msg.method === 'Log.entryAdded' && msg.params.entry.level === 'error') {
+    // The browser's own errors (a module that failed to load, a refused request)
+    // never reach the console API. Kept apart from consoleErrors, which the
+    // walk's no-errors checks read: these are evidence for a failure, not a check.
+    logErrors.push(`${msg.params.entry.text}${msg.params.entry.url ? ` ${msg.params.entry.url}` : ''}`)
   }
 }
-const send = (method, params = {}) =>
-  new Promise((res) => {
-    const i = ++id
+// The last Page.navigate and what Chrome answered: the evidence names it when a page never drew.
+let lastNavigation = null
+// Every call has a deadline (smokeEvidence.mjs): one that is never answered, as
+// on a CI run that hung after "Licensing redirects to How" until the job was
+// cancelled, fails the walk with the method's name instead of waiting forever.
+const send = (method, params = {}) => {
+  const i = ++id
+  const answer = new Promise((res) => {
     pending.set(i, res)
     ws.send(JSON.stringify({ id: i, method, params }))
   })
+  return withDeadline(answer, CDP_DEADLINE_MS, `DevTools ${method}`)
+    .then((r) => {
+      if (method === 'Page.navigate') lastNavigation = { url: params.url, errorText: r.error?.message ?? r.result?.errorText ?? null }
+      return r
+    })
+    .finally(() => pending.delete(i))
+}
 const evaluate = async (expr) => {
   const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })
   if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description ?? 'evaluate failed')
@@ -223,12 +248,25 @@ const navigateFresh = async (url) => {
   await send('Page.navigate', { url })
 }
 const text = () => evaluate('document.body.innerText')
+// What the page, the browser and the dev server said, printed under a check
+// that found no page at all: without it a CI failure reads as "(no main)" and
+// nothing else.
+const printPageEvidence = async () => {
+  let body = ''
+  try {
+    body = String(await evaluate(`document.body ? document.body.innerText : '(no body)'`))
+  } catch (e) {
+    body = `(unreadable: ${e instanceof Error ? e.message : String(e)})`
+  }
+  console.log(pageEvidence({ body, pageErrors: consoleErrors, logErrors, navigation: lastNavigation, viteTail: viteOut.text() }))
+}
 // Scoped to the page by default: the header carries a Plan tab of its own (prompt 47 Part 3), so a page click must not find it first.
 const clickText = (re, root = 'main.page') => evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
 
 await send('Page.enable')
 await send('Accessibility.enable')
 await send('Runtime.enable')
+await send('Log.enable')
 
 try {
   let t = ''
@@ -454,6 +492,7 @@ try {
   await go('plan')
   const __planOk = await waitFor(`/#\\/plan/.test(location.hash) && document.querySelector('main.page .plan-progress-tile') !== null`)
   check('Plan renders at #/plan', __planOk, __planOk ? '' : `hash=${await evaluate('location.hash')} main=${(await evaluate(`(document.querySelector('main.page')||{}).innerText||'(no main)'`)).slice(0, 140).replace(/\s+/g, ' ')}`)
+  if (!__planOk) await printPageEvidence()
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
   // The header's progress tiles replaced the generated status sentence (owner, 2026-09-11).
@@ -1312,6 +1351,9 @@ if (failures.length > 0) {
   // are repeated here so a reader has the list without scanning the whole log.
   console.error(`\nsmoke: ${failures.length} check(s) failed${note}`)
   for (const name of failures) console.error(`  FAIL ${name}`)
+  // What the page threw, what the browser refused to load and what the dev
+  // server said over the run, for a failure no check printed evidence under.
+  console.error(pageEvidence({ body: null, pageErrors: consoleErrors, logErrors, navigation: lastNavigation, viteTail: viteOut.text() }))
   process.exit(1)
 }
 console.log(`\nsmoke: every check passed${note}`)
