@@ -14,14 +14,33 @@ Target: a public LinkedIn beta on Monday 2026-09-21. The owner and Claude work t
 - **Design review:** the owner sees every design and recommendation before it's built, and says explicitly when they disagree.
 - **Red tests:** clear them, or remove them where they test old data or something already defined as complete.
 
+## Owner answers on the review list (2026-09-19, late morning)
+
+All 31 items in the review list are approved, except these:
+- **2:** a "last used" date never makes a person Ready. Also flag passkeys that were never used, or not used for 90+ days, as "registered but not used, may be gone".
+- **4:** "not read" is our evidence problem to fix, not the user's:
+  - retry failed per-person method reads, then fall back to the registration report;
+  - retry the sign-in logs; without P1, say it once at the page level;
+  - always read the full 30 days.
+- **11:** there's no Mac to test with. Count the registered Platform SSO credential as a method. Never make a Mac Ready without a recognised sign-in. Check the sign-in wording on Microsoft Learn.
+- **20:** no history rewrite. The owner renames the break-glass account in the tenant.
+- **21:** scrub the owner's tenant data from the tree, and add a guard (a fingerprint list, pre-commit, CI).
+- **22:** archive the old files.
+- **23:** add a fourth "By Area" view (steps grouped by wave), beside Ready, Up Next and On Hold.
+- **24:** D2 needs a better title. Proposed: "Identify Service and Shared Accounts".
+- **25:** the lockdown kit (Jon's ZTCA) is deferred until after launch.
+
 ## Done
 
-- `7e99ffb4`: CI runs on every push to main, beside the deploy and never gating it.
+- `7e99ffb4`: CI runs on every push to main, beside the deploy and never gating it. The first run showed about 60 red tests, not 5; an agent is triaging them.
+- `24755bd2`, `f7374a64`: Jon's answers recorded; the step inventory; the V1 step map.
+- `db2d1070`: the group registry (`src/roadmap/stepGroups.ts`). Emergency Access runs on it with no visible change.
+- `87b30f1a`: an estimated date is never in the past. Known gap: a policy already ready to enforce still waits one observation window from today.
 
 ## Next
 
-1. The owner's answers on the 22 overnight decisions (`docs/plans/2026-09-19-overnight-review.md` §2).
-2. The V1 step map (phase 1 of `v1-procedure.md`), including the combined decision group, for owner approval.
-3. The Step Kit (a group registry, with Emergency Access re-expressed and no visible change).
-4. The Direction group.
-5. The policy waves, then launch readiness.
+1. Land the red-suite triage and the tenant-data scrub (agents running in worktrees).
+2. The Direction spec (`docs/plans/direction-spec.md`) goes to the owner for review, then gets built on the registry.
+3. The approved review items, in the build queue.
+4. One policy anatomy for every policy step, then per-wave word reviews (waves 1–4 first), then the "By Area" view.
+5. Launch readiness on Sunday, with a full-suite milestone each night.
