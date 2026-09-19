@@ -143,7 +143,9 @@ test("the toolbar is a heading, a search, the pack's three filters with Needs ac
   assert.match(SURFACE, /\{SHOW_KEYS\.map\(\(k\) => \([\s\S]{0,120}className="pill" aria-pressed=\{show === k\} onClick=\{\(\) => select\(k\)\}/, 'the pills are not controls over the one filter')
   // Needs action carries its count, as the pack's pill does.
   assert.match(PACK, /`Needs action · \$\{fmt\(action\)\}`/)
-  assert.match(SURFACE, /\$\{T\.show\.needsAction\} · \$\{action\}/)
+  // The count is the one cell function's, with the unread counted beside it (owner item 4: "Needs action · 21, 1 not read").
+  assert.match(SURFACE, /k === 'needsAction' \? needsActionWords\(counted\)/)
+  assert.match(readFileSync('src/ui/surfaces/readinessCells.ts', 'utf8'), /\$\{T\.show\.needsAction\} · \$\{action\}/)
   assert.match(SURFACE, /\{T\.exportCsv\}/)
   // The only select on the page is the pack's sub-group "Group by".
   assert.equal((PACK.match(/<select/g) ?? []).length, 1)

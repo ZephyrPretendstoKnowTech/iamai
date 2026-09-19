@@ -31,6 +31,7 @@ type Words = {
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
   chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
   sub: { noDevices: string }
+  notReadCount: string
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
   lastConfirmed: string
   beforeWindow: string
@@ -219,6 +220,20 @@ export function nextWords(n: NextAction): string {
 export function signInsUnavailableFor(r: ReadinessRow): boolean {
   const n = r.readiness?.next
   return r.state === 'unknown' && n?.kind === 'rescan' && n.reason === 'unavailable'
+}
+
+/**
+ * The Needs action filter's count: the people with something to do, and apart
+ * from them the people IAMAI couldn't read, whose next step is nothing ("Needs
+ * action · 21, 1 not read"; owner item 4). Where the tenant has no sign-in
+ * records at all the page says so once, so those people are not unread either.
+ */
+export function needsActionWords(counted: readonly ReadinessRow[]): string {
+  const action = counted.filter((r) => r.state !== null && r.state !== 'unknown' && !isReadyState(r.state)).length
+  const unread = counted.filter((r) => r.state === 'unknown' && !signInsUnavailableFor(r)).length
+  const line = `${T.show.needsAction} · ${action}`
+  // Filled directly: "read" here is a participle, and fillText would conjugate it after a count of one ("1 not reads").
+  return unread > 0 ? `${line}, ${T.notReadCount.replace('{n}', String(unread))}` : line
 }
 
 /** The devices cell where no device was seen: not read, nothing (the page says why), or no sign-in in 30 days. */

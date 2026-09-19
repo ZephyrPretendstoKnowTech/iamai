@@ -6,11 +6,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { readinessView } from '../../derive/mfaReadiness.ts'
+import { readinessView, shows } from '../../derive/mfaReadiness.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import type { SourceState, TenantSnapshot } from '../../graph/collect/types.ts'
 import { pages } from '../../content/content.ts'
-import { nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
+import { needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
 
 const W = pages.readiness as unknown as { summaryNoP1: string; groupNoP1: { title: string; why: string }; chip: { unread: string }; next: { none: string } }
 const source = (status: SourceState['status'], reason: string | null): SourceState => ({ status, reason, coveredWindow: null, asOf: '2026-09-19T00:00:00Z' })
@@ -55,4 +55,28 @@ test('a person whose records were merely not read still says so', () => {
     assert.equal(signInsUnavailableFor(r), false)
     assert.equal(noDevicesWord(r), W.chip.unread)
   }
+})
+
+test('Needs action counts the people with something to do, and the people IAMAI could not read beside them', () => {
+  const f = fixture('demo')
+  const N = (pages.readiness as unknown as { show: { needsAction: string } }).show.needsAction
+  const counted = (s: TenantSnapshot) => readinessView(s, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state !== null)
+  // Records that failed to read: "Needs action · 21, 1 not read", and the two numbers are the rows the filter shows.
+  const failed = counted(withSignIns(source('error', 'request failed after retries (timeout)')))
+  const action = failed.filter((r) => shows(r, 'needsAction') && r.state !== 'unknown').length
+  const unread = failed.filter((r) => r.state === 'unknown').length
+  assert.ok(unread > 0 && action > 0, 'the premise: both kinds are present')
+  assert.equal(needsActionWords(failed), `${N} · ${action}, ${unread} not read`)
+  assert.equal(failed.filter((r) => shows(r, 'needsAction')).length, action + unread, 'the filter lists exactly the two numbers')
+  // Without P1 the page has said why once; the unconfirmed are not "not read".
+  const noP1 = counted(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)')))
+  const noP1Unread = noP1.filter((r) => r.state === 'unknown' && !signInsUnavailableFor(r)).length
+  const noP1Action = noP1.filter((r) => shows(r, 'needsAction') && r.state !== 'unknown').length
+  assert.ok(noP1.some(signInsUnavailableFor), 'the premise: the licence leaves people unconfirmed')
+  assert.equal(needsActionWords(noP1), noP1Unread > 0 ? `${N} · ${noP1Action}, ${noP1Unread} not read` : `${N} · ${noP1Action}`)
+  // Nobody unread: the count alone.
+  const clean = counted(f.snapshot).filter((r) => r.state !== 'unknown')
+  assert.equal(needsActionWords(clean), `${N} · ${clean.filter((r) => shows(r, 'needsAction')).length}`)
+  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  assert.match(page, /k === 'needsAction' \? needsActionWords\(counted\)/, 'the pill reads the one count')
 })

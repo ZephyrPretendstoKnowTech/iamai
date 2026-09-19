@@ -901,6 +901,7 @@
         "disabled": "Sign-in disabled",
         "guests": "Guests"
       },
+      "notReadCount": "{n} not read",
       "exportCsv": "Export CSV",
       "nextLabel": "Next check",
       "nextSetupWho": "Tenant setup, unblocks {n} people",
