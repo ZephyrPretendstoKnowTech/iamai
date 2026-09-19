@@ -158,7 +158,7 @@ Policy 00000000-0000-0000-0000-000000000001 has these mismatches for Block Legac
 TARGET →
 This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.
 
-Reason: C6/C7 — "Policy b004f962-…", "conditions.canonical", "API-safe corrections" are developer terms. Rewritten for a tech audience.
+Reason: C6/C7 — "Policy 00000000-…", "conditions.canonical", "API-safe corrections" are developer terms. Rewritten for a tech audience.
 
 ---
 

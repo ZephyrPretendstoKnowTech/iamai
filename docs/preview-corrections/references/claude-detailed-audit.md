@@ -739,7 +739,7 @@ Each checklist item is scored across all 32 steps, and every exception is named.
 
 - **4.7c.1 · W** — **Preamble explaining the payload**
 
-  Only a method and URL line (for example `PATCH https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/58153371-…`), with no sentence on what it does or how to send it. Device Registration uses a relative `POST /identity/conditionalAccess/policies`.
+  Only a method and URL line (for example `PATCH https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/00000000-…`), with no sentence on what it does or how to send it. Device Registration uses a relative `POST /identity/conditionalAccess/policies`.
 
 - **4.7c.2 · F** — **Valid JSON**
 
