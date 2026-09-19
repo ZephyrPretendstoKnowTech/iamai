@@ -11,7 +11,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { POLICY_TASK_STEP_IDS, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { POLICY_SETTINGS_STEP_IDS, POLICY_TASK_STEP_IDS, drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
@@ -152,6 +152,22 @@ test('the bar over the evidence link instructs, as Prepare Emergency Access Acco
   assert.equal(policyBarOf([card(true)]), 'Every task on this step is complete.')
   // Not the status word the bar used to show, which the step's badge already says.
   assert.match(read('src/ui/surfaces/ContentStep.tsx'), /barMain=\{isPolicyTaskStep \? policyBarOf\(taskSubjects\) : displayedReadiness\.bar\.main\}/)
+})
+
+test('the resolved settings stand under the Entra procedure of one policy, folded, in a disclosure the file already draws', () => {
+  assert.deepEqual([...POLICY_SETTINGS_STEP_IDS], [PILOT], 'the approved deviation is one policy')
+  assert.equal(drawsPolicySettings(PILOT), true)
+  assert.equal(drawsPolicySettings('s-goal-mfa-all-users'), false)
+  const contentStep = read('src/ui/surfaces/ContentStep.tsx')
+  assert.match(contentStep, /taskSettings && !!taskFacts\.length && <details className="approved-model-disclosure">/, 'the settings are not in the existing disclosure')
+  assert.match(contentStep, /<summary>\{SHARED\.policySettingsForAction\}<\/summary>/, 'the heading is not the artifact’s own')
+  // Collapsed by default: no `open` on this disclosure.
+  assert.equal(/taskSettings && !!taskFacts\.length && <details className="approved-model-disclosure" open/.test(contentStep), false)
+  // What it folds is the task's own facts — the settings the procedure was written against.
+  const { body } = bodyOf(PILOT)
+  const facts = body.emergencyAccountTasks!.tasks[0].facts ?? []
+  assert.ok(facts.some((fact) => fact.label === 'Name'))
+  assert.ok(facts.some((fact) => /Session →/.test(fact.value) || /Session →/.test(fact.label)))
 })
 
 test('one card fills the row, on every step that draws these cards', () => {
