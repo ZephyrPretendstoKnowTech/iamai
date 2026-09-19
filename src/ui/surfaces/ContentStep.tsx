@@ -506,8 +506,6 @@ export function ContentStep({
             <pre className="mono">{step.baselineReviewSource.json}</pre>
           </details>}
 
-          {step.id === 's-ladder-break-glass-accounts' && !printing && <p className="step-section"><a href="#/plan/cleanup-drill">Test Emergency Access and Record the Result →</a></p>}
-
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
           {step.manualReview && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={printing} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}

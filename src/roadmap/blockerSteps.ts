@@ -61,7 +61,6 @@ export function isEmergencyAccess(step: { id: string; goalId?: string }): boolea
 export const EMERGENCY_ACCESS_STEP_IDS: ReadonlySet<string> = new Set([
   's-prereq-break-glass',
   's-prereq-exclusion-group',
-  's-ladder-break-glass-accounts',
   ...GATING_SUBJECTS.map(blockerStepId),
 ])
 

@@ -148,7 +148,7 @@ export type PlanDecisions = {
  * field: the accounts derive from licences and sign-ins on every scan.
  */
 export const DECISION_STEPS = {
-  emergency: new Set([BREAK_GLASS_STEP_ID, blockerStepId('breakGlass'), 's-ladder-break-glass-accounts']),
+  emergency: new Set([BREAK_GLASS_STEP_ID, blockerStepId('breakGlass')]),
   exclusions: new Set([PREREQ_STEP_ID.exclusionsGroup, blockerStepId('exclusionGroup')]),
   countries: PREREQ_STEP_ID.allowedCountries,
   trustedLocation: PREREQ_STEP_ID.trustedLocation,

@@ -354,7 +354,7 @@ const CASES: Record<string, (v: Variant) => boolean> = {
 // draws one and no step that does not, so it no longer tells two shapes apart.
 const INVENTORY: string[] = [
   'ladder · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-security-defaults
-  'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-ladder-break-glass-accounts
+  'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-ladder-admin-accounts-separate
   'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-legacy-auth-inventory
   'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · found · no-fix · one-policy · who-none', // micro/s-ladder-guest-review
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-verify-mfa
@@ -677,7 +677,7 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   const code = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const [name, src] of [['Plan.tsx', plan], ['ContentStep.tsx', step], ['StepSections.tsx', read('src/ui/surfaces/StepSections.tsx')]] as const) {
     // The accepted Emergency Access steps (cff043a2, owner acceptance 2026-09-18) join the known forks; the step-group registry (db2d1070) is where they go next.
-    assert.doesNotMatch(code(src).replace(/step\.id === '(?:s-prereq-passkey-settings|s-prereq-device-plan|s-verify-mfa|s-ladder-break-glass-accounts|s-prereq-break-glass|s-prereq-exclusion-group)'/g, ''), /step\.id === ['"]s-/, `${name} branches its presentation on one step's id`)
+    assert.doesNotMatch(code(src).replace(/step\.id === '(?:s-prereq-passkey-settings|s-prereq-device-plan|s-verify-mfa|s-prereq-break-glass|s-prereq-exclusion-group)'/g, ''), /step\.id === ['"]s-/, `${name} branches its presentation on one step's id`)
     assert.doesNotMatch(code(src), /step\.goalId === ['"]/, `${name} branches its presentation on one goal`)
     assert.doesNotMatch(code(src), /step\.kind === ['"]/, `${name} branches its presentation on the step's kind`)
   }

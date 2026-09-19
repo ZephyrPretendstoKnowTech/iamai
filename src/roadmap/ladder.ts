@@ -24,13 +24,9 @@ import type { Step } from './types.ts'
 /** Microsoft's Global Administrator role template id; stable across every tenant. */
 export const GLOBAL_ADMIN_ROLE_ID = '62e90394-69f5-4237-9190-012177145e10'
 
-/** Break-glass guidance is two accounts: one can be lost without losing the way back in. */
-export const BREAK_GLASS_TARGET = 2
 /** Microsoft's guidance for permanent Global Administrators. */
 export const GLOBAL_ADMIN_MIN = 2
 export const GLOBAL_ADMIN_MAX = 4
-/** Above this many names a sentence counts instead of listing. */
-const NAME_LIMIT = 5
 
 export type LadderItem = { id: string; name: string; description: string; goalId?: string }
 
@@ -38,7 +34,6 @@ export const LADDER_ITEMS: LadderItem[] = ladderData.items as LadderItem[]
 
 /** Ladder items an existing phase 0 step already covers; that step takes the ladder's place. */
 const COVERED_BY_STEP: Record<string, string> = {
-  'break-glass-accounts': 's-prereq-break-glass',
   'per-user-mfa-cleanup': 's-prereq-per-user-mfa',
 }
 
@@ -54,7 +49,6 @@ type Facts = {
   globalAdmins: number
   adminsWithMailbox: string[]
   securityDefaults: boolean | null
-  breakGlassNames: string[]
   migrationState: string | null
   guests: number
   pendingInvites: number
@@ -73,18 +67,13 @@ function nameOf(u: UserRow): string {
   return u.displayName ?? u.userPrincipalName ?? u.id
 }
 
-/** Up to NAME_LIMIT names; never an id (CLAUDE.md: names, never ids). */
-function names(all: string[]): string[] {
-  return all.slice(0, NAME_LIMIT)
-}
-
 const METHOD_LABEL: Record<string, string> = {
   Sms: 'Text message',
   Voice: 'Voice call',
   MicrosoftAuthenticator: 'Microsoft Authenticator',
 }
 
-export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState, context: ScopeEvidence = {}): Facts {
+export function ladderFacts(snapshot: TenantSnapshot, context: ScopeEvidence = {}): Facts {
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const enabled = snapshot.users.filter((u) => u.userType === 'member' && u.accountEnabled !== false)
   const active = snapshot.roles?.active ?? {}
@@ -127,7 +116,6 @@ export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState, con
     globalAdmins: adminIds.filter((id) => active[id]?.includes(GLOBAL_ADMIN_ROLE_ID)).length,
     adminsWithMailbox: adminIds.filter((id) => hasMailbox(byId.get(id) as UserRow)).map((id) => nameOf(byId.get(id) as UserRow)),
     securityDefaults,
-    breakGlassNames: [...new Set(mapping.breakGlassUserIds)].filter((id) => { const u = byId.get(id); return u && u.accountEnabled === true && u.onPremisesSyncEnabled !== true && active[id]?.includes(GLOBAL_ADMIN_ROLE_ID) }).map((id) => nameOf(byId.get(id)!)),
     migrationState: methodsReadable ? (methodsRow?.policyMigrationState ?? null) : null,
     guests: guests.length,
     pendingInvites: guests.filter((u) => u.externalUserState === 'PendingAcceptance').length,
@@ -154,8 +142,6 @@ function verdictFor(itemId: string, f: Facts): Verdict {
   switch (itemId) {
     case 'security-defaults':
       return f.securityDefaults === true ? done('security defaults, which this tenant has on') : not
-    case 'break-glass-accounts':
-      return f.breakGlassNames.length >= BREAK_GLASS_TARGET ? done(`the break-glass accounts confirmed in Setup: ${names(f.breakGlassNames).join(', ')}`) : not
     case 'per-user-mfa-cleanup':
       return { done: false, evidence: [`Authentication methods migration: ${f.migrationState ?? 'not read'}. Check legacy per-user MFA separately in Entra.`] }
     case 'admin-accounts-separate':
@@ -184,7 +170,7 @@ export type LadderResult = {
  */
 export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, existingIds: Iterable<string>, context: ScopeEvidence = {}): LadderResult {
   const have = new Set(existingIds)
-  const f = ladderFacts(snapshot, mapping, context)
+  const f = ladderFacts(snapshot, context)
   const steps: Step[] = []
   const order = new Map<string, number>()
 
@@ -197,7 +183,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
     const v = verdictFor(item.id, f)
     const id = ladderStepId(item.id)
     order.set(id, index)
-    const reviewIds = item.id === 'admin-accounts-separate' ? f.adminIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : item.id === 'authenticator-over-sms' ? f.replacement.ids : item.id === 'break-glass-accounts' ? [...new Set(mapping.breakGlassUserIds)].filter((id) => snapshot.users.some((u) => u.id === id && u.accountEnabled === true)) : []
+    const reviewIds = item.id === 'admin-accounts-separate' ? f.adminIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : item.id === 'authenticator-over-sms' ? f.replacement.ids : []
     steps.push({
       ...STEP_EXTRAS,
       ...(item.id === 'authenticator-over-sms' ? {

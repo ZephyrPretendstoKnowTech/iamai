@@ -7,11 +7,6 @@
       "description": "Security Defaults provides a set of identity protections when the organization is not using a custom Conditional Access design."
     },
     {
-      "id": "break-glass-accounts",
-      "name": "Create and test emergency access accounts",
-      "description": "Dedicated emergency accounts provide another administrative route when normal access fails. Test the route before an incident makes it necessary."
-    },
-    {
       "id": "legacy-auth-inventory",
       "name": "Review legacy authentication use",
       "description": "An inventory of older sign-in paths helps identify applications that need attention before authentication rules change.",
