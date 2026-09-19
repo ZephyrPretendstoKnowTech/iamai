@@ -11,6 +11,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { missingVars, fillText } from '../../content/render.ts'
 import { commsFor } from './stepExport.ts'
+import { isReady } from '../../scoring/phishingResistant.ts'
 import { enforcementHeld } from '../../roadmap/operations.ts'
 import { engine, stepById } from '../../content/content.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
@@ -28,7 +29,8 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   const { f, r } = setUp()
   const admins = [...adminUserIds(f.snapshot.roles)]
   const rows = r.viability.filter((v) => admins.includes(v.userId))
-  const ready = rows.filter((v) => v.readiness.state === 'ready').length
+  // Ready and Seamless are both Ready (79b66fd8).
+  const ready = rows.filter((v) => isReady(v.readiness.state)).length
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
   assert.equal(step.readiness.family, 'admin')
   assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))

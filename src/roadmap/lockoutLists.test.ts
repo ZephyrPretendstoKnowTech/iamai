@@ -25,7 +25,7 @@ import { plainMfaFirst } from './deviations.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepIdForGoal } from './stepIds.ts'
 import { listCountVars, whole } from '../content/render.ts'
-import { personReadiness } from '../scoring/phishingResistant.ts'
+import { isReady, personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 
 /** The admins at the readiness their own policy asks for (Step 7): Ready, a passkey proven on the platform they use. */
@@ -50,7 +50,8 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }
   const admins = [...adminUserIds(f.snapshot.roles)].filter((id) => !f.mapping.breakGlassUserIds.includes(id))
   // Readiness, not the registration alone: a passkey never used is not what the policy needs (Step 7).
-  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready')
+  // Ready and Seamless are both Ready (79b66fd8).
+  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && !isReady(v.readiness.state))
   assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet Ready`)
   assert.equal(ex.adminsWithout.length, without.length, 'named, not counted')
   assert.equal(ex.adminsWithoutCount, undefined)
@@ -86,7 +87,7 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
 test('step 33 lists the eligible role holders with no passkey or key yet', () => {
   const f = fixture('mid')
   const r = runFixture(f)
-  const eligibleId = r.viability.find((v) => v.activity === 'active' && v.readiness.state !== 'ready' && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
+  const eligibleId = r.viability.find((v) => v.activity === 'active' && !isReady(v.readiness.state) && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
   const snapshot = { ...f.snapshot, roles: { ...f.snapshot.roles, eligible: { [eligibleId]: ['62e90394-69f5-4237-9190-012177145e10'] } } }
   const lists = contentLists({ snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(lists.eligibleWithout, [eligibleId])
