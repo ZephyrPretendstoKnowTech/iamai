@@ -132,7 +132,8 @@ function tenant(over: { evidenceStatus?: 'ok' | 'insufficient' } = {}) {
   const ids = {
     // An admin: the admin readiness percentage reads this account.
     ready: at(0),
-    authOnly: at(4),
+    // A member: guests are spoken for at tenant level and not counted (89f7d3de), and users[4] is a guest.
+    authOnly: at(13),
     helloOnly: at(5),
     helloPhone: at(10),
     // A registered passkey and a record that names no method.
@@ -234,7 +235,8 @@ test('the account with a generic record says a method is held and none is confir
   assert.deepEqual(row.readiness?.next, { kind: 'confirm', cls: 'passkey', os: 'Windows' })
   assert.equal(stateTitle(row.state), 'Confirm it')
   const deviceTexts = panelDevices(row).flatMap((i) => i.facts.map((x) => x[1]))
-  for (const text of deviceTexts) assert.doesNotMatch(text, /passkey|security key|Authenticator/i, `"${text}" attributes the record to a method`)
+  // The device's proof fact attributes no method; its first fact is the best option to set up, a recommendation (cafd3dd1).
+  for (const text of panelDevices(row).map((i) => i.facts[1][1])) assert.doesNotMatch(text, /passkey|security key|Authenticator/i, `"${text}" attributes the record to a method`)
   const texts = [nextCell(row), whyLine(row), methodsCell(row).note, ...deviceTexts, ...panelMethods(row).flatMap((i) => i.facts.map((x) => x[1]))]
   for (const text of texts) assert.doesNotMatch(text, /never used|never prompted|no MFA|no sign-in record/i, `"${text}" must not deny a sign-in that happened`)
   // No passkey registered and no record at all: needs a method, and a generic record never suggests one is held.
