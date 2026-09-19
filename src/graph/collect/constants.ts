@@ -10,5 +10,12 @@ export const LANE_A_CONCURRENCY = 4
 export const LANE_B_CONCURRENCY = 1
 export const RETRY_MAX_429 = 4
 export const RETRY_MAX_5XX = 3
+/**
+ * The sign-in logs throttle hardest and are the evidence readiness most depends
+ * on (owner item 4, 2026-09-19), so their reads try longer: 429s honour each
+ * Retry-After (at most 5 min), and 5xx/timeouts back off 10, 20, 40 and 80 s.
+ */
+export const SIGN_IN_RETRY_MAX_429 = 8
+export const SIGN_IN_RETRY_MAX_5XX = 5
 export const BACKOFF_BASE_MS = 10_000
 export const JITTER_FRACTION = 0.2
