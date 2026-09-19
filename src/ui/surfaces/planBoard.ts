@@ -31,7 +31,7 @@ import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, membersOf, pinnedGroups } from '../../roadmap/stepGroups.ts'
+import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, membersOf, pinnedGroups, positionInGroup } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
@@ -92,7 +92,8 @@ export const BOARD = {
   showDeferred: 'Show deferred',
   workType: 'Work type',
   allWork: 'All work',
-  columns: { state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
+  /** The row list's five zones. `#` heads the group position every row carries (stepGroups.ts groupPositions). */
+  columns: { number: '#', state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
   collapseGroup: 'Collapse group',
   expandGroup: 'Expand group',
   empty: 'No steps match this search.',
@@ -513,30 +514,49 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
 
 /**
  * The groups a tab's panel draws over the rows a tab and a focus left: the tab's
- * own lane only (On Hold split by the primary blocker's label, in the engine's
- * own order of first appearance). A Completed or Deferred row is never inside a
- * tab; `asideGroupsFor` draws those. Pure.
+ * own lane only, split by the STEP GROUP each row belongs to (stepGroups.ts), in
+ * the registry's order, and only where the tab left a row in one.
+ *
+ * The heading a row sits under is now a property of the step and not of the
+ * lane, which is what makes the three tabs read as one plan: "Close the Doors
+ * Nobody Should Use" means the same run of work on Ready, on Up Next and on On
+ * Hold, and a step moving lane no longer moves it to a different heading with a
+ * different name. Where a row is held and by what is still said, word for word,
+ * in the row's own lane label (`On Hold · Baseline conflict`, laneLabelOf), so
+ * the blocker headings this replaced were the second place that said it.
+ *
+ * A Completed or Deferred row is never inside a tab; `asideGroupsFor` draws
+ * those, ungrouped, exactly as before. Pure.
  */
-export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup[] {
+export function groupsFor(tab: LaneTab, items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardGroup[] {
   const priority = (i: BoardItem): number => tab !== 'ready' ? 0 : i.id === 's-prereq-passkey-settings' ? -3 : i.id === 's-prereq-break-glass' ? -2 : 0
   const sorted = [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order)
-  const out: BoardGroup[] = []
   const own = sorted.filter((i) => TAB_OF[i.lane] === tab)
-  if (tab === 'onHold') {
-    const at = new Map<string, BoardGroup>()
-    for (const i of own) {
-      const label = i.hold ?? BOARD.lanes.onHold
-      let g = at.get(label)
-      if (!g) {
-        g = { key: `hold-${at.size}`, label, secondary: false, closed: false, items: [] }
-        at.set(label, g)
-        out.push(g)
-      }
-      g.items.push(i)
-    }
-  } else if (own.length > 0) {
-    out.push({ key: tab, label: BOARD.lanes[tab], secondary: false, closed: false, items: own })
+  // A group's rows come out in the group's own order — which is the order its
+  // numbers count in, so the list reads 1, 3, 6 and its gaps are legible as
+  // gaps. Ordered by the engine instead, the same three rows read 6, 1, 3, and
+  // a column of numbers that does not ascend is not a list, it is a defect.
+  //
+  // It is the same order under all three tabs, taken from the registry and not
+  // from the lane, so no tab can become a second plan: a tab still only decides
+  // which of the group's rows it shows, never their sequence. The numbers
+  // themselves are taken over the whole board before any of this (rowNumbersOf).
+  // The key is the registry position and nothing else, so it does not depend on
+  // which rows a tab left: a member the registry does not place (a
+  // baseline-review row) sorts after every listed one, by id — which is exactly
+  // how `groupPositions` hands those their numbers, so the order and the
+  // numbers cannot disagree.
+  const inGroupOrder = (a: BoardItem, b: BoardItem): number =>
+    (positionInGroup(a.id, groups) ?? Number.MAX_SAFE_INTEGER) - (positionInGroup(b.id, groups) ?? Number.MAX_SAFE_INTEGER) || a.id.localeCompare(b.id)
+  const out: BoardGroup[] = []
+  for (const group of groups) {
+    const mine = own.filter((i) => groupOf(i.id, groups)?.key === group.key).sort(inGroupOrder)
+    if (mine.length > 0) out.push({ key: `${tab}-${group.key}`, label: groupTitleOf(group, false), secondary: false, closed: false, items: mine })
   }
+  // A row the registry claims for no group at all (no catch-all entry) still has
+  // to be drawn: the board never silently loses one.
+  const ungrouped = own.filter((i) => groupOf(i.id, groups) === null)
+  if (ungrouped.length > 0) out.push({ key: tab, label: BOARD.lanes[tab], secondary: false, closed: false, items: ungrouped })
   return out
 }
 
@@ -552,6 +572,20 @@ export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
   const deferred = sorted.filter((i) => i.lane === 'Deferred')
   if (deferred.length > 0) out.push({ key: 'deferred', label: BOARD.lanes.deferred, secondary: true, closed: false, items: deferred })
   return out
+}
+
+/**
+ * The number each row shows in its group's list, over the board's WHOLE row set
+ * (stepGroups.ts groupPositions).
+ *
+ * It is taken once, before a tab or a focus filters anything, which is the whole
+ * point: the number is the step's place in its group's full order, so the Ready
+ * tab showing 1, 3, 6 is telling the truth about where the missing two are
+ * rather than renumbering what is left into a tidy 1, 2, 3 that would mean
+ * something else next time the lane changes.
+ */
+export function rowNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  return groupPositions(items.map((i) => i.id), groups)
 }
 
 /** The group's one supporting line: how many rows, counted off the rows in the group, so the summary cannot disagree with what is under it. */

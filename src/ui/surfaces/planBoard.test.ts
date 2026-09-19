@@ -19,6 +19,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { directionWords, stepById } from '../../content/content.ts'
 import { laneReadings } from './planLanes.ts'
+import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import {
   BOARD,
   LANES,
@@ -37,7 +38,9 @@ import {
   workTypeOf,
   WORK_TYPE_IDS,
   EMERGENCY_STEP_IDS,
+  groupTitleOf,
   partitionEmergencyItems,
+  rowNumbersOf,
 } from './planBoard.ts'
 import type { BoardItem, LaneTab } from './planBoard.ts'
 
@@ -148,34 +151,89 @@ test('A6: on the Follow-up demo the Ready tab holds no Completed row, with or wi
   assert.match(plan.slice(plan.indexOf('</div>', panelAt)), /aside\.map\(drawGroup/, 'Plan.tsx does not draw the aside groups after the panel')
 })
 
-test('no tab reorders the engine: within a group, rows keep the order the lane gave them', () => {
+test('no tab sequences a group of its own: a group draws its registry order under every tab, and the aside keeps the engine’s', () => {
+  // A tab decides which of a group's rows it SHOWS and never their order. The
+  // order inside a group is the registry's, which is the order its numbers
+  // count in — the same under all three tabs, so no tab can become a second
+  // plan. The Completed and Deferred groups are not registry groups and keep
+  // the engine's own sequence, as they always did.
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     for (const tab of LANES) {
       const shown = applyFocus(items, tab, ALL)
-      for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
-        const priority = ['s-prereq-passkey-settings', 's-prereq-break-glass', 's-confirm-workloads']
-        const seen = g.items.filter(i => tab !== 'ready' || !priority.includes(i.id)).map((i) => i.order)
-        assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the group reordered the engine's sequence`)
+      const numbers = rowNumbersOf(items)
+      for (const g of groupsFor(tab, shown)) {
+        const seen = g.items.map((i) => numbers.get(i.id)!)
+        assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the numbers do not ascend`)
       }
+      for (const g of asideGroupsFor(shown)) {
+        const seen = g.items.map((i) => i.order)
+        assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the aside reordered the engine's sequence`)
+      }
+    }
+    // And the order a group draws is the same order whichever tab draws it.
+    for (const g of STEP_GROUPS) {
+      const perTab = LANES.map((tab) => groupsFor(tab, applyFocus(items, tab, ALL)).find((x) => x.key === `${tab}-${g.key}`)?.items.map((i) => i.id) ?? [])
+      const together = perTab.flat()
+      const registry = [...together].sort((a, b) => (STEP_GROUPS.find((x) => x.key === g.key)!.members.indexOf(a) + 1 || Infinity) - (STEP_GROUPS.find((x) => x.key === g.key)!.members.indexOf(b) + 1 || Infinity))
+      assert.equal(perTab.every((t) => t.every((id, at) => at === 0 || registry.indexOf(t[at - 1]) < registry.indexOf(id))), true, `${name}/${g.key}: a tab drew the group in an order of its own`)
     }
   }
 })
 
-test('On Hold groups by the primary blocker label and nothing else; the other two tabs are one group each', () => {
+test('every tab groups by the step group and nothing else, in the registry order, and the same heading means the same run of work in all three', () => {
+  // The heading is now a property of the STEP (roadmap/stepGroups.ts), not of
+  // the lane: a step moving lane keeps its heading, which is what lets the
+  // three tabs read as one plan. Where a row is held, and by what, is still
+  // said once — in the row's own lane label (`On Hold · Baseline conflict`).
+  const registry = STEP_GROUPS.map((g) => g.key)
   for (const name of FIXTURES) {
     const items = itemsFor(name)
-    for (const g of groupsFor('onHold', applyFocus(items, 'onHold', NO_FOCUS))) {
-      assert.match(g.key, /^hold-\d+$/)
-      for (const i of g.items) assert.equal(i.hold, g.label, `${name}/${i.id}: grouped under "${g.label}" while its blocker reads "${i.hold}"`)
-      // A healthy deeper prerequisite holds too (owner's status contract), under the wait's own heading.
-      // A wait on a Direction answer reads as one, whichever Direction step asks it (roadmap/direction.ts).
-      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold || g.label === WHEN.afterPrerequisites || g.label === directionWords.waiting, `${name}: "${g.label}" is not a blocker label`)
+    for (const tab of LANES) {
+      const drawn = groupsFor(tab, applyFocus(items, tab, NO_FOCUS))
+      const keys = drawn.map((g) => g.key)
+      assert.deepEqual(keys, [...keys].sort((a, b) => registry.indexOf(a.slice(tab.length + 1)) - registry.indexOf(b.slice(tab.length + 1))), `${name}/${tab}: the groups are not in the registry's order`)
+      for (const g of drawn) {
+        const key = g.key.slice(tab.length + 1)
+        assert.ok(registry.includes(key), `${name}/${tab}: "${g.key}" is not a registry group`)
+        assert.equal(g.label, groupTitleOf(STEP_GROUPS.find((x) => x.key === key)!, false), `${name}/${tab}/${g.key}: the heading is not the group's own title`)
+        for (const i of g.items) assert.equal(groupOf(i.id)?.key, key, `${name}/${i.id}: drawn under "${g.label}" while the registry puts it elsewhere`)
+      }
     }
-    for (const tab of ['ready', 'upNext'] as const) {
-      const keys = groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
-      assert.ok(keys.length <= 1 && (keys.length === 0 || keys[0] === tab), `${name}/${tab}: ${keys.join(',')}`)
+    // Every row is in exactly one group: the catch-all entry is why no lane can
+    // leave one unheaded, and the tab keys are why no row is drawn twice.
+    for (const i of items) assert.ok(groupOf(i.id) !== null, `${name}/${i.id}: no group claims this row`)
+  }
+})
+
+test('a row is numbered by its place in its group and keeps that number when a tab filters the list', () => {
+  for (const name of FIXTURES) {
+    const items = itemsFor(name)
+    const numbers = rowNumbersOf(items)
+    // Every row that has a group has a number, and no two rows of one group share one.
+    const byGroup = new Map<string, number[]>()
+    for (const i of items) {
+      const key = groupOf(i.id)!.key
+      const n = numbers.get(i.id)
+      assert.ok(typeof n === 'number' && n >= 1, `${name}/${i.id}: no number`)
+      byGroup.set(key, [...(byGroup.get(key) ?? []), n!])
     }
+    for (const [key, ns] of byGroup) assert.equal(new Set(ns).size, ns.length, `${name}/${key}: two rows share a number`)
+    // A listed member's number is its registry position, whatever the board holds.
+    for (const g of STEP_GROUPS) {
+      g.members.forEach((id, at) => {
+        if (items.some((i) => i.id === id)) assert.equal(numbers.get(id), at + 1, `${name}/${id}: not its registry position`)
+      })
+    }
+    // And a filtered tab does not renumber: the gaps are the rows the tab left out.
+    for (const tab of LANES) {
+      for (const g of groupsFor(tab, applyFocus(items, tab, NO_FOCUS))) {
+        for (const i of g.items) assert.equal(numbers.get(i.id), rowNumbersOf(items).get(i.id), `${name}/${tab}/${i.id}: the tab renumbered the row`)
+      }
+    }
+    // The premise this exists for: at least one tab shows a gap.
+    const gapped = LANES.some((tab) => groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).some((g) => g.items.some((i, at) => at > 0 && numbers.get(i.id)! !== numbers.get(g.items[at - 1].id)! + 1)))
+    assert.ok(gapped, `${name}: no filtered tab showed a gap, so this proves nothing`)
   }
 })
 
@@ -427,9 +485,9 @@ test('the board vocabulary is one record, and Ready is the default tab', () => {
   assert.deepEqual(Object.keys(BOARD.type), TYPE_ORDER, 'the work-type labels and the work-type order disagree')
   assert.equal(BOARD.showCompleted, 'Show completed')
   assert.equal(BOARD.showDeferred, 'Show deferred')
-  // The four zones are named, and the two on the right say what they hold:
-  // Impact is a population and When is a date.
-  assert.deepEqual(Object.values(BOARD.columns), ['State', 'Step', 'Impact', 'When'])
+  // The five zones are named: the group position leads, and the two on the
+  // right say what they hold — Impact is a population and When is a date.
+  assert.deepEqual(Object.values(BOARD.columns), ['#', 'State', 'Step', 'Impact', 'When'])
   const tabs: LaneTab[] = ['ready', 'upNext', 'onHold']
   for (const t of tabs) assert.ok(BOARD.lanes[t])
 })

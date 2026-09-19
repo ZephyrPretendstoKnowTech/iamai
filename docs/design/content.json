@@ -2281,6 +2281,34 @@
           "direction": {
             "title": "Decide Your Tenant's Direction",
             "completedTitle": "Decide Your Tenant's Direction"
+          },
+          "closeDoors": {
+            "title": "Close the Doors Nobody Should Use",
+            "completedTitle": "Close the Doors Nobody Should Use"
+          },
+          "protectAdmins": {
+            "title": "Protect Your Administrators",
+            "completedTitle": "Protect Your Administrators"
+          },
+          "mfaEveryone": {
+            "title": "Turn On MFA for Everyone",
+            "completedTitle": "Turn On MFA for Everyone"
+          },
+          "whereSignIn": {
+            "title": "Control Where People Sign In From",
+            "completedTitle": "Control Where People Sign In From"
+          },
+          "devices": {
+            "title": "Require Healthy Devices",
+            "completedTitle": "Require Healthy Devices"
+          },
+          "riskAndSessions": {
+            "title": "Respond to Risk and Limit Sessions",
+            "completedTitle": "Respond to Risk and Limit Sessions"
+          },
+          "ongoing": {
+            "title": "Ongoing Checks and Cleanup",
+            "completedTitle": "Ongoing Checks and Cleanup"
           }
         },
         "direction": {
