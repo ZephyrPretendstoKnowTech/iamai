@@ -73,8 +73,9 @@ test('uncertain policy evidence does not become a required tenant-change task', 
 test('new-group procedure discovers the group before selection and save', () => {
   const create = projection().tasks.find(row => row.id === 'create-exclusions-group')!
   const text = create.steps.join('\n')
+  // Wording since 716a3d42: create, scan to discover it, then select the new group and save.
   const discover = text.indexOf('Scan to update the plan')
-  const select = text.indexOf('Select the exact group')
+  const select = text.indexOf('Select the new group')
   assert.ok(discover >= 0 && select > discover)
   assert.match(text.slice(select), /Save.*scan again/i)
 })
@@ -86,10 +87,15 @@ test('a saved group with unread evidence is retained and is not requested again'
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: new Map(), naming: run.coverage.organisation.naming }
   const projected = emergencyGroupTasksOf(step, ctx)
   assert.equal(projected.tasks.find(row => row.id === 'choose-exclusions-group')?.required, false)
-  assert.match(projected.tasks.find(row => row.id === 'manage-emergency-membership')?.steps[0] ?? '', /object ID/i)
+  // Since 716a3d42 every tenant-changing task opens with "Keep your working administrator session open."; the object ID check follows it.
+  const firstAction = projected.tasks.find(row => row.id === 'manage-emergency-membership')?.steps.find(line => !/^Keep your working administrator session open\.$/.test(line)) ?? ''
+  assert.match(firstAction, /object ID/i)
   const membership = projected.tasks.find(row => row.id === 'manage-emergency-membership')!.steps.join('\n')
-  assert.match(membership, /Add members.*Select.*confirm/s)
-  assert.match(membership, /Remove.*confirm/s)
+  // Membership unread: the task names the accounts to confirm as direct members and asks for the list to be
+  // verified, never a guessed add or remove (716a3d42: values named in the step that uses them).
+  assert.match(membership, /Confirm \*\*bg1@[^*]+\*\*, \*\*bg2@[^*]+\*\* appear as direct members/)
+  assert.match(membership, /verify the intended list/i)
+  assert.doesNotMatch(membership, /\bRemove\b/)
   const policies = projected.tasks.find(row => row.id === 'configure-policy-exclusions')!.steps.join('\n')
   assert.match(policies, /not established the policy or group change values/i)
   assert.match(policies, /Assignments → Users → Exclude → Users and groups/)

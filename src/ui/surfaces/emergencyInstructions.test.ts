@@ -134,3 +134,23 @@ test('Step 4: a verified account reads its sign-in time once; a completed step s
   const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
   assert.match(cleanup, /sub: row\.done \? 'Every selected account is verified\.' : 'Verify every selected account after the final configuration is observed\.'/)
 })
+
+test('Step 2 Entra text lists each policy missing the group exclusion by name (foundation audit A1)', async () => {
+  const { emergencyImplementation } = await import('./emergencyImplementation.ts')
+  let listed = 0
+  for (const [name, make] of CASES) {
+    const value = make()
+    const run = runFixture(value)
+    const step = run.steps.find(row => row.id === 's-prereq-exclusion-group')
+    if (!step) continue
+    const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    const text = emergencyImplementation(step, ctx) ?? ''
+    const missing = (step.configurationFindings ?? []).find(f => f.key === 'group-policies')?.items?.filter(i => i.label === 'Group exclusion' && i.outcome !== 'pass') ?? []
+    assert.doesNotMatch(text, /^- (Mode|Group exclusion) — /m, `${name}: a bullet names the check, not the policy`)
+    for (const item of missing) {
+      assert.ok(text.includes(`${item.subjectLabel} — `), `${name}: ${item.subjectLabel} is not listed`)
+      listed++
+    }
+  }
+  assert.ok(listed > 0, 'no case has a policy missing the group exclusion: the premise is untested')
+})
