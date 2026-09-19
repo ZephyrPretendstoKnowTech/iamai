@@ -92,7 +92,7 @@ test("the campaign step's groups and the admin readiness list read the states; t
   }
   // The campaign's groups and the admin step say so in their own words.
   const campaign = JSON.stringify(stepById['s-verify-mfa'])
-  for (const t of ['with no sign-in method', 'with no phishing-resistant method', 'not confirmed in the last 30 days on every device they use', '{list:adminsNotReady}']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
+  for (const t of ['with no sign-in method', 'with no phishing-resistant method', 'not confirmed in the last 30 days on every kind of device they use', '{list:adminsNotReady}']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
   assert.ok(JSON.stringify(stepById['admins-phishing-resistant']).includes('not yet Ready for phishing-resistant MFA'))
   // The 90% gate is the engine's constant (roadmap/constants.ts): MFA Readiness
   // reads it and renders the count it implies, and no surface writes the number.

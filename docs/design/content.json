@@ -989,7 +989,8 @@
         "noPasskey": "No passkey",
         "blocked": "Blocked",
         "unread": "Not read",
-        "noPhone": "No phone sign-ins"
+        "noPhone": "No phone sign-ins",
+        "covered": "Covered"
       },
       "methods": {
         "passkey": "Passkey",
@@ -1081,7 +1082,8 @@
         "proofNow": {
           "seamless": "Confirmed {date}. Seamless.",
           "confirmed": "Confirmed {date} with {method}.",
-          "none": "No phishing-resistant sign-in in 30 days."
+          "none": "No phishing-resistant sign-in in 30 days.",
+          "covered": "Covered: confirmed on their other {type} in the last 30 days."
         },
         "verdict": {
           "yes": "Allowed now",
@@ -1098,7 +1100,7 @@
         "unlisted": "Unlisted model ({aaguid})",
         "why": {
           "seamless": "Every device they use signs them in on its own.",
-          "ready": "Phishing-resistant sign-in is confirmed on every device they use in the last 30 days.",
+          "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
           "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
           "onLeave": "They haven’t signed in during the last 30 days. Confirm the method when they return.",
           "device": "Confirmed on one device, but {device} signs in without it.",
@@ -3813,7 +3815,7 @@
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
           "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
-          "needsProof": "{n} people with a phishing-resistant method not confirmed in the last 30 days on every device they use; ask each to sign in with it once on each:",
+          "needsProof": "{n} people with a phishing-resistant method not confirmed in the last 30 days on every kind of device they use; ask each to sign in with it once on each:",
           "readinessUnknown": "{n} people with incomplete method or sign-in data; scan again before assessing readiness:",
           "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
         },

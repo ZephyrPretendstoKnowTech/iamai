@@ -29,7 +29,7 @@ type Words = {
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
-  chip: Record<'seamless' | 'confirmed' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
+  chip: Record<'seamless' | 'confirmed' | 'covered' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
   sub: { noDevices: string }
   notReadCount: string
   methods: Record<MethodClass | 'none' | 'unread' | 'only' | 'notAllowed', string>
@@ -50,7 +50,7 @@ type Words = {
     lastSeen: string
     trust: Record<'joined' | 'hybrid' | 'registered' | 'none' | 'unknown', string>
     whyNot: Record<string, string>
-    proofNow: { seamless: string; confirmed: string; none: string }
+    proofNow: { seamless: string; confirmed: string; none: string; covered: string }
     verdict: Record<'yes' | 'no' | 'unknown', string>
     step3: Record<'yes' | 'no' | 'unknown', string>
     never: string
@@ -154,11 +154,11 @@ export function roleWord(r: ReadinessRow): string {
 
 export type Chip = { kind: 'computer' | 'phone'; os: string; word: string; tone: ReadinessState | 'unread'; title: string }
 
-/** A device's chip: the device, and where it stands. */
+/** A device's chip: the device, and where it stands. A device whose type is proven on another device of that type reads Covered. */
 export function deviceChip(d: DeviceReading, state: ReadinessState, holdsPasskey = false): Chip {
-  const tone: Chip['tone'] = d.seamless ? 'seamless' : d.proof ? 'ready' : state === 'blocked' ? 'blocked' : state === 'method' ? 'method' : state === 'unknown' ? 'unread' : d.type === 'phone' && state === 'device' && !holdsPasskey ? 'device' : 'confirm'
+  const tone: Chip['tone'] = d.seamless ? 'seamless' : d.proof || d.covered ? 'ready' : state === 'blocked' ? 'blocked' : state === 'method' ? 'method' : state === 'unknown' ? 'unread' : d.type === 'phone' && state === 'device' && !holdsPasskey ? 'device' : 'confirm'
   // In Needs a device, a phone with no passkey reads No passkey; a device whose method the person already holds reads Not confirmed.
-  const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' && d.type === 'phone' && !holdsPasskey ? T.chip.noPasskey : T.chip.notConfirmed
+  const word = d.seamless ? T.chip.seamless : d.proof ? T.chip.confirmed : d.covered ? T.chip.covered : state === 'blocked' ? T.chip.blocked : state === 'method' ? T.chip.notSetUp : state === 'device' && d.type === 'phone' && !holdsPasskey ? T.chip.noPasskey : T.chip.notConfirmed
   const trust = d.trust ?? 'unknown'
   return { kind: d.type, os: osWord(d.os), word, tone, title: `${versionWord(d.os, d.version)}. ${T.panel.trust[trust]}` }
 }
@@ -272,7 +272,7 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
     const trust = d.trust ?? 'unknown'
     const sub = `${d.type === 'computer' ? P.trust[trust] + ' ' : ''}${fillText(P.lastSeen, { date: monthDay(d.lastSeen) })}`
     const best = `${T.options[d.best].replace(/^a /, '')}${d.whyNot ? '. ' + P.whyNot[d.whyNot] : ''}`
-    const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : P.proofNow.none
+    const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : d.covered ? fillText(P.proofNow.covered, { type: d.type }) : P.proofNow.none
     return { icon: d.type, name: versionWord(d.os, d.version), sub, facts: [[P.best, capital(best)], [P.now, now]] }
   })
 }
@@ -295,8 +295,8 @@ export function whyLine(r: ReadinessRow): string {
   const W = T.panel.why
   if (rd.next.kind === 'replaceKey' || rd.recommended?.kind === 'replaceKey') return W.replaceKey
   if (rd.onLeave) return W.onLeave
-  // Needs a device names the device the gap is on, whatever the next action there is.
-  const gap = rd.devices.find((d) => d.proof === null)
+  // Needs a device names the device the gap is on (a device type with no proof), whatever the next action there is.
+  const gap = rd.devices.find((d) => !d.covered)
   if (r.state === 'device' && gap) return fillText(W.device, { device: deviceNoun(gap.os) })
   return W[r.state] ?? ''
 }

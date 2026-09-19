@@ -19,8 +19,10 @@
 // requirement: a person proven with Windows Hello on the only platform they use
 // is Ready without one, and the recommendation to add one changes nothing here.
 //
-// Proof is at the strongest grain the records support — method class × platform
-// family (deviceDetail.operatingSystem). It is never a physical device: a
+// Proof is read at the strongest grain the records support — method class ×
+// platform family (deviceDetail.operatingSystem) — and required per device type
+// (a computer, a phone; owner, 2026-09-19): a joined Windows laptop and a Linux
+// box need proof once, for "computer". It is never a physical device: a
 // platform string is not a device identity, and a push approved on a phone
 // during a Windows sign-in is a Windows sign-in.
 //
@@ -194,10 +196,11 @@ export type MfaHistory = { schema: 1; asOf: string; people: Record<string, Perso
 //             credential. A device with nothing built in (a personal PC, Linux)
 //             or whose built-in option is impossible tops out at Ready (owner,
 //             2026-09-18: "it isn't technically seamless. It's just ready")
-//   ready     phishing-resistant sign-in confirmed in the window on every kind
-//             of device they used in it
+//   ready     phishing-resistant sign-in confirmed in the window on every device
+//             type (computer, phone) they used in it
 //   confirm   a usable phishing-resistant method, not confirmed in the window
-//   device    confirmed on one device, but another signs in without it
+//   device    confirmed on one device type, but a device of another type signs
+//             in without it
 //   method    no usable phishing-resistant method
 //   blocked   a tenant setting stops them from setting one up
 //   unknown   IAMAI could not read what the answer depends on
@@ -245,6 +248,8 @@ export type DeviceReading = {
   whyNot: 'notJoined' | 'otherAccount' | 'attestation' | 'osTooOld' | 'notAllowed' | null
   /** The latest phishing-resistant sign-in on this device family inside the window. */
   proof: { cls: MethodClass; at: string } | null
+  /** Its device type is proven: this device, or another of the same type (a computer, a phone), has a phishing-resistant sign-in in the window. */
+  covered: boolean
   /** Signed in here with the best option (or, where nothing is built in, with any phishing-resistant method). */
   seamless: boolean
 }
@@ -583,7 +588,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     : d.os === 'Windows' && ctx.windowsDirectory === 'none' ? { ...d, trust: 'none' }
     : d
   const inWindowDevices = seenDevices.filter((d) => inWindow(d.at)).sort((a, b) => byPlatform(a.os, b.os)).map(settled)
-  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId), proof: null, seamless: false })
+  const bare = (d: DeviceSeen): DeviceReading => ({ os: d.os, type: deviceTypeOf(d.os), lastSeen: d.at, trust: d.trust, version: d.version, ...eligibility(d, ctx, input.userId), proof: null, covered: false, seamless: false })
 
   if (inv === null) return { ...base, automated, devices: inWindowDevices.map(bare), state: 'unknown', unknown: 'methods', methods: null, qualifying: [], hasPasskey: null, next: { kind: 'rescan', reason: 'methods' } }
   // The method rows never list certificates; where the registration report has no
@@ -655,12 +660,15 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   const common = { credentials, lost, other, automated, methods, qualifying, hasPasskey, lastConfirmed }
 
   // What each device can do, and its latest phishing-resistant sign-in (the seamless one first).
-  const devices: DeviceReading[] = inWindowDevices.map((d) => {
+  const read: DeviceReading[] = inWindowDevices.map((d) => {
     const e = bare(d)
     const seamlessOf = (cls: MethodClass): boolean => seamlessProof(e.best, e.builtIn, e.possible, cls, forms)
     const p = windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).sort((a, b) => (seamlessOf(b.cls) ? 1 : 0) - (seamlessOf(a.cls) ? 1 : 0) || (a.at < b.at ? 1 : -1))[0]
     return { ...e, proof: p ? { cls: p.cls, at: p.at } : null, seamless: !!p && seamlessOf(p.cls) }
   })
+  // Proof is required once per device type (owner, 2026-09-19): a Linux box beside a proven Windows laptop is covered.
+  const provenTypes = new Set(read.filter((d) => d.proof !== null).map((d) => d.type))
+  const devices: DeviceReading[] = read.map((d) => ({ ...d, covered: provenTypes.has(d.type) }))
 
   // The best thing to set up first: the phone passkey where a phone is used
   // (it also signs them in from any computer), Windows Hello on their own joined
@@ -717,9 +725,9 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     const os = (cls === 'windowsHello' ? devices.find((d) => d.os === 'Windows') : devices[0])?.os ?? null
     return { ...base, ...common, devices, state: 'confirm', next: { kind: 'confirm', cls, os } }
   }
-  const missing = devices.filter((d) => d.proof === null)
+  const missing = devices.filter((d) => !d.covered)
   if (missing.length > 0) {
-    // The one action that closes the gap on a device, in order: sign in once with a
+    // The one action that closes the gap on a device type, in order: sign in once with a
     // credential they already hold that works there; set up the best option; update
     // a phone too old for it; and only where every gap waits on a tenant setting, Blocked.
     const holdsFor = (d: DeviceReading): MethodClass | null => {
@@ -736,10 +744,11 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
     const reason: BlockReason = ctx.passkey.enabled === false ? 'passkeyOff' : 'authenticatorNotAllowed'
     return { ...base, ...common, devices, state: 'blocked', blocked: reason, next: { kind: 'waitSetup', reason } }
   }
-  // Ready until the oldest device's latest phishing-resistant sign-in leaves the window
+  // Ready until the oldest device type's latest phishing-resistant sign-in leaves the window
   // (its latest, not its seamless one: a later key sign-in keeps the device Ready).
-  const latestOn = (d: DeviceReading): string => windowProofs.filter((x) => x.os === d.os && qualifying.includes(x.cls)).map((x) => x.at).sort().pop() as string
-  const readyUntil = devices.map((d) => new Date(Date.parse(latestOn(d)) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
+  const typeOf = new Map(devices.map((d) => [d.os, d.type]))
+  const latestOn = (t: DeviceType): string => windowProofs.filter((x) => x.os !== null && typeOf.get(x.os) === t && qualifying.includes(x.cls)).map((x) => x.at).sort().pop() as string
+  const readyUntil = [...provenTypes].map((t) => new Date(Date.parse(latestOn(t)) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
   // Recommend only what the device can have: a built-in option that is not ruled out.
   const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no')
   const seamless = devices.length > 0 && devices.every((d) => d.seamless)
