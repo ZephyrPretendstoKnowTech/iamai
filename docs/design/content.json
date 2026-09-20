@@ -4721,8 +4721,9 @@
       "dates": "{datesChange}",
       "doneEnd": "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.",
       "doneWhen": [
-        "A scan confirms the session policy is On with the intended sign-in frequency, browser persistence, assignments and exclusions.",
-        "Representative browser sign-ins behave as intended without interrupting normal work."
+        "A scan confirms the session policy is On for the administrator roles it names, with the intended sign-in frequency, browser persistence, assignments and exclusions.",
+        "Representative admin browser sign-ins behave as intended without interrupting normal admin work.",
+        "Limit How Long Sessions Last covers these administrators too, as part of everyone; where both apply, the shorter sign-in frequency is the one that takes effect."
       ],
       "ifWrong": "{changeIfWrong}",
       "comms": {
@@ -5488,8 +5489,9 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
       "doneWhen": [
-        "A scan confirms the session policy is On with the intended sign-in frequency, browser persistence, assignments and exclusions.",
-        "Representative browser sign-ins behave as intended without interrupting normal work."
+        "A scan confirms the session policy is On for all users in the browser, with the intended sign-in frequency, browser persistence, assignments and exclusions.",
+        "Representative browser sign-ins across the workforce behave as intended without interrupting normal work.",
+        "Shorten Admin Sessions asks the administrator roles it names to sign in more often than this; an administrator covered by both is held to that shorter frequency."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
