@@ -4015,8 +4015,24 @@
             "id": "ms-block-legacy",
             "authority": "Microsoft Learn",
             "title": "Block legacy authentication with Conditional Access",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-legacy-authentication",
-            "checkedOn": "2026-09-12",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication",
+            "checkedOn": "2026-09-19",
+            "userFacing": true
+          },
+          {
+            "id": "ms-ca-client-apps",
+            "authority": "Microsoft Learn",
+            "title": "How to Use Conditions in Conditional Access Policies",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+            "checkedOn": "2026-09-19",
+            "userFacing": true
+          },
+          {
+            "id": "ms-basic-auth",
+            "authority": "Microsoft Learn",
+            "title": "Deprecation of Basic authentication in Exchange Online",
+            "url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online",
+            "checkedOn": "2026-09-19",
             "userFacing": true
           }
         ],
@@ -4054,7 +4070,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Client apps: Exchange ActiveSync clients and Other clients only**.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Client apps**: set **Configure** to **Yes**, then check only **Exchange ActiveSync clients** and **Other clients**. Left at **No**, the condition matches every client app, modern ones included.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -4066,7 +4082,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.\n2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n3. Under Conditions → Client apps, make sure only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, make sure \"All users\" is selected. Under Target resources, make sure \"All resources\" is selected.\n5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.\n6. Under Grant, make sure \"Block access\" is selected.\n"
+          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.\n2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n3. Under Conditions → Client apps, make sure \"Configure\" is set to \"Yes\" and only \"Exchange ActiveSync clients\" and \"Other clients\" are checked. Left at \"No\", the condition matches every client app.\n4. Under Users → Include, make sure \"All users\" is selected. Under Target resources, make sure \"All resources\" is selected.\n5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.\n6. Under Grant, make sure \"Block access\" is selected.\n"
         },
         "entra.correct-grant": {
           "meta": {

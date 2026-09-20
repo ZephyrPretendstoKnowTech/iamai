@@ -1,7 +1,7 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Client apps: Exchange ActiveSync clients and Other clients only**.
+3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Client apps**: set **Configure** to **Yes**, then check only **Exchange ActiveSync clients** and **Other clients**. Left at **No**, the condition matches every client app, modern ones included.
 4. Grant/access control: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
@@ -11,7 +11,7 @@
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.
 2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
-3. Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.
+3. Under Conditions → Client apps, make sure "Configure" is set to "Yes" and only "Exchange ActiveSync clients" and "Other clients" are checked. Left at "No", the condition matches every client app.
 4. Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.
 5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.
 6. Under Grant, make sure "Block access" is selected.
