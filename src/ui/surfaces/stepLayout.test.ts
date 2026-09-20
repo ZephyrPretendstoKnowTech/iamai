@@ -94,7 +94,13 @@ test('U4: no Planned work banner stands over the channels', () => {
   for (const m of CONTENT_STEP.matchAll(/<div className="impl-planning"[^>]*>/g)) assert.match(m[0], /data-review="true"/, `a banner other than the review note: ${m[0]}`)
 })
 
-test('the full-width decision layout is exclusive to services', () => {
+// A Direction step used to drop the rail and run its questions across the whole
+// body, so its milestone became a band between the questions and Completion
+// Criteria and the step read as three stacked blocks. The owner asked for one
+// family (2026-09-20): every step keeps the same two columns, and no step
+// widens itself by what its main column happens to contain.
+test('no step widens its body by what its main column contains', () => {
   assert.doesNotMatch(CSS, /:has\([^)]*\.decision-form/, 'ordinary decision forms must retain their desktop sidebar')
-  assert.match(CSS, /\.step-body\.has-rail:has\(\.workflow-choices\)/)
+  assert.doesNotMatch(CSS, /\.step-body[^{]*:has\(/, 'a step body still reshapes itself from its own contents')
+  assert.doesNotMatch(CSS, /workflow-choice/, 'the Direction questions still carry their own layout')
 })
