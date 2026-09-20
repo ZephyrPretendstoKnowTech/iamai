@@ -69,7 +69,7 @@ const jsonOf = (o: Opened): Record<string, unknown> => {
 
 test('Medium user risk on mid: the export states the guest exclusion and no session control, as the JSON sends', () => {
   const o = opened('mid', 's-goal-user-risk-medium')
-  const body = jsonOf(o) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } }; sessionControls: unknown }
+  const body = jsonOf(o) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } }; grantControls: { builtInControls: string[] }; sessionControls: unknown }
   assert.ok(body.conditions.users.excludeGuestsOrExternalUsers, 'the premise: the JSON excludes guest and external users')
   assert.equal(body.sessionControls, null, 'the premise: the JSON sets no session control')
   // The resolved operation of this stand-in baseline says otherwise: the case the export used to read.
@@ -81,7 +81,19 @@ test('Medium user risk on mid: the export states the guest exclusion and no sess
   assert.match(text, /Users: Include All users/)
   assert.match(text, /Also exclude Guest or external users.*all types/)
   assert.match(text, /Session: not configured/)
-  assert.match(text, /Require multifactor authentication and Require password change.*Require all selected controls/)
+  // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md §5):
+  // the pin pairs Require password change with the baseline's authentication
+  // strength, while Microsoft's Graph grant reference says "passwordChange must be
+  // accompanied by mfa using an AND operator" (conditionalAccessGrantControls v1.0,
+  // ms.date 2026-04-06, checked 2026-09-20), which is the pair the JSON and
+  // PowerShell write. The export no longer has to pick one: the procedure names the
+  // pin's pair, because that is what IAMAI compares the tenant against, and says
+  // which pair the machine channels send; the settings block is still the
+  // translation of the body the JSON actually sends.
+  assert.deepEqual(body.grantControls.builtInControls, ['mfa', 'passwordChange'], 'the premise: the JSON sends Microsoft documented pair')
+  assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
+  assert.match(text, /Microsoft's Graph reference documents `passwordChange` paired with the built-in `mfa` control instead, which is the pair the JSON and PowerShell outputs on this step write/)
+  assert.match(text, /^- Grant → Require multifactor authentication, Require password change; Require all the selected controls$/m)
 })
 
 test('Medium sign-in risk on mid: the export grants built-in MFA with no session control, as the JSON sends', () => {

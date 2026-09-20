@@ -38,6 +38,13 @@ const STATES: [PackageState, Record<string, unknown>][] = [
 
 /** Wording that describes a second, unmanaged-device session policy as part of this step. */
 const COMPANION = /Policy B:|two-policy|two policies|collapse|with its pair|this pair|both (component )?policies|either component|9-hour|9 hours|12\/9|unmanaged-device component|unmanaged component|every app\b/i
+/**
+ * A sign-in frequency written out as a number. The pinned target carries the
+ * interval; the step and its package point at the target everywhere, so a re-pin
+ * cannot leave a stale number behind (docs/plans/risk-and-sessions-spec.md,
+ * "Limit How Long Sessions Last takes its interval from the target").
+ */
+const INTERVAL = /\b\d+[- ]hours?\b/i
 
 test('session-lifetime: every projected explanation in every state describes the browser policy alone', () => {
   for (const [state, bindings] of STATES) {
@@ -48,7 +55,13 @@ test('session-lifetime: every projected explanation in every state describes the
     // The whole briefing, not its first line: the target is the browser policy and says there is no second one.
     // The target names only the exclusions the resolved target has (consolidated batch item 2), never a mandatory shared-device set.
     // Editorial batch C: the Policy A/B framing is gone; the intended policy is stated alone, and every state says it is the only one.
-    assert.match(ai, /All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours/, state)
+    // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md): the
+    // browser-only condition goes through its Configure toggle — at No the interval
+    // would reach every desktop and mobile app — and the interval itself is the
+    // resolved target's, never restated here, so a re-pin cannot leave a stale number
+    // (concept-conditional-access-conditions and howto-conditional-access-session-lifetime,
+    // checked 2026-09-20).
+    assert.match(ai, /All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it \(periodic reauthentication\); Persistent browser session Never persistent; no grant\./, state)
     assert.doesNotMatch(ai, /shared-device exclusions|group\/shared-device/, state)
     assert.match(ai, /The baseline has one session policy for this step/, state)
     // A state that writes settings also says not to add a companion.
@@ -56,6 +69,8 @@ test('session-lifetime: every projected explanation in every state describes the
     // Every channel but the script, whose retained modes are execution and unchanged in this pass.
     for (const c of p.channels.filter((x) => x.channel !== 'powershell')) {
       assert.doesNotMatch(c.text, COMPANION, `${state}/${c.channel}: ${c.text.match(COMPANION)?.[0]}`)
+      // Only the resolved target carries the interval, so no channel writes one out.
+      assert.doesNotMatch(c.text, INTERVAL, `${state}/${c.channel}: ${c.text.match(INTERVAL)?.[0]}`)
     }
     // Editorial batch C: a correction keeps the policy's state, so "do not turn it On until…" is gone.
     if (state === 'partial') {
@@ -72,7 +87,9 @@ test('session-lifetime: the pre-enforcement Email describes browser sessions for
   assert.ok(email, 'the pre-enforcement Email is not drawn')
   assert.equal(email.communication?.audience, 'all-users')
   // Editorial batch C: the register notice, without the unverified claim about apps outside the browser.
-  assert.match(email.text, /We plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in\./)
+  // Respond to Risk and Limit Sessions: the notice no longer writes the interval out either.
+  assert.match(email.text, /We plan to change browser sign-in to the new frequency and disable persistent browser sign-in\./)
+  assert.doesNotMatch(email.text, INTERVAL)
   assert.doesNotMatch(email.text, /Apps outside the browser are not affected/)
   assert.doesNotMatch(email.text, COMPANION)
   assert.doesNotMatch(email.text, /IT has separately checked/)
@@ -98,8 +115,18 @@ test("session-lifetime: the Plan's own Why, Done when, comms and export text nam
   // The whole content entry: Why, who, Done when, comms, the manager and help-desk notes, and the reference steps.
   const own = JSON.stringify(step)
   assert.doesNotMatch(own, COMPANION, own.match(COMPANION)?.[0] ?? '')
-  assert.doesNotMatch(own, /\{policyNameB\}/)
-  assert.match(String(step.doneEnd), /^The policy is enforced in \{tenant\}: the browser policy, carrying the baseline's session control values \(12-hour sign-in frequency and never-persistent browser sessions\)/)
+  // The A/B pair belongs to a goal the baseline really implements with two policies
+  // (stepVars.ts pairBaselineNames); this one is a single policy, so neither the
+  // labels nor the pair's name slots may appear — the reviewer reference said "One
+  // policy" and then labelled it "Policy A:", binding a name this step never gets.
+  assert.doesNotMatch(own, /\{policyName[AB]\}|Policy A:|"policyName[AB]"/, own.match(/\{policyName[AB]\}|Policy A:|"policyName[AB]"/)?.[0] ?? '')
+  // Respond to Risk and Limit Sessions: the end state is everyone's browser session and
+  // nothing else, and it takes the interval from the baseline instead of naming one.
+  assert.equal(step.doneEnd, "Nobody's browser session at {tenant} survives closing the browser, and every one of them authenticates again on the interval the baseline sets, with the exclusions group applied.")
+  // The interval is a slot, never a number the entry writes out: only `example`
+  // (sample data) and the resolved target carry a value.
+  const authored = JSON.stringify({ ...step, example: undefined })
+  assert.doesNotMatch(authored, INTERVAL, authored.match(INTERVAL)?.[0] ?? '')
   // As the Plan renders them: every word of the contract and the export, on every sample plan that carries the step.
   let rendered = 0
   for (const name of ['demo', 'demo-week2'] as const) {
@@ -110,6 +137,7 @@ test("session-lifetime: the Plan's own Why, Done when, comms and export text nam
     for (const s of run.steps.filter((x) => /all-users-no-persistence|session-lifetime/.test(x.id) && x.doesntApply == null)) {
       const words = JSON.stringify(stepContract(s, ctx)) + JSON.stringify(stepExportView(s, ctx))
       assert.doesNotMatch(words, COMPANION, `${name}/${s.id}: ${words.match(COMPANION)?.[0]}`)
+      assert.doesNotMatch(words, /Policy A:|Policy B:/, `${name}/${s.id}`)
       rendered += 1
     }
   }
