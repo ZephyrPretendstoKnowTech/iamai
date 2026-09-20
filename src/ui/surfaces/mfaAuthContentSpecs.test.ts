@@ -16,6 +16,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
+import { fillText } from '../../content/render.ts'
 import { authoredParts } from './authoredText.ts'
 
 type Block = { meta: { id: string; channel: string }; text: string }
@@ -26,7 +27,11 @@ const channel = (stepId: string, ids: string[]): string => ids.map((id) => packa
 const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
 const PACKAGE_SRC = readFileSync('src/ui/surfaces/stepPackage.ts', 'utf8')
 const GUESTS = 's-goal-guests-mfa'
-const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+// The confirmation names the exclusions step by its real title. "the Exclusions Group
+// step" named no step (quality audit 2026-09-20 §3, `fixConfirmExclusions`), so the
+// sentence carries a {step} slot the contract fills with that step's own title.
+const EXCLUSIONS_TITLE = 'Configure Emergency Exclusions'
+const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`
 const MFA_ALL = 's-goal-mfa-all-users'
 // Cycle 6 (review 5 queue 1): a correction's Save item also carries the line naming the
 // exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
@@ -53,9 +58,9 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 
 const tilesOf = (b: StepBody) => [...b.readiness.tiles, ...b.readiness.satisfied]
 
-test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the threshold says what it measures, the unknown handoff reads plainly, Entra is one numbered procedure, and AI Info explains the policy', () => {
+test('s-goal-mfa-all-users: the bar names Configure Emergency Exclusions, the threshold says what it measures, the unknown handoff reads plainly, Entra is one numbered procedure, and AI Info explains the policy', () => {
   // The readiness bar's sub-line while the scan's group waits on a Save.
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   const waiting = bodiesOf(noExclusionsAnswer(fixture('mid')))
   assert.ok([...waiting.values()].some((b) => b.contract.whatToDo.text === CONFIRM), 'no step on the mid fixture waits on the group with the new words')
   // The threshold tile's collapsed value: the percentage and what it measures.
@@ -89,7 +94,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
         // the resolved settings beside it already name, and it says what All users
         // covers — guests included (§6 F6, ms-mfa-all-users), so the reader does not
         // go looking for a second policy for them.
-        ['Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.'],
         ['Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.'],
         ['Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.'],
       ],
@@ -185,7 +190,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
     {
       kind: 'list', ordered: true, start: 3, items: [
         ['Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.'],
-        ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.'],
+        ['Users → Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions. Remove any exclusion the resolved target does not list.'],
         // protect-admins C5: "Client apps: All" read as a selection to make; the
         // target's `all` is what an UNCONFIGURED condition gives (Learn: a new
         // policy applies to every client app type until Configure is set to Yes).
@@ -208,9 +213,9 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.ok(ai.includes(KEEP_STATE))
 })
 
-test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra is one numbered procedure naming the policy, and AI Info explains the attack', () => {
+test('s-goal-block-auth-transfer: the bar names Configure Emergency Exclusions, Entra is one numbered procedure naming the policy, and AI Info explains the attack', () => {
   const AUTH = 's-goal-block-auth-transfer'
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   assert.ok(packageOf(AUTH).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(AUTH, ['entra.correct-conditions', 'entra.correct-verify'])
@@ -221,7 +226,7 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
-        ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.'],
         ['Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.'],
       ],
     },
@@ -260,7 +265,7 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
-        ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.'],
         ['Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.'],
       ],
     },

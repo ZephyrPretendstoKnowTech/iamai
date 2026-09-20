@@ -15,6 +15,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
+import { fillText } from '../../content/render.ts'
 import { authoredParts } from './authoredText.ts'
 
 type Block = { meta: { id: string; channel: string }; text: string }
@@ -22,7 +23,11 @@ type Pkg = { meta: { optionalBindings?: string[] }; blocks: Record<string, Block
 const packageOf = (stepId: string): Pkg => (registry as unknown as { packages: Record<string, Pkg> }).packages[stepId]
 type ContentStepWords = { id: string; why: string; doneEnd?: string; doneWhen?: string[]; decision?: { label?: string; help?: string; text?: string; tileValue?: string } }
 const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as ContentStepWords[]).find((s) => s.id === id)!
-const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+// The confirmation names the exclusions step by its real title. "the Exclusions Group
+// step" named no step (quality audit 2026-09-20 §3, `fixConfirmExclusions`), so the
+// sentence carries a {step} slot the contract fills with that step's own title.
+const EXCLUSIONS_TITLE = 'Configure Emergency Exclusions'
+const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`
 
 /** One step's body on a fixture, as the Plan composes it (sessionAdminContentSpecs.test.ts). */
 function bodyOf(name: FixtureName, stepId: string): StepBody {
@@ -60,7 +65,7 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
         ['Name: Core - Require - Medium sign-in risk.'],
-        ['Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions.'],
         ['Target resources: All resources.'],
         // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md):
         // both conditions go through their own Configure toggle, and each says what
@@ -88,7 +93,7 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
   ].join('\n\n'))
   // The PowerShell script and the JSON body are unchanged, and the shared readiness sentence stays (BLOCKED.md).
   assert.match(packageOf(MEDIUM).blocks['powershell.run'].text, /^# IAMAI compact implementation script — Challenge Medium-Risk Sign-ins$/m)
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   // Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('sign-in-risk-medium')
   // Respond to Risk and Limit Sessions §2: About this Step says what a medium rating
@@ -137,7 +142,7 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   assert.match(drawn(b, 'ai'), /^Selected grant: [^{}]+/m)
   assert.doesNotMatch(drawn(b, 'ai'), /\[omit |\{\{|only phishing-resistant methods/)
   // The shared readiness sentence stays (BLOCKED.md); the held end state is unchanged.
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   const words = stepWords('sign-in-risk')
   // Respond to Risk and Limit Sessions §3: About this Step is the step's own outcome,
   // and says what sign-in risk is a reading of — one authentication request, and how
@@ -243,7 +248,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   // Require Healthy Devices E1: About this Step is the step's own outcome.
   assert.equal(words.why, 'Enrolling a device in Intune asks the person to sign in again, so an open session cannot quietly turn a device into a managed one. It is a session control and nothing else: it adds no MFA requirement and it does not make the device compliant.')
   // The shared readiness sentence stays (BLOCKED.md).
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
 })
 
 test('MFA preparation explains registration, support and useful campaign setup without inventing configuration approval', () => {

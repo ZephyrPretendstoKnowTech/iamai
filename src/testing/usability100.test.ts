@@ -7,6 +7,7 @@ import { laneViewFor } from '../ui/surfaces/planBoard.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import { railOf } from '../ui/surfaces/stepContract.ts'
+import { IMPACT } from '../derive/whoLine.ts'
 import { applySkips } from '../roadmap/progress.ts'
 import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../roadmap/manualWork.ts'
 
@@ -44,9 +45,14 @@ test('completed decisions retain their completion criteria without claiming repo
 test('account review evidence describes accounts, not policy prompts',()=>{
   const {body}=setup('initial')
   for(const id of ['s-check-dormant-accounts','s-check-separate-admin-accounts']) {
-    const note=body(id).readiness.satisfied.find(t=>t.key==='people')?.note ?? ''
-    assert.match(note,/accounts this step asks you to review/)
-    assert.doesNotMatch(note,/this policy|prompted/)
+    const tile=body(id).readiness.satisfied.find(t=>t.key==='people')
+    assert.ok(tile,id)
+    // A sentence about a list is drawn only where there is a list: over a reach of
+    // nobody the tile states the count and stops (quality audit 2026-09-20 section 3,
+    // "These are the accounts this step asks you to review" over a reach of nobody).
+    if(tile.value===IMPACT.noUserImpact){assert.equal(tile.note,null,id);continue}
+    assert.match(tile.note ?? '',/accounts this step asks you to review/,id)
+    assert.doesNotMatch(tile.note ?? '',/this policy|prompted/,id)
   }
 })
 test('service-group instructions bind the actual proposed group name',()=>{

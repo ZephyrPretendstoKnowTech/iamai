@@ -15,6 +15,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
+import { fillText } from '../../content/render.ts'
 import { authoredParts } from './authoredText.ts'
 
 type Block = { meta: { id: string; channel: string }; text: string }
@@ -24,7 +25,11 @@ const packageOf = (stepId: string): Pkg => (registry as unknown as { packages: R
 const channel = (stepId: string, ids: string[]): string => ids.map((id) => packageOf(stepId).blocks[id].text).join('\n\n')
 type ContentStepWords = { id: string; why: string; doneEnd?: string; doneWhen?: string[]; decision?: { help?: string; options?: string[] } }
 const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as ContentStepWords[]).find((s) => s.id === id)!
-const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+// The confirmation names the exclusions step by its real title. "the Exclusions Group
+// step" named no step (quality audit 2026-09-20 §3, `fixConfirmExclusions`), so the
+// sentence carries a {step} slot the contract fills with that step's own title.
+const EXCLUSIONS_TITLE = 'Configure Emergency Exclusions'
+const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`
 // Cycle 6 (review 5 queue 1): a correction's Save item and AI Info also carry the line naming
 // the exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
 const REMOVED = "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]"
@@ -51,7 +56,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
   const SESSION = 's-goal-admin-session'
   // Editorial batch C: the register Why.
   assert.equal(stepWords('admin-session').why, 'Shorter admin browser sessions reduce how long a signed-in browser can remain useful without another authentication check. Test the experience so normal admin work remains practical.')
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   assert.ok(packageOf(SESSION).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(SESSION, ['entra.correct-conditions', 'entra.correct-verify'])
@@ -62,7 +67,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
-        ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.'],
         // protect-admins D1/D4: the Client apps condition only narrows once
         // Configure is Yes, and the interval belongs to the resolved target,
         // which the package must not restate (docs/plans/protect-admins-spec.md).
@@ -119,7 +124,7 @@ test('s-goal-token-protection: Why says what token protection is, AI Info explai
   assert.equal(words.why, 'Token protection binds a sign-in token to the device that earned it, so a token copied off that device is no use elsewhere. It reaches the Windows desktop apps and the resources this policy names, and nothing else: a browser, another platform or another resource is not protected and is not blocked either.')
   // Completion Criteria was its own two lines repeated; the end state is the outcome now.
   assert.equal(words.doneEnd, 'Every supported Windows desktop client reaching the resources this policy names at {tenant} presents a token bound to its own device, and the exclusions group is applied.')
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   const ai = packageOf(TOKEN).blocks['ai.correct'].text
   // Editorial batch C (factual fix): supported session tokens on the pinned resources and platform only, never every token, and no claim that the correction only adds the exclusions group.
   assert.match(ai, /^Token protection makes supported sign-in session tokens harder to reuse on another device\. In this policy it applies only to Exchange Online, SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop and Windows 365, for Windows mobile apps and desktop clients, with Microsoft Entra joined Cloud PCs excluded by the device filter\. It does not cover browser sessions, other platforms, or every token\.$/m)
@@ -156,7 +161,7 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
   const words = stepWords('block-legacy-auth')
   assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
   // The shared readiness sentence and the stored answers stay (BLOCKED.md).
-  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.equal(fillText(CONTRACT.fixConfirmExclusions, { step: EXCLUSIONS_TITLE }), CONFIRM)
   assert.deepEqual(words.decision?.options, ['None', 'Temporary exception accounts: {devices}'])
 })
 
