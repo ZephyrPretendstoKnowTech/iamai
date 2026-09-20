@@ -366,3 +366,47 @@ in neither map draws "Tenant settings", which says nothing about the step.
 `impact.fallbackLabel`; `IMPACT_TOPICS` in `rowWho.ts` remains a second place
 where a row's word can live, keyed by goal id rather than step id. Two maps for
 one column is not this group's to collapse.
+
+---
+
+## From Ongoing Checks and Cleanup (group 9, 2026-09-20)
+
+`docs/plans/ongoing-spec.md`. The four `cleanup-*` rows are out of the anatomy
+by the owner's own decision, so nothing below is about them; these are the
+shared parts this wave could not change from inside one group.
+
+### 11. "Affected people · No user impact" on a step whose subject is the accounts
+
+Both account-hygiene checks draw the shared `people` tile. Its value comes from
+`population.active` through `stepContract.ts`, and Disable or Confirm Dormant
+Accounts sets `active: 0` on purpose — nobody signs in to a dormant account, so
+no sign-in is disrupted. The tile therefore reads:
+
+> **Affected people** · No user impact
+> These are the accounts this step asks you to review. Check the listed
+> evidence before deciding what each account needs.
+
+The label and the value say the step touches nobody; the note under them says
+the step is about these very accounts. One card, two things — the V1 standard's
+sixth item says a card says one. On `micro` Use Separate Accounts for Admin Work
+reaches the same reading, because that fixture's one admin has no recorded
+activity.
+
+**Why it was not built here.** The value is `contract.who`, one producer shared
+by every step in every group, and "no user impact" is correct for most of them.
+Making it right here means either a second reading of `who` for review steps or
+a different note, and both move every step's rendered body and snapshot.
+
+**The question for the owner.** For a step whose population is the thing being
+reviewed rather than the people a policy reaches, should the tile say what the
+review covers ("2 accounts to review") instead of what the change disrupts?
+
+### 12. A step in source conflict still offers four implementation channels
+
+`s-goal-admin-portals-protected` draws the conflict box — "Not enough
+information to provide implementation guidance" — while its snapshot lists
+Entra, PowerShell, JSON and AI Info in the channel strip. `packageDrawsImplementation`
+and the conflict path disagree about whether the step has anything to offer.
+Nothing the step can say fixes it, and no other group's step is in this state,
+so it was left. It is invisible today in any case (spec §11.8): the step is
+withheld from every customer plan.

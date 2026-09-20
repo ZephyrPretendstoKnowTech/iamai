@@ -80,7 +80,7 @@ and a reason.*
 
 **Applies when.** Always, on every plan and every licence tier. It is also the
 free tier's `stale-accounts` rung (`roadmap/ladder.ts COVERED_BY_STEP`), so its
-words have to read correctly with no Entra ID P1 (§9).
+words have to read correctly with no Entra ID P1 (§10).
 
 **What IAMAI actually reads.** `derive/sets.ts notActiveUsers`: enabled person
 accounts (guests included) whose `lastSuccessOf` is older than `INACTIVE_DAYS`
@@ -115,7 +115,7 @@ in the records IAMAI collected.
    matters.** `ms-signinactivity`: `lastSuccessfulSignInDateTime` is "The date
    and time of the user's most recent successful **interactive or
    non-interactive** sign-in." `ms-inactive` says of the same property: "The date
-   and time of the last successful interactive sign-in." Recorded in §10.1. The
+   and time of the last successful interactive sign-in." Recorded in §11.1. The
    step now says what it reads — a successful sign-in — and does not claim it
    covers, or excludes, unattended use.
 5. **Failed attempts are a different property.** `ms-signinactivity` on
@@ -171,7 +171,7 @@ nothing else, and the everyday account of the person who holds it has no
 privileged role.*
 
 **Applies when.** Always. It is also the free tier's `admin-accounts-separate`
-rung (`COVERED_BY_STEP`), so it has to read correctly with no sign-in logs (§9).
+rung (`COVERED_BY_STEP`), so it has to read correctly with no sign-in logs (§10).
 
 **Microsoft facts.**
 
@@ -241,7 +241,7 @@ scan sees an admin promise to stop reading mail on that account.
 - B6 the step's Learn link is the page that carries this instruction.
 - B7 the package's checked date is 2026-09-20 and the step shows it.
 - B8 on a free tenant the step says it cannot see everyday use, and asks for the
-  review anyway (§9).
+  review anyway (§10).
 
 ---
 
@@ -446,7 +446,7 @@ changed the template once, and left the five per-policy entries alone.
    that low-privilege scopes previously excluded from an All-resources policy
    with exclusions "will **no longer be excluded**", rolling out in phases. That
    is a per-policy fact, and per-policy words were out of this wave's scope
-   (§10.3).
+   (§11.3).
 
 **Completion from the scan.** It cannot be: the row is an attestation, one of the
 V1 §3.3 exceptions. What *is* durable is the basis it is recorded against —
@@ -533,7 +533,7 @@ V1 §3.3.
 - F4 Completion Criteria names who answers the alert and what they do with it.
 - F5 the row still draws Why, Implementation Tasks and Done when — no heading
   moved, and no Cleanup row carries a key it did not carry before.
-- K1 every Cleanup row's words reach the prompt pack whole (§10.7).
+- K1 every Cleanup row's words reach the prompt pack whole (§11.7).
 
 ---
 
@@ -616,7 +616,27 @@ or one retired after the survivor is shown to cover it.*
 
 ---
 
-## 9. The free tier (`micro`)
+## 9. Rendered at 1280, on the demo and the follow-up scan
+
+Read on `http://localhost:5213/planner/?demo=1#/plan`, 2026-09-20, at an emulated
+1280 viewport. Every state this group's members reach on those two snapshots,
+and what it says now.
+
+| State | Member and snapshot | What it reads |
+|---|---|---|
+| The group heading | initial / follow-up | «Ongoing Checks and Cleanup · 2 of 9 steps» under Ready and «7 of 9» under On Hold; «3 of 5» and «2 of 5» on the follow-up. Nine rows, not eleven: `cleanup-hardening` and `cleanup-naming` are present only when the tenant has something for them, and `s-goal-admin-portals-protected` is drawn nowhere (§11.8). |
+| Ready · Review, with a decision per subject | Disable or Confirm Dormant Accounts, initial | About states the 90-day window and why a blank record proves nothing. Tasks Remaining holds the check-step card and an Account Decision picker per listed account. The Entra task names the User Administrator role and says the record can take a day. «Source checked Sep 20, 2026» — a line this step did not have before. |
+| The same row after a re-scan | Disable or Confirm Dormant Accounts, follow-up | «1 account» where the initial scan read «2 accounts»: one account signed in, and nothing else moved. |
+| Ready · Review, evidence partly unread | Use Separate Accounts for Admin Work, initial and follow-up | «4 accounts». Tasks Remaining carries «Administrator Account Evidence · Account or role data not fully read». About opens on phishing; the Entra task gives the admin account an address that reaches the person, says why it is cloud-only, sends registration to `mysignins.microsoft.com/security-info`, and carries Microsoft's two counts. |
+| On Hold, waiting on an object and a direction | Require MFA for Inforcer Access, initial | «On Hold», bar «Waiting on your direction». Four cards: the policy, «Inforcer Application · Application not established», the emergency-accounts prerequisite and «Waiting on your direction · Confirm What You Use». The create task's step 5 now leaves Client apps unconfigured and says what ticking the boxes would write. Impact reads «Inforcer sign-ins». |
+| On Hold, a Cleanup row | Alert on Emergency Account Sign-ins, initial and follow-up | Why, Implementation, Done when — the row's own three headings, unmoved. The procedure now runs diagnostic setting → object IDs → alert rule → action group → controlled test, and Done when names what the responder does with the alert. |
+| On Hold, a Cleanup row with a live picker | Review Overlapping Policies, initial and follow-up | Why opens on the 240-policy cap. The instructions add «Retire by disabling, not deleting», above the retained/retired pickers, which are unchanged. |
+| On Hold, a generated review row | Review Who Can Use Azure Virtual Desktop, initial | «Waiting on your direction · Confirm What You Use», plus the AVD card «Allowed AVD Users · Source definition needs clarification». Its per-policy About and instruction are its own; the six template lines follow them. |
+| Ready · Review, a generated review row | Review SharePoint and OneDrive Access outside Trusted Locations, follow-up | «Ready · Review». The template's six instructions read in order, and Completion Criteria ends «IAMAI holds that record against the version you read, and asks again when the policy or the objects it names change.» |
+| Not drawn at all | Block the Admin Portals for Non-Admins, both | No row. `ui/surfaces/customerPlanSteps.ts` withholds it from every customer plan (§11.8), so its corrected words are read through the fixtures and the tests, not on the screen. |
+| Not reached by either snapshot | `cleanup-hardening`, `cleanup-naming` | The demo defers no emergency hardening and follows its own naming convention, so neither row is present. Recorded, not invented; their words are asserted from `content.cleanup`. |
+
+## 10. The free tier (`micro`)
 
 Both check steps are on every plan, and on a free tenant they are two of the very
 few rows there are. What they read there, taken from `runFixture('micro')`:
@@ -634,11 +654,11 @@ step's** — the one place the two steps had diverged. That is acceptance B8.
 
 Recorded: `micro`'s fixture gives its users `lastSuccessfulSignIn` dates even
 though its licence is `none`, so the fixture shows dates beside a note saying
-there would be none. The note is right and the fixture is not a tenant; §10.2.
+there would be none. The note is right and the fixture is not a tenant; §11.2.
 
 ---
 
-## 10. Recorded for the owner
+## 11. Recorded for the owner
 
 1. **Microsoft defines `lastSuccessfulSignInDateTime` two ways.** The Graph
    reference (`ms-signinactivity`) says "most recent successful **interactive or
@@ -686,3 +706,20 @@ there would be none. The note is right and the fixture is not a tenant; §10.2.
    itself. Acceptance K1 asserts every line of every Cleanup row reaches the
    pack whole. The drill row is frozen and gained nothing; it is simply no
    longer able to crowd the rows after it.
+8. **`s-goal-admin-portals-protected` is drawn on no customer plan at all.**
+   `ui/surfaces/customerPlanSteps.ts` filters the goal out of every plan
+   (`planData.ts`, `demoFacts.ts`): "Temporarily withheld from customer plans;
+   source evaluation stays intact." So the group registers nine members and the
+   board draws eight kinds; the step's state, its conflict reading and its words
+   are all real, and nobody sees them. `scripts/smoke.mjs` asserts the absence.
+   This wave corrected the step's words anyway, because the withholding is
+   marked temporary and the words are what would appear the day it is lifted —
+   but the owner should know that §4 improves a page no admin can open today,
+   and that the decision to withhold it has outlived the wave that made it.
+9. **Two claims in this group have no fixture behind them.** No fixture reaches
+   `Ready · Ready to enforce` for Require MFA for Inforcer Access, and none
+   draws `cleanup-hardening` or `cleanup-naming`: the demo defers no emergency
+   hardening and already follows its own naming convention. Their words are
+   asserted from `content.cleanup` and from the package, which is what the
+   print, the export and the prompt pack carry, and the screen readings for them
+   are recorded as not reached rather than invented.
