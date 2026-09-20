@@ -60,4 +60,4 @@ If a legitimate flow breaks, return the same policy to Report-only and resolve t
 Microsoft's 2026 guidance explicitly documents Teams-device and Device Registration Service dependencies. Tenant evidence, not assumption, determines whether the baseline can be enforced unchanged.
 
 ## Source verification
-Pinned member plus current Microsoft authentication-flow/Teams-device/Graph v1.0 documentation rechecked September 10, 2026.
+Pinned member plus current Microsoft authentication-flow/Teams-device/Graph v1.0 documentation rechecked September 19, 2026 (docs/plans/close-doors-spec.md section 4).

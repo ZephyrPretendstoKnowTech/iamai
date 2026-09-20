@@ -4611,7 +4611,7 @@
         "tileNote": "The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows."
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and any device code sign-in workflows accounted for.",
+      "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Tools, shared devices and enrollment workflows that used device code have a tested alternative."
@@ -4626,11 +4626,20 @@
           {
             "text": "A script or a shared-screen app signing in by device code stops.",
             "applies": "deviceCodeUsersInScope"
+          },
+          {
+            "text": "Once a session has used this flow, later requests in it are blocked as well, which can sign a device out. Microsoft calls this protocol tracking.",
+            "applies": "always"
+          },
+          {
+            "text": "This policy covers all resources, so it reaches device registration too. A tenant that registers devices by device code must exclude the Device Registration Service.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Identify the application and its supported sign-in alternatives. For unattended work, use an appropriate workload or managed identity when the application supports it; test the required permissions and job.",
-          "For interactive CLI use, test the tool's supported browser-based sign-in on a suitable device. A browser sign-in does not transfer a session to an unrelated remote tool."
+          "For interactive CLI use, test the tool's supported browser-based sign-in on a suitable device. A browser sign-in does not transfer a session to an unrelated remote tool.",
+          "In the sign-in log, filter by Authentication Protocol for device code, then read Original transfer method in Activity details: a blocked request can belong to a session that used the flow earlier."
         ],
         "manager": "A sign-in flow often abused in phishing is turned off. Tools that legitimately use it need a tested alternative first.",
         "waits": null,
@@ -4658,7 +4667,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Authentication flows → Device code flow",
+          "Conditions → Authentication flows → Configure: Yes, then select Device code flow",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]

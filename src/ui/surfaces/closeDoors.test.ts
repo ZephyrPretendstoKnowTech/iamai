@@ -161,3 +161,45 @@ test('B3: the step offers only supported routes, never a password one', () => {
 test('B4: the mail-route package cites its Microsoft pages, checked with this group', () => {
   assert.equal(checkedOn('s-question-mail-devices'), '2026-09-19')
 })
+
+// ---------------------------------------------------------------------------
+// Block Device Code Sign-in (spec section 4)
+// ---------------------------------------------------------------------------
+
+/** A step's risk lines from the content file, whatever their `applies`. */
+const risksOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { more?: { risks?: { text?: string }[] } }).more?.risks ?? []).map((r) => r.text ?? '')) as string[]
+
+test('C1: protocol tracking is a risk on every state, not a line only report-only shows', () => {
+  assert.ok(risksOf('block-device-code').some((t) => /later requests in it are blocked as well, which can sign a device out/.test(t)), risksOf('block-device-code').join('\n'))
+  // And the create procedure, which is the state an admin meets first, says it too.
+  assert.match(blockText('s-goal-block-device-code', 'entra.create'), /later requests in it are blocked too and a device can be signed out/)
+})
+
+test('C2: the policy reaching Device Registration Service is a risk, and is in the create procedure', () => {
+  assert.ok(risksOf('block-device-code').some((t) => /must exclude the Device Registration Service/.test(t)), risksOf('block-device-code').join('\n'))
+  assert.match(blockText('s-goal-block-device-code', 'entra.create'), /also reaches \*\*Device Registration Service\*\*/)
+})
+
+test('C3: help desk names the log filter and the property that tells a tracked session apart', () => {
+  const lines = helpDeskOf('block-device-code')
+  assert.ok(lines.some((l) => /filter by Authentication Protocol for device code/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Original transfer method in Activity details/.test(l)), lines.join('\n'))
+})
+
+test('C4: the authentication-flows condition is set through Configure: Yes', () => {
+  assert.match(blockText('s-goal-block-device-code', 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+})
+
+test('C5: the held step names its own outcome, not "the baseline\'s target configuration"', () => {
+  // `doneEnd` is the Completion Criteria of a held policy step
+  // (stepContract.ts doneWhenOf). No fixture holds this step that way — the
+  // fixtures that hold it hold it for a reason with no policy at all — so the
+  // step's own sentence is read here, and the rendering of the same field is
+  // asserted on Block Authentication Transfer (D5) and Block Unsupported Device
+  // Platforms (E5), which the messy fixture does hold.
+  const end = String((stepById['block-device-code'] as unknown as { doneEnd?: string }).doneEnd ?? '')
+  assert.match(end, /^No sign-in to \{tenant\} completes through device code flow/)
+  assert.doesNotMatch(end, /the baseline's target configuration/)
+  assert.equal(checkedOn('s-goal-block-device-code'), '2026-09-19')
+})
