@@ -7,7 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { directionSteps, nextDirectionStep } from './direction.ts'
 import type { DirectionInput } from './direction.ts'
-import { DIRECTION_STEP, answersOfDecision, directionDecisionOf, savedAnswerOf } from './directionAnswers.ts'
+import { DIRECTION_STEP, answersOfDecision, directionDecisionOf, legacyDecisionsOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
@@ -59,7 +59,10 @@ test('(b) with no signal every suggestion is the safe default, and says it is on
   const devices = stepOf(steps, DIRECTION_STEP.devices)
   assert.equal(q(devices, 'deviceExceptions').suggested.value, 'none')
   assert.equal(q(devices, 'deviceExceptions').evidence, W.defaultEvidence)
-  assert.equal(q(stepOf(steps, DIRECTION_STEP.locations), 'officeNetwork').suggested.value, 'remote')
+  // A tenant with no trusted named location is not thereby all-remote, and the
+  // scan reads nothing either way (owner, 2026-09-20): the safe default is the
+  // one that keeps Define the Trusted Network on the plan.
+  assert.equal(q(stepOf(steps, DIRECTION_STEP.locations), 'officeNetwork').suggested.value, 'notInEntra')
   assert.equal(q(stepOf(steps, DIRECTION_STEP.locations), 'officeNetwork').evidence, W.defaultEvidence)
 })
 
@@ -304,4 +307,41 @@ test('a count of one bends "look": "1 account looks like"', async () => {
   const { fillText } = await import('../content/render.ts')
   assert.equal(fillText(W.questions.sharedDevices.seen, { n: 1 }), '1 account looks like shared-device accounts.')
   assert.equal(fillText(W.questions.sharedDevices.seen, { n: 2 }), '2 accounts look like shared-device accounts.')
+})
+
+test('the office network has a third answer, and answering it keeps the trusted-network step on the plan', () => {
+  // Owner, 2026-09-20: most small tenants have never created a trusted network,
+  // so the only answer they could give was "Everyone works remotely" — untrue,
+  // and it switched off the step that would have defined the office network in
+  // the first place.
+  const f = fixture('demo')
+  const q = stepsOf(f).flatMap((s) => s.directionQuestions ?? []).find((x) => x.key === 'officeNetwork')!
+  assert.deepEqual(q.options.map((o) => o.value), ['office', 'notInEntra', 'remote'])
+
+  const apply = (value: string) => {
+    const decision = directionDecisionOf({ officeNetwork: { value, picked: [] } })
+    const legacy = legacyDecisionsOf(DIRECTION_STEP.locations, { ...decision, at: AT } as never)
+    return Object.fromEntries(legacy)
+  }
+
+  // "Not in Entra yet" is the office-network option with nothing picked, which
+  // is the shape decisions.ts already reads as "the step stands, and its own
+  // question is unanswered". "Everyone works remotely" sets it aside.
+  assert.equal(apply('notInEntra')[PREREQ_STEP_ID.trustedLocation].option, 'office-network')
+  assert.deepEqual(apply('notInEntra')[PREREQ_STEP_ID.trustedLocation].picked, [])
+  assert.equal(apply('remote')[PREREQ_STEP_ID.trustedLocation].option, 'remote')
+  assert.equal(apply('office')[PREREQ_STEP_ID.trustedLocation].option, 'office-network')
+
+  // And the answer reads back, which the legacy decision alone cannot do: it
+  // cannot tell "not in Entra yet" from "nobody has answered".
+  for (const value of ['office', 'notInEntra', 'remote']) {
+    const m = applyStepDecisions(f.mapping, apply(value) as never)
+    assert.equal(savedAnswerOf('officeNetwork', m)?.value, value, value)
+  }
+
+  // A tenant that answers it is not thereby told its office network's ranges:
+  // IAMAI reads no sign-in addresses, and says so rather than implying it could.
+  const note = q.note ?? ''
+  assert.match(note, /Define the Trusted Network/)
+  assert.match(note, /does not read sign-in addresses/)
 })
