@@ -738,7 +738,12 @@ test('005.15: device-registration guidance keeps the replacement enforced before
   const { due, observing } = observingWithAPrerequisite()
   const cs = contentStepFor(due.step) as Record<string, any>
   const before = ((cs.whatToDo ?? {}).before ?? []).join(' ')
-  assert.match(before, /After it is enforced.*Require Multifactor Authentication to register or join devices to No/)
+  // mfa-everyone-spec.md §3 B3/B4: the line now says what leaving the tenant-wide
+  // setting at Yes costs, and names it as ms-device-settings does — but the order it
+  // guards is unchanged: prepare and enforce the replacement first, set the setting
+  // to No on that day, then test.
+  assert.match(before, /Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced/)
+  assert.match(before, /Prepare and validate the policy first; on the day it is enforced.*set that setting to No, then test/)
   const text = stepBodyOf(due.step, due.ctx).artifacts.find(a => a.id === 'portal')!.text()
   assert.match(text, /legacy device-registration MFA|legacy.*setting/i)
   assert.match(text, /Report-only/)
