@@ -6075,7 +6075,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Reset Passwords for Medium-Risk Users",
       "changeLine": null,
-      "why": "This rule responds to Medium user risk with MFA and a secure password change. It complements the separate High-risk control; it does not replace that protection.",
+      "why": "A medium rating means Microsoft saw moderate anomalies on the account and is less confident than it is at high. This rule answers that with the baseline's authentication strength and a secure password change, and leaves the separate High-risk control in place.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
@@ -6083,8 +6083,10 @@
         "lead": "{active} active people",
         "evidence": [
           "This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.",
-          "{n} people are rated at risk today: {list:atRiskUsers}",
+          "{n} people had a sign-in rated medium risk or higher since {from}: {list:mediumRiskUsers}",
+          "The baseline asks for {strengthName} and a password change together here, and adds no session control.",
           "People in scope need a registered MFA method to complete the secure password change; synchronized users also need password writeback.",
+          "Guests and external accounts are excluded from this policy, because the password they would have to change is held in their home directory.",
           "{existingCoverage}"
         ]
       },
@@ -6101,7 +6103,7 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold, with password change as the remediation and the exclusions group applied.",
+      "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered {strengthName} and changed the password, and the exclusions group is applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "People in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
@@ -6128,8 +6130,9 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "atRiskUsers": [],
+        "mediumRiskUsers": [],
         "sspr": "it is enabled for all users",
+        "strengthName": "Modern MFA + TAP",
         "policyName": "Core - Require - Password change for medium-risk users",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -6141,8 +6144,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",
           "Target resources → Resources → All resources",
-          "Conditions → User risk → Medium",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "Conditions → User risk → Configure: Yes, then Medium",
+          "Grant → Require authentication strength: {strengthName} and Require password change; Require all the selected controls. No session control: the baseline sets none here",
           "{reportOnlyLine}"
         ]
       },

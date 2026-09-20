@@ -372,6 +372,56 @@ test('C5: an unregistered person is blocked here too, and answering clears the r
   assert.ok(!/dismiss the risk in Identity Protection/.test(hd), hd)
 })
 
+// ---------------------------------------------------------------------------
+// Section 6: s-goal-user-risk-medium — Reset Passwords for Medium-Risk Users
+// ---------------------------------------------------------------------------
+
+test('D1: the step names the grant pair the pin holds, and says which one the machine channels write', () => {
+  // The pinned member carries builtInControls ["passwordChange"] with the custom
+  // authentication strength and no session control. conditionalAccessGrantControls
+  // v1.0 (ms.date 2026-04-06), checked 2026-09-20: "passwordChange must be
+  // accompanied by mfa using an AND operator" — a pair that reference does not
+  // describe, so the difference is stated instead of hidden.
+  const p = (pinned.policies as unknown as { id: string; grantControls: { builtInControls?: string[]; authenticationStrength?: unknown }; sessionControls: unknown }[]).find((x) => x.id === '7475b373-0544-4ee8-8827-cff35009136d')!
+  assert.deepEqual(p.grantControls.builtInControls, ['passwordChange'])
+  assert.ok(p.grantControls.authenticationStrength, 'the pinned member carries an authentication strength')
+  assert.equal(p.sessionControls, null)
+  const ref = referenceOf('user-risk-medium')
+  assert.ok(ref.includes('Grant → Require authentication strength: {strengthName} and Require password change'), ref)
+  assert.ok(!/Sign-in frequency → Every time/.test(ref), ref)
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.create'), /Require authentication strength/)
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.create'), /the JSON and PowerShell outputs on this step write/)
+})
+
+test('D2: password change is never paired with risk remediation', () => {
+  // conditionalAccessGrantControls v1.0, checked 2026-09-20: "passwordChange and
+  // riskRemediation must be used separately, not in combination."
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.correct.grant'), /password change and risk remediation are used separately, never together/)
+})
+
+test('D3: the risk condition is set through Configure: Yes, and Client apps is left alone', () => {
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*Medium\*\* only/)
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.correct.risk'), /\*\*Configure: Yes\*\*, then Medium only/)
+  assert.match(blockText(USER_RISK_MEDIUM, 'entra.correct.target'), /Leave \*\*Client apps\*\* unconfigured/)
+  assert.ok(referenceOf('user-risk-medium').includes('Conditions → User risk → Configure: Yes, then Medium'), referenceOf('user-risk-medium'))
+})
+
+test('D4: the step says why guests are excluded here, and names its own people', () => {
+  const text = allText('user-risk-medium')
+  assert.match(text, /Guests and external accounts are excluded from this policy/)
+  assert.match(text, /held in their home directory/)
+  assert.match(text, /\{list:mediumRiskUsers\}/)
+  // The exclusion is the pin's, not an invention.
+  const p = (pinned.policies as unknown as { id: string; conditions: { users: { excludeGuestsOrExternalUsers?: unknown } } }[]).find((x) => x.id === '7475b373-0544-4ee8-8827-cff35009136d')!
+  assert.ok(p.conditions.users.excludeGuestsOrExternalUsers, 'the pinned member excludes guests')
+})
+
+test('D5: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
+  assert.match(String((stepById['user-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /rates medium risk cannot be used again until its owner has answered \{strengthName\} and changed the password/)
+  assert.match(doneWhenOf('user-risk-medium').join('\n'), /the High user-risk policy remains in place/)
+  assert.equal(sourceCheckedOn(USER_RISK_MEDIUM), '2026-09-20')
+})
+
 test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
   assert.match(String((stepById['user-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot be used again until its owner has completed the remediation \{strengthName\} accepts/)
   assert.match(doneWhenOf('user-risk').join('\n'), /People rated at risk were reviewed/)
