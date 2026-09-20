@@ -2600,15 +2600,18 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "An alert helps your team notice emergency-account use and distinguish a planned drill from unexpected access.",
+      "why": "An alert is how anyone finds out an emergency account was used. It also tells a planned drill apart from access nobody expected.",
       "whatToDo": [
-        "Use your approved monitoring system to alert on sign-ins by the selected emergency accounts: for example, send SignInLogs to a Log Analytics workspace (Entra admin center → Entra ID → Monitoring & health → Diagnostic settings) or the SIEM you already use.",
-        "Create an alert rule for sign-ins where UserPrincipalName is one of {list:emergencyAccountUpns}.",
-        "Send it to a monitored destination and name who responds; test it with one controlled sign-in and confirm the alert arrives.",
+        "Send the sign-in logs somewhere they can be queried first: Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting, pick the sign-in categories, then Send to Log Analytics workspace. That takes at least the Security Administrator role, an Azure subscription and a workspace — or the SIEM you already use.",
+        "Take each emergency account's object ID from Entra ID → Users. The rule matches on the object ID, not the sign-in name, because a name can be changed under it. The accounts are {list:emergencyAccountUpns}.",
+        "In the Azure portal, as at least a Monitoring Contributor: Monitor → Alerts → + Create → Alert rule. Scope: the workspace. Condition: Signal name Custom log search, Query type Aggregated logs, a SigninLogs query filtered to those object IDs. Alert logic: Static, Greater than, threshold 0.",
+        "Give it an action group that reaches a person by email, SMS, push or voice, set Severity 0 - Critical, enable it on creation, and name who answers it.",
+        "Test it with one controlled sign-in and confirm the alert arrives. Agree what the responder then does: keep the logs, and decide whether the use was a drill, a real emergency, or neither.",
         "Review ingestion, retention and cost for the monitoring service you use."
       ],
       "doneWhen": [
-        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt."
+        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt.",
+        "The response owner knows what happens next: keep the logs, then decide whether the use was a drill, a real emergency, or neither."
       ]
     },
     "hardening": {
@@ -2616,10 +2619,10 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
-      "why": "These improvements were deferred after the minimum emergency checks passed. Completing them makes the recovery process more resilient.",
+      "why": "These emergency-access checks were deferred once the minimum ones passed. This is the Cleanup row a scan can close for you: each deferred check has to pass again on the tenant.",
       "whatToDo": [
         "{list:hardening}",
-        "Verify each result and scan again: the row closes when they pass. An earlier deferral does not count as done."
+        "Do each one, then scan again: the row closes when they pass. A deferral was a decision to wait, never a result, so nothing here counts as done until the scan finds it."
       ],
       "doneWhen": [
         "Every deferred emergency access recommendation passes on a scan."
@@ -2630,9 +2633,11 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "Consistent names make policy reviews easier for the next person responsible for the tenant.",
+      "why": "A naming standard lets the next person find a policy and understand its purpose without opening it. That is what makes the review after this one possible.",
       "whatToDo": [
         "Rename {list:renames}",
+        "A name that carries its own meaning has a sequence number, the resources it applies to, the response, who it applies to and when. IAMAI proposes names in the convention this tenant already uses.",
+        "A Conditional Access policy has no owner field, so put ownership in the name — a team prefix will do — and keep a register elsewhere of who answers for each one.",
         "Renaming changes no Conditional Access evaluation, but scripts or reports that find policies by name may need updating; keep the same policy IDs and settings."
       ],
       "doneWhen": [
@@ -2645,10 +2650,11 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "Overlapping policies can make later changes harder to understand. Consolidate only when the remaining policy preserves the access requirements that matter.",
+      "why": "A tenant is capped at 240 Conditional Access policies, the ones that are off included, so an overlap costs something. It also makes the next change harder to reason about.",
       "whatToDo": [
         "Compare the complete settings of {list:overlaps}: scope, exclusions, conditions, controls, risk levels and guest types.",
         "Choose Retain Both and record why when the policies serve different requirements. Otherwise select and save the retained policy and the policies to retire below before disabling or deleting anything. After the approved retirement, scan again so IAMAI can verify the retained policy is enforced and the retired policies are disabled or absent.",
+        "Retire by disabling, not deleting: a disabled policy comes back with one switch, while a deleted one can be restored for 30 days and no longer.",
         "Retire a policy only after the remaining one is shown to preserve the required coverage, tested and approved; keep a rollback record. Never remove High-risk coverage because a Medium-only policy exists."
       ],
       "doneWhen": [

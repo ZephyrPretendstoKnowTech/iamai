@@ -163,7 +163,13 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
   const { tenant } = args
   const cleanup = args.cleanup ?? []
   const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
-  const planBlocks: [string, string][] = cleanup.length > 0 ? [[PROMPTS.cleanup, cleanupText(cleanup)]] : []
+  // One block per Cleanup row, for the same reason each step gets one: the rows
+  // shared a single block, and `dataBlock` clips a block at PROMPT_BLOCK_MAX, so
+  // a plan whose earlier rows were long lost the later rows' words — and, past
+  // 4,000 characters, their titles (docs/plans/ongoing-spec.md §10.7). The demo
+  // was already over the cap before this wave. Each row now stands or falls on
+  // its own length.
+  const planBlocks: [string, string][] = cleanup.map((c) => [PROMPTS.cleanup, cleanupText([c])])
   // Each step is independently bounded, so a long plan cannot silently lose its later steps.
   const steps: [string, string][] = args.steps.map(step => [args.view(step).title, stepContext(step, args.view)])
   const items: PackItem[] = [
