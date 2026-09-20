@@ -40,6 +40,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { laneViewFor } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
+import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, sourceCheckedLine, entraWithSettings } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
@@ -267,7 +268,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const instructed = decides || createIfNeeded || creates || ownSteps
   // The milestone the action column leads with, over the package's own words for
   // it or none (stepContract.ts railOf, U3).
-  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? null)
+  // The rail's sub-line: the package's own action text, or — on a Direction
+  // step, which has no package — the sentence its content writes for what
+  // approving its answers does. Both are written; neither is composed here
+  // (stepLayout.test.ts U3).
+  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id))
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)

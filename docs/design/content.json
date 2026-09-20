@@ -832,15 +832,15 @@
       "startControl": "Start the plan",
       "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
       "blockedSubject": {
-        "operator": "Your own way back in",
+        "operator": "Your safe way in",
         "readiness": "Readiness threshold",
         "registration-no-tap": "Temporary Access Pass",
         "registration-coverage": "People without a method",
-        "registration-no-trusted-location": "Trusted location",
+        "registration-no-trusted-location": "Trusted network",
         "work-countries-review": "Work countries",
-        "passkey-settings-unread": "Authentication methods policy",
+        "passkey-settings-unread": "Passkey settings",
         "unverified-exclusion": "Excluded group",
-        "inforcer-application": "The Inforcer application",
+        "inforcer-application": "Inforcer application",
         "workload-identity-support": "Sync identity",
         "baseline-conflict": "Baseline definition"
       }
@@ -2257,7 +2257,7 @@
             "subject": "Baseline policy",
             "check": "Not reviewed yet"
           },
-          "reviewTaskTitle": "Read the baseline definition"
+          "reviewTaskTitle": "Review this baseline policy"
         },
         "impactLabels": {
           "s-confirm-workloads": "Services in this tenant",
@@ -2370,19 +2370,23 @@
           "steps": {
             "use": {
               "title": "Confirm What You Use",
-              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't."
+              "why": "Tell us which services and sign-in paths your organisation uses, so the plan only includes the policies you need, and closes the ones you don't.",
+              "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
               "title": "Identify Service and Shared Accounts",
-              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules."
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Mark them, so every count on the plan is about people, and these accounts get their own rules.",
+              "milestoneAction": "Approving these answers takes these accounts out of the people counts and gives them their own rules."
             },
             "devices": {
               "title": "Decide How People and Devices Sign In",
-              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced."
+              "why": "Choose where your devices are heading. It's fine if today looks different: the plan prepares the gap before anything is enforced.",
+              "milestoneAction": "Approving these answers decides which device policies your plan contains."
             },
             "locations": {
               "title": "Decide Where People Sign In From",
-              "why": "Tell us where your people work from. This sets which countries are allowed and which network counts as the office."
+              "why": "Tell us where your people work from. This sets which countries are allowed and which network counts as the office.",
+              "milestoneAction": "Approving these answers defines the office network and the countries your policies allow."
             }
           },
           "questions": {
@@ -3146,9 +3150,9 @@
       "aiFocus": "Distinguish approved countries from observed countries, identify additions and removals, and explain that IP location can differ from physical location.",
       "card": {
         "subject": "Allowed countries location",
-        "check": "Not created yet"
+        "check": "Not in place"
       },
-      "taskTitle": "Create the countries location"
+      "taskTitle": "Set up the allowed countries location"
     },
     {
       "id": "s-prereq-trusted-location",
@@ -3238,9 +3242,9 @@
       "aiFocus": "Explain which policies use the location, the approved ranges, observed matches and any unstable egress. Do not infer trust from traffic.",
       "card": {
         "subject": "Trusted network",
-        "check": "Not created yet"
+        "check": "Not in place"
       },
-      "taskTitle": "Create the trusted location"
+      "taskTitle": "Set up the trusted network"
     },
     {
       "id": "s-prereq-service-accounts-group",
@@ -3320,9 +3324,9 @@
       "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed.",
       "card": {
         "subject": "Service accounts group",
-        "check": "Not created yet"
+        "check": "Not in place"
       },
-      "taskTitle": "Create the group"
+      "taskTitle": "Set up the service accounts group"
     },
     {
       "id": "s-shared-devices",
@@ -3537,9 +3541,9 @@
       "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control.",
       "card": {
         "subject": "Per-user MFA states",
-        "check": "Still enforced"
+        "check": "Not in place"
       },
-      "taskTitle": "Disable the per-user states"
+      "taskTitle": "Disable the per-user MFA states"
     },
     {
       "id": "s-prereq-passkey-settings",
@@ -3673,9 +3677,9 @@
       "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
       "card": {
         "subject": "Authentication strength",
-        "check": "Not created yet"
+        "check": "Not in place"
       },
-      "taskTitle": "Create the strength"
+      "taskTitle": "Set up the authentication strength"
     },
     {
       "id": "s-ladder-operator-passkey",
@@ -3970,7 +3974,7 @@
         "subject": "Sign-in method setup",
         "check": "Not prepared yet"
       },
-      "taskTitle": "Run the preparation"
+      "taskTitle": "Help each person set up their method"
     },
     {
       "id": "mfa-all-users",
@@ -6372,7 +6376,7 @@
         "subject": "Administrator accounts",
         "check": "Not reviewed yet"
       },
-      "taskTitle": "Review each administrator"
+      "taskTitle": "Review each administrator account"
     },
     {
       "id": "service-accounts-trusted-network",

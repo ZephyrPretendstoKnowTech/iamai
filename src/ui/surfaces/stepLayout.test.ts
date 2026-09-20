@@ -12,6 +12,8 @@ import type { StepContract } from './stepContract.ts'
 import { HEAD } from './stepHeadings.ts'
 import { SNAPSHOT_DIR, SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
+import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 
 const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8')
 const CONTENT_STEP = read('./ContentStep.tsx')
@@ -71,14 +73,23 @@ test('U2: the body is a two-column grid, 1fr and 260px, that stacks below 900px'
   assert.doesNotMatch(narrow, /display:\s*none/, 'a column is hidden rather than stacked')
 })
 
-test('U3: the milestone sub-line is the package’s actionText or nothing, never generated', () => {
+test('U3: the milestone sub-line is a written sentence or nothing, never generated', () => {
   const lane = { lane: 'Up Next', substatus: null, label: 'Up Next · After Create or Correct Exclusions Group', tone: 'wait' }
   const undated = { milestone: { at: null, label: 'Make the object this step names', kind: 'resolve', gatedBy: 'after: Create or Correct Exclusions Group' }, state: { lane }, schedule: null, scheduledOn: null } as unknown as StepContract
   assert.deepEqual(railOf(undated), { metric: 'Not scheduled', sub: '' })
   assert.deepEqual(railOf(undated, 'Create and verify two emergency accounts'), { metric: 'Not scheduled', sub: 'Create and verify two emergency accounts' })
   const dated = { ...undated, schedule: { transition: 'createReportOnly', class: 'scheduled', at: '2026-09-22T00:00:00.000Z' } } as unknown as StepContract
   assert.deepEqual(railOf(dated), { metric: absoluteDate('2026-09-22T00:00:00.000Z'), sub: '' }, 'a dated milestone still writes its transition words')
-  assert.match(STEP_BODY, /railOf\(contract, pkg\?\.meta\.milestone\?\.actionText \?\? null\)/, 'the action column does not read the package’s milestone.actionText')
+  // Two written sources, no third: the package's own action text, and — on a
+  // Direction step, which has no package — the sentence its content writes for
+  // what approving its answers does (owner, 2026-09-20). Neither is composed.
+  assert.match(STEP_BODY, /railOf\(contract, pkg\?\.meta\.milestone\?\.actionText \?\? directionMilestoneAction\(step\.id\)\)/, 'the action column does not read the two written sources')
+  for (const id of DIRECTION_STEP_IDS) {
+    const text = directionMilestoneAction(id)
+    assert.ok(text && text.length > 0, `${id}: no written milestone sentence`)
+    assert.match(text, /^Approving these answers /, `${id}: the sentence does not say what approving does`)
+  }
+  assert.equal(directionMilestoneAction('s-goal-mfa-all-users'), null, 'a step that is not a Direction step takes one')
   assert.equal((CONTRACT as unknown as Record<string, unknown>).rail, undefined, 'the generated sub-line words are still in content')
   const fn = read('./stepContract.ts')
   const railSrc = fn.slice(fn.indexOf('export function railOf'), fn.indexOf('export type ImplementationEmpty'))

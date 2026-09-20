@@ -62,9 +62,9 @@
 ## demo / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -93,7 +93,7 @@
 ## demo / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -120,15 +120,15 @@
 ## demo / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
 
 ## demo / s-prereq-auth-strength — Create the Baseline's Authentication Strength
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the strength
+   tasks: Set up the authentication strength
    - [satisfied] Authentication strength
      remaining: - | check: In place
      says: No change needed.
@@ -155,17 +155,17 @@
 ## demo / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the group and add only the accounts an application owner confirmed run unattended.
 
 ## demo / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [open] Trusted network
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Confirm the office's public IP ranges with the network owner, then create the named location and mark it trusted.
 
 ## demo / s-shared-devices — Give Shared Devices Their Own Policy
@@ -286,7 +286,7 @@
 ## demo / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -372,7 +372,7 @@
      action: Finish Prepare Emergency Access Accounts first.
      link: Open Prepare Emergency Access Accounts
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Confirm What You Use
      remaining: - | check: Waiting on your direction
@@ -550,7 +550,7 @@ Jamie Singh
 ## demo / s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8 — Review SharePoint and OneDrive Access outside Trusted Locations
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -562,7 +562,7 @@ Jamie Singh
 ## demo / s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9 — Review Who Can Use Azure Virtual Desktop
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -577,7 +577,7 @@ Jamie Singh
 ## demo / s-review-baseline-iac-app-block-avd-nontrustedlocations-1qsycmx — Review Where Azure Virtual Desktop Can Be Used
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -589,7 +589,7 @@ Jamie Singh
 ## demo / s-review-baseline-iac-global-grant-mfa-windowsazuread-baselinescopes-1uqb8zb — Review MFA for the Baseline’s Azure Application Scope
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -660,9 +660,9 @@ Jamie Singh
 ## demo-week2 / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -691,7 +691,7 @@ Jamie Singh
 ## demo-week2 / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -718,9 +718,9 @@ Jamie Singh
 ## demo-week2 / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -729,7 +729,7 @@ Jamie Singh
 ## demo-week2 / s-prereq-auth-strength — Create the Baseline's Authentication Strength
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the strength
+   tasks: Set up the authentication strength
    - [satisfied] Authentication strength
      remaining: - | check: In place
      says: No change needed.
@@ -753,15 +753,15 @@ Jamie Singh
 ## demo-week2 / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the group and add only the accounts an application owner confirmed run unattended.
 
 ## demo-week2 / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -796,7 +796,7 @@ Jamie Singh
      remaining: - | check: People without a method
      action: when people without a method reaches 0 (now 7)
    - [open] Prerequisites
-     remaining: - | check: Trusted location
+     remaining: - | check: Trusted network
      action: when 1 trusted location exists (now 0)
    - [open] Confirm What You Use
      remaining: - | check: Waiting on your direction
@@ -894,7 +894,7 @@ Jamie Singh
 ## demo-week2 / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -956,7 +956,7 @@ Jamie Singh
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
 
 ## demo-week2 / s-goal-guests-mfa — Require MFA for Guests
@@ -1124,7 +1124,7 @@ Jamie Singh
 ## demo-week2 / s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8 — Review SharePoint and OneDrive Access outside Trusted Locations
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -1136,7 +1136,7 @@ Jamie Singh
 ## demo-week2 / s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9 — Review Who Can Use Azure Virtual Desktop
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -1151,7 +1151,7 @@ Jamie Singh
 ## demo-week2 / s-review-baseline-iac-app-block-avd-nontrustedlocations-1qsycmx — Review Where Azure Virtual Desktop Can Be Used
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -1163,7 +1163,7 @@ Jamie Singh
 ## demo-week2 / s-review-baseline-iac-global-grant-mfa-windowsazuread-baselinescopes-1uqb8zb — Review MFA for the Baseline’s Azure Application Scope
    eyebrow: Check step | lane: On Hold · null | state: Blocked
    bar: Complete the next task shown for each item.
-   tasks: Read the baseline definition
+   tasks: Review this baseline policy
    - [open] Baseline policy
      remaining: - | check: Not reviewed yet
      says: Finish the steps this one waits on first.
@@ -1234,9 +1234,9 @@ Jamie Singh
 ## small / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -1265,7 +1265,7 @@ Jamie Singh
 ## small / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -1290,9 +1290,9 @@ Jamie Singh
 ## small / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -1317,15 +1317,15 @@ Jamie Singh
 ## small / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Deferred · null | state: Skipped / Deferred
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Put this step back if you want it on the plan again.
 
 ## small / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -1401,7 +1401,7 @@ Jamie Singh
 ## small / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -1489,7 +1489,7 @@ Jamie Singh
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -1673,9 +1673,9 @@ Jamie Singh
 ## mid / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -1704,7 +1704,7 @@ Jamie Singh
 ## mid / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -1728,9 +1728,9 @@ Jamie Singh
 ## mid / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -1755,15 +1755,15 @@ Jamie Singh
 ## mid / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the group and add only the accounts an application owner confirmed run unattended.
 
 ## mid / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -1869,7 +1869,7 @@ Jamie Singh
 ## mid / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -1953,7 +1953,7 @@ Jamie Singh
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -2230,9 +2230,9 @@ Rowan Patel (guest)
 ## large / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -2261,7 +2261,7 @@ Rowan Patel (guest)
 ## large / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -2286,9 +2286,9 @@ Rowan Patel (guest)
 ## large / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -2316,15 +2316,15 @@ Rowan Patel (guest)
 ## large / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Deferred · null | state: Skipped / Deferred
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Put this step back if you want it on the plan again.
 
 ## large / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -2414,7 +2414,7 @@ Rowan Patel (guest)
 ## large / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -2484,7 +2484,7 @@ Rowan Patel (guest)
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -2937,9 +2937,9 @@ Kai Taylor (guest)
 ## messy / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -2966,7 +2966,7 @@ Kai Taylor (guest)
 ## messy / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -2991,9 +2991,9 @@ Kai Taylor (guest)
 ## messy / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -3018,15 +3018,15 @@ Kai Taylor (guest)
 ## messy / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Deferred · null | state: Skipped / Deferred
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Put this step back if you want it on the plan again.
 
 ## messy / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -3093,7 +3093,7 @@ Kai Taylor (guest)
      remaining: - | check: People without a method
      action: when people without a method reaches 0 (now 14)
    - [open] Prerequisites
-     remaining: - | check: Trusted location
+     remaining: - | check: Trusted network
      action: when 1 trusted location exists (now 0)
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -3133,7 +3133,7 @@ Kai Taylor (guest)
 ## messy / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -3220,7 +3220,7 @@ Kai Taylor (guest)
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -3432,9 +3432,9 @@ Alex Patel (guest)
 ## midflight / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -3463,7 +3463,7 @@ Alex Patel (guest)
 ## midflight / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -3488,9 +3488,9 @@ Alex Patel (guest)
 ## midflight / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Needs Correction
@@ -3515,15 +3515,15 @@ Alex Patel (guest)
 ## midflight / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Deferred · null | state: Skipped / Deferred
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Put this step back if you want it on the plan again.
 
 ## midflight / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -3619,7 +3619,7 @@ Alex Patel (guest)
 ## midflight / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -3691,7 +3691,7 @@ Alex Patel (guest)
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
@@ -3882,9 +3882,9 @@ Quinn Taylor
 ## hostile / s-prereq-per-user-mfa — Finish Moving Off Per-User MFA
    eyebrow: Preparation step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Disable the per-user states
+   tasks: Disable the per-user MFA states
    - [open] Per-user MFA states
-     remaining: - | check: Still enforced
+     remaining: - | check: Not in place
      says: On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.
    - [open] Legacy Per-User MFA
      remaining: - | check: Not fully read
@@ -3913,7 +3913,7 @@ Quinn Taylor
 ## hostile / s-check-separate-admin-accounts — Use Separate Accounts for Admin Work
    eyebrow: Check step | lane: Ready · Review | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Review each administrator
+   tasks: Review each administrator account
    - [open] Administrator accounts
      remaining: - | check: Not reviewed yet
      says: Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.
@@ -3927,9 +3927,9 @@ Quinn Taylor
 ## hostile / s-prereq-allowed-countries — Create or Correct Allowed Countries Location
    eyebrow: Preparation step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Create the countries location
+   tasks: Set up the allowed countries location
    - [open] Allowed countries location
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Create the countries named location the country rule reads, holding exactly the countries people work from.
    - [open] Allowed countries
      remaining: - | check: Not Fully Read
@@ -3960,15 +3960,15 @@ Quinn Taylor
 ## hostile / s-prereq-service-accounts-group — Create or Correct Service Accounts Group
    eyebrow: Preparation step | lane: Deferred · null | state: Skipped / Deferred
    bar: Complete the next task shown for each item.
-   tasks: Create the group
+   tasks: Set up the service accounts group
    - [open] Service accounts group
-     remaining: - | check: Not created yet
+     remaining: - | check: Not in place
      says: Put this step back if you want it on the plan again.
 
 ## hostile / s-prereq-trusted-location — Define the Trusted Network
    eyebrow: Preparation step | lane: Completed · null | state: In place / In place
    bar: Every task on this step is complete.
-   tasks: Create the trusted location
+   tasks: Set up the trusted network
    - [satisfied] Trusted network
      remaining: - | check: In place
      says: No change needed.
@@ -4058,7 +4058,7 @@ Quinn Taylor
 ## hostile / s-verify-mfa — Prepare Your Team for MFA
    eyebrow: Campaign step | lane: Ready · Create | state: Ready
    bar: Complete the next task shown for each item.
-   tasks: Run the preparation
+   tasks: Help each person set up their method
    - [open] Sign-in method setup
      remaining: - | check: Not prepared yet
      says: Help the selected people complete their sign-in setup.
@@ -4132,7 +4132,7 @@ Quinn Taylor
      remaining: - | check: Application not established
      action: The current scan has no exact application match for Inforcer (708861da-226e-4d65-a57a-24128df64524). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.
    - [open] Prerequisites
-     remaining: - | check: The Inforcer application
+     remaining: - | check: Inforcer application
      action: after: Identify the Inforcer application
    - [open] Prepare Emergency Access Accounts
      remaining: - | check: Prerequisite step
