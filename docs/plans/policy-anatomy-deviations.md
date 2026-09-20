@@ -16,11 +16,17 @@ anything: the board's grouping and the step's interior cannot answer differently
 The one deviation below that was approved on a single policy first (the settings
 fold) runs on the same gate.
 
-Outside it: the four Direction steps (the decision anatomy — nothing is built)
-and the four Cleanup rows other than the recovery drill (the owner excluded the
-Cleanup rows; `CleanupStep.tsx` keeps the drill on the task headings by its own
-kind). The four Establish Emergency Access steps draw the anatomy from their own
-producers and are frozen.
+Outside it: the four Direction steps and the four Cleanup rows other than the
+recovery drill (the owner excluded the Cleanup rows; `CleanupStep.tsx` keeps the
+drill on the task headings by its own kind). The four Establish Emergency Access
+steps draw the anatomy from their own producers and are frozen.
+
+The Direction steps keep the decision anatomy's three headings — nothing is
+built, so there are no Tasks Remaining and no Implementation Tasks — but since
+2026-09-20 their questions are drawn with the Emergency Access subject card and
+its grid (`DirectionQuestions.tsx`), and their body keeps the same 1fr/260px
+rail every other step has. Item 14 below records the one place that anatomy has
+no equivalent to reuse.
 
 ## Cut, and not rebuilt
 
@@ -509,3 +515,29 @@ and the conflict path disagree about whether the step has anything to offer.
 Nothing the step can say fixes it, and no other group's step is in this state,
 so it was left. It is invisible today in any case (spec §11.8): the step is
 withheld from every customer plan.
+
+## From the Direction steps' UI pass (2026-09-20)
+
+### 14. Approve answers sits under the questions, not in the action column
+
+An Emergency Access step puts the control it takes in IAMAI in the action
+column: Step 1's account picker and its **Save** sit in the rail, beside the
+milestone. A Direction step's one control is **Approve answers**, and it is now
+under the question grid in the main column instead.
+
+**Why it was not put in the rail.** The button saves every answer in the step at
+once, and those answers are the draft state the question cards hold
+(`DirectionQuestions.tsx` `draft`). Moving the button to the action column means
+lifting that state out of the Questions section into `ContentStep`, which is a
+change to how the step saves; the pass that made these steps look like the
+family was a visual one. It would also put the button seven cards away from the
+last question it approves, where Step 1's Save is directly under the one picker
+it saves.
+
+**Nothing was invented for it.** The button is the shared `Button variant="primary"`
+the rest of the Plan uses, standing under the grid the way the section's own
+lead line stands over it.
+
+**The question for the owner.** Should Approve answers move into the action
+column, beside the milestone, the way Step 1's Save does — accepting that it
+then sits away from the questions it approves?
