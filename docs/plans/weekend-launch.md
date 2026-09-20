@@ -121,6 +121,14 @@ Landed on main (not pushed yet):
 - **A not-deployed policy waiting on Direction** says "Answer {Direction step} first" and offers no creation. Same agent.
 - Landed since Gate 2: `7d156f3d` (an enforced policy awaiting its workflow test no longer reads "Not supported"), `2acbd97f` (Direction waits are undated), `1e1528b2`/`c7682fb5` (smoke runs against its own production build; the cause of the blank-Plan flake was Chrome's `ERR_INSUFFICIENT_RESOURCES` on hundreds of dev-server modules). The walk still starts a dev server and needs the same move before its next local run.
 
+## Where it stands (2026-09-20, 05:xx): all nine groups pushed, CI green, deployed
+
+`e7befb60` on main: **CI green (type check, 3,190 unit tests, browser smoke) and deployed to getiamai.com.** 128 commits since `44f6552d`. The live demo shows the nine groups, numbered rows, the foundation gate holding the policies, and every step drawing the Emergency Access anatomy.
+
+**What a new session should read first:** this file, then `docs/plans/step-redundancy-analysis.md`, then the seven wave specs (`close-doors-spec.md`, `protect-admins-spec.md`, `mfa-everyone-spec.md`, `where-people-sign-in-spec.md`, `require-healthy-devices-spec.md`, `risk-and-sessions-spec.md`, `ongoing-spec.md`), then `docs/plans/frozen-step-suggestions.md` and `docs/plans/policy-anatomy-deviations.md` — the two lists of things held for the owner rather than built.
+
+**Still owed to the owner:** the owner's own audit of every step ("we'll go through each step to make sure it's up to snuff"), the Direction steps' UI pass (acknowledged as poor, frozen for now, its own job), and the decisions in the two held lists.
+
 ## Overnight, 2026-09-19 → 20: every group rebuilt
 
 Order of work: redundancy read first (the owner's rule — evaluate a step for redundancy BEFORE building it), then the anatomy, then each group end to end.
