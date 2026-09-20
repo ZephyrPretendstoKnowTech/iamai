@@ -194,3 +194,35 @@ A Conditional Access condition left at **Configure: No** matches *everything*. E
    - item 22: archive the old manifest.
 5. **One policy anatomy for every policy step** (the V1 map §6), then the "By Area" view, then the words for waves 1–4. Protect Sign-in Method Registration must allow Windows Hello and Platform SSO setup for remote workers.
 6. **Sunday:** launch readiness (Home and How accuracy, phone widths, privacy), a full-suite milestone, and a live GetIAMAI check with the owner.
+
+## The V1 audit, 2026-09-20 evening: steps 0–4 done, step 5 gated
+
+**Step 0 landed and pushed** (`7f242c51`, CI green, full suite 3,576 pass / 0 fail).
+The five shape rules, the six approved text fixes, the dated source line on the five
+undated steps, and channel parity on the medium user-risk step. Two things were built
+and then reverted on the owner's instruction, because they broke his own rules: a
+`ProcedureSteps` component and a `##` authoring convention for two lines on one task
+(no-new-component rule), and a generated milestone sub-line (`stepLayout.test.ts` U3
+says written or nothing, never generated). Both were redone the cheap way — the two
+lines became instructions, and the four Direction milestone sentences are content the
+owner approved.
+
+**Step 2.5 is half done.** The office network's third answer shipped, and the
+suggestion moved to it so approving without reading no longer switches the
+trusted-network step off. The mail-devices group was **not** built: `serviceAccountUserIds`
+is both the group's membership and one of the two lists that say an account is not a
+person, so separating them without a second group narrows a live policy's exclusions.
+Costed to the owner as question 6.
+
+**Steps 1–4 complete.** Eight independent passes, in `docs/plans/v1-audit/`; the
+ranked merge is `docs/plans/v1-audit-findings.md`. 24 severity-4 findings, 12
+severity-3 classes, a delete list, and five owner decisions. Two pass findings were
+dropped on verification.
+
+**Step 5 has not started.** The owner set a gate: he ranks the merged list before
+anything is fixed. Nothing in the audit has been applied.
+
+**What a new session needs to know first:** four of the severity-4 findings are one
+line of production code each (S4-7, S4-8, S4-1, S4-4) and together they restore the
+product's central promise on a tenant whose reads fail. The recommended order is §8 of
+the findings document. Do not start it without the owner's ranking.
