@@ -321,6 +321,57 @@ test('B6: the risk condition is set through Configure: Yes, and Client apps is l
   assert.ok(referenceOf('user-risk').includes('Conditions → User risk → Configure: Yes, then High'), referenceOf('user-risk'))
 })
 
+// ---------------------------------------------------------------------------
+// Section 5: s-goal-sign-in-risk-medium — Challenge Medium-Risk Sign-ins
+// ---------------------------------------------------------------------------
+
+test('C1: About this Step says what a medium rating means', () => {
+  // concept-risk-detection-types (ms.date 2026-06-10), checked 2026-09-20:
+  // "Medium indicates that one or more moderate-severity anomalies were
+  // detected, but there's less confidence that the account is compromised."
+  const why = whyOf('sign-in-risk-medium')
+  assert.match(why, /one or more moderate anomalies/)
+  assert.match(why, /less confident than it is at high/)
+  assert.match(aboutOf(bodiesOf('mid').get(SIGN_IN_RISK_MEDIUM)!), /one or more moderate anomalies/)
+})
+
+test('C2: the step describes the grant and the absent session control the pin holds', () => {
+  // The pinned member carries builtInControls ["mfa"] and sessionControls null:
+  // not an authentication strength, and not Every time.
+  const p = (pinned.policies as unknown as { id: string; grantControls: { builtInControls?: string[] }; sessionControls: unknown }[]).find((x) => x.id === '180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc')!
+  assert.deepEqual(p.grantControls.builtInControls, ['mfa'])
+  assert.equal(p.sessionControls, null)
+  const ref = referenceOf('sign-in-risk-medium')
+  assert.ok(ref.includes('Grant → Require multifactor authentication. No session control: the baseline sets none here'), ref)
+  assert.ok(!/Require authentication strength: Multifactor authentication/.test(ref), ref)
+  assert.ok(!/Sign-in frequency → Every time/.test(ref), ref)
+  assert.match(allText('sign-in-risk-medium'), /not the authentication strength the High-risk policy uses, and it adds no session control/)
+})
+
+test('C3: the risk condition is set through Configure: Yes, and Client apps is left alone', () => {
+  assert.match(blockText(SIGN_IN_RISK_MEDIUM, 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*, then check Medium only/)
+  assert.match(blockText(SIGN_IN_RISK_MEDIUM, 'entra.correct.risk'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*Medium\*\* only/)
+  assert.match(blockText(SIGN_IN_RISK_MEDIUM, 'entra.correct.conditions'), /Leave \*\*Client apps\*\* unconfigured/)
+  assert.ok(referenceOf('sign-in-risk-medium').includes('Conditions → Sign-in risk → Configure: Yes, then Medium'), referenceOf('sign-in-risk-medium'))
+})
+
+test('C4: this step names its own people, and its Completion Criteria is its own outcome', () => {
+  // The medium step's reach is medium and high together (roadmap/evidence.ts),
+  // so its list is mediumRiskUsers, never the high step's.
+  assert.match(allText('sign-in-risk-medium'), /\{list:mediumRiskUsers\}/)
+  assert.match(String((stepById['sign-in-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /rates medium risk cannot continue until it is answered with multifactor authentication/)
+  assert.notEqual(String((stepById['sign-in-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), doneWhenOf('sign-in-risk-medium')[0])
+  assert.equal(sourceCheckedOn(SIGN_IN_RISK_MEDIUM), '2026-09-20')
+})
+
+test('C5: an unregistered person is blocked here too, and answering clears the risk', () => {
+  assert.ok(risksOf('sign-in-risk-medium').some((r) => /blocked rather than prompted/.test(r)), risksOf('sign-in-risk-medium').join('\n'))
+  const hd = helpDeskOf('sign-in-risk-medium').join('\n')
+  assert.match(hd, /clears the sign-in risk by itself/)
+  assert.match(hd, /AADSTS53004/)
+  assert.ok(!/dismiss the risk in Identity Protection/.test(hd), hd)
+})
+
 test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
   assert.match(String((stepById['user-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot be used again until its owner has completed the remediation \{strengthName\} accepts/)
   assert.match(doneWhenOf('user-risk').join('\n'), /People rated at risk were reviewed/)
