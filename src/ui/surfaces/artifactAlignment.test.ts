@@ -22,7 +22,8 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { cleanupText, groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
@@ -182,7 +183,18 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       // state an end of, and otherwise the policy's end state — what clears the
       // hold is Fix before continuing's (owner, 2026-09-11); never the rollout's gates.
       assert.equal(v.doneWhen.length, 1, `${where}: ${v.doneWhen.join(' | ')}`)
-      if (!NO_POLICY_REASONS.has(reason)) assert.match(v.doneWhen[0], /^(The policy is enforced|A scan confirms)\b/, `${where}: ${v.doneWhen.join(' | ')}`)
+      // The line is the step's own end state (steps[].doneEnd), or the shared
+      // one where the step states none — checked as the sentence it is, not by
+      // the words it opens with. A step whose outcome is named in its own words
+      // ("Only Android, iOS, Windows and macOS reach {tenant}", the V1 standard
+      // §3.1) states its end state as plainly as one that opens "The policy is
+      // enforced in {tenant}", and this file asserts no exact wording.
+      if (!NO_POLICY_REASONS.has(reason)) {
+        const own = (contentStepFor(s) as { doneEnd?: unknown } | undefined)?.doneEnd
+        const template = typeof own === 'string' ? own : CONTRACT.doneHeldEnd
+        const shape = new RegExp(`^${template.split('{tenant}').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.+')}$`)
+        assert.match(v.doneWhen[0], shape, `${where}: ${v.doneWhen.join(' | ')}`)
+      }
       assert.equal(/report-only|sign-in failures|%/i.test(v.doneWhen.join(' ')), false, `${where}: a rollout completion — ${v.doneWhen.join(' | ')}`)
     }
   }

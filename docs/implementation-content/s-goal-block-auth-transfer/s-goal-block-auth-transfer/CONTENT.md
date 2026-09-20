@@ -2,7 +2,7 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Authentication transfer**; client apps remains All.
-   Microsoft documents one consequence worth knowing before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.
+   One consequence to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.
 4. Grant: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.

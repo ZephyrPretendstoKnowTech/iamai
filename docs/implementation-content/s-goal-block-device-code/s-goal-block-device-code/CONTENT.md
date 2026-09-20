@@ -2,7 +2,7 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.
-   Before you create it, know two consequences Microsoft documents. A session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out. And because the target is **All resources**, the policy also reaches **Device Registration Service**: exclude that resource if this tenant registers devices by device code.
+   Two consequences to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out; and because the target is **All resources**, the policy also reaches **Device Registration Service**, which you exclude if this tenant registers devices by device code.
 4. Grant/access control: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.

@@ -330,7 +330,7 @@
     }
   ],
   "implementationCaveats": [
-    "Microsoft's client-apps reference asks for an Exchange ActiveSync policy assigned to users or groups with Exchange Online as its only resource, while its own block-legacy-authentication procedure says All users and All resources. The pinned baseline follows the procedure. Recorded for the owner in docs/plans/close-doors-spec.md section 7.1; the baseline is unchanged."
+    "Microsoft's client-apps reference asks for an Exchange ActiveSync policy assigned to users or groups with Exchange Online as its only resource, while its own block-legacy-authentication procedure says All users and All resources. The pinned baseline follows the procedure. Recorded for the owner in docs/plans/close-doors-spec.md section 8.1; the baseline is unchanged."
   ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-block-legacy-auth",

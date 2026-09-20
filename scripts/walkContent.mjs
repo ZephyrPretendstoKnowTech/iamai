@@ -166,8 +166,13 @@ export const ACCEPTANCE = [
   { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy B: other platforms outside the office.' },
   // 25's clause is the engine's (E7): {personalDevicesClause} from shared.engine.personalDevices.
   { item: '25', step: 'require-managed-device', path: 'comms.body', must: 'Personal devices {personalDevicesClause}.', mustNot: 'can still use the browser with limits' },
-  { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'Limiting access to the selected platforms reduces the device types the business needs to support.' },
-  { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: 'An unidentified or misreported platform', mustNot: 'this policy can prompt iOS and macOS users' },
+  // Close the Doors E1-E2 (docs/plans/close-doors-spec.md section 6, Microsoft
+  // Learn checked 2026-09-19): Conditional Access supports Linux, which this
+  // target does not exclude, and the platform is what the client reports rather
+  // than something the service verifies.
+  { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'only Android, iOS, Windows and macOS reach the tenant', mustNot: 'reduces the device types the business needs to support' },
+  { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: 'reads the platform from what the client reports', mustNot: 'this policy can prompt iOS and macOS users' },
+  { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: 'Linux is a platform Conditional Access supports and this policy does not exclude' },
   { item: '27', step: 'mobile-app-protection', path: 'why', must: 'App protection can keep work data under company controls inside supported apps' },
   { item: '27', step: 'mobile-app-protection', path: 'licence', must: 'Intune Plan 1' },
   { item: '27', step: 'mobile-app-protection', path: 'comms.body', must: 'mail, files, Teams and any other app that uses your work account', mustNot: 'mail and files on your phone' },

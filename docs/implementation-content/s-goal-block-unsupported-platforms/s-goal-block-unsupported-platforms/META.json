@@ -26,7 +26,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"9e21fa64-8d9a-4e62-81da-9abce8859a0c":"5489f662"},
+    "reviewedMembers": {
+      "9e21fa64-8d9a-4e62-81da-9abce8859a0c": "5489f662"
+    },
     "memberStableId": "9e21fa64-8d9a-4e62-81da-9abce8859a0c",
     "sourceDisplayName": "IAC - GLOBAL - BLOCK - Unsupported Device Platforms",
     "sourceState": "enabled",
@@ -272,11 +274,11 @@
   ],
   "verifiedSources": [
     {
-      "id": "ms-block-unsupported-platforms",
+      "id": "ms-ca-conditions",
       "authority": "Microsoft Learn",
-      "title": "Block unsupported platforms with Conditional Access",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
-      "checkedOn": "2026-09-12",
+      "title": "How to Use Conditions in Conditional Access Policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "checkedOn": "2026-09-19",
       "userFacing": true
     }
   ],

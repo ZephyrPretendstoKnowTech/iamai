@@ -5168,7 +5168,7 @@
       "kind": "policy",
       "title": "Block Unsupported Device Platforms",
       "changeLine": null,
-      "why": "Limiting access to the selected platforms reduces the device types the business needs to support. Review unidentified and excluded platforms first so required workflows are not missed.",
+      "why": "Once this is on, only Android, iOS, Windows and macOS reach the tenant; Linux and anything that reports no platform are blocked. Review those sign-ins before the rule closes.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
@@ -5182,9 +5182,9 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from unsupported device platforms, with the exclusions group applied and the baseline mapping resolved.",
+      "doneEnd": "Only Android, iOS, Windows and macOS reach {tenant}: Linux and any sign-in that reports no platform are blocked, with the exclusions group applied and the baseline mapping resolved.",
       "doneWhen": [
-        "A scan confirms the policy is On and matches the intended settings for blocking unsupported device platforms, including its assignments and exclusions."
+        "A scan confirms the policy is On, so only the selected platforms reach the tenant, with its assignments and exclusions intact."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5194,7 +5194,11 @@
       "more": {
         "risks": [
           {
-            "text": "An unidentified or misreported platform can be treated differently from the device’s actual operating system. Validate the affected application and sign-in record.",
+            "text": "Conditional Access reads the platform from what the client reports, such as its user agent, and does not verify it. Check the affected application and the sign-in record.",
+            "applies": "always"
+          },
+          {
+            "text": "Linux is a platform Conditional Access supports and this policy does not exclude, so Linux sign-ins are blocked along with the unidentified ones.",
             "applies": "always"
           }
         ],
@@ -5227,7 +5231,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, Windows, macOS",
+          "Conditions → Device platforms → Configure: Yes, then Include: Any device; Exclude: Android, iOS, Windows, macOS",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]

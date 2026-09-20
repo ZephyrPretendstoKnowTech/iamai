@@ -2852,7 +2852,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Authentication transfer**; client apps remains All.\n   Microsoft documents one consequence worth knowing before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.\n4. Grant: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Authentication transfer**; client apps remains All.\n   One consequence to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.\n4. Grant: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -3465,7 +3465,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.\n   Before you create it, know two consequences Microsoft documents. A session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out. And because the target is **All resources**, the policy also reaches **Device Registration Service**: exclude that resource if this tenant registers devices by device code.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.\n   Two consequences to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out; and because the target is **All resources**, the policy also reaches **Device Registration Service**, which you exclude if this tenant registers devices by device code.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -4642,11 +4642,11 @@
         },
         "verifiedSources": [
           {
-            "id": "ms-block-unsupported-platforms",
+            "id": "ms-ca-conditions",
             "authority": "Microsoft Learn",
-            "title": "Block unsupported platforms with Conditional Access",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
-            "checkedOn": "2026-09-12",
+            "title": "How to Use Conditions in Conditional Access Policies",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+            "checkedOn": "2026-09-19",
             "userFacing": true
           }
         ],
@@ -4693,7 +4693,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.\n4. Grant: **Block access**. Leave session controls unconfigured.\n5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: set **Configure** to **Yes**, then include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.\n   **Linux** is a platform Conditional Access supports and this target does not exclude, so Linux sign-ins fall inside the block along with any request that reports no platform.\n4. Grant: **Block access**. Leave session controls unconfigured.\n5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
