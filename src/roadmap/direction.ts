@@ -285,6 +285,16 @@ export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[
   [QUESTION_STEP.partner]: ['partner'],
 }
 
+/**
+ * The Direction steps that ask a step's moved questions, or none. A policy held
+ * by one of these steps is held by the Direction answer that step is waiting
+ * for, so the two are one fact and the nearest one — the step — is the one to
+ * say (docs/plans/step-redundancy-analysis.md finding 3).
+ */
+export function directionStepsAnswering(stepId: string): readonly string[] {
+  return [...new Set((ANSWERED_IN[stepId] ?? []).map(directionStepOf))]
+}
+
 export type AnsweredIn = { step: DirectionStepId; title: string; lines: { key: string; label: string; value: string; saved: boolean }[] }
 
 /**

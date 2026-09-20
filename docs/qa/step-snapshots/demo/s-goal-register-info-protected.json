@@ -32,14 +32,6 @@
     {
       "label": "Prerequisites",
       "state": "when people without a method reaches 0 (now 7)"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "when 1 trusted location exist (now 0)"
-    },
-    {
-      "label": "Waiting on your direction",
-      "state": "Decide Where People Sign In From"
     }
   ],
   "channels": [

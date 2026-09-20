@@ -47,7 +47,7 @@ import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
-import { directionBlockerStep } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionStepsAnswering } from '../../roadmap/direction.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 
@@ -446,6 +446,19 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
     const workflowCheckIsNext = step.manualReview && (!POLICY.includes(step.kind) || workflowReviewIsCurrent(step))
     if (reading?.lane === 'Ready' && (workflowCheckIsNext || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
+  }
+  // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3), on
+  // the reading the second tile producer reads. A policy held by "Define the
+  // Trusted Network" AND by "Waiting on your direction: Decide Where People Sign
+  // In From" said one thing twice, in two vocabularies: the trusted network is
+  // what that answer is for, and the step is where it gets made. The nearest
+  // cause is the step; the answer behind it is that step's own wait to show. The
+  // row's `reason` is untouched, so no row changes lane, label or order, and a
+  // row whose stated reason IS the answer still says it — once.
+  for (const reading of out.values()) {
+    const relayed = new Set(reading.blockers.flatMap((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? [...directionStepsAnswering(b.id)] : [])))
+    if (relayed.size === 0) continue
+    reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && relayed.has(b.id)))
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)

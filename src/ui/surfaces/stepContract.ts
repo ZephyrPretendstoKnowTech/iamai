@@ -35,7 +35,7 @@ import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
 import { app, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { directionBlockerStep, directionTitleOf } from '../../roadmap/direction.ts'
+import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -737,11 +737,24 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     if (b.kind === 'decision') continue
     if (typeof b.binding === 'string' && b.binding.length > 0) out.push({ key: `${b.kind}:${b.label}`, text: b.kind === 'readiness' && b.label === 'session-loop' ? shared.sessionLoopReview as string : b.binding })
   }
+  // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3). A
+  // fix that names the step which makes what a Direction answer chooses — Define
+  // the Trusted Network for D4's office network, Create or Correct Service
+  // Accounts Group for D2's service accounts — already states that wait. The
+  // answer behind it is that step's own, and that step shows it. Saying both
+  // gave a policy "Prerequisite · To do: Define the Trusted Network" and
+  // "Waiting on your direction: Decide Where People Sign In From" side by side:
+  // one fact in two vocabularies, and the nearest cause is the step.
+  const relayed = new Set(out.flatMap((f) => {
+    const [kind, ...rest] = f.key.split(':')
+    return kind === 'step' || kind === 'missing' ? [...directionStepsAnswering(rest.join(':'))] : []
+  }))
+  const stated = relayed.size === 0 ? out : out.filter((f) => !(f.key.startsWith('direction:') && relayed.has(f.key.slice('direction:'.length))))
   // One line per fact: two blockers naming the same prerequisite are one fix. The
   // checks are exempt — two accounts failing the same rule are two facts, and the
   // step's own line for each names which account it is about.
   const seen = new Set<string>()
-  return out.filter((f) => {
+  return stated.filter((f) => {
     if (f.key.startsWith('check:')) return true
     if (seen.has(f.text)) return false
     seen.add(f.text)
