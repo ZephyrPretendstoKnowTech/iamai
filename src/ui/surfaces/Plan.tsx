@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -208,6 +208,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // a step's number is its place in its group, not its place in what is on
   // screen, so the Ready tab reads 1, 3, 6 rather than renumbering to 1, 2, 3.
   const rowNumbers = rowNumbersOf([...rowSteps, ...cleanupRows])
+  // How many rows each group has on the whole board, for the group's one
+  // supporting line: "3 of 6 steps" where a tab left three of them, so the
+  // heading never presents a filtered selection as the whole run.
+  const groupTotals = groupTotalsOf([...rowSteps, ...cleanupRows])
 
   // ---- one canonical row set ----
   // Built once, in the engine's order, with the lane the engine read for each
@@ -290,7 +294,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     const holdsOpen = open !== null && g.items.some((i) => i.id === open)
     const closed = toggled[key] ?? (g.closed && !holdsOpen)
     return (
-      <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))}>
+      <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
         {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
       </BoardGroupView>
     )
@@ -507,14 +511,18 @@ function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { 
   return null
 }
 
-function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; children: ReactNode }) {
+function BoardGroupView({ group, closed, onToggle, totals, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; totals?: ReadonlyMap<string, number>; children: ReactNode }) {
   const id = `plan-group-${group.key}`
+  // How many rows this group has on the whole board, so a tab that left fewer
+  // says so rather than presenting its own selection as the whole group.
+  const key = groupKeyOf(group)
+  const total = key !== null ? totals?.get(key) ?? null : null
   return (
     <section className={`plan-group${group.secondary ? ' secondary' : ''}`}>
       <div className="plan-group-head">
         <div className="plan-group-lead">
           <h2>{group.label}</h2>
-          <div className="plan-group-meta">{groupSummary(group)}</div>
+          <div className="plan-group-meta">{groupSummary(group, total)}</div>
         </div>
         <button type="button" className="plan-group-toggle no-print" aria-expanded={!closed} aria-controls={id} aria-label={`${closed ? BOARD.expandGroup : BOARD.collapseGroup}: ${group.label}`} onClick={onToggle}>
           <span aria-hidden="true">{closed ? '+' : '\u2212'}</span>

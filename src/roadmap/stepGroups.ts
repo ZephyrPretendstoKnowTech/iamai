@@ -201,20 +201,34 @@ export function positionInGroup(stepId: string, groups: readonly StepGroup[] = S
  *
  * The set handed in must be the board's WHOLE row set, before any tab or focus
  * filters it — that is what makes the numbers stable while the list is filtered.
+ * They count the rows the board has, not the registry's places, so a number the
+ * board never draws is never left as a gap.
  */
 export function groupPositions(stepIds: readonly string[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
   const out = new Map<string, number>()
-  const unlisted = new Map<string, string[]>()
+  const mine = new Map<string, string[]>()
   for (const id of stepIds) {
     const g = groupOf(id, groups)
-    if (g === null) continue
-    const at = positionInGroup(id, groups)
-    if (at !== null) out.set(id, at)
-    else unlisted.set(g.key, [...(unlisted.get(g.key) ?? []), id])
+    if (g !== null) mine.set(g.key, [...(mine.get(g.key) ?? []), id])
   }
-  for (const [key, ids] of unlisted) {
-    const listed = groups.find((g) => g.key === key)?.members.length ?? 0
-    ids.sort((a, b) => a.localeCompare(b)).forEach((id, i) => out.set(id, listed + i + 1))
+  // Registry order decides the SEQUENCE; the board's own rows decide the
+  // numbers. They run 1..n with no gap, so a group's last row is numbered by how
+  // many rows the group has, and a gap in a filtered tab is always a row on
+  // another tab rather than a member the registry lists but this tenant does not
+  // carry. "1 step" under a row numbered 5 was that second kind of gap.
+  const at = (id: string): number => positionInGroup(id, groups) ?? Number.MAX_SAFE_INTEGER
+  for (const ids of mine.values()) {
+    ids.sort((a, b) => at(a) - at(b) || a.localeCompare(b)).forEach((id, i) => out.set(id, i + 1))
+  }
+  return out
+}
+
+/** How many of each group's rows a row set carries, keyed by group key: the number its last row shows (`groupPositions`). */
+export function groupTotals(stepIds: readonly string[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  const out = new Map<string, number>()
+  for (const id of stepIds) {
+    const g = groupOf(id, groups)
+    if (g !== null) out.set(g.key, (out.get(g.key) ?? 0) + 1)
   }
   return out
 }

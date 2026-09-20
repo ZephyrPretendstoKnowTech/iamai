@@ -31,7 +31,7 @@ import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, membersOf, pinnedGroups, positionInGroup } from '../../roadmap/stepGroups.ts'
+import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, groupTotals, membersOf, pinnedGroups, positionInGroup } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
@@ -588,8 +588,29 @@ export function rowNumbersOf(items: readonly Pick<BoardItem, 'id'>[], groups: re
   return groupPositions(items.map((i) => i.id), groups)
 }
 
-/** The group's one supporting line: how many rows, counted off the rows in the group, so the summary cannot disagree with what is under it. */
-export function groupSummary(g: BoardGroup): string {
+/**
+ * The group's one supporting line: how many rows are under it, counted off those
+ * rows, so the summary cannot disagree with what it sits over.
+ *
+ * `total` is how many rows that group has on the WHOLE board (stepGroups.ts
+ * groupTotals). Where a lane tab or a focus has left fewer, the line says so —
+ * "3 of 6 steps" — because the rows it sits over are numbered in the group, and
+ * "3 steps" over rows numbered 3, 5 and 6 denied that anything was filtered.
+ * Where nothing is filtered out the line is the plain count it always was.
+ */
+export function groupSummary(g: BoardGroup, total: number | null = null): string {
   const n = g.items.length
-  return `${n} step${n === 1 ? '' : 's'}`
+  const word = (k: number): string => `${k} step${k === 1 ? '' : 's'}`
+  return total !== null && total > n ? `${n} of ${word(total)}` : word(n)
+}
+
+/** How many rows of each group the whole board carries, for `groupSummary` (stepGroups.ts groupTotals). */
+export function groupTotalsOf(items: readonly Pick<BoardItem, 'id'>[], groups: readonly StepGroup[] = STEP_GROUPS): ReadonlyMap<string, number> {
+  return groupTotals(items.map((i) => i.id), groups)
+}
+
+/** The registry key of the group a drawn group's rows belong to, or null: `BoardGroup.key` carries the tab as well. */
+export function groupKeyOf(g: BoardGroup, groups: readonly StepGroup[] = STEP_GROUPS): string | null {
+  const first = g.items[0]
+  return first ? groupOf(first.id, groups)?.key ?? null : null
 }
