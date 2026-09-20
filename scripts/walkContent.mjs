@@ -239,6 +239,15 @@ export const ACCEPTANCE = [
   { item: '29', step: 'device-registration-mfa', path: 'more.risks', must: 'Windows Hello for Business and a device-bound passkey cannot answer this policy' },
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'An unsupported client or device path can be blocked.' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
+  // Risk and Sessions F1-F4 (docs/plans/risk-and-sessions-spec.md section 8,
+  // Microsoft Learn checked 2026-09-20): both narrowed conditions go through
+  // the Configure toggle, Microsoft's own browser warning is stated, and what
+  // the policy never reaches is named beside the steps that cover it.
+  { item: '30', step: 'token-protection', path: 'why', must: 'is not protected and is not blocked either' },
+  { item: '30', step: 'token-protection', path: 'who.evidence', must: 'Block Unsupported Device Platforms turns away the platforms it cannot protect' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'Teams on the web among them' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'perpetual-licence Office, Surface Hub and Windows-based Teams Rooms' },
+  { item: '30', step: 'token-protection', path: 'whatToDoReference.steps', must: 'Conditions → Device platforms → Configure: Yes, then Include: Windows' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
   { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'Apps outside the browser are not affected by this change.' },
   // The interval is the resolved target's, never a number in a string

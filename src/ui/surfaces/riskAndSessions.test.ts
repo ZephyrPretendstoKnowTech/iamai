@@ -120,10 +120,9 @@ function sourceCheckedOn(stepId: string): string {
     .slice(-1)[0] ?? ''
 }
 
-/** The Implementation Tasks a step body draws, as one string. */
-function tasksTextOf(b: StepBody): string {
-  return JSON.stringify((b as unknown as Record<string, unknown>).tasks ?? (b as unknown as Record<string, unknown>).implementation ?? {})
-}
+/** Every Implementation Task line the opened step lists, as one block of text. */
+const tasksTextOf = (b: StepBody): string =>
+  (b.emergencyAccountTasks?.tasks ?? []).map((t) => [t.title, ...t.steps, ...(t.facts ?? []).map((f) => `${f.label}: ${f.value}`)].join('\n')).join('\n')
 
 /** The translator's portal lines for one pinned policy, as a policy step renders them. */
 function linesForPinned(policyId: string): string[] {
@@ -487,6 +486,79 @@ test('E5: the two session steps each say whose sessions, and neither repeats the
 test('E6: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
   assert.match(String((stepById['session-lifetime'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /Nobody's browser session at \{tenant\} survives closing the browser/)
   assert.equal(sourceCheckedOn(SESSIONS_PKG), '2026-09-20')
+})
+
+// ---------------------------------------------------------------------------
+// Section 8: s-goal-token-protection — Require Token Protection on Windows
+// ---------------------------------------------------------------------------
+
+test('F1: both conditions this policy narrows go through Configure: Yes', () => {
+  // deployment-guide-token-protection-windows (ms.date 2026-03-24, updated
+  // 2026-09-10), checked 2026-09-20, says it for both: "Under Device platforms:
+  // Set Configure to Yes" and "Under Client apps: Set Configure to Yes."
+  assert.match(blockText(TOKEN_PROTECTION, 'entra.create'), /Device platforms\*\*, set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(blockText(TOKEN_PROTECTION, 'entra.create'), /Client apps\*\*, set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(blockText(TOKEN_PROTECTION, 'entra.correct.conditions.windows-platform'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(blockText(TOKEN_PROTECTION, 'entra.correct.conditions.mobile-desktop-clients'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  const ref = referenceOf('token-protection')
+  assert.ok(ref.includes('Conditions → Device platforms → Configure: Yes, then Include: Windows'), ref)
+  assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Mobile apps and desktop clients'), ref)
+})
+
+test('F2: Microsoft’s own warning about the Client apps condition is on the step', () => {
+  // deployment-guide-token-protection-windows, checked 2026-09-20: "Not
+  // configuring the Client Apps condition, or leaving Browser selected might
+  // cause applications that use MSAL.js, such as Teams Web to be blocked."
+  assert.ok(risksOf('token-protection').some((r) => /leaving Browser selected in it, blocks web apps that sign in through the browser, Teams on the web among them/.test(r)), risksOf('token-protection').join('\n'))
+  assert.match(blockText(TOKEN_PROTECTION, 'entra.create'), /Teams on the web among them/)
+})
+
+test('F3: the step says what token protection silently does not cover, and who covers it', () => {
+  // concept-token-protection (ms.date 2026-08-14), checked 2026-09-20: the
+  // availability table. The deployment guide's own mitigation is a policy that
+  // blocks unknown platforms and one that requires device compliance.
+  const why = whyOf('token-protection')
+  assert.match(why, /binds a sign-in token to the device that earned it/)
+  assert.match(why, /is not protected and is not blocked either/)
+  assert.match(allText('token-protection'), /Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can/)
+  assert.match(blockText(TOKEN_PROTECTION, 'ai.create'), /what falls outside this policy is simply not evaluated by it/)
+})
+
+test('F4: the clients that cannot produce a bound token are named', () => {
+  // deployment-guide-token-protection-windows, checked 2026-09-20: PowerShell
+  // modules accessing SharePoint, PowerQuery for Excel outside Current Channel,
+  // VS Code extensions reaching Exchange or SharePoint, "Office perpetual
+  // clients aren't supported", Surface Hub and Windows-based Teams Rooms.
+  const named = risksOf('token-protection').join('\n')
+  for (const client of ['PowerShell modules that use SharePoint', 'Power Query extension for Excel', 'Visual Studio Code extensions', 'perpetual-licence Office', 'Surface Hub', 'Windows-based Teams Rooms']) {
+    assert.ok(named.includes(client), `${client} is not named: ${named}`)
+  }
+  // And the external person whose error says nothing.
+  assert.ok(helpDeskOf('token-protection').some((l) => /the error they see does not say so/.test(l)), helpDeskOf('token-protection').join('\n'))
+})
+
+test('F5: the step links the page that carries the procedure, and its package cites the same', () => {
+  assert.equal(String((stepById['token-protection'] as unknown as { learn: { url: string } }).learn.url), 'https://learn.microsoft.com/entra/identity/conditional-access/deployment-guide-token-protection-windows')
+  assert.match(JSON.stringify((registry.packages as Record<string, unknown>)[TOKEN_PROTECTION]), /deployment-guide-token-protection-windows/)
+  assert.equal(sourceCheckedOn(TOKEN_PROTECTION), '2026-09-20')
+})
+
+test('F6: Completion Criteria is this step’s outcome, said once', () => {
+  const doneEnd = String((stepById['token-protection'] as unknown as { doneEnd?: string }).doneEnd ?? '')
+  assert.match(doneEnd, /presents a token bound to its own device/)
+  // It was the two Completion Criteria lines repeated; each card says one thing.
+  assert.ok(!doneWhenOf('token-protection').some((l) => doneEnd.includes(l)), `${doneEnd}\n${doneWhenOf('token-protection').join('\n')}`)
+})
+
+test('F7: token protection reaches the report-only state on the follow-up scan', () => {
+  // The follow-up snapshot (demo-week2) is where this step has a deployed
+  // policy at all: it is the only member of this group whose policy the
+  // follow-up scan finds. Recorded rather than asserted as Ready to enforce,
+  // which no fixture reaches for this group (spec section 9).
+  const b = bodiesOf('demo-week2').get(TOKEN_PROTECTION)!
+  assert.equal(b.contract.id, TOKEN_PROTECTION)
+  const tasks = tasksTextOf(b)
+  assert.ok(tasks.length > 2, 'the follow-up step draws Implementation Tasks')
 })
 
 test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {

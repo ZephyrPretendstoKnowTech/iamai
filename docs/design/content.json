@@ -5397,21 +5397,22 @@
       "kind": "policy",
       "title": "Require Token Protection on Windows",
       "changeLine": null,
-      "why": "Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.",
+      "why": "Token protection binds a sign-in token to the device that earned it, so a token copied off that device is no use elsewhere. It reaches the Windows desktop apps and the resources this policy names, and nothing else: a browser, another platform or another resource is not protected and is not blocked either.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/deployment-guide-token-protection-windows"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
           "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
           "Everyone on Windows signs in from a joined or registered device.",
+          "What this policy does not reach is covered elsewhere or not at all: Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions. Supported work apps sign in successfully with token protection.",
+      "doneEnd": "Every supported Windows desktop client reaching the resources this policy names at {tenant} presents a token bound to its own device, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions.",
         "Supported work apps sign in successfully with token protection."
@@ -5431,11 +5432,20 @@
           {
             "text": "An unsupported client or device path can be blocked. Verify the exact applications, resources and conditions this policy covers before relying on device registration as the fix.",
             "applies": "always"
+          },
+          {
+            "text": "Leaving the Client apps condition unconfigured, or leaving Browser selected in it, blocks web apps that sign in through the browser, Teams on the web among them.",
+            "applies": "always"
+          },
+          {
+            "text": "Named clients cannot produce a bound token at all and stop reaching mail and files: PowerShell modules that use SharePoint, the Power Query extension for Excel outside the Current Channel, Visual Studio Code extensions that reach Exchange or SharePoint, perpetual-licence Office, Surface Hub and Windows-based Teams Rooms.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Inspect the sign-in's token-protection result, application/client support and device identity. A registered device alone does not establish that the client can produce a bound token.",
-          "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error."
+          "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error.",
+          "An external person reporting an unexplained failure: their device has to meet the registration requirement in their own directory, and the error they see does not say so."
         ],
         "manager": "Supported client/device paths bind sign-in tokens to the device, making a copied token harder to reuse elsewhere. Compatibility must be checked for the applications this policy targets.",
         "waits": null
@@ -5463,7 +5473,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
           "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, Windows 365",
-          "Conditions → Device platforms → Include: Windows. Conditions → Client apps → Mobile apps and desktop clients. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
+          "Conditions → Device platforms → Configure: Yes, then Include: Windows. Left at No it applies to all device platforms. Conditions → Client apps → Configure: Yes, then Mobile apps and desktop clients; at No, or with Browser left selected, web apps that sign in through the browser are blocked. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
           "Session → Require token protection for sign-in sessions",
           "{reportOnlyLine}"
         ]
