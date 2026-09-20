@@ -260,7 +260,11 @@ export const ACCEPTANCE = [
   { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '24', step: 'unmanaged-browser', path: 'whatToDo.before', must: 'SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save.' },
-  { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Devices → Compliance → Compliance policy settings' },
+  // Require Healthy Devices D2 (docs/plans/require-healthy-devices-spec.md,
+  // checked 2026-09-20): Intune's compliance settings moved to Endpoint
+  // security → Device compliance, and the field that carries the grace period
+  // is Schedule (days after noncompliance).
+  { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Endpoint security → Device compliance → Compliance policy settings', mustNot: 'Intune → Devices → Compliance →' },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'the SIEM you already use' },
 ]
