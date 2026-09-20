@@ -5551,14 +5551,15 @@
       "kind": "policy",
       "title": "Limit How Long Sessions Last",
       "changeLine": null,
-      "why": "Non-persistent browser sign-in reduces the chance of leaving work access open on a shared or unattended computer. A regular authentication check also limits how long the browser can rely on an older sign-in.",
+      "why": "A persistent browser keeps its cookies after the window closes, and what they reach stays reachable until the token expires whatever a policy says later. Ending the session with the browser, and asking for authentication again on the baseline's interval, keeps everyone's browser sign-in from outliving the work it was for.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every 12 hours: {list:browserUsers}",
+          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}",
+          "This policy is about everyone's browser, and only the browser: it reaches nothing outside it while the Client apps condition names Browser.",
           "Shared-device accounts are excluded only where this policy's resolved target lists them.",
           "When several session policies apply, the shortest wins.",
           "{existingCoverage}"
@@ -5566,7 +5567,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
+      "doneEnd": "Nobody's browser session at {tenant} survives closing the browser, and every one of them authenticates again every {wanted}, with the exclusions group applied.",
       "doneWhen": [
         "A scan confirms the session policy is On for all users in the browser, with the intended sign-in frequency, browser persistence, assignments and exclusions.",
         "Representative browser sign-ins across the workforce behave as intended without interrupting normal work.",
@@ -5576,7 +5577,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "We plan to change browser sign-in at {tenant} from {enforceLong}: a 12-hour sign-in frequency and no persistent browser sign-in. You may need to sign in again more often. Apps outside the browser are not affected by this change. Contact IT if repeated prompts interrupt work.",
+        "body": "We plan to change browser sign-in at {tenant} from {enforceLong}: a sign-in frequency of {wanted} and no persistent browser sign-in. You may need to sign in again more often. Apps outside the browser are not affected by this change. Contact IT if repeated prompts interrupt work.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -5595,13 +5596,19 @@
           {
             "text": "A never-persistent browser session rule must target all resources.",
             "applies": "always"
+          },
+          {
+            "text": "Remember multifactor authentication on trusted devices, left on, prompts these people at times neither setting intends. Turn it off before this policy is enforced.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Signed out when the browser closed: deliberate. Sign in again.",
+          "Stay signed in? stops working for everyone here: the policy's browser setting overrides that prompt.",
+          "Prompted on one computer and not another: unlocking a joined device refreshes its sign-in in the background and a registered device's does not, so the two reach the interval at different times.",
           "Unexpected repeated prompts: check the sign-in result, policies applied, client support and browser session settings before changing the device or policy."
         ],
-        "manager": "The policy controls sign-in frequency and browser session persistence for the clients and resources in its scope. Use the settings shown on this step to understand when people may need to sign in again.",
+        "manager": "The policy controls sign-in frequency and browser session persistence for the clients and resources in its scope. The frequency is checked when the session is evaluated, so it is not a hard expiry on every token.",
         "waits": null
       },
       "example": {
@@ -5632,14 +5639,15 @@
         "lead": "One policy, as the pinned baseline has it: everyone's browser sessions.",
         "steps": [
           "Policy A: {policyNameA}: {portalRoot}",
+          "Before this policy: turn off Remember multifactor authentication on trusted devices; the two together prompt people unexpectedly.",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Browser",
-          "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
+          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Describe one browser policy. Include the actual exclusions, even when the account list is empty. Do not promise that closing any browser ends every application session."
+      "aiFocus": "Describe one browser policy, taking its interval from the resolved target. State that the browser-only scope depends on the Client apps condition being configured. Include the actual exclusions, even when the account list is empty. Do not promise that closing any browser ends every application session."
     },
     {
       "id": "pim-activation-reauth",

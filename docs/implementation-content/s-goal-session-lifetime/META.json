@@ -435,12 +435,27 @@
   ],
   "verifiedSources": [
     {
+      "id": "ms-mfa-settings",
+      "authority": "Microsoft Learn",
+      "title": "Configure Microsoft Entra multifactor authentication settings",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-mfasettings",
+      "purpose": "Where Remember multifactor authentication on trusted devices lives, and that it is not compatible with the sign-in frequency Conditional Access control.",
+      "checkedOn": "2026-09-20",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo"
+      ]
+    },
+    {
       "id": "ms-session-lifetime-config",
       "authority": "Microsoft Learn",
       "title": "Configure adaptive session lifetime policies",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
       "purpose": "Current portal configuration, Report-only rollout, What If validation, sign-in frequency and persistent browser behavior.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -457,7 +472,7 @@
       "title": "Configure authentication session management with Conditional Access",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
       "purpose": "Current sign-in-frequency semantics and reauthentication behavior.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -473,7 +488,7 @@
       "title": "conditionalAccessSessionControls resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
       "purpose": "Graph v1.0 session-control shape and requirement that persistentBrowser target All apps/resources.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -487,7 +502,7 @@
       "title": "signInFrequencySessionControl resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
       "purpose": "Graph v1.0 sign-in frequency properties.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -501,7 +516,7 @@
       "title": "persistentBrowserSessionControl resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/persistentbrowsersessioncontrol?view=graph-rest-1.0",
       "purpose": "Graph v1.0 persistent-browser mode values always/never.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -515,7 +530,7 @@
       "title": "conditionalAccessDevices resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessdevices?view=graph-rest-1.0",
       "purpose": "Graph v1.0 device filter container used by the unmanaged-device companion policy.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [

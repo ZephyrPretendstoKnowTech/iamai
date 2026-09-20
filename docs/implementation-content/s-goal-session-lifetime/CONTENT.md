@@ -5,14 +5,16 @@ Do not parse headings for execution. Select blocks only by `META.json` block IDs
 @@IAMAI-BEGIN {"id":"entra.create-set","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.
 
+Before this policy: turn off **Remember multifactor authentication on trusted devices** (Entra ID → Users → Per-user MFA → service settings). Microsoft says to disable it before using sign-in frequency; the two together prompt people at times neither setting intends, and it is a tenant-wide setting, so turning it off once covers this policy and Shorten Admin Sessions.
+
 Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 1. Name: `{{policies.session.browser.target.displayName}}`.
 2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.
    Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 3. Target resources: **All resources**.
-4. Conditions → Client apps: **Browser**.
+4. Conditions → Client apps: set **Configure** to **Yes**, then **Browser** only. Left at **No** the condition reaches every client app, and the interval would apply to desktop and mobile apps as well.
 5. Grant: no grant requirement.
-6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.
+6. Session: Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step; Persistent browser session → **Never persistent**.
 7. Enable policy: **Report-only**.
 
 Save once. Rescan IAMAI so it records the new policy ID.
@@ -21,15 +23,15 @@ Save once. Rescan IAMAI so it records the new policy ID.
 Open the policy IAMAI identified. Confirm its policy ID matches the one IAMAI shows before saving.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.missing","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps Browser; no grant; Sign-in frequency 12 hours (Periodic reauthentication); Persistent browser session Never persistent.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps set through Configure: Yes, then Browser; no grant; Sign-in frequency set to the interval in the intended target (Periodic reauthentication); Persistent browser session Never persistent.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps to Browser. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.
+For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps through Configure: Yes, then Browser only, because at No the condition reaches every client app. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the browser policy, set Sign-in frequency to 12 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.
+For the browser policy, set Sign-in frequency to the interval in the intended target (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.grant-none","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 For the browser policy, remove any Grant requirement. This step is session-control-only; do not add MFA, authentication strength, device grant, or Block.
@@ -61,14 +63,14 @@ This change removes {{policies.session.browser.current.removedExclusions}} from 
 This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.
+Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with the intended target's sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 Open the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.
 
-Verify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the 12-hour frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.
+Verify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the intended target's frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.create","channel":"json","states":["missing","partial"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
 {
@@ -306,7 +308,7 @@ TENANT CONTEXT
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
 INTENDED POLICY
-All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
 CAUTIONS
@@ -323,7 +325,7 @@ TENANT CONTEXT
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
 INTENDED POLICY
-All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
 CAUTIONS
@@ -345,7 +347,7 @@ TENANT CONTEXT
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
 INTENDED POLICY
-All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
 CAUTIONS
@@ -365,7 +367,7 @@ TENANT CONTEXT
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
 INTENDED POLICY
-All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.
 Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
 CAUTIONS
@@ -379,7 +381,7 @@ Subject: Planned change: Limit How Long Sessions Last
 
 Hi everyone,
 
-We plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.
+We plan to change browser sign-in to the new frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.
 
 Thanks,
 IT
@@ -411,7 +413,7 @@ IT
         "Unknown",
         "Blocked"
       ],
-      "why": "Check the 12-hour frequency and the exact resolved exclusions. Shared-device accounts are excluded only if the target actually names them."
+      "why": "Check the intended target's frequency and the exact resolved exclusions. Shared-device accounts are excluded only if the target actually names them."
     },
     {
       "id": "unmanaged-boundary",
@@ -466,7 +468,7 @@ IT
         "entra",
         "powershell"
       ],
-      "symptom": "Users are prompted more often than the configured 12-hour value suggests.",
+      "symptom": "Users are prompted more often than the configured interval suggests.",
       "check": [
         "Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session."
       ],

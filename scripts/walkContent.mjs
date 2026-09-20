@@ -241,9 +241,19 @@ export const ACCEPTANCE = [
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
   { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'Apps outside the browser are not affected by this change.' },
-  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every 12 hours' },
+  // The interval is the resolved target's, never a number in a string
+  // (docs/plans/risk-and-sessions-spec.md section 7, the same rule
+  // docs/plans/protect-admins-spec.md D4 set for Shorten Admin Sessions).
+  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every {wanted}', mustNot: 'every 12 hours' },
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Unexpected repeated prompts: check the sign-in result', mustNot: 'check the device clock' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
+  // Risk and Sessions E1-E4 (docs/plans/risk-and-sessions-spec.md section 7,
+  // Microsoft Learn checked 2026-09-20): the Configure toggle on the condition
+  // that makes this browser-only, the setting that has to be off first, and the
+  // company-branding prompt this overrides.
+  { item: '32', step: 'session-lifetime', path: 'whatToDoReference.steps', must: 'Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.' },
+  { item: '32', step: 'session-lifetime', path: 'more.risks', must: 'Remember multifactor authentication on trusted devices, left on, prompts these people' },
+  { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Stay signed in? stops working for everyone here' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
   { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'Role activation is a useful point to verify the person requesting privileged access.' },

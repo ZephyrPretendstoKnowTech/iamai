@@ -143,6 +143,8 @@ const USER_RISK = 's-goal-user-risk'
 const SIGN_IN_RISK_MEDIUM = 's-goal-sign-in-risk-medium'
 const USER_RISK_MEDIUM = 's-goal-user-risk-medium'
 const SESSIONS = 's-goal-all-users-no-persistence'
+/** The session step's package is keyed by the merged content entry's id, not the step's. */
+const SESSIONS_PKG = 's-goal-session-lifetime'
 const TOKEN_PROTECTION = 's-goal-token-protection'
 
 test('the group is the six members the spec takes', () => {
@@ -420,6 +422,71 @@ test('D5: Completion Criteria is this step’s outcome, and the package date is 
   assert.match(String((stepById['user-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /rates medium risk cannot be used again until its owner has answered \{strengthName\} and changed the password/)
   assert.match(doneWhenOf('user-risk-medium').join('\n'), /the High user-risk policy remains in place/)
   assert.equal(sourceCheckedOn(USER_RISK_MEDIUM), '2026-09-20')
+})
+
+// ---------------------------------------------------------------------------
+// Section 7: s-goal-all-users-no-persistence — Limit How Long Sessions Last
+// ---------------------------------------------------------------------------
+
+test('E1: the browser-only scope goes through Configure: Yes, everywhere it is instructed', () => {
+  // concept-conditional-access-conditions (ms.date 2026-06-02), checked
+  // 2026-09-20. Left at No the interval would reach desktop and mobile apps,
+  // which is where sign-in frequency's documented known issues live.
+  assert.ok(linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), linesForPinned('ea9459a9-91b6-4d2b-b929-03781ac81d54').join('\n'))
+  assert.ok(referenceOf('session-lifetime').includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), referenceOf('session-lifetime'))
+  assert.match(blockText(SESSIONS_PKG, 'entra.create-set'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*Browser\*\* only/)
+  assert.match(blockText(SESSIONS_PKG, 'entra.correct.browser.conditions'), /Configure: Yes, then Browser only, because at No the condition reaches every client app/)
+})
+
+test('E2: Remember MFA on trusted devices is turned off first, once, for both session policies', () => {
+  // howto-conditional-access-session-lifetime (ms.date 2026-04-02), checked
+  // 2026-09-20: "If 'Remember MFA on trusted devices' is enabled, disable it
+  // before using Sign-in Frequency". howto-mfa-mfasettings (ms.date 2026-02-27):
+  // "The remember multifactor authentication feature isn't compatible with the
+  // Sign-in frequency Conditional Access control."
+  assert.ok(risksOf('session-lifetime').some((r) => /Remember multifactor authentication on trusted devices, left on/.test(r)), risksOf('session-lifetime').join('\n'))
+  assert.match(blockText(SESSIONS_PKG, 'entra.create-set'), /Before this policy: turn off \*\*Remember multifactor authentication on trusted devices\*\*/)
+  // It is one tenant-wide setting, so the step says so rather than repeating
+  // Shorten Admin Sessions' own instruction as if it were a second job.
+  assert.match(blockText(SESSIONS_PKG, 'entra.create-set'), /it is a tenant-wide setting, so turning it off once covers this policy and Shorten Admin Sessions/)
+  assert.ok(referenceOf('session-lifetime').includes('Before this policy: turn off Remember multifactor authentication on trusted devices'), referenceOf('session-lifetime'))
+})
+
+test('E3: help desk says the Stay signed in? prompt stops, for everyone', () => {
+  // howto-conditional-access-session-lifetime, checked 2026-09-20: "Persistent
+  // browser session configuration … overrides the 'Stay signed in?' setting in
+  // the company branding pane".
+  assert.ok(helpDeskOf('session-lifetime').some((l) => /Stay signed in\? stops working for everyone here/.test(l)), helpDeskOf('session-lifetime').join('\n'))
+  // And why one computer prompts and another does not (the PRT refresh rule).
+  assert.ok(helpDeskOf('session-lifetime').some((l) => /unlocking a joined device refreshes its sign-in in the background and a registered device's does not/.test(l)), helpDeskOf('session-lifetime').join('\n'))
+})
+
+test('E4: no interval of its own — the step and its package read the resolved target', () => {
+  assert.ok(!/12[- ]hour/.test(allText('session-lifetime')), allText('session-lifetime'))
+  assert.ok(!/12[- ]hour/.test(packageText(SESSIONS_PKG)), 'the package names no interval of its own')
+  assert.match(allText('session-lifetime'), /re-authenticate every \{wanted\}/)
+  // The demo fills it from the target, so the sentence still reads as a number.
+  assert.match(aboutOf(bodiesOf('demo').get(SESSIONS)!), /persistent browser/i)
+})
+
+test('E5: the two session steps each say whose sessions, and neither repeats the other', () => {
+  // The owner's rule: "Shorten Admin Sessions" and "Limit How Long Sessions
+  // Last" are two policies, and each Completion Criteria says whose sessions it
+  // is about. Group 4 wrote the admin one; this one agrees with it from the
+  // other side rather than restating it.
+  const mine = doneWhenOf('session-lifetime')
+  const admin = doneWhenOf('admin-session')
+  assert.ok(mine.some((l) => /On for all users in the browser/.test(l)), mine.join('\n'))
+  assert.ok(admin.some((l) => /On for the administrator roles it names/.test(l)), admin.join('\n'))
+  assert.ok(mine.some((l) => /Shorten Admin Sessions asks the administrator roles it names to sign in more often than this/.test(l)), mine.join('\n'))
+  assert.ok(admin.some((l) => /Limit How Long Sessions Last covers these administrators too, as part of everyone/.test(l)), admin.join('\n'))
+  // Neither line is the other's.
+  assert.equal(mine.filter((l) => admin.includes(l)).length, 0, 'no Completion Criteria line is shared between the two session steps')
+})
+
+test('E6: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
+  assert.match(String((stepById['session-lifetime'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /Nobody's browser session at \{tenant\} survives closing the browser/)
+  assert.equal(sourceCheckedOn(SESSIONS_PKG), '2026-09-20')
 })
 
 test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
