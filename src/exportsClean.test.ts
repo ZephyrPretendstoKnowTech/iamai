@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './roadmap/fixtures/index.ts'
-import { runFixture } from './roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './roadmap/fixtures/run.ts'
 import { buildIcs } from './roadmap/ics.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from './roadmap/prompts.ts'
 import { buildPlanFile, fileStep } from './roadmap/plan.ts'
@@ -27,7 +27,9 @@ const V2 = ['soak', "the ring's", 'this ring', 'Ring plan', 'Exit criteria', 'Do
 
 // Week two: its policies name nothing the tenant lacks, so they carry dates and
 // calendar entries (a policy the plan cannot write yet carries neither).
-const f = fixture('demo-week2')
+// With the plan's foundation settled (roadmap/foundations.ts): until both
+// pinned groups are, every policy step is held and the calendar books nothing.
+const f = withFoundationSettled(fixture('demo-week2'))
 const run = runFixture(f)
 const nameOf = (id: string): string => run.input.names!.label(id)
 const firstEnforce = run.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null

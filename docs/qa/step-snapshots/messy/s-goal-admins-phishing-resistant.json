@@ -24,6 +24,10 @@
     {
       "label": "Prerequisite · To do",
       "state": "Configure Emergency Exclusions"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

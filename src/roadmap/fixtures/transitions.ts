@@ -39,9 +39,18 @@
 // silently skipped scenario.
 //
 // Pure: no DOM, no network, no wall clock.
-import { curatedFixture, strengthMissing } from './index.ts'
+import { curatedFixture as baseFixture, strengthMissing } from './index.ts'
 import type { Fixture, FixtureName } from './index.ts'
-import { runFixture } from './run.ts'
+import { runFixture, withFoundationSettled } from './run.ts'
+
+/**
+ * The corpus's base tenant, with the plan's foundation settled
+ * (roadmap/foundations.ts): until both pinned groups are, every policy step is
+ * held and nothing is deployed, so half the transitions the corpus names have no
+ * policy to move. The transitions are about what a re-scan does to a policy, not
+ * about that gate.
+ */
+const curatedFixture = (name: FixtureName): Fixture => withFoundationSettled(baseFixture(name))
 import type { FixtureRun } from './run.ts'
 import { observationsOf } from '../tracking.ts'
 import type { StepObservationRecord } from '../observation.ts'

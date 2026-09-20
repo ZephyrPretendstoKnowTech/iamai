@@ -4,7 +4,7 @@
   "reason": "after: Configure Emergency Exclusions",
   "fact": null,
   "badge": "Up Next",
-  "bar": "After Configure Emergency Exclusions",
+  "bar": "After Prepare Emergency Access Accounts",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -24,6 +24,10 @@
     {
       "label": "Prerequisite · To do",
       "state": "Configure Emergency Exclusions"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Prepare Emergency Access Accounts"
     }
   ],
   "channels": [

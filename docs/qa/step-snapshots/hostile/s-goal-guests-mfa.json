@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Decision",
-  "reason": null,
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
-  "badge": "Ready · Decision",
-  "bar": "Needs a decision",
+  "badge": "On Hold",
+  "bar": "Not supported",
   "rail": "Not scheduled",
   "headings": [
     "Why",
@@ -20,6 +20,14 @@
     {
       "label": "Partner or MSP access",
       "state": "Confirm whether partners access your tenant"
+    },
+    {
+      "label": "Prerequisite · To do",
+      "state": "Prepare Emergency Access Accounts"
+    },
+    {
+      "label": "Not supported",
+      "state": "Not supported"
     }
   ],
   "channels": [
@@ -29,5 +37,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Not scheduled"
+  "when": "After prerequisites"
 }

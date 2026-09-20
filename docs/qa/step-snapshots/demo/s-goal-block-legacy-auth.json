@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Correct",
+  "lane": "Up Next",
+  "substatus": null,
   "reason": "after: Prepare Emergency Access Accounts",
   "fact": "Enforced",
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
-  "rail": "Sep 8, 2026",
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -29,5 +29,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Sep 8, 2026"
+  "when": "After prerequisites"
 }

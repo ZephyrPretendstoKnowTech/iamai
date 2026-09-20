@@ -10,13 +10,14 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, allFixtures, withBreakGlassCarveOut } from '../roadmap/fixtures/index.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
-import { runFixture } from '../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../roadmap/fixtures/run.ts'
 import { emergencySelection, migrateEmergencySelection } from './emergencyChoice.ts'
 import { recommendedEmergencyAccess } from './emergencyAccess.ts'
 import type { MappingState } from './types.ts'
 import { applyStepDecisions } from '../roadmap/decisions.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/stepIds.ts'
 import { blockerStepId } from '../roadmap/blockerSteps.ts'
+import { FOUNDATION_WAIT } from '../roadmap/holds.ts'
 import { isOpenPolicy } from '../roadmap/operations.ts'
 import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import { facts } from '../derive/facts.ts'
@@ -59,7 +60,10 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
   // The small tenant whose policies carve out its break-glass group: the plan's
   // gate is then the exclusions group, and what waits on the emergency
   // prerequisite is what that prerequisite itself holds.
-  const f = withBreakGlassCarveOut(fixture('small'))
+  // Decide Your Tenant's Direction approved, so what a policy waits on is the
+  // emergency prerequisite alone: unapproved, the plan's foundation holds every
+  // policy behind the Direction step too (roadmap/foundations.ts).
+  const f = withDirectionApproved(withBreakGlassCarveOut(fixture('small')))
   const chosen = f.mapping.breakGlassUserIds
   assert.ok(chosen.length >= 2, 'the fixture has emergency accounts to confirm')
   const before = unconfirmed(f)
@@ -88,7 +92,13 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
   assert.equal(r1.input.mapping.breakGlassUserIds.length, chosen.length, 'the prerequisite consumes the confirmed set')
   assert.ok(!failingFixes(r1).includes('second-account'), 'the confirmed set satisfies bg.count')
   assert.ok(offeredPolicies(r1).length > 0, 'confirming is what unblocks the work')
-  assert.deepEqual(heldByEmergency(r1), [], 'and nothing waits on the prerequisite once it is met')
+  // Nothing waits on the prerequisite's own verdict once it is met. What a policy
+  // still carries on that step is the plan's foundation — the two pinned groups
+  // are not finished, and that is the whole plan's sequencing (roadmap/foundations.ts).
+  for (const id of heldByEmergency(r1)) {
+    const s = r1.steps.find((x) => x.id === id)!
+    assert.ok(s.blockers.every((b) => b.kind !== 'step' || b.stepId !== BG_BLOCKER || b.label === FOUNDATION_WAIT), `${id}: still held by the emergency verdict`)
+  }
   // And the exclusions group is now checked against exactly that set.
   assert.deepEqual([...notPeopleIds(decided)].filter((id) => chosen.includes(id)).sort(), [...chosen].sort(), 'the confirmed accounts are the ones that leave the population')
 })
@@ -120,8 +130,13 @@ test('7. a confirmed account that this scan cannot read: the choice stands, the 
   // Nothing became available because a candidate could have stood in: every
   // deny-capable step is held behind the prerequisite, where a healthy tenant
   // holds none, and no operation anywhere names the stand-in.
+  // The healthy tenant: what a policy still carries on that step is the plan's
+  // foundation, not this prerequisite's verdict (roadmap/foundations.ts).
   const healthy = runFixture(f)
-  assert.deepEqual(heldByEmergency(healthy), [], 'a tenant whose confirmed accounts are all readable holds nothing')
+  for (const id of heldByEmergency(healthy)) {
+    const s = healthy.steps.find((x) => x.id === id)!
+    assert.ok(s.blockers.every((b) => b.kind !== 'step' || b.stepId !== BG_BLOCKER || b.label === FOUNDATION_WAIT), `${id}: a readable tenant is held by the emergency verdict`)
+  }
   assert.ok(heldByEmergency(r).length >= 10, 'the unreadable account holds every deny-capable step')
   assert.ok(!JSON.stringify(r.steps.map((s) => s.action)).includes(stand.id), 'and no policy operation carries the stand-in candidate')
   assert.ok(!(bgStep(r)?.deliveredBy ?? []).includes(stand.id), 'nor does the prerequisite claim it delivered one')

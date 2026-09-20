@@ -26,7 +26,7 @@
 // Pure: no DOM, no network. Runs in Node.
 import { allCuratedFixtures, curatedFixture, noExclusionsAnswer } from './index.ts'
 import type { Fixture } from './index.ts'
-import { runFixture } from './run.ts'
+import { runFixture, withFoundationSettled } from './run.ts'
 import type { FixtureRun } from './run.ts'
 import type { Step } from '../types.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -220,7 +220,10 @@ export function collidingNamesCase(): Case {
  * up as a corpus gap rather than as a silently skipped scenario.
  */
 export function reviewHeldCase(): Case | null {
-  const f = curatedFixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and none is being watched in
+  // the healthy condition this case rewrites.
+  const f = withFoundationSettled(curatedFixture('demo-week2'))
   const first = runFixture(f)
   const watched = first.steps.find((s) => s.state.lifecycle === 'report-only' && s.state.condition === 'healthy' && typeof s.tracking?.policyId === 'string')
   const target = watched?.tracking?.policyId
