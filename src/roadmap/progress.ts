@@ -6,6 +6,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
 import { markHoldChains } from './holds.ts'
 import { gateOnDirection } from './direction.ts'
+import { gateOnFoundations } from './foundations.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
@@ -121,6 +122,13 @@ export function applyProgress(
   // carries no wait on a Direction answer, and the schedule and tracking never
   // read one.
   gateOnDirection(steps)
+  // No policy step runs ahead of the two pinned groups (roadmap/foundations.ts;
+  // owner, 2026-09-19). After the per-answer gating, so a policy that already
+  // waits on a Direction step keeps the wait it has.
+  gateOnFoundations(steps)
+  // The foundation wait is a hold, so the marks are taken again over the
+  // blockers both passes just wrote.
+  markHoldChains(steps)
   return steps
 }
 

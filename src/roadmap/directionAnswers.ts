@@ -20,6 +20,7 @@
 //
 // Pure: no DOM, no network, no engine import.
 import type { MappingState } from '../mapping/types.ts'
+import type { DirectionQuestion } from './types.ts'
 import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
@@ -37,6 +38,14 @@ export const isDirectionStep = (id: string): id is DirectionStepId => (DIRECTION
 
 /** The label prefix of the decision blocker a policy carries while it waits on a Direction answer (direction.ts gateOnDirection). */
 export const DIRECTION_BLOCKER = 'direction:'
+
+/**
+ * Done: every answer saved, and none contradicted by new evidence. The one
+ * reading of whether a Direction step is approved; it lives here, beside where
+ * each answer is stored, so the foundation gate (roadmap/foundations.ts) can
+ * read it without reaching through the step builder.
+ */
+export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
 
 /** The Direction step a blocker waits on, or null for a blocker that is not one. */
 export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {

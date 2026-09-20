@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allCuratedFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { LANE_ORDER, laneReadings, observe, tenantStateOf } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -196,13 +196,23 @@ test('a row the graph does not know takes the Plan’s own state, after the engi
   }
 })
 
-test('report-only preparation remains Ready while its enforcement waits on emergency access', () => {
+test('report-only preparation waits with the rest until the plan’s foundation is settled, and is Ready once it is', () => {
+ // Owner, 2026-09-19: no policy step reads Ready while Establish Emergency Access
+ // or Decide Your Tenant's Direction is unsettled. Report-only preparation used
+ // to be the exception — the emergency gate held enforcement only.
  const {steps} = runFixture(fixture('demo'))
  const exclusion = steps.find(s => s.id === 's-prereq-exclusion-group')!
  exclusion.status = 'done'
  const readings = laneReadings(steps)
  for (const step of steps.filter(s => ['s-goal-all-users-no-persistence', 's-goal-admin-session'].includes(s.id))) {
-   assert.equal(readings.get(step.id)?.lane, 'Ready', step.id)
+   assert.notEqual(readings.get(step.id)?.lane, 'Ready', step.id)
+ }
+ // Settled: the same two steps hand over their report-only creation.
+ const settled = runFixture(withDirectionApproved(fixture('demo-week2')))
+ const after = laneReadings(settled.steps)
+ for (const step of settled.steps.filter(s => ['s-goal-all-users-no-persistence', 's-goal-admin-session'].includes(s.id))) {
+   assert.equal(after.get(step.id)?.lane, 'Ready', step.id)
+   assert.equal(after.get(step.id)?.substatus, 'Create', step.id)
  }
 })
 
