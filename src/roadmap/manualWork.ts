@@ -1,4 +1,5 @@
 import { adminUserIds } from '../roles.ts'
+import { isLicenceGate } from '../graph/collect/roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
 import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -190,8 +191,24 @@ export function scopeManualBasis(basis: string, record: Pick<OwnerConfirmation, 
   } catch { return basis }
 }
 
+/**
+ * A source is read when it is `ok`, or when the only thing missing from it is
+ * something a licence withholds. Without Entra ID P1 the directory read is
+ * `partial` **forever** — Graph withholds `signInActivity`, not the users — so a
+ * strict `=== 'ok'` meant every manual review on a free-tier tenant read as
+ * unverified, kept `confirmedAt: null`, and could never be completed. The
+ * day-one plan was unfinishable (V1 audit S4-21).
+ *
+ * This is the same exemption `coreSections.ts` already makes for the same
+ * reason: a section a licence withholds is not a section nobody could read. It
+ * is deliberately narrow — a partial read from a refusal or an error still
+ * suspends the result, which is rule 4 of the V1 standard.
+ */
+const sectionRead = (s: { status: string; reason: string | null } | undefined): boolean =>
+  s?.status === 'ok' || (s?.status === 'partial' && isLicenceGate(s.reason))
+
 function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
-  if (snapshot.sources.users?.status !== 'ok') return false
+  if (!sectionRead(snapshot.sources.users)) return false
   if (step.id === 's-ladder-legacy-auth-inventory' && snapshot.sources.signInEvidence?.status !== 'ok') return false
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.roleAssignments?.status !== 'ok') return false
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.pimEligibility?.status !== 'ok') return false
@@ -294,7 +311,11 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     }
     if (item === 'global-admin-count' || item === 'legacy-auth-inventory') {
       const ids = scopedPeople(step, snapshot)
-      const activeIds = ids.filter(id => snapshot.users.find(u => u.id === id)?.accountEnabled)
+      // Active is the people set's reading, not "the account is enabled" — the
+      // administrator-separation branch above already reads it that way, and two
+      // readings of active is two denominators (V1 audit S4-21).
+      const activePeopleHere = activeReviewPeople ?? new Set(step.population.activeIds ?? [])
+      const activeIds = ids.filter(id => activePeopleHere.has(id))
       step.population = { ...step.population, ids, total: ids.length, activeIds, active: activeIds.length, inScope: ids.length }
       if (item === 'global-admin-count') {
         const active = ids.filter(id => (snapshot.roles.active[id] ?? []).includes(GLOBAL_ADMIN_ROLE_ID)).length

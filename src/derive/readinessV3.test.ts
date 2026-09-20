@@ -259,14 +259,17 @@ test('the answer never sets a Seamless target a tenant cannot reach: personal co
     { ...r.readiness.devices[0], os: 'Windows' as const, builtIn: false, possible: 'yes' as const, seamless: false },
   ] } } : r))
   assert.equal(goalLine(phoneAndPc), W.seamlessNotPossible)
-  // S4-23: with no device read, neither line is supported. "Everyone signs in
-  // from a device with no built-in option" explained an absence the headline
-  // above it had just said could not be measured — it rendered under
-  // "Readiness not measured … this scan holds no sign-in proof". The page says
-  // nothing rather than assert a cause it did not read.
+  // S4-23 / S4-21: with no device read, neither cause line is supported.
+  // "Everyone signs in from a device with no built-in option" explained an
+  // absence the headline above it had just said could not be measured. The page
+  // names the reason instead of asserting a cause — which is the free-tier
+  // tenant's reading, since without Entra ID P1 there are no sign-in records at
+  // all — and never claims the devices rule anybody out.
   const noDevices = notYet.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: [] } } : r))
-  assert.equal(goalLine(noDevices), '', 'a cause is asserted for an absence no device record supports')
-  assert.equal(goalLine([]), '', 'nobody counted: nothing to say about their devices')
+  for (const line of [goalLine(noDevices), goalLine([])]) {
+    assert.match(line, /isn’t known/, 'a cause is asserted for an absence no device record supports')
+    assert.doesNotMatch(line, /no built-in option|signs in from/, 'the unsupported cause came back')
+  }
   // And the line is drawn only when there is one (MfaReadiness.tsx).
   assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /active > 0 && goal !== '' &&/, 'an empty goal line still draws its paragraph')
 })
