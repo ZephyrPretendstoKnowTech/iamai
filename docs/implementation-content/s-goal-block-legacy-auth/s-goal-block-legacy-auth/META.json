@@ -26,9 +26,11 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"9eab445f-7f21-479a-85c9-29769512067e":"7398df1e"},
+    "reviewedMembers": {
+      "9eab445f-7f21-479a-85c9-29769512067e": "7398df1e"
+    },
     "memberStableId": "9eab445f-7f21-479a-85c9-29769512067e",
-    "sourceDisplayName": "IAC - GLOBAL \u2013 BLOCK - Legacy Authentication",
+    "sourceDisplayName": "IAC - GLOBAL – BLOCK - Legacy Authentication",
     "sourceState": "enabled",
     "canonicalSemantics": {
       "users": "All users with tenant-resolved canonical exclusions and owner-confirmed service/device overlays",
@@ -306,12 +308,30 @@
       "id": "ms-block-legacy",
       "authority": "Microsoft Learn",
       "title": "Block legacy authentication with Conditional Access",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-legacy-authentication",
-      "checkedOn": "2026-09-12",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication",
+      "checkedOn": "2026-09-19",
+      "userFacing": true
+    },
+    {
+      "id": "ms-ca-client-apps",
+      "authority": "Microsoft Learn",
+      "title": "How to Use Conditions in Conditional Access Policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "checkedOn": "2026-09-19",
+      "userFacing": true
+    },
+    {
+      "id": "ms-basic-auth",
+      "authority": "Microsoft Learn",
+      "title": "Deprecation of Basic authentication in Exchange Online",
+      "url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online",
+      "checkedOn": "2026-09-19",
       "userFacing": true
     }
   ],
-  "implementationCaveats": [],
+  "implementationCaveats": [
+    "Microsoft's client-apps reference asks for an Exchange ActiveSync policy assigned to users or groups with Exchange Online as its only resource, while its own block-legacy-authentication procedure says All users and All resources. The pinned baseline follows the procedure. Recorded for the owner in docs/plans/close-doors-spec.md section 7.1; the baseline is unchanged."
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-block-legacy-auth",
   "title": "Block Legacy Authentication",

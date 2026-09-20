@@ -59,4 +59,4 @@ If a legitimate client breaks, return the same policy to Report-only and remedia
 A quiet log does not prove there are no infrequently used devices or applications. Physical/operational inventory remains relevant.
 
 ## Source verification
-Pinned member plus current Microsoft legacy-auth and Graph v1.0 documentation rechecked September 10, 2026.
+Pinned member plus current Microsoft legacy-auth and Graph v1.0 documentation rechecked September 19, 2026 (docs/plans/close-doors-spec.md section 2).

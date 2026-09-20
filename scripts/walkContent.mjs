@@ -44,7 +44,11 @@ export const ACCEPTANCE = [
   // the audit said keep the current one in that case.
   { item: 'C2', step: 's-check-dormant-accounts', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts', mustNot: '/users/users-inactive' },
   { item: 'C2', step: 'admins-phishing-resistant', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa', mustNot: 'policy-admin-phishing-resistant-mfa' },
-  { item: 'C2', step: 'block-legacy-auth', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy', mustNot: 'policy-block-legacy-auth' },
+  // The howto- path still serves this page, but the page declares
+  // policy-block-legacy-authentication as its canonical URL, which is also the
+  // one the step's package cites: one fact, one source
+  // (docs/plans/close-doors-spec.md A5, checked 2026-09-19).
+  { item: 'C2', step: 'block-legacy-auth', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication', mustNot: 'howto-conditional-access-policy-block-legacy' },
   { item: 'C2', step: 's-prereq-exclusion-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations', mustNot: 'plan-conditional-access' },
   { item: 'C2', step: 's-prereq-service-accounts-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/architecture/secure-service-accounts', mustNot: 'conditional-access/workload-identity' },
   { item: 'C2', step: 'admin-portals-protected', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals', mustNot: 'policy-old-require-mfa-admin' },
@@ -124,7 +128,14 @@ export const ACCEPTANCE = [
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Inforcer (baseline name), My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'Screen-sharing does not change the registering device', mustNot: 'while they are on the VPN' },
   { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'a new starter without an existing method' },
-  { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Older authentication paths can prevent MFA from protecting a sign-in.', mustNot: 'the door attackers try first' },
+  // Close the Doors A1-A4 (docs/plans/close-doors-spec.md section 2, Microsoft
+  // Learn checked 2026-09-19): legacy protocols cannot do MFA, a blocked
+  // ActiveSync device gets one quarantine email, and a certificate is still
+  // legacy authentication.
+  { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Legacy authentication protocols cannot complete multifactor authentication', mustNot: 'can prevent MFA from protecting a sign-in' },
+  { item: '19', step: 'block-legacy-auth', path: 'more.helpDesk', must: 'one quarantine email with the reason' },
+  { item: '19', step: 'block-legacy-auth', path: 'more.helpDesk', must: 'moved from a password to a certificate is still on legacy authentication' },
+  { item: '19', step: 'block-legacy-auth', path: 'decision.help', must: 'SMTP AUTH is the last route that does', mustNot: 'use different authentication paths' },
   { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.', mustNot: 'by IMAP or ActiveSync stops syncing' },
   { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'the tool\'s supported browser-based sign-in' },
   // Per step, 21–30.
