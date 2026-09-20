@@ -3960,7 +3960,7 @@
       "more": {
         "risks": [
           {
-            "text": "An admin without a passkey, security key or Windows Hello for Business is locked out of admin work.",
+            "text": "An admin holding no method the strength accepts is locked out of admin work.",
             "applies": "adminsWithoutInScope"
           },
           {
