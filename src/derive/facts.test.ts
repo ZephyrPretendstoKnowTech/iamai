@@ -14,6 +14,8 @@ import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { contentLists } from './contentLists.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
+import { demoTenant } from '../ui/demo.ts'
+import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 import { appliedMapping } from '../ui/surfaces/pickerRows.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/stepIds.ts'
@@ -41,6 +43,21 @@ test("every surface's facts are identical on both fixtures: MFA Readiness, the p
   }
   const d = fixture('demo')
   assert.equal(demoFacts().people, facts(d.snapshot, d.mapping).active, "the sample facts on the signed-out Connect are the demo's active people")
+})
+
+test("the sample's step count is the Plan it opens: the rows the board draws, not the rows the engine produced", () => {
+  // The board's rows are the engine's steps through `customerPlanSteps` (the one
+  // projection every plan surface reads, ui/surfaces/planData.ts), counted by
+  // stepFacts — so the signed-out tile counts them the same way, or the landing
+  // page's headline number disagrees with the Plan behind it (it said 43 over 42).
+  const d = demoTenant(false)
+  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
+  const answers = d.mapping.breakGlassAnswers ?? null
+  const drawn = stepFacts(customerPlanSteps(run.steps), run.schedule.cleanup ?? null, answers)
+  assert.deepEqual({ steps: demoFacts().steps, inPlace: demoFacts().inPlace }, { steps: drawn.steps, inPlace: drawn.done })
+  // The premise: the projection withholds a step, so counting the engine's own rows is a different number.
+  const all = stepFacts(run.steps, run.schedule.cleanup ?? null, answers)
+  assert.equal(all.steps, drawn.steps + 1, 'the projection no longer withholds a step, so this case proves nothing')
 })
 
 test('no surface computes a count: the three surfaces, the print, the sample facts and the campaign lists read derive/facts.ts', () => {
