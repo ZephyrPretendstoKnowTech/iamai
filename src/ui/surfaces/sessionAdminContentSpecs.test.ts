@@ -131,7 +131,7 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
         ['In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.'],
         // Cycle 2 (C02): the correction no longer moves an enforced block to Report-only; it keeps the state and says what saving does.
         [KEEP_STATE],
-        ['Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.'],
+        ['Under Conditions → Client apps, make sure "Configure" is set to "Yes" and only "Exchange ActiveSync clients" and "Other clients" are checked. Left at "No", the condition matches every client app.'],
         ['Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.'],
         ['Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Configure Emergency Exclusions step.'],
         ['Under Grant, make sure "Block access" is selected.'],
