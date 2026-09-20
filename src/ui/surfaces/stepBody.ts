@@ -240,7 +240,13 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const showWho = lead !== null || whoInline.length > 0 || (contract.who !== null && !contract.who.known)
   const whoFull = [...whoInline.map((b) => whoHeld.find((h) => h.key === b.key) ?? b), ...whoHeld.filter((h) => !whoInline.some((b) => b.key === h.key))]
   const pkgEvidence = pkgReadiness !== null && (pkgReadiness.conclusion !== null || pkgReadiness.whyItMatters !== null || pkgReadiness.unknowns.length > 0 || pkgReadiness.references.length > 0)
-  const hasEvidence = contract.found.length > 0 || showWho || pkgEvidence
+  // What the step says about consequence rather than about the next action now
+  // stands behind "Why IAMAI says this" (owner, 2026-09-20), so a step that
+  // carries it opens the dialog even where the scan found nothing to state.
+  // Before, that content was reachable only by printing the plan.
+  const more = (cs?.more ?? {}) as { risks?: unknown[]; helpDesk?: unknown[]; manager?: unknown }
+  const hasReading = (more.risks?.length ?? 0) > 0 || (more.helpDesk?.length ?? 0) > 0 || more.manager !== undefined || cs?.lockedOut !== undefined
+  const hasEvidence = contract.found.length > 0 || showWho || pkgEvidence || hasReading
   // Readiness is the one prerequisite surface (A1 §16.1): the contract's own
   // fixes and the engine's blockers on the next action, one tile each, with the
   // package's gates merged in (stepPackage.ts mergeReadiness). Nothing below
