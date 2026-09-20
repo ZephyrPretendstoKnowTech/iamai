@@ -206,6 +206,11 @@ test('B3: the step says the policy is not properly enforced while the tenant set
   assert.ok(before.some((l) => /this policy is not properly enforced/.test(l)), before.join('\n'))
   // And the old ordering-only wording, which read as hygiene, is gone.
   assert.ok(!before.some((l) => /After it is enforced for the intended registration or join scope/.test(l)), before.join('\n'))
+  // The `before` line is the reviewer's and the walk's. Where a package is
+  // active the package's Entra block is what an admin reads, so the same fact
+  // stands in the create procedure too — the Close the Doors lesson: a fact
+  // stated only in a state the admin is not in is a fact nobody reads.
+  assert.match(blockText(DEVICE_REG, 'entra.create'), /Until it reads \*\*No\*\*, Microsoft does not properly enforce a Conditional Access policy that uses this User Action/)
 })
 
 test('B4: the tenant setting is named and pathed as its own Learn page names it', () => {

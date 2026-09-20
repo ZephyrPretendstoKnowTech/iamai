@@ -225,3 +225,64 @@ frozen step:
 **Why it is only a suggestion.** Both touch a Direction step: the first its
 question's words, the second what its answer writes. The behaviour is unchanged
 and is recorded as finding 7 of the analysis, which was explicitly not built.
+
+---
+
+## From "Turn On MFA for Everyone" (2026-09-20)
+
+Taking the seven steps of `mfa-everyone` to the V1 standard needed **no change
+to any frozen step**. Two things were noticed while doing it, and one belongs to
+a settled surface rather than a frozen step.
+
+### 1. Confirm What You Use asks nothing about device code, but Turn Off Security Defaults now depends on the answer
+
+**Where.** `s-direction-use`, and the four Direction steps generally.
+
+**What the group found.** Microsoft Learn (`entra/fundamentals/security-defaults`,
+checked 2026-09-20) now lists "Blocking device code flow" among the protections
+security defaults give, verbatim: "After security defaults are enabled in your
+tenant, authentication requests that use device code flow are blocked." Turn Off
+Security Defaults therefore names four replacement policies where it used to
+name three, and the fourth is **Block Device Code Sign-in**, whose applicability
+comes from the device-code question in Confirm What You Use.
+
+A tenant that answers "Not used" to that question and then turns security
+defaults off has nothing left blocking device code flow, and nothing on either
+step says so.
+
+**The suggestion.** The device-code question's help text could say that security
+defaults block this flow today, so answering "Not used" is also a decision about
+what happens on the day they are turned off. One sentence would do.
+
+**Why it is only a suggestion.** It is a frozen step's wording, and Turn Off
+Security Defaults now states the dependency in its own risks and its own
+procedure, which is where the change is made.
+
+### 2. The Direction steps' Impact all read "Tenant settings", beside four policy rows that name people
+
+**Where.** All four `s-direction-*` rows on the demo, at 1280.
+
+**What the group found.** Nothing wrong — it is the deliberate fallback for a
+step with no policy of its own. It is only worth recording that in the same
+Plan, one group's rows read "29 people", "29 people and 1 guest" and "Guest
+Accounts" while the Direction group's four rows all read the same two words. A
+reader scanning the Impact column learns nothing from that group.
+
+**Why it is only a suggestion.** The Direction steps are frozen and the column's
+fallback is `rowWho.ts`'s, shared by every non-policy step.
+
+### 3. Not a frozen step: one line on MFA Readiness that is half a fact
+
+`shared.methodGuides.guest` is the only guest line MFA Readiness has: "A guest
+cannot be issued a Temporary Access Pass; they register from their own tenant or
+with their own phone." That is Learn-correct. It does not say the other half —
+`entra/identity/authentication/how-to-authentication-passkeys-fido2`, checked
+2026-09-20: "Registration of passkey (FIDO2) credentials isn't supported for
+internal or external guest users, including B2B collaboration users in the
+resource tenant."
+
+The owner's 2026-09-19 rule — a guest row asks for Microsoft Authenticator,
+never a passkey — is exactly what that fact requires, so the rule is right; the
+line simply does not carry its reason. MFA Readiness is settled, so this wave
+made the steps agree with the page and changed no line on it. Written up here
+and in `mfa-everyone-spec.md` §10.8.

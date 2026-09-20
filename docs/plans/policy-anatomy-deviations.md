@@ -175,3 +175,54 @@ only puts it on screen, on four steps.
 the facts, and its lines return to the procedure) or to the four content
 packages (the verification block moves above the settings heading). Both are
 outside "roll the approved fold out", and the second touches the registry.
+
+## Found taking "Turn On MFA for Everyone" to the V1 standard (2026-09-20)
+
+### 8. Three of the group's seven steps draw the anatomy's headings, not Emergency Access's
+
+`s-verify-mfa`, `s-prereq-security-defaults` and `s-prereq-per-user-mfa` open
+with **Why / Readiness / Implementation / Done when**, where the four policy
+steps beside them open with **About this Step / Tasks Remaining / Implementation
+Tasks / Completion Criteria**. They also draw no Implementation *Task* card:
+`policyTasks.ts` builds those for policy steps, and these three are `campaign`
+and `object` steps. Their packages are registered and their channel tabs render,
+so their words do reach the screen — under a different set of headings, without
+a task title over them.
+
+**No change was made.** Generalising the task anatomy to non-policy steps was in
+flight in another wave while this one ran, and `ContentStep.tsx`,
+`policyTasks.ts` and `stepHeadings.ts` were out of scope here. This wave
+corrected the words those three steps draw and left the frame alone.
+
+### 9. A step's `whatToDo.before` line is invisible wherever a package is active
+
+`contentChecks.ts` `BEFORE_STEP_IDS` names five steps that must carry a
+`whatToDo.before` line — the setting to change before the policy exists — and
+`stepBody.ts` keeps them "above the translator's portal lines". On
+`s-goal-device-registration-mfa` the portal lines are not the translator's: the
+implementation-content package projects the Entra block, and the `before` line
+is not part of it, so it renders in the reviewer's page and in the walk's
+reading and nowhere an admin looks.
+
+Wave 2 needed that line's fact on screen — Microsoft: while the tenant-wide
+device-registration setting is **Yes**, "Conditional Access policies with this
+user action aren't properly enforced" — so it is written into the package's
+create procedure as well. Same fact, two places, which is the shape §5 already
+flagged.
+
+**The question for the owner.** Either the `before` lines fold into the package
+projection (one source, drawn once), or `BEFORE_STEP_IDS` is retired and the
+packages own those lines outright. Both are one decision; neither is built.
+
+### 10. Two of the group's steps never show their second Completion Criterion
+
+`s-goal-device-registration-mfa` carries two `doneWhen` lines; on both demo
+snapshots the opened step shows one, because the step is held and `doneWhenOf`
+(`stepContract.ts`) answers a held step with its `doneEnd` sentence alone. The
+second line — "The legacy device-registration MFA setting is No, and the
+registration or join workflows you rely on succeed" — is the half of the outcome
+the scan cannot see, and it is the half that never renders on these snapshots.
+`s-goal-guests-mfa` behaves the same way on the initial scan.
+
+**No change was made**: this is the contract's held reading, shared by every
+group, and changing it would move every held step's Completion Criteria.

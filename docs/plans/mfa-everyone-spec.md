@@ -663,7 +663,7 @@ this group's seven steps reach on those two snapshots, and what it says now.
 |---|---|---|
 | On Hold · waiting on your direction | Protect Sign-in Method Registration, initial | «Waiting on your direction». Tasks Remaining holds the threshold tile, two prerequisite steps and two readiness gates; the one Implementation Task is «Create the policy in Report-only», whose location step now sets **Configure** to **Yes** first. |
 | On Hold · waiting on your direction | Protect Sign-in Method Registration, follow-up | The same, plus «when 1 trusted location exist (now 0)» and the Confirm What You Use card. |
-| On Hold · unmapped group | Require MFA to Register a Device, both | «Baseline references an unmapped group», with the Baseline mappings link. No Implementation Task is drawn; the corrected words are in About, the risks and Completion Criteria. |
+| On Hold · unmapped group | Require MFA to Register a Device, both | «Baseline references an unmapped group», with the Baseline mappings link, beside five Tasks Remaining tiles. The one Implementation Task is «Create the policy in Report-only»; its grant step reads «Require authentication strength > Modern MFA + TAP … Windows Hello for Business and a device-bound passkey cannot answer this policy», and the paragraph above the procedure says the tenant-wide setting must read No or the policy is not properly enforced. |
 | Ready · Create | Prepare Your Team for MFA, both | «Ready now», Impact «29 people and 1 guest». The support-list tile reads «Registration Support · Not confirmed». |
 | Up Next | Require MFA for Everyone, initial | «After Prepare Emergency Access Accounts». The Implementation Task is the correction on the existing policy; its grant line and `who.evidence` now name the same control. |
 | Completed · Enforced | Require MFA for Everyone, follow-up | «In place», «Already delivered by Core - Grant - MFA for all users». The one task is compare-and-confirm. |
@@ -673,19 +673,26 @@ this group's seven steps reach on those two snapshots, and what it says now.
 | Ready · Review | Finish Moving Off Per-User MFA, both | «Complete the review below», «Legacy Per-User MFA · Not fully read · 38 accounts need a per-user state check», Impact «Per-user MFA». |
 | Not deployed, free to create | not reached by either snapshot for this group | Both policy steps this group creates are held on these two snapshots. The create procedures are read from the compiled package instead. Recorded, not invented. |
 
-Two readings that are the anatomy's, not this group's words, and were left alone
-(`policy-anatomy-deviations.md`):
+Three readings that are the anatomy's, not this group's words, and were left
+alone (`policy-anatomy-deviations.md` §8–§10):
 
-- **Three of the seven steps draw no Implementation Task at all** on either
-  snapshot: the campaign, Turn Off Security Defaults and Finish Moving Off
-  Per-User MFA. Their packages hold Entra, PowerShell, JSON, AI Info and Email
-  blocks; `policyTasks.ts` builds tasks for policy steps, and these are not
-  policy steps. Generalising it is another wave's work, in flight while this one
-  ran, so this wave corrected the words those blocks will draw and touched
-  neither `ContentStep.tsx` nor `policyTasks.ts`.
-- **Require MFA to Register a Device draws no task in either snapshot** because
-  an unmapped baseline group holds it. Its corrections are verified against the
-  compiled package.
+- **Three of the seven steps draw a different set of headings**: the campaign,
+  Turn Off Security Defaults and Finish Moving Off Per-User MFA open with
+  **Why / Readiness / Implementation / Done when** and draw no Implementation
+  *Task* card, because `policyTasks.ts` builds those for policy steps and these
+  are `campaign` and `object` steps. Their channel tabs render and their
+  corrected words are on screen under those headings. Generalising the task
+  anatomy is another wave's work, in flight while this one ran, so this wave
+  touched neither `ContentStep.tsx` nor `policyTasks.ts`.
+- **The risks are behind a closed disclosure.** Every risk this wave added is in
+  the step's "More" details, which the reader opens. That is the anatomy's home
+  for them and §5 of the deviations record already asks the owner about it; the
+  facts that must be read before acting were also written into the create
+  procedures, which is a surface the anatomy draws open.
+- **A `whatToDo.before` line does not render where a package is active.** Require
+  MFA to Register a Device's before line reaches the reviewer's page and the walk
+  and nowhere an admin looks, so its fact is in the package's create procedure as
+  well (deviations §9).
 
 ## 10. Recorded for the owner
 
