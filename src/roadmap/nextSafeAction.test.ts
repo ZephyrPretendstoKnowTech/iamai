@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { FixtureName } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import type { Step } from './types.ts'
 import { executableNow, implementationIsCurrent, nextSafeAction } from './nextSafeAction.ts'
 import { unavailableReason } from './operations.ts'
@@ -21,7 +21,9 @@ function answeredWeekTwo() {
   const pending = sourceMappingsOf(runFixture(raw).steps)
   return { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
 }
-const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }]
+// Until the plan's foundation is settled every policy step is held (roadmap/foundations.ts),
+// so the sweep carries a settled plan too, or half the executability answers are the gate's.
+const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }, { name: 'demo-week2-settled', steps: runFixture(withFoundationSettled(answeredWeekTwo())).steps }, { name: 'demo-week2-settled-unanswered', steps: runFixture(withFoundationSettled(fixture('demo-week2'))).steps }]
 const all = (): { name: string; step: Step }[] => PLANS.flatMap((p) => p.steps.map((step) => ({ name: p.name, step })))
 const find = (name: string, id: string): Step => PLANS.find((p) => p.name === name)!.steps.find((s) => s.id === id || s.goalId === id)!
 
@@ -67,11 +69,14 @@ test('readiness holds enforcement and not report-only creation; a missing object
   assert.ok(decision)
   assert.equal(nextSafeAction(decision.step).kind, 'decide')
   // A report-only policy mid-window: verifying is due now, enforcement is not.
-  assert.deepEqual(nextSafeAction(find('demo-week2-answered', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
+  // On a plan whose foundation is settled: until both pinned groups are, what
+  // holds every policy is the gate (roadmap/foundations.ts), which is a
+  // different answer and the one the first case above already makes.
+  assert.deepEqual(nextSafeAction(find('demo-week2-settled', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
   // The same policy while a source reference it names is unanswered: nothing is due until it is.
-  assert.deepEqual(nextSafeAction(find('demo-week2', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
+  assert.deepEqual(nextSafeAction(find('demo-week2-settled-unanswered', 's-goal-block-auth-transfer')), { kind: 'observe', executable: true, blockedBy: 'observation-incomplete', enforceable: false })
   // Watched to the point Foundation B grants it: enforcement is the action, and it can be taken.
-  assert.deepEqual(nextSafeAction(find('demo-week2-answered', 's-goal-token-protection')), { kind: 'enforce', executable: true, blockedBy: null, enforceable: true })
+  assert.deepEqual(nextSafeAction(find('demo-week2-settled', 's-goal-token-protection')), { kind: 'enforce', executable: true, blockedBy: null, enforceable: true })
 })
 
 test('the phase, wave and dates a step is drawn in never change what it can execute or enforce', () => {

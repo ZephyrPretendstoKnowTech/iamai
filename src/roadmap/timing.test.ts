@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { localHour, nobodyAffected, noticeDaysFor } from './timing.ts'
@@ -13,7 +13,9 @@ const dayIn = (iso: string): string => new Intl.DateTimeFormat('en-AU', { timeZo
 const hourIn = (iso: string): number => localHour(iso, ZONE)
 
 test('every policy step carries announce, remind and enforce as one instant each, with a reason', () => {
-  const run = runFixture(fixture('mid'))
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const run = runFixture(withFoundationSettled(fixture('mid')))
   const dated = run.steps.filter((s) => s.events)
   assert.ok(dated.length > 5)
   for (const s of dated) {

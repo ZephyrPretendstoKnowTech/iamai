@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withEmergencyAccessSettled } from '../../roadmap/fixtures/run.ts'
 import { isPreserved, policyResult, unavailableReason } from '../../roadmap/operations.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { stepSnapshotsOf } from '../../testing/stepSnapshots.ts'
@@ -20,7 +20,9 @@ import { badgeLabel, stepContract } from './stepContract.ts'
 const DC = 's-goal-block-device-code'
 
 test('demo week two: the enforced Block Device Code Sign-in is in place, reads Ready · Decision, and asks for no rebuild', () => {
-  const f = fixture('demo-week2')
+  // With Establish Emergency Access complete (roadmap/foundations.ts) and the
+  // Direction left open, which is the unsaved answer this case is about.
+  const f = withEmergencyAccessSettled(fixture('demo-week2'))
   const step = runFixture(f, {}, null, f.snapshot.asOf).steps.find((s) => s.id === DC)
   assert.ok(step)
   assert.equal(step.state.lifecycle, 'enforced', 'the premise: the tenant already enforces it')

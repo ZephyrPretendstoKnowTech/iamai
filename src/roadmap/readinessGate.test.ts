@@ -22,7 +22,7 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from './operations.ts'
@@ -64,7 +64,10 @@ function assertNothingIsDated(step: Step, r: ReturnType<typeof runFixture>, ctx:
 
 /** The large tenant, whose compliant-device readiness is 29% against the 80% its own step asks for. */
 function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean } = {}) {
-  const f = fixture('large')
+  // With the plan's foundation settled (roadmap/foundations.ts): a case about
+  // what a readiness threshold holds cannot start behind the gate that holds
+  // every policy until both pinned groups are settled.
+  const f = withFoundationSettled(fixture('large'))
   const ca = f.snapshot.config.caPolicies!
   const rows = over.enabled
     ? (ca.rows as Row[]).map((p) => (/Compliant device for Office/.test(String(p.displayName)) ? { ...p, state: 'enabled' } : p))

@@ -38,7 +38,7 @@ import assert from 'node:assert/strict'
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { nextMilestone } from './lifecycle.ts'
@@ -484,7 +484,9 @@ test('screen, export and prompt all carry the conflict and none carries an imple
 // ---- 8: one conflicted goal is not a broken plan ----
 
 test('the rest of the plan keeps its implementations, its states and its dates', () => {
-  const { r, step, ctx } = run(withMatchingTenantPolicy())
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const { r, step, ctx } = run(withFoundationSettled(withMatchingTenantPolicy()))
   const others = r.steps.filter((s) => s.id !== step.id)
   assert.ok(others.length > 10, `the plan still has its other steps (${others.length})`)
   assert.ok(others.some((s) => typeof s.action.json === 'string'), 'the rest of the plan lost its bodies')

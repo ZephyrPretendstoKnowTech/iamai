@@ -12,7 +12,7 @@
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
-import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../../mapping/safetyChoice.ts'
+import { EXCLUSIONS_RECORD_KEY, actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../../mapping/safetyChoice.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
@@ -25,6 +25,7 @@ import { settleForecast } from '../forecast.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import { applyStepDecisions } from '../decisions.ts'
 import { DIRECTION_STEP, directionDecisionOf } from '../directionAnswers.ts'
+import { recoveryCandidate, withPreparedPasskeys } from './recoveryRecords.ts'
 import type { DirectionStepId } from '../directionAnswers.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
@@ -174,4 +175,57 @@ export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[
     return [id, { ...directionDecisionOf(answers, basis), at: f.snapshot.asOf }]
   }))
   return { ...f, mapping: applyStepDecisions(f.mapping, decisions) }
+}
+
+/**
+ * The same tenant with the plan's foundation settled (roadmap/foundations.ts):
+ * Establish Emergency Access complete — an approved recovery passkey on each
+ * emergency account, a recovery sign-in this scan can see, and the two answers
+ * that step asks — and every Decide Your Tenant's Direction answer approved.
+ *
+ * Until both pinned groups are settled no policy step is Ready and none is
+ * dated, so a case about what a policy does, when it is dated or what it hands
+ * over starts here, or it is testing the gate instead. It is the completion the
+ * demo-week2 fixture builds into its own snapshot, over any fixture.
+ */
+export function withFoundationSettled(f: Fixture): Fixture {
+  return withDirectionApproved(withEmergencyAccessSettled(f))
+}
+
+/**
+ * Half of it: Establish Emergency Access complete, with Decide Your Tenant's
+ * Direction left exactly as it was. A case about an unsaved Direction answer
+ * starts here — approving them all would answer the question it is asking.
+ */
+export function withEmergencyAccessSettled(f: Fixture): Fixture {
+  const snapshot = structuredClone(f.snapshot)
+  const ids = f.mapping.breakGlassUserIds
+  withPreparedPasskeys(snapshot, ids)
+  // And the tenant's own policies carving out the group its technician chose,
+  // wherever they carve out another one (the inverse of withBreakGlassCarveOut):
+  // a chosen group the policies do not use leaves Configure Emergency Exclusions
+  // with a correction to make, which is a member of the group and holds it.
+  const chosen = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string } | undefined)?.resolvedId ?? null
+  const emergencyGroups = new Set([...f.groups].filter(([id, g]) => id.toLowerCase() !== chosen?.toLowerCase() && g.memberIds.length > 0 && g.memberIds.every((m) => ids.includes(m))).map(([id]) => id.toLowerCase()))
+  if (chosen !== null) {
+    for (const raw of snapshot.config.caPolicies?.rows ?? []) {
+      const users = (raw as { conditions?: { users?: { excludeGroups?: string[]; excludeUsers?: string[] } } }).conditions?.users
+      if (!users) continue
+      if (users.excludeGroups) users.excludeGroups = [...new Set(users.excludeGroups.map((g) => (emergencyGroups.has(g.toLowerCase()) ? chosen : g)))]
+      // An emergency account carved out by name is the shape the exclusions
+      // group replaces (CLAUDE.md: exclusions go through the group, never an
+      // account by name), so the group takes its place.
+      if (users.excludeUsers?.some((u) => ids.some((id) => id.toLowerCase() === u.toLowerCase()))) {
+        users.excludeUsers = users.excludeUsers.filter((u) => !ids.some((id) => id.toLowerCase() === u.toLowerCase()))
+        users.excludeGroups = [...new Set([...(users.excludeGroups ?? []), chosen])]
+      }
+    }
+  }
+  for (const [index, id] of ids.entries()) {
+    const at = snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn ?? snapshot.asOf
+    const held = snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }
+    snapshot.signInEvidence[id] = { ...held, recoveryCandidates: [{ ...recoveryCandidate(id, at, snapshot.tenantId, `settled-recovery-${index + 1}`), credentialId: `demo-emergency-passkey-${index + 1}` }] }
+  }
+  const mapping = { ...f.mapping, breakGlassAnswers: { ...f.mapping.breakGlassAnswers, credentialStorage: true, signInMonitoring: true } }
+  return { ...f, snapshot, mapping }
 }

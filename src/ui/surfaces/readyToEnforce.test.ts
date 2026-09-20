@@ -42,8 +42,16 @@ import assert from 'node:assert/strict'
 // about what a policy does once it can be written at all; whether *this*
 // baseline's unexplained references let it be written is
 // roadmap/sourceIdentity.test.ts, and on the demo it is the true answer today.
-import { allFixtures, curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { allFixtures, curatedFixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+
+/**
+ * The canonical case with the plan's foundation settled. Until both pinned
+ * groups are - Establish Emergency Access complete, every Decide Your Tenant's
+ * Direction answer approved - no policy step is Ready and none is dated
+ * (roadmap/foundations.ts, 2026-09-19), which is a different case from this one.
+ */
+const fixture = (name: Parameters<typeof curatedFixture>[0]): ReturnType<typeof curatedFixture> => withDirectionApproved(curatedFixture(name))
 import { scannedAt, seenOn } from '../../roadmap/fixtures/records.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'

@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture, fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { planFinish } from '../derive/finish.ts'
 import { isHeld } from './holds.ts'
@@ -45,7 +45,7 @@ test('the finish date is the end of the last phase, Cleanup included; a held pla
   // Week two: its policies name nothing the tenant lacks, so they are on the
   // calendar. A tenant whose Preparation work is still to do has nothing dated.
   // On the curated baseline, where the week-two plan has policies the calendar dates.
-  const r = runFixture(curatedFixture('demo-week2'))
+  const r = runFixture(withFoundationSettled(curatedFixture('demo-week2')))
   const c = r.schedule.cleanup!
   // The week-two plan still holds work it requires, so it finishes on no date,
   // and Cleanup — which follows that work — gives it none (roadmap/holds.ts).

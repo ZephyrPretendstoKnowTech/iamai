@@ -397,8 +397,8 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
-  'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-device-code
-  'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-guests-mfa
+  'policy · create · enforced · healthy · open · do:decide · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-device-code
+  'policy · create · enforced · healthy · open · do:decide · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer

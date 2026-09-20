@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { implementationIsCurrent, nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
@@ -31,8 +31,10 @@ function open(f: ReturnType<typeof fixture>, id: string) {
 }
 
 test('a report-only create waiting only on values reads Ready on the board, the screen and the export, and says values stand between it and Copy', () => {
-  const small = fixture('small')
-  const mid = fixture('mid')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const small = withFoundationSettled(fixture('small'))
+  const mid = withFoundationSettled(fixture('mid'))
   for (const [f, id] of [[small, 's-goal-all-users-no-persistence'], [mid, 's-goal-all-users-no-persistence'], [mid, 's-goal-pim-activation-reauth'], [mid, 's-goal-user-risk']] as const) {
     const { step, lane, body, exp } = open(f, id)
     const what = `${f === small ? 'small' : 'mid'} ${id}`
@@ -40,7 +42,7 @@ test('a report-only create waiting only on values reads Ready on the board, the 
     assert.equal(implementationIsCurrent(step), true, what)
     assert.equal(exp.state, 'Ready · Create', what)
     assert.equal(lane.label, exp.state, `${what}: board and export disagree`)
-    assert.match(exp.whatToDo[0], /^Create the policy in report-only/, `${what}: the report-only create was not kept`)
+    assert.match(exp.whatToDo[0], /^Create the policy in [Rr]eport-only/, `${what}: the report-only create was not kept`)
     assert.equal(body.previewNote, null, what)
     assert.ok(body.artifacts.every(a => a.unavailable !== true), what)
     for (const line of exp.whatToDo) assert.equal(line.includes(NOT_READY) || line === W.text || line === W.textValues, false, `${what}: ${line}`)

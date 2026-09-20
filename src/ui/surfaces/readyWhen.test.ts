@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { stepIdForGoal, findTaggedPolicy, planIdFor } from '../../roadmap/generate.ts'
 import { demoTenant } from '../demo.ts'
@@ -126,7 +126,9 @@ test('week one: a policy the scan first sees in report-only is watched from the 
 })
 
 test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is In place', () => {
-  const f = fixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const f = withFoundationSettled(fixture('demo-week2'))
   const run = runFixture(f)
   const token = run.steps.find((s) => s.id === TOKEN)!
   assert.equal(token.status, 'ready-to-enforce')
@@ -259,7 +261,9 @@ test('the app\'s demo: safe report-only correction remains available while final
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
   assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
-  const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId })
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const run = runFixture(withFoundationSettled({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId }))
   const token = run.steps.find((s) => s.id === TOKEN)!
   // The token policy's window has closed on clean records. Its bounded
   // correction remains safe in Report-only; final emergency verification still

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { deviceChips, methodsCell, nextCell, roleWord, rowCells, stateTitle } from './readinessCells.ts'
@@ -163,7 +163,9 @@ test('every copy box on both fixtures is followed by the adapt line, and it appe
 // A partly covered goal's step names the tenant's policy as the one to change,
 // and its row reads Blocked · <date> or Ready · now, never Blocked · now.
 test('GetIAMAI: with a Windows-only token-protection policy on, the step names that policy and its blocked row carries a date', () => {
-  const f = fixture('getiamai')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and its row reads no day.
+  const f = withFoundationSettled(fixture('getiamai'))
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
   const policy = {
     id: 'p-token', displayName: 'Core - Require - Token Protection (Windows)', state: 'enabled', createdDateTime: '2026-01-10T00:00:00Z',

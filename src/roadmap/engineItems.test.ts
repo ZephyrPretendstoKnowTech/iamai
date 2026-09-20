@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from './generate.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { nobodyAffected } from './timing.ts'
@@ -80,7 +80,7 @@ test('a step the plan cannot write reports no zero and announces nothing; on a b
   // On the curated baseline, where the policies can be written: the manager's
   // clause reports the zero the records show, and the email states the session
   // length it is warning people about.
-  const cf = curatedFixture('demo')
+  const cf = withFoundationSettled(curatedFixture('demo'))
   const cr = runFixture(cf)
   const cctx = ctxFor(cf, cr)
   const cAt = cr.steps.find((x) => x.goalId === 'block-auth-transfer')!

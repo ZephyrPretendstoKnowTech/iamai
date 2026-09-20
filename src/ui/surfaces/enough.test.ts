@@ -6,7 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { missingVars, fillText } from '../../content/render.ts'
@@ -18,7 +18,9 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
 
 const setUp = (curated = false) => {
-  const f = curated ? curatedFixture('demo-week2') : fixture('demo-week2')
+  // The curated run also settles the plan's foundation (roadmap/foundations.ts):
+  // until both pinned groups are, every policy is held and the email has no day.
+  const f = curated ? withFoundationSettled(curatedFixture('demo-week2')) : fixture('demo-week2')
   const r = runFixture(f)
   const dates = planDates(r.steps, r.schedule.start)
   const ctx = (over: Partial<StepVarContext> = {}): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, ...dates, ...over })
