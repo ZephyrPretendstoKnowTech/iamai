@@ -19,7 +19,7 @@ function setup(f = usability100('deployment')) {
 
 test('mail-device follow-up exposes manual directions and a reversible completion', () => {
   const {f,r,ctx} = setup()
-  for (const id of [CARVE_OUT_STEP_ID.mailDevices, CARVE_OUT_STEP_ID.partner]) {
+  for (const id of [CARVE_OUT_STEP_ID.mailDevices]) {
     const step = r.steps.find(s=>s.id===id)!
     assert.ok(step, id)
     assert.ok(step.manualReview?.readyToConfirm, id)

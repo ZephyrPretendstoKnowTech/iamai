@@ -4,7 +4,7 @@
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
     "expectedPackageCount": 47,
-    "packageCount": 45,
+    "packageCount": 44,
     "complete": true
   },
   "packages": [
@@ -1712,47 +1712,6 @@
       "review": "current"
     },
     {
-      "stepId": "s-question-partner",
-      "title": "Exclude the Partner or MSP Accounts",
-      "packagePath": "docs/implementation-content/s-question-partner/",
-      "relationship": "prerequisite",
-      "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
-      "sourceFiles": 3,
-      "contentBlocks": 13,
-      "outputs": {
-        "entra": true,
-        "json": true,
-        "powershell": true,
-        "aiInfo": true,
-        "email": true,
-        "readiness": true,
-        "troubleshooting": true
-      },
-      "statesSupported": [
-        "needsDecision",
-        "applyRequired",
-        "verificationRequired",
-        "inPlace",
-        "notApplicable",
-        "blocked",
-        "missing"
-      ],
-      "correctionModules": 0,
-      "requiredBindings": 4,
-      "optionalBindings": 5,
-      "verifiedSourceCount": 5,
-      "packageSpecificMicrosoftSources": 5,
-      "sharedPrimitivesReused": 0,
-      "betaDependencies": 0,
-      "unresolvedIssues": 0,
-      "family": "supporting",
-      "strictValidationErrors": 9,
-      "registered": true,
-      "provenance": "workflow-check",
-      "review": "current"
-    },
-    {
       "stepId": "s-shared-devices",
       "title": "Give Shared Devices Their Own Policy",
       "packagePath": "docs/implementation-content/s-shared-devices/",
@@ -2412,7 +2371,6 @@
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
         "s-question-mail-devices",
-        "s-question-partner",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -2457,7 +2415,6 @@
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
         "s-question-mail-devices",
-        "s-question-partner",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -4009,78 +3966,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "partner.accessModel",
-      "requiredBy": [
-        "s-question-partner"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "partner.affectedPolicyNames",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-partner"
-      ],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "partner.currentEvidence",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-partner"
-      ],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "partner.decisionSummary",
-      "requiredBy": [
-        "s-question-partner"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "partner.providerName",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-partner"
-      ],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "partner.tenantId",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-partner"
-      ],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "partnerTrust.resolvedPatches",
       "requiredBy": [],
       "optionalBy": [
@@ -5469,18 +5354,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "policyPatches.resolved",
-      "requiredBy": [
-        "s-question-partner"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-partner"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "readiness.activeCount",
       "requiredBy": [
         "s-verify-mfa"
@@ -5894,7 +5767,6 @@
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
         "s-question-mail-devices",
-        "s-question-partner",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -5974,7 +5846,6 @@
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
         "s-question-mail-devices",
-        "s-question-partner",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -6345,18 +6216,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 45,
+    "packageCount": 44,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 970,
-    "uniqueBindings": 280,
-    "bindingsRequiredByAtLeastOneProjection": 92,
-    "bindingsOptionalInAtLeastOnePackage": 192,
+    "contentBlocks": 957,
+    "uniqueBindings": 273,
+    "bindingsRequiredByAtLeastOneProjection": 89,
+    "bindingsOptionalInAtLeastOnePackage": 188,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 235,
+    "bindingDefinitionsPendingHolisticReview": 228,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 235,
+    "knownIAMAIInputUnreviewed": 228,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6410,16 +6281,16 @@
     ],
     "legacyDependencies": 0,
     "packagesPassingStrictValidation": 2,
-    "packagesWithWithheldParts": 43,
+    "packagesWithWithheldParts": 42,
     "provenance": {
       "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
       "tenant-prerequisite": 10,
-      "workflow-check": 7
+      "workflow-check": 6
     },
     "review": {
-      "current": 44,
+      "current": 43,
       "reviewNeeded": 1
     }
   },

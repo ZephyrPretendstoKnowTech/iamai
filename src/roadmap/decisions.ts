@@ -50,10 +50,12 @@ export type OwnerConfirmation = {
   contextId?: string
   networkId?: string
   configurationVerified?: boolean
+  /** The guests policy's optional note: the path an excluded partner or provider signs in by (folded in from the deleted partner follow-up). */
+  providerAccessPath?: string
 }
 export type ManualReviewInput = Omit<OwnerConfirmation, 'at'>
 export type ManualEvidenceField = {
-  key: 'outcome' | 'testedAt' | 'accountIds' | 'workflow' | 'reference' | 'replacementAccountId' | 'roleIds' | 'exceptionRemoved' | 'contextId' | 'networkId' | 'configurationVerified'
+  key: 'outcome' | 'testedAt' | 'accountIds' | 'workflow' | 'reference' | 'replacementAccountId' | 'roleIds' | 'exceptionRemoved' | 'contextId' | 'networkId' | 'configurationVerified' | 'providerAccessPath'
   label: string
   type: 'text' | 'date' | 'accounts' | 'select' | 'checkbox'
   required: boolean
@@ -68,7 +70,7 @@ export function ownerConfirmationOf(value: unknown): OwnerConfirmation | null {
   if (typeof v.at !== 'string' || typeof v.basis !== 'string') return null
   const out: OwnerConfirmation = { at: v.at, basis: v.basis }
   if (typeof v.outcome === 'string' && ['passed', 'failed', 'retained', 'revoked', 'investigate'].includes(v.outcome)) out.outcome = v.outcome as ManualOutcome
-  for (const key of ['testedAt', 'workflow', 'reference', 'replacementAccountId', 'contextId', 'networkId'] as const) if (typeof v[key] === 'string') out[key] = v[key]
+  for (const key of ['testedAt', 'workflow', 'reference', 'replacementAccountId', 'contextId', 'networkId', 'providerAccessPath'] as const) if (typeof v[key] === 'string') out[key] = v[key]
   for (const key of ['accountIds', 'roleIds'] as const) if (Array.isArray(v[key])) out[key] = [...new Set(v[key].filter((x): x is string => typeof x === 'string' && x.trim().length > 0))]
   if (typeof v.exceptionRemoved === 'boolean') out.exceptionRemoved = v.exceptionRemoved
   if (typeof v.configurationVerified === 'boolean') out.configurationVerified = v.configurationVerified

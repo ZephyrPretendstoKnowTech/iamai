@@ -125,7 +125,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'mfa-everyone',
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
-    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-question-partner', 's-prereq-per-user-mfa'],
+    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-prereq-per-user-mfa'],
     pinned: false,
     anatomy: null,
   },

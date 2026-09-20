@@ -79,7 +79,7 @@ test('new guests become a pending delta while the reviewed guest evidence stays 
 })
 
 test('failed workflow or observed administrator separation defect cannot be overridden by a manual record', () => {
-  const { f, step } = setup('s-question-partner')
+  const { f, step } = setup('s-goal-guests-mfa')
   apply(step, f, recordFor(step, f, { outcome: 'failed' }))
   assert.equal(step.state.satisfied, false)
   step.id = 's-ladder-admin-accounts-separate'

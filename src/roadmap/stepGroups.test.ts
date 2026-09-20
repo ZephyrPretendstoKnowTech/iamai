@@ -94,16 +94,17 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
   for (const g of STEP_GROUPS) assert.equal(g.anatomy !== null, g.pinned, `${g.key}: anatomy and pinning disagree`)
 })
 
-// docs/plans/step-redundancy-analysis.md finding 4: a group may not list a step
-// the engine cannot build. Five such ids were listed, and three group sizes were
-// overstated because of them.
-const NEVER_GENERATED = ['s-prereq-device-plan', 's-question-travel', 's-goal-mobile-app-protection', 's-goal-azure-management-mfa', 's-goal-unmanaged-browser', 'cleanup-notAssessed']
+// Ids the registry listed that a person can no longer meet on the board: five the
+// engine could never build (docs/plans/step-redundancy-analysis.md finding 4), the
+// unassessed-policies row that duplicated the review steps (finding 8), and the
+// partner follow-up that pointed at two other steps (finding 5).
+const GONE = ['s-prereq-device-plan', 's-question-travel', 's-goal-mobile-app-protection', 's-goal-azure-management-mfa', 's-goal-unmanaged-browser', 'cleanup-notAssessed', 's-question-partner']
 
-test('no group lists a step the engine can never generate', () => {
+test('no group lists a step the board can never draw', () => {
   const listed = STEP_GROUPS.flatMap((g) => [...g.members])
-  for (const id of NEVER_GENERATED) assert.equal(listed.includes(id), false, `${id} is still a registry member`)
+  for (const id of GONE) assert.equal(listed.includes(id), false, `${id} is still a registry member`)
 
-  // The general rule behind those five: an `s-goal-` member names a goal the
+  // The general rule behind the five phantoms: an `s-goal-` member names a goal the
   // pinned baseline maps or the floor supplies. Anything else renders nothing.
   const goalIds = new Set((goalsData.goals as { id: string }[]).map((g) => g.id))
   for (const id of listed.filter((m) => m.startsWith('s-goal-'))) {
@@ -120,6 +121,7 @@ test('no group lists a step the engine can never generate', () => {
   // Require Healthy Devices lists what it actually draws; the other two shrank by one each.
   assert.deepEqual([...membersOf('devices')], ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'])
   assert.equal(membersOf('protect-admins').length, 5)
+  assert.equal(membersOf('mfa-everyone').includes('s-question-partner'), false, 'the partner follow-up folded into the guests policy')
   assert.equal(membersOf('where-people-sign-in').length, 6)
 })
 

@@ -119,7 +119,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.unsettled',
   // The campaign email while the plan dates nothing (stepExport.ts commsFor): the
   // review page's example plan dates its enforcement, so it renders the dated body.
-  '.steps[15].comms.bodyUndated',
+  '.steps[14].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
@@ -194,36 +194,36 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[5].whatToDo.steps[3]',
   '.steps[6].who.none',
   '.steps[10].who.match',
-  '.steps[15].who.groups.noMethod',
+  '.steps[14].who.groups.noMethod',
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
-  '.steps[15].who.groups.needsSetup',
-  '.steps[15].who.groups.readinessUnknown',
-  '.steps[15].who.groups.holdouts',
-  '.steps[16].who.evidence[1]',
+  '.steps[14].who.groups.needsSetup',
+  '.steps[14].who.groups.readinessUnknown',
+  '.steps[14].who.groups.holdouts',
+  '.steps[15].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists
   // (E8) render through their count lines, so those are no longer suppressed.
-  '.steps[17].who.evidence[3]',
-  '.steps[25].who.evidence[2]',
-  '.steps[35].who.evidence[2]',
-  '.steps[18].who.evidence[0]',
+  '.steps[16].who.evidence[3]',
+  '.steps[24].who.evidence[2]',
+  '.steps[34].who.evidence[2]',
+  '.steps[17].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
+  '.steps[17].who.evidence[1]',
   '.steps[18].who.evidence[1]',
-  '.steps[19].who.evidence[1]',
+  '.steps[19].who.evidence[0]',
   '.steps[20].who.evidence[0]',
-  '.steps[21].who.evidence[0]',
   // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
-  '.steps[24].who.evidence[0]',
-  '.steps[24].who.evidence[1]',
+  '.steps[23].who.evidence[0]',
+  '.steps[23].who.evidence[1]',
   // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
+  '.steps[34].who.evidence[0]',
   '.steps[35].who.evidence[0]',
-  '.steps[36].who.evidence[0]',
-  '.steps[37].who.evidence[1]',
-  '.steps[38].who.evidence[0]',
+  '.steps[36].who.evidence[1]',
+  '.steps[37].who.evidence[0]',
+  '.steps[38].who.evidence[1]',
   '.steps[39].who.evidence[1]',
-  '.steps[40].who.evidence[1]',
   // The service-accounts block's none line (E9); the example has service accounts.
-  '.steps[42].who.none',
+  '.steps[41].who.none',
   '.pages.plan.blocked.sourceMapping',
   // The passkey settings holds (roadmap/passkeySettings.ts, owner approval 2026-09-14):
   // a profile-based policy, a block list that blocks Authenticator, a partial read.
@@ -234,8 +234,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The device-code and authentication-transfer usage lines (editorial batch C): the
   // example lists nobody. They only read as rendered before because a fragment matched
   // the old none line, which now says the records are not proof of no use.
+  '.steps[21].who.evidence[0]',
   '.steps[22].who.evidence[0]',
-  '.steps[23].who.evidence[0]',
   '.pages.plan.blocked.passkeyBlockConflict',
   '.pages.plan.blocked.passkeyPartialRead',
   '.pages.plan.blocked.passkeyProfiles',
