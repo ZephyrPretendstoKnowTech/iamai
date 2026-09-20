@@ -12,7 +12,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { POLICY_SETTINGS_STEP_IDS, drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
@@ -204,20 +204,43 @@ test('the bar over the evidence link instructs, as Prepare Emergency Access Acco
   assert.match(read('src/ui/surfaces/ContentStep.tsx'), /barMain=\{isPolicyTaskStep \? policyBarOf\(taskSubjects\) : displayedReadiness\.bar\.main\}/)
 })
 
-test('the resolved settings stand under the Entra procedure of one policy, folded, in a disclosure the file already draws', () => {
-  assert.deepEqual([...POLICY_SETTINGS_STEP_IDS], [PILOT], 'the approved deviation is one policy')
+test('the resolved settings stand under the Entra procedure of every policy step, folded, in a disclosure the file already draws', () => {
+  // The approved deviation is every policy step (owner, 2026-09-19), gated by
+  // the step's own content kind — the same gate as the anatomy, not a list.
+  for (const name of ['demo', 'demo-week2', 'midflight', 'messy', 'hostile', 'large', 'mid', 'small'] as FixtureName[]) {
+    for (const step of runFixture(fixture(name)).steps) {
+      assert.equal(drawsPolicySettings(step.id), usesPolicyTaskAnatomy(step.id), `${name}/${step.id}`)
+    }
+  }
   assert.equal(drawsPolicySettings(PILOT), true)
-  assert.equal(drawsPolicySettings('s-goal-mfa-all-users'), false)
+  assert.equal(drawsPolicySettings('s-goal-mfa-all-users'), true)
+  assert.equal(drawsPolicySettings('s-shared-devices'), true)
+  assert.equal(drawsPolicySettings('s-check-dormant-accounts'), false)
+  assert.equal(drawsPolicySettings('s-direction-use'), false)
   const contentStep = read('src/ui/surfaces/ContentStep.tsx')
   assert.match(contentStep, /taskSettings && !!taskFacts\.length && <details className="approved-model-disclosure">/, 'the settings are not in the existing disclosure')
   assert.match(contentStep, /<summary>\{SHARED\.policySettingsForAction\}<\/summary>/, 'the heading is not the artifact’s own')
   // Collapsed by default: no `open` on this disclosure.
   assert.equal(/taskSettings && !!taskFacts\.length && <details className="approved-model-disclosure" open/.test(contentStep), false)
   // What it folds is the task's own facts — the settings the procedure was written against.
-  const { body } = bodyOf(PILOT)
-  const facts = body.emergencyAccountTasks!.tasks[0].facts ?? []
+  const factsOf = (stepId: string) => bodyOf(stepId).body.emergencyAccountTasks?.tasks[0]?.facts ?? []
+  const facts = factsOf(PILOT)
   assert.ok(facts.some((fact) => fact.label === 'Name'))
   assert.ok(facts.some((fact) => /Session →/.test(fact.value) || /Session →/.test(fact.label)))
+  // A long settings list and a short one, on policy steps that were not the
+  // pilot: each is the resolved policy, named, and nothing is composed here.
+  const long = factsOf('s-goal-register-info-protected')
+  assert.ok(long.length >= 8, `a long settings list stays long (${long.length})`)
+  assert.ok(long.some((fact) => fact.label === 'Name'))
+  // An update to a policy that already exists names no Name or Description —
+  // the policy is not being created — so its fold is the two lines it changes.
+  const few = factsOf('s-goal-mfa-all-users')
+  assert.ok(few.length > 0 && few.length <= 4, `a policy with few settings keeps only those (${few.length})`)
+  assert.equal(few.some((fact) => fact.label === 'Name'), false)
+  assert.ok(few.some((fact) => /^Users → /.test(fact.label)))
+  // A procedure that carries no settings heading folds nothing: the guard is the
+  // facts, so those steps read exactly as they did.
+  assert.deepEqual(factsOf('s-goal-guests-mfa'), [])
 })
 
 test('one card fills the row, on every step that draws these cards', () => {
