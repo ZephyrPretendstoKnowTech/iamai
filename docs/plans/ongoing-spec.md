@@ -532,7 +532,8 @@ V1 §3.3.
 - F3 the diagnostic-setting prerequisite names the Entra role and the workspace.
 - F4 Completion Criteria names who answers the alert and what they do with it.
 - F5 the row still draws Why, Implementation Tasks and Done when — no heading
-  moved.
+  moved, and no Cleanup row carries a key it did not carry before.
+- K1 every Cleanup row's words reach the prompt pack whole (§10.7).
 
 ---
 
@@ -674,3 +675,14 @@ there would be none. The note is right and the fixture is not a tenant; §10.2.
 6. **`whatToDoReference` is nobody's renderer**, as `protect-admins-spec.md` §8.6
    records. The admin-portals reference lines corrected in §4 are the review
    page's and the reviewer's; the step itself renders no procedure at all.
+7. **The prompt pack was silently clipping Cleanup, and this wave fixed it.**
+   `roadmap/prompts.ts` put every Cleanup row into one data block, and
+   `dataBlock` clips a block at `PROMPT_BLOCK_MAX` (4,000 characters). On the
+   demo that block was already 5,130 characters before this wave — the
+   consolidation row's Completion Criteria was being dropped, and the alerting
+   row's new procedure pushed its *title* past the cap too, which is how the
+   existing `cleanupExports.test.ts` caught it. Each row now gets its own
+   bounded block, exactly as each step already did, so a long row can only cost
+   itself. Acceptance K1 asserts every line of every Cleanup row reaches the
+   pack whole. The drill row is frozen and gained nothing; it is simply no
+   longer able to crowd the rows after it.

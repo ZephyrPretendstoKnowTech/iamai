@@ -28,7 +28,9 @@ import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { membersOf } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
-import { cleanupEntry } from './cleanupExport.ts'
+import { cleanupEntry, cleanupExportViews } from './cleanupExport.ts'
+import { stepExportView } from './stepExport.ts'
+import { promptPack } from '../../roadmap/prompts.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { Step } from '../../roadmap/types.ts'
 
@@ -437,5 +439,114 @@ test('E6: the four demo rows still draw their own per-policy titles and About li
   for (const [id, b] of bodiesOf('demo')) {
     if (!id.startsWith('s-review-baseline-')) continue
     assert.doesNotMatch(b.contract.why, /^Check the baseline's control for /)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// The four Cleanup rows (spec sections 7 and 8)
+//
+// A Cleanup row is not a content step: its words are keyed by kind under
+// content.cleanup and the CleanupBody draws them. The owner left these rows out
+// of the 2026-09-19 anatomy change, so these tests check the words and check
+// that the shape did not move.
+// ---------------------------------------------------------------------------
+
+const cleanupOf = (kind: string): { why: string; whatToDo: string[]; doneWhen: string[]; learn?: { url: string } | null } => {
+  const entry = cleanupEntry(kind)
+  assert.ok(entry, `content.cleanup has no ${kind} row`)
+  return entry as { why: string; whatToDo: string[]; doneWhen: string[]; learn?: { url: string } | null }
+}
+
+test('F1: the alert rule matches the accounts’ object IDs, not their sign-in names', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /object ID, not the sign-in name, because a name can be changed under it/)
+  assert.doesNotMatch(steps, /where UserPrincipalName is one of/)
+})
+
+test('F2: the alert rule’s signal, threshold, severity and Azure role are on screen', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /at least a Monitoring Contributor/)
+  assert.match(steps, /Signal name Custom log search/)
+  assert.match(steps, /Query type Aggregated logs/)
+  assert.match(steps, /Static, Greater than, threshold 0/)
+  assert.match(steps, /Severity 0 - Critical/)
+})
+
+test('F3: the diagnostic-setting prerequisite names the Entra role and the workspace', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /Monitoring & health → Diagnostic settings → \+ Add diagnostic setting/)
+  assert.match(steps, /Send to Log Analytics workspace/)
+  assert.match(steps, /at least the Security Administrator role, an Azure subscription and a workspace/)
+  // The walk's two pinned lines are still there (scripts/walkContent.mjs item 'cleanup').
+  assert.match(steps, /the SIEM you already use/)
+  assert.match(steps, /Review ingestion, retention and cost for the monitoring service you use\./)
+})
+
+test('F4: Completion Criteria names who answers the alert and what they do with it', () => {
+  const done = cleanupOf('alerting').doneWhen
+  assert.equal(done.length, 2)
+  assert.ok(done.some((l) => /keep the logs, then decide whether the use was a drill, a real emergency, or neither/.test(l)), done.join('\n'))
+})
+
+test('F5: the four Cleanup rows keep their shape — Why, the instructions, Done when', () => {
+  for (const kind of ['alerting', 'hardening', 'naming', 'consolidation']) {
+    const entry = cleanupOf(kind)
+    assert.ok(typeof entry.why === 'string' && entry.why.length > 0, `${kind}: no Why`)
+    assert.ok(entry.whatToDo.length > 0, `${kind}: no instructions`)
+    assert.ok(entry.doneWhen.length > 0, `${kind}: no Done when`)
+    assert.ok(entry.learn?.url, `${kind}: no Learn link`)
+    // No row grew an anatomy of its own: these are the only four keys a row draws.
+    assert.deepEqual(Object.keys(entry).sort(), ['doneWhen', 'learn', 'title', 'whatToDo', 'why'])
+  }
+})
+
+test('G1: the hardening row says the scan closes it, and a deferral is not a pass', () => {
+  const entry = cleanupOf('hardening')
+  assert.match(entry.why, /the Cleanup row a scan can close for you/)
+  assert.match(entry.whatToDo.join('\n'), /A deferral was a decision to wait, never a result/)
+})
+
+test('H1: the naming row’s Why is a name you do not have to open the policy to read', () => {
+  assert.match(cleanupOf('naming').why, /find a policy and understand its purpose without opening it/)
+  assert.doesNotMatch(cleanupOf('naming').why, /Consistent names make policy reviews easier/)
+})
+
+test('H2: the naming row says what a policy name should carry', () => {
+  assert.match(cleanupOf('naming').whatToDo.join('\n'), /a sequence number, the resources it applies to, the response, who it applies to and when/)
+})
+
+test('H3: the naming row says ownership goes in the name, because there is no owner field', () => {
+  assert.match(cleanupOf('naming').whatToDo.join('\n'), /no owner field, so put ownership in the name/)
+})
+
+test('J1: the consolidation row names the per-tenant policy limit as the reason', () => {
+  const why = cleanupOf('consolidation').why
+  assert.match(why, /capped at 240 Conditional Access policies, the ones that are off included/)
+})
+
+test('J2: the consolidation row says disable before delete, and what the delete window is', () => {
+  assert.match(cleanupOf('consolidation').whatToDo.join('\n'), /Retire by disabling, not deleting/)
+  assert.match(cleanupOf('consolidation').whatToDo.join('\n'), /restored for 30 days and no longer/)
+})
+
+test('K1: every Cleanup row reaches the prompt pack whole, not clipped at the block cap', () => {
+  setDisplayTimeZone('UTC')
+  try {
+    const f = fixture('demo')
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const rows = cleanupExportViews(r.schedule.cleanup)
+    assert.ok(rows.length >= 3, 'the demo draws fewer Cleanup rows than this checks')
+    const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[s.id] ?? null, naming: r.coverage.organisation.naming })
+    const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx(s)), tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', planSummary: r.schedule.derivation.criticalPath, announcement: null, cleanup: rows })
+    const summarise = pack.find((p) => /Summarise/i.test(p.title))
+    assert.ok(summarise, 'the pack has no summarise prompt')
+    for (const row of rows) {
+      assert.ok(summarise.prompt.includes(row.title), `the pack drops ${row.kind}`)
+      for (const line of [row.why, ...row.whatToDo, ...row.doneWhen]) {
+        assert.ok(summarise.prompt.includes(line), `the pack clips ${row.kind}: ${line.slice(0, 60)}`)
+      }
+    }
+  } finally {
+    setDisplayTimeZone(null)
   }
 })
