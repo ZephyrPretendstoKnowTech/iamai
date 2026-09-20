@@ -97,11 +97,13 @@ test('deferring a prerequisite does not complete it or release its dependent pol
   for(const s of r.steps.filter(s=>s.blockedBy.includes(id))) assert.notEqual(readings.get(s.id)?.lane,'Ready',s.id)
 })
 
-test('supporting mail and partner reviews offer useful owner emails while their technical work is pending',()=>{
+test('the steps that absorbed the mail and partner follow-ups carry their owner emails',()=>{
+  // Both follow-ups folded into the steps that own their outcome
+  // (docs/plans/step-redundancy-analysis.md findings 5 and 6), and the ask each
+  // one made of a device or partner owner went with them.
   const {body}=setup('deployment')
-  assert.match(body('s-question-mail-devices').artifacts.find(a=>a.id==='email')!.text(),/Please confirm the authentication and TLS capabilities/)
-  assert.match(body('s-question-partner').artifacts.find(a=>a.id==='email')!.text(),/Please confirm the accounts and access method/)
-  assert.match(body('s-question-partner').artifacts.find(a=>a.id==='portal')!.text(),/do not recreate a policy/)
+  assert.match(body('s-goal-block-legacy-auth').artifacts.find(a=>a.id==='email')!.text(),/confirm the authentication and TLS capabilities, sender and recipient requirements, and a delivery-test window/)
+  assert.match(body('s-goal-guests-mfa').artifacts.find(a=>a.id==='email')!.text(),/confirm which guest accounts you use/)
   const services=body('s-direction-use')
   assert.doesNotMatch(services.readiness.satisfied.map(t=>t.note).join(' '),/existing control/)
 })

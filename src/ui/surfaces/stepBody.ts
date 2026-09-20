@@ -406,7 +406,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // owner 2026-09-19): its Implementation Tasks are the Entra procedure the
   // portal channel above already carries, so the task frame draws exactly what
   // this step drew. Every other step is untouched.
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (usesPolicyTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (usesPolicyTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping) : null)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null

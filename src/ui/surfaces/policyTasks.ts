@@ -28,6 +28,40 @@ import type { ContractReadiness, ContractStage, StepContract } from './stepContr
 import { emergencySubjectTileOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
+import { mailDevicesFollowUp } from '../../roadmap/manualWork.ts'
+import { mailDevicesOf } from '../../roadmap/answers.ts'
+import { shared } from '../../content/content.ts'
+import type { MappingState } from '../../mapping/types.ts'
+
+/** The folded mail follow-up's words (docs/plans/step-redundancy-analysis.md finding 6). */
+const MAIL = shared.mailDevices as { title: string; target: string; steps: string[]; action: string }
+
+/**
+ * Block Legacy Authentication's second Implementation Task: moving every device
+ * the mail-sending answer named onto a supported route and removing its
+ * temporary exception. It was a step of its own (`s-question-mail-devices`)
+ * drawing a different anatomy beside four policy steps in the same group; it is
+ * the second half of this step's own outcome, so it is this step's second task.
+ *
+ * Absent where the answer named nobody: a tenant with no exception device has
+ * nothing to move.
+ */
+function mailDevicesTaskOf(step: Step, mapping?: Pick<MappingState, 'questionAnswers'>): EmergencyAccountTask | null {
+  if (!mailDevicesFollowUp(step.id, mapping)) return null
+  return {
+    id: 'mail-devices-route',
+    accountId: null,
+    title: MAIL.title,
+    targetUpn: null,
+    targetLabel: MAIL.target,
+    required: true,
+    readinessKey: '',
+    evidence: null,
+    actionLabel: MAIL.action,
+    facts: mailDevicesOf(mapping!).map((id) => ({ label: 'Exception account', value: id })),
+    steps: [...MAIL.steps],
+  }
+}
 
 /**
  * Whether this step draws the Emergency Access task anatomy although it is a
@@ -98,19 +132,21 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
 }
 
 /**
- * This step's Implementation Tasks: one task, because the step has one Entra
- * procedure. A step whose portal channel has no procedure gets no projection and
+ * This step's Implementation Tasks: one task for the step's one Entra procedure,
+ * and — on Block Legacy Authentication with exception devices named — a second
+ * for moving them to a supported mail route (finding 6). A step whose portal channel has no procedure gets no projection and
  * keeps the body it always drew — and so does a step whose baseline contradicts
  * itself, because nothing anybody does in the portal resolves that (stepContract
  * `fixOf`: such a step asks for nothing), and a task there would be work offered
  * over a step that says there is none.
  */
-export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[]): EmergencyTaskProjection | null {
+export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[], mapping?: Pick<MappingState, 'questionAnswers'>): EmergencyTaskProjection | null {
   if (step.state.condition === 'baseline-conflict') return null
   const portal = artifacts.find((a) => a.id === 'portal')
   if (!portal) return null
   const { steps, facts } = portalProcedureOf(portal.text())
   if (steps.length === 0) return null
+  const mail = mailDevicesTaskOf(step, mapping)
   const task: EmergencyAccountTask = {
     id: 'policy-procedure',
     accountId: null,
@@ -129,7 +165,7 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   // anatomy asks for — but nothing on the step directs the operator into it,
   // because the card beside it says to finish Establish Emergency Access or
   // approve the Direction answer first, and two directions is none.
-  return { tasks: [task], recommendedTaskId: implementationIsCurrent(step) ? task.id : null, printAll: true }
+  return { tasks: mail ? [task, mail] : [task], recommendedTaskId: implementationIsCurrent(step) ? task.id : null, printAll: true }
 }
 
 /** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */

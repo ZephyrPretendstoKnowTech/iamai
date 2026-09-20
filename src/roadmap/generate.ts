@@ -97,7 +97,7 @@ import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, r
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
-import { answeredCarveOuts, devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
+import { devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -1177,12 +1177,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // The three questions the operator can answer (prompt 48 item 10), read from
-  // their stored answers, questionAnswers[stepId:label] (answers.ts): an answer
-  // that changes the plan adds its carve-out step, whose words are a content
-  // step. Unanswered, the plan proceeds on the evidence and the affected step
-  // carries the can't-see line.
-  for (const id of answeredCarveOuts(mapping)) steps.push(prereq(id))
+  // The questions the operator can answer (prompt 48 item 10) are read from
+  // their stored answers, questionAnswers[stepId:label] (answers.ts). None of
+  // them adds a step of its own any more: an answer changes the step it is
+  // asked on (docs/plans/step-redundancy-analysis.md findings 4, 5 and 6).
+  // Unanswered, the plan proceeds on the evidence and the affected step carries
+  // the can't-see line.
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   // Nothing can take security defaults' place without Conditional Access, so

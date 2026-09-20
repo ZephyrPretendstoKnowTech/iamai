@@ -50,9 +50,10 @@ function project({ step, ctx }: Placed) {
 
 test('the registry is the whole library compiled: every package for a Plan content step, nothing else, and no part the runtime cannot project', () => {
   assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
-  // 43: the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md
-  // finding 4) and the partner follow-up folded into the guests policy (finding 5).
-  assert.equal(LIBRARY.registered.length, 43)
+  // 42: the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md
+  // finding 4), and the partner and mail follow-ups folded into the policy steps
+  // that own their outcomes (findings 5 and 6).
+  assert.equal(LIBRARY.registered.length, 42)
   // The drill row is not a content step: the Plan draws it with CleanupBody. The
   // not-assessed row left with its duplicate (docs/plans/step-redundancy-analysis.md finding 8).
   assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill'])

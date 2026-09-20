@@ -404,7 +404,6 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
   'decision · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-direction-use
   'policy · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-goal-inforcer-mfa
-  'check · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-question-mail-devices
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-register-info-protected
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · open · do:verify · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2+settled/s-goal-block-device-code

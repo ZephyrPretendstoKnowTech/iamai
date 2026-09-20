@@ -10,7 +10,7 @@
 // is read instead, because that is the text the state would draw.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { stepById } from '../../content/content.ts'
+import { shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -24,16 +24,19 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { membersOf } from '../../roadmap/stepGroups.ts'
+import { QUESTION_STEP, answerKey, answerTextFor, questionLabels, questionOptions } from '../../roadmap/answers.ts'
+import type { MappingState } from '../../mapping/types.ts'
 
-/** The group's five members, in registry order (roadmap/stepGroups.ts). */
-const CLOSE_DOORS = ['s-goal-block-legacy-auth', 's-question-mail-devices', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms']
+/** The group's four members, in registry order (roadmap/stepGroups.ts). */
+const CLOSE_DOORS = ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms']
+const LEGACY = 's-goal-block-legacy-auth'
 
 /** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts bodiesOf). */
-function bodiesOf(name: FixtureName): Map<string, StepBody> {
+function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBody> {
   setDisplayTimeZone('UTC')
   try {
-    const f: Fixture = fixture(name)
-    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const f: Fixture = mapping ? { ...fixture(name), mapping } : fixture(name)
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
     const readings = laneReadings(r.steps, [])
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
@@ -127,39 +130,55 @@ test('A6: the step shows the date its Microsoft sources were checked', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Update How Devices Send Email (spec section 3)
+// Moving the exception devices (spec section 3)
 //
-// It is a `check` step carved out by the mail-sending-devices decision
-// (roadmap/answers.ts CARVE_OUT_STEP_ID), so no fixture generates it and there
-// is no opened step to read. Its words are read from the content file.
+// This was `s-question-mail-devices`: a `check` step drawing the default
+// headings beside four policy steps in the same group, generated only when the
+// mail-sending answer named accounts, and in no fixture snapshot. It is now the
+// second Implementation Task of Block Legacy Authentication, whose outcome it
+// always was (docs/plans/step-redundancy-analysis.md finding 6), so the spec's
+// acceptance is read there.
 // ---------------------------------------------------------------------------
 
 /** A content step's own `why`, unfilled. */
 const whyOf = (id: string): string => String((stepById[id] as unknown as { why?: string }).why ?? '')
 
 test('B1: About says the mail protocols already refuse a password, and names the one that does not', () => {
-  const why = whyOf('s-question-mail-devices')
+  const why = whyOf('block-legacy-auth')
   assert.match(why, /Exchange Online already refuses a password for POP, IMAP and ActiveSync/)
   assert.match(why, /SMTP AUTH is the last route that accepts one/)
   assert.doesNotMatch(why, /may depend on a mail-sending method/)
 })
 
 test('B2: About says that route is going too, and carries no date of its own', () => {
-  const why = whyOf('s-question-mail-devices')
+  const why = whyOf('block-legacy-auth')
   assert.match(why, /Microsoft is retiring that route too/)
   // walkContent C3: no content string carries a hard date. The retirement's
   // milestones live in docs/plans/close-doors-spec.md section 3.
   assert.doesNotMatch(why, /\b(19|20)\d{2}\b/)
 })
 
-test('B3: the step offers only supported routes, never a password one', () => {
-  const steps = ((stepById['s-question-mail-devices'] as unknown as { whatToDo?: { steps?: string[] } }).whatToDo?.steps ?? []).join('\n')
+test('B3: the folded task offers only supported routes, never a password one', () => {
+  const steps = (shared.mailDevices as { steps: string[] }).steps.join('\n')
   assert.match(steps, /SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only/)
   assert.match(steps, /Graph sendMail API/)
 })
 
-test('B4: the mail-route package cites its Microsoft pages, checked with this group', () => {
-  assert.equal(checkedOn('s-question-mail-devices'), '2026-09-19')
+test('B4: the exception devices are one step\u2019s second task, and the step they were is gone', () => {
+  assert.equal(stepById['s-question-mail-devices'], undefined, 'the carved-out step still has words')
+  assert.equal(membersOf('close-doors').includes('s-question-mail-devices'), false)
+  // No exception account named: the policy procedure alone, as every other
+  // policy step draws. One named: a second task, with the account as its fact.
+  assert.deepEqual(bodiesOf('demo').get(LEGACY)!.emergencyAccountTasks?.tasks.map((t) => t.id), ['policy-procedure'])
+  const f = fixture('demo')
+  const device = f.snapshot.users[0].id
+  const key = answerKey(QUESTION_STEP.mailDevices, questionLabels(QUESTION_STEP.mailDevices).decision!)
+  const answered = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: answerTextFor(questionOptions(QUESTION_STEP.mailDevices, 'decision')[1], [device]) } }
+  const tasks = bodiesOf('demo', answered).get(LEGACY)!.emergencyAccountTasks!.tasks
+  assert.deepEqual(tasks.map((t) => t.id), ['policy-procedure', 'mail-devices-route'])
+  assert.match(tasks[1].title, /Move each exception device to a supported mail route/)
+  assert.match(tasks[1].steps.join('\n'), /remove its old account exception/)
+  assert.equal(checkedOn(LEGACY), '2026-09-19')
 })
 
 // ---------------------------------------------------------------------------

@@ -8,7 +8,8 @@ import { stepExportView } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import { laneViewFor } from './planBoard.ts'
 import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../../roadmap/manualWork.ts'
-import { CARVE_OUT_STEP_ID, QUESTION_STEP, answerKey, questionLabels, questionOptions } from '../../roadmap/answers.ts'
+import { setState } from '../../roadmap/lifecycle.ts'
+import { QUESTION_STEP, answerKey, questionLabels, questionOptions } from '../../roadmap/answers.ts'
 import { passkeyCurrentSummary } from '../../roadmap/passkeySettings.ts'
 
 function setup(f = usability100('deployment')) {
@@ -18,11 +19,16 @@ function setup(f = usability100('deployment')) {
 }
 
 test('mail-device follow-up exposes manual directions and a reversible completion', () => {
+  // Folded onto Block Legacy Authentication (finding 6): the same manual record,
+  // on the step that owns the outcome.
   const {f,r,ctx} = setup()
-  for (const id of [CARVE_OUT_STEP_ID.mailDevices]) {
+  for (const id of ['s-goal-block-legacy-auth']) {
     const step = r.steps.find(s=>s.id===id)!
     assert.ok(step, id)
-    assert.ok(step.manualReview?.readyToConfirm, id)
+    assert.ok(step.manualReview, `${id}: the named devices bring the folded evidence onto the policy step`)
+    // The exception cannot be removed from a policy that is not there, so the
+    // folded evidence is confirmable only once the policy is in place (finding 6).
+    setState(step,{satisfied:true,inPlace:true})
     const body = stepBodyOf(step,ctx)
     assert.ok(body.artifacts.find(a=>a.id==='portal'&&!a.unavailable)?.text().trim(), id)
     const record = {at:f.snapshot.asOf,basis:manualBasis(step,f.snapshot,f.mapping),accountIds:step.population.ids.length ? step.population.ids : [f.snapshot.users.find(u=>u.accountEnabled)!.id],workflow:'Required workflow tested',testedAt:f.snapshot.asOf.slice(0,10),outcome:'passed' as const,exceptionRemoved:true}

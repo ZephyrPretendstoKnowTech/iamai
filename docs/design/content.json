@@ -357,6 +357,16 @@
       "A later scan confirms the intended policy settings and enabled state.",
       "Test the actual workflow with representative users, including registration or recovery where applicable. Report-only results do not prove that these user actions work."
     ],
+    "mailDevices": {
+      "title": "Move each exception device to a supported mail route",
+      "target": "Devices named in the mail-sending answer",
+      "steps": [
+        "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
+        "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of this policy. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
+        "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
+      ],
+      "action": "Record the route and the removed exception"
+    },
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
       "unread": "The device inventory was not read. Device management and compliance are unknown.",
@@ -3672,60 +3682,6 @@
       "aiFocus": "Explain the tradeoffs of the existing choices and their downstream scope. Do not invent a default or imply that saving a choice configures devices."
     },
     {
-      "id": "s-question-mail-devices",
-      "kind": "check",
-      "title": "Update How Devices Send Email",
-      "changeLine": null,
-      "why": "Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one. Microsoft is retiring that route too, so check each device's capabilities and test its replacement first.",
-      "learn": {
-        "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
-      },
-      "who": {
-        "lead": "You said: {mailDevicesAnswer}",
-        "devices": "Devices: {list:mailDevices}"
-      },
-      "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
-          "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of Block Legacy Authentication. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
-          "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
-        ]
-      },
-      "dates": null,
-      "doneWhen": [
-        "Every listed device sends through its approved replacement route, and its old account exception has been removed.",
-        "Test messages from each device are delivered before its old exception is removed."
-      ],
-      "ifWrong": null,
-      "comms": null,
-      "doesntApply": false,
-      "skip": true,
-      "scanControl": true,
-      "more": {
-        "risks": [
-          {
-            "text": "A device that stays in the service-accounts group keeps a password that never expires and stays outside the policies that exclude the group.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": [
-          "Scan-to-email stopped: check the device is still in the service-accounts group, then move it to a connector."
-        ],
-        "manager": null,
-        "waits": null
-      },
-      "example": {
-        "tenant": "Contoso Pty Ltd",
-        "mailDevicesAnswer": "Yes: add: MFP Reception; the service-accounts group carries them",
-        "mailDevices": [
-          "MFP Reception"
-        ]
-      },
-      "aiFocus": "Compare the supported routes using the supplied device facts. Separate connector configuration, device configuration and actual mail-delivery proof."
-    },
-    {
       "id": "s-verify-mfa",
       "kind": "campaign",
       "title": "Prepare Your Team for MFA",
@@ -4378,7 +4334,7 @@
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy authentication protocols cannot complete multifactor authentication, so a password on its own gets through them. Review the clients and jobs still using one before that path closes.",
+      "why": "Legacy authentication protocols cannot complete multifactor authentication, so a password on its own gets through them. Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one; Microsoft is retiring that route too. Review the clients and jobs still using one before that path closes.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication"
       },
@@ -4406,7 +4362,7 @@
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "A scan confirms legacy authentication is blocked for the intended users, with the approved exclusions.",
-        "Mail-sending devices and applications have a supported sign-in method, or their temporary exception accounts are saved."
+        "Every mail-sending device and application sends through a supported route, and any temporary exception account named for one has been removed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4427,13 +4383,18 @@
           {
             "text": "A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.",
             "applies": "legacyUsersInScope"
+          },
+          {
+            "text": "A device that stays in the service-accounts group keeps a password that never expires and stays outside the policies that exclude the group.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Identify the failing account, client and protocol in its settings and sign-in result. Test a supported client or authentication method before retiring the old path.",
           "A blocked Exchange ActiveSync device gets one quarantine email with the reason; later attempts are silent, so the person may only report that mail stopped.",
           "A device moved from a password to a certificate is still on legacy authentication, and this policy still blocks it. Move it to a client that uses modern authentication.",
-          "For mail jobs, use Update How Devices Send Email to record the supported replacement route and successful delivery. A temporary Conditional Access exception does not restore a protocol the mail service no longer accepts."
+          "Scan-to-email stopped: check the device is still in the service-accounts group, then move it to a connector.",
+          "For mail jobs, use this step's Move each exception device to a supported mail route task to record the replacement route and successful delivery. A temporary Conditional Access exception does not restore a protocol the mail service no longer accepts."
         ],
         "manager": "Older sign-in paths that cannot complete MFA are turned off. Without this, a password alone can still work through them.",
         "waits": null
