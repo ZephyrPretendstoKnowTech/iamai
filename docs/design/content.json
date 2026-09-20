@@ -2921,12 +2921,12 @@
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Unused accounts can leave access behind after a person or service stops needing it. Review these candidates with their owners; an old or missing sign-in record is a reason to investigate, not proof that an account is unused.",
+      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists an account with no successful sign-in for 90 days; Microsoft calls 90 to 180 a reasonable window. A blank record is not proof of disuse: the directory keeps sign-ins only so far back, and never fills the gap in later.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
       "who": {
-        "lead": "{n} enabled accounts with no sign-in for 90 days or none on record:",
+        "lead": "{n} enabled accounts with no successful sign-in for 90 days, or none on record:",
         "accounts": "{list:accountsWithState}",
         "licenceNote": "Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record."
       },
@@ -2935,13 +2935,13 @@
         "lead": "Review each account with its owner and record the outcome.",
         "steps": [
           "Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.",
-          "Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.",
+          "Or confirm it is in use and have the owner sign in; the directory's record can take a day to catch up.",
           "Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Each listed account is disabled, blocked from sign-in, or shows a sign-in on the next scan.",
+        "Each listed account is disabled, blocked from sign-in, or shows a successful sign-in on a later scan.",
         "An account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
@@ -2957,7 +2957,9 @@
           }
         ],
         "helpDesk": [
-          "A disabled account that turns out to be needed: re-enable it, then register MFA with the owner before their first sign-in."
+          "A disabled account that turns out to be needed: re-enable it, then register MFA with the owner before their first sign-in.",
+          "A failed sign-in is not use. IAMAI reads the last successful one, which is the reading Microsoft names for this.",
+          "A guest on this list goes through Microsoft's stale-guest review instead; a guest leaves a tenant differently."
         ],
         "manager": null,
         "waits": null

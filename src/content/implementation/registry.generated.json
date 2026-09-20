@@ -116,6 +116,24 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-inactive",
+            "authority": "Microsoft Learn",
+            "title": "How to manage inactive user accounts",
+            "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-signinactivity",
+            "authority": "Microsoft Graph",
+            "title": "signInActivity resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/signinactivity",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -134,7 +152,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused. Record one outcome for each account:\n1. No longer needed: disable sign-in. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. If the owner signs in, the account leaves this list on the next scan.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
+          "text": "Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:\n1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
         },
         "ai.dormant": {
           "meta": {
@@ -146,7 +164,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI lists enabled accounts with no sign-in recorded in the last 90 days, or none on record. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
+          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
         },
         "entra.disable": {
           "meta": {
@@ -159,7 +177,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Disable sign-in only for the account whose owner approved it.\n\n1. Open **Entra admin center → Entra ID → Users → All users**.\n2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.\n3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.\n4. Under **Account status**, edit the account and clear **Account enabled**.\n5. Save.\n6. Do not delete the user, remove licenses, alter mailbox content, or revoke sessions as part of this step.\n7. Rescan IAMAI.\n"
+          "text": "Disable sign-in only for the account whose owner approved it.\n\n1. Open **Entra admin center → Entra ID → Users → All users**, as at least a User Administrator.\n2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.\n3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.\n4. Under **Account status**, edit the account and clear **Account enabled**.\n5. Save.\n6. Do not delete the user, remove licenses, alter mailbox content, or revoke sessions as part of this step.\n7. Rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {
