@@ -33,8 +33,14 @@ import { channelTabsOf, headingsOf, stepBodyOf } from '../ui/surfaces/stepBody.t
 /** Where the committed snapshots live, relative to the repository root. */
 export const SNAPSHOT_DIR = 'docs/qa/step-snapshots'
 
-/** The fixtures snapshotted (reference/fixtures.md): the demo's two visits and the six synthetic tenants that reach every lane. */
-export const SNAPSHOT_FIXTURES: readonly FixtureName[] = ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile']
+/**
+ * The fixtures snapshotted (reference/fixtures.md): the demo's two visits and the
+ * six synthetic tenants that reach every lane, plus `micro` — the tenant with no
+ * Entra ID P1. That is the day-one public-beta case and it reached no committed
+ * record until the fixture carried the status the collector writes (V1 audit
+ * S4-21), so what a free-tier tenant reads is now a diffable file like the rest.
+ */
+export const SNAPSHOT_FIXTURES: readonly FixtureName[] = ['demo', 'demo-week2', 'micro', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile']
 
 /** One step's reading, as the Plan draws it. */
 export type StepSnapshot = {

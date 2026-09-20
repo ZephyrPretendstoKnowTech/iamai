@@ -421,6 +421,11 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
   for (const [k, v] of Object.entries(who)) {
     if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    // A licence caveat has no placeholders, so `whole()` can never gate it: it
+    // was drawn on every tenant, seven of eight of which hold Entra ID P1, which
+    // made the one honest sentence about the licence carry no information at all
+    // (V1 audit S4-21). It is drawn only where the licence withheld the records.
+    if (k === 'licenceNote' && !truthy(ex.signInsNeedP1)) continue
     if (k === 'none') {
       none = typeof v === 'string' ? v : null
       continue

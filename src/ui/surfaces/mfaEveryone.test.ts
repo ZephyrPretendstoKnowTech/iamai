@@ -339,8 +339,24 @@ const whatToDoOf = (id: string): string => everyString((stepById[id] as unknown 
 
 test('F1: the step says security defaults must be off, not that report-only may coexist', () => {
   const w = whatToDoOf(SECURITY_DEFAULTS)
-  assert.match(w, /Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on/)
+  assert.match(w, /Security defaults and Conditional Access are not meant to run together/)
   assert.doesNotMatch(w, /Report-only policies can exist while security defaults are on/)
+})
+
+// V1 audit S4-16 / S4-20. The lead stated only the direction that blocks NOBODY
+// — you cannot re-enable security defaults once the policies exist — and left
+// the direction that decides the whole plan unsaid. Microsoft Learn, checked
+// 2026-09-20 (https://learn.microsoft.com/entra/fundamentals/security-defaults,
+// page updated 2026-07-01): "Organizations that choose to implement Conditional
+// Access policies that replace security defaults must disable security
+// defaults." Report-only creation is not restricted by any first-party sentence
+// (playbook V3, re-checked against the report-only page, updated 2026-06-01), so
+// the gate stays on enforcement — and the step now says that is what it gates.
+test('F1a: the lead names the direction that blocks — security defaults off before the replacements take over', () => {
+  const w = whatToDoOf(SECURITY_DEFAULTS)
+  assert.match(w, /security defaults must be off before the policies replacing them can take over/)
+  assert.match(w, /nothing in this plan enforces before this step/)
+  assert.match(w, /once these policies exist you cannot turn security defaults back on/)
 })
 
 test('F2: the replacement list is four policies wherever it is said', () => {

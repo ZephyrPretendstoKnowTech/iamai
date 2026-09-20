@@ -2508,7 +2508,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))
     s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), outcome: reviewed[u.id]?.outcome ?? '', reason: reviewed[u.id]?.reason ?? '', disabled: u.accountEnabled === false }))
     const remaining = accounts.filter(u => dormantIds.has(u.id) && u.accountEnabled !== false && !(reviewed[u.id]?.outcome === 'keep' && reviewed[u.id].reason.trim()))
-    s.population = population(accounts.map(u => u.id), popIndex)
+    // The dormant step is the one place never-signed-in accounts are a
+    // population (§8.1, and line 1121 above sets it): `population()` derives
+    // activeIds from the active index, which is empty for dormant accounts by
+    // definition, and the who-line then read "No user impact" over a step naming
+    // N accounts to disable (V1 audit S4-21). The people it names are its impact.
+    s.population = { ...population(accounts.map(u => u.id), popIndex), activeIds: accounts.map(u => u.id) }
     delete s.manualReview
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
