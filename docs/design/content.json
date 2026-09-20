@@ -2290,6 +2290,10 @@
             "title": "Decide Your Tenant's Direction",
             "completedTitle": "Decide Your Tenant's Direction"
           },
+          "prepareObjects": {
+            "title": "Prepare the Groups and Locations",
+            "completedTitle": "Prepare the Groups and Locations"
+          },
           "closeDoors": {
             "title": "Close the Doors Nobody Should Use",
             "completedTitle": "Close the Doors Nobody Should Use"

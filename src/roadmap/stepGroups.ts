@@ -83,6 +83,28 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     pinned: true,
     anatomy: 'decision',
   },
+  // ---- the objects the Direction answers ask for ----
+  // An object step here exists because a Direction answer says it should: the
+  // trusted network, the allowed-countries location and the service accounts
+  // group are the DOING of an answer saved two groups above, and they used to
+  // sit among the policies that reference them. Straight after Direction the
+  // plan reads decide → make the things → roll out the policies, and a policy
+  // group holds policies (owner, 2026-09-20).
+  //
+  // Only objects an answer creates. `s-prereq-per-user-mfa` and
+  // `s-prereq-security-defaults` are tenant settings to retire rather than
+  // objects to build, and the emergency prerequisites are the foundation's own
+  // — all three stay where they are. `s-prereq-auth-strength` stays with the
+  // admin policies that require it: it is the pinned baseline's demand, not an
+  // answer's.
+  {
+    key: 'prepare-objects',
+    titleKey: 'pages.app.plan.groups.prepareObjects.title',
+    completedTitleKey: 'pages.app.plan.groups.prepareObjects.completedTitle',
+    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'],
+    pinned: false,
+    anatomy: 'task',
+  },
   // ---- the rollout's own runs, drawn inside the lane tabs ----
   // Their order is the build order docs/plans/v1-step-map.md §3 sets (the
   // waves), collapsed to the fewest runs that still read as one job each: a
@@ -134,7 +156,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'where-people-sign-in',
     titleKey: 'pages.app.plan.groups.whereSignIn.title',
     completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
-    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-goal-geo-restriction', 's-prereq-service-accounts-group', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
+    members: ['s-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
     pinned: false,
     anatomy: 'task',
   },
