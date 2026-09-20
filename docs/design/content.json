@@ -563,13 +563,15 @@
         "complete": {
           "state": "complete · {age}",
           "again": "Scan again",
-          "degraded": "Sign-in proof not read · MFA readiness not measured"
+          "degraded": "Sign-in proof not read · MFA readiness not measured",
+          "unread": "{n} sections were not read in full with this account. The plan is built from what IAMAI did read, so check these before you act on it."
         },
         "gaps": {
           "state": "finished with gaps · no plan built",
           "lead": "{n} sections could not be read with this account. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.",
           "leadFirst": "{n} sections could not be read with this account. The plan needs them, so IAMAI built nothing from this scan.",
           "notRead": "not read",
+          "partlyRead": "partly read",
           "ask": "Ask whoever administers the tenant for {role}; it reads every section and writes nothing.",
           "learn": {
             "label": "Microsoft: Global Reader",
@@ -1516,7 +1518,9 @@
           "config:authMethodsPolicy": "Authentication methods policy",
           "config:securityDefaults": "Security defaults",
           "config:crossTenantAccess": "Cross-tenant access",
+          "config:deviceRegistrationPolicy": "Device registration policy",
           "config:roleAssignments": "Role assignments",
+          "config:roleAssignmentSchedules": "Role assignment schedules",
           "config:pimEligibility": "PIM eligibility",
           "config:subscribedSkus": "Licences",
           "config:organization": "Organisation",

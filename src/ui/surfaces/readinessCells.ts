@@ -125,15 +125,21 @@ export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): strin
  * The answer's second line: how many are Seamless; or, with nobody Seamless, how
  * to get there, but only when somebody's device offers a built-in option (a
  * personal PC never does, so a tenant of them is told so, not given a target).
+ *
+ * Empty when no device was read at all. Both of the nobody-Seamless lines are
+ * claims about the devices these people sign in from — one offers a target on
+ * them, the other says they rule it out — and neither survives a scan that saw
+ * no device: "everyone signs in from a device with no built-in option" would be
+ * explaining an absence the headline above it has just said it cannot measure
+ * (S4-23). The page draws no line rather than assert a cause for it.
  */
 export function goalLine(counted: readonly ReadinessRow[]): string {
   const seamless = counted.filter((r) => r.state === 'seamless').length
   if (seamless > 0) return fillText(T.seamlessLine, { seamless })
+  const withDevices = counted.filter((r) => (r.readiness?.devices ?? []).length > 0)
+  if (withDevices.length === 0) return ''
   // A person can become Seamless only when every device they use is, or could be: one personal PC rules them out.
-  const couldBe = counted.some((r) => {
-    const devices = r.readiness?.devices ?? []
-    return devices.length > 0 && devices.every((d) => d.seamless || (d.builtIn && d.possible !== 'no'))
-  })
+  const couldBe = withDevices.some((r) => (r.readiness?.devices ?? []).every((d) => d.seamless || (d.builtIn && d.possible !== 'no')))
   return couldBe ? T.seamlessNone : T.seamlessNotPossible
 }
 
