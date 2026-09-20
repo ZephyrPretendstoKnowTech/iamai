@@ -190,7 +190,11 @@ follow-up snapshot the step reads **Completed · In place**.
   and no longer names `0.0.0.0/0`.
 - T4 the step says a trusted location cannot be deleted until the trusted
   designation is removed.
-- T5 `more.waits` names both steps that wait on this one, not one of two.
+- T5 `more.waits` names every step that waits on this one. The demo's board
+  shows four — Give Shared Devices Their Own Policy, Protect Sign-in Method
+  Registration, Require a Managed Device Outside the Office and Restrict Service
+  Accounts to the Trusted Network — and the line named one. The test reads the
+  four steps' own tiles and requires the sentence to name each.
 - T6 the package's checked date is 2026-09-20 and its source URL is canonical
   (no `/en-us/`).
 
@@ -361,16 +365,20 @@ behaviour is unchanged. What changed is that **this step now says the accounts
 named as mail-sending devices in Confirm What You Use are among the confirmed
 ones**, so the count a person returns to is explained where they see it (S3).
 
-**One fact said twice, now said once.** `more.risks[1]` read "Accounts in this
-group are outside the legacy, countries and token policies; the baseline's Block
-Service Accounts policy pins them to the trusted network: see Restrict Service
-Accounts to the Trusted Network", and `more.waits` read "Block Legacy
-Authentication, Block Sign-ins From Countries Not Allowed and Require Token
-Protection on Windows wait on this." The same three policies, twice, in one
-step, in two vocabularies. The risk now states the consequence (these accounts
-sit outside the policies that cover people, and one policy pins them to the
-network instead); `more.waits` states who waits. Neither repeats the other's
-list.
+**One fact said twice, and two of the three names were wrong.** `more.risks[1]`
+read "Accounts in this group are outside the legacy, countries and token
+policies; the baseline's Block Service Accounts policy pins them to the trusted
+network: see Restrict Service Accounts to the Trusted Network", and `more.waits`
+read "Block Legacy Authentication, Block Sign-ins From Countries Not Allowed and
+Require Token Protection on Windows wait on this." The same three policies,
+twice, in one step, in two vocabularies — and the list itself was wrong. Read
+off the lane engine on every fixture, the steps that actually wait on this
+object are **Restrict Service Accounts to the Trusted Network** (every fixture)
+and **Require Token Protection on Windows** (`mid`); Block Legacy
+Authentication and Block Sign-ins From Countries Not Allowed never name it.
+`more.waits` now says those two, the risk states the consequence without
+repeating any list, and the S4 test reads both steps' own tiles so the sentence
+cannot drift from the board again.
 
 **Completion from the scan.** The group exists with exactly the confirmed
 accounts. The owner confirmation on each member is manual evidence — one of the
@@ -519,8 +527,9 @@ provisioning run succeed. `doneWhen` already said so and still does.
   its names.
 - W5 the step says the Connect Sync account and the Cloud Sync provisioning
   service principal are two different identities.
-- W6 the row's Impact is a word about this step, not the "Tenant settings"
-  placeholder.
+- W6 the row's Impact is a word about this step — "Directory synchronisation",
+  added as the package's `impact.fallbackLabel` — not the "Tenant settings"
+  placeholder `rowWho.ts` falls back to.
 - W7 the package's checked date is 2026-09-20.
 
 ---
@@ -553,7 +562,15 @@ provisioning run succeed. `doneWhen` already said so and still does.
    fold: this step is real, the fixtures simply never grant Workload ID Premium
    alongside the Entra Connect answer. A fixture that does would be the honest
    fix, and it is a fixture change, not a step change.
-6. **The step's title names a different identity from its policy.** "Restrict
+6. **The translator still writes the old label.** `src/roadmap/portalLines.ts`
+   composes the resolved settings line as `Conditions → Locations → Include: Any
+   location; Exclude: …` from the pinned baseline, for every policy step in
+   every group, and `scripts/walk.mjs` matches that exact sentence. The portal
+   procedures in this group now say **Network** and **Any network or location**,
+   as Microsoft does; the translator's line beneath them still says Locations
+   and Any location. Changing it moves every policy step and the walk's reading
+   with them, so it is the anatomy's, not this group's.
+7. **The step's title names a different identity from its policy.** "Restrict
    the Entra Connect Sync Account to Its Address" names a user account with the
    Directory Synchronization Accounts role; the policy targets Cloud Sync's
    provisioning service principal, and a workload-identity policy cannot target
