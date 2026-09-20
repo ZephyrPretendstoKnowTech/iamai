@@ -5397,21 +5397,22 @@
       "kind": "policy",
       "title": "Require Token Protection on Windows",
       "changeLine": null,
-      "why": "Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.",
+      "why": "Token protection binds a sign-in token to the device that earned it, so a token copied off that device is no use elsewhere. It reaches the Windows desktop apps and the resources this policy names, and nothing else: a browser, another platform or another resource is not protected and is not blocked either.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/deployment-guide-token-protection-windows"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
           "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
           "Everyone on Windows signs in from a joined or registered device.",
+          "What this policy does not reach is covered elsewhere or not at all: Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions. Supported work apps sign in successfully with token protection.",
+      "doneEnd": "Every supported Windows desktop client reaching the resources this policy names at {tenant} presents a token bound to its own device, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions.",
         "Supported work apps sign in successfully with token protection."
@@ -5431,11 +5432,20 @@
           {
             "text": "An unsupported client or device path can be blocked. Verify the exact applications, resources and conditions this policy covers before relying on device registration as the fix.",
             "applies": "always"
+          },
+          {
+            "text": "Leaving the Client apps condition unconfigured, or leaving Browser selected in it, blocks web apps that sign in through the browser, Teams on the web among them.",
+            "applies": "always"
+          },
+          {
+            "text": "Named clients cannot produce a bound token at all and stop reaching mail and files: PowerShell modules that use SharePoint, the Power Query extension for Excel outside the Current Channel, Visual Studio Code extensions that reach Exchange or SharePoint, perpetual-licence Office, Surface Hub and Windows-based Teams Rooms.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Inspect the sign-in's token-protection result, application/client support and device identity. A registered device alone does not establish that the client can produce a bound token.",
-          "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error."
+          "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error.",
+          "An external person reporting an unexplained failure: their device has to meet the registration requirement in their own directory, and the error they see does not say so."
         ],
         "manager": "Supported client/device paths bind sign-in tokens to the device, making a copied token harder to reuse elsewhere. Compatibility must be checked for the applications this policy targets.",
         "waits": null
@@ -5463,7 +5473,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
           "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, Windows 365",
-          "Conditions → Device platforms → Include: Windows. Conditions → Client apps → Mobile apps and desktop clients. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
+          "Conditions → Device platforms → Configure: Yes, then Include: Windows. Left at No it applies to all device platforms. Conditions → Client apps → Configure: Yes, then Mobile apps and desktop clients; at No, or with Browser left selected, web apps that sign in through the browser are blocked. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
           "Session → Require token protection for sign-in sessions",
           "{reportOnlyLine}"
         ]
@@ -5551,14 +5561,15 @@
       "kind": "policy",
       "title": "Limit How Long Sessions Last",
       "changeLine": null,
-      "why": "Non-persistent browser sign-in reduces the chance of leaving work access open on a shared or unattended computer. A regular authentication check also limits how long the browser can rely on an older sign-in.",
+      "why": "A persistent browser keeps its cookies after the window closes, and what they reach stays reachable until the token expires whatever a policy says later. Ending the session with the browser, and asking for authentication again on the baseline's interval, keeps everyone's browser sign-in from outliving the work it was for.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every 12 hours: {list:browserUsers}",
+          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}",
+          "This policy is about everyone's browser, and only the browser: it reaches nothing outside it while the Client apps condition names Browser.",
           "Shared-device accounts are excluded only where this policy's resolved target lists them.",
           "When several session policies apply, the shortest wins.",
           "{existingCoverage}"
@@ -5566,7 +5577,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
+      "doneEnd": "Nobody's browser session at {tenant} survives closing the browser, and every one of them authenticates again on the interval the baseline sets, with the exclusions group applied.",
       "doneWhen": [
         "A scan confirms the session policy is On for all users in the browser, with the intended sign-in frequency, browser persistence, assignments and exclusions.",
         "Representative browser sign-ins across the workforce behave as intended without interrupting normal work.",
@@ -5576,7 +5587,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "We plan to change browser sign-in at {tenant} from {enforceLong}: a 12-hour sign-in frequency and no persistent browser sign-in. You may need to sign in again more often. Apps outside the browser are not affected by this change. Contact IT if repeated prompts interrupt work.",
+        "body": "We plan to change browser sign-in at {tenant} from {enforceLong}: a sign-in frequency of {wanted} and no persistent browser sign-in. You may need to sign in again more often. Apps outside the browser are not affected by this change. Contact IT if repeated prompts interrupt work.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -5595,13 +5606,19 @@
           {
             "text": "A never-persistent browser session rule must target all resources.",
             "applies": "always"
+          },
+          {
+            "text": "Remember multifactor authentication on trusted devices, left on, prompts these people at times neither setting intends. Turn it off before this policy is enforced.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Signed out when the browser closed: deliberate. Sign in again.",
+          "Stay signed in? stops working for everyone here: the policy's browser setting overrides that prompt.",
+          "Prompted on one computer and not another: unlocking a joined device refreshes its sign-in in the background and a registered device's does not, so the two reach the interval at different times.",
           "Unexpected repeated prompts: check the sign-in result, policies applied, client support and browser session settings before changing the device or policy."
         ],
-        "manager": "The policy controls sign-in frequency and browser session persistence for the clients and resources in its scope. Use the settings shown on this step to understand when people may need to sign in again.",
+        "manager": "The policy controls sign-in frequency and browser session persistence for the clients and resources in its scope. The frequency is checked when the session is evaluated, so it is not a hard expiry on every token.",
         "waits": null
       },
       "example": {
@@ -5632,14 +5649,15 @@
         "lead": "One policy, as the pinned baseline has it: everyone's browser sessions.",
         "steps": [
           "Policy A: {policyNameA}: {portalRoot}",
+          "Before this policy: turn off Remember multifactor authentication on trusted devices; the two together prompt people unexpectedly.",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Browser",
-          "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
+          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
+          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Describe one browser policy. Include the actual exclusions, even when the account list is empty. Do not promise that closing any browser ends every application session."
+      "aiFocus": "Describe one browser policy, taking its interval from the resolved target. State that the browser-only scope depends on the Client apps condition being configured. Include the actual exclusions, even when the account list is empty. Do not promise that closing any browser ends every application session."
     },
     {
       "id": "pim-activation-reauth",
@@ -5811,7 +5829,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge High-Risk Sign-ins",
       "changeLine": null,
-      "why": "A risk-based rule can ask for stronger verification when Microsoft flags a sign-in as suspicious. Review the selected requirement so people have a working way to meet it.",
+      "why": "Sign-in risk is Microsoft's reading of one authentication request: how likely it is that the request did not come from the person who owns the account. A high reading stops the sign-in until it is answered with a method the baseline's authentication strength accepts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -5819,10 +5837,12 @@
         "lead": "{active} active people",
         "evidence": [
           "The baseline requires {strengthName} on a high-risk sign-in; it accepts the methods that strength lists, including a Temporary Access Pass where it allows one. Your saved first-enforcement choice decides the grant used now.",
-          "{n} risky sign-ins since {from} by {list:riskyUsers}.",
-          "No sign-in was rated risky since {from}.",
+          "{n} sign-ins were rated high risk since {from}: {list:riskyUsers}",
+          "No sign-in in the records was rated high risk since {from}.",
+          "That rating is read from the sign-in records; a record without one counts as unknown, never as no risk. Identity Protection's own risk reports are a separate surface this plan does not read.",
           "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
           "{pushOnlyCount} people with only Authenticator approval would be stopped by a risky sign-in.",
+          "Somebody with no registered method that meets the requirement is stopped rather than prompted, and cannot register one during the risky sign-in; the error is AADSTS53004.",
           "{existingCoverage}"
         ]
       },
@@ -5841,7 +5861,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.",
+      "doneEnd": "A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
@@ -5860,12 +5880,18 @@
           {
             "text": "With the baseline strength, a person with only Authenticator approval cannot satisfy it until they register an accepted method; the campaign's lists say who.",
             "applies": "always"
+          },
+          {
+            "text": "A person with no registered method that meets the requirement is blocked, not prompted, and this policy stops them registering one during the risky sign-in. Somebody has to reset it for them.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "A risky sign-in that keeps prompting: confirm it was the person, then dismiss the risk in Identity Protection."
+          "A high-risk sign-in answered with an accepted method clears itself: the sign-in risk is remediated and nothing has to be dismissed by hand.",
+          "A person prompted again straight afterwards: some detections are no longer cleared by answering the prompt, and the person has to complete a secure password change instead. Read the detection before dismissing anything.",
+          "A sign-in blocked with AADSTS53004: the person has no registered method that meets the requirement, and cannot register one while the sign-in is risky."
         ],
-        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue.",
+        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue. The rating is about one request, not about the account.",
         "waits": null
       },
       "example": {
@@ -5894,7 +5920,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → High",
+          "Conditions → Sign-in risk → Configure: Yes, then High",
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
@@ -5907,16 +5933,19 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Remediate High-Risk Users",
       "changeLine": null,
-      "why": "Account risk can indicate that an identity needs attention even outside a single suspicious sign-in. This control requires remediation while keeping recovery practical for the users it covers.",
+      "why": "User risk is Microsoft's reading of the account rather than one sign-in: how likely it is that the account itself is compromised. Most of that reading is worked out after a sign-in, so this policy is what stops a compromised account the next time it is used.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people are rated at risk today: {list:atRiskUsers}",
-          "High user risk can require remediation. The required action can differ for password-based and passwordless users; synchronized users who change a password need password writeback.",
-          "Check how the policy treats guests rated high risk: they cannot remediate in this tenant.",
+          "{n} people had a sign-in rated high risk since {from}: {list:riskyUsers}",
+          "Identity Protection's risky users report is a separate surface this plan does not read, so the people it holds may not be the people named here.",
+          "The baseline asks for risk remediation with {strengthName}, which lets Microsoft pick the remediation each person's registered methods allow.",
+          "A person has to be registered for multifactor authentication before this policy reaches them; without it they are blocked and somebody has to reset the account by hand.",
+          "A synchronized account needs the on-premises password route enabled before its owner can remediate.",
+          "Check how the policy treats guests rated high risk: they cannot remediate in this tenant, because their risk is held in their home directory.",
           "{existingCoverage}"
         ]
       },
@@ -5925,14 +5954,15 @@
         "lead": null,
         "before": [
           "Synchronized users who remediate with a password change need password writeback in Entra Connect.",
-          "Check that people in scope have an accepted authentication method; remediation asks for it."
+          "A synchronized user who changes the password on-premises instead needs password hash synchronization and the on-premises password-change setting that clears user risk.",
+          "Check that people in scope have a registered multifactor authentication method; remediation asks for it first, and this is not the self-service password reset flow."
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms the high-risk user policy is On with the intended risk conditions, recovery requirements and exclusions. Users can complete the required secure password change; hybrid accounts have the required password writeback.",
+      "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation the baseline's authentication strength accepts, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms the high-risk user policy is On with the intended recovery controls and exclusions.",
-        "People rated at risk were reviewed. Affected users can complete the required password change, including writeback where required."
+        "People rated at risk were reviewed. Affected users can complete the required remediation, including the on-premises password route where their account is synchronized."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5942,12 +5972,17 @@
       "more": {
         "risks": [
           {
-            "text": "A person without an accepted authentication method cannot complete remediation and needs help.",
-            "applies": "ssprOff"
+            "text": "A person with no registered multifactor authentication method cannot complete remediation at all and needs an administrator to reset the account.",
+            "applies": "always"
+          },
+          {
+            "text": "A guest or external account this policy reaches is blocked rather than remediated: the password it would have to change is held in the account's home directory, and nobody here can clear the risk for it.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Someone stuck in a password-change loop: reset it for them, then confirm the risk is dismissed."
+          "Someone stuck in a password-change loop: reset the account for them. Completing the remediation clears the risk by itself, so nothing has to be dismissed by hand afterwards.",
+          "A guest reporting a block: their risk and their password both live in their home directory. There is nothing to reset or dismiss in this tenant."
         ],
         "manager": "When Microsoft rates an account high risk, the person is asked to complete remediation at the next sign-in instead of waiting for someone to read a report.",
         "waits": null
@@ -5956,8 +5991,9 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "atRiskUsers": [],
+        "riskyUsers": [],
         "sspr": "it is enabled for all users",
+        "strengthName": "Modern MFA + TAP",
         "emergencyAccounts": [
           "Breakglass",
           "Emergency Access 2"
@@ -5973,12 +6009,12 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → User risk → High",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "Conditions → User risk → Configure: Yes, then High",
+          "Grant → Require risk remediation with Require authentication strength: {strengthName}; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain adaptive remediation rather than a universal password reset. Separate SSPR recovery, MFA readiness, hybrid writeback and external-user support."
+      "aiFocus": "Explain adaptive remediation rather than a universal password reset. Separate SSPR recovery, MFA readiness, the hybrid password routes and external-user support."
     },
     {
       "id": "sign-in-risk-medium",
@@ -5986,7 +6022,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge Medium-Risk Sign-ins",
       "changeLine": null,
-      "why": "This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.",
+      "why": "A medium rating means Microsoft saw one or more moderate anomalies in the sign-in and is less confident than it is at high. This rule asks for multifactor authentication at that level, and leaves the High-risk rule its own stronger requirement.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -5994,13 +6030,14 @@
         "lead": "{active} active people",
         "evidence": [
           "A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA, and the High-risk policy keeps its own requirement.",
-          "{n} medium-risk sign-ins since {from} by {list:riskyUsers}.",
+          "{n} sign-ins were rated medium risk since {from}: {list:mediumRiskUsers}",
+          "The baseline asks for multifactor authentication here, not the authentication strength the High-risk policy uses, and it adds no session control.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions.",
+      "doneEnd": "A sign-in {tenant} rates medium risk cannot continue until it is answered with multifactor authentication, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions."
       ],
@@ -6014,10 +6051,15 @@
           {
             "text": "Travel and new devices trigger prompts more often; that is expected.",
             "applies": "always"
+          },
+          {
+            "text": "A person with no registered method is blocked rather than prompted, and this policy stops them registering one during the risky sign-in.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Repeated prompts after travel: confirm the sign-in and dismiss the risk in Identity Protection."
+          "Repeated prompts after travel: answering the prompt clears the sign-in risk by itself, so there is nothing to dismiss afterwards.",
+          "A sign-in blocked with AADSTS53004: the person has no registered method, and cannot register one while the sign-in is risky."
         ],
         "manager": "Sign-ins Microsoft rates medium risk need MFA before they continue; sign-ins outside that rating are not affected by this policy.",
         "waits": null
@@ -6026,7 +6068,7 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "riskyUsers": [],
+        "mediumRiskUsers": [],
         "policyName": "Core - Require - Medium sign-in risk",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -6038,8 +6080,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → Medium",
-          "Grant → Require authentication strength: Multifactor authentication. Session → Sign-in frequency → Every time",
+          "Conditions → Sign-in risk → Configure: Yes, then Medium",
+          "Grant → Require multifactor authentication. No session control: the baseline sets none here",
           "{reportOnlyLine}"
         ]
       },
@@ -6051,7 +6093,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Reset Passwords for Medium-Risk Users",
       "changeLine": null,
-      "why": "This rule responds to Medium user risk with MFA and a secure password change. It complements the separate High-risk control; it does not replace that protection.",
+      "why": "A medium rating means Microsoft saw moderate anomalies on the account and is less confident than it is at high. This rule answers that with the baseline's authentication strength and a secure password change, and leaves the separate High-risk control in place.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
@@ -6059,8 +6101,10 @@
         "lead": "{active} active people",
         "evidence": [
           "This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.",
-          "{n} people are rated at risk today: {list:atRiskUsers}",
+          "{n} people had a sign-in rated medium risk or higher since {from}: {list:mediumRiskUsers}",
+          "The baseline asks for {strengthName} and a password change together here, and adds no session control.",
           "People in scope need a registered MFA method to complete the secure password change; synchronized users also need password writeback.",
+          "Guests and external accounts are excluded from this policy, because the password they would have to change is held in their home directory.",
           "{existingCoverage}"
         ]
       },
@@ -6077,7 +6121,7 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold, with password change as the remediation and the exclusions group applied.",
+      "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered the baseline's authentication strength and changed the password, and the exclusions group is applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "People in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
@@ -6104,8 +6148,9 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "atRiskUsers": [],
+        "mediumRiskUsers": [],
         "sspr": "it is enabled for all users",
+        "strengthName": "Modern MFA + TAP",
         "policyName": "Core - Require - Password change for medium-risk users",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -6117,8 +6162,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",
           "Target resources → Resources → All resources",
-          "Conditions → User risk → Medium",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "Conditions → User risk → Configure: Yes, then Medium",
+          "Grant → Require authentication strength: {strengthName} and Require password change; Require all the selected controls. No session control: the baseline sets none here",
           "{reportOnlyLine}"
         ]
       },

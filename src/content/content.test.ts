@@ -332,7 +332,7 @@ test('no product renderer reads whatToDoReference (prompt 52 Part 2)', () => {
   // render.ts is the reviewer's rendering. A test that asserts what the reviewer's
   // reference says is not a renderer either: the group specs read it to check the
   // reference agrees with the translator's generated line.
-  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts', 'src/ui/surfaces/protectAdmins.test.ts', 'src/ui/surfaces/mfaEveryone.test.ts'])
+  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts', 'src/ui/surfaces/protectAdmins.test.ts', 'src/ui/surfaces/mfaEveryone.test.ts', 'src/ui/surfaces/riskAndSessions.test.ts'])
   const offenders: string[] = []
   const walk = (dir: string): void => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

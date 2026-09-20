@@ -239,11 +239,30 @@ export const ACCEPTANCE = [
   { item: '29', step: 'device-registration-mfa', path: 'more.risks', must: 'Windows Hello for Business and a device-bound passkey cannot answer this policy' },
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'An unsupported client or device path can be blocked.' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
+  // Risk and Sessions F1-F4 (docs/plans/risk-and-sessions-spec.md section 8,
+  // Microsoft Learn checked 2026-09-20): both narrowed conditions go through
+  // the Configure toggle, Microsoft's own browser warning is stated, and what
+  // the policy never reaches is named beside the steps that cover it.
+  { item: '30', step: 'token-protection', path: 'why', must: 'is not protected and is not blocked either' },
+  { item: '30', step: 'token-protection', path: 'who.evidence', must: 'Block Unsupported Device Platforms turns away the platforms it cannot protect' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'Teams on the web among them' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'perpetual-licence Office, Surface Hub and Windows-based Teams Rooms' },
+  { item: '30', step: 'token-protection', path: 'whatToDoReference.steps', must: 'Conditions → Device platforms → Configure: Yes, then Include: Windows' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
   { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'Apps outside the browser are not affected by this change.' },
-  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every 12 hours' },
+  // The interval is the resolved target's, never a number in a string
+  // (docs/plans/risk-and-sessions-spec.md section 7, the same rule
+  // docs/plans/protect-admins-spec.md D4 set for Shorten Admin Sessions).
+  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every {wanted}', mustNot: 'every 12 hours' },
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Unexpected repeated prompts: check the sign-in result', mustNot: 'check the device clock' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
+  // Risk and Sessions E1-E4 (docs/plans/risk-and-sessions-spec.md section 7,
+  // Microsoft Learn checked 2026-09-20): the Configure toggle on the condition
+  // that makes this browser-only, the setting that has to be off first, and the
+  // company-branding prompt this overrides.
+  { item: '32', step: 'session-lifetime', path: 'whatToDoReference.steps', must: 'Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.' },
+  { item: '32', step: 'session-lifetime', path: 'more.risks', must: 'Remember multifactor authentication on trusted devices, left on, prompts these people' },
+  { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Stay signed in? stops working for everyone here' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
   { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'Role activation is a useful point to verify the person requesting privileged access.' },
@@ -251,14 +270,44 @@ export const ACCEPTANCE = [
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
   { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Available risky sign-ins were reviewed' },
+  // Risk and Sessions A1, A4-A6 (docs/plans/risk-and-sessions-spec.md section 3,
+  // Microsoft Learn checked 2026-09-20): sign-in risk is a reading of one
+  // request; the reading this step has is the sign-in record's and not Identity
+  // Protection's; an unregistered person is blocked rather than prompted.
+  { item: '35', step: 'sign-in-risk', path: 'why', must: 'one authentication request', mustNot: 'flags a sign-in as suspicious' },
+  { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: "Identity Protection's own risk reports are a separate surface this plan does not read" },
+  { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'blocked, not prompted' },
+  { item: '35', step: 'sign-in-risk', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'then dismiss the risk in Identity Protection.' },
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '36', step: 'user-risk', path: 'doneWhen', must: 'People rated at risk were reviewed' },
+  // Risk and Sessions B1-B5 (docs/plans/risk-and-sessions-spec.md section 4,
+  // Microsoft Learn checked 2026-09-20): user risk is about the account and is
+  // mostly read after the sign-in; the pinned grant is Require risk remediation
+  // with the strength, never MFA plus a password change; remediation needs a
+  // registered method and is not the SSPR flow; a guest is blocked, not helped.
+  { item: '36', step: 'user-risk', path: 'why', must: 'the account itself is compromised', mustNot: 'outside a single suspicious sign-in' },
+  { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', must: 'Grant → Require risk remediation with Require authentication strength: {strengthName}' },
+  { item: '36', step: 'user-risk', path: 'who.evidence', must: 'registered for multifactor authentication before this policy reaches them' },
+  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'password hash synchronization and the on-premises password-change setting that clears user risk' },
+  { item: '36', step: 'user-risk', path: 'more.risks', must: 'blocked rather than remediated' },
   { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
+  // Risk and Sessions C1-C2 (docs/plans/risk-and-sessions-spec.md section 5,
+  // Microsoft Learn checked 2026-09-20): what Medium means, and the grant and
+  // absent session control the pin actually holds.
+  { item: '37', step: 'sign-in-risk-medium', path: 'why', must: 'one or more moderate anomalies' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication. No session control: the baseline sets none here', mustNot: 'Sign-in frequency → Every time' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'dismiss the risk in Identity Protection' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
+  // Risk and Sessions D1-D4 (docs/plans/risk-and-sessions-spec.md section 6,
+  // Microsoft Learn checked 2026-09-20): the grant pair the pin holds, no
+  // session control, and why guests are excluded from this one.
+  { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require authentication strength: {strengthName} and Require password change', mustNot: 'Sign-in frequency → Every time' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Guests and external accounts are excluded from this policy' },
+  { item: '38', step: 'user-risk-medium', path: 'why', must: 'moderate anomalies on the account' },
   { item: '24', step: 'unmanaged-browser', path: 'whatToDo.before', must: 'SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save.' },
   { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Devices → Compliance → Compliance policy settings' },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
@@ -336,7 +385,10 @@ export function contentFindings(content, pinned = null, contracts = null) {
       if (!s || !p) continue
       const want = [...(p.conditions?.[field] ?? [])].map(cap).sort().join(', ')
       const line = levelsLine(s, kind)
-      const have = line ? line.split('→').pop().trim().split(/,\s*/).sort().join(', ') : null
+      // The line names the portal's Configure toggle before the levels
+      // (docs/plans/risk-and-sessions-spec.md section 2): the levels are what
+      // follows "Configure: Yes, then", and they are what this compares.
+      const have = line ? line.split('→').pop().trim().replace(/^Configure:\s*Yes,\s*then\s*/, '').split(/,\s*/).sort().join(', ') : null
       if (have !== want) add('P0', `content ${id}: the condition line reads "${have}" but the baseline's policy carries ${field} ${want} (C6)`)
     }
     const managed = stepById['require-managed-device']

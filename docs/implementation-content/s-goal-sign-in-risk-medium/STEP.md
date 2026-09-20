@@ -27,8 +27,8 @@ Current matching policy and stable tenant ID; semantic mismatches; tenant-resolv
 ## Target state
 - Users: All users with IAMAI-resolved canonical exclusions.
 - Target resources: All resources.
-- Client apps: All.
-- Sign-in risk: Medium only.
+- Client apps: left unconfigured, which is every client app; the four named client types are not the same value.
+- Sign-in risk: Medium only, set through Configure = Yes.
 - User risk: none.
 - No location, platform, device/filter, authentication-flow, or workload-risk condition.
 - Grant: built-in **Require multifactor authentication**, operator OR.

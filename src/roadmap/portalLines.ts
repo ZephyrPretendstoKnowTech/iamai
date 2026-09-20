@@ -197,18 +197,30 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     const exc = [...f.locations.exclude].filter((l) => !includedLoc.has(lc(l))).map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
     out.push(`Conditions → Locations → Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
   }
-  // Client apps and Authentication flows both carry the portal's Configure
-  // toggle, and a line that names only the boxes to tick describes a policy
-  // that never narrows anything, so the toggle belongs in the line wherever the
-  // target narrows the condition. docs/plans/close-doors-spec.md found this in
-  // the authored packages; these are the generated portal lines, which is where
-  // the product composes the same instruction.
-  // Client apps: Microsoft Learn, concept-conditional-access-conditions —
-  // "The Configure toggle when set to Yes applies to checked items, when set to
-  // No it applies to all client apps, including modern and legacy
-  // authentication clients", so the consequence of No is stated.
-  // Authentication flows: policy-block-authentication-flows says to set
-  // Configure to Yes and does not document what No does, so nothing is claimed.
+  // Client apps, Authentication flows, Device platforms, Sign-in risk and User
+  // risk all carry the portal's Configure toggle, and a line that names only the
+  // boxes to tick describes a policy that never narrows anything, so the toggle
+  // belongs in the line wherever the target narrows the condition.
+  // docs/plans/close-doors-spec.md found this in the authored packages;
+  // docs/plans/protect-admins-spec.md brought Client apps and Authentication
+  // flows here, which is where the product composes the same instruction;
+  // docs/plans/risk-and-sessions-spec.md brought the other three.
+  //
+  // The consequence of leaving the toggle at No is stated only where Microsoft
+  // documents it:
+  // - Client apps: concept-conditional-access-conditions — "The Configure
+  //   toggle when set to Yes applies to checked items, when set to No it
+  //   applies to all client apps, including modern and legacy authentication
+  //   clients."
+  // - Device platforms: the same page — "By default, it applies to all device
+  //   platforms."
+  // - Authentication flows: policy-block-authentication-flows says to set
+  //   Configure to Yes and does not document what No does.
+  // - Sign-in risk: policy-risk-based-sign-in says "set Configure to Yes" and
+  //   does not document No. User risk: policy-risk-based-user words the same
+  //   control "Configure user risk levels needed for policy to be enforced".
+  //   Neither says what an unconfigured risk condition reaches, so neither line
+  //   claims it.
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
   if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}. Left at No it reaches every client app.`)
   if (f.flows.size > 0) out.push(`Conditions → Authentication flows → Configure: Yes, then ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
@@ -220,11 +232,11 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     const namedLc = new Set([...named].map(lc))
     const excluded = new Set([...f.platforms.exclude].filter((p) => !namedLc.has(lc(p))))
     const exc = excluded.size > 0 ? `; Exclude: ${platformList(excluded, ctx)}` : ''
-    out.push(`Conditions → Device platforms → Include: ${inc}${exc}`)
+    out.push(`Conditions → Device platforms → Configure: Yes, then Include: ${inc}${exc}. Left at No it applies to all device platforms.`)
   }
   if (f.deviceFilter) out.push(`Conditions → Filter for devices → ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}`)
-  if (f.signInRisk.size > 0) out.push(`Conditions → Sign-in risk → ${riskList(f.signInRisk)}`)
-  if (f.userRisk.size > 0) out.push(`Conditions → User risk → ${riskList(f.userRisk)}`)
+  if (f.signInRisk.size > 0) out.push(`Conditions → Sign-in risk → Configure: Yes, then ${riskList(f.signInRisk)}`)
+  if (f.userRisk.size > 0) out.push(`Conditions → User risk → Configure: Yes, then ${riskList(f.userRisk)}`)
   return out
 }
 

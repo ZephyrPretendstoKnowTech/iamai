@@ -33,8 +33,8 @@ IAMAI may use risky-sign-in evidence, active population, canonical exclusions, c
 Common policy shape:
 - Users: All users with IAMAI-resolved canonical exclusions.
 - Target resources: All resources.
-- Client apps: All.
-- Sign-in risk: **High only** for this step.
+- Client apps: left unconfigured, which is every client app; the four named client types are not the same value.
+- Sign-in risk: **High only** for this step, set through Configure = Yes.
 - No user-risk, service-principal-risk, location, platform, device/filter, authentication-flow, or user-action condition.
 - Session: Sign-in frequency = **Every time** using primary and secondary authentication.
 - Lifecycle: Report-only before enforcement, then On.

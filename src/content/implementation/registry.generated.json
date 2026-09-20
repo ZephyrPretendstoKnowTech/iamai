@@ -13385,12 +13385,27 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-mfa-settings",
+            "authority": "Microsoft Learn",
+            "title": "Configure Microsoft Entra multifactor authentication settings",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-mfasettings",
+            "purpose": "Where Remember multifactor authentication on trusted devices lives, and that it is not compatible with the sign-in frequency Conditional Access control.",
+            "checkedOn": "2026-09-20",
+            "userFacing": true,
+            "priority": "primary",
+            "audience": [
+              "step",
+              "entra",
+              "aiInfo"
+            ]
+          },
+          {
             "id": "ms-session-lifetime-config",
             "authority": "Microsoft Learn",
             "title": "Configure adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
             "purpose": "Current portal configuration, Report-only rollout, What If validation, sign-in frequency and persistent browser behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13407,7 +13422,7 @@
             "title": "Configure authentication session management with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Current sign-in-frequency semantics and reauthentication behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13423,7 +13438,7 @@
             "title": "conditionalAccessSessionControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
             "purpose": "Graph v1.0 session-control shape and requirement that persistentBrowser target All apps/resources.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13437,7 +13452,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 sign-in frequency properties.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13451,7 +13466,7 @@
             "title": "persistentBrowserSessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/persistentbrowsersessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 persistent-browser mode values always/never.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13465,7 +13480,7 @@
             "title": "conditionalAccessDevices resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessdevices?view=graph-rest-1.0",
             "purpose": "Graph v1.0 device filter container used by the unmanaged-device companion policy.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13544,7 +13559,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.\n   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\nSave once. Rescan IAMAI so it records the new policy ID.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.\n\nBefore this policy: turn off **Remember multifactor authentication on trusted devices** (Entra ID → Users → Per-user MFA → service settings). Microsoft says to disable it before using sign-in frequency; the two together prompt people at times neither setting intends, and it is a tenant-wide setting, so turning it off once covers this policy and Shorten Admin Sessions.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.\n   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n3. Target resources: **All resources**.\n4. Conditions → Client apps: set **Configure** to **Yes**, then **Browser** only. Left at **No** the condition reaches every client app, and the interval would apply to desktop and mobile apps as well.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\nSave once. Rescan IAMAI so it records the new policy ID.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -13568,7 +13583,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps Browser; no grant; Sign-in frequency 12 hours (Periodic reauthentication); Persistent browser session Never persistent.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps set through Configure: Yes, then Browser; no grant; Sign-in frequency set to the interval in the intended target (Periodic reauthentication); Persistent browser session Never persistent.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
         },
         "entra.correct.browser.conditions": {
           "meta": {
@@ -13580,7 +13595,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps to Browser. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
+          "text": "For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps through Configure: Yes, then Browser only, because at No the condition reaches every client app. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
         },
         "entra.correct.browser.session": {
           "meta": {
@@ -13592,7 +13607,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the browser policy, set Sign-in frequency to 12 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.\n"
+          "text": "For the browser policy, set Sign-in frequency to the interval in the intended target (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.\n"
         },
         "entra.correct.browser.grant-none": {
           "meta": {
@@ -13700,7 +13715,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with the intended target's sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -13712,7 +13727,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\nOpen the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.\n\nVerify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the 12-hour frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.\n"
+          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\nOpen the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.\n\nVerify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the intended target's frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.\n"
         },
         "json.browser.create": {
           "meta": {
@@ -13977,7 +13992,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n"
+          "text": "\nSTATE\nThis state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n"
         },
         "ai.correct": {
           "meta": {
@@ -13989,7 +14004,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nSTATE\nThis state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -14001,7 +14016,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThe browser session policy is in Report-only. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Configuration alone does not show the sign-in experience.\n\nNEXT STEP\nExplain which What If results, sign-in records and browser tests are still needed before enforcement.\n"
+          "text": "\nSTATE\nThe browser session policy is in Report-only. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Configuration alone does not show the sign-in experience.\n\nNEXT STEP\nExplain which What If results, sign-in records and browser tests are still needed before enforcement.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -14013,7 +14028,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session.\n\nNEXT STEP\nExplain the change and the browser tests to run afterwards, in managed and unmanaged browsers, including any account the resolved target excludes.\n"
+          "text": "\nSTATE\nThis state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session.\n\nNEXT STEP\nExplain the change and the browser tests to run afterwards, in managed and unmanaged browsers, including any account the resolved target excludes.\n"
         },
         "email.users.pre-enforcement": {
           "meta": {
@@ -14029,7 +14044,7 @@
             "recommendation": "recommended",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Planned change: Limit How Long Sessions Last\n\nHi everyone,\n\nWe plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.\n\nThanks,\nIT\n"
+          "text": "Subject: Planned change: Limit How Long Sessions Last\n\nHi everyone,\n\nWe plan to change browser sign-in to the new frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.\n\nThanks,\nIT\n"
         },
         "readiness.model": {
           "meta": {
@@ -14065,7 +14080,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured 12-hour value suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved exclusions on the browser policy, and whether the resolved target names it at all.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy to the resolved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured interval suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved exclusions on the browser policy, and whether the resolved target names it at all.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy to the resolved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -14366,12 +14381,36 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-risk-signin-policy",
+            "authority": "Microsoft Learn",
+            "title": "Require multifactor authentication for risky sign-ins",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-sign-in",
+            "purpose": "The page the step links: what sign-in risk represents, the Configure toggle on the sign-in-risk condition, the MFA registration prerequisite and AADSTS53004, and the report-only rollout.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-risk-detection-types",
+            "authority": "Microsoft Learn",
+            "title": "Risk detection types and levels",
+            "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-detection-types",
+            "purpose": "Which detections are real-time and which are calculated offline, what High and Medium mean, and the reporting latency.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-risk-remediate",
+            "authority": "Microsoft Learn",
+            "title": "Remediate risks and unblock users",
+            "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
+            "purpose": "What answering the prompt does to the sign-in risk state, and the detections that are no longer cleared by it.",
+            "checkedOn": "2026-09-20"
+          },
+          {
             "id": "ms-risk-policy",
             "authority": "Microsoft Learn",
             "title": "Risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in risk Conditional Access guidance, MFA/authentication-strength options, Every time, and Report-only rollout.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -14379,7 +14418,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Current risk semantics, P2 requirement, self-remediation, and legacy risk-policy retirement date.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-reports",
@@ -14387,7 +14426,7 @@
             "title": "ID Protection Risk Reports",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-reports",
             "purpose": "Risky sign-in evidence fields and current reporting window.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-auth-strength",
@@ -14395,7 +14434,7 @@
             "title": "Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths",
             "purpose": "Authentication-strength semantics and allowed method combinations.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-session-lifetime",
@@ -14403,7 +14442,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Every-time reauthentication semantics for risky sign-ins.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -14411,7 +14450,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "Graph v1.0 signInRiskLevels schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -14419,7 +14458,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -14427,7 +14466,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -14435,7 +14474,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -14485,7 +14524,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check High only (not Medium).\n6. Grant: {{policy.target.grantWords}}. Use only the controls listed here.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check High only (not Medium). Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant: {{policy.target.grantWords}}. Use only the controls listed here.\n8. Session → Sign-in frequency: Every time.\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -14533,7 +14572,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > Sign-in risk: set **High** only. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.\n"
+          "text": "Conditions > Sign-in risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -14545,7 +14584,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.\n"
+          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -14605,7 +14644,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only through **Configure: Yes**, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength, and somebody with no accepted method registered is blocked rather than prompted, because this policy also stops them registering during a risky sign-in. Some risk is worked out after the sign-in rather than during it, so a report-only window can gain results later. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -15143,7 +15182,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in-risk policy guidance, Medium/High recommendation, MFA requirement, Report-only rollout, and Every-time recommendation.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -15151,7 +15190,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Sign-in-risk semantics, P2 requirement, self-remediation, and legacy-policy retirement.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -15159,7 +15198,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 signInRiskLevels and clientAppTypes schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -15167,7 +15206,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 built-in MFA grant support.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -15175,7 +15214,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -15183,7 +15222,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID update endpoint and partial update semantics.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
@@ -15191,7 +15230,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -15241,7 +15280,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check Medium only.\n6. Grant → Grant access → Require multifactor authentication.\n7. Session: leave empty (no session controls).\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant → Grant access → Require multifactor authentication.\n8. Session: leave empty (no session controls).\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -15289,7 +15328,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > Sign-in risk: set **Medium** only. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.\n"
+          "text": "Conditions > Sign-in risk: set **Configure** to **Yes**, then **Medium** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -15301,7 +15340,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.\n"
+          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -15950,12 +15989,27 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-token-protection-concept",
+            "authority": "Microsoft Learn",
+            "title": "Token protection",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-token-protection",
+            "purpose": "The platform and client availability table: which platforms and application kinds token protection reaches, and which resources it can enforce on. What falls outside it is not evaluated by the policy.",
+            "checkedOn": "2026-09-20",
+            "userFacing": true,
+            "priority": "primary",
+            "audience": [
+              "step",
+              "entra",
+              "aiInfo"
+            ]
+          },
+          {
             "id": "ms-token-protection-windows",
             "authority": "Microsoft Learn",
             "title": "Token Protection Deployment Guide - Windows",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows",
-            "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and portal procedure.",
-            "checkedOn": "2026-09-10",
+            "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and the portal procedure — including setting Configure to Yes on both the Device platforms and the Client apps conditions, and the warning that not configuring Client apps can block browser-based web apps.",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -15973,7 +16027,7 @@
             "title": "conditionalAccessSessionControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
             "purpose": "Confirms secureSignInSession is not present in the current v1.0 session-controls schema.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -15987,7 +16041,7 @@
             "title": "conditionalAccessSessionControls resource type - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-beta",
             "purpose": "Confirms secureSignInSession is exposed in the beta session-controls schema and that beta APIs are not supported for production use.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -16003,7 +16057,7 @@
             "title": "secureSignInSessionControl resource type - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/securesigninsessioncontrol?view=graph-rest-beta",
             "purpose": "Confirms the secure sign-in session control shape and isEnabled property.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -16017,7 +16071,7 @@
             "title": "Create conditionalAccessPolicy - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-beta",
             "purpose": "Beta POST endpoint, permissions, roles, response, and production-support warning.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -16032,7 +16086,7 @@
             "title": "Update conditionalAccessPolicy - beta",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-beta",
             "purpose": "Beta PATCH endpoint, permissions, roles, omitted-property preservation, and production-support warning.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -16093,7 +16147,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below; it does not cover browser sessions or devices on other platforms.\n\n1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.\n4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.\n5. Under **Conditions > Device platforms**, include **Windows** only.\n6. Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Leave Browser unselected.\n7. Under **Conditions > Filter for devices**, configure **Exclude filtered devices from policy** with `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`.\n8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.\n9. Set **Enable policy** to **Report-only**, then create it.\n10. Rescan IAMAI before considering enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below. It does not cover browser sessions, other platforms or any other resource — those are not protected by this policy and are not blocked by it either.\n\n1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.\n4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.\n5. Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.\n6. Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Leave Browser unselected. Microsoft's own warning: not configuring this condition, or leaving Browser selected, can block web apps that sign in through the browser, Teams on the web among them.\n7. Under **Conditions > Filter for devices**, configure **Exclude filtered devices from policy** with `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`.\n8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.\n9. Set **Enable policy** to **Report-only**, then create it.\n10. Rescan IAMAI before considering enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -16153,7 +16207,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Conditions > Device platforms**, include **Windows** only.\n"
+          "text": "Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.\n"
         },
         "entra.correct.conditions.mobile-desktop-clients": {
           "meta": {
@@ -16165,7 +16219,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Remove Browser or any other client-app selection.\n"
+          "text": "Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Remove Browser or any other client-app selection: at **No**, or with Browser selected, web apps that sign in through the browser are blocked.\n"
         },
         "entra.correct.conditions.cloudpc-device-filter": {
           "meta": {
@@ -16409,7 +16463,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state creates the Windows token protection Conditional Access policy in Report-only.\n\nTENANT CONTEXT\nTarget policy: {{policy.target.displayName}}\nResolved exclusions: {{policy.target.excludeGroups}}\n\nINTENDED POLICY\nAll users; the resolved exclusions; exactly the baseline Exchange Online, SharePoint Online, Teams Services, Azure Virtual Desktop and Windows 365 resources; Windows; Mobile apps and desktop clients; the baseline CloudPC exclusion filter; no grant; Require token protection for sign-in sessions; Report-only.\n\nSCOPE LIMIT\nToken protection applies only to supported Windows native clients for these resources. It does not protect browser sessions, other platforms, or every token.\n\nAPI NOTE\nThe JSON and PowerShell outputs use Microsoft Graph beta only because `secureSignInSession` is not exposed in the current v1.0 session-controls schema.\n\nDO NOT CHANGE\nDo not substitute the Office 365 suite, add Browser, add Windows Cloud Login, remove the device filter, or invent exception groups.\n\nVERIFICATION\nRead back the created policy, then use interactive and non-interactive sign-in evidence before recommending enforcement.\n\nNEXT STEP\nExplain the create action and the beta API limitation without changing the intended settings.\n"
+          "text": "\nSTATE\nThis state creates the Windows token protection Conditional Access policy in Report-only.\n\nTENANT CONTEXT\nTarget policy: {{policy.target.displayName}}\nResolved exclusions: {{policy.target.excludeGroups}}\n\nINTENDED POLICY\nAll users; the resolved exclusions; exactly the baseline Exchange Online, SharePoint Online, Teams Services, Azure Virtual Desktop and Windows 365 resources; Windows; Mobile apps and desktop clients; the baseline CloudPC exclusion filter; no grant; Require token protection for sign-in sessions; Report-only.\n\nSCOPE LIMIT\nToken protection applies only to supported Windows native clients for these resources. It does not protect browser sessions, other platforms, or every token, and it does not block them either: what falls outside this policy is simply not evaluated by it. Microsoft's own advice is to cover that gap with a policy that blocks unknown platforms and one that requires a managed device, which are separate steps in this plan.\n\nAPI NOTE\nThe JSON and PowerShell outputs use Microsoft Graph beta only because `secureSignInSession` is not exposed in the current v1.0 session-controls schema.\n\nDO NOT CHANGE\nDo not substitute the Office 365 suite, add Browser, add Windows Cloud Login, remove the device filter, or invent exception groups.\n\nVERIFICATION\nRead back the created policy, then use interactive and non-interactive sign-in evidence before recommending enforcement.\n\nNEXT STEP\nExplain the create action and the beta API limitation without changing the intended settings.\n"
         },
         "ai.correct": {
           "meta": {
@@ -16497,7 +16551,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"token-unbound-no-device-state\",\n      \"classification\": \"documented\",\n      \"title\": \"Token Protection shows status 1002\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"The sign-in is Unbound with Token Protection status code 1002.\",\n      \"likelyCauses\": [\n        \"The request has no Microsoft Entra device state.\"\n      ],\n      \"check\": [\n        \"Open the sign-in event and inspect Token Protection - Sign In Session and the device details.\"\n      ],\n      \"fix\": [\n        \"Use the approved supported device-registration path for the affected device before enforcement or retry.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exempt the user or disable Token Protection as the first response.\"\n      ],\n      \"then\": [\n        \"Repeat the supported-client sign-in and review the new event.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"token-unbound-registration-type\",\n      \"classification\": \"documented\",\n      \"title\": \"Token Protection shows status 1003\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"The request is Unbound with status code 1003.\",\n      \"likelyCauses\": [\n        \"The device registration state does not satisfy Token Protection, including a documented unsupported registration type or registration without fresh credentials.\"\n      ],\n      \"check\": [\n        \"Identify the device's registration/deployment method and compare it with Microsoft's unsupported-registration list.\"\n      ],\n      \"fix\": [\n        \"Use the already-approved filter/exception or correct the deployment path; return the policy to Report-only if a required workflow is affected.\"\n      ],\n      \"doNot\": [\n        \"Do not invent a new broad device-filter exception from one failed request.\"\n      ],\n      \"then\": [\n        \"Retest and confirm the request is Bound or deliberately excluded.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"unsupported-client\",\n      \"classification\": \"documented\",\n      \"title\": \"A Windows app is blocked after enforcement\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\",\n        \"email\"\n      ],\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"A required Windows client can no longer reach a protected resource after Token Protection is enabled.\",\n      \"likelyCauses\": [\n        \"The client is not using a supported protected-token flow, is not current, or is not integrated with WAM.\"\n      ],\n      \"check\": [\n        \"Identify the exact app/version and inspect Token Protection status; code 1008 points to a client not integrated with the platform broker.\"\n      ],\n      \"fix\": [\n        \"Move to a supported/current client or return the policy to Report-only while the workflow is resolved.\"\n      ],\n      \"doNot\": [\n        \"Do not replace the policy with the Office 365 app suite or disable the control tenant-wide without isolating the failing workflow.\"\n      ],\n      \"then\": [\n        \"Retest the exact workflow and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"unsupported-shared-device\",\n      \"classification\": \"documented\",\n      \"title\": \"A Teams Room or Surface Hub stops signing in\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"A Windows-based Teams Room or Surface Hub is blocked after the policy is enabled.\",\n      \"likelyCauses\": [\n        \"Microsoft lists these Windows client devices as unsupported for Token Protection.\"\n      ],\n      \"check\": [\n        \"Confirm the device type and whether the tenant's approved shared-device policy/exclusion should own it.\"\n      ],\n      \"fix\": [\n        \"Return this policy to Report-only if service is disrupted, then apply only the already-approved shared-device handling.\"\n      ],\n      \"doNot\": [\n        \"Do not create an unreviewed user/group exception solely to make the device work.\"\n      ],\n      \"then\": [\n        \"Retest the device under its approved policy path.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"browser-selected\",\n      \"classification\": \"documented\",\n      \"title\": \"Teams Web or another browser app is unexpectedly blocked\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"Browser-based use is affected even though this retained step is for Windows native clients.\",\n      \"likelyCauses\": [\n        \"Browser was selected, or the Client apps condition was left broader than Mobile apps and desktop clients.\"\n      ],\n      \"check\": [\n        \"Inspect Conditions > Client apps and compare with the canonical policy.\"\n      ],\n      \"fix\": [\n        \"Correct the same policy to Mobile apps and desktop clients only and return to Report-only for validation.\"\n      ],\n      \"doNot\": [\n        \"Do not add more application exclusions to compensate for an incorrect client-app condition.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and retest the browser/native-client boundary.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"office365-suite-selected\",\n      \"classification\": \"documented\",\n      \"title\": \"Unrelated Microsoft 365 apps fail after rollout\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"Apps outside the retained resource set are affected.\",\n      \"likelyCauses\": [\n        \"The Office 365 application suite was selected instead of the supported individual resources.\"\n      ],\n      \"check\": [\n        \"Inspect Target resources and compare the exact resource IDs with the retained set.\"\n      ],\n      \"fix\": [\n        \"Correct the same policy to the five retained resources and validate in Report-only.\"\n      ],\n      \"doNot\": [\n        \"Do not keep the broad suite and chase failures with individual exclusions.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and repeat normal-use validation.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"graph-beta-rejected\",\n      \"classification\": \"derived\",\n      \"title\": \"JSON or PowerShell rejects secureSignInSession\",\n      \"channels\": [\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"symptom\": \"A Graph request rejects or omits the Token Protection session-control property.\",\n      \"likelyCauses\": [\n        \"The request used Graph v1.0 even though secureSignInSession is currently exposed only in the beta session-controls schema, or the beta contract changed.\"\n      ],\n      \"check\": [\n        \"Confirm the request URI is the package's explicit beta endpoint and recheck Microsoft's beta session-controls schema.\"\n      ],\n      \"fix\": [\n        \"Use only the documented package beta exception; if Microsoft changed the beta contract, stop machine mutation and use the portal path until the package is reverified.\"\n      ],\n      \"doNot\": [\n        \"Do not switch the whole IAMAI library to beta or guess a replacement property.\"\n      ],\n      \"then\": [\n        \"Reverify the package against current Microsoft documentation before retrying.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-ca-session-controls-beta\",\n        \"ms-secure-sign-in-session-beta\"\n      ]\n    },\n    {\n      \"id\": \"iamai-still-partial\",\n      \"classification\": \"derived\",\n      \"title\": \"IAMAI still says Token Protection is Partial\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"partial\",\n        \"reportOnly\"\n      ],\n      \"symptom\": \"The administrator changed the policy, but IAMAI still reports one or more mismatches.\",\n      \"likelyCauses\": [\n        \"A security-significant field still differs from the retained baseline or a different policy object was edited.\"\n      ],\n      \"check\": [\n        \"Compare the IAMAI mismatch IDs and stable policy ID with the exact object changed.\"\n      ],\n      \"fix\": [\n        \"Apply only the remaining correction module to the same stable policy and rescan.\"\n      ],\n      \"doNot\": [\n        \"Do not create a duplicate policy or use display-name matching as update identity.\"\n      ],\n      \"then\": [\n        \"Confirm the mismatch clears before moving toward enforcement.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\",\n        \"ms-graph-ca-update-beta\"\n      ]\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"token-unbound-no-device-state\",\n      \"classification\": \"documented\",\n      \"title\": \"Token Protection shows status 1002\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"The sign-in is Unbound with Token Protection status code 1002.\",\n      \"likelyCauses\": [\n        \"The request has no Microsoft Entra device state.\"\n      ],\n      \"check\": [\n        \"Open the sign-in event and inspect Token Protection - Sign In Session and the device details.\"\n      ],\n      \"fix\": [\n        \"Use the approved supported device-registration path for the affected device before enforcement or retry.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exempt the user or disable Token Protection as the first response.\"\n      ],\n      \"then\": [\n        \"Repeat the supported-client sign-in and review the new event.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"token-unbound-registration-type\",\n      \"classification\": \"documented\",\n      \"title\": \"Token Protection shows status 1003\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"The request is Unbound with status code 1003.\",\n      \"likelyCauses\": [\n        \"The device registration state does not satisfy Token Protection, including a documented unsupported registration type or registration without fresh credentials.\"\n      ],\n      \"check\": [\n        \"Identify the device's registration/deployment method and compare it with Microsoft's unsupported-registration list.\"\n      ],\n      \"fix\": [\n        \"Use the already-approved filter/exception or correct the deployment path; return the policy to Report-only if a required workflow is affected.\"\n      ],\n      \"doNot\": [\n        \"Do not invent a new broad device-filter exception from one failed request.\"\n      ],\n      \"then\": [\n        \"Retest and confirm the request is Bound or deliberately excluded.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"unsupported-client\",\n      \"classification\": \"documented\",\n      \"title\": \"A Windows app is blocked after enforcement\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\",\n        \"email\"\n      ],\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"A required Windows client can no longer reach a protected resource after Token Protection is enabled.\",\n      \"likelyCauses\": [\n        \"The client is not using a supported protected-token flow, is not current, or is not integrated with WAM.\"\n      ],\n      \"check\": [\n        \"Identify the exact app/version and inspect Token Protection status; code 1008 points to a client not integrated with the platform broker.\"\n      ],\n      \"fix\": [\n        \"Move to a supported/current client or return the policy to Report-only while the workflow is resolved.\"\n      ],\n      \"doNot\": [\n        \"Do not replace the policy with the Office 365 app suite or disable the control tenant-wide without isolating the failing workflow.\"\n      ],\n      \"then\": [\n        \"Retest the exact workflow and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"unsupported-shared-device\",\n      \"classification\": \"documented\",\n      \"title\": \"A Teams Room or Surface Hub stops signing in\",\n      \"channels\": [\n        \"entra\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"A Windows-based Teams Room or Surface Hub is blocked after the policy is enabled.\",\n      \"likelyCauses\": [\n        \"Microsoft lists these Windows client devices as unsupported for Token Protection.\"\n      ],\n      \"check\": [\n        \"Confirm the device type and whether the tenant's approved shared-device policy/exclusion should own it.\"\n      ],\n      \"fix\": [\n        \"Return this policy to Report-only if service is disrupted, then apply only the already-approved shared-device handling.\"\n      ],\n      \"doNot\": [\n        \"Do not create an unreviewed user/group exception solely to make the device work.\"\n      ],\n      \"then\": [\n        \"Retest the device under its approved policy path.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"browser-selected\",\n      \"classification\": \"documented\",\n      \"title\": \"Teams Web or another browser app is unexpectedly blocked\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"Browser-based use is affected even though this retained step is for Windows native clients.\",\n      \"likelyCauses\": [\n        \"Browser was selected, or the Client apps condition was left unconfigured, which reaches every client app.\"\n      ],\n      \"check\": [\n        \"Inspect Conditions > Client apps: Configure must be Yes with Mobile apps and desktop clients the only selection.\"\n      ],\n      \"fix\": [\n        \"Correct the same policy to Mobile apps and desktop clients only and return to Report-only for validation.\"\n      ],\n      \"doNot\": [\n        \"Do not add more application exclusions to compensate for an incorrect client-app condition.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and retest the browser/native-client boundary.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"office365-suite-selected\",\n      \"classification\": \"documented\",\n      \"title\": \"Unrelated Microsoft 365 apps fail after rollout\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"symptom\": \"Apps outside the retained resource set are affected.\",\n      \"likelyCauses\": [\n        \"The Office 365 application suite was selected instead of the supported individual resources.\"\n      ],\n      \"check\": [\n        \"Inspect Target resources and compare the exact resource IDs with the retained set.\"\n      ],\n      \"fix\": [\n        \"Correct the same policy to the five retained resources and validate in Report-only.\"\n      ],\n      \"doNot\": [\n        \"Do not keep the broad suite and chase failures with individual exclusions.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI and repeat normal-use validation.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\"\n      ]\n    },\n    {\n      \"id\": \"graph-beta-rejected\",\n      \"classification\": \"derived\",\n      \"title\": \"JSON or PowerShell rejects secureSignInSession\",\n      \"channels\": [\n        \"json\",\n        \"powershell\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"symptom\": \"A Graph request rejects or omits the Token Protection session-control property.\",\n      \"likelyCauses\": [\n        \"The request used Graph v1.0 even though secureSignInSession is currently exposed only in the beta session-controls schema, or the beta contract changed.\"\n      ],\n      \"check\": [\n        \"Confirm the request URI is the package's explicit beta endpoint and recheck Microsoft's beta session-controls schema.\"\n      ],\n      \"fix\": [\n        \"Use only the documented package beta exception; if Microsoft changed the beta contract, stop machine mutation and use the portal path until the package is reverified.\"\n      ],\n      \"doNot\": [\n        \"Do not switch the whole IAMAI library to beta or guess a replacement property.\"\n      ],\n      \"then\": [\n        \"Reverify the package against current Microsoft documentation before retrying.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-ca-session-controls-beta\",\n        \"ms-secure-sign-in-session-beta\"\n      ]\n    },\n    {\n      \"id\": \"iamai-still-partial\",\n      \"classification\": \"derived\",\n      \"title\": \"IAMAI still says Token Protection is Partial\",\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\",\n        \"aiInfo\"\n      ],\n      \"states\": [\n        \"partial\",\n        \"reportOnly\"\n      ],\n      \"symptom\": \"The administrator changed the policy, but IAMAI still reports one or more mismatches.\",\n      \"likelyCauses\": [\n        \"A security-significant field still differs from the retained baseline or a different policy object was edited.\"\n      ],\n      \"check\": [\n        \"Compare the IAMAI mismatch IDs and stable policy ID with the exact object changed.\"\n      ],\n      \"fix\": [\n        \"Apply only the remaining correction module to the same stable policy and rescan.\"\n      ],\n      \"doNot\": [\n        \"Do not create a duplicate policy or use display-name matching as update identity.\"\n      ],\n      \"then\": [\n        \"Confirm the mismatch clears before moving toward enforcement.\"\n      ],\n      \"sources\": [\n        \"ms-token-protection-windows\",\n        \"ms-graph-ca-update-beta\"\n      ]\n    }\n  ]\n}\n"
         }
       }
     },
@@ -17327,7 +17381,7 @@
             "title": "Require remediation for risky users",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-user",
             "purpose": "Current portal configuration for Require risk remediation at High user risk and mandatory Every-time reauthentication.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-policy",
@@ -17335,7 +17389,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "P2 requirement, MFA registration prerequisite, hybrid password-writeback prerequisite, guest/external limitation, and Report-only rollout.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -17343,7 +17397,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Adaptive risk-remediation behavior, precedence, guest/external limitation, and secure remediation flow.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-remediation",
@@ -17351,7 +17405,7 @@
             "title": "Remediate risks and unblock users",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
             "purpose": "Distinguishes Conditional Access password-change remediation from SSPR recovery.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-writeback",
@@ -17359,7 +17413,7 @@
             "title": "Enable Microsoft Entra password writeback",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr-writeback",
             "purpose": "Hybrid password-writeback configuration when on-premises-synced users are in scope.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -17367,7 +17421,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 riskRemediation enum and requirement to pair riskRemediation with authenticationStrength using AND.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -17375,7 +17429,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 userRiskLevels and condition schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -17383,7 +17437,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and least-privileged permissions/roles.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -17391,7 +17445,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 update semantics and stable-ID PATCH endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
@@ -17399,7 +17453,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -17450,7 +17504,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.\n- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}.\n- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change.\n- Guest/external users: Require risk remediation is not supported. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.\n- Active risk: investigate/remediate current risky users before turning on a new broad policy.\nSSPR may remain available for recovery, but do not treat SSPR enablement as the CA remediation prerequisite by itself.\n"
+          "text": "Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.\n- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}. A user who is not registered is blocked and needs an administrator to reset the account; they cannot remediate.\n- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change. Where the password is changed on-premises instead, password hash synchronization and the on-premises password-change setting that clears user risk both have to be on.\n- Guest/external users: Require risk remediation is not supported for them, and a guest this policy reaches is blocked rather than remediated, because the password and the risk both live in the account's home directory. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.\n- Active risk: investigate/remediate current risky users before turning on a new broad policy.\nThe remediation password change is not the self-service password reset flow: SSPR may remain available for recovery, but do not treat SSPR enablement as the Conditional Access remediation prerequisite.\n"
         },
         "entra.create": {
           "meta": {
@@ -17462,7 +17516,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: **High** only.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: set **Configure** to **Yes**, then **High** only. Left at **No** the policy has no risk condition, and its remediation requirement reaches every sign-in.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -17510,7 +17564,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > User risk: set **High** only. Do not add Sign-in risk to this policy.\n"
+          "text": "Conditions > User risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its requirement reaches every sign-in. Do not add Sign-in risk to this policy.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -17522,7 +17576,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope.\n"
+          "text": "Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches; ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -17582,7 +17636,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus password-writeback readiness for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. High user risk can require remediation. The required action can differ for password-based and passwordless users. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus the working password route for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. Require risk remediation lets Microsoft pick the remediation each person's registered methods allow, so the required action differs between password-based and passwordless users. Most user risk is worked out after a sign-in rather than during it, so a report-only window can gain results later. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -17863,6 +17917,7 @@
           "policy.current.removedExclusions",
           "tenant.displayName",
           "policy.current.state",
+          "authStrength.target.displayName",
           "people.affected.count",
           "evidence.atRiskUsers",
           "evidence.mfaRegistration",
@@ -18151,7 +18206,7 @@
             "title": "Risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "P2, MFA registration, hybrid writeback, and risk remediation behavior.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant",
@@ -18159,7 +18214,7 @@
             "title": "Conditional Access: Grant",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant",
             "purpose": "Password-change flow, MFA prerequisite, All-resources restriction, and supported condition restrictions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -18167,7 +18222,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "passwordChange must be paired with mfa using AND; riskRemediation is separate.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -18175,7 +18230,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "User-risk semantics and secure password-change remediation.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -18183,7 +18238,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -18191,7 +18246,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Stable-ID update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
@@ -18199,7 +18254,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "Stable-ID verification readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -18262,7 +18317,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.\n4. Target resources: **All resources**.\n5. Conditions → User risk: **Medium** only.\n6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions.\n7. Grant: **Grant access** → Require multifactor authentication **and** Require password change → **Require all selected controls**.\n8. Session: not configured.\n9. Enable policy: **Report-only**.\n10. Create, read back, and rescan IAMAI.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.\n4. Target resources: **All resources**.\n5. Conditions → User risk: set **Configure** to **Yes**, then **Medium** only. Left at **No** the policy has no risk condition, and its password-change requirement reaches every sign-in.\n6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions. Microsoft's grant reference allows this policy only the users, applications and user-risk conditions.\n7. Grant: **Grant access** → Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change → **Require all selected controls**. That is the pair the pinned baseline holds, and it is what IAMAI compares the tenant against. Microsoft's Graph reference documents `passwordChange` paired with the built-in `mfa` control instead, which is the pair the JSON and PowerShell outputs on this step write; a policy built that way reads as a difference here until the baseline or the policy moves.\n8. Session: not configured.\n9. Enable policy: **Report-only**.\n10. Create, read back, and rescan IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -18298,7 +18353,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Target resources to All resources with no application exclusions. Keep client apps All.\n"
+          "text": "Set Target resources to All resources with no application exclusions. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches.\n"
         },
         "entra.correct.risk": {
           "meta": {
@@ -18310,7 +18365,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Conditions → User risk to Medium only. Remove sign-in risk and any other condition IAMAI identified as a difference.\n"
+          "text": "Set Conditions → User risk to **Configure: Yes**, then Medium only, because at **No** the policy has no risk condition and its password-change requirement reaches every sign-in. Remove sign-in risk and any other condition IAMAI identified as a difference.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -18322,7 +18377,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set the conditions to the intended set: All users with the resolved group exclusions and all guest/external types excluded; All resources; client apps All; user risk Medium only; no other condition.\n"
+          "text": "Set the conditions to the intended set: All users with the resolved group exclusions and all guest/external types excluded; All resources; Client apps left unconfigured, which is every client app; user risk Medium only through Configure: Yes; no other condition.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -18334,7 +18389,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Grant to Require multifactor authentication **and** Require password change, Require all selected controls. Remove Require risk remediation and any authentication strength from this grant; password change is paired only with Require multifactor authentication.\n"
+          "text": "Set Grant to Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change, Require all selected controls. That is the pinned baseline's pair, and the one IAMAI compares against. Do not add Require risk remediation: Microsoft's grant reference says password change and risk remediation are used separately, never together.\n"
         },
         "entra.correct.session": {
           "meta": {
@@ -18407,7 +18462,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n1. Open policy ID `{{policy.current.id}}` and confirm it still matches the intended settings and is Report-only.\n2. Change only Enable policy from Report-only to **On**. Leave users, exclusions, conditions and grant unchanged, and leave the High-risk policy unchanged.\n3. Read back the policy and rescan IAMAI.\n\nVerify after the change: the policy reads back On with Medium user risk only, All resources, the resolved group exclusions, all guest/external types excluded, and Require multifactor authentication and Require password change (all selected). The separate High-risk policy is still enabled. Users in scope have MFA registered, and password writeback works for synchronized users.\n"
+          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n1. Open policy ID `{{policy.current.id}}` and confirm it still matches the intended settings and is Report-only.\n2. Change only Enable policy from Report-only to **On**. Leave users, exclusions, conditions and grant unchanged, and leave the High-risk policy unchanged.\n3. Read back the policy and rescan IAMAI.\n\nVerify after the change: the policy reads back On with Medium user risk only, All resources, the resolved group exclusions, all guest/external types excluded, and the grant pair this step's create procedure names (all selected). The separate High-risk policy is still enabled. Users in scope have MFA registered, and password writeback works for synchronized users.\n"
         },
         "json.create": {
           "meta": {
@@ -18561,7 +18616,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThis state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; Require multifactor authentication and Require password change, with all selected controls required; no session controls.\n\nThis policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage. Do not add Require risk remediation to this grant, and do not retire the High-risk policy as part of this step.\n"
+          "text": "\nThis state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; the pinned baseline's authentication strength and Require password change, with all selected controls required; no session controls. The JSON and PowerShell outputs write Microsoft's documented pairing of password change with the built-in multifactor control instead, because the Graph grant reference pairs them that way; say so rather than presenting the two as the same policy.\n\nThis policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage. Do not add Require risk remediation to this grant, and do not retire the High-risk policy as part of this step.\n"
         },
         "ai.correct": {
           "meta": {
