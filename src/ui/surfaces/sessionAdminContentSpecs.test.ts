@@ -160,23 +160,30 @@ test('s-prereq-trusted-location: the milestone says what to add, Entra is plain 
   const words = stepWords(TRUSTED)
   // Editorial batch C: only ranges the network owner approved; an observed address is not trusted, and the ranges are a human check.
   assert.equal(words.decision?.help, 'Use only public IP ranges the network owner approved. An observed address is not automatically trusted.')
-  assert.deepEqual(words.doneWhen, ['A trusted IP named location exists in the tenant.', 'Its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them.'])
+  // where-people-sign-in-spec.md §3: the outcome is one object holding exactly the
+  // approved ranges, marked trusted, with the sign-ins that should match it matching.
+  assert.deepEqual(words.doneWhen, ['An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted.', 'The sign-ins that should match it do, without widening a range to make them.'])
   assert.ok(content.includes('"clearNote": "No unresolved checks."'), 'the Clear readiness line is not the plain one')
   const entra = packageOf(TRUSTED).blocks['entra.create'].text
+  // where-people-sign-in-spec.md §3 T1 and T3 (ms-network, ms-ip-named-location):
+  // the path carries the Entra ID level Learn gives it, the range line states the
+  // rule Entra enforces — CIDR, masks greater than /8, no more than 2000 ranges —
+  // in place of an invented "never 0.0.0.0/0" that Entra would reject anyway, and
+  // the private-address sentence says what Entra actually sees.
   assert.deepEqual(authoredParts(entra), [
     {
       kind: 'list', ordered: true, start: 1, items: [
-        ['Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.'],
+        ['Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.'],
         ['Name: {{location.target.displayName}}.'],
-        ['Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges.'],
-        ['Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.'],
+        [`Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.`],
+        ['Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.'],
         ['Check "Mark as trusted location."'],
         ['Create.'],
         ['Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.'],
       ],
     },
   ])
-  assert.doesNotMatch(entra, /CIDR|supplied by IAMAI|downstream policies|or a name that describes your location/)
+  assert.doesNotMatch(entra, /0\.0\.0\.0\/0|supplied by IAMAI|downstream policies|or a name that describes your location/)
   const ai = packageOf(TRUSTED).blocks['ai.create'].text
   assert.match(ai, /^A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls\. Some baseline policies apply differently inside a trusted network\.$/m)
   assert.match(ai, /^Add only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved\. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too\.$/m)

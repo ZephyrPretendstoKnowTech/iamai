@@ -43,7 +43,13 @@ test('a sync role holder with a Workload ID licence is not proof of support: the
   const body = stepBodyOf(step, ctx)
   assert.equal(nextSafeAction(step).enforceable, false, 'unknown support is never proof that workload protection can be enforced; useful guidance remains copyable')
   assert.equal(body.cs.why, stepById['workload-identity-block'].why)
-  assert.match(String(body.cs.why), /^Review which identity performs synchronization before relying on a network restriction\./)
+  // where-people-sign-in-spec.md §8 W1 and W5 (ms-workload-ca, ms-connect-accounts,
+  // ms-cloud-sync-faq): Why now states the rule this step's conclusion rests on —
+  // a workload identity policy covers a single-tenant service principal only — and
+  // that the two sync identities are not the same identity, before asking for the
+  // confirmation. The conclusion without its rule was what it said before.
+  assert.match(String(body.cs.why), /^A workload identity policy covers a single-tenant service principal registered in this tenant, and covers no Microsoft or multitenant application and no managed identity\./)
+  assert.match(String(body.cs.why), /Confirm which identity requests the sync tokens before relying on a network restriction: Entra Connect Sync signs in as a user account, while Cloud Sync uses a provisioning service principal\.$/)
   assert.doesNotMatch(String(body.cs.why), /works from anywhere/)
   const ai = body.artifacts.find((a) => a.id === 'ai')
   if (ai && !ai.unavailable) {

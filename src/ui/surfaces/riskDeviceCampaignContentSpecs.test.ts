@@ -221,7 +221,9 @@ test('MFA preparation explains registration, support and useful campaign setup w
   assert.match(drawn(b, 'portal'), /Registration campaign/)
   assert.match(drawn(b, 'portal'), /snooze/)
   assert.doesNotMatch(drawn(b, 'portal'), /Target: All users|State: Enabled/)
-  assert.ok(b.contract.doneWhen.some(l => /Everyone in this step has a suitable registered MFA method/.test(l)))
-  assert.ok(b.contract.doneWhen.some(l => /Administrators have a phishing-resistant method/.test(l)))
+  // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says one thing.
+  assert.ok(b.contract.doneWhen.some(l => /Everyone in this step has a registered MFA method they can use/.test(l)))
+  assert.ok(b.contract.doneWhen.some(l => /Every administrator has a phishing-resistant method/.test(l)))
+  assert.ok(b.contract.doneWhen.some(l => /The people who still need help are identified and on the support list/.test(l)))
   assert.doesNotMatch(b.contract.doneWhen.join(' '), /90%|campaign's settings match/)
 })
