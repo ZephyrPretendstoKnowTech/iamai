@@ -28,15 +28,11 @@
       "ea9459a9-91b6-4d2b-b929-03781ac81d54": "37d17a62"
     },
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
-    "intentionalMultiPolicySet": true,
+    "intentionalMultiPolicySet": false,
     "members": [
       {
         "role": "browser",
         "memberStableId": "ea9459a9-91b6-4d2b-b929-03781ac81d54"
-      },
-      {
-        "role": "unmanaged",
-        "memberStableId": null
       }
     ],
     "browserPolicy": {
@@ -51,31 +47,14 @@
       "persistentBrowser": "never",
       "initialState": "enabledForReportingButNotEnforced"
     },
-    "unmanagedPolicy": {
-      "memberStableId": null,
-      "sourceIdentityStatus": "No companion stable member ID is surfaced by the available pinned-goal projection; no ID is invented.",
-      "targetResources": [
-        "All"
-      ],
-      "deviceFilter": {
-        "mode": "exclude",
-        "rule": "device.isCompliant -eq True"
-      },
-      "clientAppTypes": [
-        "all"
-      ],
-      "signInFrequencyHours": 9,
-      "persistentBrowser": "never",
-      "initialState": "enabledForReportingButNotEnforced"
-    },
-    "canonicalMergedStepEvidence": "IAMAI source defines this step as the intentional merge of all-users-no-persistence and byod-persistence and renders two policies."
+    "canonicalMergedStepEvidence": "The step's content entry merges all-users-no-persistence with byod-persistence, and the pin maps only the first: one member, the browser policy. No unmanaged-device companion is surfaced by the pinned-goal projection, so this package holds one policy and invents no second."
   },
   "requiredBindings": [
     "policies.session.browser.target.displayName",
+    "policies.session.browser.target.sessionControls",
     "policy.target.excludeGroups",
     "policy.target.excludeUsers",
     "policies.session.browser.current.id",
-    "policies.session.unmanaged.current.id",
     "policies.session.semanticMismatches"
   ],
   "resolvedEmptyBindings": [
@@ -85,24 +64,20 @@
     "policy.target.excludeUsersSummary",
     "policies.session.browser.current.removedExclusions",
     "policies.session.browser.current.displayName",
-    "policies.session.unmanaged.current.removedExclusions",
-    "policies.session.unmanaged.current.displayName",
-    "policies.session.unmanaged.target.displayName",
     "tenant.displayName",
     "people.affected.count",
     "evidence.unmanagedBrowser",
     "evidence.deviceCompliance",
     "evidence.sharedDevices",
     "policies.session.browser.current.state",
-    "policies.session.unmanaged.current.state",
     "dependencies.blockers",
-    "policies.session.browser.operation",
-    "policies.session.unmanaged.operation"
+    "policies.session.browser.operation"
   ],
   "projection": {
     "missing": {
       "requires": [
         "policies.session.browser.target.displayName",
+        "policies.session.browser.target.sessionControls",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -144,6 +119,7 @@
           },
           "requires": [
             "policies.session.browser.target.displayName",
+            "policies.session.browser.target.sessionControls",
             "policy.target.excludeGroups",
             "policy.target.excludeUsers"
           ],
@@ -189,7 +165,8 @@
             "sessionControls"
           ],
           "requires": [
-            "policies.session.browser.current.id"
+            "policies.session.browser.current.id",
+            "policies.session.browser.target.sessionControls"
           ],
           "entra": [
             "entra.correct.browser.session"
@@ -224,97 +201,6 @@
               "mode": "CorrectBrowserGrant"
             }
           ]
-        },
-        "unmanaged.missing": {
-          "member": "unmanaged",
-          "select": {
-            "equals": [
-              "policies.session.unmanaged.operation",
-              "create"
-            ]
-          },
-          "requires": [
-            "policies.session.unmanaged.target.displayName",
-            "policy.target.excludeGroups",
-            "policy.target.excludeUsers"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.missing"
-          ],
-          "json": [
-            "json.unmanaged.create"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "CreateUnmanaged"
-            }
-          ]
-        },
-        "unmanaged.conditions": {
-          "member": "unmanaged",
-          "facts": [
-            "conditions"
-          ],
-          "requires": [
-            "policies.session.unmanaged.current.id",
-            "policy.target.excludeGroups",
-            "policy.target.excludeUsers"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.conditions"
-          ],
-          "json": [
-            "json.unmanaged.conditions"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "CorrectUnmanagedConditions"
-            }
-          ]
-        },
-        "unmanaged.session": {
-          "member": "unmanaged",
-          "facts": [
-            "sessionControls"
-          ],
-          "requires": [
-            "policies.session.unmanaged.current.id"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.session"
-          ],
-          "json": [
-            "json.unmanaged.session"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "CorrectUnmanagedSession"
-            }
-          ]
-        },
-        "unmanaged.grant-none": {
-          "member": "unmanaged",
-          "facts": [
-            "grantControls"
-          ],
-          "requires": [
-            "policies.session.unmanaged.current.id"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.grant-none"
-          ],
-          "json": [
-            "json.unmanaged.grant-none"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "CorrectUnmanagedGrant"
-            }
-          ]
         }
       },
       "sharedAfter": {
@@ -331,7 +217,8 @@
       "requires": [
         "policies.session.browser.current.id",
         "policy.target.excludeGroups",
-        "policy.target.excludeUsers"
+        "policy.target.excludeUsers",
+        "policies.session.browser.target.sessionControls"
       ],
       "entra": [
         "entra.observe"

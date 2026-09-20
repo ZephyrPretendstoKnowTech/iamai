@@ -39,28 +39,12 @@ For the browser policy, remove any Grant requirement. This step is session-contr
 @@IAMAI-BEGIN {"id":"entra.correct.browser.lifecycle","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Set the browser component to Report-only while material corrections are being validated.
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"entra.correct.unmanaged.missing","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Create only the missing unmanaged-device component using the Policy B procedure from this package. Do not recreate the browser component.
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"entra.correct.unmanaged.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the unmanaged-device component, set Users to All users with IAMAI's canonical group/shared-device exclusions; Target resources to All resources; Client apps to All; and Filter for devices with **Configure** set to **Yes** and the rule set to Exclude `device.isCompliant -eq True` — left at **No** the filter is not applied and the component reaches compliant devices too. Remove noncanonical risk, location, platform, authentication-flow, application-exclusion, or other conditions.
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"entra.correct.unmanaged.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the unmanaged-device component, set Sign-in frequency to 9 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove other noncanonical v1.0 session controls. Do not add a grant requirement.
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"entra.correct.unmanaged.grant-none","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the unmanaged-device component, remove any Grant requirement. This step is session-control-only; do not add MFA, authentication strength, device grant, or Block.
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"entra.correct.unmanaged.lifecycle","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set the unmanaged-device component to Report-only while material corrections are being validated.
-@@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save only the selected correction(s), read the policy back by its policy ID, and rescan IAMAI.
 
-Keep each policy's current state. If it is On, the changed rule can affect access after you save.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
-This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with the intended target's sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.
@@ -84,24 +68,7 @@ Verify after the change: test representative sign-ins in managed and unmanaged b
   "locations":null,"platforms":null,"devices":null,"authenticationFlows":null,"insiderRiskLevels":null
 },
   "grantControls":null,
-  "sessionControls":{"signInFrequency":{"isEnabled":true,"frequencyInterval":"timeBased","authenticationType":"primaryAndSecondaryAuthentication","type":"hours","value":12},"persistentBrowser":{"isEnabled":true,"mode":"never"},"applicationEnforcedRestrictions":null,"cloudAppSecurity":null,"disableResilienceDefaults":null}
-}
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.create","channel":"json","states":["missing","partial"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
-{
-  "displayName":"{{policies.session.unmanaged.target.displayName}}",
-  "state":"enabledForReportingButNotEnforced",
-  "conditions":{
-  "users": {"includeUsers":["All"],"excludeUsers":{{json:policy.target.excludeUsers}},"includeGroups":[],"excludeGroups":{{json:policy.target.excludeGroups}},"includeRoles":[],"excludeRoles":[]},
-  "applications": {"includeApplications":["All"],"excludeApplications":[],"includeUserActions":[],"includeAuthenticationContextClassReferences":[],"applicationFilter":null},
-  "clientAppTypes":["all"],
-  "signInRiskLevels":[],"userRiskLevels":[],"servicePrincipalRiskLevels":[],
-  "locations":null,"platforms":null,
-  "devices":{"deviceFilter":{"mode":"exclude","rule":"device.isCompliant -eq True"}},
-  "authenticationFlows":null,"insiderRiskLevels":null
-},
-  "grantControls":null,
-  "sessionControls":{"signInFrequency":{"isEnabled":true,"frequencyInterval":"timeBased","authenticationType":"primaryAndSecondaryAuthentication","type":"hours","value":9},"persistentBrowser":{"isEnabled":true,"mode":"never"},"applicationEnforcedRestrictions":null,"cloudAppSecurity":null,"disableResilienceDefaults":null}
+  "sessionControls":{{json:policies.session.browser.target.sessionControls}}
 }
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
@@ -113,57 +80,31 @@ Verify after the change: test representative sign-ins in managed and unmanaged b
   "locations":null,"platforms":null,"devices":null,"authenticationFlows":null,"insiderRiskLevels":null
 }}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
-{"conditions":{
-  "users": {"includeUsers":["All"],"excludeUsers":{{json:policy.target.excludeUsers}},"includeGroups":[],"excludeGroups":{{json:policy.target.excludeGroups}},"includeRoles":[],"excludeRoles":[]},
-  "applications": {"includeApplications":["All"],"excludeApplications":[],"includeUserActions":[],"includeAuthenticationContextClassReferences":[],"applicationFilter":null},
-  "clientAppTypes":["all"],
-  "signInRiskLevels":[],"userRiskLevels":[],"servicePrincipalRiskLevels":[],
-  "locations":null,"platforms":null,
-  "devices":{"deviceFilter":{"mode":"exclude","rule":"device.isCompliant -eq True"}},
-  "authenticationFlows":null,"insiderRiskLevels":null
-}}
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.browser.session","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
-{"sessionControls":{"signInFrequency":{"isEnabled":true,"frequencyInterval":"timeBased","authenticationType":"primaryAndSecondaryAuthentication","type":"hours","value":12},"persistentBrowser":{"isEnabled":true,"mode":"never"},"applicationEnforcedRestrictions":null,"cloudAppSecurity":null,"disableResilienceDefaults":null}}
+@@IAMAI-BEGIN {"id":"json.browser.session","channel":"json","states":["partial"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
+{"sessionControls":{{json:policies.session.browser.target.sessionControls}}}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.grant-none","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
-{"grantControls":null}
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.session","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
-{"sessionControls":{"signInFrequency":{"isEnabled":true,"frequencyInterval":"timeBased","authenticationType":"primaryAndSecondaryAuthentication","type":"hours","value":9},"persistentBrowser":{"isEnabled":true,"mode":"never"},"applicationEnforcedRestrictions":null,"cloudAppSecurity":null,"disableResilienceDefaults":null}}
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.grant-none","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
 {"grantControls":null}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.report-only","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
 {"state":"enabledForReportingButNotEnforced"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.report-only","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
-{"state":"enabledForReportingButNotEnforced"}
-@@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.browser.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"json.unmanaged.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
-{"state":"enabled"}
-@@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify","VerifyBrowser"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]}},"withheldModes":{"Create":"Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone","Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it; Enforce also turns on the unmanaged-device companion, which the pinned baseline has no policy for"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["CreateBrowser"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","VerifyBrowser","Enforce"]},"BrowserSessionControlsJson":{"binding":"policies.session.browser.target.sessionControls","modes":["CreateBrowser","CorrectBrowserSession","VerifyBrowser","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["CreateBrowser","CorrectBrowserConditions","VerifyBrowser","Enforce"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["CreateBrowser","CorrectBrowserConditions","VerifyBrowser","Enforce"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
-# This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Limit How Long Sessions Last
 # Module: Microsoft.Graph.Authentication
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)]
-  [ValidateSet('Create','CreateBrowser','CreateUnmanaged','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','CorrectUnmanagedConditions','CorrectUnmanagedSession','CorrectUnmanagedGrant','ReportOnlyUnmanaged','Verify','VerifyBrowser','Enforce')]
+  [ValidateSet('CreateBrowser','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','VerifyBrowser','Enforce')]
   [string] $Mode,
   [string] $BrowserPolicyDisplayName,
-  [string] $UnmanagedPolicyDisplayName,
   [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
   [string] $BrowserPolicyId,
-  [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
-  [string] $UnmanagedPolicyId,
+  [string] $BrowserSessionControlsJson,
   [string[]] $ExcludeGroupIds = @(),
   [string[]] $ExcludeUserIds = @(),
   [switch] $ReadinessApproved
@@ -199,11 +140,9 @@ function New-Users {
 function New-BrowserConditions {
   return @{users=(New-Users);applications=@{includeApplications=@('All');excludeApplications=@();includeUserActions=@();includeAuthenticationContextClassReferences=@();applicationFilter=$null};clientAppTypes=@('browser');signInRiskLevels=@();userRiskLevels=@();servicePrincipalRiskLevels=@();locations=$null;platforms=$null;devices=$null;authenticationFlows=$null;insiderRiskLevels=$null}
 }
-function New-UnmanagedConditions {
-  return @{users=(New-Users);applications=@{includeApplications=@('All');excludeApplications=@();includeUserActions=@();includeAuthenticationContextClassReferences=@();applicationFilter=$null};clientAppTypes=@('all');signInRiskLevels=@();userRiskLevels=@();servicePrincipalRiskLevels=@();locations=$null;platforms=$null;devices=@{deviceFilter=@{mode='exclude';rule='device.isCompliant -eq True'}};authenticationFlows=$null;insiderRiskLevels=$null}
-}
-function New-Session([int] $Hours) {
-  return @{signInFrequency=@{isEnabled=$true;frequencyInterval='timeBased';authenticationType='primaryAndSecondaryAuthentication';type='hours';value=$Hours};persistentBrowser=@{isEnabled=$true;mode='never'};applicationEnforcedRestrictions=$null;cloudAppSecurity=$null;disableResilienceDefaults=$null}
+function Get-TargetSession {
+  if ([string]::IsNullOrWhiteSpace($BrowserSessionControlsJson)) { throw 'The intended session controls are required; this script states no interval of its own.' }
+  return ($BrowserSessionControlsJson | ConvertFrom-Json)
 }
 function Assert-NoNameCollision([string] $Name) {
   $escaped = $Name.Replace("'","''")
@@ -211,10 +150,10 @@ function Assert-NoNameCollision([string] $Name) {
   $matches = @((Invoke-MgGraphRequest -Method GET -Uri "$Base?`$filter=$filter").value)
   if ($matches.Count -gt 0) { throw "Policy '$Name' already exists. Rescan IAMAI; do not create a duplicate." }
 }
-function New-One([string] $Name,[hashtable] $Conditions,[int] $Hours) {
+function New-One([string] $Name,[hashtable] $Conditions) {
   if ([string]::IsNullOrWhiteSpace($Name)) { throw 'Target display name required.' }
   Assert-NoNameCollision $Name
-  $body = @{displayName=$Name;state='enabledForReportingButNotEnforced';conditions=$Conditions;grantControls=$null;sessionControls=(New-Session $Hours)}
+  $body = @{displayName=$Name;state='enabledForReportingButNotEnforced';conditions=$Conditions;grantControls=$null;sessionControls=(Get-TargetSession)}
   $created = Invoke-MgGraphRequest -Method POST -Uri $Base -Body ($body | ConvertTo-Json -Depth 20) -ContentType 'application/json'
   if (-not $created.id) { throw 'Graph returned no policy ID.' }
   return $created.id
@@ -223,77 +162,52 @@ function Patch-One([string] $Id,[hashtable] $Body) {
   [void](Get-Policy $Id)
   Invoke-MgGraphRequest -Method PATCH -Uri "$Base/$Id" -Body ($Body | ConvertTo-Json -Depth 20) -ContentType 'application/json' | Out-Null
 }
-function Assert-Canonical($Policy,[ValidateSet('Browser','Unmanaged')][string] $Kind) {
+function Assert-Canonical($Policy) {
   Assert-Ids $ExcludeGroupIds; Assert-Ids $ExcludeUserIds
+  $want = Get-TargetSession
   $errors = [System.Collections.Generic.List[string]]::new()
   if (@($Policy.conditions.users.includeUsers).Count -ne 1 -or @($Policy.conditions.users.includeUsers)[0] -ne 'All') { $errors.Add('includeUsers is not exactly All.') }
   if (-not (Same-Set @($Policy.conditions.users.excludeGroups) @($ExcludeGroupIds))) { $errors.Add('excludeGroups differs from IAMAI canonical target.') }
   if (-not (Same-Set @($Policy.conditions.users.excludeUsers) @($ExcludeUserIds))) { $errors.Add('excludeUsers/shared-device set differs from IAMAI canonical target.') }
   if (@($Policy.conditions.applications.includeApplications).Count -ne 1 -or @($Policy.conditions.applications.includeApplications)[0] -ne 'All') { $errors.Add('Target resources is not exactly All resources.') }
   if (@($Policy.conditions.applications.excludeApplications).Count -ne 0 -or @($Policy.conditions.applications.includeUserActions).Count -ne 0 -or @($Policy.conditions.applications.includeAuthenticationContextClassReferences).Count -ne 0) { $errors.Add('A noncanonical application/user-action/authentication-context target exists.') }
-  $wantClient = if ($Kind -eq 'Browser') { 'browser' } else { 'all' }
-  if (@($Policy.conditions.clientAppTypes).Count -ne 1 -or @($Policy.conditions.clientAppTypes)[0] -ne $wantClient) { $errors.Add("clientAppTypes differs for $Kind.") }
+  if (@($Policy.conditions.clientAppTypes).Count -ne 1 -or @($Policy.conditions.clientAppTypes)[0] -ne 'browser') { $errors.Add('clientAppTypes is not exactly browser.') }
   if (@($Policy.conditions.signInRiskLevels).Count -ne 0 -or @($Policy.conditions.userRiskLevels).Count -ne 0 -or @($Policy.conditions.servicePrincipalRiskLevels).Count -ne 0) { $errors.Add('A noncanonical risk condition exists.') }
   foreach ($field in @('locations','platforms','authenticationFlows','insiderRiskLevels')) { if ($null -ne $Policy.conditions.$field) { $errors.Add("Noncanonical condition exists: $field") } }
-  if ($Kind -eq 'Browser') {
-    if ($null -ne $Policy.conditions.devices) { $errors.Add('Browser component has a noncanonical device condition.') }
-  } else {
-    if ($Policy.conditions.devices.deviceFilter.mode -ne 'exclude' -or $Policy.conditions.devices.deviceFilter.rule -ne 'device.isCompliant -eq True') { $errors.Add('Unmanaged component device filter differs from canonical target.') }
-  }
+  if ($null -ne $Policy.conditions.devices) { $errors.Add('The browser policy has a noncanonical device condition.') }
   if ($null -ne $Policy.grantControls) { $errors.Add('A grant control is present; this step is session-control-only.') }
-  $hours = if ($Kind -eq 'Browser') { 12 } else { 9 }
   $sif = $Policy.sessionControls.signInFrequency
-  if (-not $sif.isEnabled -or $sif.frequencyInterval -ne 'timeBased' -or $sif.authenticationType -ne 'primaryAndSecondaryAuthentication' -or $sif.type -ne 'hours' -or $sif.value -ne $hours) { $errors.Add("$Kind sign-in frequency differs from canonical $hours hours.") }
+  $wsif = $want.signInFrequency
+  if (-not $sif.isEnabled -or $sif.frequencyInterval -ne $wsif.frequencyInterval -or $sif.authenticationType -ne $wsif.authenticationType -or $sif.type -ne $wsif.type -or $sif.value -ne $wsif.value) { $errors.Add('Sign-in frequency differs from the intended target.') }
   $pb = $Policy.sessionControls.persistentBrowser
-  if (-not $pb.isEnabled -or $pb.mode -ne 'never') { $errors.Add('Persistent browser is not Never.') }
+  if (-not $pb.isEnabled -or $pb.mode -ne $want.persistentBrowser.mode) { $errors.Add('Persistent browser session differs from the intended target.') }
   foreach ($field in @('applicationEnforcedRestrictions','cloudAppSecurity','disableResilienceDefaults')) { if ($null -ne $Policy.sessionControls.$field) { $errors.Add("Noncanonical v1.0 session control exists: $field") } }
-  if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_ }; throw "$Kind policy verification failed." }
+  if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_ }; throw 'Browser policy verification failed.' }
 }
 
 switch ($Mode) {
-  'Create' {
-    Connect-CA $true
-    $browserId = New-One $BrowserPolicyDisplayName (New-BrowserConditions) 12
-    try { $unmanagedId = New-One $UnmanagedPolicyDisplayName (New-UnmanagedConditions) 9 }
-    catch { Write-Warning "Browser policy $browserId was created in Report-only but companion creation failed. Rescan IAMAI; do not create a duplicate."; throw }
-    Write-Host "Created browser $browserId and unmanaged $unmanagedId in Report-only. Rescan IAMAI."
-  }
-  'CreateBrowser' { Connect-CA $true; Write-Host "Created browser policy $(New-One $BrowserPolicyDisplayName (New-BrowserConditions) 12) in Report-only. Rescan IAMAI." }
-  'CreateUnmanaged' { Connect-CA $true; Write-Host "Created unmanaged policy $(New-One $UnmanagedPolicyDisplayName (New-UnmanagedConditions) 9) in Report-only. Rescan IAMAI." }
+  'CreateBrowser' { Connect-CA $true; Write-Host "Created browser policy $(New-One $BrowserPolicyDisplayName (New-BrowserConditions)) in Report-only. Rescan IAMAI." }
   'CorrectBrowserConditions' { Connect-CA $true; Patch-One $BrowserPolicyId @{conditions=(New-BrowserConditions)} }
-  'CorrectBrowserSession' { Connect-CA $true; Patch-One $BrowserPolicyId @{sessionControls=(New-Session 12)} }
+  'CorrectBrowserSession' { Connect-CA $true; Patch-One $BrowserPolicyId @{sessionControls=(Get-TargetSession)} }
   'CorrectBrowserGrant' { Connect-CA $true; Patch-One $BrowserPolicyId @{grantControls=$null} }
   'ReportOnlyBrowser' { Connect-CA $true; Patch-One $BrowserPolicyId @{state='enabledForReportingButNotEnforced'} }
-  'CorrectUnmanagedConditions' { Connect-CA $true; Patch-One $UnmanagedPolicyId @{conditions=(New-UnmanagedConditions)} }
-  'CorrectUnmanagedSession' { Connect-CA $true; Patch-One $UnmanagedPolicyId @{sessionControls=(New-Session 9)} }
-  'CorrectUnmanagedGrant' { Connect-CA $true; Patch-One $UnmanagedPolicyId @{grantControls=$null} }
-  'ReportOnlyUnmanaged' { Connect-CA $true; Patch-One $UnmanagedPolicyId @{state='enabledForReportingButNotEnforced'} }
-  'Verify' {
-    Connect-CA $false
-    $a=Get-Policy $BrowserPolicyId; $b=Get-Policy $UnmanagedPolicyId
-    Assert-Canonical $a 'Browser'; Assert-Canonical $b 'Unmanaged'
-    if ($a.state -notin @('enabledForReportingButNotEnforced','enabled') -or $b.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
-    Write-Host 'Canonical two-policy shapes verified. Readiness remains a separate decision.'
-  }
   'VerifyBrowser' {
     Connect-CA $false
     $a=Get-Policy $BrowserPolicyId
-    Assert-Canonical $a 'Browser'
+    Assert-Canonical $a
     if ($a.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
     Write-Host 'Canonical browser policy shape verified. Readiness remains a separate decision.'
   }
   'Enforce' {
     if (-not $ReadinessApproved) { throw 'Enforce requires ReadinessApproved.' }
     Connect-CA $true
-    $a=Get-Policy $BrowserPolicyId; $b=Get-Policy $UnmanagedPolicyId
-    Assert-Canonical $a 'Browser'; Assert-Canonical $b 'Unmanaged'
-    if ($a.state -ne 'enabledForReportingButNotEnforced' -or $b.state -ne 'enabledForReportingButNotEnforced') { throw 'Both policies must be Report-only immediately before enforcement.' }
+    $a=Get-Policy $BrowserPolicyId
+    Assert-Canonical $a
+    if ($a.state -ne 'enabledForReportingButNotEnforced') { throw 'The policy must be Report-only immediately before enforcement.' }
     Patch-One $BrowserPolicyId @{state='enabled'}
-    try { Patch-One $UnmanagedPolicyId @{state='enabled'} }
-    catch { Patch-One $BrowserPolicyId @{state='enabledForReportingButNotEnforced'}; throw }
-    $afterA=Get-Policy $BrowserPolicyId; $afterB=Get-Policy $UnmanagedPolicyId
-    if ($afterA.state -ne 'enabled' -or $afterB.state -ne 'enabled') { throw 'Post-enforcement lifecycle readback failed.' }
-    Write-Host 'Both session policies enabled. Test representative paths and rescan IAMAI.'
+    $after=Get-Policy $BrowserPolicyId
+    if ($after.state -ne 'enabled') { throw 'Post-enforcement lifecycle readback failed.' }
+    Write-Host 'The browser session policy is enabled. Test representative paths and rescan IAMAI.'
   }
 }
 @@IAMAI-END
@@ -334,7 +248,6 @@ Shared-device accounts are excluded only where this policy's resolved target lis
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
-This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 

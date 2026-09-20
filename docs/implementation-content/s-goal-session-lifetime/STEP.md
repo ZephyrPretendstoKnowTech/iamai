@@ -19,15 +19,17 @@ Do not render actionable implementation for `inPlace`, `blocked`, `needsDecision
 - The current policies and their stable IDs are known before update/enforcement.
 
 ## Owner decisions
-No new owner decision is introduced here. The current Jon Hope baseline pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` remains authoritative. The available pinned projection exposes stable ID `ea9459a9-91b6-4d2b-b929-03781ac81d54` for the all-user browser member. An earlier merged-step source described a second, unmanaged-device policy; the pin has no such policy, so this package offers none and does not invent one.
+No new owner decision is introduced here. The current Jon Hope baseline pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` remains authoritative. The available pinned projection exposes stable ID `ea9459a9-91b6-4d2b-b929-03781ac81d54` for the all-user browser member. An earlier merged-step source described a second, unmanaged-device policy; the pin has no such policy, so this package holds none and does not invent one.
 
 ## Current-state inputs
 IAMAI may use the current matching session policies, unmanaged-browser evidence, shared-device accounts, canonical exclusions, target frequency/persistence values, and device-compliance state already available to the product. Unknown evidence remains Unknown.
 
 ## Target state
-**Policy A — browser:** All users; canonical exclusion groups plus any individual accounts the resolved target names (the pinned target names none); All resources; Client apps = Browser, set through Configure = Yes (at No the condition reaches every client app); no other security-significant condition; no grant control; Sign-in frequency = the resolved target's interval, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
+**The browser policy, and no other:** All users; canonical exclusion groups plus any individual accounts the resolved target names (the pinned target names none); All resources; Client apps = Browser, set through Configure = Yes (at No the condition reaches every client app); no other security-significant condition; no grant control; Sign-in frequency = the resolved target's interval, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
 
-**No unmanaged-device policy.** The pinned baseline has no unmanaged-device session policy. The package's retained unmanaged-device blocks and script modes are not offered, and are left for a separately authorized change.
+**No unmanaged-device policy.** The pinned baseline has no unmanaged-device session policy. This package holds no unmanaged-device block, request body or script mode; adding that policy is a separately authorized change, and it would be a new package, not a hidden branch of this one.
+
+**The interval is never a number in this package.** Sign-in frequency and persistent browser reach every channel as the resolved target's own `sessionControls`: the Entra and AI Info words point at the target, and the JSON body and the script take it as a bound value. No channel states an interval of its own.
 
 Microsoft documents that persistent-browser controls should target All apps/resources; the browser policy does so.
 

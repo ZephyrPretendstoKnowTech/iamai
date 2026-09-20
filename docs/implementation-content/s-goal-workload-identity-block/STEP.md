@@ -1,4 +1,4 @@
-# Restrict the Entra Connect Sync Account to Its Address
+# Restrict the Directory Sync Service Principal to Its Address
 
 ## Goal
 When Microsoft Entra Cloud Sync is present, restrict its IAMAI-resolved provisioning service principal so token requests are blocked outside the approved sync-server public IP location.
