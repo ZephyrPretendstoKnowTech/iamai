@@ -106,7 +106,14 @@ export const ACCEPTANCE = [
   { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'Over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Registration campaign' },
-  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Administrators have a phishing-resistant method', mustNot: 'a passkey and a security key' },
+  // MFA for Everyone C1-C9 (docs/plans/mfa-everyone-spec.md section 4, Microsoft
+  // Learn checked 2026-09-20): the campaign nudges passkeys as well as the
+  // Authenticator app, one method at a time, and a passkey campaign reaches no
+  // guest. Completion Criteria is one thing per line.
+  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every administrator has a phishing-resistant method.', mustNot: 'a passkey and a security key' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'either Passkey (FIDO2) or Microsoft Authenticator', mustNot: 'Check the separate passkey registration instructions for passkeys' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'A passkey campaign does not nudge guests' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Days allowed to snooze and Limited number of snoozes' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'This policy uses Require multifactor authentication.', mustNot: 'requires one the moment a sign-in looks wrong' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'Stronger method requirements belong to the separate policies that select an authentication strength.' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },

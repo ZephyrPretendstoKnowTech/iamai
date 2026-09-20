@@ -3728,13 +3728,16 @@
         ],
         "generic": [
           "Send the email below to everyone else; send the admin note to the admins.",
-          "To prompt eligible people to register Microsoft Authenticator, open Entra ID → Authentication methods → Registration campaign. Review the targeted users and excluded users, choose the snooze settings for your rollout, enable the campaign, and verify those settings. Check the separate passkey registration instructions for passkeys.",
+          "To prompt people during sign-in, open Entra ID → Authentication methods → Registration campaign → Edit. A campaign nudges one method at a time, either Passkey (FIDO2) or Microsoft Authenticator. Review the included and excluded users, set Days allowed to snooze and Limited number of snoozes, enable it, then reopen and verify those settings.",
+          "A passkey campaign does not nudge guests, because a guest cannot register a passkey here; the Authenticator campaign is the one that reaches them.",
           "Scan to update the plan after each batch; the lists above shrink as people are seen."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Everyone in this step has a suitable registered MFA method. Administrators have a phishing-resistant method, and the people needing help are identified."
+        "Everyone in this step has a registered MFA method they can use.",
+        "Every administrator has a phishing-resistant method.",
+        "The people who still need help are identified and on the support list."
       ],
       "ifWrong": null,
       "comms": {
@@ -3768,12 +3771,18 @@
           {
             "text": "A person who has not enrolled cannot complete sign-in once the policy is enforced; resolve it with them and their manager rather than with an exclusion.",
             "applies": "always"
+          },
+          {
+            "text": "An Authenticator campaign nudges anyone without the app, including someone who already signs in with a stronger method, so it can read as a step backwards.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Cannot register from home: issue a Temporary Access Pass and register together.",
           "New phone: Temporary Access Pass, then re-register Authenticator; delete the old device from their methods.",
-          "Guest cannot register: have them sign in from their home tenant, or accept their home tenant's MFA under cross-tenant access settings."
+          "Guest cannot register: have them sign in from their home tenant, or accept their home tenant's MFA under cross-tenant access settings.",
+          "In this tenant a guest can only use a text message, a voice call, an Authenticator push or a software token code; the stronger methods count only as a claim from their own tenant.",
+          "No prompt appeared: the nudge needs a fresh sign-in that completed MFA here, so it is skipped for single sign-on and it does not show on a phone."
         ],
         "manager": null,
         "waits": "Require MFA for Everyone, Require MFA at the Admin Portals and Require MFA to Register a Device wait on this."

@@ -2,11 +2,11 @@
 1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.
 2. State: Enabled.
 3. Target: All users, keeping any existing exclusions.
-4. Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets.
-5. Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.
+4. Authentication method: **Passkey (FIDO2)** or **Microsoft Authenticator**. A campaign nudges one of them at a time. A passkey campaign does not reach guests, who cannot register a passkey in this tenant; an Authenticator campaign does.
+5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one. With **Limited number of snoozes** enabled, a person may skip the prompt three times and must then register.
 6. Save, reopen the settings and rescan.
 
-Whether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.
+A person sees the prompt after an interactive sign-in that completed MFA here. It is skipped where they arrive by single sign-on, and an Authenticator campaign does not prompt on a mobile device.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.walkthrough","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
@@ -26,11 +26,12 @@ Track progress on the MFA Readiness page — it shows who still needs setup and 
 
 @@IAMAI-BEGIN {"id":"entra.configure","channel":"entra","states":["setupRequired"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.
-2. Set State to **Enabled** (not Microsoft managed, because the plan keeps an explicit Microsoft Authenticator campaign).
-3. Authentication method: **Microsoft Authenticator**.
+2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.
+3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.
+   For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.
 4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.
-5. Set the IAMAI-resolved snooze duration to **{{campaign.snoozeDurationInDays}} day(s)**.
-6. Keep **Limited number of snoozes** enabled so registration is required after the allowed snoozes, where the tenant's current rollout exposes that control.
+5. Set **Days allowed to snooze** to the IAMAI-resolved **{{campaign.snoozeDurationInDays}} day(s)**.
+6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.
 7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.
 @@IAMAI-END
 
@@ -48,7 +49,7 @@ Review every remaining holdout individually after the enrollment date. Confirm e
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify-ready","channel":"entra","states":["ready"],"format":"markdown","kind":"template"}
-Reopen the campaign and confirm it still targets Microsoft Authenticator with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.
+Reopen the campaign and confirm it still targets the intended method with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.configure","channel":"json","states":["setupRequired"],"format":"json-template","kind":"template"}
