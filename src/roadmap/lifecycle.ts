@@ -31,7 +31,7 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
-import { awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
+import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
@@ -366,6 +366,15 @@ export function nextMilestone(step: Step): Milestone {
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
+  // Nothing holds it, the policy is already enforced, and the correction only
+  // adds exclusions to it (roadmap/operations.ts addsExclusionsToEnforced; owner,
+  // 2026-09-19): it can stop nobody, so the readiness threshold does not hold it
+  // and its blocker is the only thing left saying "blocked". "Clear what this
+  // step is waiting on" sat over the correction the step hands over. The next
+  // thing is that correction, on the day the plan schedules it.
+  if (s.lifecycle === 'enforced' && implementationOffered(step) && addsExclusionsToEnforced(step)) {
+    return { kind: 'deploy', label: MILESTONE.correct, at: step.scheduled ? scheduleOf(step).at : null, gatedBy: step.blockedReason }
+  }
   if (s.condition === 'blocked') return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.observation && historyReset(s.observation)) return { kind: 'observe', label: s.observation.note, at: null, gatedBy: null }
   if (step.kind === 'verify' || step.kind === 'check') return { kind: 'verify', label: MILESTONE.verify, at: null, gatedBy: null }
