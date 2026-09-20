@@ -708,7 +708,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   notes: string[]
   title: string
   empty: ImplementationEmpty
-  /** "Source checked <date>", from the package's verified sources; null where there is no truthful date. */
+  /** "Source checked <date>", from the package's verified sources or the step's own dated Learn entry; null where there is no truthful date. */
   source: string | null
   /** The step's Microsoft Learn page, where its content entry names one. */
   learn: string | null
