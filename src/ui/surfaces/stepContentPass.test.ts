@@ -125,7 +125,15 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
   assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ps', 'ai', 'email'])
   const text = b.artifacts[0].text()
-  for (const line of ['cloud-only account', 'Roles and administrators', 'https://aka.ms/mysecurityinfo', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
+  // Ongoing Checks and Cleanup (docs/plans/ongoing-spec.md sections 3 and 9):
+  // registration goes to the page itself rather than an aka.ms alias, and the
+  // procedure no longer leaves the admin account unreachable — Microsoft's
+  // security-planning guidance asks for an email address that reaches the person, so
+  // role approvals and service notices arrive
+  // (learn.microsoft.com/entra/identity/role-based-access-control/security-planning,
+  // checked 2026-09-20).
+  for (const line of ['cloud-only account', 'Roles and administrators', 'https://mysignins.microsoft.com/security-info', 'an email address that reaches the person', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
+  assert.ok(!text.includes('no licence, so it has no mailbox'), 'the procedure no longer leaves the admin account without an address')
 })
 
 test("a Cleanup row's instructions sit under Implementation, in its one column", () => {
