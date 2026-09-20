@@ -19,7 +19,7 @@
     },
     {
       "label": "Prerequisites",
-      "state": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue."
+      "state": "Review MFA before enabling Every time"
     },
     {
       "label": "Waiting on your direction",

@@ -32,7 +32,7 @@ import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
-import { populationLine } from '../../derive/whoLine.ts'
+import { IMPACT, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
@@ -1344,7 +1344,11 @@ function peopleTile(c: StepContract): ReadinessTile | null {
   if (c.who === null || (!c.who.known && c.who.text.startsWith('Policy applicability is not fully resolved.'))) return null
   const t = R().tiles
   const peopleNote = c.policy ? t.peopleNote : (t as unknown as { peopleStepNote: string }).peopleStepNote
-  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: peopleNote } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
+  // "These are the accounts this step asks you to review" over a reach of nobody
+  // was a sentence about a list that is not there. An empty reach states the
+  // count and stops; the note belongs to the accounts, and there are none.
+  const note = c.who.text === IMPACT.noUserImpact ? null : peopleNote
+  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
 }
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */
@@ -1383,6 +1387,12 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
     if (kind === 'check') return { key: f.key, label: t.check, tone: 'warn', value: f.text, note: null }
+    // The session-loop wait is four sentences (shared.sessionLoopReview). As a
+    // tile value it became the Tasks Remaining card's heading, a paragraph where
+    // every other card heads one short check. Its short form — the same wait, the
+    // words the step's own action already uses — is the heading, and the
+    // paragraph is the explanation under it.
+    if (f.key === 'readiness:session-loop') return { key: f.key, label: t.blockers, tone: 'warn', value: shared.sessionLoopHold as string, note: f.text }
     return { key: f.key, label: t.blockers, tone: 'warn', value: f.text, note: null }
   })
 }
