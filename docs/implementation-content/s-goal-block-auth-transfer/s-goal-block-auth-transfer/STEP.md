@@ -59,4 +59,4 @@ If enforcement causes an unexpected business-impacting workflow, return the same
 Microsoft still labels authentication transfer preview in 2026. Support varies by Microsoft app/version, so report-only evidence remains important.
 
 ## Source verification
-Pinned member plus current Microsoft authentication-transfer/authentication-flow/Graph v1.0 documentation rechecked September 10, 2026.
+Pinned member plus current Microsoft authentication-transfer/authentication-flow/Graph v1.0 documentation rechecked September 19, 2026 (docs/plans/close-doors-spec.md section 5).

@@ -1,7 +1,8 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows: Authentication transfer**; client apps remains All.
+3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Authentication transfer**; client apps remains All.
+   Microsoft documents one consequence worth knowing before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.
 4. Grant: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
@@ -14,7 +15,7 @@ This policy already exists. The correction sets its users, exclusions, target re
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.
-4. Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.
+4. Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

@@ -26,7 +26,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"fa005ec2-4940-49c8-b4e7-b58e66ef481c":"5af5cbd4"},
+    "reviewedMembers": {
+      "fa005ec2-4940-49c8-b4e7-b58e66ef481c": "5af5cbd4"
+    },
     "memberStableId": "fa005ec2-4940-49c8-b4e7-b58e66ef481c",
     "sourceDisplayName": "IAC - GLOBAL - BLOCK - Authentication Transfer",
     "sourceState": "enabledForReportingButNotEnforced",
@@ -310,11 +312,19 @@
   ],
   "verifiedSources": [
     {
-      "id": "ms-block-auth-flows",
+      "id": "ms-block-flows",
       "authority": "Microsoft Learn",
       "title": "Block authentication flows with Conditional Access policy",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
-      "checkedOn": "2026-09-12",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows",
+      "checkedOn": "2026-09-19",
+      "userFacing": true
+    },
+    {
+      "id": "ms-auth-flows",
+      "authority": "Microsoft Learn",
+      "title": "Authentication flows as a condition in Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
+      "checkedOn": "2026-09-19",
       "userFacing": true
     }
   ],

@@ -4685,7 +4685,7 @@
       "kind": "policy",
       "title": "Block Authentication Transfer",
       "changeLine": null,
-      "why": "Authentication transfer carries sign-in between devices. Blocking it removes a transfer path the business may not need while keeping direct sign-in available where supported.",
+      "why": "Authentication transfer carries a signed-in session from one device to another, for example by scanning a QR code shown in desktop Outlook. Blocking it means people sign in on the device they are using.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
@@ -4699,9 +4699,9 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
+      "doneEnd": "Nobody carries a signed-in session from one device to another in {tenant}: people sign in on the device they are using, and the exclusions group is applied.",
       "doneWhen": [
-        "A scan confirms the policy is On and matches the intended settings for blocking authentication transfer, including its assignments and exclusions."
+        "A scan confirms the policy is On, so a signed-in session on one device no longer signs anyone in on another, with its assignments and exclusions intact."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4712,6 +4712,10 @@
         "risks": [
           {
             "text": "Someone who signs in to Outlook mobile by scanning a QR code from the desktop app has to sign in on the phone instead.",
+            "applies": "always"
+          },
+          {
+            "text": "Once a session has used this flow, later requests in it are blocked as well, which can sign a device out. Microsoft calls this protocol tracking.",
             "applies": "always"
           }
         ],
@@ -4743,7 +4747,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Authentication flows → Authentication transfer",
+          "Conditions → Authentication flows → Configure: Yes, then select Authentication transfer",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
