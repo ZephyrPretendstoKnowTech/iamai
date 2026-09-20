@@ -3,11 +3,12 @@
 2. Name: {{policy.target.displayName}}.
 3. Users → Include: All users. Exclude → Groups: add the exclusions group.
 4. Target resources: All resources.
-5. Conditions → Sign-in risk: check High only (not Medium).
-6. Grant: {{policy.target.grantWords}}. Use only the controls listed here.
-7. Session → Sign-in frequency: Every time.
-8. Enable policy: Report-only.
-9. Create. Rescan in IAMAI.
+5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check High only (not Medium). Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.
+6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.
+7. Grant: {{policy.target.grantWords}}. Use only the controls listed here.
+8. Session → Sign-in frequency: Every time.
+9. Enable policy: Report-only.
+10. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -25,11 +26,11 @@ Target resources: set **All resources** and remove any resource exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.risk","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Conditions > Sign-in risk: set **High** only. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.
+Conditions > Sign-in risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.
+Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -52,7 +53,7 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.
+Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only through **Configure: Yes**, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength, and somebody with no accepted method registered is blocked rather than prompted, because this policy also stops them registering during a risky sign-in. Some risk is worked out after the sign-in rather than during it, so a report-only window can gain results later. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}

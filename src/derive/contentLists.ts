@@ -15,6 +15,7 @@ import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds, lastSuccessOf } from './sets.ts'
 import { ladder } from './ladder.ts'
+import { riskIds } from '../roadmap/evidence.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { pages } from '../content/content.ts'
 
@@ -180,6 +181,13 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // The usage a block would stop (E9).
     deviceCodeUsers: names(usage?.deviceCode.userIds ?? []),
     transferUsers: names(usage?.authTransfer.userIds ?? []),
+    // The risk steps' people. This is the sign-in log's own verdict on a
+    // sign-in (graph/collect/laneBCore.ts riskLevelOf, which reads `hidden` and
+    // any unknown value as unknown rather than as none), never Identity
+    // Protection's risky-users report: the scan holds no risk-report scope. The
+    // union rule is roadmap/evidence.ts riskIds, the same one the reach counts.
+    riskyUsers: names(riskIds([usage?.riskHigh])),
+    mediumRiskUsers: names(riskIds([usage?.riskMedium, usage?.riskHigh])),
     noPlatformUsers: names(platform?.people ?? []),
     outsideUsers: names(outside),
     azureNonAdmins: names(azureNonAdmins),

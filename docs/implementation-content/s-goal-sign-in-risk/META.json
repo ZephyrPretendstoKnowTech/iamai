@@ -354,12 +354,36 @@
   },
   "verifiedSources": [
     {
+      "id": "ms-risk-signin-policy",
+      "authority": "Microsoft Learn",
+      "title": "Require multifactor authentication for risky sign-ins",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-sign-in",
+      "purpose": "The page the step links: what sign-in risk represents, the Configure toggle on the sign-in-risk condition, the MFA registration prerequisite and AADSTS53004, and the report-only rollout.",
+      "checkedOn": "2026-09-20"
+    },
+    {
+      "id": "ms-risk-detection-types",
+      "authority": "Microsoft Learn",
+      "title": "Risk detection types and levels",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-detection-types",
+      "purpose": "Which detections are real-time and which are calculated offline, what High and Medium mean, and the reporting latency.",
+      "checkedOn": "2026-09-20"
+    },
+    {
+      "id": "ms-risk-remediate",
+      "authority": "Microsoft Learn",
+      "title": "Remediate risks and unblock users",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
+      "purpose": "What answering the prompt does to the sign-in risk state, and the detections that are no longer cleared by it.",
+      "checkedOn": "2026-09-20"
+    },
+    {
       "id": "ms-risk-policy",
       "authority": "Microsoft Learn",
       "title": "Risk policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
       "purpose": "Current sign-in risk Conditional Access guidance, MFA/authentication-strength options, Every time, and Report-only rollout.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-concept",
@@ -367,7 +391,7 @@
       "title": "Risk-based access policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
       "purpose": "Current risk semantics, P2 requirement, self-remediation, and legacy risk-policy retirement date.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-reports",
@@ -375,7 +399,7 @@
       "title": "ID Protection Risk Reports",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-reports",
       "purpose": "Risky sign-in evidence fields and current reporting window.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-auth-strength",
@@ -383,7 +407,7 @@
       "title": "Conditional Access authentication strengths",
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths",
       "purpose": "Authentication-strength semantics and allowed method combinations.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-session-lifetime",
@@ -391,7 +415,7 @@
       "title": "Conditional Access adaptive session lifetime policies",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
       "purpose": "Every-time reauthentication semantics for risky sign-ins.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-condition-v1",
@@ -399,7 +423,7 @@
       "title": "conditionalAccessConditionSet resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
       "purpose": "Graph v1.0 signInRiskLevels schema.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-signin-frequency-v1",
@@ -407,7 +431,7 @@
       "title": "signInFrequencySessionControl resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
       "purpose": "Graph v1.0 Every time session-control shape.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-create-v1",
@@ -415,7 +439,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "Graph v1.0 policy create endpoint and permissions.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-update-v1",
@@ -423,7 +447,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "Graph v1.0 policy update endpoint.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     }
   ],
   "authoringIssues": [],

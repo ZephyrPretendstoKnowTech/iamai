@@ -180,3 +180,74 @@ test('T1: a target that narrows sign-in risk, user risk or device platforms says
   )
 })
 
+// ---------------------------------------------------------------------------
+// Section 3: s-goal-sign-in-risk — Challenge High-Risk Sign-ins
+// ---------------------------------------------------------------------------
+
+test('A1: About this Step says what sign-in risk measures, about one request', () => {
+  // policy-risk-based-sign-in (ms.date 2026-03-24), checked 2026-09-20: "Sign-in
+  // risk represents the likelihood that an authentication request isn't from the
+  // identity owner."
+  const why = whyOf('sign-in-risk')
+  assert.match(why, /one authentication request/)
+  assert.match(why, /did not come from the person who owns the account/)
+  assert.ok(!/flags a sign-in as suspicious/.test(why), why)
+  // And it is the sentence the opened step draws on the fixture that carries P2.
+  assert.match(aboutOf(bodiesOf('mid').get(SIGN_IN_RISK)!), /one authentication request/)
+})
+
+test('A2: the risk condition is set through Configure: Yes, in create and in correct', () => {
+  assert.match(blockText(SIGN_IN_RISK, 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*, then check High only/)
+  assert.match(blockText(SIGN_IN_RISK, 'entra.create'), /Left at \*\*No\*\* the policy carries no risk condition/)
+  assert.match(blockText(SIGN_IN_RISK, 'entra.correct.risk'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*High\*\* only/)
+  assert.ok(referenceOf('sign-in-risk').includes('Conditions → Sign-in risk → Configure: Yes, then High'), referenceOf('sign-in-risk'))
+})
+
+test('A3: the Client apps condition is left unconfigured, and the words say why', () => {
+  // The pinned target is clientAppTypes ["all"], which is the unconfigured
+  // value: ticking every box writes the four named types instead.
+  assert.match(blockText(SIGN_IN_RISK, 'entra.create'), /leave \*\*Configure\*\* at \*\*No\*\*/)
+  assert.match(blockText(SIGN_IN_RISK, 'entra.correct.conditions'), /Leave \*\*Client apps\*\* unconfigured/)
+  assert.ok(!/Client apps remains All/.test(packageText(SIGN_IN_RISK)), 'no line calls the unconfigured condition a selection')
+})
+
+test('A4: the step names only the risk reading it has, and not Identity Protection detail', () => {
+  const text = allText('sign-in-risk')
+  assert.match(text, /read from the sign-in records/)
+  assert.match(text, /Identity Protection's own risk reports are a separate surface this plan does not read/)
+  assert.match(text, /counts as unknown, never as no risk/)
+  // The people named are the ones the reach counts (derive/contentLists.ts riskyUsers).
+  assert.match(text, /\{list:riskyUsers\}/)
+})
+
+test('A5: a person with no accepted method is blocked, not prompted, and cannot register during the sign-in', () => {
+  // policy-risk-based-sign-in, checked 2026-09-20: "The sign-in risk-based policy
+  // prevents users from registering MFA during risky sessions. If users aren't
+  // registered for MFA, their risky sign-ins are blocked, and they receive an
+  // AADSTS53004 error."
+  assert.ok(risksOf('sign-in-risk').some((r) => /blocked, not prompted/.test(r) && /stops them registering one during the risky sign-in/.test(r)), risksOf('sign-in-risk').join('\n'))
+  assert.ok(helpDeskOf('sign-in-risk').some((l) => l.includes('AADSTS53004')), helpDeskOf('sign-in-risk').join('\n'))
+})
+
+test('A6: help desk says answering the prompt clears the risk, and where it no longer does', () => {
+  // howto-identity-protection-remediate-unblock, checked 2026-09-20: a completed
+  // MFA challenge remediates the sign-in risk; token-theft-related detections are
+  // no longer auto-remediated and need a secure password change.
+  const hd = helpDeskOf('sign-in-risk').join('\n')
+  assert.match(hd, /clears itself/)
+  assert.match(hd, /secure password change/)
+  assert.ok(!/then dismiss the risk in Identity Protection\./.test(hd), hd)
+})
+
+test('A7: Completion Criteria is this step’s own outcome', () => {
+  const done = doneWhenOf('sign-in-risk').join('\n')
+  assert.match(done, /Available risky sign-ins were reviewed/)
+  assert.match(String((stepById['sign-in-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot continue until it is answered with a method the selected grant accepts/)
+})
+
+test('A8: the package cites the page the step links, and its checked date is 2026-09-20', () => {
+  assert.equal(sourceCheckedOn(SIGN_IN_RISK), '2026-09-20')
+  assert.match(JSON.stringify((registry.packages as Record<string, unknown>)[SIGN_IN_RISK]), /policy-risk-based-sign-in/)
+  assert.equal(String((stepById['sign-in-risk'] as unknown as { learn: { url: string } }).learn.url), 'https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in')
+})
+
