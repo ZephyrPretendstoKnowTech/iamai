@@ -91,7 +91,10 @@ test('no registered package corrects a policy by moving it to report-only, apart
 test('no authored package, the parts the registry withholds included, corrects a policy by moving it to report-only', () => {
   const ROOT = 'docs/implementation-content'
   const metas = (readdirSync(ROOT, { recursive: true }) as string[]).filter((p) => basename(p) === 'META.json')
-  assert.ok(metas.length >= 44, `${metas.length} authored packages`)
+  // The floor moves down when a step retires and its package goes with it
+  // (step-redundancy-analysis.md: eleven step identities, 2026-09-19). What the
+  // number guards is that the sweep below reads the whole corpus, not a shard.
+  assert.ok(metas.length >= 43, `${metas.length} authored packages`)
   const staging: Record<string, string[]> = {}
   for (const path of metas) {
     const dir = dirname(join(ROOT, path))
