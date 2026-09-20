@@ -69,3 +69,30 @@ test('a step whose question moved says where it is answered now, with the answer
   assert.match(QUESTIONS, /fillText\(W\.answeredIn, \{ step: answered\.title \}\)/)
   assert.match(QUESTIONS, /href=\{returnToStep\(answered\.step\)\}/)
 })
+
+test('the Trusted Network step does not ask what Decide Where People Sign In From asks', () => {
+  // The owner's own example (docs/plans/step-redundancy-analysis.md finding 2).
+  // This step is the doing of D4's office-network answer and says so through the
+  // "Answered in" panel; it used to draw a tile beside that panel reading
+  // "Trusted Network: Choose your office networks", with the detail "Select your
+  // office networks or confirm that everyone is remote" — D4's question again,
+  // on a second row of the board.
+  const f = fixture('demo')
+  const unanswered = { ...f.mapping, wizardAnswered: { ...f.mapping.wizardAnswered, trustedLocations: false } }
+  const open = runFixture({ ...f, mapping: unanswered }, { mapping: unanswered }).steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!
+  assert.deepEqual(open.configurationFindings ?? [], [], 'the step asks the question again')
+  // It still says where the answer lives, and what it is so far.
+  const panel = answeredInOf(PREREQ_STEP_ID.trustedLocation, { snapshot: f.snapshot, mapping: unanswered, nameOf: (id: string) => id })!
+  assert.equal(panel.title, 'Decide Where People Sign In From')
+  assert.deepEqual(panel.lines.map((l) => l.key), ['officeNetwork'])
+
+  // Answered, the tile is about the tenant's objects rather than the question,
+  // so it comes back: nothing was hidden, only the second asking removed.
+  const saved = { ...f.mapping, wizardAnswered: { ...f.mapping.wizardAnswered, trustedLocations: true }, assumed: { ...(f.mapping.assumed ?? {}), trustedLocations: 'confirmed' as const } }
+  const answered = runFixture({ ...f, mapping: saved }, { mapping: saved }).steps.find((s) => s.id === PREREQ_STEP_ID.trustedLocation)!
+  assert.ok((answered.configurationFindings ?? []).length > 0, 'the tenant-object reading went with the question')
+  for (const finding of answered.configurationFindings ?? []) {
+    assert.doesNotMatch(String(finding.value), /Choose your office networks/)
+    assert.doesNotMatch(String(finding.detail ?? ''), /Select your office networks or confirm that everyone is remote/)
+  }
+})

@@ -1011,6 +1011,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The trusted network is a step on every plan, never removed: Ready with its
   // create instructions while the tenant has no IP named location, In place once
   // one exists (the picker says which of them are the team's own).
+  //
+  // It is the DOING of Decide Where People Sign In From's office-network answer,
+  // and it says so: direction.ts ANSWERED_IN swaps its decision control for the
+  // "Answered in Decide Where People Sign In From" panel. So it does not ask the
+  // question again. Until that answer is saved this step's tile used to read
+  // "Trusted Network: Choose your office networks", with the detail "Select your
+  // office networks or confirm that everyone is remote" — word for word the
+  // question D4 asks, on a second row of the board
+  // (docs/plans/step-redundancy-analysis.md finding 2, the owner's own example).
+  // Now nothing is drawn there: the panel above it is the step's statement, and
+  // the one thing the tile has to add — a network the scan drafted, waiting to be
+  // created — is still drawn, because that is work and not a question.
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (canUseConditionalAccess) {
     const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
@@ -1024,7 +1036,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: networkDraft?.name ?? proposed.name, fromBaseline: null },
-      configurationFindings: [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? networkDraft ? 'Create the saved network' : 'Choose your office networks' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : !networkConfirmed ? 'Select your office networks or confirm that everyone is remote.' : mapping.trustedLocationIds.length === 0 ? 'No office network is selected; location-based exceptions are not applied.' : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
+      configurationFindings: networkRead && !networkConfirmed && !networkDraft ? [] : [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? 'Create the saved network' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : mapping.trustedLocationIds.length === 0 ? 'No office network is selected; location-based exceptions are not applied.' : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
       // A tenant that already has an IP named location is preserving one, not making one.
       ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),

@@ -142,3 +142,86 @@ decision.", under the date.
 
 **Why:** the rail is the one place a step says what happens next, and on these four steps
 it says only when.
+
+---
+
+## From the step-redundancy work (2026-09-19)
+
+`docs/plans/step-redundancy-analysis.md` findings 1–10 were acted on in the
+unfrozen steps. Two of them end inside a frozen step, so they are written here
+and not built.
+
+### 7. Decide Where People Sign In From can only pick a network the tenant already has
+
+**Where.** `s-direction-locations` (D4), the "The office network" question, and
+`s-prereq-trusted-location` (Define the Trusted Network), which is the doing of
+that answer.
+
+**What the audit found.** D4's picker offers the trusted IP named locations the
+scan found (`direction.ts` `locationQuestions`, which reads the trusted
+`ipNamedLocation` rows of `snapshot.config.namedLocations`). On a tenant that has none — the common case,
+and the demo's — the only honest answer is "Everyone works remotely". Saving it
+is a statement that no office network exists, which sets `trustedLocationIds` to
+none and leaves Define the Trusted Network, the step whose whole job is to create
+one, with no reason to run. The step that would produce the object can be
+switched off by the answer whose picker had nothing to offer *because* the object
+does not exist yet. Finding 2 closed the visible half of this — the step no
+longer re-asks D4's question — but the order is still wrong underneath.
+
+**The fix I would propose.** Make the creation the first task of the D4 answer
+rather than a separate row the answer can silently switch off. Concretely, on D4:
+
+1. Offer a third option beside "Trusted locations" and "Everyone works
+   remotely" — *"We have an office network, but it is not in Entra yet"* — which
+   saves the intent without naming an id.
+2. Under it, the network draft IAMAI already builds from the scan
+   (`mapping/networkDraft.ts`, which the trusted-location step renders today as
+   "Create the saved network") as the suggested ranges to confirm.
+3. Define the Trusted Network then runs as the doing of THAT answer, with the
+   confirmed ranges, and "Everyone works remotely" keeps its current meaning: no
+   office network, and no location work to do.
+
+**Why it is only a suggestion.** It is a question, an option and a picker on a
+frozen step, and the Direction group's contract is "answers only; nothing is
+changed in Entra" (`direction.ts`) — option 1 keeps that contract, but it is the
+owner's call whether a third option belongs there at all. Nothing is unsaid
+today: a tenant with no office network can still answer "Everyone works
+remotely", then create the location and re-answer.
+
+### 8. Confirm What You Use silently rewrites Identify Service and Shared Accounts' answer
+
+**Where.** `src/roadmap/decisions.ts:315-319`, applied when D1's answers are
+approved:
+
+```ts
+const devices = mailDevicesOf(next).filter((id) => !next.serviceAccountUserIds.includes(id))
+if (devices.length > 0) {
+  next.serviceAccountUserIds = [...next.serviceAccountUserIds, ...devices]
+  next.serviceAccountRejectedIds = next.serviceAccountRejectedIds.filter((id) => !devices.includes(id))
+}
+```
+
+**What the audit found.** Approving D1 adds every account named as a
+mail-sending device to `serviceAccountUserIds` — the exact list D2 asks a person
+to curate — and un-rejects any of them that person had rejected in D2. Nothing
+on either screen says so. A person approves D1, returns to D2, and the account
+count has changed with no explanation; then Create or Correct Service Accounts
+Group's Completion Criteria, *"The group exists with exactly the confirmed
+accounts"*, asks them to add a member they never picked.
+
+**The fix I would propose.** Either of these, both of which are a change to a
+frozen step:
+
+- **Show the merge.** D2's `serviceAccounts` question carries a note in the shape
+  of its existing `alreadySetAside` one ("The Emergency Access accounts are
+  already set aside: …") — *"Mail-sending devices you named in Confirm What You
+  Use are included: …"* — and the group step's member list marks which members
+  came from which answer.
+- **Stop merging.** Give the mail-device exceptions their own group. They are
+  temporary by definition (they exist until the device moves to a supported
+  route) and the service-accounts group is not, so they are two lists with two
+  lifetimes that happen to share one today. This is the cleaner of the two.
+
+**Why it is only a suggestion.** Both touch a Direction step: the first its
+question's words, the second what its answer writes. The behaviour is unchanged
+and is recorded as finding 7 of the analysis, which was explicitly not built.
