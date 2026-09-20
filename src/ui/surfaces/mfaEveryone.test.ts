@@ -323,6 +323,57 @@ test('C11: the owner rule holds — guests are counted beside people in the Impa
   }
 })
 
+// ---------------------------------------------------------------------------
+// Turn Off Security Defaults (spec section 7)
+// ---------------------------------------------------------------------------
+
+const SECURITY_DEFAULTS = 's-prereq-security-defaults'
+
+/** A content step's own `whatToDo`, flattened: its lead and every step line. */
+const whatToDoOf = (id: string): string => everyString((stepById[id] as unknown as { whatToDo?: unknown }).whatToDo).join('\n')
+
+test('F1: the step says security defaults must be off, not that report-only may coexist', () => {
+  const w = whatToDoOf(SECURITY_DEFAULTS)
+  assert.match(w, /Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on/)
+  assert.doesNotMatch(w, /Report-only policies can exist while security defaults are on/)
+})
+
+test('F2: the replacement list is four policies wherever it is said', () => {
+  const FOUR = /Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins/
+  assert.match(whatToDoOf(SECURITY_DEFAULTS), FOUR)
+  const b = bodiesOf('demo').get(SECURITY_DEFAULTS)!
+  assert.ok(b.contract.doneWhen.some((d) => FOUR.test(d)), b.contract.doneWhen.join('\n'))
+  assert.match(aboutOf(b) + everyString((stepById[SECURITY_DEFAULTS] as unknown as { who?: unknown }).who).join('\n'), /block device code sign-in today/)
+})
+
+test('F3: a risk says device code sign-in reopens without its policy', () => {
+  const risks = risksOf(SECURITY_DEFAULTS)
+  assert.ok(risks.some((r) => /Security defaults also block device code sign-in, so that route reopens/.test(r)), risks.join('\n'))
+})
+
+test('F4: the portal step reads the value the portal shows', () => {
+  assert.match(whatToDoOf(SECURITY_DEFAULTS), /Manage security defaults → Disabled \(not recommended\) → Save/)
+  assert.match(blockText(SECURITY_DEFAULTS, 'entra.disable'), /\*\*Disabled \(not recommended\)\*\*/)
+  assert.match(blockText(SECURITY_DEFAULTS, 'entra.verify'), /\*\*Disabled \(not recommended\)\*\*/)
+})
+
+test('F5: help desk says security defaults allowed only the Authenticator app', () => {
+  const lines = helpDeskOf(SECURITY_DEFAULTS)
+  assert.ok(lines.some((l) => /allowed only the Microsoft Authenticator app, so the switch day is the first day anyone here can use another method/.test(l)), lines.join('\n'))
+})
+
+test('F6: help desk says what covers guests after the changeover', () => {
+  const lines = helpDeskOf(SECURITY_DEFAULTS)
+  assert.ok(lines.some((l) => /Guests were covered by security defaults the same as staff; Require MFA for Everyone is what covers them afterwards/.test(l)), lines.join('\n'))
+})
+
+test('F7: the step shows a source line at all, dated', () => {
+  assert.equal(checkedOn(SECURITY_DEFAULTS), '2026-09-20')
+  for (const name of ['demo', 'demo-week2'] as FixtureName[]) {
+    assert.equal(bodiesOf(name).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 20, 2026', name)
+  }
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.
