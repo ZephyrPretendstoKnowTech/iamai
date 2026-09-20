@@ -193,12 +193,17 @@ test('a workflow step asks for the outcome and what IAMAI can check, and for no 
   assert.deepEqual(keys, ['contextId', 'configurationVerified', 'outcome', 'testedAt'])
   assert.equal(keys.includes('accountIds'), false, 'a list of people nothing reads')
   assert.deepEqual(step.manualReview!.pendingAccountIds, [])
-  // No step asks for free text the product only prints back.
+  // The generic free text nothing reads is gone everywhere: `reference` was a
+  // change-record box the product only printed back.
   for (const id of ['s-goal-pim-activation-reauth', 's-goal-block-legacy-auth', 's-check-separate-admin-accounts', 's-goal-guests-mfa']) {
-    for (const dead of ['workflow', 'reference', 'providerAccessPath']) {
-      assert.equal(manualEvidenceFields(id, f.mapping).some(field => field.key === dead), false, `${id} still asks for ${dead}`)
-    }
+    assert.equal(manualEvidenceFields(id, f.mapping).some(field => field.key === 'reference'), false, `${id} still asks for a change record`)
   }
+  // Two text fields stay, because the owner put them there: each is the evidence
+  // a deleted step used to ask for, folded onto the step that inherited its work
+  // (step-redundancy-analysis findings 5 and 6). They are asked for only where
+  // the tenant's own answers make them apply.
+  assert.equal(manualEvidenceFields('s-goal-guests-mfa', f.mapping).some(field => field.key === 'providerAccessPath'), true)
+  assert.equal(manualEvidenceFields('s-goal-block-legacy-auth', f.mapping).some(field => field.key === 'workflow'), false, 'a tenant that named no mail device is asked for a mail route')
 })
 
 
