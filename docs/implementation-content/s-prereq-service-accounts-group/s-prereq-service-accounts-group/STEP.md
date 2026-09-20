@@ -62,9 +62,9 @@ Undo only the mistaken membership reference on the same group. Never delete a us
 This step manages a population of user-based service accounts; it does not convert them to managed identities/service principals or prove application compatibility with that migration.
 
 ## Source verification
-Verified against current Microsoft first-party documentation on September 10, 2026:
-- Securing cloud-based service accounts: https://learn.microsoft.com/en-us/entra/architecture/secure-service-accounts
-- Create group: https://learn.microsoft.com/en-us/graph/api/group-post-groups?view=graph-rest-1.0
-- Add members: https://learn.microsoft.com/en-us/graph/api/group-post-members?view=graph-rest-1.0
-- Remove member: https://learn.microsoft.com/en-us/graph/api/group-delete-members?view=graph-rest-1.0
-- Groups overview: https://learn.microsoft.com/en-us/graph/api/resources/groups-overview?view=graph-rest-1.0
+Verified against current Microsoft first-party documentation on September 20, 2026 (docs/plans/where-people-sign-in-spec.md section 6):
+- Securing cloud-based service accounts: https://learn.microsoft.com/entra/architecture/secure-service-accounts
+- Create group: https://learn.microsoft.com/graph/api/group-post-groups?view=graph-rest-1.0
+- Add members: https://learn.microsoft.com/graph/api/group-post-members?view=graph-rest-1.0
+- Remove member: https://learn.microsoft.com/graph/api/group-delete-members?view=graph-rest-1.0
+- Groups overview: https://learn.microsoft.com/graph/api/resources/groups-overview?view=graph-rest-1.0

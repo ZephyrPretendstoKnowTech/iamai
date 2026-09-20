@@ -273,9 +273,17 @@
     {
       "id": "ms-block-location",
       "authority": "Microsoft Learn",
-      "title": "Conditional Access - Block access by location",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-by-location",
-      "checkedOn": "2026-09-12",
+      "title": "Block access by location with Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-network",
+      "authority": "Microsoft Learn",
+      "title": "Network assignment in Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],

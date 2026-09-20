@@ -191,7 +191,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
   '.steps[5].who.none',
-  '.steps[5].whatToDo.steps[3]',
+  '.steps[5].whatToDo.steps[4]',
   '.steps[6].who.none',
   '.steps[10].who.match',
   '.steps[13].who.groups.noMethod',

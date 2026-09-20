@@ -3,8 +3,9 @@
 2. Group type: **Security**.
 3. Membership type: **Assigned**.
 4. Name: **{{group.target.displayName}}**.
-5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Do not add service principals or managed identities; this group is for user accounts.
-6. Create the group and rescan IAMAI before changing the policies that use it.
+5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Any account named as a mail-sending device in Confirm What You Use is already on that list.
+6. Do not add service principals or managed identities. A policy scoped to users does not block a call made by a service principal, and a policy assigned to a group is not enforced for a service principal inside it, so one added here would be protected by nothing.
+7. Create the group and rescan IAMAI before changing the policies that use it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

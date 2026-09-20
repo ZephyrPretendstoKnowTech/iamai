@@ -1,8 +1,8 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.
+1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.
 2. Name: {{location.target.displayName}}.
-3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges.
-4. Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.
+3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.
+4. Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.
 5. Check "Mark as trusted location."
 6. Create.
 7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.
@@ -17,7 +17,7 @@ Replace the IP range list with exactly the approved public ranges. Keep every ap
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.trusted","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted.
+Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted. A location that carries the trusted mark cannot be deleted until the mark is taken off, so remove the mark first if you ever retire this one.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

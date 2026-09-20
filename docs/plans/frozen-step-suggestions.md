@@ -286,3 +286,30 @@ never a passkey — is exactly what that fact requires, so the rule is right; th
 line simply does not carry its reason. MFA Readiness is settled, so this wave
 made the steps agree with the page and changed no line on it. Written up here
 and in `mfa-everyone-spec.md` §10.8.
+
+## From "Control Where People Sign In From" (2026-09-20)
+
+Taking the six steps of `where-people-sign-in` to the V1 standard needed **no
+change to any frozen step**. The two items above that already concern this
+group — §7 (Decide Where People Sign In From can only pick a network the tenant
+already has) and §8 (Confirm What You Use silently rewrites Identify Service and
+Shared Accounts' answer) — were left exactly as written.
+
+What the group did instead, so that nothing is unsaid while they stand:
+
+- **§7.** Define the Trusted Network no longer re-asks D4's question; it reads
+  as the doing of D4's answer, and its Readiness names the answer it waits on
+  with a link to it. On a tenant with no trusted IP named location the step is
+  simply not generated, which is the honest consequence of the answer and not a
+  new claim.
+- **§8.** Create or Correct Service Accounts Group now says, in its own words,
+  that the accounts named as mail-sending devices in Confirm What You Use are
+  among the confirmed members. The merge still happens invisibly in
+  `decisions.ts`; what changed is that the step a person returns to explains the
+  count they find there, so its Completion Criteria — "the group exists with
+  exactly the confirmed accounts" — is no longer asking for a member nobody
+  picked.
+
+Nothing else. The four Emergency Access steps behaved correctly as the
+prerequisite these policy steps wait on, at 1280 on the demo and on the
+follow-up scan, and none of their snapshots moved.

@@ -236,10 +236,18 @@
     {
       "id": "ms-network",
       "authority": "Microsoft Learn",
-      "title": "Conditional Access Policy: Using Network Signals",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-12",
+      "title": "Network assignment in Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+      "checkedOn": "2026-09-20",
       "userFacing": true
+    },
+    {
+      "id": "ms-ip-named-location",
+      "authority": "Microsoft Learn",
+      "title": "ipNamedLocation resource type",
+      "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation",
+      "checkedOn": "2026-09-20",
+      "userFacing": false
     }
   ],
   "validation": {
