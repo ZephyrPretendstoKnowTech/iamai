@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Prerequisite · Waiting",
-      "state": "cleanup-drill"
+      "state": "Verify Emergency Access"
     }
   ],
   "channels": [
