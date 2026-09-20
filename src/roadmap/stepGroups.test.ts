@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, groupPositions, groupTotals, isGroupMember, membersOf, pinnedGroups, positionInGroup, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
 import type { StepGroup } from './stepGroups.ts'
-import { EMERGENCY_STEP_IDS, groupTitleOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups } from '../ui/surfaces/planBoard.ts'
+import { EMERGENCY_STEP_IDS, applyFocus, groupTitleOf, groupsFor, partitionPinnedGroups, pinnedBoardGroups, splitPinned } from '../ui/surfaces/planBoard.ts'
 import type { BoardItem } from '../ui/surfaces/planBoard.ts'
 import { DECISION_HEAD, TASK_HEAD, decisionHeadingsOf, taskHeadingsOf } from '../ui/surfaces/stepHeadings.ts'
 import { PINNED_GOAL_MAP, goalInMap, goalMapFor } from './goalMap.ts'
@@ -127,7 +127,16 @@ test('no group lists a step the board can never draw', () => {
   assert.deepEqual([...membersOf('devices')], ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'])
   assert.equal(membersOf('protect-admins').length, 5)
   assert.equal(membersOf('mfa-everyone').includes('s-question-partner'), false, 'the partner follow-up folded into the guests policy')
-  assert.equal(membersOf('where-people-sign-in').length, 6)
+  // The three objects a Direction answer asks for are their own group straight
+  // after Direction (owner, 2026-09-20), so the policy group holds policies.
+  assert.deepEqual([...membersOf('prepare-objects')], ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'])
+  assert.equal(membersOf('where-people-sign-in').length, 3)
+  assert.equal(STEP_GROUPS.findIndex((g) => g.key === 'prepare-objects'), STEP_GROUPS.findIndex((g) => g.key === DIRECTION_GROUP) + 1, 'the objects are not read straight after the answers that ask for them')
+  // The settings to retire and the foundation's own prerequisites are not objects an answer creates.
+  assert.equal(groupOf('s-prereq-per-user-mfa')!.key, 'mfa-everyone')
+  assert.equal(groupOf('s-prereq-security-defaults')!.key, 'mfa-everyone')
+  assert.equal(groupOf('s-prereq-auth-strength')!.key, 'protect-admins')
+  for (const id of EA) assert.equal(groupOf(id)!.key, EMERGENCY_ACCESS_GROUP, id)
 })
 
 test('the two browser goals can never render as two steps with one title', () => {
@@ -218,8 +227,6 @@ test('a second registry entry is partitioned and drawn as its own pinned group',
   const drawn = pinnedBoardGroups(pinned, { completed: false, open: null })
   assert.deepEqual(drawn.active.map((g) => [g.key, g.secondary]), [[EMERGENCY_ACCESS_GROUP, false], ['direction', false]])
   assert.deepEqual(drawn.completed, [])
-  assert.equal(openInActivePinnedGroup(pinned, 'd-one'), true, 'a member of an open pinned group is in no tab')
-  assert.equal(openInActivePinnedGroup(pinned, 'ordinary'), false)
 
   // Direction completes: it leaves the top and is drawn in the aside only when asked for or opened.
   const done = partitionPinnedGroups(items.map((i) => (i.id.startsWith('d-') ? { ...i, lane: 'Completed' as const } : i)), groups).pinned
@@ -227,5 +234,27 @@ test('a second registry entry is partitioned and drawn as its own pinned group',
   assert.deepEqual(pinnedBoardGroups(done, { completed: false, open: null }).completed, [])
   assert.deepEqual(pinnedBoardGroups(done, { completed: true, open: null }).completed.map((g) => [g.key, g.secondary]), [['direction-complete', true]])
   assert.deepEqual(pinnedBoardGroups(done, { completed: false, open: 'd-two' }).completed.map((g) => g.key), ['direction-complete'])
-  assert.equal(openInActivePinnedGroup(done, 'd-one'), false, 'a completed group follows its lane tab again')
+})
+
+test('a lane tab filters a pinned group like every other group, and the tab still draws it first (owner, 2026-09-20)', () => {
+  const direction: StepGroup = { key: 'direction', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['d-one', 'd-two'], pinned: true, anatomy: 'decision' }
+  const unpinned: StepGroup = { key: 'later', titleKey: EA_TITLE, completedTitleKey: EA_TITLE, members: ['l-one', 'l-two'], pinned: false, anatomy: 'task' }
+  const groups = [direction, unpinned]
+  const items = [item('d-one', 'Ready'), item('d-two', 'On Hold'), item('l-one', 'Ready'), item('l-two', 'On Hold')]
+  const NONE = { search: '', workType: null, showCompleted: false, showDeferred: false }
+  // Ready leaves one row of each group, and On Hold the other: a pinned group is
+  // no longer whole under a lane tab, which is what the All work tab is for.
+  const ready = splitPinned(groupsFor('ready', applyFocus(items, 'ready', NONE), groups), groups)
+  assert.deepEqual(ready.pinned.map((g) => g.items.map((i) => i.id)), [['d-one']], 'the pinned group ignored the lane filter')
+  assert.deepEqual(ready.rest.map((g) => g.items.map((i) => i.id)), [['l-one']])
+  const hold = splitPinned(groupsFor('onHold', applyFocus(items, 'onHold', NONE), groups), groups)
+  assert.deepEqual(hold.pinned.map((g) => g.items.map((i) => i.id)), [['d-two']], 'On Hold showed a Ready row of the pinned group')
+  // And a lane that leaves the pinned group empty draws no pinned board at all.
+  const upNext = splitPinned(groupsFor('upNext', applyFocus(items, 'upNext', NONE), groups), groups)
+  assert.deepEqual(upNext.pinned, [])
+  assert.deepEqual(upNext.rest, [])
+  // The Plan lifts what the tab left of the pinned groups, and reads no lane of its own.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const split = splitPinned\(drawn\)/)
+  assert.equal(plan.includes('openInActivePinnedGroup'), false, 'a pinned member is still exempt from the tabs')
 })

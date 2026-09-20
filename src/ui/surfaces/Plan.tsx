@@ -25,9 +25,9 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
-import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
+import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -93,10 +93,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
     requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
   }
   const [showHow, setShowHow] = useState(false)
-  // The board's three lanes (planBoard.ts). Ready is the default, because the
-  // Plan's own subject is what can be done now; the other two hold the same rows.
+  // The board's four tabs (planBoard.ts). Ready is the default, because the
+  // Plan's own subject is what can be done now; the other two lanes hold the
+  // same rows, and All work holds every group that is not finished, whole.
   const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | null>(null)
-  const [tab, setTab] = useState<LaneTab>('ready')
+  const [tab, setTab] = useState<BoardTab>('ready')
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
   // Which groups the operator has collapsed, keyed by lane and group, so
   // collapsing Completed under Ready does not also collapse it under On Hold.
@@ -263,27 +264,47 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  // The pinned groups (roadmap/stepGroups.ts) come out of the lanes: each is
-  // drawn above the tabs while open and in the aside once complete.
+  // The pinned groups (roadmap/stepGroups.ts). Pinning is a POSITION and not an
+  // exemption from the filter (owner, 2026-09-20): a lane tab filters Emergency
+  // Access and Direction like every other group, and `splitPinned` lifts
+  // whatever the tab left of them above the tab strip. The partition is still
+  // read for the one thing lanes cannot say — a group all of whose rows are
+  // Completed, which folds into the aside under its completed title.
   const { pinned, remaining: remainingItems } = partitionPinnedGroups(items)
+  const completePinnedIds = new Set(pinned.filter((p) => p.complete).flatMap((p) => p.group.members))
   const summaryItems = summaryFilter === 'input' ? remainingItems.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? remainingItems.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? remainingItems.filter((i) => i.lane === 'Completed') : remainingItems
-  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(remainingItems, tab, focus)
-  const groups = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : groupsFor(tab, shown)
-  const aside = asideGroupsFor(shown)
-  const { active: pinnedActive, completed: pinnedCompleted } = pinnedBoardGroups(pinned, { completed: summaryFilter === 'completed' || focus.showCompleted, open })
+  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
+  // The fourth tab draws whole groups instead of one lane (planBoard.ts
+  // allWorkGroups): every group with unfinished work, all of its rows, and the
+  // finished groups folded into the aside the board already has for them.
+  const laneTab: LaneTab | null = tab === ALL_WORK_TAB ? null : tab
+  const whole = !summaryFilter && laneTab === null ? allWorkGroups(shown, { completed: focus.showCompleted, open }) : null
+  const drawn = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : laneTab === null ? whole?.active ?? [] : groupsFor(laneTab, shown)
+  const split = splitPinned(drawn)
+  const groups = summaryFilter ? drawn : split.rest
+  // A complete pinned group is drawn whole under its completed title, so its
+  // rows are not also loose in the flat Completed group beside it. On the fourth
+  // tab every row is already inside its group, so the aside holds the finished
+  // groups and nothing loose at all.
+  const aside = whole ? [] : asideGroupsFor(summaryFilter ? shown : shown.filter((i) => !completePinnedIds.has(i.id)))
+  const { active: pinnedWhole, completed: pinnedCompletedGroups } = pinnedBoardGroups(pinned, { completed: summaryFilter === 'completed' || focus.showCompleted, open })
+  const pinnedCompleted = whole ? whole.completed : pinnedCompletedGroups
+  // The summary views are not a lane, so they still draw a pinned group whole.
+  const pinnedActive = summaryFilter ? pinnedWhole : split.pinned
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
-  // tab follows the step; otherwise the link would open nothing on screen. A
-  // member of an open pinned group (Emergency Access or any other) is in no tab.
-  const openInActiveEmergency = openInActivePinnedGroup(pinned, open)
-  const openTab = open && !openInActiveEmergency ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
+  // tab follows the step; otherwise the link would open nothing on screen. Every
+  // row is under its lane's tab now, the pinned groups' rows included. The
+  // fourth tab shows every lane, so opening a step there follows no tab: the
+  // step is already on screen and moving would take the operator off the view
+  // they chose.
+  const openTab = open && tab !== ALL_WORK_TAB ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
-  // until then) and the day the plan started.
-  const remainingCounts = focusCounts(remainingItems)
-  const allCounts = focusCounts(items)
-  const counts = { ...remainingCounts, complete: allCounts.complete, deferred: allCounts.deferred }
+  // until then) and the day the plan started. Counted over the WHOLE row set:
+  // the pinned groups' rows are in the lane tabs, so they are in the badges.
+  const counts = focusCounts(items)
   const drawGroup = (scope: string) => (g: BoardGroup) => {
     const key = `${scope}:${g.key}`
     // A group holding the open step is not collapsed by default: switching
@@ -440,8 +461,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
  * ~60px from every opened step, which is the surface that needs the height.
  */
 function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
-  tab: LaneTab
-  onTab: (t: LaneTab) => void
+  tab: BoardTab
+  onTab: (t: BoardTab) => void
   focus: Focus
   onFocus: (f: Focus) => void
   counts: ReturnType<typeof focusCounts>
@@ -452,7 +473,10 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
       <div className="view-wrap">
         {/* The shared tab strip (task 017): one tab stop, arrows move and select,
             every tab names the panel it controls. The board is that panel. */}
-        <TabList base={base} tabs={LANES.map((l) => ({ id: l, label: BOARD.lanes[l], badge: counts.lanes[l] }))} active={tab} onSelect={(id) => onTab(id as LaneTab)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
+        {/* The three lanes carry a row count; the fourth tab is not a lane and
+            counts nothing, because the rows it shows are every other tab's rows
+            plus the completed ones and a number over that means nothing. */}
+        <TabList base={base} tabs={TABS.map((l) => ({ id: l, label: l === ALL_WORK_TAB ? BOARD.allWorkTab : BOARD.lanes[l], badge: l === ALL_WORK_TAB ? undefined : counts.lanes[l] }))} active={tab} onSelect={(id) => onTab(id as BoardTab)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
       </div>
       <div className="plan-search">
         {/* The label is the accessible name rather than a hidden span: this
@@ -465,7 +489,7 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
         <label className="work-type">
           <span className="control-label">{BOARD.workType}</span>
           <select value={focus.workType ?? ''} onChange={(e) => onFocus({ ...focus, workType: (e.currentTarget.value || null) as WorkType | null })}>
-            <option value="">{BOARD.allWork}</option>
+            <option value="">{BOARD.allTypes}</option>
             {TYPE_ORDER.map((t) => (
               <option key={t} value={t}>
                 {BOARD.type[t]}
@@ -501,7 +525,7 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * A child with the one effect, because the Plan's rows are built after its
  * early returns and a hook cannot sit there.
  */
-function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: LaneTab | null; tab: LaneTab; onTab: (t: LaneTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
+function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: BoardTab | null; tab: BoardTab; onTab: (t: BoardTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
   useEffect(() => {
     if (open && openTab && openTab !== tab) onTab(openTab)
     if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed', showDeferred: openLane === 'Deferred' })
