@@ -197,6 +197,17 @@ export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
  * page hands down the reading it made over the whole plan; a caller with no
  * board reads the step over the steps it holds, as the opened step does.
  */
+/**
+ * The contract's gate as one line: its own words, ended as a sentence so it
+ * stands beside the action rather than trailing it. Null where nothing gates
+ * the action.
+ */
+function gateLine(gatedBy: string | null): string | null {
+  const gate = (gatedBy ?? '').trim()
+  if (gate.length === 0) return null
+  return /[.!?]$/.test(gate) ? gate : `${gate}.`
+}
+
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
@@ -231,7 +242,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // so this is a step nothing has words for: the export carries what the
     // contract knows about it — where it is, what to do next and what would
     // finish it — and none of the engine's prose, exactly as the screen does.
-    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text], doneWhen: contract.doneWhen, ifWrong: null, dates: null }
+    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
@@ -341,6 +352,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   lines.push(...verificationResourceLines(step))
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
+  // What the action waits on, beside the action, where the action is the wait
+  // (stepContract.ts `ContractAction.gatedBy`). The screen said "Waiting on your
+  // direction" on the row and the badge and nothing here did, so a step this
+  // browser handed to a change board read "Clear what this step is waiting on."
+  // with no way to find out what that was. The contract's own field, in the
+  // contract's own words: nothing is composed and nothing is decided again.
+  const gate = gateLine(contract.whatToDo.gatedBy)
+  if (gate !== null && !lines.includes(gate)) lines.unshift(gate)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   // The three emergency preparation steps export the task text the screen shows
   // (stepBody.ts), not the content's older What to do lines (overnight review B5).
