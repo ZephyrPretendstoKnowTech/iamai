@@ -67,6 +67,18 @@ export function coreGaps(snapshot: TenantSnapshot): CoreGap[] {
 export const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'roleAssignmentSchedules', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
 export const SOURCE_KEYS: SourceKey[] = ['registrationDetails', 'users', 'devices', 'spActivity', 'authMethods', 'appSignInSummary', 'signInEvidence']
 
+/**
+ * A section a licence withheld, whole or in part: it was read as far as the
+ * tenant's licensing allows, so it is not something a different account could
+ * read and it never goes on the unread list. Without Entra ID P1 the directory
+ * comes back `partial` because Graph withholds `signInActivity`, not because
+ * users were refused — listing it would send an admin to ask for permissions
+ * they already have (the owner's rule: without P1, say it once at the page
+ * level, not once per section).
+ */
+const readAsFarAsLicensed = (s: { status: string; reason: string | null }): boolean =>
+  (s.status === 'disabled' || s.status === 'partial') && isLicenceGate(s.reason)
+
 export type UnreadSection = {
   /** The registry key, which carries the section's label (pages.app.scan.sections). */
   source: string
@@ -95,7 +107,7 @@ export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
       continue
     }
     if (s.status === 'ok') continue
-    if (s.status === 'disabled' && isLicenceGate(s.reason)) continue
+    if (readAsFarAsLicensed(s)) continue
     out.push({ source, partial: s.status === 'partial' })
   }
   for (const key of SOURCE_KEYS) {
@@ -105,7 +117,7 @@ export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
       continue
     }
     if (s.status === 'ok') continue
-    if (s.status === 'disabled' && isLicenceGate(s.reason)) continue
+    if (readAsFarAsLicensed(s)) continue
     out.push({ source: key, partial: s.status === 'partial' })
   }
   return out
