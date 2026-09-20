@@ -58,7 +58,10 @@ test('the Impact and milestone words the step docs name are what the Plan reads 
     's-prereq-passkey-settings': 'Passkey settings',
     's-prereq-auth-strength': 'Authentication strength',
     's-prereq-trusted-location': 'Trusted network',
-    's-prereq-allowed-countries': 'Country restrictions',
+    // One fact, one source (docs/plans/where-people-sign-in-spec.md section 4):
+    // the row draws content.json impactLabels for this step, and the package
+    // used to carry a different word that nothing rendered.
+    's-prereq-allowed-countries': 'Allowed countries',
     's-prereq-device-plan': 'Device policies',
   }
   // Editorial batch C: the milestone words are the copy register's.

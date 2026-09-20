@@ -158,3 +158,44 @@ test('T7: Done when opens on this step’s outcome, on screen', () => {
   assert.ok(done.some((l: string) => /holds exactly the public ranges the network owner approved, and it is marked as trusted/.test(l)), done.join('\n'))
   assert.ok(!done.some((l: string) => /A trusted IP named location exists in the tenant\./.test(l)), done.join('\n'))
 })
+
+// ---------------------------------------------------------------------------
+// Create or Correct Allowed Countries Location (spec section 4)
+// ---------------------------------------------------------------------------
+
+test('A1: nothing tells anyone not to mark a countries location trusted, and the step says where trust belongs', () => {
+  const all = allText('s-prereq-allowed-countries')
+  assert.doesNotMatch(all, /Do not mark it as trusted/)
+  assert.match(all, /trust belongs to the IP ranges location Define the Trusted Network creates/)
+  assert.match(blockText('s-prereq-allowed-countries', 'entra.create'), /no trusted mark on a countries location/)
+})
+
+test('A2: the step says what Determine location by GPS coordinates would require', () => {
+  assert.ok(
+    risksOf('s-prereq-allowed-countries').some((t) => /asks each person's Microsoft Authenticator app for a location every hour/.test(t)),
+    risksOf('s-prereq-allowed-countries').join('\n'),
+  )
+  assert.match(blockText('s-prereq-allowed-countries', 'entra.create'), /\*\*Determine location by GPS coordinates\*\*, asks each person's Microsoft Authenticator app/)
+})
+
+test('A3: the step says how country is worked out from an address', () => {
+  assert.match(allText('s-prereq-allowed-countries'), /resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically/)
+  assert.match(blockText('s-prereq-allowed-countries', 'entra.create'), /mapping table Microsoft updates periodically/)
+})
+
+test('A4: the row’s Impact has one source, and it is the word the row draws', () => {
+  const meta = (registry.packages as Record<string, { meta?: { impact?: { fallbackLabel?: string } } }>)['s-prereq-allowed-countries']?.meta
+  assert.equal(meta?.impact?.fallbackLabel, 'Allowed countries')
+})
+
+test('A5: the step shows the date its Microsoft sources were checked, on both scans', () => {
+  assert.equal(checkedOn('s-prereq-allowed-countries'), '2026-09-20')
+  assert.equal(bodiesOf('demo').get('s-prereq-allowed-countries')!.sourceLine, 'Source checked Sep 20, 2026')
+  assert.equal(bodiesOf('demo-week2').get('s-prereq-allowed-countries')!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('A6: Done when opens on this step’s outcome, on screen', () => {
+  const done = bodiesOf('demo').get('s-prereq-allowed-countries')!.contract.doneWhen
+  assert.ok(done.some((l: string) => /lists exactly .+, the countries people work from/.test(l)), done.join('\n'))
+  assert.ok(done.some((l: string) => /a sign-in whose country cannot be worked out stays outside the list/.test(l)), done.join('\n'))
+})

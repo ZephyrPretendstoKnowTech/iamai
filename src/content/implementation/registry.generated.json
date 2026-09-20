@@ -19726,14 +19726,22 @@
           {
             "id": "ms-network",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access Policy: Using Network Signals",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-12",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
+          },
+          {
+            "id": "ms-country-named-location",
+            "authority": "Microsoft Learn",
+            "title": "countryNamedLocation resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/countrynamedlocation",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "impact": {
-          "fallbackLabel": "Country restrictions"
+          "fallbackLabel": "Allowed countries"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -19753,7 +19761,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. Leave **Include unknown countries/regions** off.\n6. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**. Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. The other option, **Determine location by GPS coordinates**, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. Leave **Include unknown countries/regions** off, so an address that maps to no country stays outside this list.\n6. There is no trusted mark on a countries location; trust belongs to the IP ranges location Define the Trusted Network creates.\n7. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
         },
         "entra.correct.open": {
           "meta": {
