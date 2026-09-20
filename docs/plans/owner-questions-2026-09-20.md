@@ -8,9 +8,18 @@ them back. Everything here was re-checked on `6cfcc1c9`; what no longer happens 
 
 ## Answered, 2026-09-20
 
-1. **The office-network question** — agreed: add the third answer ("we have an office network, but it is not in Entra yet"), and make sure answering it pays off later in the plan rather than just recording a preference.
+1. **The office-network question** — agreed: add the third answer ("we have an office network, but
+   it is not in Entra yet"), and make sure answering it pays off later in the plan rather than just
+   recording a preference. Done (2026-09-20): the answer keeps *Define the Trusted Network* on the
+   plan, and the suggestion for a tenant with no trusted location moved to it, so approving without
+   reading no longer switches that step off. **Half is not done and the question says so:** "offer
+   the ranges we already see for them to confirm" needs sign-in IP addresses, and IAMAI collects
+   none — the network draft is only what a person typed. Adding that read is a new Graph
+   permission, so it is yours; if you want it, it is a post-launch item.
 2. **Block the Admin Portals for Non-Admins** — held. The pinned baseline contradicts itself on that policy (its README spares administrators; its export blocks All users), so a re-pin is what fixes it, and the pin is frozen for V1. Ship Monday without it; revisit after launch.
-3. **Mail devices** — agreed: their own group, so a temporary exception cannot become a permanent service account.
+3. **Mail devices** — agreed: their own group, so a temporary exception cannot become a permanent
+   service account. Not built: it needs a second group, which needs a new step on every plan, and
+   separating the lists without one narrows a policy's exclusions. Costed as question 6 below.
 4. **The four Direction text fixes** — agreed, text only, before Monday. Three landed
    (2026-09-20): the device-code consequence, what picking *Blocked from company data* adds, and
    the Yes/No pair on *Partner or MSP access* and *External authentication methods*. The fourth,
@@ -93,7 +102,36 @@ actually is, and the rail reads them like any other step's.
 something the step does not already say — and only you can say what those four should be. **If you
 say nothing:** (a), the bare date, and it goes on the post-launch list.
 
-### 6. Rename the break-glass account in the GetIAMAI tenant
+### 6. Mail devices: their own group is a new step on every plan, and it moves accounts out of a policy
+
+**Screen.** *Confirm What You Use* → mail-sending devices → **Some**, and *Create or Correct
+Service Accounts Group*.
+**Why it matters.** You agreed on 2026-09-20 that mail devices get their own group, so a
+temporary exception cannot become a permanent service account. Building it turned out to be
+larger than the answer implies, and I stopped rather than guess.
+
+Today those accounts are appended to `serviceAccountUserIds`, and that one list does two jobs:
+it is the **membership of the service accounts group**, and it is one of the two lists that say
+**an account is not a person**. Every people count, the MFA campaign, the readiness ladder and
+the dormant-account step read the second job. So:
+
+- Separating the lists without a second group leaves mail devices in **no** group, which
+  **narrows the exclusions of every policy scoped to the service accounts group** — a change to
+  what a policy reaches in a real tenant, in the wrong direction. I will not ship that.
+- Doing it properly means a second Entra group, which means a **new step on every plan**, with
+  its own portal procedure, its own naming convention entry and its own content — written from
+  scratch, the night before a public beta.
+
+**Outcomes.** (a) Ship Monday as it is: one group, and a line on each screen saying what got
+added and that a rejected account was re-added — the cheaper half you named as the fallback, and
+nothing is silent either way. (b) Build the second group and its step now, accepting a new step
+on every plan and a procedure nobody has reviewed. (c) Build it in the first week after launch,
+when the step and its words can go through the same review as everything else.
+**Recommendation.** (c). The harm you named is that a person's "no" is reversed without being
+told; (a) fixes the silence on Monday, and (c) fixes the lifetime properly with a step that has
+been read. **If you say nothing:** (a) for Monday, (c) the week after.
+
+### 7. Rename the break-glass account in the GetIAMAI tenant
 
 Only you can: IAMAI never writes. Its old name is in the public git history. Rename it in Entra,
 re-scan, and confirm Establish Emergency Access still reads Completed — before the link goes out.
