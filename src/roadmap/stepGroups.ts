@@ -22,11 +22,12 @@
  * Completion Criteria, and no Implementation, because nothing is built
  * (Decide Your Tenant's Direction, docs/plans/direction-spec.md).
  *
- * `null` is the third answer and the one every group added after those two
- * carries: the member draws the step's own default headings, exactly as an
- * ungrouped step did before there was a group around it. Grouping a step is a
- * statement about where it sits on the board, not about what its interior
- * draws, and the two must be able to move separately.
+ * `null` is the third answer: the member draws the step's own default headings,
+ * exactly as an ungrouped step did before there was a group around it. No entry
+ * carries it today — every group that draws steps carrying work draws the task
+ * anatomy (owner, 2026-09-19: "there will be ZERO lack of uniformity among UI
+ * that SHOULD be identical"; docs/plans/step-redundancy-analysis.md finding 15).
+ * It stays because a future group may hold something that is neither.
  */
 export type GroupAnatomy = 'task' | 'decision'
 
@@ -111,7 +112,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
     members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'protect-admins',
@@ -119,7 +120,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.protectAdmins.completedTitle',
     members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'mfa-everyone',
@@ -127,7 +128,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
     members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-verify-mfa', 's-prereq-security-defaults', 's-goal-mfa-all-users', 's-goal-guests-mfa', 's-prereq-per-user-mfa'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'where-people-sign-in',
@@ -135,7 +136,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
     members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-goal-geo-restriction', 's-prereq-service-accounts-group', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'devices',
@@ -143,7 +144,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.devices.completedTitle',
     members: ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'risk-and-sessions',
@@ -151,7 +152,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     completedTitleKey: 'pages.app.plan.groups.riskAndSessions.completedTitle',
     members: ['s-goal-sign-in-risk', 's-goal-user-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk-medium', 's-goal-all-users-no-persistence', 's-goal-token-protection'],
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
   {
     key: 'ongoing',
@@ -161,7 +162,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     pinned: false,
-    anatomy: null,
+    anatomy: 'task',
   },
 ]
 

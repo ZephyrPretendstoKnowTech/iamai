@@ -53,22 +53,25 @@ test('groupOf, isGroupMember and usesTaskAnatomy answer by id', () => {
     assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
-  // A step outside the two pinned groups is in one of the rollout's own groups
-  // now. Grouping says where it sits on the board and nothing about its interior:
-  // a policy step draws the task anatomy because it IS one (owner, 2026-09-19:
-  // every policy step reads as an Emergency Access step), and the rest draw their own.
-  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything']) {
+  // A step outside the two pinned groups is in one of the rollout's own groups,
+  // and every one of those groups draws the task anatomy too (owner, 2026-09-19:
+  // every step that carries work reads the same way; step-redundancy-analysis.md
+  // finding 15). The registry answers it once, for the board and the interior.
+  for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything', 's-prereq-trusted-location', 's-verify-mfa', 's-check-dormant-accounts']) {
     assert.notEqual(groupOf(id), null, `${id} is in no group`)
     assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
     assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
-    assert.equal(usesTaskAnatomy(id), false, `${id}: no group anatomy`)
+    assert.equal(usesTaskAnatomy(id), true, `${id}: the group's anatomy`)
     assert.equal(usesDecisionAnatomy(id), false, id)
-    assert.equal(anatomyOf(id), null, id)
-    // A policy step draws the task headings from its own kind, not from a group
-    // (ui/surfaces/policyTasks.ts): grouping still says nothing about the interior.
-    assert.equal(taskHeadingsOf(id), id === 's-goal-block-legacy-auth' ? TASK_HEAD : null, id)
+    assert.equal(anatomyOf(id), 'task', id)
+    assert.equal(taskHeadingsOf(id), TASK_HEAD, id)
     assert.equal(decisionHeadingsOf(id), null, id)
   }
+  // A Cleanup row is a board row, not a step: the owner left the Cleanup rows out
+  // of the uniformity rule, and CleanupStep.tsx keeps the recovery drill — the one
+  // row that draws the task anatomy — on the task headings by its own kind.
+  const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+  assert.match(cleanup, /const taskHead = row\.kind === 'drill' \? TASK_HEAD : null/)
 })
 
 test('every step is in exactly one group: a listed id beats a prefix, a prefix beats the catch-all, and only the last entry is the catch-all', () => {
@@ -90,8 +93,10 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
   assert.equal(groupOf('s-something-nobody-placed')!.key, catchAlls[0].key, 'the catch-all')
   // Every group the Plan can draw has both of its title keys in content.json.
   for (const g of STEP_GROUPS) for (const complete of [false, true]) assert.ok(groupTitleOf(g, complete).length > 0, `${g.key}: no title`)
-  // Only the two pinned groups carry an anatomy; the rest leave the step's own.
-  for (const g of STEP_GROUPS) assert.equal(g.anatomy !== null, g.pinned, `${g.key}: anatomy and pinning disagree`)
+  // Every group carries an anatomy: the steps that carry work draw the task one
+  // and the Direction steps draw the decision one, so no group leaves a member
+  // to a third set of headings (owner, 2026-09-19).
+  for (const g of STEP_GROUPS) assert.equal(g.anatomy, g.key === DIRECTION_GROUP ? 'decision' : 'task', `${g.key}: anatomy`)
 })
 
 // Ids the registry listed that a person can no longer meet on the board: five the

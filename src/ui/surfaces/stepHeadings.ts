@@ -12,7 +12,6 @@
 // Pure: no DOM, no network.
 import { app, directionWords } from '../../content/content.ts'
 import { usesDecisionAnatomy, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
-import { usesPolicyTaskAnatomy } from './policyTasks.ts'
 
 export type StepHeadings = {
   why: string
@@ -42,10 +41,13 @@ export const TASK_HEAD = { why: 'About this Step', remaining: 'Tasks Remaining',
 
 /**
  * The task-step headings for a step that uses them, or null for a step drawn
- * with its defaults: a member of a `task` group, and the policy step piloted on
- * the same anatomy (policyTasks.ts), which keeps its own group.
+ * with its defaults. The registry is the only gate (owner, 2026-09-19: every
+ * step that carries work reads as the emergency-access group's steps read), so
+ * the headings and the board's grouping can never answer differently. A Cleanup row
+ * is not a step and does not ask this: `cleanup-<kind>` is a board id, and
+ * CleanupStep.tsx names the one row the owner left on the task anatomy.
  */
-export const taskHeadingsOf = (stepId: string): typeof TASK_HEAD | null => (usesTaskAnatomy(stepId) || usesPolicyTaskAnatomy(stepId) ? TASK_HEAD : null)
+export const taskHeadingsOf = (stepId: string): typeof TASK_HEAD | null => (usesTaskAnatomy(stepId) ? TASK_HEAD : null)
 
 /**
  * The three headings a decision-anatomy step draws (a member of a group whose

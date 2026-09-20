@@ -1,15 +1,26 @@
-# Policy step anatomy — deviations held for the owner
+# Step anatomy — deviations held for the owner
 
-The rule (owner, 2026-09-19): a policy step must look identical to an Establish
-Emergency Access step. Nothing may be added that an Emergency Access step does
-not already draw. Anything a policy step seemed to need, and anything that could
-not be made identical, is written here instead of built.
+The rule (owner, 2026-09-19): a step that carries work must look identical to an
+Establish Emergency Access step. Nothing may be added that an Emergency Access
+step does not already draw. Anything a step seemed to need, and anything that
+could not be made identical, is written here instead of built.
 
-Scope now: every step whose content kind is `policy` — the `s-goal-*` steps and
-`s-shared-devices` — draws the anatomy. The gate is the content kind itself
-(`usesPolicyTaskAnatomy` in `src/ui/surfaces/policyTasks.ts`), so there is no
-list of ids to keep in step with the content. The one deviation below that was
-approved on a single policy first (the settings fold) now runs on the same gate.
+Scope now: **every step that carries work** draws the anatomy — the `s-goal-*`
+policy steps and `s-shared-devices`, the object steps (`s-prereq-*`), the MFA
+campaign (`s-verify-mfa`), the checks (`s-check-*`, `s-ladder-operator-passkey`),
+the baseline reviews (`s-review-baseline-*`) and anything the catch-all group
+holds. The gate is the step group registry's `anatomy` field
+(`src/roadmap/stepGroups.ts`), which every group but Decide Your Tenant's
+Direction sets to `task`, so there is no list of ids to keep in step with
+anything: the board's grouping and the step's interior cannot answer differently.
+The one deviation below that was approved on a single policy first (the settings
+fold) runs on the same gate.
+
+Outside it: the four Direction steps (the decision anatomy — nothing is built)
+and the four Cleanup rows other than the recovery drill (the owner excluded the
+Cleanup rows; `CleanupStep.tsx` keeps the drill on the task headings by its own
+kind). The four Establish Emergency Access steps draw the anatomy from their own
+producers and are frozen.
 
 ## Cut, and not rebuilt
 
@@ -49,8 +60,9 @@ recognises the policy by, the full resolved role list, the target resources, the
 conditions and the session controls (`stepPackage.ts entraWithSettings`).
 
 **Status: approved by the owner on every policy step** (2026-09-19, after the
-one-step pilot on `s-goal-admin-session`; `drawsPolicySettings` now reads the
-step's own content kind, so the one-id set is gone). It is back under the
+one-step pilot on `s-goal-admin-session`; the separate `drawsPolicySettings`
+gate is gone — the fold runs on the anatomy's own gate, so a step cannot draw
+one without the other, and it reaches every step that draws the anatomy). It is back under the
 procedure, collapsed, in the disclosure ContentStep.tsx already draws a resolved
 list in (the one Configure Passkey Authentication draws its approved models in)
 and under the heading the artifact itself gave the list. No class, component or
@@ -175,3 +187,71 @@ only puts it on screen, on four steps.
 the facts, and its lines return to the procedure) or to the four content
 packages (the verification block moves above the settings heading). Both are
 outside "roll the approved fold out", and the second touches the registry.
+
+## Found taking the anatomy to every step that carries work (2026-09-20)
+
+Nothing here was built. All four are the anatomy's, not one kind's.
+
+### 8. A step with no policy has no subject to name, so its card is headed by its kind
+
+An Emergency Access card is headed "Emergency access account 1" and a policy
+card by "Conditional Access policy" over the policy's own name. An object step,
+a check, the campaign and a baseline review have no member and no name: the
+object does not exist yet, which is why the step is there. The card is therefore
+headed by the kind the step's own eyebrow already says it is — "Preparation
+step", "Check step", "Campaign step" — from
+`pages.app.plan.stepContract.kind`, the words already above the card. No word
+was written and no key was added.
+
+**The question for the owner.** Should such a card instead name the object the
+step will make ("Named location", "Group", "Authentication strength")? That is a
+truer subject, but it is a new taxonomy — one label per object step, kept in
+step with the content — and the rule forbids adding one. The kind label is the
+honest answer available without inventing anything.
+
+### 9. On a step with no rollout, the card's next check is the task's own title
+
+A policy card's next check is the next lifecycle stage ("Report-only"), because
+a policy has a track. A step with no track has no stage, so the next check is
+the Implementation Task itself — which, on a step that submits no operation, is
+called what the step is called. The card therefore reads
+
+    Preparation step
+    Define the Trusted Network
+    Make the object this step names.
+    Follow Define the Trusted Network in Implementation Tasks.
+
+with the step's own title on the line above it in the head. This is not new —
+`s-shared-devices` and every other trackless policy step have read this way since
+the pilot — and it is the same shape a policy step reads in ("Report-only" in
+both the check and the instruction). Suppressing the instruction where it
+repeats the check would make those steps read differently from the policy steps,
+which is the thing the rule is against. Left alone.
+
+### 10. Two steps still have no procedure to make a task of, and keep their channel body
+
+`policyTasksOf` projects a task only where the step's portal channel carries a
+numbered procedure. Across all eight fixtures exactly two steps do not, and both
+are policy steps that already behaved this way:
+
+- `s-goal-admin-portals-protected` — the baseline defines its policy two ways, so
+  the step deliberately gets no task: nothing anybody does in the portal resolves
+  a contradiction, and a task there would be work offered over a step that says
+  there is none.
+- `s-goal-device-registration-mfa` — its Entra artifact opens with the settings
+  heading, so the parser reads twenty fact rows and no numbered lines (this is
+  item 7 above, seen from the other side).
+
+Neither draws an empty frame: the Implementation Tasks region draws the step's
+own artifact, whole. The brief's "no action" shape
+(`No Entra action is currently identified. Review Readiness.`) was **not** used
+for them, because on the second step it would hide twenty lines of real content
+behind a sentence saying there is none. Fixing the second properly is item 7's
+fix — the parser, or the four content packages.
+
+### 11. The lifecycle track is now cut on every step, not only the policy steps
+
+Item 2 cut the track from a policy step. Extending the anatomy cuts it from the
+rest as well. On those steps nothing is lost at all: `stepTrack` already returned
+empty for every object, check, campaign and review step in every fixture, because
+none of them has a lifecycle. The change is to the code, not to the screen.

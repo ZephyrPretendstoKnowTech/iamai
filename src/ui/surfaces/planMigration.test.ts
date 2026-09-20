@@ -25,7 +25,10 @@ import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { LADDER_ITEMS, ladderStepId } from '../../roadmap/ladder.ts'
+import { COVERED_BY_STEP, LADDER_ITEMS, ladderStepId } from '../../roadmap/ladder.ts'
+
+/** The rungs that draw themselves: one the rest of the plan already draws defers to that step, which carries the words (ladder.ts COVERED_BY_STEP). */
+const DRAWN_RUNGS = LADDER_ITEMS.filter((i) => !COVERED_BY_STEP[i.id])
 import { blockerStepId } from '../../roadmap/blockerSteps.ts'
 import type { RuleSubject } from '../../validation/rules.ts'
 import { implementationOffered } from '../../roadmap/operations.ts'
@@ -133,7 +136,7 @@ test('the row and the body it opens read one title resolver, and it answers for 
 // the contract falls through to a policy step's answers, which is how a free-tier
 // ladder rung came to instruct a Conditional Access deployment.
 test('every free-tier ladder rung and every validation blocker has its own content entry, and it adds only the words the engine has none of', () => {
-  const ids = [...LADDER_ITEMS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)]
+  const ids = [...DRAWN_RUNGS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)]
   for (const id of ids) {
     const cs = stepById[id]
     assert.ok(cs, `${id} has no content entry, so its body falls back to a policy step's`)
@@ -146,7 +149,7 @@ test('every free-tier ladder rung and every validation blocker has its own conte
 })
 
 test('no ladder rung borrows a policy step content entry', () => {
-  const rungs = new Set(LADDER_ITEMS.map((i) => ladderStepId(i.id)))
+  const rungs = new Set(DRAWN_RUNGS.map((i) => ladderStepId(i.id)))
   for (const { fixture, step, cs } of everyStep()) {
     if (!rungs.has(step.id)) continue
     assert.equal(cs.id, step.id, `${fixture}/${step.id}: resolved ${String(cs.id)} instead of its own entry`)
@@ -340,7 +343,7 @@ test('a step with no implementation is offered none: no portal lines, no JSON, n
 })
 
 test('the two families the engine words carry no policy rollout, no policy completion and no rollback', () => {
-  const families = new Set<string>([...LADDER_ITEMS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)])
+  const families = new Set<string>([...DRAWN_RUNGS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)])
   let seen = 0
   for (const o of everyStep()) {
     if (!families.has(o.step.id)) continue
@@ -356,7 +359,11 @@ test('the two families the engine words carry no policy rollout, no policy compl
     assert.equal(datesLineFor(o.step, o.cs), null, `${where}: a rollout date`)
     assert.equal(ifWrongLineFor(o.step, o.cs), null, `${where}: a rollback for a change nobody submits`)
   }
-  assert.ok(seen >= LADDER_ITEMS.length, `only ${seen} of these steps appear in the fixtures`)
+  // A rung whose work the rest of the plan already draws defers to that step
+  // (ladder.ts COVERED_BY_STEP, step-redundancy-analysis.md finding 9), so it is
+  // not a rung on a fixture that carries the step: the ones that remain are these.
+  const drawnRungs = DRAWN_RUNGS.length
+  assert.ok(seen >= drawnRungs, `only ${seen} of these steps appear in the fixtures, expected at least ${drawnRungs}`)
 })
 
 // The export view is the one the calendar, the prompt pack and the grounding
@@ -380,7 +387,7 @@ test('every step’s export view carries its own title and why', () => {
 // ---------------------------------------------------------------------------
 
 test('the words added for the two families are in the product voice', () => {
-  const ids = [...LADDER_ITEMS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)]
+  const ids = [...DRAWN_RUNGS.map((i) => ladderStepId(i.id)), ...BLOCKER_SUBJECTS.map(blockerStepId)]
   const banned = /\b(we recommend|intelligently|effortless|seamless|simply |just click|please note|leverage|unlock the power|best-in-class)\b/i
   for (const id of ids) {
     const cs = stepById[id]

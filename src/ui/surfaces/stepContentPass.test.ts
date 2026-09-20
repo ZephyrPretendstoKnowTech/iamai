@@ -18,6 +18,7 @@ import { CONTRACT, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { packageSourceLine } from './stepPackage.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
+import { TASK_HEAD } from './stepHeadings.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const FIXTURES: readonly FixtureName[] = ['mid', 'large', 'small', 'messy', 'hostile', 'demo', 'demo-week2']
@@ -115,7 +116,8 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   const step = r.steps.find((s) => s.id === 's-check-separate-admin-accounts')
   assert.ok(step, 'the step is on the mid plan')
   const b = stepBodyOf(step, ctx)
-  assert.ok(headingsOf(b).includes(CONTRACT.implementation.heading), headingsOf(b).join(' · '))
+  // A check step draws the task anatomy now (owner, 2026-09-19), so the region is Implementation Tasks.
+  assert.ok(headingsOf(b).includes(TASK_HEAD.implementation), headingsOf(b).join(' · '))
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
   assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ps', 'ai', 'email'])
   const text = b.artifacts[0].text()
