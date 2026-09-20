@@ -99,6 +99,17 @@ export function manualEvidenceFields(stepId: string, mapping?: Pick<MappingState
   if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
   if (stepId === 's-goal-service-accounts-trusted-network') fields.push({ key: 'networkId', label: 'Named Network Tested', type: 'select', required: true })
   if (stepId === 's-goal-user-risk' || stepId === 's-goal-user-risk-medium') fields.push({ key: 'configurationVerified', label: 'Recovery Prerequisites Verified, Including Writeback for Hybrid Accounts', type: 'checkbox', required: true })
+  // The one free-text field kept, because the owner put it here deliberately:
+  // the mail-route evidence folded onto Block Legacy Authentication when the
+  // separate mail-devices step was removed (step-redundancy-analysis finding 6).
+  // It is the evidence the temporary exception can come out, and it is asked for
+  // only where a tenant actually named a mail-sending device.
+  if (mailDevicesFollowUp(stepId, mapping)) fields.push({ key: 'workflow', label: 'Mail Job and Delivery Route', type: 'text', required: true })
+  // Folded in from the deleted partner follow-up (step-redundancy-analysis
+  // finding 5): where a tenant excludes service providers, the path that access
+  // takes is the evidence that step asked for. Optional, because a tenant with
+  // no partner has no path to name.
+  if (stepId === 's-goal-guests-mfa') fields.push({ key: 'providerAccessPath', label: 'Partner or Provider Access Path', type: 'text', required: false })
   if (stepId === LEGACY_AUTH_STEP_ID) fields.push({ key: 'exceptionRemoved', label: 'Temporary Exception Removed', type: 'checkbox', required: true })
   fields.push(ADMIN_SEPARATION.has(stepId) ? { key: 'outcome', label: 'Outcome', type: 'select', required: true, options: [{ value: 'retained', label: 'Already dedicated to admin work' }, { value: 'passed', label: 'Handover tested' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] } : outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
   return fields
