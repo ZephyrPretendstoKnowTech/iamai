@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -17,9 +17,9 @@ import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
 
-/** `settled` approves every Direction answer, so the plan's foundation no longer holds the step (roadmap/foundations.ts). */
+/** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
 function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false) {
-  const value = settled ? withDirectionApproved(fixture(name)) : fixture(name)
+  const value = settled ? withFoundationSettled(fixture(name)) : fixture(name)
   const run = runFixture(value)
   const step = run.steps.find((row) => row.id === stepId)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
@@ -50,7 +50,9 @@ test('every policy step draws the four task headings; a step of another kind kee
 })
 
 test('the pilot projects one Implementation Task, and it is the Entra procedure the step already drew', () => {
-  const { body } = bodyOf(PILOT)
+  // The foundation settled, so the step is directed into its procedure
+  // (roadmap/foundations.ts): until it is, nothing is handed over.
+  const { body } = bodyOf(PILOT, 'demo', true)
   const tasks = body.emergencyAccountTasks
   assert.ok(tasks, 'the pilot step has a task projection')
   assert.equal(tasks.tasks.length, 1)
@@ -135,7 +137,8 @@ test('the pilot step reads its Readiness tiles as cards, keeping the prerequisit
 })
 
 test('the policy has a card of its own: its name, its rollout stages, the next one, and the task that reaches it', () => {
-  const { body } = bodyOf(PILOT)
+  // The foundation settled, so the card's one action is the procedure it names.
+  const { body } = bodyOf(PILOT, 'demo', true)
   const [card, ...rest] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.heading, 'Conditional Access policy')
   assert.equal(card.upn, body.contract.members[0].name, 'the subject is the policy this step delivers')

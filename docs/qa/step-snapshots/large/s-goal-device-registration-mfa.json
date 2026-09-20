@@ -22,10 +22,6 @@
       "state": "Prepare Emergency Access Accounts"
     },
     {
-      "label": "Enforcement checks",
-      "state": "Review required"
-    },
-    {
       "label": "Enrollment workflows",
       "state": "Unknown"
     }

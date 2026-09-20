@@ -20,7 +20,7 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
 import { DIRECTION_STEP, directionBlockerStep } from './directionAnswers.ts'
 import { observationsOf } from './tracking.ts'
-import { holdOf, isHeld, markHoldChains } from './holds.ts'
+import { FOUNDATION_WAIT, holdOf, isHeld, markHoldChains } from './holds.ts'
 import { heldForReview, nextMilestone, raiseCondition } from './lifecycle.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { planIdFor } from './generate.ts'
@@ -510,7 +510,14 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   assert.equal(scheduleOf(dated).class, 'scheduled')
   assert.ok(scheduleOf(dated).at !== null, 'the schedule gives it a day')
   assert.match(rowWhen(dated), YEAR, 'the row dates it')
-  assert.equal(nextMilestone(dated).at, scheduleOf(dated).at, 'its next milestone is that day')
+  // Its milestone still names no day: Establish Emergency Access is unsettled on
+  // the demo's first visit, and the foundation withdraws the create with it
+  // (roadmap/holds.ts waitsOnFoundation). With that wait cleared too, the
+  // milestone is the day the schedule gives it.
+  assert.equal(nextMilestone(dated).at, null, 'the foundation still holds it')
+  const released = structuredClone(dated)
+  released.blockers = released.blockers.filter((b) => b.label !== FOUNDATION_WAIT)
+  assert.equal(nextMilestone(released).at, scheduleOf(released).at, 'its next milestone is that day')
   assert.ok(booked(approved, DEVICE), 'and the calendar books it')
   // The rollout's estimate is the schedule as drawn before anything was withdrawn: the wait does not move it.
   assert.equal(first.r.schedule.estimate?.targetEnd, approved.r.schedule.estimate?.targetEnd)

@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { implementationOffered } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -77,8 +77,9 @@ test('the same held corrections are a planning preview on screen: resources rema
 })
 
 test('control: a change that is due keeps its portal lines in the export', () => {
-  // Due: the Direction answers these policies are written from are approved (roadmap/direction.ts).
-  const due = exportsOf(withDirectionApproved(fixture('getiamai')), ['s-goal-block-legacy-auth', 's-goal-admin-session', 's-goal-token-protection'])
+  // Due: the plan's foundation is settled, so nothing is waiting on it — Establish
+  // Emergency Access complete and every Direction answer approved (roadmap/foundations.ts).
+  const due = exportsOf(withFoundationSettled(fixture('getiamai')), ['s-goal-block-legacy-auth', 's-goal-admin-session', 's-goal-token-protection'])
   for (const { step, view } of due) {
     assert.equal(implementationIsCurrent(step), true, step.id)
     assert.ok(view.whatToDo.some((l) => PORTAL.test(l)), `${step.id}: ${JSON.stringify(view.whatToDo)}`)
