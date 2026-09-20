@@ -2281,6 +2281,11 @@
           "consolidation": "Overlapping policies",
           "notAssessed": "Baseline policies"
         },
+        "board": {
+          "$comment": "The Plan board's fourth tab and the heading line it draws (src/ui/surfaces/planBoard.ts). The three lane tabs and the two toggles say their words in pages.plan.lanes; these two belong to the tab that shows whole groups instead of one lane.",
+          "allWork": "All work",
+          "groupCompleted": "{done} of {total} completed"
+        },
         "groups": {
           "emergencyAccess": {
             "title": "Establish Emergency Access",

@@ -21,8 +21,11 @@ import { directionWords, stepById } from '../../content/content.ts'
 import { laneReadings } from './planLanes.ts'
 import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import {
+  ALL_WORK_TAB,
   BOARD,
   LANES,
+  TABS,
+  allWorkGroups,
   NO_FOCUS,
   TAB_OF,
   TYPE_ORDER,
@@ -491,8 +494,81 @@ test('a group summary counts the rows under it, and says so when a tab left some
   assert.ok(filtered > 0, 'no tab showed part of a group, so this proves nothing')
 })
 
+// ----------------------------------------------------------- the fourth tab
+
+test('All work lists every unfinished group whole, in registry order, with every one of its rows', () => {
+  for (const name of [...FIXTURES, 'demo-week2'] as const) {
+    const items = itemsFor(name)
+    const drawn = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: false, open: null })
+    const registry = STEP_GROUPS.map((g) => g.key)
+    const keyOf = (g: (typeof drawn.active)[number]): string => g.key.slice(`${ALL_WORK_TAB}-`.length)
+    // Registry order, and every group on the board that still has work in it.
+    assert.deepEqual(drawn.active.map(keyOf), drawn.active.map(keyOf).slice().sort((a, b) => registry.indexOf(a) - registry.indexOf(b)), `${name}: the groups are not in the registry's order`)
+    for (const g of drawn.active) {
+      const key = keyOf(g)
+      // The WHOLE group: every row of it the board has, no lane filtering inside.
+      assert.deepEqual(ids(g.items).sort(), ids(items.filter((i) => groupOf(i.id)?.key === key)).sort(), `${name}/${key}: the tab left a row of the group out`)
+      assert.ok(g.items.some((i) => i.lane !== 'Completed'), `${name}/${key}: an entirely complete group is in the list`)
+      assert.equal(g.progress, true, `${name}/${key}: the group does not read as a whole group`)
+    }
+    // Nothing is lost and nothing is drawn twice: active plus completed is the board.
+    const everywhere = [...drawn.active, ...allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null }).completed].flatMap((g) => ids(g.items))
+    assert.equal(everywhere.length, new Set(everywhere).size, `${name}: a row is drawn twice`)
+    assert.deepEqual([...everywhere].sort(), ids(items).sort(), `${name}: the tab and the row set disagree`)
+    // An entirely complete group is out of the list and under the completed fold,
+    // revealed by Show completed or by holding the open step — the board's own
+    // mechanism for finished work, not a second one.
+    const complete = STEP_GROUPS.map((g) => g.key).filter((key) => { const mine = items.filter((i) => groupOf(i.id)?.key === key); return mine.length > 0 && mine.every((i) => i.lane === 'Completed') })
+    assert.deepEqual(drawn.completed, [], `${name}: a finished group is folded away with Show completed off`)
+    const asked = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null })
+    assert.deepEqual(asked.completed.map((g) => g.key), complete.map((key) => `${ALL_WORK_TAB}-${key}-complete`), `${name}: Show completed did not reveal the finished groups`)
+    for (const g of asked.completed) assert.equal(g.secondary, true, `${name}/${g.key}: a finished group is not drawn as an aside`)
+    for (const key of complete) {
+      const held = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: false, open: items.find((i) => groupOf(i.id)?.key === key)!.id })
+      assert.deepEqual(held.completed.map((g) => g.key), [`${ALL_WORK_TAB}-${key}-complete`], `${name}/${key}: opening a step of a finished group did not unfold it`)
+    }
+  }
+})
+
+test('All work does not renumber: a row keeps its place in its group, and the numbers run with no gap', () => {
+  for (const name of FIXTURES) {
+    const items = itemsFor(name)
+    const numbers = rowNumbersOf(items)
+    for (const g of allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), { completed: true, open: null }).active) {
+      const seen = g.items.map((i) => numbers.get(i.id)!)
+      assert.deepEqual(seen, seen.map((_, at) => at + 1), `${name}/${g.key}: the whole group does not read 1..n`)
+    }
+  }
+})
+
+test('the tab reads how much of each group is done, in the words content.json holds', () => {
+  const g = { key: 'k', label: 'K', secondary: false, closed: false, progress: true, items: [
+    { id: 'a', title: 'a', lane: 'Completed' as const, laneLabel: 'Completed', hold: null, workType: 'setup' as const, order: 0 },
+    { id: 'b', title: 'b', lane: 'Completed' as const, laneLabel: 'Completed', hold: null, workType: 'setup' as const, order: 1 },
+    { id: 'c', title: 'c', lane: 'Ready' as const, laneLabel: 'Ready', hold: null, workType: 'setup' as const, order: 2 },
+  ] }
+  assert.equal(groupSummary(g), '2 of 3 completed')
+  // A lane tab's group still counts rows, not progress: the two lines are the
+  // same mechanism answering the two different questions a heading can be asked.
+  assert.equal(groupSummary({ ...g, progress: false }, 6), '3 of 6 steps')
+  assert.equal(BOARD.allWorkTab, 'All work')
+})
+
+test('the fourth tab shows every lane and neither toggle hides a row inside a group', () => {
+  for (const name of FIXTURES) {
+    const items = itemsFor(name)
+    // Nothing a lane tab or a toggle would drop: All work is the whole row set.
+    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, NO_FOCUS)).sort(), ids(items).sort(), `${name}: the fourth tab filtered by lane`)
+    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, ALL)).sort(), ids(items).sort(), `${name}: the toggles changed what the fourth tab shows`)
+    // Search and work type are still filters over it.
+    for (const i of applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, workType: 'ca' })) assert.equal(i.workType, 'ca', `${name}/${i.id}: the Work type filter let another kind through`)
+    assert.deepEqual(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, search: 'zzzzz-not-a-title' }), [], `${name}: search matched something no title contains`)
+  }
+})
+
 test('the board vocabulary is one record, and Ready is the default tab', () => {
   assert.deepEqual([...LANES], ['ready', 'upNext', 'onHold'], 'the tab order moved')
+  assert.deepEqual([...TABS], ['ready', 'upNext', 'onHold', ALL_WORK_TAB], 'the four tabs moved')
   assert.equal(LANES[0], 'ready', 'Ready is no longer the default')
   assert.deepEqual(Object.values(BOARD.lanes), ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred', "Doesn't apply"])
   assert.deepEqual(Object.keys(BOARD.type), TYPE_ORDER, 'the work-type labels and the work-type order disagree')
