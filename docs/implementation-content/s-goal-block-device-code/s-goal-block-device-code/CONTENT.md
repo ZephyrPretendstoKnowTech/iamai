@@ -14,7 +14,7 @@ This policy already exists. The correction sets its conditions to the intended t
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
-3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
+3. Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.
 @@IAMAI-END
 
