@@ -283,7 +283,7 @@
     },
     {
       "id": "s-goal-workload-identity-block",
-      "title": "Restrict the Directory Sync Service Principal to Its Address",
+      "title": "Restrict the Entra Connect Sync Account to Its Address",
       "workType": "identity-type-dependent",
       "scopeClass": "workload-identity (pending)",
       "effortKind": "portal",
