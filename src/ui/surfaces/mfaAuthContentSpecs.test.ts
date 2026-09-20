@@ -182,7 +182,10 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
       kind: 'list', ordered: true, start: 3, items: [
         ['Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.'],
         ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.'],
-        ['Target resources: All resources. Client apps: All. Remove any other condition.'],
+        // protect-admins C5: "Client apps: All" read as a selection to make; the
+        // target's `all` is what an UNCONFIGURED condition gives (Learn: a new
+        // policy applies to every client app type until Configure is set to Yes).
+        ['Target resources: All resources. Leave Conditions → Client apps unconfigured, with Configure at No; that is what reaches all client apps, and ticking every box sets a narrower list than the target. Remove any other condition.'],
       ],
     },
     // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.

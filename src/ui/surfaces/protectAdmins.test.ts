@@ -175,8 +175,52 @@ test('B4: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(STRENGTH)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Require Phishing-Resistant MFA for Admins (spec section 4)
+// ---------------------------------------------------------------------------
+
+const ADMINS = 's-goal-admins-phishing-resistant'
+
+test('C1: help desk says what a Temporary Access Pass does here, in both its forms', () => {
+  const lines = helpDeskOf('admins-phishing-resistant')
+  assert.ok(lines.some((l) => /satisfies this policy's strength in both its forms/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Microsoft's own phishing-resistant strength accepts neither/.test(l)), lines.join('\n'))
+})
+
+test('C2: no help-desk line still claims only a passkey, key or Hello gets through', () => {
+  const lines = helpDeskOf('admins-phishing-resistant')
+  assert.ok(!lines.some((l) => /Only a registered passkey, security key or Windows Hello gets through/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Anything the strength does not list is refused/.test(l)), lines.join('\n'))
+})
+
+test('C3: help desk names the Windows Hello prompt that never arrives after a password', () => {
+  const lines = helpDeskOf('admins-phishing-resistant')
+  assert.ok(
+    lines.some((l) => /signed in with a password first is never prompted for Windows Hello/.test(l) && /Sign-in options/.test(l)),
+    lines.join('\n'),
+  )
+})
+
+test('C4: Completion Criteria is this step’s outcome, and never over-claims phishing resistance', () => {
+  const end = String((stepById['admins-phishing-resistant'] as unknown as { doneEnd?: string }).doneEnd ?? '')
+  assert.match(end, /^Admins in the baseline's built-in directory roles can only sign in to \{tenant\} with a method its authentication strength accepts/)
+  assert.doesNotMatch(end, /phishing-resistant method/)
+})
+
+test('C5: the client-apps condition is left unconfigured, because that is what reaches them all', () => {
+  const create = blockText(ADMINS, 'entra.create')
+  assert.match(create, /Leave \*\*Conditions > Client apps\*\* unconfigured, with \*\*Configure\*\* at \*\*No\*\*/)
+  assert.match(create, /Ticking every box instead sets a narrower list than the target/)
+  // No fixture puts this policy in Partial — the demo has it in Report-only —
+  // so the correction is read from the block that state would draw.
+  assert.match(blockText(ADMINS, 'entra.correct-conditions'), /Leave Conditions → Client apps unconfigured, with Configure at No/)
+})
+
+test('C6: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(ADMINS), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(ADMINS)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
 // The unused readers below are kept for the sections that follow.
 void risksOf
-void helpDeskOf
 void aboutOf
-void tasksTextOf
