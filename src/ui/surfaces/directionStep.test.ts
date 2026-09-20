@@ -49,6 +49,30 @@ test('one Approve answers button saves every answer in the step; the Not sure li
   assert.equal(W.approve, 'Approve answers')
 })
 
+// The owner unfroze the Direction steps' UI (2026-09-20) and asked for one
+// family: a question reads as an Establish Emergency Access subject card, drawn
+// with the components that step already has rather than a second visual
+// language. Both files are read, so a question card that stopped being the
+// Emergency Access card — from either end — fails here.
+test('a question is drawn as an Emergency Access subject card, in that card’s grid', () => {
+  const CONTENT_STEP_CARD = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function EmergencyAccountStatusTile'), CONTENT_STEP.indexOf('export function EmergencySubjectReadiness'))
+  for (const cls of ['emergency-account-status', 'emergency-account-label']) {
+    assert.ok(CONTENT_STEP_CARD.includes(cls), `Emergency Access no longer draws .${cls}`)
+    assert.ok(QUESTIONS.includes(cls), `a question no longer draws .${cls}`)
+  }
+  assert.match(QUESTIONS, /<div className="emergency-account-status-grid">/, 'the questions are not in the subject grid')
+  assert.match(QUESTIONS, /<article className="emergency-account-status direction-question"/, 'a question is not the subject card')
+  // The state, the question, the control and the evidence each own a row.
+  assert.match(QUESTIONS, /className="emergency-account-label direction-question-state"[^]*?<h5 id=\{labelId\}>\{q\.label\}<\/h5>/, 'the state and the question are not the card’s first two lines')
+  // Nothing bespoke: no layout of its own, and the controls stay the shared ones.
+  assert.doesNotMatch(QUESTIONS, /workflow-choice/, 'the questions carry a layout of their own again')
+  assert.match(QUESTIONS, /className="decision-select"/, 'the answer is no longer the shared dropdown')
+  assert.match(QUESTIONS, /<Picker labelledBy=\{labelId\}/, 'the list answer is no longer the shared Picker')
+  // The lead line and the one button stand outside the grid, not as cells in it.
+  const grid = QUESTIONS.slice(QUESTIONS.indexOf('<div className="emergency-account-status-grid">'), QUESTIONS.indexOf('</div>', QUESTIONS.indexOf('<div className="emergency-account-status-grid">')))
+  for (const outside of ['W.notSure', 'W.approve']) assert.equal(grid.includes(outside), false, `${outside} is a cell of the question grid`)
+})
+
 test('a step whose question moved says where it is answered now, with the answer and a link', () => {
   const { f, ctx } = setup()
   assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.allowedCountries, PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-device-code', 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
