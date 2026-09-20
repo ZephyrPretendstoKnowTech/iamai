@@ -88,7 +88,9 @@ test('control: a correction that keeps every exclusion draws no removal line in 
 })
 
 test('every package that corrects a Conditional Access policy carries the removal line in its correction save, AI Info and script', () => {
-  const MEMBERS: Record<string, string[]> = { 's-goal-session-lifetime': ['policies.session.browser', 'policies.session.unmanaged'], 's-goal-guests-mfa': ['policies.guests.strong', 'policies.guests.mixed'] }
+  // S4-10: the session step's unmanaged-device companion is gone — the pin maps its goal
+  // to one member — so it names one member's removals, as the single-policy steps do.
+  const MEMBERS: Record<string, string[]> = { 's-goal-session-lifetime': ['policies.session.browser'], 's-goal-guests-mfa': ['policies.guests.strong', 'policies.guests.mixed'] }
   const corrects = Object.entries(PACKAGES).filter(([, pkg]) => /\/identity\/conditionalAccess\/policies\/\{(policy|policies\.[a-zA-Z]+\.[a-z]+)\.current\.id\}/.test(Object.values(pkg.blocks).map((b) => JSON.stringify(b.meta)).join('\n')) || pkg.blocks['powershell.run']?.meta.invocation?.parameters?.StrongPolicyId)
   const ids = corrects.map(([id]) => id).sort()
   assert.ok(ids.length >= 24, ids.join(', '))

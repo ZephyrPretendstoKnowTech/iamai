@@ -103,6 +103,31 @@ test('each package reaches the steps whose title comes from its content entry, a
   assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
 })
 
+// V1 audit S4-12: the workload-identity step's title, its package title and the header of
+// the script it hands over all named "the Entra Connect Sync Account", while its own Entra
+// channel says Connect Sync signs in as a user account and only Cloud Sync's provisioning
+// service principal can be a workload-identity policy's target. A step cannot be named after
+// the identity its procedure forbids, and a rename that reaches one surface and not the
+// others is two names for one step. The rule is general, so every package is read.
+test('a package is named what its step is named, and the script it hands over carries that same name', () => {
+  let checked = 0
+  for (const pkg of Object.values(PACKAGES)) {
+    const title = contentStepForPackage(pkg.meta.stepId)?.title
+    if (typeof title !== 'string') continue
+    assert.equal(pkg.meta.title, title, `${pkg.meta.stepId}: the package title is not the step's`)
+    const script = pkg.blocks['powershell.run']?.text
+    if (typeof script === 'string' && /^# IAMAI compact implementation script/m.test(script)) {
+      assert.ok(script.includes(`# IAMAI compact implementation script — ${title}`), `${pkg.meta.stepId}: the script header names another step`)
+    }
+    checked++
+  }
+  assert.ok(checked >= 30, `only ${checked} packages were read`)
+  // The identity this step's policy can actually target, said the same way everywhere.
+  const workload = 'Restrict the Directory Sync Service Principal to Its Address'
+  assert.equal(contentStepForPackage('s-goal-workload-identity-block')?.title, workload)
+  for (const block of Object.values(PACKAGES['s-goal-workload-identity-block'].blocks)) assert.doesNotMatch(block.text, /Entra Connect Sync Account/)
+})
+
 test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON, AI Info and Email; a JSON body authored with no request is withheld (S6)', () => {
   const p = at(SMALL, 's-goal-admins-phishing-resistant')
   const { pkg, state, bindings, projection } = project(p)

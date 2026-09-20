@@ -19,6 +19,9 @@ const bindings = (): Record<string, unknown> => ({
   'tenant.displayName': 'Sample tenant',
   'policies.session.browser.target.displayName': "Sample - O'Brien browser sessions",
   'policies.session.browser.current.id': ID(3),
+  // S4-10: the interval reaches the deployable channels as the resolved target's own
+  // session controls; no channel of this package states one.
+  'policies.session.browser.target.sessionControls': { signInFrequency: { isEnabled: true, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication', type: 'hours', value: 12 }, persistentBrowser: { isEnabled: true, mode: 'never' }, applicationEnforcedRestrictions: null, cloudAppSecurity: null, disableResilienceDefaults: null },
   'policy.target.excludeGroups': [ID(1)],
   'policy.target.excludeUsers': [ID(2)],
 })
@@ -65,7 +68,9 @@ test('session-lifetime ready to enforce: the browser policy is turned on by its 
   assert.match(entra, /Change it from Report-only to \*\*On\*\*/)
   assert.doesNotMatch(entra, POLICY_B)
   assert.equal(by(p, 'powershell'), undefined, 'the withheld Enforce run was drawn')
-  assert.match(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', /ReadinessApproved[\s\S]*unmanaged-device companion/)
+  // S4-10: the companion is gone from the package, so the attestation is the whole reason.
+  assert.match(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', /^the script enforces only with -ReadinessApproved/)
+  assert.doesNotMatch(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', /unmanaged/)
   const ai = by(p, 'aiInfo')?.text ?? ''
   assert.match(ai, /This state enables the reviewed browser session policy\. The only change is its state from Report-only to On\./)
   assert.match(ai, ONE_POLICY)

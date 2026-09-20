@@ -30,7 +30,7 @@ Track progress on the MFA Readiness page — it shows who still needs setup and 
 3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.
    For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.
 4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.
-5. Set **Days allowed to snooze** to the IAMAI-resolved **{{campaign.snoozeDurationInDays}} day(s)**.
+5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one.
 6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.
 7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.
 @@IAMAI-END
