@@ -40,11 +40,11 @@ export const SUBJECT_PLAIN = {
 
 /** Where a subject is fixed, when no individual check offered a path. */
 export const SUBJECT_WHERE: Record<string, string> = {
-  breakGlass: 'Entra admin center → Identity → Users',
-  exclusionGroup: 'Entra admin center → Identity → Groups → this group → Members',
-  trustedLocation: 'Entra admin center → Protection → Conditional Access → Named locations',
-  allowedCountries: 'The allowed-countries decision on the plan, and Protection → Conditional Access → Named locations',
-  pilotGroup: 'Entra admin center → Identity → Groups → this group → Members',
+  breakGlass: 'Entra admin center → Entra ID → Users',
+  exclusionGroup: 'Entra admin center → Entra ID → Groups → this group → Members',
+  trustedLocation: 'Entra admin center → Entra ID → Conditional Access → Named locations',
+  allowedCountries: 'The allowed-countries decision on the plan, and Entra ID → Conditional Access → Named locations',
+  pilotGroup: 'Entra admin center → Entra ID → Groups → this group → Members',
   serviceAccount: 'The service-accounts decision on the plan',
   authStrength: 'Entra admin center → Protection → Authentication methods → Authentication strengths',
 }
@@ -471,7 +471,7 @@ export const RULE_ACTION: Record<string, (finding: string | null) => string> = {
   'bg.hasMfaMethod': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
   'bg.phishingResistant': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
   'bg.excludedFromAllPolicies': (finding) =>
-    `Exclude both accounts from every Conditional Access policy${policiesFrom(finding)}. Entra admin center → Protection → Conditional Access → Policies.`,
+    `Exclude both accounts from every Conditional Access policy${policiesFrom(finding)}. Entra admin center → Entra ID → Conditional Access → Policies.`,
   'bg.notPersonal': () => 'Use a dedicated account for emergency access, with no department, job title or office, and not the operator. Entra admin center → Users → New user.',
   'bg.separateDevices': (finding) => `Move an emergency account off the shared Authenticator device${deviceFrom(finding)}. Entra admin center → Users → the account → Authentication methods.`,
   'bg.notInDynamicScope': () => 'Move the account out of any dynamic group that a policy targets, or exclude the account directly. Entra admin center → Groups.',

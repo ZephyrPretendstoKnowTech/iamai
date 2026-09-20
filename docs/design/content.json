@@ -3443,7 +3443,7 @@
       "changeLine": null,
       "why": "Keep approved passkey registration available, protect existing working methods, and apply the intended passkey settings without guessing at unread configuration.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
       },
       "who": {
         "lead": "Passkey (FIDO2) in {tenant} today: {current}. Security keys registered here, for review (a registered key is not automatically an approved model): {list:registeredKeys}",
