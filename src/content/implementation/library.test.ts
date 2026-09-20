@@ -8,7 +8,7 @@ import registry from './registry.generated.json' with { type: 'json' }
 import { readFileSync } from 'node:fs'
 import { compileLibrary, libraryIndexOf, registryOf } from './library.ts'
 import type { LibraryIndex } from './library.ts'
-import { PACKAGE_STATES, validatePackage } from './protocol.ts'
+import { PACKAGE_STATES, unconfiguredConditions, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
 import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
 import type { RuntimeContext } from './project.ts'
@@ -61,6 +61,19 @@ test('the registry is the whole library compiled: every package for a Plan conte
   // What was withheld is reported, never silently lost: the library's authored gaps are in the compiler's output.
   assert.ok(LIBRARY.registered.some((p) => p.withheld.length > 0))
   assert.deepEqual(LIBRARY.registered.find((p) => p.stepId === 's-goal-device-registration-mfa')?.withheld, [])
+})
+
+// §S4-1/§S4-2, the whole library at once: a condition left at Configure: No is
+// not applied, so every portal procedure that narrows a toggled condition names
+// the toggle. The rule is the acceptance, not the four blocks the V1 audit
+// listed — the class came back twice because each instance was fixed alone.
+test('no portal procedure in the library narrows a toggled condition without naming Configure', () => {
+  const offences: string[] = []
+  for (const [stepId, pkg] of Object.entries(PACKAGES))
+    for (const [blockId, b] of Object.entries(pkg.blocks))
+      if (b.meta.channel === 'entra' || b.meta.channel === 'aiInfo')
+        for (const u of unconfiguredConditions(b.text)) offences.push(`${stepId} ${blockId}: ${u.condition} — ${u.passage.slice(0, 90)}`)
+  assert.deepEqual(offences, [], 'a condition narrowed with no Configure toggle: at No it is not applied and the policy reaches everything it was meant to narrow')
 })
 
 test('LIBRARY.json’s counts, binding inventory, validation, provenance and review are the library’s own, regenerated and never kept by hand', () => {

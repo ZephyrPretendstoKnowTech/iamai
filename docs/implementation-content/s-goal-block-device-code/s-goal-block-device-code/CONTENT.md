@@ -141,12 +141,12 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
+IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 
-IAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+IAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END

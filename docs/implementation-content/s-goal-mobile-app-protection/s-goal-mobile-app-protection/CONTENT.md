@@ -10,14 +10,14 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Users → Include: All users. Exclude: the IAMAI-resolved exclusions. Do not copy IDs from another tenant or widen or narrow the population.
-4. Target resources: All resources. Conditions → Device platforms → Include: Android and iOS.
+4. Target resources: All resources. Conditions → Device platforms → Configure: Yes, then Include: Android and iOS. Left at No it applies to all device platforms.
 5. Grant → Grant access → **Require app protection policy**, with no other control. Leave session controls as the target sets them; the baseline sets none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
 7. Re-open the policy, compare its users, resources, platforms, grant and session settings with IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, with the IAMAI-resolved exclusions. Target resources: All resources. Device platforms → Include: Android and iOS. Correct this policy rather than creating a replacement.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, with the IAMAI-resolved exclusions. Target resources: All resources. Device platforms → Configure: Yes, then Include: Android and iOS; left at No it applies to all device platforms. Correct this policy rather than creating a replacement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

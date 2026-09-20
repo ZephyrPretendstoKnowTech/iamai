@@ -136,7 +136,7 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.
+State: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Configure: Yes, then Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.
 
 Authentication transfer moves a signed-in state from one device to another, for example from a desktop app to a mobile app, without a new sign-in on the second device. This policy blocks that flow only; direct sign-in on the destination device stays available where the app supports it.
 @@IAMAI-END
@@ -144,7 +144,7 @@ Authentication transfer moves a signed-in state from one device to another, for 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 This policy blocks authentication transfer: the flow that moves a signed-in state from one device to another, for example by scanning a QR code shown in a desktop app, without a new sign-in on the second device. It blocks this flow only; it does not block every QR-code sign-in or other forms of token theft.
 
-The policy already exists in the tenant. The correction changes only the settings IAMAI found different from the intended target: {{policy.current.semanticMismatches}}. Intended: All users with the exclusions IAMAI resolved, including the exclusions group; All resources; Authentication flows → Authentication transfer; Block access; no session controls.
+The policy already exists in the tenant. The correction changes only the settings IAMAI found different from the intended target: {{policy.current.semanticMismatches}}. Intended: All users with the exclusions IAMAI resolved, including the exclusions group; All resources; Authentication flows → Configure: Yes, then Authentication transfer; Block access; no session controls.
 
 Accounts excluded from this policy are not blocked by it. That does not guarantee them access through other policies.
 

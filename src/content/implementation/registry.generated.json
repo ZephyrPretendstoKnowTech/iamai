@@ -3149,7 +3149,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.\n\nAuthentication transfer moves a signed-in state from one device to another, for example from a desktop app to a mobile app, without a new sign-in on the second device. This policy blocks that flow only; direct sign-in on the destination device stays available where the app supports it.\n"
+          "text": "\nState: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Configure: Yes, then Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.\n\nAuthentication transfer moves a signed-in state from one device to another, for example from a desktop app to a mobile app, without a new sign-in on the second device. This policy blocks that flow only; direct sign-in on the destination device stays available where the app supports it.\n"
         },
         "ai.correct": {
           "meta": {
@@ -3161,7 +3161,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy blocks authentication transfer: the flow that moves a signed-in state from one device to another, for example by scanning a QR code shown in a desktop app, without a new sign-in on the second device. It blocks this flow only; it does not block every QR-code sign-in or other forms of token theft.\n\nThe policy already exists in the tenant. The correction changes only the settings IAMAI found different from the intended target: {{policy.current.semanticMismatches}}. Intended: All users with the exclusions IAMAI resolved, including the exclusions group; All resources; Authentication flows → Authentication transfer; Block access; no session controls.\n\nAccounts excluded from this policy are not blocked by it. That does not guarantee them access through other policies.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "This policy blocks authentication transfer: the flow that moves a signed-in state from one device to another, for example by scanning a QR code shown in a desktop app, without a new sign-in on the second device. It blocks this flow only; it does not block every QR-code sign-in or other forms of token theft.\n\nThe policy already exists in the tenant. The correction changes only the settings IAMAI found different from the intended target: {{policy.current.semanticMismatches}}. Intended: All users with the exclusions IAMAI resolved, including the exclusions group; All resources; Authentication flows → Configure: Yes, then Authentication transfer; Block access; no session controls.\n\nAccounts excluded from this policy are not blocked by it. That does not guarantee them access through other policies.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -3762,7 +3762,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.\n"
+          "text": "\nIAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.\n"
         },
         "ai.correct": {
           "meta": {
@@ -3774,7 +3774,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nIAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Configure: Yes, then Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -4779,7 +4779,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Linux and unidentified platforms stay in scope unless a reviewed decision changes the target.\n"
+          "text": "Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: set **Configure** to **Yes**, then include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Left at **No** the condition is not applied and this Block access policy reaches every platform. Linux and unidentified platforms stay in scope unless a reviewed decision changes the target.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -9621,7 +9621,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Users → Include: All users. Exclude: the IAMAI-resolved exclusions. Do not copy IDs from another tenant or widen or narrow the population.\n4. Target resources: All resources. Conditions → Device platforms → Include: Android and iOS.\n5. Grant → Grant access → **Require app protection policy**, with no other control. Leave session controls as the target sets them; the baseline sets none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the policy, compare its users, resources, platforms, grant and session settings with IAMAI, and rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Users → Include: All users. Exclude: the IAMAI-resolved exclusions. Do not copy IDs from another tenant or widen or narrow the population.\n4. Target resources: All resources. Conditions → Device platforms → Configure: Yes, then Include: Android and iOS. Left at No it applies to all device platforms.\n5. Grant → Grant access → **Require app protection policy**, with no other control. Leave session controls as the target sets them; the baseline sets none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the policy, compare its users, resources, platforms, grant and session settings with IAMAI, and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -9633,7 +9633,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, with the IAMAI-resolved exclusions. Target resources: All resources. Device platforms → Include: Android and iOS. Correct this policy rather than creating a replacement.\n"
+          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, with the IAMAI-resolved exclusions. Target resources: All resources. Device platforms → Configure: Yes, then Include: Android and iOS; left at No it applies to all device platforms. Correct this policy rather than creating a replacement.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -13760,7 +13760,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the unmanaged-device component, set Users to All users with IAMAI's canonical group/shared-device exclusions; Target resources to All resources; Client apps to All; and Filter for devices to Exclude `device.isCompliant -eq True`. Remove noncanonical risk, location, platform, authentication-flow, application-exclusion, or other conditions.\n"
+          "text": "For the unmanaged-device component, set Users to All users with IAMAI's canonical group/shared-device exclusions; Target resources to All resources; Client apps to All; and Filter for devices with **Configure** set to **Yes** and the rule set to Exclude `device.isCompliant -eq True` — left at **No** the filter is not applied and the component reaches compliant devices too. Remove noncanonical risk, location, platform, authentication-flow, application-exclusion, or other conditions.\n"
         },
         "entra.correct.unmanaged.session": {
           "meta": {
@@ -16252,7 +16252,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below. It does not cover browser sessions, other platforms or any other resource — those are not protected by this policy and are not blocked by it either.\n\n1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.\n4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.\n5. Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.\n6. Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Leave Browser unselected. Microsoft's own warning: not configuring this condition, or leaving Browser selected, can block web apps that sign in through the browser, Teams on the web among them.\n7. Under **Conditions > Filter for devices**, configure **Exclude filtered devices from policy** with `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`.\n8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.\n9. Set **Enable policy** to **Report-only**, then create it.\n10. Rescan IAMAI before considering enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below. It does not cover browser sessions, other platforms or any other resource — those are not protected by this policy and are not blocked by it either.\n\n1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.\n4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.\n5. Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.\n6. Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Leave Browser unselected. Microsoft's own warning: not configuring this condition, or leaving Browser selected, can block web apps that sign in through the browser, Teams on the web among them.\n7. Under **Conditions > Filter for devices**, set **Configure** to **Yes**, then set **Devices matching the rule** to **Exclude filtered devices from policy** with `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`. Left at **No** the filter is not applied and Microsoft Entra joined Cloud PCs, which token protection does not support, are blocked.\n8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.\n9. Set **Enable policy** to **Report-only**, then create it.\n10. Rescan IAMAI before considering enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -16336,7 +16336,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Conditions > Filter for devices**, set the filter to **Exclude filtered devices from policy** using `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`.\n"
+          "text": "Under **Conditions > Filter for devices**, set **Configure** to **Yes**, then set the filter to **Exclude filtered devices from policy** using `device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"`. Left at **No** the filter is not applied and Microsoft Entra joined Cloud PCs, which token protection does not support, are blocked.\n"
         },
         "entra.correct.conditions.remove-noncanonical": {
           "meta": {
@@ -16868,7 +16868,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "After the SharePoint setting has changed **and IAMAI has rescanned**, create each policy in Report-only. It will not enforce its access rule until you enable it. Leave Grant unconfigured on both.\n\n- **{{policies.unmanagedBrowser.a.target.displayName}}** (Policy A): Target resources: Office 365; Client apps: Browser; apply the device condition shown in the intended target; Session: **Use app enforced restrictions**.\n- **{{policies.unmanagedBrowser.b.target.displayName}}** (Policy B), only when Defender for Cloud Apps is licensed (`license.defenderCloudApps` is true): Target resources: Office 365; apply the device filter and the other conditions shown in the intended target; Session: **Use Conditional Access App Control** with **Block downloads**.\n\nIf Defender for Cloud Apps is not licensed, do not create Policy B; the step is not complete without it. Test each affected service separately after enforcement: the SharePoint setting does not configure Exchange mailbox restrictions.\n"
+          "text": "After the SharePoint setting has changed **and IAMAI has rescanned**, create each policy in Report-only. It will not enforce its access rule until you enable it. Leave Grant unconfigured on both.\n\n- **{{policies.unmanagedBrowser.a.target.displayName}}** (Policy A): Target resources: Office 365; Client apps: set **Configure** to **Yes**, then Browser — left at **No** it reaches every client app; apply the device condition shown in the intended target; Session: **Use app enforced restrictions**.\n- **{{policies.unmanagedBrowser.b.target.displayName}}** (Policy B), only when Defender for Cloud Apps is licensed (`license.defenderCloudApps` is true): Target resources: Office 365; apply the device filter and the other conditions shown in the intended target; Session: **Use Conditional Access App Control** with **Block downloads**.\n\nIf Defender for Cloud Apps is not licensed, do not create Policy B; the step is not complete without it. Test each affected service separately after enforcement: the SharePoint setting does not configure Exchange mailbox restrictions.\n"
         },
         "entra.correct-set": {
           "meta": {
