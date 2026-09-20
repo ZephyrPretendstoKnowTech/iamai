@@ -5672,11 +5672,9 @@
         "wanted": "12 hours",
         "wantedValue": "12 hours",
         "policyName": "Core - Session - Non-persistent browser sessions",
-        "policyNameA": "Core - Session - Non-persistent browser sessions",
         "enforceLong": "Tuesday, September 15",
         "signature": "IT",
         "existingPolicies": [],
-        "policyNameB": "Core - Session - Unmanaged device sessions",
         "enforce": "Tue Sep 15",
         "from": "Aug 1"
       },
@@ -5687,7 +5685,7 @@
       "whatToDoReference": {
         "lead": "One policy, as the pinned baseline has it: everyone's browser sessions.",
         "steps": [
-          "Policy A: {policyNameA}: {portalRoot}",
+          "{policyName}: {portalRoot}",
           "Before this policy: turn off Remember multifactor authentication on trusted devices; the two together prompt people unexpectedly.",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
