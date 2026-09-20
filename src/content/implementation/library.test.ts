@@ -14,7 +14,7 @@ import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafel
 import type { RuntimeContext } from './project.ts'
 import { contentStepFor, contentStepForPackage } from '../stepTitle.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
@@ -27,7 +27,10 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 type Placed = { step: Step; ctx: StepVarContext }
 
 function placed(name: 'small' | 'demo' | 'demo-week2'): Placed[] {
-  const f = fixture(name)
+  // The foundation gate withholds every policy's implementation until Emergency
+  // Access and Direction are settled (owner, 2026-09-19), and this file is about
+  // what a package projects once a step may act — so the fixtures arrive settled.
+  const f = withFoundationSettled(fixture(name))
   const r = runFixture(f)
   return r.steps.map((step) => ({ step, ctx: { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null } }))
 }
