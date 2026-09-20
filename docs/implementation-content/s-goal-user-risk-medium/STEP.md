@@ -30,10 +30,10 @@ Current matching policy and stable tenant policy ID; semantic mismatches; canoni
 - Users: All users, with the exact IAMAI-resolved canonical group exclusions.
 - Guest/external users: exclude all guest/external types for this retained step.
 - Target resources: All resources; no application exclusions.
-- Client apps: All.
-- User risk: Medium only.
+- Client apps: left unconfigured, which is every client app; the four named client types are not the same value.
+- User risk: Medium only, set through Configure = Yes.
 - No sign-in-risk, location, platform, device/filter, authentication-flow, or workload-risk condition.
-- Grant: Require multifactor authentication **and** Require password change; operator AND.
+- Grant: the pinned baseline's authentication strength **and** Require password change; operator AND. Microsoft's Graph grant reference pairs `passwordChange` with the built-in `mfa` control instead, and the deployable JSON and PowerShell keep that documented pairing; the difference is recorded below.
 - Session controls: none.
 - Lifecycle: Report-only before enforcement, then On.
 

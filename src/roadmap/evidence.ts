@@ -9,8 +9,16 @@ import type { Evidence } from './types.ts'
 const RISK_HIGH_GOALS = new Set(['sign-in-risk', 'user-risk'])
 const RISK_MEDIUM_GOALS = new Set(['sign-in-risk-medium', 'user-risk-medium'])
 
-/** Risk evidence (prompt 47 item 6): a medium-or-above policy affects the medium and the high sign-ins. */
-function riskIds(signals: (UsageSignal | undefined)[]): string[] {
+/**
+ * Risk evidence (prompt 47 item 6): a medium-or-above policy affects the medium
+ * and the high sign-ins.
+ *
+ * Exported because the risk steps' who-lines name the same people the reach
+ * counts (derive/contentLists.ts riskyUsers / mediumRiskUsers): the union rule
+ * is one rule, so the names on the step and the number beside them cannot come
+ * apart.
+ */
+export function riskIds(signals: (UsageSignal | undefined)[]): string[] {
   const present = signals.filter((s): s is UsageSignal => s !== undefined)
   return [...new Set(present.flatMap((s) => s.userIds))]
 }

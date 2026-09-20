@@ -36,8 +36,8 @@ The canonical policy is:
   - `cc15fd57-2c6c-4117-a88c-83b1d56b4bbe` — Microsoft Teams Services;
   - `9cdead84-a844-4324-93f2-b2e6bb768d07` — Azure Virtual Desktop;
   - `0af06dc6-e4b5-4f28-818e-e78e62d137a5` — Windows 365.
-- Device platform: Windows only.
-- Client apps: Mobile apps and desktop clients only.
+- Device platform: Windows only, set through Configure = Yes; at No the policy applies to all device platforms.
+- Client apps: Mobile apps and desktop clients only, set through Configure = Yes; at No, or with Browser selected, browser-based web apps are blocked.
 - Device filter: Exclude devices matching `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`.
 - No risk, location, user-action, or authentication-flow condition.
 - No grant control.

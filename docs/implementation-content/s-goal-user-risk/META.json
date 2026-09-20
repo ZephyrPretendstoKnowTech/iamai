@@ -368,7 +368,7 @@
       "title": "Require remediation for risky users",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-user",
       "purpose": "Current portal configuration for Require risk remediation at High user risk and mandatory Every-time reauthentication.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-policy",
@@ -376,7 +376,7 @@
       "title": "Configure and enable risk policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
       "purpose": "P2 requirement, MFA registration prerequisite, hybrid password-writeback prerequisite, guest/external limitation, and Report-only rollout.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-concept",
@@ -384,7 +384,7 @@
       "title": "Risk-based access policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
       "purpose": "Adaptive risk-remediation behavior, precedence, guest/external limitation, and secure remediation flow.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-remediation",
@@ -392,7 +392,7 @@
       "title": "Remediate risks and unblock users",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
       "purpose": "Distinguishes Conditional Access password-change remediation from SSPR recovery.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-writeback",
@@ -400,7 +400,7 @@
       "title": "Enable Microsoft Entra password writeback",
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr-writeback",
       "purpose": "Hybrid password-writeback configuration when on-premises-synced users are in scope.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-grant-v1",
@@ -408,7 +408,7 @@
       "title": "conditionalAccessGrantControls resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
       "purpose": "v1.0 riskRemediation enum and requirement to pair riskRemediation with authenticationStrength using AND.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-condition-v1",
@@ -416,7 +416,7 @@
       "title": "conditionalAccessConditionSet resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
       "purpose": "v1.0 userRiskLevels and condition schema.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-create-v1",
@@ -424,7 +424,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "v1.0 create endpoint and least-privileged permissions/roles.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-update-v1",
@@ -432,7 +432,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "v1.0 update semantics and stable-ID PATCH endpoint.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-get-v1",
@@ -440,7 +440,7 @@
       "title": "Get conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
       "purpose": "v1.0 stable-ID verification readback.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     }
   ],
   "integrationGaps": [

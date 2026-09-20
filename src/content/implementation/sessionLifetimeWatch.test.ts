@@ -34,7 +34,9 @@ test('session-lifetime report-only: the browser policy alone, verified by its ow
   assert.deepEqual(p.degraded ?? [], [])
   const entra = by(p, 'entra')?.text ?? ''
   assert.match(entra, /^Keep the policy in Report-only while you review the evidence listed for this step\./)
-  assert.match(entra, /confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent/)
+  // The interval is the resolved target's, never a number in the package's own
+  // words (docs/plans/risk-and-sessions-spec.md section 7).
+  assert.match(entra, /confirm the policy applies to browser sign-ins with the intended target's sign-in frequency and Never persistent/)
   assert.doesNotMatch(entra, POLICY_B)
   const ps = by(p, 'powershell')
   assert.ok(ps, JSON.stringify(p.degraded))

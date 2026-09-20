@@ -1184,7 +1184,7 @@
       ],
       "correctionModules": 6,
       "requiredBindings": 4,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -2115,12 +2115,14 @@
         "s-goal-user-risk"
       ],
       "optionalBy": [
-        "s-goal-pim-activation-reauth"
+        "s-goal-pim-activation-reauth",
+        "s-goal-user-risk-medium"
       ],
       "packages": [
         "s-goal-device-registration-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-user-risk"
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
       ],
       "type": "string",
       "meaning": "Tenant authentication-strength display name resolved by IAMAI when available",

@@ -14,9 +14,9 @@ Create this policy in Report-only. It will not enforce its access rule until you
 2. Name: `{{policy.target.displayName}}`.
 3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.
 4. Target resources: **All resources**.
-5. Conditions → User risk: **Medium** only.
-6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions.
-7. Grant: **Grant access** → Require multifactor authentication **and** Require password change → **Require all selected controls**.
+5. Conditions → User risk: set **Configure** to **Yes**, then **Medium** only. Left at **No** the policy has no risk condition, and its password-change requirement reaches every sign-in.
+6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions. Microsoft's grant reference allows this policy only the users, applications and user-risk conditions.
+7. Grant: **Grant access** → Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change → **Require all selected controls**. That is the pair the pinned baseline holds, and it is what IAMAI compares the tenant against. Microsoft's Graph reference documents `passwordChange` paired with the built-in `mfa` control instead, which is the pair the JSON and PowerShell outputs on this step write; a policy built that way reads as a difference here until the baseline or the policy moves.
 8. Session: not configured.
 9. Enable policy: **Report-only**.
 10. Create, read back, and rescan IAMAI.
@@ -33,19 +33,19 @@ Set Users to All users; exclude exactly `{{policy.target.excludeGroups}}`; exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.target","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Target resources to All resources with no application exclusions. Keep client apps All.
+Set Target resources to All resources with no application exclusions. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.risk","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Conditions → User risk to Medium only. Remove sign-in risk and any other condition IAMAI identified as a difference.
+Set Conditions → User risk to **Configure: Yes**, then Medium only, because at **No** the policy has no risk condition and its password-change requirement reaches every sign-in. Remove sign-in risk and any other condition IAMAI identified as a difference.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set the conditions to the intended set: All users with the resolved group exclusions and all guest/external types excluded; All resources; client apps All; user risk Medium only; no other condition.
+Set the conditions to the intended set: All users with the resolved group exclusions and all guest/external types excluded; All resources; Client apps left unconfigured, which is every client app; user risk Medium only through Configure: Yes; no other condition.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to Require multifactor authentication **and** Require password change, Require all selected controls. Remove Require risk remediation and any authentication strength from this grant; password change is paired only with Require multifactor authentication.
+Set Grant to Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change, Require all selected controls. That is the pinned baseline's pair, and the one IAMAI compares against. Do not add Require risk remediation: Microsoft's grant reference says password change and risk remediation are used separately, never together.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -77,7 +77,7 @@ Verify the same policy and its prerequisites, set it to On, then complete the ch
 2. Change only Enable policy from Report-only to **On**. Leave users, exclusions, conditions and grant unchanged, and leave the High-risk policy unchanged.
 3. Read back the policy and rescan IAMAI.
 
-Verify after the change: the policy reads back On with Medium user risk only, All resources, the resolved group exclusions, all guest/external types excluded, and Require multifactor authentication and Require password change (all selected). The separate High-risk policy is still enabled. Users in scope have MFA registered, and password writeback works for synchronized users.
+Verify after the change: the policy reads back On with Medium user risk only, All resources, the resolved group exclusions, all guest/external types excluded, and the grant pair this step's create procedure names (all selected). The separate High-risk policy is still enabled. Users in scope have MFA registered, and password writeback works for synchronized users.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -254,7 +254,7 @@ This state for Reset Passwords for Medium-Risk Users in {{tenant.displayName}} i
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-This state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; Require multifactor authentication and Require password change, with all selected controls required; no session controls.
+This state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; the pinned baseline's authentication strength and Require password change, with all selected controls required; no session controls. The JSON and PowerShell outputs write Microsoft's documented pairing of password change with the built-in multifactor control instead, because the Graph grant reference pairs them that way; say so rather than presenting the two as the same policy.
 
 This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage. Do not add Require risk remediation to this grant, and do not retire the High-risk policy as part of this step.
 @@IAMAI-END
