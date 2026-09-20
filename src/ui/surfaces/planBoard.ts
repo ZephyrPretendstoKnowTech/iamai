@@ -435,9 +435,15 @@ export function groupTitleOf(group: StepGroup, complete: boolean): string {
 }
 
 /**
- * The board groups the pinned groups draw: an open group above the lanes, and a
- * completed one in the aside only when completed work is asked for (Show
+ * The board groups the pinned groups draw WHOLE: an open group above the lanes,
+ * and a completed one in the aside only when completed work is asked for (Show
  * completed, the Completed summary) or one of its members is the open step.
+ *
+ * `active` is the summary views' reading, where there is no lane to filter by.
+ * A lane tab does not use it (owner, 2026-09-20): Ready, Up Next and On Hold
+ * now filter the pinned groups exactly as they filter every other group, and
+ * the pinned groups a tab draws come out of `groupsFor` with the rest and are
+ * lifted above the tabs by `splitPinned`. Seeing a whole group has its own tab.
  */
 export function pinnedBoardGroups(pinned: readonly GroupPartition[], show: { completed: boolean; open: string | null }): { active: BoardGroup[]; completed: BoardGroup[] } {
   const active: BoardGroup[] = []
@@ -449,9 +455,22 @@ export function pinnedBoardGroups(pinned: readonly GroupPartition[], show: { com
   return { active, completed }
 }
 
-/** Whether the open step belongs to a pinned group still open, so it is drawn above the lanes and under no tab. */
-export const openInActivePinnedGroup = (pinned: readonly GroupPartition[], open: string | null): boolean =>
-  open !== null && pinned.some(p => !p.complete && p.group.members.includes(open))
+/**
+ * The groups a tab drew, split into the pinned ones — lifted above the tab strip
+ * in their own board — and the rest, in the order the tab handed them over.
+ *
+ * Pinning is a POSITION and no longer an exemption from the filter (owner,
+ * 2026-09-20). Emergency Access and Direction are filtered by the lane tab like
+ * every other group, so they appear here only when they have a row in that lane
+ * and their headings read `N of M steps` for the same reason every other
+ * filtered group's does. Which rows are in them is `groupsFor`'s answer and
+ * nothing here re-decides it.
+ */
+export function splitPinned(drawn: readonly BoardGroup[], groups: readonly StepGroup[] = STEP_GROUPS): { pinned: BoardGroup[]; rest: BoardGroup[] } {
+  const keys = new Set(pinnedGroups(groups).map(g => g.key))
+  const isPinned = (g: BoardGroup): boolean => { const key = groupKeyOf(g, groups); return key !== null && keys.has(key) }
+  return { pinned: drawn.filter(isPinned), rest: drawn.filter(g => !isPinned(g)) }
+}
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
