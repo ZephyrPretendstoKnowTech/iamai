@@ -10259,7 +10259,7 @@
             "title": "Configure Microsoft Entra role settings in PIM",
             "url": "https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings",
             "purpose": "Current authentication-context ordering, backup-MFA behavior, Every time reauthentication, 10-minute activation window, and PIM configuration guidance.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -10277,7 +10277,7 @@
             "title": "Create or Update authenticationContextClassReference - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/authenticationcontextclassreference-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 create/update endpoint, publish flag, permissions and roles for authentication context.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10291,7 +10291,7 @@
             "title": "Conditional Access: Target resources",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
             "purpose": "Current Conditional Access authentication-context targeting behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -10307,7 +10307,7 @@
             "title": "Update unifiedRoleManagementPolicyRule - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 PIM rule PATCH endpoint, authentication-context rule support, delegated permissions and Privileged Role Administrator requirement.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10322,7 +10322,7 @@
             "title": "Get unifiedRoleManagementPolicyRule - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-get?view=graph-rest-1.0",
             "purpose": "Graph v1.0 verification of the PIM authentication-context rule.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -10336,7 +10336,7 @@
             "title": "License requirements to use Privileged Identity Management",
             "url": "https://learn.microsoft.com/en-us/entra/id-governance/licensing-fundamentals",
             "purpose": "PIM licensing requirement context.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "supporting",
             "audience": [
@@ -10350,7 +10350,7 @@
             "title": "Configure authentication session management with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Every time sign-in-frequency semantics used by the CA policy.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "supporting",
             "audience": [
@@ -10412,7 +10412,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. PIM role settings are not changed in this step.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policy.target.displayName}}`.\n2. Users: Include All users; exclude the resolved exclusion groups.\n3. Target resources → Authentication context: `{{authContext.target.displayName}}` (`{{authContext.target.id}}`).\n4. Conditions: no additional risk, location, platform, device, or authentication-flow condition.\n5. Grant: Grant access → Require authentication strength → IAMAI-resolved target strength.\n6. Session → Sign-in frequency → **Every time**.\n7. Enable policy: **Report-only**.\nSave, read back, and rescan IAMAI. Do not configure PIM role settings yet.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. PIM role settings are not changed in this step.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policy.target.displayName}}`.\n2. Users: Include All users; exclude the resolved exclusion groups. Never scope this policy to directory roles: at activation the person does not hold the role yet, so a role-scoped policy would not apply.\n3. Target resources → Authentication context: `{{authContext.target.displayName}}` (`{{authContext.target.id}}`).\n4. Conditions: no additional risk, location, platform, device, or authentication-flow condition.\n5. Grant: Grant access → Require authentication strength → IAMAI-resolved target strength.\n6. Session → Sign-in frequency → **Every time**.\n7. Enable policy: **Report-only**.\nSave, read back, and rescan IAMAI. Do not configure PIM role settings yet.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -10556,7 +10556,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "With the matching Conditional Access policy verified **On**: Entra ID → Identity governance → Privileged Identity Management → Microsoft Entra roles → Role settings. For each IAMAI-selected role, edit Activation settings and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.\n"
+          "text": "With the matching Conditional Access policy verified **On**: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For each IAMAI-selected role, open **Role settings** → **Edit** and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`, then **Update**. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.\n"
         },
         "entra.verify-activation": {
           "meta": {

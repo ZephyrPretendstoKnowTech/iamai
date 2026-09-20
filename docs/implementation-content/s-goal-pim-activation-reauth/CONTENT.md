@@ -10,7 +10,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 
 Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 1. Name: `{{policy.target.displayName}}`.
-2. Users: Include All users; exclude the resolved exclusion groups.
+2. Users: Include All users; exclude the resolved exclusion groups. Never scope this policy to directory roles: at activation the person does not hold the role yet, so a role-scoped policy would not apply.
 3. Target resources → Authentication context: `{{authContext.target.displayName}}` (`{{authContext.target.id}}`).
 4. Conditions: no additional risk, location, platform, device, or authentication-flow condition.
 5. Grant: Grant access → Require authentication strength → IAMAI-resolved target strength.
@@ -61,7 +61,7 @@ Open the dedicated policy by its policy ID. Confirm the authentication context i
 Verify after the change: the policy reads back On. Update PIM role settings only after this check succeeds. The policy applies only when a sign-in requests this authentication context, such as a PIM activation configured to require it.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.pim.configure","channel":"entra","states":["pimSettingsPending"],"format":"markdown","kind":"template"}
-With the matching Conditional Access policy verified **On**: Entra ID → Identity governance → Privileged Identity Management → Microsoft Entra roles → Role settings. For each IAMAI-selected role, edit Activation settings and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.
+With the matching Conditional Access policy verified **On**: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For each IAMAI-selected role, open **Role settings** → **Edit** and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`, then **Update**. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.verify-activation","channel":"entra","states":["verificationPending"],"format":"markdown","kind":"template"}
 Verify after the change: use a controlled eligible admin or test account to activate one selected role. Confirm activation invokes the expected Conditional Access requirement, then confirm the role activated. Microsoft can reuse a recent reauthentication for another activation within its documented 10-minute window, so a second activation soon afterward may not prompt again. Rescan IAMAI.
