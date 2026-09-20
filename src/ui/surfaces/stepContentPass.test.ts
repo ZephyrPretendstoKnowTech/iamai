@@ -31,7 +31,7 @@ const planOf = (name: FixtureName) => {
 
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-test('every package a step doc asks to date shows Source checked for the 2026-09-12 check', () => {
+test('every package a step doc asks to date shows a dated Microsoft Learn source, no older than the 2026-09-12 check', () => {
   const dated = [
     's-prereq-break-glass', 's-prereq-exclusion-group', 's-verify-mfa', 's-goal-block-legacy-auth', 's-goal-admins-phishing-resistant',
     's-prereq-auth-strength', 's-prereq-trusted-location', 's-prereq-allowed-countries', 's-check-separate-admin-accounts', 's-goal-admin-session',
@@ -42,7 +42,13 @@ test('every package a step doc asks to date shows Source checked for the 2026-09
     const pkg = PACKAGES[id]
     assert.ok(pkg, `${id}: not registered`)
     const sources = (pkg.meta.verifiedSources ?? []) as { checkedOn?: string; userFacing?: boolean; url?: string }[]
-    assert.ok(sources.some((v) => v.checkedOn === '2026-09-12' && v.userFacing === true && /^https:\/\/learn\.microsoft\.com\//.test(v.url ?? '')), `${id}: no Microsoft Learn source checked 2026-09-12`)
+    // The date moves when a wave rechecks the facts (close-doors, 2026-09-19):
+    // what is pinned is that the source is Microsoft's, shown to the person, and
+    // no older than the sweep that established the line.
+    assert.ok(
+      sources.some((v) => v.userFacing === true && /^https:\/\/learn\.microsoft\.com\//.test(v.url ?? '') && /^\d{4}-\d{2}-\d{2}$/.test(v.checkedOn ?? '') && (v.checkedOn as string) >= '2026-09-12'),
+      `${id}: no Microsoft Learn source checked on or after 2026-09-12`,
+    )
     assert.ok(packageSourceLine(pkg, CONTRACT.implementation), `${id}: no Source checked line`)
   }
 })

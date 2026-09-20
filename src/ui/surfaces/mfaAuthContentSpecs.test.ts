@@ -215,7 +215,7 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.'],
+        ['Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.'],
       ],
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
@@ -254,7 +254,7 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.'],
+        ['Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.'],
       ],
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
