@@ -5747,7 +5747,7 @@
       "kind": "policy",
       "title": "Require a Fresh Sign-in for Intune Enrollment",
       "changeLine": null,
-      "why": "A fresh authentication check during user-driven enrollment reduces reliance on an older sign-in session. Test the enrollment methods your organization uses so setup can still finish.",
+      "why": "Enrolling a device in Intune asks the person to sign in again, so an open session cannot quietly turn a device into a managed one. It is a session control and nothing else: it adds no MFA requirement and it does not make the device compliant.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime"
       },
@@ -5775,10 +5775,20 @@
           {
             "text": "Enrollment methods use different authentication paths. Test each user-driven or automated method used by this tenant; a policy matching one path does not prove another works.",
             "applies": "always"
+          },
+          {
+            "text": "A self-deploying Autopilot device signs itself in with its own hardware and no person, so it never sees this prompt. Prove the prompt on a user-driven enrollment, and prove those flows still finish separately.",
+            "applies": "always"
+          },
+          {
+            "text": "Microsoft says not to put a device-based rule on Intune enrollment: a device cannot already be compliant at the moment it is being enrolled.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Enrollment asks to sign in again even though the person just did: expected."
+          "Enrollment asks to sign in again even though the person just did: expected.",
+          "A corporate-owned device enrolled through Apple automated device enrollment, or an Android Enterprise fully managed device, needs a second device or a Temporary Access Pass to answer the challenge.",
+          "Two prompts in five minutes: it will not happen. Microsoft allows five minutes of clock skew on Every time, so nobody is asked more often than that."
         ],
         "manager": "User-driven enrollment asks for a fresh authentication, so an older session is not reused for it. This session setting does not add MFA or make the device compliant.",
         "waits": null

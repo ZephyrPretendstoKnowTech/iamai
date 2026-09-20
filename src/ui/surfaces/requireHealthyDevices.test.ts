@@ -225,3 +225,50 @@ test('D9: the step says IAMAI reads no Intune policy, on the step and in the pro
 test('D10: the package’s checked date is 2026-09-20', () => {
   assert.equal(checkedOn(MANAGED), '2026-09-20')
 })
+
+// ---------------------------------------------------------------------------
+// Require a Fresh Sign-in for Intune Enrollment (spec section 4)
+// ---------------------------------------------------------------------------
+
+test('E1: About this Step is the outcome, and says what this control is not', () => {
+  const about = aboutOf(bodyOf('demo', INTUNE))
+  assert.match(about, /sign in again/)
+  assert.match(about, /adds no MFA requirement and it does not make the device compliant/)
+  assert.doesNotMatch(about, /reduces reliance on an older sign-in session/)
+})
+
+test('E2: the client-apps condition is left unconfigured, and the procedure says what that means', () => {
+  const create = blockText(INTUNE, 'entra.create')
+  assert.match(create, /leave every condition unconfigured, \*\*Client apps\*\* included/)
+  assert.match(create, /At \*\*Configure: No\*\* the client-apps condition reaches every client app, which is the target here/)
+  assert.doesNotMatch(create, /Conditions: leave all blank\. Client apps: All\./)
+  assert.match(blockText(INTUNE, 'entra.correct.conditions'), /Leave \*\*Client apps\*\* at \*\*Configure: No\*\*/)
+})
+
+test('E3: the procedure says the baseline adds no grant where Microsoft’s own enrollment recipe adds one', () => {
+  assert.match(blockText(INTUNE, 'entra.create'), /Microsoft's own enrollment recipe adds one; the pinned baseline does not/)
+})
+
+test('E4: a risk says Microsoft’s own instruction is no device-based rule on enrollment, and why', () => {
+  const risks = risksOf('intune-enrollment-reauth').join('\n')
+  assert.match(risks, /Microsoft says not to put a device-based rule on Intune enrollment/)
+  assert.match(risks, /cannot already be compliant at the moment it is being enrolled/)
+})
+
+test('E5: a risk says a self-deploying device never sees this prompt, so the proof comes from a user-driven enrollment', () => {
+  assert.match(risksOf('intune-enrollment-reauth').join('\n'), /self-deploying Autopilot device signs itself in with its own hardware and no person/)
+})
+
+test('E6: help desk names the devices that need a second device or a Temporary Access Pass, and the five-minute skew', () => {
+  const help = helpDeskOf('intune-enrollment-reauth').join('\n')
+  assert.match(help, /Apple automated device enrollment, or an Android Enterprise fully managed device, needs a second device or a Temporary Access Pass/)
+  assert.match(help, /five minutes of clock skew on Every time/)
+})
+
+test('E7: the manager line still says user-driven enrollment asks for a fresh authentication', () => {
+  assert.match(String((stepById['intune-enrollment-reauth'] as unknown as { more?: { manager?: string } }).more?.manager ?? ''), /User-driven enrollment asks for a fresh authentication/)
+})
+
+test('E8: the package’s checked date is 2026-09-20', () => {
+  assert.equal(checkedOn(INTUNE), '2026-09-20')
+})
