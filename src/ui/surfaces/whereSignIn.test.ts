@@ -303,3 +303,52 @@ test('S5: the package carries a dated Microsoft Learn source, where it carried n
   assert.equal(checkedOn('s-prereq-service-accounts-group'), '2026-09-20')
   assert.equal(bodiesOf('demo').get('s-prereq-service-accounts-group')!.sourceLine, 'Source checked Sep 20, 2026')
 })
+
+// ---------------------------------------------------------------------------
+// Restrict Service Accounts to the Trusted Network (spec section 7)
+// ---------------------------------------------------------------------------
+
+test('N1: the held step’s Completion Criteria is this step’s outcome, not the shared sentence', () => {
+  for (const f of ['demo', 'demo-week2'] as const) {
+    const done = bodiesOf(f).get('s-goal-service-accounts-trusted-network')!.contract.doneWhen
+    assert.ok(done.some((l: string) => /can sign in to .+ only from the approved trusted network, and every job that uses one has been run from there and recorded/.test(l)), `${f}: ${done.join('\n')}`)
+    assert.ok(!done.some((l: string) => /^The policy is enforced in .+\.$/.test(l)), `${f}: ${done.join('\n')}`)
+  }
+})
+
+test('N2: the network condition is set through Configure: Yes, in create and in correct', () => {
+  const create = blockText('s-goal-service-accounts-trusted-network', 'entra.create')
+  assert.match(create, /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(create, /Left at \*\*No\*\* the network condition is not configured/)
+  assert.match(blockText('s-goal-service-accounts-trusted-network', 'entra.correct.network'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(allText('service-accounts-trusted-network'), /Configure: Yes, then Include: Any network or location/)
+})
+
+test('N3: no procedure of this step uses an old location label', () => {
+  const text = packageText('s-goal-service-accounts-trusted-network').replace(/Any network or location/g, '')
+  assert.doesNotMatch(text, /Any network\/location/)
+  assert.doesNotMatch(allText('service-accounts-trusted-network').replace(/Any network or location/g, ''), /Any location/)
+})
+
+test('N4: the step’s Learn link is the page that documents the condition it uses', () => {
+  const b = bodiesOf('demo').get('s-goal-service-accounts-trusted-network')!
+  assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network')
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)['s-goal-service-accounts-trusted-network']?.meta
+  assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === b.learnUrl), 'the package cites a different page from the step')
+  // The four-year-old architecture page stays where it is about: which accounts.
+  assert.equal(String((stepById['s-prereq-service-accounts-group'] as unknown as { learn?: { url?: string } }).learn?.url), 'https://learn.microsoft.com/entra/architecture/secure-service-accounts')
+})
+
+test('N5: the manager line names where a service principal is covered instead', () => {
+  const manager = String((stepById['service-accounts-trusted-network'] as unknown as { more?: { manager?: string } }).more?.manager ?? '')
+  assert.match(manager, /not blocked by a policy scoped to users/)
+  assert.match(manager, /Restrict the Entra Connect Sync Account to Its Address/)
+  assert.match(blockText('s-goal-service-accounts-trusted-network', 'entra.prerequisites'), /not enforced for a service principal inside it/)
+})
+
+test('N6: the step shows the date its Microsoft sources were checked, on both scans', () => {
+  assert.equal(checkedOn('s-goal-service-accounts-trusted-network'), '2026-09-20')
+  for (const f of ['demo', 'demo-week2'] as const) {
+    assert.equal(bodiesOf(f).get('s-goal-service-accounts-trusted-network')!.sourceLine, 'Source checked Sep 20, 2026')
+  }
+})

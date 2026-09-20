@@ -6120,7 +6120,7 @@
       "changeLine": null,
       "why": "Restricting user-based service accounts to approved networks can reduce where their passwords are useful. Review all job locations so an infrequent or vendor-hosted process is not missed.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
       "who": {
         "lead": "{n} service accounts, in {serviceAccountsGroup}:",
@@ -6132,6 +6132,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The user-based service accounts in the group can sign in to {tenant} only from the approved trusted network, and every job that uses one has been run from there and recorded.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Each required job works from its expected network, including scheduled and infrequent ones."
@@ -6155,7 +6156,7 @@
         "helpDesk": [
           "Inspect the failed job's account, sign-in result and public egress address. Confirm whether the job belongs on an already approved network; adding a new trusted network changes every policy that relies on that trust."
         ],
-        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. This does not cover service principals or managed identities.",
+        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. A call made by a service principal is not blocked by a policy scoped to users; covering one takes Conditional Access for workload identities, which Restrict the Entra Connect Sync Account to Its Address builds.",
         "waits": null
       },
       "example": {
@@ -6181,7 +6182,7 @@
           "Name: {policyName}",
           "Users → Include: Groups: {serviceAccountsGroup}. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {trustedLocation}",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
