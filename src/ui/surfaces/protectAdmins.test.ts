@@ -168,8 +168,10 @@ test('A8: the Cleanup row this step waits on is named, not printed as its id', (
     for (const f of readdirSync(join('docs/qa/step-snapshots', fx))) {
       const snap = JSON.parse(readFileSync(join('docs/qa/step-snapshots', fx, f), 'utf8')) as { tiles: { label: string; state: string }[] }
       for (const t of snap.tiles) {
-        if (/^(cleanup|s)-[a-z0-9-]+$/.test(t.state)) raw.push(`${fx}/${f}: ${t.state}`)
-        if (t.state === 'Verify Emergency Access') named.push(`${fx}/${f}`)
+        // The step a prerequisite card names is its heading now, and the
+        // prerequisite word is its check (owner, 2026-09-20; quality audit 2.4).
+        if (/^(cleanup|s)-[a-z0-9-]+$/.test(t.label)) raw.push(`${fx}/${f}: ${t.label}`)
+        if (t.label === 'Verify Emergency Access') named.push(`${fx}/${f}`)
       }
     }
   }
