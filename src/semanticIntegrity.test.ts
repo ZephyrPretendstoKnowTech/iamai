@@ -441,15 +441,20 @@ test('042.12: the sample tenant runs the production path and states the producti
   const { fixture } = await import('./roadmap/fixtures/index.ts')
   const { runFixture } = await import('./roadmap/fixtures/run.ts')
   const { facts, stepFacts } = await import('./derive/facts.ts')
+  const { customerPlanSteps } = await import('./ui/surfaces/customerPlanSteps.ts')
   const d = demoTenant(false)
   const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
   const cleanup = run.schedule.cleanup ?? null
-  const counts = stepFacts(run.steps, cleanup, d.mapping.breakGlassAnswers ?? null)
+  // The rows the Plan draws, which is the engine's steps through the one
+  // projection every plan surface reads (ui/surfaces/planData.ts): the tile
+  // states the Plan it opens, so it counts what that Plan draws.
+  const drawn = customerPlanSteps(run.steps)
+  const counts = stepFacts(drawn, cleanup, d.mapping.breakGlassAnswers ?? null)
   const shown = demoFacts()
   assert.equal(shown.people, facts(d.snapshot, d.mapping).active, 'the sample tile counts people its own way')
   assert.equal(shown.steps, counts.steps, 'the sample tile counts steps its own way')
   assert.equal(shown.inPlace, counts.done, 'the sample tile counts what is in place its own way')
-  assert.equal(shown.weeks, planWeeks(planFinish(run.steps, cleanup?.end ?? null), run.schedule), 'the sample tile computes weeks its own way')
+  assert.equal(shown.weeks, planWeeks(planFinish(drawn, cleanup?.end ?? null), run.schedule), 'the sample tile computes weeks its own way')
 })
 
 // ---- the Cleanup row: one completion, one word, on every surface ----
