@@ -1,5 +1,11 @@
 @@IAMAI-BEGIN {"id":"entra.intune-prerequisite","channel":"entra","states":["missing","partial","reportOnly"],"format":"markdown","kind":"template"}
-In **Intune admin center → Devices → Compliance → Compliance policy settings**, set **Mark devices with no compliance policy assigned as** to **Not compliant**. In the compliance policies assigned to the intended users and devices, review **Actions for noncompliance** and the **Mark device noncompliant** action. Apply the baseline's 3-day grace period where applicable. The Conditional Access policy accepts a compliant device **or** a Microsoft Entra hybrid joined device; registration alone does not satisfy either control.
+A device is compliant only where a compliance policy in Intune says so, and without one this Conditional Access policy will not do what it says. IAMAI reads no Intune policy, so this part is yours to check.
+
+In **Intune admin center → Endpoint security → Device compliance → Compliance policy settings**, set **Mark devices with no compliance policy assigned as** to **Not compliant**. It ships as **Compliant**, which passes every device nobody wrote a policy for. Leave **Compliance status validity period (days)** where you want it: at the default of 30, a device that has not reported for that long is treated as not compliant.
+
+In each compliance policy assigned to the people and devices in scope, open **Actions for noncompliance**. **Mark device noncompliant** is built in at **Schedule (days after noncompliance)** = 0, which marks a device the moment it fails; the baseline asks for 3 days there, so a device gets a working day to fix itself.
+
+The Conditional Access policy accepts a compliant device **or** a Microsoft Entra hybrid joined device. Registering a device in Microsoft Entra ID satisfies neither on its own.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
@@ -7,7 +13,9 @@ In **Intune admin center → Devices → Compliance → Compliance policy settin
 2. Name: {{policy.target.displayName}}.
 3. Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.
 4. Target resources: All resources.
-5. Conditions → Locations: Include → Any location. Exclude → the resolved trusted locations (the network you defined in the Trusted Network step).
+5. Conditions → set only what IAMAI resolved, and set each one through its own **Configure** toggle:
+   Locations: set **Configure** to **Yes** — at **No** the policy asks for a managed device in the office too — then **{{policy.target.locationWords}}**. [omit this line when unavailable]
+   Device platforms: set **Configure** to **Yes** — at **No** it reaches every platform, including the ones your device answer left out — then **{{policy.target.platformWords}}**. [omit this line when unavailable]
 6. Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.
 7. Session: leave empty.
 8. Enable policy: Report-only. It will not enforce its access rule until you enable it.
@@ -15,7 +23,9 @@ In **Intune admin center → Devices → Compliance → Compliance policy settin
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, excluding the exclusions group and any other exclusions IAMAI resolved from the saved device plan. Target resources: All resources. Locations → Include: Any location; Exclude: the resolved trusted locations. Correct this policy rather than creating a replacement.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, excluding the exclusions group and any other exclusions IAMAI resolved from the saved device plan. Target resources: All resources. Correct this policy rather than creating a replacement.
+Conditions → Locations: set **Configure** to **Yes** — at **No** the policy asks for a managed device in the office too — then **{{policy.target.locationWords}}**. [omit this line when unavailable]
+Conditions → Device platforms: set **Configure** to **Yes** — at **No** it reaches every platform, including the ones your device answer left out — then **{{policy.target.platformWords}}**. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -118,9 +128,11 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, Any location except the resolved trusted locations, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
+State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, the location and device-platform scope listed in the facts below, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
 
-The Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant.
+Each condition is set through its own **Configure** toggle. A condition left at **No** applies to everything, so a policy whose locations or device platforms were never configured reaches the office and the platforms the device answer left out.
+
+The Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant. IAMAI has no permission to read Intune, so it cannot confirm that any compliance policy exists; say that it is unknown rather than treating the prerequisite as met.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}

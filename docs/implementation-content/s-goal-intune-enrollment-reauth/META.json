@@ -349,7 +349,7 @@
       "title": "Common ways to use Conditional Access with Intune",
       "url": "https://learn.microsoft.com/en-us/intune/device-security/conditional-access-integration/scenarios",
       "purpose": "Confirms Microsoft Intune Enrollment is the CA application for enrollment workflow.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-intune-enrollment-mfa",
@@ -357,7 +357,7 @@
       "title": "Require multifactor authentication for Intune device enrollment",
       "url": "https://learn.microsoft.com/en-us/intune/device-enrollment/configure-multifactor-authentication",
       "purpose": "Confirms Intune Enrollment app ID/service-principal caveat, enrollment targeting, Every time option, and warns not to use device-based access rules for enrollment.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-session-lifetime",
@@ -365,7 +365,7 @@
       "title": "Conditional Access adaptive session lifetime policies",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
       "purpose": "Confirms Every time is supported for Microsoft Intune enrollment and describes full reauthentication behavior and loop warning without MFA.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-signin-frequency-v1",
@@ -373,7 +373,7 @@
       "title": "signInFrequencySessionControl resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
       "purpose": "Graph v1.0 Every time session-control shape.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-create-v1",
@@ -381,7 +381,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "Graph v1.0 create endpoint and permissions.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-update-v1",
@@ -389,7 +389,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "Graph v1.0 update endpoint.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-sp-create-v1",
@@ -397,15 +397,15 @@
       "title": "Create servicePrincipal - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-serviceprincipals?view=graph-rest-1.0",
       "purpose": "Supported prerequisite creation when the Intune Enrollment service principal is absent.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-autopilot-selfdeploy",
       "authority": "Microsoft Learn",
-      "title": "Configure Windows Autopilot profiles",
-      "url": "https://learn.microsoft.com/en-us/autopilot/profiles",
-      "purpose": "Confirms self-deploying mode does not require user credentials, so user-driven reauthentication evidence must be evaluated separately.",
-      "checkedOn": "2026-09-10"
+      "title": "Windows Autopilot self-deploying mode",
+      "url": "https://learn.microsoft.com/en-us/autopilot/self-deploying",
+      "purpose": "Self-deploying mode authenticates the device with its own TPM and no user credentials, so it produces no user reauthentication evidence.",
+      "checkedOn": "2026-09-20"
     }
   ],
   "integrationGaps": [

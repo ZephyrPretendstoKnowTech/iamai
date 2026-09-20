@@ -129,7 +129,10 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
 
 test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and it is undated while it waits on the device direction', () => {
   const DEVICE = 's-goal-require-managed-device'
-  assert.equal(CONTRACT.readinessValue.device, '{value} of devices compliant')
+  // Require Healthy Devices D8 (docs/plans/require-healthy-devices-spec.md): the
+  // gate counts the active people who own an in-scope compliant device
+  // (roadmap/readiness.ts), so the value says people, not devices.
+  assert.equal(CONTRACT.readinessValue.device, '{value} of people on a compliant device')
   // Editorial batch C: the exclusions resolved from the device plan, the location include and exclude, the current
   // portal names for the OR grant, and the shared Create sentence.
   assert.deepEqual(authoredParts(packageOf(DEVICE).blocks['entra.create'].text), [
@@ -139,7 +142,12 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
         ['Name: {{policy.target.displayName}}.'],
         ['Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.'],
         ['Target resources: All resources.'],
-        ['Conditions → Locations: Include → Any location. Exclude → the resolved trusted locations (the network you defined in the Trusted Network step).'],
+        // Require Healthy Devices D3/D4: each condition through its own Configure toggle, with the resolved words for both.
+        [
+          'Conditions → set only what IAMAI resolved, and set each one through its own **Configure** toggle:',
+          'Locations: set **Configure** to **Yes** — at **No** the policy asks for a managed device in the office too — then **{{policy.target.locationWords}}**. [omit this line when unavailable]',
+          'Device platforms: set **Configure** to **Yes** — at **No** it reaches every platform, including the ones your device answer left out — then **{{policy.target.platformWords}}**. [omit this line when unavailable]',
+        ],
         ['Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.'],
         ['Session: leave empty.'],
         ['Enable policy: Report-only. It will not enforce its access rule until you enable it.'],
@@ -151,7 +159,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
   const b = bodyOf('demo', DEVICE)
   // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share; the script account left the people counted in 8b71ec1a (29% -> 30%).
-  assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of devices compliant')
+  assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of people on a compliant device')
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
   // One label, and one sentence per card: the 'Before enforcement' relabelling
   // and its composed caveat are gone (owner, 2026-09-19 — "both tasks basically
@@ -166,7 +174,8 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('require-managed-device')
-  assert.equal(words.why, "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.")
+  // Require Healthy Devices D1: About this Step is the step's own outcome.
+  assert.equal(words.why, 'Away from the trusted network, work access needs a device this business manages: one Intune has marked compliant, or a Microsoft Entra hybrid joined Windows computer. A device only registered in Entra meets neither, and a managed device whose app sends no device information is refused as if it were unmanaged.')
   assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a compliant device OR Microsoft Entra hybrid joined device on the selected platforms outside the trusted network, with the approved exclusions applied.')
 })
 
@@ -174,7 +183,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   const INTUNE = 's-goal-intune-enrollment-reauth'
   // Editorial batch C: the shared Create sentence and what this policy does and does not do lead the procedure.
   assert.deepEqual(authoredParts(packageOf(INTUNE).blocks['entra.create'].text), [
-    { kind: 'line', text: 'Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.' },
+    { kind: 'line', text: 'Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant. Microsoft names Intune enrollment as one of the actions Every time is for, and it asks for the sign-in again whenever the session is evaluated.' },
     { kind: 'break' },
     {
       kind: 'list', ordered: true, start: 1, items: [
@@ -182,8 +191,9 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
         ['Name: {{policy.target.displayName}}.'],
         ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
         ['Target resources → Select resources → Microsoft Intune Enrollment (not "All resources" — this policy targets only the enrollment flow).'],
-        ['Conditions: leave all blank. Client apps: All.'],
-        ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.'],
+        // Require Healthy Devices E2/E3: an unconfigured condition is a choice, and it is said as one.
+        ['Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.'],
+        ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft\'s own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.'],
         ['Session → Sign-in frequency: Every time.'],
         ['Enable policy: Report-only.'],
         ['Create. Rescan in IAMAI.'],
@@ -208,7 +218,8 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   assert.equal(ownAi(b), AI)
   const words = stepWords('intune-enrollment-reauth')
   assert.equal(words.doneEnd, 'The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.')
-  assert.equal(words.why, 'A fresh authentication check during user-driven enrollment reduces reliance on an older sign-in session. Test the enrollment methods your organization uses so setup can still finish.')
+  // Require Healthy Devices E1: About this Step is the step's own outcome.
+  assert.equal(words.why, 'Enrolling a device in Intune asks the person to sign in again, so an open session cannot quietly turn a device into a managed one. It is a session control and nothing else: it adds no MFA requirement and it does not make the device compliant.')
   // The shared readiness sentence stays (BLOCKED.md).
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
 })

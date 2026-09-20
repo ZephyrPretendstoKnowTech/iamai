@@ -497,11 +497,14 @@ type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGrou
  *   names, the policy it tracks, the fields a correction changes
  *   (`policy.current.changedFields`).
  *
- * - the target's location scope and grant in the words the step's own portal
- *   lines say them (`policy.target.locationWords`, `policy.target.grantWords`), so
+ * - the target's location scope, device platforms and grant in the words the
+ *   step's own portal lines say them (`policy.target.locationWords`,
+ *   `policy.target.platformWords`, `policy.target.grantWords`), so
  *   a package's portal steps name what the resolved target sets, never a mode it
  *   does not settle (register-info-protected: MFA outside trusted locations is
- *   neither of that package's two modes).
+ *   neither of that package's two modes). The platform words are the device
+ *   decision's own scope on the compliant-device policy: unbound where the
+ *   target carries no platform condition, so the line omits itself.
  *
  * Not bound, because IAMAI does not hold them: evidence it never read, and a
  * choice nobody made. Those stay unbound, and the package's own contract decides
@@ -580,13 +583,14 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // still waiting on a reference binds nothing, as above.
   const declared = implementationPackageFor(step)?.meta
   const declares = (key: string): boolean => [...(declared?.requiredBindings ?? []), ...((declared as { optionalBindings?: string[] } | undefined)?.optionalBindings ?? [])].includes(key)
-  if (declares('policy.target.locationWords') || declares('policy.target.grantWords')) {
+  if (declares('policy.target.locationWords') || declares('policy.target.platformWords') || declares('policy.target.grantWords')) {
     const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
     const wordsAfter = (head: string): string | undefined => {
       const found = portal.filter((l) => l.startsWith(head)).map((l) => l.slice(head.length))
       return found.length > 0 ? found.join('; ') : undefined
     }
     if (settled('conditions') !== null) put('policy.target.locationWords', wordsAfter('Conditions → Locations → '))
+    if (settled('conditions') !== null) put('policy.target.platformWords', wordsAfter('Conditions → Device platforms → '))
     if (settled('grantControls') !== null) put('policy.target.grantWords', wordsAfter('Grant → '))
   }
   const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
