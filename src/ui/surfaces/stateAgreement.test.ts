@@ -15,7 +15,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { groundingBundle, stepContext } from '../../roadmap/prompts.ts'
 import { stateLine, stepArtifactLines } from '../../roadmap/artifactLines.ts'
@@ -27,7 +27,7 @@ import { stepExportView } from './stepExport.ts'
 import { laneReadings } from './planLanes.ts'
 import { doesntApplyView, laneViewOf } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { directionBlockerStep } from '../../roadmap/direction.ts'
+import { waitsOnFoundation } from '../../roadmap/holds.ts'
 
 type Row = Record<string, unknown>
 const fixtures = allFixtures()
@@ -113,15 +113,24 @@ test('A1c: every fixture’s export view states the board’s lane label, and no
 
 test('S7.3: while the plan dates the report-only create, no readiness wait is listed under Fix before continuing', () => {
   let creating = 0
-  for (const f of fixtures) {
+  for (const base of fixtures) {
+    // With the plan's foundation settled (fixtures/run.ts withFoundationSettled):
+    // until it is, no policy step hands a create over at all, so there is no
+    // dated report-only create for this case to be about.
+    const f = withFoundationSettled(base)
     const run = runFixture(f)
     const ctx = ctxOf(f)
     for (const s of run.steps) {
       if (scheduleOf(s).transition !== 'createReportOnly') continue
-      // A step waiting on a Direction answer lists that answer under Fix whatever its date (roadmap/direction.ts; direction.test.ts).
-      if (s.blockers.some((b) => directionBlockerStep(b) !== null)) continue
+      // A step waiting on the plan's foundation - a Direction answer, or Establish
+      // Emergency Access - hands over no create at all (roadmap/holds.ts
+      // waitsOnFoundation), so it is not the case this is about: it lists what it
+      // waits on under Fix whatever its date.
+      if (waitsOnFoundation(s)) continue
       // The step's own threshold is a wait on every reading (stepContract.ts thresholdBinding); the other readiness bindings are the ones at issue.
-      const waits = s.blockers.filter((b) => b.kind === 'readiness' && typeof b.binding === 'string' && !/readiness reaches/.test(b.binding)).map((b) => b.binding as string)
+      // The session-loop wait is not one of these either: it has its own sentence
+      // under Fix (stepContract.ts reads shared.sessionLoopReview for it), not its binding.
+      const waits = s.blockers.filter((b) => b.kind === 'readiness' && b.label !== 'session-loop' && typeof b.binding === 'string' && !/readiness reaches/.test(b.binding)).map((b) => b.binding as string)
       if (waits.length === 0) continue
       creating++
       const c = stepContract(s, ctx)

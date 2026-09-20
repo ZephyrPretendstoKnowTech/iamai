@@ -279,6 +279,25 @@ export type ContractInventory = { label: string; count: number; complete: boolea
 export type ContractAction = {
   kind: 'decide' | 'resolve' | 'preserve' | 'observe' | 'enforce' | 'deploy' | 'verify' | 'restore' | 'none'
   text: string
+  /**
+   * What has to clear before that action can be taken, where the action IS the
+   * wait: Foundation B's own gate (roadmap/lifecycle.ts nextMilestone
+   * `gatedBy`), said in the words the board already shows for it where a board
+   * handed its reading down ("Waiting on your direction", "After Prepare
+   * Emergency Access Accounts"; planBoard.ts laneTailOf reads the same blocker),
+   * and in the engine's own words otherwise.
+   *
+   * It exists because only the screen said it. The export, the print's copy
+   * text, the calendar entry, the prompt pack and the grounding bundle all
+   * printed "Clear what this step is waiting on." and stopped, so the one
+   * channel a person takes to a change board was the one that never said what
+   * the step was waiting for (V1 §3.7: one fact reads the same everywhere).
+   *
+   * Null where nothing gates the action, and null where the action is the work
+   * itself rather than the wait — a line that already says what it waits for
+   * does not say it twice.
+   */
+  gatedBy: string | null
 }
 
 /** Something the operator must go and do before this step can move. Never a passed check. */
@@ -742,7 +761,7 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
  * enforce anything — then a goal already delivered, then a decision, and only
  * then the lifecycle's own next move.
  */
-function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): ContractAction {
+function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): Omit<ContractAction, 'gatedBy'> {
   if (step.state.setAside) return { kind: 'restore', text: CONTRACT.setAsideAction }
   if (reason !== null) return { kind: 'resolve', text: reasonLine(step, reason, tenant, exclusionsUnconfirmed) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
@@ -865,7 +884,22 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
   const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
   const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
-  const whatToDo = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed)
+  const action = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed)
+  // What the action waits on, where the action IS the wait (`ContractAction.gatedBy`):
+  // Foundation B's gate, said in the board's own words for it where a board
+  // handed its reading down — the lane's tail on the two waiting lanes is that
+  // same blocker (planBoard.ts laneTailOf) — and in the engine's own otherwise.
+  // Every artifact reads it from here, so the export, the calendar entry, the
+  // prompt pack and the bundle say what the row and the badge say.
+  //
+  // Not on a baseline that defines the policy two ways: that step's action already
+  // says there is nothing for anybody to do, and its own paragraph is the
+  // explanation (roadmap/baselineConflict.ts). A gate beside it would be the
+  // third saying of one fact, and nothing in the tenant clears it anyway.
+  const waitTail = lane !== undefined && lane !== null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.tail : null
+  const saysWait = (action.kind === 'resolve' || action.kind === 'decide') && step.state.condition !== 'baseline-conflict'
+  const gatedBy = saysWait && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
+  const whatToDo: ContractAction = { ...action, gatedBy }
   const actionText = whatToDo.text
   whatToDo.text = namedPortalResource({ id: 'portal', form: 'list', lines: [actionText], text: () => actionText, note: null }, ctx).text()
   // A date only where Foundation B has one; nothing here manufactures one, and a

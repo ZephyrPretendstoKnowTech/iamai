@@ -36,6 +36,7 @@ import { readinessTable } from './inventoryTables.ts'
 import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewFor } from './planBoard.ts'
+import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
@@ -111,6 +112,39 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
     }
   }
   assert.ok(checked > 100, `only ${checked} steps swept`)
+})
+
+test('013.A: a step whose action is the wait says what it waits on in every channel, in the words the row shows', () => {
+  let checked = 0
+  for (const c of CASES) {
+    for (const s of c.run.steps) {
+      const k = stepContract(s, c.ctx(s), undefined, c.lane(s))
+      const where = `${c.name}/${s.id}`
+      const lane = c.lane(s)
+      if (k.whatToDo.gatedBy === null) {
+        // Only the wait carries one: an action that is the work itself names no
+        // gate, and neither does a baseline that defines the policy two ways —
+        // that step's own paragraph is the explanation, and nothing in the
+        // tenant clears it.
+        const exempt = k.whatToDo.kind !== 'resolve' || s.state.condition === 'baseline-conflict'
+        assert.ok(exempt || nextMilestone(s).gatedBy === null, `${where}: the wait says nothing about what holds it`)
+        continue
+      }
+      // The gate is the board's own words for it on the two waiting lanes, so the
+      // artifact and the row cannot name the wait differently.
+      if (lane.lane === 'Up Next' || lane.lane === 'On Hold') assert.equal(k.whatToDo.gatedBy, lane.tail ?? nextMilestone(s).gatedBy, `${where}: the gate is not the row's`)
+      const v = c.view(s)
+      const line = v.whatToDo.find((l) => l.startsWith(k.whatToDo.gatedBy!))
+      assert.ok(line, `${where}: the export drops the gate "${k.whatToDo.gatedBy}" — ${v.whatToDo.join(' | ')}`)
+      // The action comes first and the gate stands beside it, in the flat
+      // artifacts the calendar entry and the prompt pack are built from.
+      const lines = stepArtifactLines(v)
+      assert.ok(lines.some((l) => l.includes(k.whatToDo.text) && l.includes(line)), `${where}: the calendar entry and prompt block say the action without its gate`)
+      assert.ok(c.prompt(s).includes(line), `${where}: the prompt pack drops the gate`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 20, `only ${checked} waiting steps swept`)
 })
 
 test('013.A: an unknown reach is never written down as a number', () => {
