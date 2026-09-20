@@ -12,6 +12,12 @@ import { unavailableReason } from '../../roadmap/operations.ts'
 import { blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { laneReadings, observe } from './planLanes.ts'
+import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { planDates } from './stepVars.ts'
+import { setDisplayTimeZone } from '../../copy/dates.ts'
+import { directionStepsAnswering } from '../../roadmap/direction.ts'
+import { directionWords } from '../../content/content.ts'
 import type { LaneReading } from './planLanes.ts'
 
 const run = runFixture(fixture('small'))
@@ -157,4 +163,63 @@ test('evidence → the observation gate: records that do not clear the window ke
   const r = readingOf(step)
   assert.equal(label(r), 'Ready · Observing')
   assert.deepEqual(r.gates.filter((g) => !g.satisfied).map((g) => g.id), ['evidence:observation'])
+})
+
+// ---------------------------------------------------------------------------
+// One wait, said once (docs/plans/step-redundancy-analysis.md finding 3).
+// ---------------------------------------------------------------------------
+
+type Tile = { label: string; value: string }
+
+/** The opened step's Readiness tiles on a fixture, by step id, with the plan that drew them. */
+function tilesOf(name: 'demo'): { tiles: Map<string, Tile[]>; idOfTitle: Map<string, string> } {
+  setDisplayTimeZone('UTC')
+  try {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((x) => x.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const prerequisiteLabel = prerequisiteLabelFor(readings)
+    const tiles = new Map<string, Tile[]>()
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      if (!reading) continue
+      const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+      const body = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel })
+      tiles.set(step.id, [...body.readiness.tiles, ...body.readiness.satisfied].map((t) => ({ label: String(t.label), value: String(t.value) })))
+    }
+    return { tiles, idOfTitle: new Map(r.steps.map((x) => [x.title, x.id])) }
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+test('a step never states a Direction wait the prerequisite beside it already carries', () => {
+  const { tiles, idOfTitle } = tilesOf('demo')
+  const line = (t: Tile): string => `${t.label}: ${t.value}`
+
+  // The registration step said the trusted network three times: the step that
+  // makes it, a numeric gate repeating that step's name, and the answer behind
+  // both. It says it once now, as the step a person can go and do.
+  const registration = tiles.get('s-goal-register-info-protected')!
+  assert.deepEqual(registration.filter((t) => /Trusted Network|Sign In From/.test(t.value)).map(line), ['Prerequisite \u00b7 To do: Define the Trusted Network'])
+
+  // Six tiles of which four were two facts doubled; four now, each its own fact.
+  assert.deepEqual(tiles.get('s-goal-service-accounts-trusted-network')!.map(line), [
+    'Affected people: Not established',
+    'Prerequisite \u00b7 To do: Define the Trusted Network',
+    'Prerequisite \u00b7 To do: Create or Correct Service Accounts Group',
+    'Prerequisite \u00b7 To do: Prepare Emergency Access Accounts',
+  ])
+
+  // The rule behind both, over every step of the fixture: where a prerequisite
+  // tile names a step whose question moved to Direction, no tile beside it
+  // states that Direction step as well.
+  for (const [id, list] of tiles) {
+    const relayed = new Set(list.flatMap((t) => (t.label.startsWith('Prerequisite') ? [...directionStepsAnswering(idOfTitle.get(t.value) ?? '')] : [])))
+    for (const t of list.filter((x) => x.label === directionWords.waiting)) {
+      assert.equal(relayed.has(idOfTitle.get(t.value) ?? ''), false, `${id} states "${t.value}" beside the prerequisite that already carries it`)
+    }
+  }
 })

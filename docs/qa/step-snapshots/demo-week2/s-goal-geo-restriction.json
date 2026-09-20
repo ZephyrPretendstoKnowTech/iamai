@@ -24,10 +24,6 @@
     {
       "label": "Waiting on your direction",
       "state": "Confirm What You Use"
-    },
-    {
-      "label": "Waiting on your direction",
-      "state": "Decide Where People Sign In From"
     }
   ],
   "channels": [

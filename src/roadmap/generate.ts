@@ -2324,7 +2324,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A reason, not a dependency edge: the campaign sits in a later phase, and
     // pointing a phase 0 step at it would order the plan against itself.
     if (withoutMethod > 0) blockLate(registrationStep, 'registration-coverage', BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
-    if (trustedLocationCount === 0 && !doesntApply(locStepId)) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
+    // The count is only the nearest cause where nobody is being sent to create
+    // the location: with Define the Trusted Network on the plan the step already
+    // shows that prerequisite, and "when 1 trusted location exist (now 0)" beside
+    // it is the same sentence again (docs/plans/step-redundancy-analysis.md
+    // finding 3).
+    const locationStepToDo = steps.some((s) => s.id === locStepId && s.status !== 'done')
+    if (trustedLocationCount === 0 && !doesntApply(locStepId) && !locationStepToDo) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // 2. No country block before the operator's own recent countries are in the
