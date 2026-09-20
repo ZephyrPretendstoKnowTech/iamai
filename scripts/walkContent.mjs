@@ -98,7 +98,9 @@ export const ACCEPTANCE = [
   { item: '11', step: 's-prereq-auth-strength', path: 'whatToDo.steps', must: 'plus Temporary Access Pass (one-time and multi-use) for first sign-ins', mustNot: 'with a one-time pass for first sign-ins' },
   { item: '11', step: 's-prereq-auth-strength', path: 'ifWrong', must: 'Delete the strength; no policy references it yet.' },
   // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
-  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone).', mustNot: 'security key (survives a lost phone) and a passkey' },
+  // The two are now named by the menu entries Microsoft documents, which differ
+  // (docs/plans/protect-admins-spec.md section 2); the "either" is what item 12 owns.
+  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Either one is enough, and Microsoft recommends a security key for elevated privileges.', mustNot: 'security key (survives a lost phone) and a passkey' },
   { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'Keep a hardware security key under your control and protect its PIN.' },
   // 13's date and window are the engine's (E7): the day Require MFA for Everyone enforces, and the campaign's window.
   { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone is planned for {mfaEnforce}', mustNot: '{firstEnforce}' },

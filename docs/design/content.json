@@ -3555,7 +3555,7 @@
       "title": "Register Your Own Passkey",
       "changeLine": null,
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key"
       },
       "who": {
         "lead": "{operator}: strongest method today {method}, {evidence}."
@@ -3564,9 +3564,10 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone). Keep your existing sign-in methods until the new one works.",
+          "Sign in at https://mysignins.microsoft.com/security-info and answer the prompt there. A passkey can only be registered within five minutes of a completed prompt, so an old tab is refused.",
+          "Add sign-in method → Passkey registers a security key; Add sign-in method → Passkey in Microsoft Authenticator registers one in the app. Either one is enough, and Microsoft recommends a security key for elevated privileges. Keep your existing sign-in methods until the new one works.",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
-          "If the passkey is refused, check the error, the Passkey (FIDO2) settings in Configure Passkey Authentication, and whether the device supports the method."
+          "If the passkey is refused, open Configure Passkey Authentication and read three settings: Allow self-service set up, which stops registration here when it is No; enforced attestation, which stops a passkey made in Authenticator through the browser; and any key restriction that excludes the key you used."
         ]
       },
       "dates": null,
