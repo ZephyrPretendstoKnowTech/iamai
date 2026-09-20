@@ -138,6 +138,13 @@ export const ACCEPTANCE = [
   { item: '19', step: 'block-legacy-auth', path: 'decision.help', must: 'SMTP AUTH is the last route that does', mustNot: 'use different authentication paths' },
   { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.', mustNot: 'by IMAP or ActiveSync stops syncing' },
   { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'the tool\'s supported browser-based sign-in' },
+  // Close the Doors C1-C3 (docs/plans/close-doors-spec.md section 4, Microsoft
+  // Learn checked 2026-09-19): protocol tracking and the Device Registration
+  // Service reach were stated only while the policy was in report-only, which
+  // is the one state the admin creating it is not in.
+  { item: '20', step: 'block-device-code', path: 'more.risks', must: 'later requests in it are blocked as well, which can sign a device out' },
+  { item: '20', step: 'block-device-code', path: 'more.risks', must: 'must exclude the Device Registration Service' },
+  { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'filter by Authentication Protocol for device code' },
   // Close the Doors B1-B3 (docs/plans/close-doors-spec.md section 3, Microsoft
   // Learn checked 2026-09-19): basic authentication is already gone for the mail
   // protocols and SMTP AUTH is the one still standing. The retirement's dates

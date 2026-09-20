@@ -3408,11 +3408,19 @@
         },
         "verifiedSources": [
           {
-            "id": "ms-block-auth-flows",
+            "id": "ms-block-flows",
             "authority": "Microsoft Learn",
             "title": "Block authentication flows with Conditional Access policy",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
-            "checkedOn": "2026-09-12",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows",
+            "checkedOn": "2026-09-19",
+            "userFacing": true
+          },
+          {
+            "id": "ms-auth-flows",
+            "authority": "Microsoft Learn",
+            "title": "Authentication flows as a condition in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
+            "checkedOn": "2026-09-19",
             "userFacing": true
           }
         ],
@@ -3449,7 +3457,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows: Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows**: set **Configure** to **Yes**, then select **Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.\n   Before you create it, know two consequences Microsoft documents. A session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out. And because the target is **All resources**, the policy also reaches **Device Registration Service**: exclude that resource if this tenant registers devices by device code.\n4. Grant/access control: **Block access**.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -3461,7 +3469,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.\n"
+          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.\n"
         },
         "entra.correct-grant": {
           "meta": {
