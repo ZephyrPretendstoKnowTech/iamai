@@ -62,7 +62,16 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
         ['Name: Core - Require - Medium sign-in risk.'],
         ['Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
         ['Target resources: All resources.'],
-        ['Conditions → Sign-in risk: check Medium only.'],
+        // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md):
+        // both conditions go through their own Configure toggle, and each says what
+        // the other value would reach. Left at No the sign-in risk condition is not
+        // written at all, so the grant would apply to every sign-in; the Client apps
+        // condition is the opposite case, where unconfigured is the target and
+        // ticking every box writes the four named client types instead
+        // (policy-risk-based-sign-in and concept-conditional-access-conditions,
+        // checked 2026-09-20).
+        ['Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.'],
+        ['Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.'],
         ['Grant → Grant access → Require multifactor authentication.'],
         ['Session: leave empty (no session controls).'],
         ['Enable policy: Report-only.'],
@@ -82,8 +91,12 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   // Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('sign-in-risk-medium')
-  assert.equal(words.why, 'This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.')
-  assert.equal(words.doneEnd, "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions.")
+  // Respond to Risk and Limit Sessions §2: About this Step says what a medium rating
+  // is — one or more moderate anomalies, with less confidence than a high one
+  // (concept-risk-detection-types, ms.date 2026-06-10, checked 2026-09-20).
+  assert.equal(words.why, 'A medium rating means Microsoft saw one or more moderate anomalies in the sign-in and is less confident than it is at high. This rule asks for multifactor authentication at that level, and leaves the High-risk rule its own stronger requirement.')
+  // §2: Completion Criteria was the same sentence twice; the end state is now the step's own outcome.
+  assert.equal(words.doneEnd, 'A sign-in {tenant} rates medium risk cannot continue until it is answered with multifactor authentication, and the exclusions group is applied.')
 })
 
 test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the strength, and AI Info explains why high risk needs the strength and Every time', () => {
@@ -95,7 +108,9 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
         ['Name: {{policy.target.displayName}}.'],
         ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
         ['Target resources: All resources.'],
-        ['Conditions → Sign-in risk: check High only (not Medium).'],
+        // Respond to Risk and Limit Sessions: the same two conditions, said the same way.
+        ['Conditions → Sign-in risk: set **Configure** to **Yes**, then check High only (not Medium). Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.'],
+        ['Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.'],
         ['Grant: {{policy.target.grantWords}}. Use only the controls listed here.'],
         ['Session → Sign-in frequency: Every time.'],
         ['Enable policy: Report-only.'],
@@ -116,15 +131,22 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   const b = bodyOf('huge', HIGH)
   const entra = drawn(b, 'portal')
   assert.match(entra, /^2\. Name: Core - Require - Sign-in risk\.$/m)
-  assert.match(entra, /^6\. Grant: .+Use only the controls listed here\.$/m)
+  // The Client apps condition took item 6, so the grant is item 7.
+  assert.match(entra, /^7\. Grant: .+Use only the controls listed here\.$/m)
   assert.doesNotMatch(entra, /canonical|\{\{/)
   assert.match(drawn(b, 'ai'), /^Selected grant: [^{}]+/m)
   assert.doesNotMatch(drawn(b, 'ai'), /\[omit |\{\{|only phishing-resistant methods/)
   // The shared readiness sentence stays (BLOCKED.md); the held end state is unchanged.
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   const words = stepWords('sign-in-risk')
-  assert.equal(words.why, 'A risk-based rule can ask for stronger verification when Microsoft flags a sign-in as suspicious. Review the selected requirement so people have a working way to meet it.')
-  assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.")
+  // Respond to Risk and Limit Sessions §3: About this Step is the step's own outcome,
+  // and says what sign-in risk is a reading of — one authentication request, and how
+  // likely it is that it did not come from the account's owner (policy-risk-based-sign-in,
+  // ms.date 2026-03-24, checked 2026-09-20).
+  assert.equal(words.why, "Sign-in risk is Microsoft's reading of one authentication request: how likely it is that the request did not come from the person who owns the account. A high reading stops the sign-in until it is answered with a method the baseline's authentication strength accepts.")
+  // §3: the end state is the step's own outcome, and it honours the operator's saved
+  // grant rather than restating the baseline's strength as already applied.
+  assert.equal(words.doneEnd, 'A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.')
 })
 
 test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and it is undated while it waits on the device direction', () => {
