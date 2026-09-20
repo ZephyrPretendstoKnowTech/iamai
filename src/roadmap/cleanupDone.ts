@@ -46,7 +46,7 @@ export type CleanupDone = Partial<Record<CleanupKind, string>>
 /** What the engine reads from the checkpoints: each row's completion, and every drill date ever recorded. */
 export type CleanupRecord = { done: CleanupDone; drills: string[]; records?: CleanupCheckpoint[] }
 
-const KINDS: ReadonlySet<string> = new Set<CleanupKind>(['alerting', 'drill', 'hardening', 'naming', 'consolidation', 'notAssessed'])
+const KINDS: ReadonlySet<string> = new Set<CleanupKind>(['alerting', 'drill', 'hardening', 'naming', 'consolidation'])
 
 export function isCleanupCheckpoint(c: unknown): c is CleanupCheckpoint {
   const x = c as Partial<CleanupCheckpoint> | null

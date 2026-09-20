@@ -14,7 +14,6 @@ import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { notReady, stepFacts } from '../../derive/facts.ts'
@@ -61,7 +60,6 @@ export function PrintPlan({
   coverage,
   goalMap,
   stepCtx,
-  notes = {},
   answers = null,
 }: {
   tenantName: string
@@ -88,8 +86,6 @@ export function PrintPlan({
   goalMap: GoalMap
   /** The step's variables for the content renderer, as the Plan builds them. */
   stepCtx: (step: Step) => StepVarContext
-  /** The not-assessed Cleanup row's notes (does not apply, with the reason), as the Plan shows them. */
-  notes?: NotAssessedNotes
   /** The emergency-access attestations, so a Cleanup row the Plan calls In place is not Ready here (roadmap/cleanupDone.ts). */
   answers?: { signInMonitoring: boolean | null } | null
 }) {
@@ -328,7 +324,7 @@ export function PrintPlan({
             const lane = laneOf(`cleanup-${r.kind}`)
             return (
               <article key={r.kind} className="print-step">
-                <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: lane.label, tone: lane.tone }} notes={notes} />
+                <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: lane.label, tone: lane.tone }} />
               </article>
             )
           })}

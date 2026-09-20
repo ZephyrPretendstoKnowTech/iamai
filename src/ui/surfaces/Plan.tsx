@@ -17,7 +17,6 @@ import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../r
 import { app, engine, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
-import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { planFinish, planWeeks, projectedFinish } from '../../derive/finish.ts'
@@ -256,7 +255,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         workType: 'setup',
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -548,7 +547,7 @@ function BoardGroupView({ group, closed, onToggle, totals, children }: { group: 
 }
 
 /** A Cleanup row (§5): the content title, its lane, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
+function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDone, undated, lane }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /** The row's one state reading (planBoard.ts laneViewOf): the row and the opened head say its label. */
@@ -561,9 +560,6 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
   onToggle: () => void
   onScan?: (returnTo: string) => void
   onDone: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
-  notes: NotAssessedNotes
-  onNote: (policy: string, reason: string | null) => void
-  tenant: string
   /** The plan cannot finish while work it requires is held, so its Cleanup day is no date (derive/finish.ts). */
   undated: boolean
 }) {
@@ -581,7 +577,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
-      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
+      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )
 }

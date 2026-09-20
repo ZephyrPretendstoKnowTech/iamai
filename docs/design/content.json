@@ -1554,10 +1554,6 @@
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
         "cleanupDoneRow": "done {date}",
-        "notAssessedLabel": "Does not apply here",
-        "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
-        "notAssessedRow": "{policy}: does not apply: {reason}",
-        "notAssessedSave": "Save",
         "lockoutSuffix": "{n} would be stopped",
         "stepContract": {
           "$comment": "The Step Contract (Foundation D, src/ui/surfaces/stepContract.ts). Every Plan step answers the same questions in the same order: where it is now and what happens next, why, what IAMAI found, who it touches, what to do, what to fix first, how you will know it is done, and More. These are the words the contract itself supplies; each step's own sentences stay in its steps[] entry.",
@@ -2645,21 +2641,6 @@
       ],
       "doneWhen": [
         "Each overlap has been reviewed: retain both with a recorded reason, or verify the retired policy has a tested replacement preserving its required coverage."
-      ]
-    },
-    "notAssessed": {
-      "title": "Review Baseline Policies IAMAI Did Not Assess",
-      "learn": {
-        "url": "https://github.com/Jhope188/ConditionalAccessPolicies"
-      },
-      "why": "Some baseline policies use settings IAMAI cannot fully assess. A manual review keeps those options available without presenting an unverified policy as complete.",
-      "whatToDo": [
-        "Review each policy IAMAI could not assess, and the settings it could not compare: {list:policies}",
-        "Resolve its tenant-specific references and confirm whether it applies. Use Report-only where the policy type supports it, then the appropriate validation.",
-        "Record whether it applies, does not apply (with a reason), or still needs investigation."
-      ],
-      "doneWhen": [
-        "Each policy has a recorded outcome: implemented and validated, not applicable with a reason, or still under investigation."
       ]
     },
     "drill": {

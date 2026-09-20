@@ -58,7 +58,6 @@ export const ACCEPTANCE = [
   { item: 'C2', cleanup: 'drill', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs' },
   { item: 'C2', cleanup: 'naming', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
   { item: 'C2', cleanup: 'consolidation', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
-  { item: 'C2', cleanup: 'notAssessed', path: 'learn.url', must: 'https://github.com/Jhope188/ConditionalAccessPolicies' },
   // C4: a manager line never asserts "nobody here used it" unconditionally; the
   // clause returns under the engine's `applies` when the evidence count is zero.
   { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'A sign-in flow often abused in phishing is turned off.', mustNot: /nobody here/i },
@@ -211,7 +210,6 @@ export const ACCEPTANCE = [
   { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Devices → Compliance → Compliance policy settings' },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'the SIEM you already use' },
-  { item: 'cleanup', cleanup: 'notAssessed', path: 'why', must: 'Some baseline policies use settings IAMAI cannot fully assess.' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */

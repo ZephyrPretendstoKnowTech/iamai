@@ -119,8 +119,6 @@ export type MappingState = {
   notApplicable?: Record<string, string>
   /** Free-text answers to the three questions the tool cannot see (prompt 48 item 10). */
   questionAnswers?: Record<string, string>
-  /** Baseline policies IAMAI did not assess that the person said do not apply here, by name, with the reason (the Cleanup row's note, E3). */
-  notAssessedNotes?: Record<string, string>
   /**
    * The baseline's own references (lowercased source ids) a person said this
    * tenant needs no counterpart for, answered on the source-references step

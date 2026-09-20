@@ -17,6 +17,10 @@ import { stepById } from '../content/content.ts'
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import pinnedBaseline from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import type { CaPolicy } from '../baseline/types.ts'
+import { cleanupRows } from './cleanup.ts'
+
+/** Every kind roadmap/cleanup.ts can render, read from the module rather than restated. */
+const CLEANUP_KINDS = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'] }).map((r) => String(r.kind))
 
 const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
@@ -93,7 +97,7 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
 // docs/plans/step-redundancy-analysis.md finding 4: a group may not list a step
 // the engine cannot build. Five such ids were listed, and three group sizes were
 // overstated because of them.
-const NEVER_GENERATED = ['s-prereq-device-plan', 's-question-travel', 's-goal-mobile-app-protection', 's-goal-azure-management-mfa', 's-goal-unmanaged-browser']
+const NEVER_GENERATED = ['s-prereq-device-plan', 's-question-travel', 's-goal-mobile-app-protection', 's-goal-azure-management-mfa', 's-goal-unmanaged-browser', 'cleanup-notAssessed']
 
 test('no group lists a step the engine can never generate', () => {
   const listed = STEP_GROUPS.flatMap((g) => [...g.members])
@@ -106,6 +110,11 @@ test('no group lists a step the engine can never generate', () => {
     const goalId = id.slice('s-goal-'.length)
     assert.equal(goalIds.has(goalId), true, `${id}: ${goalId} is not a goal in data/goals.json`)
     assert.equal(goalInMap(PINNED_GOAL_MAP, goalId) || isFloorGoal(goalId), true, `${id}: the pinned baseline does not map ${goalId} and the floor does not supply it`)
+  }
+
+  // A cleanup- member names a row roadmap/cleanup.ts can build.
+  for (const id of listed.filter((m) => m.startsWith('cleanup-'))) {
+    assert.ok(CLEANUP_KINDS.includes(id.slice('cleanup-'.length)), `${id}: not a CleanupKind roadmap/cleanup.ts renders`)
   }
 
   // Require Healthy Devices lists what it actually draws; the other two shrank by one each.

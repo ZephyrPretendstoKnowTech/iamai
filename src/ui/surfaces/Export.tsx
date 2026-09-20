@@ -251,7 +251,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   }
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s), laneOf(s))
   // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
-  const cleanupViews = cleanupExportViews(schedule.cleanup, data.mapping?.notAssessedNotes ?? {})
+  const cleanupViews = cleanupExportViews(schedule.cleanup)
   const getPack = (): PackItem[] => {
     if (packCache.current?.plan === c) return packCache.current.pack
     const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps), cleanup: cleanupViews })
@@ -382,7 +382,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           coverage={coverage}
           goalMap={c.goalMap}
           stepCtx={stepCtx}
-          notes={data.mapping?.notAssessedNotes ?? {}}
           answers={data.mapping?.breakGlassAnswers ?? null}
         />
       )}

@@ -159,7 +159,7 @@ test('the consolidation row exists whenever a step\'s existingCoverage line rend
 
 test('unassessed baseline policies become individual reviews, with no catch-all completion', () => {
   const r = runFixture(fixture('demo'))
-  assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'notAssessed'), false)
+  assert.equal(r.schedule.cleanup!.rows.some((x) => (x.kind as string) === 'notAssessed'), false)
   const reviews = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
   assert.equal(reviews.length, r.coverage.organisation.notAssessed.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name)).length)
   assert.ok(reviews.every((s) => s.guidance?.doneWhen && (s.manualReview || s.configurationFindings?.some(f => f.key === 'avd-allowed-population' && f.outcome === 'unknown'))))

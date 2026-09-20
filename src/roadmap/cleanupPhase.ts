@@ -139,7 +139,6 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     // A rename is proposed only where the tenant has a convention to follow: from → to.
     renames: convention ? namingProposals.length ? namingProposals.map(p => `${p.from} → ${p.to} (ID: ${p.id})${p.collision ? ' — Name collision: choose a distinct name before renaming.' : ''}`) : naming.outliers.map((from) => renameLine(from, naming)) : [],
     overlaps: [...overlaps.map(line => `${line}${policyRows.filter(p => line.includes(String(p.displayName))).map(p => `; ${p.displayName} (ID: ${p.id})`).join('')}`), ...comparisonLines],
-    notAssessed: input.organisation.notAssessed.map((n) => n.name),
     hardening: input.hardening ?? [],
   })
   // Intended retirement removes the overlap that originally created this row;

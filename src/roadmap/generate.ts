@@ -2525,7 +2525,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     policies: snapshot.config.caPolicies.status === 'ok' ? snapshot.config.caPolicies.rows : null,
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),
-    organisation: { ...input.coverage.organisation, notAssessed: [] },
+    organisation: input.coverage.organisation,
     superseded: supersededPolicies(steps),
     done: input.cleanupRecord?.done ?? {},
     records: input.cleanupRecord?.records ?? [],

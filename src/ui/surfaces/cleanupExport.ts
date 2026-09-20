@@ -13,7 +13,6 @@ import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 
 export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
-export type NotAssessedNotes = Record<string, string>
 
 /** Shared by the live drill and the existing printable/exported plan. */
 export const EMERGENCY_RECOVERY_PROCEDURE = [
@@ -32,11 +31,9 @@ export function cleanupEntry(kind: string): CleanupEntry | null {
   return ((cleanupContent as Record<string, CleanupEntry>)[kind] ?? null)
 }
 
-/** The values a Cleanup row's lines fill: its lists (a noted policy carries its note) and the tenant's naming shape. */
-export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][number], notes: NotAssessedNotes = {}): Record<string, unknown> {
-  const lists: Record<string, string[]> = { ...row.lists }
-  if (row.kind === 'notAssessed' && Array.isArray(lists.policies)) lists.policies = lists.policies.map((p) => (notes[p] ? fillText(A.notAssessedRow, { policy: p, reason: notes[p] }) : p))
-  return { ...lists, ...(phase.convention ? { convention: phase.convention } : {}) }
+/** The values a Cleanup row's lines fill: its lists and the tenant's naming shape. */
+export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][number]): Record<string, unknown> {
+  return { ...row.lists, ...(phase.convention ? { convention: phase.convention } : {}) }
 }
 
 /**
@@ -87,10 +84,10 @@ export function cleanupEvidenceLines(phase: CleanupPhase, row: CleanupPhase['row
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */
-export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows'][number], notes: NotAssessedNotes = {}): CleanupExport | null {
+export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows'][number]): CleanupExport | null {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
-  const ex = cleanupVars(phase, row, notes)
+  const ex = cleanupVars(phase, row)
   const whole = (line: string): boolean => missingVars(line, ex).length === 0
   // The drill's task steps carry the screen's inline bold (StepSections renders
   // it); an export is plain words, so the markers go, as stepExport.ts drops
@@ -102,7 +99,7 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
 }
 
 /** Every Cleanup row as words, in render order; none when the phase has nothing to say. */
-export function cleanupExportViews(phase: CleanupPhase | null | undefined, notes: NotAssessedNotes = {}): CleanupExport[] {
+export function cleanupExportViews(phase: CleanupPhase | null | undefined): CleanupExport[] {
   if (!phase) return []
-  return phase.rows.map((r) => cleanupExportView(phase, r, notes)).filter((v): v is CleanupExport => v !== null)
+  return phase.rows.map((r) => cleanupExportView(phase, r)).filter((v): v is CleanupExport => v !== null)
 }
