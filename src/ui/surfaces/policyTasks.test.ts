@@ -1,7 +1,9 @@
-// Every policy step on the Establish Emergency Access anatomy (owner,
-// 2026-09-19): it draws the task headings, the Tasks Remaining cards — its own
-// policy first, then its Readiness tiles — and the Implementation task frame,
-// from its own Entra procedure. A step of another kind does not move.
+// Every step that carries work, on the Establish Emergency Access anatomy
+// (owner, 2026-09-19): it draws the task headings, the Tasks Remaining cards —
+// its own work first, then its Readiness tiles — and the Implementation task
+// frame, from its own portal procedure. Only the four Establish Emergency Access
+// steps (their own producers, frozen) and the four Direction steps (the decision
+// anatomy) are outside it.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -12,7 +14,8 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { drawsPolicySettings, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, usesPolicyTaskAnatomy } from './policyTasks.ts'
+import { drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
@@ -26,27 +29,93 @@ function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false) {
   return { step, body: stepBodyOf(step, ctx) }
 }
 
-test('every policy step draws the task anatomy, and no other step does', () => {
+test('every step that carries work draws the task anatomy; only the Direction steps do not', () => {
+  const direction = new Set<string>(DIRECTION_STEP_IDS)
   for (const name of ['demo', 'demo-week2', 'midflight', 'messy', 'hostile', 'large', 'mid', 'small'] as FixtureName[]) {
     const value = fixture(name)
     for (const step of runFixture(value).steps) {
       const kind = (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null
-      assert.equal(usesPolicyTaskAnatomy(step.id), kind === 'policy', `${name}/${step.id} (kind ${kind})`)
+      assert.equal(usesTaskAnatomy(step.id), !direction.has(step.id), `${name}/${step.id} (kind ${kind})`)
+      // This module produces the subjects and the tasks for all of them but the
+      // four Establish Emergency Access steps, which have their own and are frozen.
+      assert.equal(drawsTaskAnatomy(step.id), !direction.has(step.id) && !isGroupMember(step.id, EMERGENCY_ACCESS_GROUP), `${name}/${step.id}`)
     }
   }
-  assert.equal(usesPolicyTaskAnatomy(PILOT), true)
-  assert.equal(usesPolicyTaskAnatomy('s-goal-mfa-all-users'), true)
-  assert.equal(usesPolicyTaskAnatomy('s-shared-devices'), true)
-  assert.equal(usesPolicyTaskAnatomy('s-check-dormant-accounts'), false)
-  assert.equal(usesPolicyTaskAnatomy('s-direction-use'), false)
+  for (const id of [PILOT, 's-goal-mfa-all-users', 's-shared-devices', 's-check-dormant-accounts', 's-prereq-trusted-location', 's-verify-mfa', 's-review-baseline-anything']) assert.equal(drawsTaskAnatomy(id), true, id)
+  for (const id of ['s-direction-use', 's-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings']) assert.equal(drawsTaskAnatomy(id), false, id)
 })
 
-test('every policy step draws the four task headings; a step of another kind keeps its defaults', () => {
-  assert.deepEqual(taskHeadingsOf(PILOT), TASK_HEAD)
-  assert.deepEqual(taskHeadingsOf('s-goal-mfa-all-users'), TASK_HEAD)
-  assert.equal(taskHeadingsOf('s-check-dormant-accounts'), null)
+test('every step that carries work draws the four task headings; a Direction step keeps the decision anatomy', () => {
+  for (const id of [PILOT, 's-goal-mfa-all-users', 's-check-dormant-accounts', 's-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group', 's-verify-mfa', 's-ladder-operator-passkey', 's-review-baseline-anything']) {
+    assert.deepEqual(taskHeadingsOf(id), TASK_HEAD, id)
+  }
   // The Emergency Access group's own steps are untouched.
   assert.deepEqual(taskHeadingsOf('s-prereq-break-glass'), TASK_HEAD)
+  assert.equal(taskHeadingsOf('s-direction-use'), null)
+})
+
+test('a step with no policy of its own heads its card with the kind its own eyebrow says it is', () => {
+  // Nothing new is named: the label is `pages.app.plan.stepContract.kind`, the
+  // same words the step head above the card already shows.
+  for (const [id, subject] of [['s-prereq-trusted-location', 'Preparation step'], ['s-check-dormant-accounts', 'Check step'], ['s-verify-mfa', 'Campaign step'], ['s-ladder-operator-passkey', 'Check step']] as const) {
+    const { body } = bodyOf(id)
+    assert.equal(body.eyebrow, subject, id)
+    assert.equal(taskSubjectOf(id, body.eyebrow, body.title), subject, id)
+    const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(id, body.eyebrow, body.title))
+    assert.equal(card.heading, subject, id)
+    assert.equal(card.detail, body.contract.whatToDo.text, id)
+  }
+  // A policy step still names the policy it delivers.
+  const { body } = bodyOf(PILOT)
+  assert.equal(taskSubjectOf(PILOT, body.eyebrow, body.title), 'Conditional Access policy')
+})
+
+test('an object step, the campaign and a check each project their own portal procedure as the Implementation Task', () => {
+  for (const [id, title, first] of [
+    ['s-prereq-trusted-location', 'Define the Trusted Network', /Named locations/],
+    ['s-prereq-allowed-countries', 'Create or Correct Allowed Countries Location', /Named locations/],
+    ['s-prereq-service-accounts-group', 'Create or Correct Service Accounts Group', /Groups/],
+    ['s-verify-mfa', 'Prepare Your Team for MFA', /aka\.ms\/mfasetup/],
+    ['s-check-dormant-accounts', 'Disable or Confirm Dormant Accounts', /Review each account/],
+  ] as const) {
+    const { body } = bodyOf(id)
+    const tasks = body.emergencyAccountTasks
+    assert.ok(tasks, `${id} projects a task`)
+    assert.equal(tasks.tasks.length, 1, id)
+    // A step that submits no operation is called what the step is called.
+    assert.equal(tasks.tasks[0].title, title, id)
+    assert.match(tasks.tasks[0].steps[0], first, id)
+    // Every line is the step's own portal channel, read back.
+    const portal = body.artifacts.find((a) => a.id === 'portal')!
+    assert.deepEqual(tasks.tasks[0].steps, portalProcedureOf(portal.text()).steps, id)
+    // And the card sends the reader to it rather than saying nothing.
+    const [card] = policySubjectsOf(body.contract, body.readiness, tasks, taskSubjectOf(id, body.eyebrow, body.title))
+    assert.equal(card.instruction, `Follow ${title} in Implementation Tasks.`, id)
+  }
+})
+
+test('a baseline-review step reads its reference, and what it waits on is a card of its own', () => {
+  const { body } = bodyOf('s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9')
+  assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Review Who Can Use Azure Virtual Desktop')
+  assert.match(body.emergencyAccountTasks!.tasks[0].steps[0], /Baseline reference:/)
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(body.contract.id, body.eyebrow, body.title))
+  assert.equal(cards[0].heading, 'Check step')
+  assert.ok(cards.length > 1, 'what the step waits on follows as its own card')
+  assert.equal(cards.slice(1).every((card) => !card.satisfied), true)
+})
+
+test('"No tasks remaining" is shown only where nothing is left', () => {
+  // A step the tenant already satisfies: its own card and its tiles are all satisfied.
+  const inPlace = bodyOf('s-prereq-security-defaults').body
+  const done = policySubjectsOf(inPlace.contract, inPlace.readiness, inPlace.emergencyAccountTasks, taskSubjectOf('s-prereq-security-defaults', inPlace.eyebrow, inPlace.title))
+  assert.equal(done.some((card) => !card.satisfied), false)
+  assert.equal(policyBarOf(done), 'Every task on this step is complete.')
+  // An object step with no Readiness tile at all still has its own work to show.
+  const open = bodyOf('s-prereq-trusted-location').body
+  assert.deepEqual(open.readiness.tiles, [], 'the premise: no tile stands in this step’s way')
+  const cards = policySubjectsOf(open.contract, open.readiness, open.emergencyAccountTasks, taskSubjectOf('s-prereq-trusted-location', open.eyebrow, open.title))
+  assert.equal(cards.filter((card) => !card.satisfied).length, 1, '"No tasks remaining" cannot stand over work Implementation Tasks lists')
+  assert.equal(policyBarOf(cards), 'Complete the next task shown for each item.')
 })
 
 test('the pilot projects one Implementation Task, and it is the Entra procedure the step already drew', () => {
@@ -201,23 +270,14 @@ test('the bar over the evidence link instructs, as Prepare Emergency Access Acco
   assert.equal(policyBarOf([card(false)]), 'Complete the next task shown for each item.')
   assert.equal(policyBarOf([card(true)]), 'Every task on this step is complete.')
   // Not the status word the bar used to show, which the step's badge already says.
-  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /barMain=\{isPolicyTaskStep \? policyBarOf\(taskSubjects\) : displayedReadiness\.bar\.main\}/)
+  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /barMain=\{isOwnTaskStep \? policyBarOf\(taskSubjects\) : displayedReadiness\.bar\.main\}/)
 })
 
-test('the resolved settings stand under the Entra procedure of every policy step, folded, in a disclosure the file already draws', () => {
-  // The approved deviation is every policy step (owner, 2026-09-19), gated by
-  // the step's own content kind — the same gate as the anatomy, not a list.
-  for (const name of ['demo', 'demo-week2', 'midflight', 'messy', 'hostile', 'large', 'mid', 'small'] as FixtureName[]) {
-    for (const step of runFixture(fixture(name)).steps) {
-      assert.equal(drawsPolicySettings(step.id), usesPolicyTaskAnatomy(step.id), `${name}/${step.id}`)
-    }
-  }
-  assert.equal(drawsPolicySettings(PILOT), true)
-  assert.equal(drawsPolicySettings('s-goal-mfa-all-users'), true)
-  assert.equal(drawsPolicySettings('s-shared-devices'), true)
-  assert.equal(drawsPolicySettings('s-check-dormant-accounts'), false)
-  assert.equal(drawsPolicySettings('s-direction-use'), false)
+test('the resolved settings stand under the Entra procedure of every step that draws the anatomy, folded, in a disclosure the file already draws', () => {
+  // The approved deviation now runs on the one gate the anatomy runs on, so
+  // there is no second list and no step can draw one without the other.
   const contentStep = read('src/ui/surfaces/ContentStep.tsx')
+  assert.match(contentStep, /taskSettings=\{isOwnTaskStep\}/, 'the settings fold has a gate of its own again')
   assert.match(contentStep, /taskSettings && !!taskFacts\.length && <details className="approved-model-disclosure">/, 'the settings are not in the existing disclosure')
   assert.match(contentStep, /<summary>\{SHARED\.policySettingsForAction\}<\/summary>/, 'the heading is not the artifact’s own')
   // Collapsed by default: no `open` on this disclosure.

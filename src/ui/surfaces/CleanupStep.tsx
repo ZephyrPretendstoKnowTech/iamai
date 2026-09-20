@@ -18,7 +18,7 @@ import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepHead, StepSection } from './StepSections.tsx'
 import type { ReadinessTile } from './stepContract.ts'
-import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
+import { HEAD, TASK_HEAD } from './stepHeadings.ts'
 import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen, EMERGENCY_RECOVERY_PROCEDURE } from './cleanupExport.ts'
 import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact } from './ContentStep.tsx'
@@ -95,8 +95,13 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone }: {
   ], [phase])
   // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
   if (!entry) return null
-  // A Cleanup row in a task-anatomy group (the drill, stepGroups.ts) draws the task-step headings.
-  const taskHead = taskHeadingsOf(`cleanup-${row.kind}`)
+  // The recovery drill draws the task-step headings, because it draws the task
+  // anatomy: the Tasks Remaining cards and the task frame below are its own.
+  // The other Cleanup rows keep their default headings — the owner left the
+  // Cleanup rows out of the 2026-09-19 uniformity rule, and a Cleanup row is a
+  // board row rather than a step, so it answers this for itself rather than
+  // through its group (stepHeadings.ts taskHeadingsOf).
+  const taskHead = row.kind === 'drill' ? TASK_HEAD : null
   const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
   return (
