@@ -33,12 +33,12 @@ Current matching policy and stable tenant policy ID; semantic mismatches; canoni
 - Client apps: left unconfigured, which is every client app; the four named client types are not the same value.
 - User risk: Medium only, set through Configure = Yes.
 - No sign-in-risk, location, platform, device/filter, authentication-flow, or workload-risk condition.
-- Grant: the pinned baseline's authentication strength **and** Require password change; operator AND. Microsoft's Graph grant reference pairs `passwordChange` with the built-in `mfa` control instead, and the deployable JSON and PowerShell keep that documented pairing; the difference is recorded below.
+- Grant: the pinned baseline's authentication strength **and** Require password change; operator AND. Every channel builds that pair.
 - Session controls: none.
 - Lifecycle: Report-only before enforcement, then On.
 
 ## Security-significant fields
-Population, guest/external exclusion, canonical group exclusions, All-resources target, Medium-only user-risk condition, MFA + password-change grant with AND, absence of unrelated conditions/session controls, High-risk overlap, and lifecycle are security-significant.
+Population, guest/external exclusion, canonical group exclusions, All-resources target, Medium-only user-risk condition, authentication-strength + password-change grant with AND, absence of unrelated conditions/session controls, High-risk overlap, and lifecycle are security-significant.
 
 ## Preserve
 Preserve stable policy identity, exact canonical exclusions, Medium-only risk scope, secure password-change behavior, and the independent High-risk protection unless IAMAI explicitly resolves a safe consolidation.
@@ -47,7 +47,6 @@ Preserve stable policy identity, exact canonical exclusions, Medium-only risk sc
 - Do not disable the High-user-risk policy merely because this step is enabled.
 - Do not add compliant-device, location, platform, or other conditions to a password-change policy; current Microsoft guidance restricts this flow to users/groups, All resources, and user risk.
 - Do not combine `passwordChange` with `riskRemediation`.
-- Do not use an authentication-strength relationship as the companion to `passwordChange` in deployable v1.0 JSON; current Graph requires built-in `mfa` with `passwordChange` using AND.
 - Do not require SSPR solely because the secure Conditional Access password-change flow changes a password.
 - Do not enforce for synchronized users until password writeback is known to work.
 
@@ -60,13 +59,13 @@ Preserve stable policy identity, exact canonical exclusions, Medium-only risk sc
 - **In place / blocked / needs decision / source conflict / not licensed:** no actionable implementation.
 
 ## Verification
-Read back by stable policy ID. Verify All users + canonical exclusions + all guest/external types excluded, All resources, client apps All, user risk Medium only, no other effective conditions, built-in MFA + passwordChange with AND, no session controls, and intended lifecycle. Confirm MFA registration and hybrid writeback readiness. Separately confirm the High-risk policy remains protected.
+Read back by stable policy ID. Verify All users + canonical exclusions + all guest/external types excluded, All resources, client apps All, user risk Medium only, no other effective conditions, `passwordChange` with the resolved authentication strength under AND, no session controls, and intended lifecycle. Confirm MFA registration and hybrid writeback readiness. Separately confirm the High-risk policy remains protected.
 
 ## Rollback / safe recovery
 Set the same stable policy back to Report-only. If remediation causes user impact, restore access through the approved risk-recovery path; do not remove the High-risk control as a rollback shortcut.
 
 ## Limitations / unknowns
-Microsoft currently recommends adaptive **Require risk remediation** at High user risk. This package intentionally preserves IAMAI's separate Medium user-risk password-change goal. Available retained-source evidence also shows an authentication-strength relationship on the existing Medium-risk member, but current Graph v1.0 documents `passwordChange` with built-in MFA + AND instead. This package records and normalizes that API compatibility issue rather than emitting unsupported deployable JSON.
+Microsoft currently recommends adaptive **Require risk remediation** at High user risk. This package intentionally preserves IAMAI's separate Medium user-risk password-change goal. The pinned member pairs `passwordChange` with a custom authentication strength; `conditionalAccessGrantControls` v1.0 documents `passwordChange` with built-in `mfa` instead, and nothing on that reference forbids the strength. The pinned baseline wins, so every channel builds the pin's pair.
 
 ## Source verification
-Workbook Order 43 is `s-goal-user-risk-medium`. Retained goal identity maps to stable policy ID `7475b373-0544-4ee8-8827-cff35009136d`. Current Microsoft documentation confirms that password-change remediation requires prior MFA registration, All resources, limited policy conditions, and hybrid password writeback where applicable. Current Graph v1.0 requires `passwordChange` to be accompanied by built-in `mfa` using `AND`. The compatibility normalization is explicitly recorded for final whole-library review.
+Workbook Order 43 is `s-goal-user-risk-medium`. Retained goal identity maps to stable policy ID `7475b373-0544-4ee8-8827-cff35009136d`. Current Microsoft documentation confirms that password-change remediation requires prior MFA registration, All resources, limited policy conditions, and hybrid password writeback where applicable. `conditionalAccessGrantControls` v1.0 documents `passwordChange` accompanied by built-in `mfa` using `AND`; the pin — an export of a real tenant — pairs it with a custom authentication strength, and the pinned baseline wins (owner, 2026-09-20).
