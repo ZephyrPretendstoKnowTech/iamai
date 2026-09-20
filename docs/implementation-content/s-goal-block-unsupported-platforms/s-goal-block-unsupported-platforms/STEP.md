@@ -40,4 +40,4 @@ Review Report-only results for every unsupported/unidentified platform event, co
 Move the same stable policy back to Report-only. Resolve the platform/workflow decision instead of adding an emergency bypass to the policy.
 
 ## Source verification
-Pinned source plus current Microsoft Conditional Access unsupported-platform, Graph platform, and Graph grant-control documentation rechecked September 10, 2026.
+Pinned source plus current Microsoft Conditional Access unsupported-platform, Graph platform, and Graph grant-control documentation rechecked September 19, 2026 (docs/plans/close-doors-spec.md section 6).

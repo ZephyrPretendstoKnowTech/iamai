@@ -205,7 +205,7 @@ test('C5: the held step names its own outcome, not "the baseline\'s target confi
 })
 
 // ---------------------------------------------------------------------------
-// Block Authentication Transfer (spec section 6)
+// Block Authentication Transfer (spec section 5)
 // ---------------------------------------------------------------------------
 
 test('D1: About names the flow, not "a transfer path the business may not need"', () => {
@@ -241,4 +241,44 @@ test('D5: the held step\'s Completion Criteria is this step\'s outcome, on scree
 test('D6: the finished step says what is true, not that the policy matches a target', () => {
   const done = ((stepById['block-auth-transfer'] as unknown as { doneWhen?: string[] }).doneWhen ?? []).join('\n')
   assert.match(done, /no longer signs anyone in on another/)
+})
+
+// ---------------------------------------------------------------------------
+// Block Unsupported Device Platforms (spec section 6)
+// ---------------------------------------------------------------------------
+
+test('E1: the step says Linux is inside the block, on screen and in the create procedure', () => {
+  const about = aboutOf(bodiesOf('demo-week2').get('s-goal-block-unsupported-platforms')!)
+  assert.match(about, /only Android, iOS, Windows and macOS reach the tenant/)
+  assert.match(about, /Linux and anything that reports no platform are blocked/)
+  assert.ok(risksOf('block-unsupported-platforms').some((t) => /Linux is a platform Conditional Access supports and this policy does not exclude/.test(t)), risksOf('block-unsupported-platforms').join('\n'))
+  assert.match(blockText('s-goal-block-unsupported-platforms', 'entra.create'), /\*\*Linux\*\* is a platform Conditional Access supports and this target does not exclude/)
+})
+
+test('E2: the risk names how the platform is decided, not just that it can be wrong', () => {
+  const risks = risksOf('block-unsupported-platforms')
+  assert.ok(risks.some((t) => /reads the platform from what the client reports, such as its user agent, and does not verify it/.test(t)), risks.join('\n'))
+  assert.ok(!risks.some((t) => /can be treated differently from the device/.test(t)), risks.join('\n'))
+})
+
+test('E3: the create procedure keeps the shape Microsoft recommends, through Configure: Yes', () => {
+  const create = blockText('s-goal-block-unsupported-platforms', 'entra.create')
+  assert.match(create, /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(create, /include \*\*Any device\*\* and exclude \*\*Android\*\*, \*\*iOS\*\*, \*\*Windows\*\* and \*\*macOS\*\*/)
+  // The whole policy is a block, as the recommendation says.
+  const tasks = tasksTextOf(bodiesOf('demo-week2').get('s-goal-block-unsupported-platforms')!)
+  assert.match(tasks, /Grant → Block access/)
+})
+
+test('E4: the package cites its Microsoft page, checked with this group', () => {
+  assert.equal(checkedOn('s-goal-block-unsupported-platforms'), '2026-09-19')
+  assert.equal(bodiesOf('demo-week2').get('s-goal-block-unsupported-platforms')!.sourceLine, 'Source checked Sep 19, 2026')
+})
+
+test('E5: the held step\'s Completion Criteria names the platforms, on screen', () => {
+  const b = bodiesOf('messy').get('s-goal-block-unsupported-platforms')!
+  assert.ok(
+    b.contract.doneWhen.some((l: string) => /Only Android, iOS, Windows and macOS reach /.test(l)),
+    b.contract.doneWhen.join('\n'),
+  )
 })

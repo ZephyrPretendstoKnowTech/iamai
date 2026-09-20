@@ -1,7 +1,8 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.
+3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: set **Configure** to **Yes**, then include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.
+   **Linux** is a platform Conditional Access supports and this target does not exclude, so Linux sign-ins fall inside the block along with any request that reports no platform.
 4. Grant: **Block access**. Leave session controls unconfigured.
 5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
 6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
