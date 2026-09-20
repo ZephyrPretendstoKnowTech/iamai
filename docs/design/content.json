@@ -3107,7 +3107,7 @@
           "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add each approved range, as narrow as the network owner's allocation; never 0.0.0.0/0.",
+          "Add each approved range in CIDR notation, as narrow as the network owner's allocation. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.",
           "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
           "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
         ],
@@ -3118,8 +3118,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "A trusted IP named location exists in the tenant.",
-        "Its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them."
+        "An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted.",
+        "The sign-ins that should match it do, without widening a range to make them."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3133,17 +3133,21 @@
             "applies": "always"
           },
           {
-            "text": "A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.",
+            "text": "Sign-ins from a trusted location improve the accuracy of Microsoft Entra ID Protection's risk calculation, so keep the ranges tight.",
             "applies": "always"
           },
           {
             "text": "One address means one broken link takes the office out of its own trusted location.",
             "applies": "singleAddress"
+          },
+          {
+            "text": "A location marked as trusted cannot be deleted until the trusted mark is removed, so a tidy-up is two steps.",
+            "applies": "always"
           }
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Protect Sign-in Method Registration waits on this."
+        "waits": "Protect Sign-in Method Registration and Restrict Service Accounts to the Trusted Network wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",

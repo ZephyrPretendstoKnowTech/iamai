@@ -22588,10 +22588,18 @@
           {
             "id": "ms-network",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access Policy: Using Network Signals",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-12",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
+          },
+          {
+            "id": "ms-ip-named-location",
+            "authority": "Microsoft Learn",
+            "title": "ipNamedLocation resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "impact": {
@@ -22615,7 +22623,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges.\n4. Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.\n4. Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22651,7 +22659,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted.\n"
+          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted. A location that carries the trusted mark cannot be deleted until the mark is taken off, so remove the mark first if you ever retire this one.\n"
         },
         "entra.correct.name": {
           "meta": {

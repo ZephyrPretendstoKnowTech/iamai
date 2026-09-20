@@ -80,10 +80,19 @@ export const ACCEPTANCE = [
   { item: '3', step: 's-check-dormant-accounts', path: 'title', must: 'Disable or Confirm Dormant Accounts', mustNot: 'Address Problematic Accounts' },
   { item: '3', step: 's-check-dormant-accounts', path: 'who', must: 'Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record.' },
   { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Select the countries where people normally work.', mustNot: /add one people (will )?travel to/ },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'as narrow as the network owner\'s allocation; never 0.0.0.0/0.', mustNot: '/32 or a /24' },
+  // Control Where People Sign In From T2-T4 (docs/plans/where-people-sign-in-spec.md
+  // section 3, Microsoft Learn checked 2026-09-20): the step told an admin not to
+  // enter a range Entra rejects anyway, and stated a risk-score effect Learn does
+  // not claim. `concept-assignment-network` (ms.date 2026-04-01) says "Only CIDR
+  // masks greater than /8 are allowed", and "Sign-ins from trusted named
+  // locations improve the accuracy of Microsoft Entra ID Protection's risk
+  // calculation" — accuracy, not a lower score.
+  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "as narrow as the network owner's allocation", mustNot: '/32 or a /24' },
+  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'Entra accepts only masks greater than /8', mustNot: 'never 0.0.0.0/0' },
   { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'Ask the network owner for the approved public IPv4 and IPv6 ranges' },
   { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "being seen does not approve them" },
-  { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: 'A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.' },
+  { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: "improve the accuracy of Microsoft Entra ID Protection's risk calculation, so keep the ranges tight.", mustNot: 'lowers Identity Protection risk scores' },
+  { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: 'cannot be deleted until the trusted mark is removed' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'ifWrong', must: 'Remove the account from the group; the policies apply again on its next sign-in.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
   { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
