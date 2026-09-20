@@ -678,7 +678,10 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   // Both bodies are the same frame: the pack's `.step` article, its head, its
   // main column. A Cleanup row activates less of it; it does not get its own.
   for (const [name, src] of [['the step', step], ['a Cleanup row', cleanup]] as const) {
-    assert.match(src, /<article className="step panel panel-key"(?: data-step-id=\{[^}]+\})?>/, `${name} no longer draws the approved frame`)
+    // The frame may carry data attributes the CSS addresses it by (the step's id,
+    // and `data-policy-task` where a policy step draws the Emergency Access
+    // anatomy): an attribute is not a second frame.
+    assert.match(src, /<article className="step panel panel-key"(?: data-[a-z-]+=\{[^}]+\})*>/, `${name} no longer draws the approved frame`)
     assert.match(src, /<StepHead/, `${name} no longer draws the approved head`)
     assert.match(src, /<div className="step-main[" ]/, `${name} no longer draws the approved main column`)
   }

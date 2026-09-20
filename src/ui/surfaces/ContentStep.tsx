@@ -161,7 +161,7 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
   </article>
 }
 
-/** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under the same Completed checks · N a card's own finished checks fold under (owner, 2026-09-19: one label for one control). */
+/** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N (the Emergency Access steps are frozen: their words are what the owner approved). */
 export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
@@ -172,7 +172,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       ? <div className="emergency-account-status-grid">{remaining.map(tile)}</div>
       : <p className="readiness-clear"><span className="readiness-status readiness-status-good" aria-hidden="true">✓</span><strong>No tasks remaining</strong></p>}
     {satisfied.length > 0 && <details className="readiness-satisfied" open={printing || undefined}>
-      <summary>Completed checks · {satisfied.length}</summary>
+      <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
     <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
@@ -368,7 +368,7 @@ export function ContentStep({
     // (docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached
     // under the roadmap row that opened it, with the head above and the main
     // column and its action column below.
-    <article className="step panel panel-key" data-step-id={step.id}>
+    <article className="step panel panel-key" data-step-id={step.id} data-policy-task={isPolicyTaskStep ? '' : undefined}>
       {/* A task-anatomy step draws no lifecycle track: the Emergency Access
           steps have none, and the piloted policy step is drawn as they are. */}
       <StepHead eyebrow={eyebrow} title={title} sub={<>
