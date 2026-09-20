@@ -52,7 +52,7 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 
 ## Before the public deployment (owner does these)
 
-- [ ] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
+- [x] **Rename the break-glass account's UPN in the GetIAMAI tenant.** Done 2026-09-20. Its old name is in the public git history. IAMAI is read-only, so the owner does this. Re-scan afterwards so Emergency Access still reads Completed.
 
 ## Done
 
