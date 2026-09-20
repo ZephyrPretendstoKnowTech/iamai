@@ -127,7 +127,16 @@ test('no group lists a step the board can never draw', () => {
   assert.deepEqual([...membersOf('devices')], ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'])
   assert.equal(membersOf('protect-admins').length, 5)
   assert.equal(membersOf('mfa-everyone').includes('s-question-partner'), false, 'the partner follow-up folded into the guests policy')
-  assert.equal(membersOf('where-people-sign-in').length, 6)
+  // The three objects a Direction answer asks for are their own group straight
+  // after Direction (owner, 2026-09-20), so the policy group holds policies.
+  assert.deepEqual([...membersOf('prepare-objects')], ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-service-accounts-group'])
+  assert.equal(membersOf('where-people-sign-in').length, 3)
+  assert.equal(STEP_GROUPS.findIndex((g) => g.key === 'prepare-objects'), STEP_GROUPS.findIndex((g) => g.key === DIRECTION_GROUP) + 1, 'the objects are not read straight after the answers that ask for them')
+  // The settings to retire and the foundation's own prerequisites are not objects an answer creates.
+  assert.equal(groupOf('s-prereq-per-user-mfa')!.key, 'mfa-everyone')
+  assert.equal(groupOf('s-prereq-security-defaults')!.key, 'mfa-everyone')
+  assert.equal(groupOf('s-prereq-auth-strength')!.key, 'protect-admins')
+  for (const id of EA) assert.equal(groupOf(id)!.key, EMERGENCY_ACCESS_GROUP, id)
 })
 
 test('the two browser goals can never render as two steps with one title', () => {
