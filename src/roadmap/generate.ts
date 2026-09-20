@@ -92,6 +92,8 @@ import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
+import { namedEmergencyExclusions } from './cleanup.ts'
+import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
 import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
@@ -616,6 +618,7 @@ export function buildCreateAction(
       const removes = current ? removedExclusions(current, patch) : undefined
       operations.push({
         ...(removes ? { removes } : {}),
+        ...(!removes && addsExclusionsOnly(patch, current) ? { addsExclusionsOnly: true as const } : {}),
         sourceName: p.sourceName,
         memberKey,
         mode: 'update',
@@ -2559,6 +2562,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     now: input.reviewNow ?? snapshot.asOf,
     // Deferred emergency-access hardening stays in view until it passes (owner, 2026-09-11).
     hardening: bgStep?.emergency?.deferredAt ? deferredHardeningLines(bgStep, nameOf) : [],
+    // An emergency account the tenant excluded by name stays in every correction
+    // (a correction never removes a tenant exclusion; owner, 2026-09-19): this row
+    // asks for the name to come out once the exclusions group covers the account.
+    namedExclusions: namedEmergencyExclusions(snapshot.config.caPolicies.status === 'ok' ? snapshot.config.caPolicies.rows : null, mapping.breakGlassUserIds, nameOf),
   })
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {

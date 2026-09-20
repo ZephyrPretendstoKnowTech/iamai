@@ -2639,6 +2639,20 @@
         "Every deferred emergency access recommendation passes on a scan."
       ]
     },
+    "namedExclusions": {
+      "title": "Remove Emergency Accounts Excluded by Name",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
+      },
+      "why": "These policies leave an emergency account out by name as well as through the exclusions group. IAMAI keeps exclusions your tenant already has, so its corrections leave these names in place. The exclusions group should be the only way an emergency account is left out: one group is easier to check and keep right than names spread across policies.",
+      "whatToDo": [
+        "Remove the emergency accounts named under Users → Exclude in {list:namedExclusions}",
+        "Before you remove a name, check that the exclusions group holds that account and that the policy excludes the group. The group is what keeps the account out once its name is gone. Then scan again."
+      ],
+      "doneWhen": [
+        "A scan finds no On or Report-only policy that excludes an emergency account by name, and the exclusions group keeps each account out."
+      ]
+    },
     "naming": {
       "title": "Align Policy Names",
       "learn": {

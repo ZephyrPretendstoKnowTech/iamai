@@ -108,6 +108,14 @@ type PolicyOperationBase = {
    * beside the change. Read for explanation only; no channel submits it.
    */
   removes?: { guestsOrExternalUsers: boolean; ids: string[] }
+  /**
+   * On an update, true when the patch only adds exclusions to the tenant's policy
+   * and takes none away (roadmap/changedFields.ts addsExclusionsOnly): nobody new
+   * is reached by it. Absent otherwise. Read by the readiness gate, which has
+   * nothing to hold on such a change to a policy already on
+   * (roadmap/operations.ts enforcementHeld); no channel submits it.
+   */
+  addsExclusionsOnly?: true
 }
 
 /**

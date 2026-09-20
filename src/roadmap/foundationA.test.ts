@@ -1447,6 +1447,7 @@ test('no policy IAMAI writes names an emergency account, in any clause, on any f
 
 test('the boundary is the group: every policy that protects the emergency accounts excludes it, and proves them out', () => {
   let proved = 0
+  let carried = 0
   for (const { f, r } of runs) {
     const group = (f.mapping.records['__globalExclusion']?.resolvedId ?? '').toLowerCase()
     if (!group) continue
@@ -1459,16 +1460,31 @@ test('the boundary is the group: every policy that protects the emergency accoun
       // where it rewrites the users clause. An update that does not touch users
       // leaves the tenant's own clause alone, and what is in it is the tenant's
       // (see the preservation test below).
-      const written = operationsOf(s)
-        .filter((o) => o.mode === 'create' || ((o.body as { conditions?: { users?: unknown } }).conditions?.users !== undefined))
-        .map((o) => effectOf(o.mode === 'update' ? (o.target as Record<string, unknown>) : o.body))
+      const writes = operationsOf(s).filter((o) => o.mode === 'create' || ((o.body as { conditions?: { users?: unknown } }).conditions?.users !== undefined))
+      const written = writes.map((o) => ({ o, e: effectOf(o.mode === 'update' ? (o.target as Record<string, unknown>) : o.body) }))
+      // An update keeps every exclusion the tenant's policy already has (a
+      // correction never removes one; owner, 2026-09-19), so an emergency account
+      // the tenant excluded by name is carried, never added. The Cleanup row is
+      // where it comes out, once the group covers the account.
+      const tenantNamed = (o: (typeof writes)[number], id: string): boolean => {
+        if (o.mode !== 'update') return false
+        const row = f.snapshot.config.caPolicies.rows.find((raw) => String((raw as { id?: string }).id) === o.policyId) as { conditions?: { users?: { excludeUsers?: string[] } } } | undefined
+        return row?.conditions?.users?.excludeUsers?.some((u) => u.toLowerCase() === id.toLowerCase()) ?? false
+      }
+      const namedRow = r.schedule.cleanup?.rows.find((row) => row.kind === 'namedExclusions')
       for (const id of f.mapping.breakGlassUserIds) {
         const out = effects.every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out')
         assert.equal(out, true, `${f.name} ${s.id}: the emergency account is out of scope`)
         // And where IAMAI wrote the clause, the reason is the group and never the
-        // account's own name.
-        for (const e of written) {
-          assert.equal(e.scope.users.exclude.some((u) => u.toLowerCase() === id.toLowerCase()), false, `${f.name} ${s.id}: IAMAI named the account instead of the group`)
+        // account's own name — unless the tenant's own policy already named it.
+        for (const { o, e } of written) {
+          const named = e.scope.users.exclude.some((u) => u.toLowerCase() === id.toLowerCase())
+          if (named && tenantNamed(o, id)) {
+            carried += 1
+            assert.ok(namedRow?.lists.namedExclusions?.some((line) => line.includes(`(ID: ${o.policyId})`)), `${f.name} ${s.id}: the carried by-name exclusion has a Cleanup row asking to remove it`)
+          } else {
+            assert.equal(named, false, `${f.name} ${s.id}: IAMAI named the account instead of the group`)
+          }
           assert.equal(e.scope.workloadOnly || e.scope.groups.exclude.some((g) => g.toLowerCase() === group), true, `${f.name} ${s.id}: the policy IAMAI writes excludes the exclusions group`)
           proved += 1
         }
@@ -1476,6 +1492,7 @@ test('the boundary is the group: every policy that protects the emergency accoun
     }
   }
   assert.ok(proved > 0, 'fixtures do offer policies that protect the emergency accounts')
+  assert.ok(carried > 0, 'a fixture corrects a policy the tenant excluded an emergency account from by name (the demo first visit)')
 })
 
 test('with no policy-usable exclusions group there is no direct-user fallback: the policy is simply not offered', () => {

@@ -12,7 +12,7 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Step } from './types.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { canDenyAccess } from './strand.ts'
-import { enforcesOnRun, enforcementHeld, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
+import { addsExclusionsToEnforced, enforcesOnRun, enforcementHeld, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const NAMES = FIXTURE_SPECS.map((s) => s.name)
@@ -92,7 +92,7 @@ for (const name of NAMES) {
     }
   })
 
-  test(`${name}: nothing that enforces is offered or dated while a readiness prerequisite is unmet`, () => {
+  test(`${name}: nothing that enforces, or makes an enforced policy stricter, is offered or dated while a readiness prerequisite is unmet`, () => {
     // The plan names a threshold and tells the operator to wait for it. That has
     // to be a fact about the implementation, not a word beside one: the step used
     // to carry the portal lines, the JSON, the PowerShell, the download, its
@@ -104,10 +104,23 @@ for (const name of NAMES) {
     // readiness reaches the threshold in the first place. What is held is every
     // operation that changes what people have to do the moment it is submitted,
     // and every date that promises one.
+    //
+    // Nor "an enabled policy is never touched": a correction that only adds
+    // exclusions to a policy the tenant already enforces is not stricter (owner,
+    // 2026-09-19). It can stop nobody and only makes the way back in safer, so
+    // the threshold holds nothing of it and it is offered and dated like any
+    // other change. Every operation it runs has to be that, or the step is held.
     for (const s of steps) {
       const gate = s.action.readinessGate
       if (!gate || !open(s)) continue
       const where = `${s.id} (${gate.measure} is ${gate.value}, wants ${gate.threshold})`
+      const ops = s.action.resolution?.policies ?? []
+      const bounded = ops.length > 0 && ops.every((o) => o.mode === 'update' && o.addsExclusionsOnly === true && (o.target as { state?: unknown } | undefined)?.state === 'enabled' && (o.body as { state?: unknown }).state === undefined)
+      if (bounded) {
+        assert.equal(addsExclusionsToEnforced(s), true, `${where}: the exclusions-only correction is read as one`)
+        assert.equal(enforcementHeld(s), false, `${where}: an exclusions-only correction to an enforced policy is not held`)
+        continue
+      }
       for (const o of operationsOf(s)) assert.equal(enforcesOnRun(o), false, `${where} offers an operation that enforces at once`)
       assert.equal(s.events, null, `${where} carries an enforcement date`)
       assert.deepEqual(s.rings, [], `${where} carries a ring plan`)
