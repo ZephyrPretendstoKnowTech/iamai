@@ -309,5 +309,14 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
     const link = tile.link && 'href' in tile.link ? tile.link : null
     return { ...subject, satisfied, ...(link && !subject.link ? { link } : {}) }
   }
-  return [...policyCardsOf(contract, projected, subject), ...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
+  const rest = [...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
+  // One sentence, said once. The policy card's sentence is the contract's one
+  // action, and on a step whose action is a tile's own words — a baseline
+  // conflict says "This step is on hold until the baseline author resolves a
+  // contradiction" on the policy card and again on the Baseline definition card
+  // — the two cards read identically. The card that names the subject the
+  // sentence is about keeps it; the general one drops it and states its check.
+  const said = new Set(rest.map((c) => (c.instruction ?? '').trim()).filter((s) => s !== ''))
+  const own = policyCardsOf(contract, projected, subject).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
+  return [...own, ...rest]
 }
