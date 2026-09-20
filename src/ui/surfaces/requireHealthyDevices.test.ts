@@ -11,7 +11,7 @@
 // off company data), so their fixtures carry that answer.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { stepById } from '../../content/content.ts'
+import { stepById, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -271,4 +271,59 @@ test('E7: the manager line still says user-driven enrollment asks for a fresh au
 
 test('E8: the package’s checked date is 2026-09-20', () => {
   assert.equal(checkedOn(INTUNE), '2026-09-20')
+})
+
+// ---------------------------------------------------------------------------
+// Keep Company Data Off Phones (spec section 5)
+//
+// The step exists only where the device answer keeps company data off phones
+// (roadmap/generate.ts), so every reading here carries that answer.
+// ---------------------------------------------------------------------------
+
+test('P1: About this Step says the answer needs a policy of its own, and which platforms it names', () => {
+  const about = aboutOf(bodyOf('demo', PHONES, withPhonesBlocked))
+  assert.match(about, /a policy of your own has to say no to them/)
+  assert.match(about, /includes those two platforms and blocks access/)
+  assert.doesNotMatch(about, /Leaving phones out of a compliance policy does not prevent access\./)
+})
+
+test('P2: the procedure sets Configure to Yes on Device platforms, and says what No would block', () => {
+  const entra = drawn(bodyOf('demo', PHONES, withPhonesBlocked), 'portal')
+  assert.match(entra, /Conditions → Device platforms: set Configure to Yes, then Include: Android and iOS\./)
+  assert.match(entra, /Left at No the condition applies to every platform, and Block access there would lock out every computer as well\./)
+})
+
+test('P3: the exclusion is the emergency exclusions group, never an account by name', () => {
+  const entra = drawn(bodyOf('demo', PHONES, withPhonesBlocked), 'portal')
+  assert.match(entra, /Exclude → Groups: the emergency exclusions group\. Never exclude an emergency account by name\./)
+})
+
+test('P4: the policy is created in report-only, tested on real phones, and the result is recorded', () => {
+  const entra = drawn(bodyOf('demo', PHONES, withPhonesBlocked), 'portal')
+  assert.match(entra, /Enable policy: Report-only/)
+  assert.match(entra, /Test from a real iPhone and a real Android phone/)
+  assert.match(entra, /Record the policy, its scope and the test result/)
+  // The outcome the step is done by is the policy, not a general "restricted as agreed".
+  const b = bodyOf('demo', PHONES, withPhonesBlocked)
+  assert.ok(b.contract.doneWhen.some((l) => /iOS and Android are blocked by a policy of this tenant's own/.test(l)), b.contract.doneWhen.join(' | '))
+})
+
+test('P5: a risk says the platform is what the client reports, and Microsoft does not verify it', () => {
+  const risks = risksOf('s-ladder-phone-access-restriction').join('\n')
+  assert.match(risks, /what the client reports about itself, in the user agent string, and Microsoft does not verify it/)
+  // And it does not claim to be a data-loss control.
+  assert.match(risks, /It is not a data-loss control/)
+})
+
+test('P6: the step links the page that carries the Device platforms condition', () => {
+  assert.equal(
+    String((stepById['s-ladder-phone-access-restriction'] as unknown as { learn?: { url?: string } }).learn?.url ?? ''),
+    'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions',
+  )
+})
+
+test('P7: the row’s Impact is this step’s own subject, not the placeholder', () => {
+  const impacts = (structuralWords.impactLabels as Record<string, string>)
+  assert.equal(impacts['s-ladder-phone-access-restriction'], 'Phone access')
+  assert.notEqual(impacts['s-ladder-phone-access-restriction'], structuralWords.impactDefault)
 })

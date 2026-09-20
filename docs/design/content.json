@@ -2256,6 +2256,7 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
+      "s-ladder-phone-access-restriction": "Phone access",
           "s-check-separate-admin-accounts": "Administrator accounts",
           "s-shared-devices": "Shared-device accounts"
         },
@@ -6544,25 +6545,51 @@
       "id": "s-ladder-phone-access-restriction",
       "kind": "ladder",
       "title": "Keep Company Data Off Phones",
-      "why": "You chose not to allow company data on phones. Leaving phones out of a compliance policy does not prevent access.",
+      "why": "You said company data does not belong on phones, so a policy of your own has to say no to them: leaving iOS and Android out of the managed-device rule only means that rule never asks them anything. A Conditional Access policy that includes those two platforms and blocks access is the rule that says no.",
       "who": {
         "lead": "People who access company resources from iOS or Android."
       },
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
       "whatToDo": {
         "lead": "Implement and test the phone access restriction before marking this review complete.",
         "steps": [
-          "Review existing access controls for iOS and Android. Identify which work apps and browser paths must be blocked, and which emergency-access exclusions must remain.",
-          "Use an appropriately scoped Conditional Access restriction for those platforms. Review it in report-only and test the intended scope before enforcing it. An operating-system condition is not a complete data-loss-prevention control.",
-          "Check access from representative phones, including supported apps and browsers. Confirm that necessary recovery and administrator access still work.",
-          "Record the policy, scope and test result in your change record. Confirm this step only when the intended restriction is enforced and the tests pass."
+          "Entra admin center → Conditional Access → Policies → New policy. Name it for what it does, so the next person reading the list can see it.",
+          "Users → Include: All users. Exclude → Groups: the emergency exclusions group. Never exclude an emergency account by name.",
+          "Target resources → Resources → All resources.",
+          "Conditions → Device platforms: set Configure to Yes, then Include: Android and iOS. Left at No the condition applies to every platform, and Block access there would lock out every computer as well.",
+          "Grant → Block access.",
+          "Enable policy: Report-only, then read the report-only results for a working week. They name the people and the apps this would have stopped, which is who will call.",
+          "Test from a real iPhone and a real Android phone, in a work app and in the browser, and check that recovery and administrator access still work from a computer. Then enable the policy.",
+          "Record the policy, its scope and the test result in your change record. Confirm this step only when the restriction is enforced and the tests pass."
         ]
       },
       "doneWhen": [
-        "Phone access is restricted as agreed, the affected access paths have been tested, and you have recorded the result."
+        "iOS and Android are blocked by a policy of this tenant's own, the affected access paths have been tested, and you have recorded the result."
       ],
+      "more": {
+        "risks": [
+          {
+            "text": "The platform is what the client reports about itself, in the user agent string, and Microsoft does not verify it. A phone whose browser claims to be a computer is not stopped by this policy.",
+            "applies": "always"
+          },
+          {
+            "text": "This blocks a phone from signing in. It is not a data-loss control: company data already on a phone, and any route that does not go through Microsoft Entra sign-in, are untouched.",
+            "applies": "always"
+          },
+          {
+            "text": "Everyone loses phone access, including the people on call. Agree the exception route — a laptop, or a named exclusion — before the policy is enabled, not after the first call.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person blocked on their phone: confirm the sign-in shows iOS or Android, and answer with the agreed route rather than widening the policy.",
+          "Microsoft's own guidance is that the device-platform condition belongs either with Intune compliance or in a block statement. This is the block statement."
+        ],
+        "manager": "Phones cannot reach company accounts at all, which is what the device answer asked for. Anyone who needs access away from a desk needs a computer or an agreed exception.",
+        "waits": null
+      },
       "aiFocus": "Explain the difference between leaving phones out of a compliance requirement and actively blocking access. Help the administrator scope and test the restriction without changing baseline policies or emergency access blindly.",
       "skip": false,
       "scanControl": true
