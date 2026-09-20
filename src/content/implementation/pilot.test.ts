@@ -261,7 +261,12 @@ test('Readiness is the package’s rules evaluated deterministically; nothing is
 // ------------------------------------------------------------------- source date
 
 test('the source date comes from the package’s verified sources, never a clock', () => {
-  assert.equal(sourceUpdatedOn(PKG), '2026-09-10')
+  // mfa-everyone-spec.md §3 B7: three of this package's Learn sources were
+  // re-read on 2026-09-20 (policy-all-users-device-registration,
+  // concept-conditional-access-cloud-apps, manage-device-identities), so the
+  // latest checked date is theirs. The date is still the sources', not a clock:
+  // the clone below moves it, and no clock reader may appear in project.ts.
+  assert.equal(sourceUpdatedOn(PKG), '2026-09-20')
   const later = structuredClone(PKG)
   later.meta.verifiedSources = [...(later.meta.verifiedSources ?? []), { id: 'x', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-10-01', userFacing: true }, { id: 'y', title: 'y', url: 'https://learn.microsoft.com/y', checkedOn: '2027-01-01', userFacing: false }]
   // Every verified source dates the line, user-facing or not (batch A decision 10): the latest checked date wins.
@@ -269,7 +274,7 @@ test('the source date comes from the package’s verified sources, never a clock
   const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation
-  assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-10T12:00:00Z') }))
+  assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-20T12:00:00Z') }))
   assert.match(read('src/ui/surfaces/stepBody.ts'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : null/)
 })
 
