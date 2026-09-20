@@ -56,24 +56,28 @@ function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQues
   const labelId = `direction-${q.key.replace(/[^a-z0-9]+/gi, '-')}`
   const approved = q.saved !== null && !q.needsReview
   const picks = q.control === 'countries' || (q.pickedWith !== null && answer.value === q.pickedWith)
+  // An Emergency Access subject card (ContentStep.tsx EmergencyAccountStatusTile),
+  // filled with a question: the state where that card carries its subject label,
+  // the question where it carries its title, then the control on a row of its
+  // own, the evidence under it, and the list picker last.
   return (
-    <div className="workflow-choice direction-question" data-question={q.key}>
-      <strong id={labelId}>{q.label}</strong>
-      {printing ? <span>{answerTextOf(q, answer, nameOf)}</span> : q.options.length > 0 && (
+    <article className="emergency-account-status direction-question" data-question={q.key}>
+      <p className="emergency-account-label direction-question-state">{approved ? W.approved : W.suggested}</p>
+      <h5 id={labelId}>{q.label}</h5>
+      {printing ? <p>{answerTextOf(q, answer, nameOf)}</p> : q.options.length > 0 && (
         <select className="decision-select" aria-labelledby={labelId} value={answer.value} onChange={(e) => onAnswer({ value: e.currentTarget.value, picked: answer.picked })}>
           {q.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       )}
-      <span className="reason direction-question-state">{approved ? W.approved : W.suggested}</span>
-      <span className="reason">{q.evidence}</span>
-      {q.today && <span className="reason">{q.today}</span>}
-      {q.note && <span className="reason">{q.note}</span>}
+      <p>{q.evidence}</p>
+      {q.today && <p>{q.today}</p>}
+      {q.note && <p>{q.note}</p>}
       {!printing && picks && (
         <div className="direction-question-picker">
           <Picker labelledBy={labelId} selected={chips} options={results} suggestions={suggestions} onChange={(next) => onAnswer({ value: q.control === 'countries' ? 'some' : answer.value, picked: next.map((c) => c.id) })} onSearch={setQuery} />
         </div>
       )}
-    </div>
+    </article>
   )
 }
 
@@ -98,11 +102,14 @@ export function DirectionQuestions({ step, ctx, heading, onDecide, printing = fa
   return (
     <section className="step-section direction-section">
       <h4>{heading}</h4>
-      <div className="workflow-choices direction-questions">
-        <p className="reason">{W.notSure}</p>
+      <p className="reason">{W.notSure}</p>
+      {/* The Emergency Access subject grid (ContentStep.tsx EmergencySubjectReadiness):
+          two columns of cards that size to their own content, so a question that
+          opens a picker never stretches the one beside it. */}
+      <div className="emergency-account-status-grid">
         {questions.map((q) => <QuestionTile key={q.key} q={q} answer={answerOf(q)} onAnswer={(a) => setDraft((d) => ({ ...d, [q.key]: a }))} ctx={ctx} printing={printing} />)}
-        {!printing && <Button variant="primary" disabled={!ready || saving || !onDecide} onClick={approve}>{W.approve}</Button>}
       </div>
+      {!printing && <Button variant="primary" disabled={!ready || saving || !onDecide} onClick={approve}>{W.approve}</Button>}
     </section>
   )
 }
