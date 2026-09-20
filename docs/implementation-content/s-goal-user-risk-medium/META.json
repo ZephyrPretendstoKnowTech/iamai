@@ -54,6 +54,7 @@
     "policy.current.removedExclusions",
     "tenant.displayName",
     "policy.current.state",
+    "authStrength.target.displayName",
     "people.affected.count",
     "evidence.atRiskUsers",
     "evidence.mfaRegistration",
@@ -348,7 +349,7 @@
       "title": "Risk policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
       "purpose": "P2, MFA registration, hybrid writeback, and risk remediation behavior.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-grant",
@@ -356,7 +357,7 @@
       "title": "Conditional Access: Grant",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant",
       "purpose": "Password-change flow, MFA prerequisite, All-resources restriction, and supported condition restrictions.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-grant-v1",
@@ -364,7 +365,7 @@
       "title": "conditionalAccessGrantControls resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
       "purpose": "passwordChange must be paired with mfa using AND; riskRemediation is separate.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-risk-concept",
@@ -372,7 +373,7 @@
       "title": "Risk-based access policies",
       "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
       "purpose": "User-risk semantics and secure password-change remediation.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-create-v1",
@@ -380,7 +381,7 @@
       "title": "Create conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
       "purpose": "v1.0 create endpoint and permissions.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-update-v1",
@@ -388,7 +389,7 @@
       "title": "Update conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
       "purpose": "Stable-ID update endpoint.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     },
     {
       "id": "ms-ca-get-v1",
@@ -396,13 +397,14 @@
       "title": "Get conditionalAccessPolicy - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
       "purpose": "Stable-ID verification readback.",
-      "checkedOn": "2026-09-10"
+      "checkedOn": "2026-09-20"
     }
   ],
   "authoringReviewNotes": [
     "The workbook described SSPR/writeback as prerequisites. Current Microsoft guidance says the secure Conditional Access password-change flow itself does not use SSPR; MFA registration is required and hybrid users require working password writeback.",
     "Do not automatically retire the High-user-risk policy. Medium-only risk scope does not itself establish High-risk coverage.",
-    "Deployable JSON uses the current v1.0-supported passwordChange + mfa AND grant shape. The retained-source authenticationStrength relationship is recorded as a compatibility normalization for final library review."
+    "Deployable JSON uses the current v1.0-supported passwordChange + mfa AND grant shape. The retained-source authenticationStrength relationship is recorded as a compatibility normalization for final library review.",
+    "Rechecked 2026-09-20 against conditionalAccessGrantControls v1.0 (ms.date 2026-04-06): 'passwordChange must be accompanied by mfa using an AND operator', 'passwordChange and riskRemediation must be used separately, not in combination', and the policy 'can't contain any other condition except users, applications, and userRiskLevels'. The normalization stands, and the pinned member's passwordChange + authenticationStrength pair is a shape that reference does not describe. The pinned baseline wins, so the Entra procedure names the pin's pair — which is what IAMAI compares the tenant against — and says the JSON and PowerShell outputs write Microsoft's documented pair instead. Recorded for the owner in docs/plans/risk-and-sessions-spec.md."
   ],
   "email": {
     "recommendation": "recommended",

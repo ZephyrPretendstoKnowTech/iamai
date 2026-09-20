@@ -283,6 +283,12 @@ export const ACCEPTANCE = [
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
+  // Risk and Sessions D1-D4 (docs/plans/risk-and-sessions-spec.md section 6,
+  // Microsoft Learn checked 2026-09-20): the grant pair the pin holds, no
+  // session control, and why guests are excluded from this one.
+  { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require authentication strength: {strengthName} and Require password change', mustNot: 'Sign-in frequency → Every time' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Guests and external accounts are excluded from this policy' },
+  { item: '38', step: 'user-risk-medium', path: 'why', must: 'moderate anomalies on the account' },
   { item: '24', step: 'unmanaged-browser', path: 'whatToDo.before', must: 'SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save.' },
   { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Devices → Compliance → Compliance policy settings' },
   { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
