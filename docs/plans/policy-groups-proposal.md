@@ -37,6 +37,17 @@ waves collapsed to the fewest runs that still read as one job each: nine
 headings would be a table of contents, not a plan. The waves stay the engine's
 sequencing; a group is only a heading.
 
+Every id below is one the engine can generate. The first draft of this document
+listed five that it cannot — `s-prereq-device-plan` (replaced by D3),
+`s-question-travel` (hidden for V1), `s-goal-mobile-app-protection` and
+`s-goal-azure-management-mfa` (goals the pinned baseline does not carry and the
+floor does not force), and `s-goal-unmanaged-browser` (never an id at all: it is
+the content entry two goals merge into, so only `s-goal-byod-session-controls`
+can be built) — and so overstated three of the group sizes. They are gone from
+the registry and from the lists here: Protect Your Administrators is 5, Control
+Where People Sign In From is 6, and Require Healthy Devices is 4, which is what
+it already drew. See `docs/plans/step-redundancy-analysis.md` finding 4.
+
 ### 1. Establish Emergency Access — pinned, unchanged
 
 Frozen. Drawn above the lanes until all four are Completed.
@@ -76,7 +87,6 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 3 | Require Phishing-Resistant MFA for Admins | `s-goal-admins-phishing-resistant` |
 | 4 | Shorten Admin Sessions | `s-goal-admin-session` |
 | 5 | Require MFA at Every Role Activation | `s-goal-pim-activation-reauth` |
-| 6 | Require MFA for Azure Management | `s-goal-azure-management-mfa` |
 
 ### 5. Turn On MFA for Everyone — new (§3 waves 3 and 4)
 
@@ -98,22 +108,18 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 1 | Define the Trusted Network | `s-prereq-trusted-location` |
 | 2 | Create or Correct Allowed Countries Location | `s-prereq-allowed-countries` |
 | 3 | Block Sign-ins From Countries Not Allowed | `s-goal-geo-restriction` |
-| 4 | Arrange Access Before Travel | `s-question-travel` |
-| 5 | Create or Correct Service Accounts Group | `s-prereq-service-accounts-group` |
-| 6 | Restrict Service Accounts to the Trusted Network | `s-goal-service-accounts-trusted-network` |
-| 7 | Restrict the Entra Connect Sync Account to Its Address | `s-goal-workload-identity-block` |
+| 4 | Create or Correct Service Accounts Group | `s-prereq-service-accounts-group` |
+| 5 | Restrict Service Accounts to the Trusted Network | `s-goal-service-accounts-trusted-network` |
+| 6 | Restrict the Entra Connect Sync Account to Its Address | `s-goal-workload-identity-block` |
 
 ### 7. Require Healthy Devices — new (§3 wave 6)
 
 | # | Step | Id |
 |---|---|---|
-| 1 | Decide How Devices Are Managed | `s-prereq-device-plan` |
-| 2 | Require a Managed Device Outside the Office | `s-goal-require-managed-device` |
-| 3 | Require a Fresh Sign-in for Intune Enrollment | `s-goal-intune-enrollment-reauth` |
-| 4 | Keep Company Data Off Phones | `s-ladder-phone-access-restriction` |
-| 5 | Require App Protection on Phones | `s-goal-mobile-app-protection` |
-| 6 | Limit Unmanaged Devices in the Browser | `s-goal-unmanaged-browser` |
-| 7 | Give Shared Devices Their Own Policy | `s-shared-devices` |
+| 1 | Require a Managed Device Outside the Office | `s-goal-require-managed-device` |
+| 2 | Require a Fresh Sign-in for Intune Enrollment | `s-goal-intune-enrollment-reauth` |
+| 3 | Keep Company Data Off Phones | `s-ladder-phone-access-restriction` |
+| 4 | Give Shared Devices Their Own Policy | `s-shared-devices` |
 
 ### 8. Respond to Risk and Limit Sessions — new (§3 waves 7 and 8)
 

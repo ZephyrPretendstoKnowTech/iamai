@@ -39,12 +39,17 @@ test('mail-device follow-up exposes manual directions and a reversible completio
   }
 })
 
-test('travel follow-up remains hidden when recurring destinations change', () => {
+test('the travellers answer adds no step of its own when recurring destinations change', () => {
+  // The trip-operations step was deleted with finding 4 (it could never be
+  // generated). The travellers question itself is untouched: it stays on the
+  // allowed-countries step and answering it adds no second row anywhere.
   const {f,r} = setup()
-  assert.ok(!r.steps.some(step=>step.id===CARVE_OUT_STEP_ID.travel))
+  const before=new Set(r.steps.map(step=>step.id))
   const mapping=structuredClone(f.mapping)
   mapping.questionAnswers![answerKey(QUESTION_STEP.travel,questionLabels(QUESTION_STEP.travel).question!)]=questionOptions(QUESTION_STEP.travel,'question')[0]
-  assert.ok(!runFixture({...f,mapping}).steps.some(step=>step.id===CARVE_OUT_STEP_ID.travel))
+  const after=runFixture({...f,mapping}).steps.map(step=>step.id)
+  assert.deepEqual(after.filter(id=>!before.has(id)),[])
+  assert.ok(!after.includes('s-question-travel'))
 })
 
 test('generic Entra references include the selected request settings in the step and export', () => {

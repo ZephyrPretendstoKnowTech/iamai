@@ -92,6 +92,19 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   // A member id is listed once, in the order its group draws it. Membership is
   // the whole of what an entry decides — nothing here says when a step is
   // ready, who it touches or what it builds.
+  //
+  // Every id here is one the engine can generate. A listed id that nothing
+  // produces is a step the group promises and never draws, and it is read as a
+  // real step by anyone auditing the board: docs/plans/step-redundancy-analysis.md
+  // finding 4 found five of them, all removed —
+  //   s-prereq-device-plan            replaced by D3 (its answer keys survive as D3's storage)
+  //   s-question-travel               trip operations are hidden for V1
+  //   s-goal-mobile-app-protection    goal absent from the pinned baseline and not on the floor
+  //   s-goal-azure-management-mfa     the same
+  //   s-goal-unmanaged-browser        never an id at all: `unmanaged-browser` is the CONTENT
+  //                                   entry two goals merge into (content.json mergesGoals,
+  //                                   coverage/goalIdentity.ts MERGE_ANCHOR), so the only id
+  //                                   the engine can build is s-goal-byod-session-controls.
   {
     key: 'close-doors',
     titleKey: 'pages.app.plan.groups.closeDoors.title',
@@ -104,7 +117,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'protect-admins',
     titleKey: 'pages.app.plan.groups.protectAdmins.title',
     completedTitleKey: 'pages.app.plan.groups.protectAdmins.completedTitle',
-    members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth', 's-goal-azure-management-mfa'],
+    members: ['s-ladder-operator-passkey', 's-prereq-auth-strength', 's-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-pim-activation-reauth'],
     pinned: false,
     anatomy: null,
   },
@@ -120,7 +133,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'where-people-sign-in',
     titleKey: 'pages.app.plan.groups.whereSignIn.title',
     completedTitleKey: 'pages.app.plan.groups.whereSignIn.completedTitle',
-    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-goal-geo-restriction', 's-question-travel', 's-prereq-service-accounts-group', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
+    members: ['s-prereq-trusted-location', 's-prereq-allowed-countries', 's-goal-geo-restriction', 's-prereq-service-accounts-group', 's-goal-service-accounts-trusted-network', 's-goal-workload-identity-block'],
     pinned: false,
     anatomy: null,
   },
@@ -128,7 +141,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'devices',
     titleKey: 'pages.app.plan.groups.devices.title',
     completedTitleKey: 'pages.app.plan.groups.devices.completedTitle',
-    members: ['s-prereq-device-plan', 's-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-goal-mobile-app-protection', 's-goal-unmanaged-browser', 's-shared-devices'],
+    members: ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'],
     pinned: false,
     anatomy: null,
   },

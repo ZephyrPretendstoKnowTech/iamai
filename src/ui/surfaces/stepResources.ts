@@ -16,7 +16,7 @@ export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bi
   return planSafely(pkg, state, bindings, runtime, label).channels
 }
 
-const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads', 's-question-travel'])
+const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads'])
 const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', 's-ladder-operator-passkey', 's-confirm-workloads', 's-goal-admin-session', 's-prereq-auth-strength', 's-prereq-exclusion-group'])
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {

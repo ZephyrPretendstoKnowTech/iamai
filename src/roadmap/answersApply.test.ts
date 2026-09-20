@@ -24,6 +24,7 @@ import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
+import { stepById } from '../content/content.ts'
 
 /** The mapping as the plan derives it: the detected defaults, then the saved decisions. */
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
@@ -74,10 +75,16 @@ test('saved travel stays separate from workplace countries; provider and printer
   for (const id of Object.values(CARVE_OUT_STEP_ID)) {
     assert.ok(!r0.steps.some((s) => s.id === id), `${id}: not on the plan before the answer`)
     const step = r.steps.find((s) => s.id === id)
-    if (id === CARVE_OUT_STEP_ID.travel) { assert.equal(step, undefined, 'trip operations remain hidden'); continue }
     assert.ok(step, `${id}: on the plan once answered`)
     assert.ok(contentStepFor(step), `${id}: has content`)
   }
+  // Trip operations were a third carve-out that nothing ever pushed, so the step
+  // it named could not be generated and the registry listed it anyway
+  // (docs/plans/step-redundancy-analysis.md finding 4). Id, plumbing and words
+  // are gone; the travellers question that fed it is untouched.
+  assert.equal(Object.keys(CARVE_OUT_STEP_ID).includes('travel'), false)
+  assert.equal(stepById['s-question-travel'], undefined, 'the trip-operations words are gone')
+  assert.ok(!r.steps.some((s) => s.id === 's-question-travel'))
 
   // The service-accounts step names the printer.
   const sa = r.steps.find((s) => s.id === PREREQ_STEP_ID.serviceAccountsGroup)

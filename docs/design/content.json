@@ -3691,56 +3691,6 @@
       "aiFocus": "Explain the tradeoffs of the existing choices and their downstream scope. Do not invent a default or imply that saving a choice configures devices."
     },
     {
-      "id": "s-question-travel",
-      "kind": "check",
-      "title": "Arrange Access Before Travel",
-      "changeLine": null,
-      "why": "Travel can make a legitimate sign-in look outside the business's allowed locations. Arrange the destination and dates before departure so access can be checked in time.",
-      "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
-      },
-      "who": {
-        "lead": "You said: {travelAnswer}"
-      },
-      "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Ask people to tell IT their destination and travel dates before they leave. Use the email template in Block Sign-ins From Countries Not Allowed.",
-          "For each trip, add the country to the allowed list for its dates on Create or Correct Allowed Countries Location; never a user exclusion. The change applies to everyone the countries policy covers.",
-          "Log each trip with its dates and an owner who removes the country when it ends: the named location does not expire on its own. Check other active trips before removing a country."
-        ]
-      },
-      "dates": null,
-      "doneWhen": [
-        "Each trip is recorded with its traveller, countries and dates.",
-        "The country change is in place for the approved dates, and each temporary country is removed when no approved trip or permanent requirement still needs it."
-      ],
-      "ifWrong": null,
-      "comms": null,
-      "doesntApply": false,
-      "skip": true,
-      "scanControl": false,
-      "more": {
-        "risks": [
-          {
-            "text": "A trip nobody logged: the traveller is blocked until the country is added.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": [
-          "Blocked abroad: add the country to the allowed list for the trip's dates; the block lifts when the token refreshes."
-        ],
-        "manager": null,
-        "waits": null
-      },
-      "example": {
-        "tenant": "Contoso Pty Ltd",
-        "travelAnswer": "Regularly: add: New Zealand"
-      },
-      "aiFocus": "Explain the tenant-wide effect, manual expiry and overlapping-trip check. Do not describe a country addition as a traveler-only exception."
-    },
-    {
       "id": "s-question-partner",
       "kind": "check",
       "title": "Exclude the Partner or MSP Accounts",
