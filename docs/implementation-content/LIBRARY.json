@@ -4,7 +4,7 @@
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
     "expectedPackageCount": 47,
-    "packageCount": 46,
+    "packageCount": 45,
     "complete": true
   },
   "packages": [
@@ -43,44 +43,6 @@
       "strictValidationErrors": 24,
       "registered": false,
       "provenance": "rollout-proof",
-      "review": "current"
-    },
-    {
-      "stepId": "cleanup-notAssessed",
-      "title": "Review Baseline Policies IAMAI Did Not Assess",
-      "packagePath": "docs/implementation-content/cleanup-notAssessed/",
-      "relationship": "baseline-source-review",
-      "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
-      "sourceFiles": 3,
-      "contentBlocks": 6,
-      "outputs": {
-        "entra": true,
-        "json": true,
-        "powershell": false,
-        "aiInfo": true,
-        "email": true,
-        "readiness": true,
-        "troubleshooting": true
-      },
-      "statesSupported": [
-        "reviewRequired",
-        "complete",
-        "blocked",
-        "sourceConflict",
-        "inPlace"
-      ],
-      "correctionModules": 0,
-      "requiredBindings": 2,
-      "optionalBindings": 5,
-      "verifiedSourceCount": 3,
-      "packageSpecificMicrosoftSources": 2,
-      "sharedPrimitivesReused": 0,
-      "betaDependencies": 0,
-      "unresolvedIssues": 2,
-      "strictValidationErrors": 11,
-      "registered": false,
-      "provenance": "source-review",
       "review": "current"
     },
     {
@@ -2299,42 +2261,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "baseline.unassessedPolicies.count",
-      "requiredBy": [],
-      "optionalBy": [
-        "cleanup-notAssessed"
-      ],
-      "packages": [
-        "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "baseline.unassessedPolicies.sourceBundle",
-      "requiredBy": [
-        "cleanup-notAssessed"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "baseline.unassessedPolicies.summary",
-      "requiredBy": [
-        "cleanup-notAssessed"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "campaign.current",
       "requiredBy": [],
       "optionalBy": [
@@ -2446,7 +2372,6 @@
       "binding": "dependencies.blockers",
       "requiredBy": [],
       "optionalBy": [
-        "cleanup-notAssessed",
         "s-check-dormant-accounts",
         "s-check-separate-admin-accounts",
         "s-goal-admin-portals-protected",
@@ -2492,7 +2417,6 @@
         "s-verify-mfa"
       ],
       "packages": [
-        "cleanup-notAssessed",
         "s-check-dormant-accounts",
         "s-check-separate-admin-accounts",
         "s-goal-admin-portals-protected",
@@ -5629,18 +5553,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "review.decisions.summary",
-      "requiredBy": [],
-      "optionalBy": [
-        "cleanup-notAssessed"
-      ],
-      "packages": [
-        "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "securityDefaults.current.isEnabled",
       "requiredBy": [
         "s-prereq-security-defaults"
@@ -5988,7 +5900,6 @@
       ],
       "optionalBy": [
         "cleanup-drill",
-        "cleanup-notAssessed",
         "s-check-dormant-accounts",
         "s-goal-admin-portals-protected",
         "s-goal-admin-session",
@@ -6023,7 +5934,6 @@
       ],
       "packages": [
         "cleanup-drill",
-        "cleanup-notAssessed",
         "s-check-dormant-accounts",
         "s-check-separate-admin-accounts",
         "s-goal-admin-portals-protected",
@@ -6073,18 +5983,6 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
-    },
-    {
-      "binding": "tenant.licensingContext",
-      "requiredBy": [],
-      "optionalBy": [
-        "cleanup-notAssessed"
-      ],
-      "packages": [
-        "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "trustedLocation.displayName",
@@ -6447,18 +6345,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 46,
+    "packageCount": 45,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 976,
-    "uniqueBindings": 285,
-    "bindingsRequiredByAtLeastOneProjection": 94,
-    "bindingsOptionalInAtLeastOnePackage": 195,
+    "contentBlocks": 970,
+    "uniqueBindings": 280,
+    "bindingsRequiredByAtLeastOneProjection": 92,
+    "bindingsOptionalInAtLeastOnePackage": 192,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 240,
+    "bindingDefinitionsPendingHolisticReview": 235,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 240,
+    "knownIAMAIInputUnreviewed": 235,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6512,17 +6410,16 @@
     ],
     "legacyDependencies": 0,
     "packagesPassingStrictValidation": 2,
-    "packagesWithWithheldParts": 44,
+    "packagesWithWithheldParts": 43,
     "provenance": {
       "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
-      "source-review": 1,
       "tenant-prerequisite": 10,
       "workflow-check": 7
     },
     "review": {
-      "current": 45,
+      "current": 44,
       "reviewNeeded": 1
     }
   },

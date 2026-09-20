@@ -52,8 +52,9 @@ test('the registry is the whole library compiled: every package for a Plan conte
   assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
   // 44 since the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md finding 4).
   assert.equal(LIBRARY.registered.length, 44)
-  // The two Cleanup rows are not content steps: the Plan draws them with CleanupBody.
-  assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill', 'cleanup-notAssessed'])
+  // The drill row is not a content step: the Plan draws it with CleanupBody. The
+  // not-assessed row left with its duplicate (docs/plans/step-redundancy-analysis.md finding 8).
+  assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill'])
   for (const id of REGISTERED_PACKAGE_STEP_IDS) assert.deepEqual(validatePackage(PACKAGES[id]), [], `${id} was registered with a part the runtime cannot project`)
   // What was withheld is reported, never silently lost: the library's authored gaps are in the compiler's output.
   assert.ok(LIBRARY.registered.some((p) => p.withheld.length > 0))

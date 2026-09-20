@@ -41,7 +41,7 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
   const enabled = render()
   assert.equal(enabled.filter((s) => s.manualReview?.readyToConfirm).length, policies.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name) && !/AVD.*Exclude.*AllowedAVDUsers/i.test(p.name)).length)
   assert.ok(enabled.filter((s) => s.manualReview).every((s) => Array.isArray(s.guidance?.whatToDo?.steps)))
-  assert.equal(original.schedule.cleanup?.rows.some((r) => r.kind === 'notAssessed'), false)
+  assert.equal(original.schedule.cleanup?.rows.some((r) => (r.kind as string) === 'notAssessed'), false)
 })
 
 test('manual policy review survives unrelated scan changes and reopens if its baseline source changes', () => {

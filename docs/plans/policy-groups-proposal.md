@@ -48,6 +48,13 @@ the registry and from the lists here: Protect Your Administrators is 5, Control
 Where People Sign In From is 6, and Require Healthy Devices is 4, which is what
 it already drew. See `docs/plans/step-redundancy-analysis.md` finding 4.
 
+A tenth was a duplicate rather than a phantom: `cleanup-notAssessed` said the
+same list of unassessed baseline policies the `s-review-baseline-…` rows say one
+policy at a time, and the engine had already switched it off by handing the
+Cleanup deriver an empty array. The row, its words and its note control are gone;
+the review rows are the one source (finding 8). Ongoing Checks and Cleanup is 8
+listed members plus the review rows.
+
 ### 1. Establish Emergency Access — pinned, unchanged
 
 Frozen. Drawn above the lanes until all four are Completed.
@@ -148,8 +155,7 @@ row: a step nobody placed is ongoing work until somebody places it.
 | 6 | Harden Emergency Access | `cleanup-hardening` |
 | 7 | Review Overlapping Policies | `cleanup-consolidation` |
 | 8 | Align Policy Names | `cleanup-naming` |
-| 9 | Baseline Policies Not Assessed | `cleanup-notAssessed` |
-| 10+ | The baseline-review rows, in the engine's order | `s-review-baseline-…` |
+| 9+ | The baseline-review rows, in the engine's order | `s-review-baseline-…` |
 
 The baseline-review rows are matched by **prefix**, not listed: their ids carry
 the tenant's own policy keys (`s-review-baseline-iac-app-block-avd-…`), so they

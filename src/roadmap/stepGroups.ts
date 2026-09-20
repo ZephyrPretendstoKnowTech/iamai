@@ -157,7 +157,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['s-goal-admin-portals-protected', 's-goal-inforcer-mfa', 's-check-dormant-accounts', 's-check-separate-admin-accounts', 'cleanup-alerting', 'cleanup-hardening', 'cleanup-consolidation', 'cleanup-naming', 'cleanup-notAssessed'],
+    members: ['s-goal-admin-portals-protected', 's-goal-inforcer-mfa', 's-check-dormant-accounts', 's-check-separate-admin-accounts', 'cleanup-alerting', 'cleanup-hardening', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     pinned: false,

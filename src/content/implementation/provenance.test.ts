@@ -30,7 +30,6 @@ test('every package is classified by what it stands on, and only a package the p
   assert.equal(of('s-verify-mfa'), 'workflow-check')
   assert.equal(of('s-question-mail-devices'), 'workflow-check')
   assert.equal(of('cleanup-drill'), 'rollout-proof')
-  assert.equal(of('cleanup-notAssessed'), 'source-review')
 })
 
 test('the registry and LIBRARY.json carry the same provenance the classification reads', () => {

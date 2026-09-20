@@ -128,8 +128,6 @@ export type PlanData = {
   checkpoints: unknown[]
   /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
   markCleanupDone: (kind: CleanupKind, date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
-  /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
-  setNotAssessedNote: (policy: string, reason: string | null) => void
 }
 
 /** The operator's own account in the directory (derive/operator.ts: the scan's /me row; the signed-in name when the scan has none): display only, for the steps' "your own account" lines. */
@@ -552,16 +550,6 @@ export function usePlanData(
         const base = p ?? { planId, skips: {}, checkpoints: [] }
         return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString(), { ...evidence, basis, accountIds, ...(snapshot && kind === 'alerting' ? { accountBasis: recoveryAccountBasis(snapshot, accountIds, mapping ?? undefined, groups) } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }) }
       })
-      bump()
-    },
-    setNotAssessedNote: (policy, reason) => {
-      if (!mapping) return
-      const notAssessedNotes = { ...(mapping.notAssessedNotes ?? {}) }
-      if (reason && reason.trim().length > 0) notAssessedNotes[policy] = reason.trim()
-      else delete notAssessedNotes[policy]
-      const next = { ...mapping, notAssessedNotes }
-      setMapping(next)
-      persistMapping(next)
       bump()
     },
     onSkip: (stepId, reason) => {

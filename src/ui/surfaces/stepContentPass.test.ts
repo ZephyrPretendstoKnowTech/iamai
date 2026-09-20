@@ -122,11 +122,13 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   for (const line of ['cloud-only account', 'Roles and administrators', 'https://aka.ms/mysecurityinfo', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
 })
 
-test("a Cleanup row's instructions sit under Implementation, with the not-assessed notes in its one column", () => {
+test("a Cleanup row's instructions sit under Implementation, in its one column", () => {
   const src = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
   assert.match(src, /<StepSection heading=\{CONTRACT\.implementation\.heading\}>/)
   assert.doesNotMatch(src, /HEAD\.whatToDo/)
   assert.match(src, /className=\{`step-body\$\{row\.kind === 'drill' \? ' has-rail' : ''\}`\}/, 'only the verification row (Emergency Access Step 4) draws an action column')
   const main = src.indexOf('<div className="step-main">')
-  assert.ok(main > 0 && src.indexOf('entry.whatToDo', main) > main && src.indexOf('A.notAssessedLabel', main) > main, 'the rename list and the notes are in the main column')
+  assert.ok(main > 0 && src.indexOf('entry.whatToDo', main) > main, 'the rename list is in the main column')
+  // The not-assessed notes went with their row (docs/plans/step-redundancy-analysis.md finding 8).
+  assert.doesNotMatch(src, /notAssessed/)
 })

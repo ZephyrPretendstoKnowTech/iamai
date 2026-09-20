@@ -382,7 +382,7 @@ test('013.E: the pack says which step each of its prompts speaks for', () => {
 
 test('013.E: a Cleanup row states what it has and invents no finish', () => {
   const c = load('demo-week2')
-  const rows = cleanupExportViews(c.run.schedule.cleanup, {})
+  const rows = cleanupExportViews(c.run.schedule.cleanup)
   assert.ok(rows.length > 0, 'the demo has no Cleanup rows')
   const text = cleanupText(rows)
   assert.doesNotMatch(text, /the next scan confirms it/, 'a completion no authority stated')
@@ -416,7 +416,7 @@ test('013.F: no global Plan artifact carries the person-level MFA ledger', () =>
 
 test('013.G: the calendar carries no tenant id, and no sign-in name survives the one guard', () => {
   for (const c of CASES) {
-    const ics = buildIcs(c.run.steps, 'Tenant', c.run.input.planId, c.view, cleanupExportViews(c.run.schedule.cleanup, {}))
+    const ics = buildIcs(c.run.steps, 'Tenant', c.run.input.planId, c.view, cleanupExportViews(c.run.schedule.cleanup))
     assert.equal(ics.includes(c.snapshot.tenantId), false, `${c.name}: the tenant id is in the calendar`)
     // The .ics is downloaded through the export guard as REDACTED
     // (ui/surfaces/Export.tsx), and the guard is the one thing that redacts:
