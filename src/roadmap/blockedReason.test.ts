@@ -23,8 +23,9 @@ test('the four shapes', () => {
   assert.equal(BLOCKED_REASON.after('Create the exclusion group'), 'after: Create the exclusion group')
   assert.equal(BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), 'when MFA readiness reaches 90% (now 60%)')
   assert.equal(BLOCKED_REASON.exist(2, 'emergency-access account', 0), 'when 2 emergency-access accounts exist (now 0)')
-  // The pages.plan.blocked count shape, as written.
-  assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exist (now 0)')
+  // The pages.plan.blocked count shape, with the pluraliser bending its verb to
+  // the count (content/render.ts SINGULAR_VERB).
+  assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exists (now 0)')
   // The baseline shape is a sentence the content file writes, not a fill.
   assert.ok(inShape(BLOCKED_REASON.baseline), 'the baseline shape is one of the shapes')
   assert.ok(words(BLOCKED_REASON.baseline) <= BLOCKED_REASON_MAX_WORDS, 'within twelve words')

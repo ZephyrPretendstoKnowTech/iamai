@@ -87,8 +87,8 @@ test('R3: a prerequisite tile reads To do, Completed or Waiting, never Ready or 
   // Every opened step on every fixture draws the new words.
   let prerequisites = 0
   for (const { where, s } of snapshots()) {
-    for (const t of s.tiles.filter((t) => t.label.startsWith('Prerequisite · '))) {
-      assert.match(t.label, /^Prerequisite · (To do|Completed|Waiting|Deferred)$/, `${where}: a prerequisite tile reads "${t.label}"`)
+    for (const t of s.tiles.filter((t) => t.state.startsWith('Prerequisite · '))) {
+      assert.match(t.state, /^Prerequisite · (To do|Completed|Waiting|Deferred)$/, `${where}: a prerequisite tile reads "${t.state}"`)
       prerequisites += 1
     }
   }

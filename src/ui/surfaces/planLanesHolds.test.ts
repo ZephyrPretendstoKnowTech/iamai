@@ -197,27 +197,29 @@ function tilesOf(name: 'demo'): { tiles: Map<string, Tile[]>; idOfTitle: Map<str
 
 test('a step never states a Direction wait the prerequisite beside it already carries', () => {
   const { tiles, idOfTitle } = tilesOf('demo')
+  // The card's heading is what is being waited on; its check is that thing's
+  // state (owner, 2026-09-20; quality audit 2.4).
   const line = (t: Tile): string => `${t.label}: ${t.value}`
 
   // The registration step said the trusted network three times: the step that
   // makes it, a numeric gate repeating that step's name, and the answer behind
   // both. It says it once now, as the step a person can go and do.
   const registration = tiles.get('s-goal-register-info-protected')!
-  assert.deepEqual(registration.filter((t) => /Trusted Network|Sign In From/.test(t.value)).map(line), ['Prerequisite \u00b7 To do: Define the Trusted Network'])
+  assert.deepEqual(registration.filter((t) => /Trusted Network|Sign In From/.test(t.label)).map(line), ['Define the Trusted Network: Prerequisite \u00b7 To do'])
 
   // Six tiles of which four were two facts doubled; four now, each its own fact.
   assert.deepEqual(tiles.get('s-goal-service-accounts-trusted-network')!.map(line), [
     'Affected people: Not established',
-    'Prerequisite \u00b7 To do: Define the Trusted Network',
-    'Prerequisite \u00b7 To do: Create or Correct Service Accounts Group',
-    'Prerequisite \u00b7 To do: Prepare Emergency Access Accounts',
+    'Define the Trusted Network: Prerequisite \u00b7 To do',
+    'Create or Correct Service Accounts Group: Prerequisite \u00b7 To do',
+    'Prepare Emergency Access Accounts: Prerequisite \u00b7 To do',
   ])
 
   // The rule behind both, over every step of the fixture: where a prerequisite
   // tile names a step whose question moved to Direction, no tile beside it
   // states that Direction step as well.
   for (const [id, list] of tiles) {
-    const relayed = new Set(list.flatMap((t) => (t.label.startsWith('Prerequisite') ? [...directionStepsAnswering(idOfTitle.get(t.value) ?? '')] : [])))
+    const relayed = new Set(list.flatMap((t) => (t.value.startsWith('Prerequisite') ? [...directionStepsAnswering(idOfTitle.get(t.label) ?? '')] : [])))
     for (const t of list.filter((x) => x.label === directionWords.waiting)) {
       assert.equal(relayed.has(idOfTitle.get(t.value) ?? ''), false, `${id} states "${t.value}" beside the prerequisite that already carries it`)
     }
