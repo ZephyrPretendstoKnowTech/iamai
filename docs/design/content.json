@@ -5606,14 +5606,19 @@
       "more": {
         "risks": [
           {
-            "text": "A role setting that still points at the old \"require MFA on activation\" option is redundant with this; switch each role to the authentication context.",
+            "text": "A role still set to the old \"require MFA on activation\" option accepts a check from earlier in the session, so it is weaker than this rather than the same; switch each role to the authentication context.",
+            "applies": "always"
+          },
+          {
+            "text": "A role pointed at this context while the policy is still report-only requires nothing at all on activation: Entra's fall back to MFA on activation is not triggered in that state.",
             "applies": "always"
           }
         ],
         "helpDesk": [
-          "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength."
+          "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength.",
+          "The context is checked at activation only; Require Phishing-Resistant MFA for Admins is what covers the role once it is active."
         ],
-        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A recent successful check can be reused within Microsoft's window.",
+        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A check just made can be reused for another activation within ten minutes, across Entra roles, Azure resource roles and groups.",
         "waits": null
       },
       "example": {
@@ -5641,11 +5646,11 @@
           "Entra admin center → Entra ID → Conditional Access → Authentication context → New: name it {contextName}, publish it.",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
+          "Users → Include: All users, never directory roles: at activation the person does not hold the role yet, so a role-scoped policy would not apply. {exclusionsLine}",
           "Target resources → Authentication context → {contextName}",
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}",
-          "Privileged Identity Management → Entra roles → Settings → each role → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
+          "After the policy is On, and not before: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → each role → Role settings → Edit → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
         ]
       },
       "aiFocus": "Explain the setup order, 10-minute reauthentication window and activation-only boundary. Do not claim that a context controls all use of a role after activation.",

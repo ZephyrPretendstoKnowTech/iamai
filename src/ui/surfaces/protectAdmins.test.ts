@@ -297,5 +297,62 @@ test('D6: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(SESSION)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
-// The unused readers below are kept for the sections that follow.
+// ---------------------------------------------------------------------------
+// Require MFA at Every Role Activation (spec section 6)
+// ---------------------------------------------------------------------------
+
+const PIM = 's-goal-pim-activation-reauth'
+
+/** The step's reviewer reference procedure, joined. */
+const referenceOf = (id: string): string =>
+  ((stepById[id] as unknown as { whatToDoReference?: { steps?: string[] } }).whatToDoReference?.steps ?? []).join('\n')
+
+test('E1: the PIM role setting comes after the policy is On, and the step says what report-only costs', () => {
+  const ref = referenceOf('pim-activation-reauth')
+  assert.match(ref, /After the policy is On, and not before/)
+  assert.ok(
+    risksOf('pim-activation-reauth').some((t) => /requires nothing at all on activation/.test(t) && /fall back to MFA on activation is not triggered in that state/.test(t)),
+    risksOf('pim-activation-reauth').join('\n'),
+  )
+  // The package said this already; the reference used to contradict it.
+  assert.match(blockText(PIM, 'entra.observe'), /Do not configure the PIM role authentication-context rule yet/)
+})
+
+test('E2: the PIM role settings path is the one Microsoft documents', () => {
+  const want = /ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles/
+  assert.match(referenceOf('pim-activation-reauth'), want)
+  assert.match(blockText(PIM, 'entra.pim.configure'), want)
+  assert.match(blockText(PIM, 'entra.pim.configure'), /\*\*Role settings\*\* → \*\*Edit\*\*/)
+  assert.doesNotMatch(referenceOf('pim-activation-reauth'), /Entra roles → Settings/)
+})
+
+test('E3: the policy targets all users, and says why it must not target the roles', () => {
+  const ref = referenceOf('pim-activation-reauth')
+  assert.match(ref, /never directory roles: at activation the person does not hold the role yet, so a role-scoped policy would not apply/)
+  assert.match(blockText(PIM, 'entra.policy.create'), /Never scope this policy to directory roles/)
+})
+
+test('E4: the old activation option is called weaker, not redundant', () => {
+  const risks = risksOf('pim-activation-reauth')
+  assert.ok(risks.some((t) => /accepts a check from earlier in the session, so it is weaker than this rather than the same/.test(t)), risks.join('\n'))
+  assert.ok(!risks.some((t) => /is redundant with this/.test(t)), risks.join('\n'))
+})
+
+test('E5: help desk says where the context stops and which step carries on', () => {
+  const lines = helpDeskOf('pim-activation-reauth')
+  assert.ok(
+    lines.some((l) => /checked at activation only/.test(l) && /Require Phishing-Resistant MFA for Admins is what covers the role once it is active/.test(l)),
+    lines.join('\n'),
+  )
+})
+
+test('E6: the reuse window is named, with the roles it spans', () => {
+  const manager = String(((stepById['pim-activation-reauth'] as unknown as { more?: { manager?: string } }).more ?? {}).manager ?? '')
+  assert.match(manager, /reused for another activation within ten minutes, across Entra roles, Azure resource roles and groups/)
+})
+
+test('E7: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(PIM), '2026-09-20')
+})
+
 void aboutOf

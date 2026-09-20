@@ -443,7 +443,7 @@
       "title": "Configure Microsoft Entra role settings in PIM",
       "url": "https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings",
       "purpose": "Current authentication-context ordering, backup-MFA behavior, Every time reauthentication, 10-minute activation window, and PIM configuration guidance.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -461,7 +461,7 @@
       "title": "Create or Update authenticationContextClassReference - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/authenticationcontextclassreference-update?view=graph-rest-1.0",
       "purpose": "Graph v1.0 create/update endpoint, publish flag, permissions and roles for authentication context.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -475,7 +475,7 @@
       "title": "Conditional Access: Target resources",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
       "purpose": "Current Conditional Access authentication-context targeting behavior.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -491,7 +491,7 @@
       "title": "Update unifiedRoleManagementPolicyRule - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-update?view=graph-rest-1.0",
       "purpose": "Graph v1.0 PIM rule PATCH endpoint, authentication-context rule support, delegated permissions and Privileged Role Administrator requirement.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -506,7 +506,7 @@
       "title": "Get unifiedRoleManagementPolicyRule - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-get?view=graph-rest-1.0",
       "purpose": "Graph v1.0 verification of the PIM authentication-context rule.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [
@@ -520,7 +520,7 @@
       "title": "License requirements to use Privileged Identity Management",
       "url": "https://learn.microsoft.com/en-us/entra/id-governance/licensing-fundamentals",
       "purpose": "PIM licensing requirement context.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "supporting",
       "audience": [
@@ -534,7 +534,7 @@
       "title": "Configure authentication session management with Conditional Access",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
       "purpose": "Every time sign-in-frequency semantics used by the CA policy.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "supporting",
       "audience": [
