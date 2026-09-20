@@ -633,6 +633,26 @@ export function ContentStep({
                   </ul>
                 </>
               )}
+              {/* What the step says about consequence rather than about the next
+                  action — what could go wrong, the way back, the recovery
+                  runbook, the three boxes of text to send, and the dates — is
+                  here (owner, 2026-09-20). It used to be reachable only by
+                  printing the plan, which is not where a person reads it. The
+                  printed page draws the same component below, unchanged. */}
+              {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+                <>
+                  <h4>{HEAD.dates}</h4>
+                  <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
+                </>
+              )}
+              <MoreReading
+                cs={cs}
+                ex={ex}
+                ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
+                comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
+                copy={copy}
+                copied={copied}
+              />
             </div>
           </StepDialog>
           <StepDialog open={dialog === 'troubleshooting'} onClose={closeDialog} eyebrow={CONTRACT.troubleshooting.eyebrow} title={title} closeLabel={CONTRACT.troubleshooting.close}>
@@ -1193,54 +1213,33 @@ export function Options({ name, labelledBy, options, answer, onAnswer, ex, unive
 }
 
 /**
- * Audit depth and work artifacts, under one disclosure.
+ * What the step says about consequence, rather than about the next action: what
+ * could go wrong, the way back, the recovery runbook, and the three boxes of
+ * text to send.
  *
- * What is here is what does not change the next action: the names behind the
- * counts stated above, what could go wrong, the way back from a change, the
- * recovery runbook, and the three boxes of text to send. What is never here is a
- * blocker — those are the contract's `fix`, and they render above, in a section
- * of their own.
- *
- * `open` while printing, so a printed step is the whole step (§7).
+ * It has one source and two places (owner, 2026-09-20): behind "Why IAMAI says
+ * this" on screen, where a person can reach it without printing, and on the
+ * printed page, where it always stood. Risk is on no card — the card says what
+ * to do next — unless a step declares very high implementation risk, and no
+ * step declares one today.
  */
-function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: {
+function MoreReading({ cs, ex, ifWrong, comms, copy, copied }: {
   cs: Record<string, any>
   ex: Ex
-  step: Step
-  /** The name lists the default step stated as counts (whoBlocks). */
-  contractWho: WhoBlock[]
   /** The rollback the step's operation earns, where the change is one that could be made. */
   ifWrong: string | null
   /** The email as the exports say it (stepExport.ts commsFor), where the step asks anybody to do anything. */
   comms: { salutation: string; body: string; extra: string[]; signature: string } | null
-  onSkip: (r: string) => void
-  onUnskip: () => void
-  onDoesntApply?: (reason: string) => void
   copy: (id: string, t: string) => void
   copied: string | null
-  open?: boolean
 }) {
   const more = cs.more || {}
-  const [asking, setAsking] = useState(false)
-  const [reason, setReason] = useState('')
   const risks = (more.risks || []) as { text: string; applies?: string }[]
   const applies = risks.filter((r) => r.applies && truthy(ex[r.applies]))
   const rest = risks.filter((r) => !(r.applies && truthy(ex[r.applies])))
   const commsText = comms ? [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n') : null
   return (
-    <details className="more" open={open || undefined}>
-      <summary>{HEAD.more}</summary>
-      {/* The people behind the counts above: the same lines, with their names
-          under them. Nothing here is new evidence; it is the evidence the step
-          already stated, at the length it actually is. */}
-      <StepSection heading={HEAD.namesHeld} when={contractWho.length > 0} frame={false}>
-        {contractWho.map((b) => (
-          <div key={b.key} className="names-group">
-            {b.lead && <p className="reason">{b.lead}</p>}
-            {b.names.length > 0 && <ol className="names">{b.names.map((nm, i) => <li key={i}>{nm}</li>)}</ol>}
-          </div>
-        ))}
-      </StepSection>
+    <>
       {/* The pack draws the disclosure as a two-column grid of small cards at
           the wider widths (`docs/design/approved/anatomy/plan-step-v1.html`
           `.more-grid` / `.more-card`), and its own sample cards are these two:
@@ -1309,6 +1308,55 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
         </>
       )}
+    </>
+  )
+}
+
+/**
+ * Audit depth and work artifacts, under one disclosure.
+ *
+ * What is here is what does not change the next action: the names behind the
+ * counts stated above, what could go wrong, the way back from a change, the
+ * recovery runbook, and the three boxes of text to send. What is never here is a
+ * blocker — those are the contract's `fix`, and they render above, in a section
+ * of their own.
+ *
+ * `open` while printing, so a printed step is the whole step (§7).
+ */
+function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: {
+  cs: Record<string, any>
+  ex: Ex
+  step: Step
+  /** The name lists the default step stated as counts (whoBlocks). */
+  contractWho: WhoBlock[]
+  /** The rollback the step's operation earns, where the change is one that could be made. */
+  ifWrong: string | null
+  /** The email as the exports say it (stepExport.ts commsFor), where the step asks anybody to do anything. */
+  comms: { salutation: string; body: string; extra: string[]; signature: string } | null
+  onSkip: (r: string) => void
+  onUnskip: () => void
+  onDoesntApply?: (reason: string) => void
+  copy: (id: string, t: string) => void
+  copied: string | null
+  open?: boolean
+}) {
+  const [asking, setAsking] = useState(false)
+  const [reason, setReason] = useState('')
+  return (
+    <details className="more" open={open || undefined}>
+      <summary>{HEAD.more}</summary>
+      {/* The people behind the counts above: the same lines, with their names
+          under them. Nothing here is new evidence; it is the evidence the step
+          already stated, at the length it actually is. */}
+      <StepSection heading={HEAD.namesHeld} when={contractWho.length > 0} frame={false}>
+        {contractWho.map((b) => (
+          <div key={b.key} className="names-group">
+            {b.lead && <p className="reason">{b.lead}</p>}
+            {b.names.length > 0 && <ol className="names">{b.names.map((nm, i) => <li key={i}>{nm}</li>)}</ol>}
+          </div>
+        ))}
+      </StepSection>
+      <MoreReading cs={cs} ex={ex} ifWrong={ifWrong} comms={comms} copy={copy} copied={copied} />
       {/* Defer this step (decision 3), and beside it Doesn't apply here on the content
           steps flagged for it: never a foundation (emergency access, the exclusions
           group), never a policy step whose subject exists. Pressing it asks one line,

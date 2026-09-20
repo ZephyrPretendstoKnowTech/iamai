@@ -37,6 +37,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import type { Lane, Substatus } from '../../actionability/lanes.ts'
@@ -851,4 +853,35 @@ test('the demo opens the same step body, with the same grammar', () => {
     assert.ok(c.doneWhen.length > 0, `demo/${s.id}: no completion`)
     assert.ok(readinessOf(s, c).bar.main.trim() !== '', `demo/${s.id}: no readiness`)
   }
+})
+
+test('what could go wrong is behind "Why IAMAI says this", from one source, and on no card', () => {
+  // Owner, 2026-09-20: Risks, For the help desk, For your manager, Tell your
+  // people and the dates move behind the Why dialog. Before this they were
+  // printed and nowhere else, so a person reading the step on screen could not
+  // reach them without printing the plan.
+  const reading = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function MoreReading('), CONTENT_STEP.indexOf('function More('))
+  assert.ok(reading.length > 0, 'the reading half of More is not its own component')
+  for (const head of ['HEAD.risks', 'HEAD.ifWrong', 'HEAD.comms', 'HEAD.helpDesk', 'HEAD.manager']) {
+    assert.equal(reading.includes(head), true, `${head} is not in the one component that draws it`)
+    assert.equal(CONTENT_STEP.split(head).length - 1, 1, `${head} is drawn in two places`)
+  }
+  // Two places draw it: the Why dialog, and the printed page's More.
+  assert.equal(CONTENT_STEP.split('<MoreReading').length - 1, 2)
+  const dialog = CONTENT_STEP.slice(CONTENT_STEP.indexOf("open={dialog === 'readiness'}"))
+  assert.match(dialog.slice(0, dialog.indexOf('</StepDialog>')), /<MoreReading/, 'the Why dialog does not draw it')
+  // Risk is on no Tasks Remaining card: the card says what to do next.
+  const cards = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function EmergencyAccountStatusTile('), CONTENT_STEP.indexOf('export function EmergencySubjectReadiness('))
+  assert.equal(/HEAD\.risks|more\.risks/.test(cards), false, 'a Tasks Remaining card carries risk')
+})
+
+test('a step that carries what could go wrong can open the Why dialog, whatever the scan found', () => {
+  // The dialog's own gate was the scan's findings, so a step with authored
+  // risks and no finding kept them unreachable on screen.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const ctx = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null })
+  const withRisks = r.steps.filter((step) => ((contentStepFor(step) as { more?: { risks?: unknown[] } } | undefined)?.more?.risks?.length ?? 0) > 0)
+  assert.ok(withRisks.length > 0, 'the premise: some demo step authors risks')
+  for (const step of withRisks) assert.equal(stepBodyOf(step, ctx(step)).hasEvidence, true, `${step.id}: risks with no way to reach them`)
 })
