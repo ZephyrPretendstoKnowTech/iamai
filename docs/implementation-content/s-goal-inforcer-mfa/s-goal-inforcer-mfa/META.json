@@ -263,6 +263,27 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-ca-resources",
+      "authority": "Microsoft Learn",
+      "title": "Targeting Resources in Conditional Access Policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-ca-conditions",
+      "authority": "Microsoft Learn",
+      "title": "How to Use Conditions in Conditional Access Policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    }
+  ],
+  "impact": {
+    "fallbackLabel": "Inforcer sign-ins"
+  },
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-inforcer-mfa",
   "title": "Require MFA for Inforcer Access",

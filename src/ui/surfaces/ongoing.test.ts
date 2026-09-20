@@ -301,3 +301,61 @@ test('C6: the row’s Impact names the subject instead of the placeholder', () =
     assert.equal(rowWho(step), 'Administrator portals')
   }
 })
+
+// ---------------------------------------------------------------------------
+// Require MFA for Inforcer Access (spec section 5)
+// ---------------------------------------------------------------------------
+
+const INFORCER = 's-goal-inforcer-mfa'
+const INFORCER_CONTENT = 'inforcer-mfa'
+
+test('D1: the Client apps condition is left unconfigured, with the reason, and nothing says "Client apps: All"', () => {
+  for (const block of ['entra.create', 'entra.correct-conditions']) {
+    const text = blockText(INFORCER, block)
+    assert.match(text, /Client apps\*\* unconfigured/, `${block}: the condition is not left unconfigured`)
+    assert.match(text, /every client app/, `${block}: the reason is missing`)
+  }
+  assert.doesNotMatch(packageText(INFORCER), /Client apps: \*\*All\*\*/)
+  assert.doesNotMatch(packageText(INFORCER), /Client apps to All/)
+  assert.doesNotMatch(packageText(INFORCER), /All client apps/)
+})
+
+test('D2: a risk says a user-scoped policy does not cover service principals', () => {
+  const risks = risksOf(INFORCER_CONTENT)
+  assert.ok(risks.some((t) => /service principal/.test(t) && /workload identity needs a policy of its own/.test(t)), risks.join('\n'))
+})
+
+test('D3: About says the requirement follows the resource, whatever client asks', () => {
+  const why = String((stepById[INFORCER_CONTENT] as unknown as { why: string }).why)
+  assert.match(why, /follows the resource, not the client/)
+  assert.notEqual(why, 'Require MFA when people sign in to Inforcer.')
+})
+
+test('D4: a risk names the cost of one policy per application', () => {
+  const risks = risksOf(INFORCER_CONTENT)
+  assert.ok(risks.some((t) => /capped at 240/.test(t)), risks.join('\n'))
+})
+
+test('D5: no rendered line calls a display name an application ID', () => {
+  const b = bodiesOf('demo').get(INFORCER)
+  assert.ok(b, 'the demo plan has no Inforcer step')
+  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+  const target = steps.find((s) => /Target resources/.test(s))
+  assert.ok(target, steps.join('\n'))
+  assert.doesNotMatch(target, /application ID [“"]/)
+  // The baseline's own name marker is still there: it is provenance, not a hole (src/names.ts).
+  assert.match(target, /Inforcer \(baseline name\)/)
+})
+
+test('D6: the package carries the checked date, and the step shows it', () => {
+  assert.equal(checkedOn(INFORCER), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(INFORCER)?.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('D7: the row’s Impact names the subject instead of the placeholder', () => {
+  for (const name of ['demo', 'messy'] as const) {
+    const step = stepsOf(name).find((s) => s.id === INFORCER)
+    assert.ok(step, `${name}: no Inforcer step`)
+    assert.equal(rowWho(step), 'Inforcer sign-ins')
+  }
+})

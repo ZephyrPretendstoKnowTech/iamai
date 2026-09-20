@@ -6577,7 +6577,7 @@
       "kind": "policy",
       "title": "Require MFA for Inforcer Access",
       "changeLine": null,
-      "why": "Require MFA when people sign in to Inforcer.",
+      "why": "A token for Inforcer needs MFA, whichever app asks for it: Conditional Access follows the resource, not the client. One policy therefore covers every route people take into the application.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps"
       },
@@ -6605,7 +6605,16 @@
       "skip": true,
       "scanControl": true,
       "more": {
-        "risks": [],
+        "risks": [
+          {
+            "text": "A policy scoped to users never reaches a service principal calling Inforcer; a workload identity needs a policy of its own.",
+            "applies": "always"
+          },
+          {
+            "text": "One policy per application adds up: a tenant is capped at 240, and Microsoft prefers one policy covering all resources.",
+            "applies": "always"
+          }
+        ],
         "helpDesk": [
           "Inspect the affected Inforcer sign-in and its Conditional Access result. Check the target application ID, user scope, exclusions and accepted MFA claim."
         ],

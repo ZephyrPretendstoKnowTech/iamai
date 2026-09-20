@@ -367,8 +367,12 @@ no session controls.
    don't appear in the picker at all", and the whole app-picker section keys on
    the service principal. The package's rule — "Match the exact application ID,
    not a similar display name" — is right and is kept. What was wrong was the
-   rendered line, which read `application ID "Inforcer (baseline name)"
-   (708861da-…)`: a placeholder leaked into the sentence. **Corrected.**
+   rendered sentence: the package wrote `application ID **708861da-…**`, and the
+   name directory substitutes `"Inforcer (baseline name)" (708861da-…)` for the
+   id, so the line called a display name an application ID. The `(baseline
+   name)` marker is deliberate — `src/names.ts` records that the name comes from
+   the pinned policy and is not a vendor or first-party claim — so the sentence
+   moved around it instead. **Corrected.**
 
 **Completion from the scan.** The policy exists, is On, and its target resource,
 assignments, exclusions, grant and absent session controls match the target; plus
@@ -383,7 +387,8 @@ the step only when the policy's semantics move.
 - D3 About says the requirement follows the resource, from whatever client asks
   for it.
 - D4 a risk names the cost of one policy per application.
-- D5 no rendered line contains "(baseline name)".
+- D5 no rendered line calls a display name an application ID, and the baseline's
+  own name marker is left alone.
 - D6 the package's checked date is 2026-09-20 and the step shows it.
 - D7 the row's Impact names the subject instead of the placeholder.
 
