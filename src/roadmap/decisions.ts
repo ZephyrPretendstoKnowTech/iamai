@@ -214,7 +214,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.decision)], d.option)
       && sameAnswer(mapping.questionAnswers?.[answerKey(stepId, labels.question)], d.answers?.[labels.question])
     if (labels.strict && !preserveRestriction && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
-    if (['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(stepId) && provenance === 'confirmed') {
+    if (stepId === 's-check-dormant-accounts' && provenance === 'confirmed') {
       next.dormantAccountChoices = { ...next.dormantAccountChoices }
       for (const [key, value] of Object.entries(d.answers ?? {})) {
         if (!key.startsWith('outcome:') || !['keep', 'disable', 'investigate'].includes(value)) continue

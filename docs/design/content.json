@@ -6281,28 +6281,6 @@
       "scanControl": true
     },
     {
-      "id": "s-ladder-admin-accounts-separate",
-      "kind": "ladder",
-      "learn": {
-        "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
-      },
-      "whatToDo": {
-        "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.",
-        "steps": [
-          "Entra admin center → Identity → Users → New user, one per person who holds a directory role, with no mailbox licence.",
-          "Register a strong method on the new account and assign the role under the same governance model, keeping eligibility where the role was eligible.",
-          "Test sign-in and the admin task with the new account; only then remove the role from the everyday account."
-        ]
-      },
-      "doneWhen": [
-        "The reviewed privileged accounts are confirmed as dedicated to administrator work, or each recorded handover has a tested replacement with the required roles and the everyday account no longer has privileged roles.",
-        "Mailbox licensing and past mail or Teams activity are clues for the review; their absence does not prove separation."
-      ],
-      "aiFocus": "Preserve eligibility versus permanent assignment. Do not treat historical productivity events as proof the migration is incomplete.",
-      "skip": false,
-      "scanControl": true
-    },
-    {
       "id": "s-ladder-global-admin-count",
       "kind": "ladder",
       "learn": {
@@ -6344,28 +6322,6 @@
         "Every reviewed guest or invitation has a confirmed purpose, or an approved removal that has been completed."
       ],
       "aiFocus": "Distinguish pending, inactive and unsupported evidence. Do not infer approval to delete from a missing sponsor field.",
-      "skip": false,
-      "scanControl": true
-    },
-    {
-      "id": "s-ladder-stale-accounts",
-      "kind": "ladder",
-      "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
-      },
-      "whatToDo": {
-        "lead": "Review accounts with no recent sign-in and confirm whether they are still needed.",
-        "steps": [
-          "Entra admin center → Identity → Users, add the Last sign-in column, and sort by it.",
-          "For each account with no sign-in for 90 days or none on record, check its owner, purpose and any seasonal or service use; missing activity is a reason to check, not proof it is unused.",
-          "Block sign-in only on accounts confirmed as no longer needed; handle deletion and data retention through your separate offboarding process."
-        ]
-      },
-      "doneWhen": [
-        "No enabled account has gone 90 days without a sign-in, or each one that has is recorded as deliberately kept.",
-        "Each blocked account was confirmed as no longer needed."
-      ],
-      "aiFocus": "Do not conclude missing dates mean unused accounts or invent a deletion deadline.",
       "skip": false,
       "scanControl": true
     },

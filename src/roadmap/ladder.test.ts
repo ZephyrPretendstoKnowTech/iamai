@@ -4,6 +4,9 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { LADDER_ITEMS, GLOBAL_ADMIN_ROLE_ID, ladderFacts, ladderStepId, ladderSteps } from './ladder.ts'
 import { OPERATOR_PASSKEY_STEP_ID } from './passkeySettings.ts'
+import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { stepById } from '../content/content.ts'
+import { readFileSync } from 'node:fs'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
@@ -92,10 +95,16 @@ test('facts come from the directory, not from anything the operator types', () =
 
 test('a free tenant gets the ladder as its plan, in ladder order, and no Conditional Access prerequisite', () => {
   const { steps } = runFixture(fixture('micro'))
-  const ladder = steps.filter((s) => s.id.startsWith('s-ladder-'))
-  assert.equal(ladder.length, LADDER_ITEMS.length, 'every rung is a step')
-  assert.deepEqual(ladder.map((s) => s.id), LADDER_ITEMS.map((i) => ladderStepId(i.id)), 'ladder order is the plan order')
+  // Two rungs are drawn by the step that already is them, in the rung's own
+  // place (COVERED_BY_STEP, docs/plans/step-redundancy-analysis.md finding 9):
+  // every item is still a row, and no item is two rows.
+  const COVERED: Record<string, string> = { 'admin-accounts-separate': 's-check-separate-admin-accounts', 'stale-accounts': 's-check-dormant-accounts' }
+  const rows = LADDER_ITEMS.map((i) => COVERED[i.id] ?? ladderStepId(i.id))
+  const ladder = steps.filter((s) => rows.includes(s.id))
+  assert.equal(ladder.length, LADDER_ITEMS.length, 'every rung is a row')
+  assert.deepEqual(ladder.map((s) => s.id), rows, 'ladder order is the plan order')
   assert.equal(steps.indexOf(ladder[0]), 0, 'the ladder leads the plan')
+  for (const id of Object.keys(COVERED)) assert.equal(steps.some((s) => s.id === ladderStepId(id)), false, `${id}: the ladder drew a second id for one step`)
   // No free-tier Emergency Access path (owner, 2026-09-19): no rung, and no emergency step from anywhere else.
   assert.equal(LADDER_ITEMS.some((i) => /break-glass|emergency/i.test(i.id)), false)
   assert.equal(steps.some((s) => /break-glass|emergency/i.test(s.id)), false, 'a free tenant has no Emergency Access step')
@@ -132,9 +141,39 @@ test('Authenticator replacement requires registration plus effective method targ
 })
 
 test('separation review includes eligible role holders but excludes emergency accounts', () => {
+  // On the one step that does the review, whatever the licence: the ladder's
+  // second id for it is gone (finding 9), and the population is applyManualReviews'
+  // (roadmap/manualWork.ts ADMIN_SEPARATION), not a rung's own list.
   const snapshot = freeSnapshot()
   const [ordinary, emergency] = snapshot.users.slice(0, 2)
   snapshot.roles = { active: { [emergency.id]: [GLOBAL_ADMIN_ROLE_ID] }, eligible: { [ordinary.id]: [GLOBAL_ADMIN_ROLE_ID] } }
-  const step = ladderSteps(snapshot, mapping({ breakGlassUserIds: [emergency.id] }), []).steps.find(s => s.id === ladderStepId('admin-accounts-separate'))!
+  const m = mapping({ breakGlassUserIds: [emergency.id] })
+  const step = runFixture({ ...fixture('micro'), snapshot, mapping: m }, { mapping: m }).steps.find(s => s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
+  assert.ok(step, 'the review is on a free tenant\u2019s plan too')
   assert.deepEqual(step.population.ids, [ordinary.id])
+  assert.equal(ladderSteps(snapshot, m, [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-check-dormant-accounts']).steps.some(s => s.id === ladderStepId('admin-accounts-separate')), false)
+})
+
+test('the two steps the ladder carried a second id for are one step with one set of words', () => {
+  // docs/plans/step-redundancy-analysis.md finding 9: the ladder's
+  // admin-accounts-separate and stale-accounts rungs had the SAME Completion
+  // Criteria as the phase 0 steps, word for word, and manualWork.ts treated each
+  // pair as one. They never appeared together, so the only symptom was that a
+  // change to the words or the evidence had to be made twice.
+  for (const id of ['s-ladder-admin-accounts-separate', 's-ladder-stale-accounts']) {
+    assert.equal(stepById[id], undefined, `${id}: a second set of words for one step`)
+  }
+  // The steps that absorbed them are on every plan, licensed or not, which is
+  // what lets the ladder defer to them.
+  for (const name of ['micro', 'small', 'demo'] as const) {
+    const ids = runFixture(fixture(name)).steps.map((x) => x.id)
+    for (const id of [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-check-dormant-accounts']) assert.ok(ids.includes(id), `${name}: ${id} is missing`)
+    for (const id of ['s-ladder-admin-accounts-separate', 's-ladder-stale-accounts']) assert.equal(ids.includes(id), false, `${name}: ${id} came back`)
+  }
+  // One set of words, and it is the surviving step's.
+  const separate = stepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID] as unknown as { doneWhen?: string[] }
+  assert.ok((separate.doneWhen ?? []).some((l) => /dedicated to administrator/.test(l)))
+  // A record saved under the ladder's id before the merge still counts.
+  assert.match(readFileSync('src/roadmap/manualWork.ts', 'utf8'), /step\.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID \? 's-ladder-admin-accounts-separate'/)
+  assert.match(readFileSync('src/roadmap/manualWork.ts', 'utf8'), /step\.id === 's-check-dormant-accounts' \? 's-ladder-stale-accounts'/)
 })

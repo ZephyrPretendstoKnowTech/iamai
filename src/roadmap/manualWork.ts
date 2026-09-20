@@ -1,5 +1,6 @@
 import { adminUserIds } from '../roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
+import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
@@ -8,8 +9,8 @@ import type { MappingState } from '../mapping/types.ts'
 import { QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
 
 export const MANUAL_REVIEW_ID = 'manual-review'
-const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'stale-accounts', 'admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
-const SCAN_REQUIRED = new Set(['admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms'])
+const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
+const SCAN_REQUIRED = new Set(['global-admin-count', 'authenticator-over-sms'])
 /**
  * Block Legacy Authentication, which now owns both halves of its own outcome:
  * the policy, and moving every device the mail-sending answer named onto a
@@ -59,8 +60,14 @@ const POLICY_WORKFLOWS: Record<string, string> = {
   's-goal-service-accounts-trusted-network': 'Service Job Tested',
   's-goal-block-device-code': 'Device-Code Client and Workflow Tested',
 }
-const ADMIN_SEPARATION = new Set(['s-ladder-admin-accounts-separate', 's-check-separate-admin-accounts'])
-const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
+/**
+ * Use Separate Accounts for Admin Work. It was a set of two because the free-tier
+ * ladder carried a second id for the same step, with the same Completion
+ * Criteria word for word; the ladder defers to this one now
+ * (ladder.ts COVERED_BY_STEP, docs/plans/step-redundancy-analysis.md finding 9).
+ */
+const ADMIN_SEPARATION = new Set([SEPARATE_ADMIN_ACCOUNTS_STEP_ID])
+const SCOPED_MANUAL = new Set([SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
 /** Only the existing manual steps receive scoped evidence inputs. */
@@ -119,7 +126,7 @@ function scopedBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingStat
     : step.id === 's-ladder-legacy-auth-inventory' ? [Object.keys(snapshot.evidenceUsage?.legacyAuth.byDetail ?? {}).sort()]
     : step.id === 's-ladder-app-passwords' ? [ids.map(id => [id, snapshot.perUserMfa?.[id]?.state ?? 'unknown'])]
     : []
-  const accountEvidence = ['s-check-separate-admin-accounts', 's-ladder-admin-accounts-separate', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
+  const accountEvidence = [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms'].includes(step.id)
   const accountKey = `${accountEvidence}:${step.id === 's-ladder-guest-review'}`
   let accounts = accountCache?.get(accountKey)
   if (!accounts) {
@@ -208,8 +215,8 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
     return JSON.stringify([step.id, [...step.population.ids].sort(), policies, locations])
   }
   const item = step.id.replace('s-ladder-', '')
-  const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : ['admin-accounts-separate', 'global-admin-count'].includes(item) ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
-  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, item === 'admin-accounts-separate' ? u.assignedPlans.map((p) => [p.servicePlanId, p.capabilityStatus]).sort() : null, item === 'stale-accounts' ? (!u.lastSuccessfulSignIn || Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) >= 90 * 86_400_000) : null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+  const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : ADMIN_SEPARATION.has(step.id) || item === 'global-admin-count' ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
+  const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, ADMIN_SEPARATION.has(step.id) ? u.assignedPlans.map((p) => [p.servicePlanId, p.capabilityStatus]).sort() : null, null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
   const roles = Object.fromEntries(Object.entries(snapshot.roles.active).filter(([id]) => people.some((u) => u.id === id)).map(([id, rs]) => [id, [...rs].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))))
   const basis: unknown[] = [step.id, users, SCAN_REQUIRED.has(item) ? [item === 'authenticator-over-sms' ? snapshot.config.authMethodsPolicy?.rows : null, roles] : null]
   if (item === 'guest-review') basis.push(people.map(u => [u.id, u.externalUserState]).sort())
@@ -272,7 +279,13 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       }
     }
     const basis = manualBasis(step, snapshot, mapping, accountCache)
-    const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup' : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa' : null
+    // A record saved under the ladder's own id before its rung was merged into
+    // this step still counts (finding 9): the two were one step's evidence.
+    const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup'
+      : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa'
+      : step.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID ? 's-ladder-admin-accounts-separate'
+      : step.id === 's-check-dormant-accounts' ? 's-ladder-stale-accounts'
+      : null
     const confirmation = confirmations[step.id]?.[MANUAL_REVIEW_ID] ?? (alias ? confirmations[alias]?.[MANUAL_REVIEW_ID] : undefined)
     // The folded mail follow-up is confirmed once the policy itself is in place,
     // as every other policy-workflow step is (finding 6): an exception cannot be
