@@ -603,13 +603,14 @@ try {
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
-  // The first row whose step draws the default anatomy (Why, Readiness,
-  // Implementation, Done when). The pinned groups above it draw their own: the
-  // Emergency Access task steps (About this Step, Tasks Remaining, …) and the
-  // Direction decision steps (About this Step, Questions, Completion Criteria).
-  const ownAnatomy = STEP_GROUPS.filter((g) => g.anatomy).flatMap((g) => g.members)
+  // The first row whose step draws the task anatomy (About this Step, Tasks
+  // Remaining, Implementation Tasks, Completion Criteria) outside the two pinned
+  // groups: every step that carries work draws it now (owner, 2026-09-19), and the
+  // Direction decision steps draw their own (About this Step, Questions, Completion
+  // Criteria), so those members are the ones skipped.
+  const ownAnatomy = STEP_GROUPS.filter((g) => g.anatomy === 'decision' || g.key === 'emergency-access').flatMap((g) => g.members)
   const defaultStep = await evaluate(`(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const own = ${JSON.stringify(ownAnatomy)}; const opened = async () => { for (let i = 0; i < 40; i++) { const s = document.querySelector('main.page .step'); if (s) return s; await wait(50) } return null }; for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); const s = await opened(); const id = s ? s.getAttribute('data-step-id') : null; if (id && !own.includes(id)) return id; if (s) { r.click(); await wait(60) } } return null })()`)
-  check('Plan: opening a row shows the content-driven step', !!defaultStep && (await waitFor(`(() => { const t = (document.querySelector('main.page .step') || {}).innerText || ''; return /Why/.test(t) && /Readiness/.test(t) && /Done when/.test(t) })()`)), defaultStep ?? 'no row opens a step drawn with the default anatomy')
+  check('Plan: opening a row shows the content-driven step', !!defaultStep && (await waitFor(`(() => { const t = (document.querySelector('main.page .step') || {}).innerText || ''; return /About this Step/.test(t) && /Tasks Remaining/.test(t) && /Completion Criteria/.test(t) })()`)), defaultStep ?? 'no row opens a step drawn with the task anatomy')
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a
   // head and a main column, and the frame is the row's next element (task 034).
@@ -622,8 +623,9 @@ try {
   // scan; the row above the step is what closes it (the approved Plan design).
   check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
   check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Defer this step', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
-  // The Readiness region and the action column, led by the Next milestone, are on every step drawn with the default anatomy (U2).
-  check('Plan: the opened step draws Readiness and the action column with its Next milestone', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile').length; const rail = st.querySelector('.step-body > .step-action-column'); return (tiles >= 1 || !!st.querySelector('.readiness-clear')) && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
+  // The subject region (the task anatomy's cards, or the older readiness tiles)
+  // and the action column, led by the Next milestone, are on every opened step (U2).
+  check('Plan: the opened step draws Readiness and the action column with its Next milestone', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile, .emergency-account-status-grid > .emergency-account-status').length; const rail = st.querySelector('.step-body > .step-action-column'); return (tiles >= 1 || !!st.querySelector('.readiness-clear')) && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
   // The head badge carries the lifecycle and the condition, once. The line that
   // repeated them under the title is gone.
   check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
