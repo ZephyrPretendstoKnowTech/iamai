@@ -74,7 +74,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
-import { drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
+import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
@@ -308,7 +308,7 @@ export function ContentStep({
   // tiles — each of them a thing it waits on — everywhere this module produces
   // the subjects, and the Readiness tiles alone on Emergency Access Steps 2–3.
   // The bar reads them, so they are decided once.
-  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step.id, eyebrow, title)) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
+  const taskSubjects = isOwnTaskStep ? policySubjectsOf(contract, displayedReadiness, emergencyAccountTasks, taskSubjectOf(step, eyebrow, title), cardWordsOf(step)?.check ?? null) : emergencySubjectsOf(displayedReadiness, emergencyAccountTasks)
   const displayRail = step.id === 's-prereq-exclusion-group' ? { ...rail, sub: app.plan.exclusionsGroupRailSub } : rail
   const emergencyTaskPreferenceKey = `iamai:emergency-task:${ctx.mapping.tenantId}:${step.id}`
   const [implementationChannel, setImplementationChannel] = useState<Channel | null>(null)

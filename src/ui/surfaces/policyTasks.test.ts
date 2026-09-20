@@ -14,7 +14,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
@@ -54,66 +54,79 @@ test('every step that carries work draws the four task headings; a Direction ste
   assert.equal(taskHeadingsOf('s-direction-use'), null)
 })
 
-test('a step with no policy of its own heads its card with the kind its own eyebrow says it is', () => {
-  // Nothing new is named: the label is `pages.app.plan.stepContract.kind`, the
-  // same words the step head above the card already shows.
-  for (const [id, subject] of [['s-prereq-trusted-location', 'Preparation step'], ['s-check-dormant-accounts', 'Check step'], ['s-verify-mfa', 'Campaign step'], ['s-ladder-operator-passkey', 'Check step']] as const) {
-    const { body } = bodyOf(id)
-    assert.equal(body.eyebrow, subject, id)
-    assert.equal(taskSubjectOf(id, body.eyebrow, body.title), subject, id)
-    const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(id, body.eyebrow, body.title))
+test('a step with no policy of its own heads its card with the thing the card is about, and checks it by what the scan found', () => {
+  // The card shape (owner, 2026-09-20): subject, then what the scan found. The
+  // eyebrow says what kind of step it is, which is not what the card is about,
+  // and the step's own title is not a check — three of the card's four lines
+  // used to be the step's name (quality audit 2.1).
+  for (const [id, subject, check] of [
+    ['s-prereq-trusted-location', 'Trusted network', 'Not created yet'],
+    ['s-check-dormant-accounts', 'Dormant accounts', 'Not reviewed yet'],
+    ['s-verify-mfa', 'Sign-in method setup', 'Not prepared yet'],
+    ['s-ladder-operator-passkey', 'Your passkey', 'Not registered yet'],
+  ] as const) {
+    const { step, body } = bodyOf(id)
+    assert.equal(taskSubjectOf(step, body.eyebrow, body.title), subject, id)
+    assert.notEqual(subject, body.eyebrow, `${id}: the card is headed by the step's kind`)
+    const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, subject, cardWordsOf(step)?.check ?? null)
     assert.equal(card.heading, subject, id)
     assert.equal(card.detail, body.contract.whatToDo.text, id)
+    if (!card.satisfied) assert.equal(card.title, check, id)
+    assert.notEqual(card.title, body.title, `${id}: the next check is the step's own title`)
   }
-  // A policy step still names the policy it delivers.
-  const { body } = bodyOf(PILOT)
-  assert.equal(taskSubjectOf(PILOT, body.eyebrow, body.title), 'Conditional Access policy')
+  // A policy step still names the policy it delivers, and takes no card words.
+  const { step, body } = bodyOf(PILOT)
+  assert.equal(taskSubjectOf(step, body.eyebrow, body.title), 'Conditional Access policy')
+  assert.equal(cardWordsOf(step), null)
 })
 
 test('an object step, the campaign and a check each project their own portal procedure as the Implementation Task', () => {
   for (const [id, title, first] of [
-    ['s-prereq-trusted-location', 'Define the Trusted Network', /Named locations/],
-    ['s-prereq-allowed-countries', 'Create or Correct Allowed Countries Location', /Named locations/],
-    ['s-prereq-service-accounts-group', 'Create or Correct Service Accounts Group', /Groups/],
-    ['s-verify-mfa', 'Prepare Your Team for MFA', /aka\.ms\/mfasetup/],
-    ['s-check-dormant-accounts', 'Disable or Confirm Dormant Accounts', /Review each account/],
+    ['s-prereq-trusted-location', 'Create the trusted location', /Named locations/],
+    ['s-prereq-allowed-countries', 'Create the countries location', /Named locations/],
+    ['s-prereq-service-accounts-group', 'Create the group', /Groups/],
+    ['s-verify-mfa', 'Run the preparation', /aka\.ms\/mfasetup/],
+    ['s-check-dormant-accounts', 'Review each account', /Review each account/],
   ] as const) {
-    const { body } = bodyOf(id)
+    const { step, body } = bodyOf(id)
     const tasks = body.emergencyAccountTasks
     assert.ok(tasks, `${id} projects a task`)
     assert.equal(tasks.tasks.length, 1, id)
-    // A step that submits no operation is called what the step is called.
+    // A step that submits no operation is named by what it asks the reader to
+    // do, not by the step's own title (quality audit 2.1).
     assert.equal(tasks.tasks[0].title, title, id)
+    assert.notEqual(tasks.tasks[0].title, body.title, id)
     assert.match(tasks.tasks[0].steps[0], first, id)
     // Every line is the step's own portal channel, read back.
     const portal = body.artifacts.find((a) => a.id === 'portal')!
     assert.deepEqual(tasks.tasks[0].steps, portalProcedureOf(portal.text()).steps, id)
-    // And the card sends the reader to it rather than saying nothing.
-    const [card] = policySubjectsOf(body.contract, body.readiness, tasks, taskSubjectOf(id, body.eyebrow, body.title))
-    assert.equal(card.instruction, `Follow ${title} in Implementation Tasks.`, id)
+    // One task needs no pointer sentence (owner, 2026-09-20): the section below
+    // the card carries the same words.
+    const [card] = policySubjectsOf(body.contract, body.readiness, tasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
+    assert.equal(card.instruction, '', id)
   }
 })
 
 test('a baseline-review step reads its reference, and what it waits on is a card of its own', () => {
-  const { body } = bodyOf('s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9')
-  assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Review Who Can Use Azure Virtual Desktop')
+  const { step, body } = bodyOf('s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9')
+  assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Read the baseline definition')
   assert.match(body.emergencyAccountTasks!.tasks[0].steps[0], /Baseline reference:/)
-  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(body.contract.id, body.eyebrow, body.title))
-  assert.equal(cards[0].heading, 'Check step')
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
+  assert.equal(cards[0].heading, 'Baseline policy')
   assert.ok(cards.length > 1, 'what the step waits on follows as its own card')
   assert.equal(cards.slice(1).every((card) => !card.satisfied), true)
 })
 
 test('"No tasks remaining" is shown only where nothing is left', () => {
   // A step the tenant already satisfies: its own card and its tiles are all satisfied.
-  const inPlace = bodyOf('s-prereq-security-defaults').body
-  const done = policySubjectsOf(inPlace.contract, inPlace.readiness, inPlace.emergencyAccountTasks, taskSubjectOf('s-prereq-security-defaults', inPlace.eyebrow, inPlace.title))
+  const { step: secDefaults, body: inPlace } = bodyOf('s-prereq-security-defaults')
+  const done = policySubjectsOf(inPlace.contract, inPlace.readiness, inPlace.emergencyAccountTasks, taskSubjectOf(secDefaults, inPlace.eyebrow, inPlace.title), cardWordsOf(secDefaults)?.check ?? null)
   assert.equal(done.some((card) => !card.satisfied), false)
   assert.equal(policyBarOf(done), 'Every task on this step is complete.')
   // An object step with no Readiness tile at all still has its own work to show.
-  const open = bodyOf('s-prereq-trusted-location').body
+  const { step: trusted, body: open } = bodyOf('s-prereq-trusted-location')
   assert.deepEqual(open.readiness.tiles, [], 'the premise: no tile stands in this step’s way')
-  const cards = policySubjectsOf(open.contract, open.readiness, open.emergencyAccountTasks, taskSubjectOf('s-prereq-trusted-location', open.eyebrow, open.title))
+  const cards = policySubjectsOf(open.contract, open.readiness, open.emergencyAccountTasks, taskSubjectOf(trusted, open.eyebrow, open.title), cardWordsOf(trusted)?.check ?? null)
   assert.equal(cards.filter((card) => !card.satisfied).length, 1, '"No tasks remaining" cannot stand over work Implementation Tasks lists')
   assert.equal(policyBarOf(cards), 'Complete the next task shown for each item.')
 })
@@ -170,7 +183,7 @@ test('a policy in report-only states the stage it has reached and the one it has
   assert.equal(card.title, 'Enforced', 'the next stage')
   assert.deepEqual(card.completed, ['Report-only', 'Ready to enforce'])
   assert.equal(card.remainingCount, 1)
-  assert.equal(card.instruction, 'Follow Turn the policy on in Implementation Tasks.')
+  assert.equal(card.instruction, '', 'one task needs no pointer sentence')
 })
 
 test('the Entra procedure is read back as its numbered steps and the settings under its heading', () => {
@@ -216,7 +229,10 @@ test('the policy has a card of its own: its name, its rollout stages, the next o
   assert.deepEqual(card.completed, [])
   assert.equal(card.title, 'Report-only', 'the next stage is the next check')
   assert.equal(card.detail, body.contract.whatToDo.text, 'what that stage means is the step’s own one action')
-  assert.equal(card.instruction, 'Follow Create the policy in Report-only in Implementation Tasks.')
+  // One task needs no pointer (owner, 2026-09-20): the Implementation Tasks
+  // section below carries the same words.
+  assert.equal(body.emergencyAccountTasks?.tasks.length, 1, 'the premise: this step projects one task')
+  assert.equal(card.instruction, '')
   assert.equal(card.satisfied, false)
   assert.ok(rest.length > 0, 'the Readiness tiles still follow the policy’s own card')
 })
@@ -229,7 +245,7 @@ test('the step’s own work is in Tasks Remaining on the follow-up scan, where n
   const remaining = cards.filter((card) => !card.satisfied)
   assert.equal(remaining.length, 1, '"No tasks remaining" cannot be shown over a task Implementation Tasks lists')
   assert.equal(remaining[0].title, 'Report-only')
-  assert.equal(remaining[0].instruction, 'Follow Create the policy in Report-only in Implementation Tasks.')
+  assert.equal(remaining[0].instruction, '', 'one task needs no pointer sentence')
 })
 
 test('a policy that has reached its last stage with nothing left to submit is a satisfied card', () => {
@@ -248,9 +264,13 @@ test('a policy that has reached its last stage with nothing left to submit is a 
   assert.equal(card.remainingCount, null)
   assert.equal(card.instruction, '')
   // The same policy with a task left to do is not satisfied, whatever stage it is at.
-  const withTask = policyCardsOf(contract, { tasks: [{ id: 'policy-procedure', accountId: null, title: 'Update the policy settings', targetUpn: null, required: true, readinessKey: '', evidence: null, actionLabel: '', facts: [], steps: ['Open it.'] }], recommendedTaskId: 'policy-procedure' })
+  const task = { id: 'policy-procedure', accountId: null, title: 'Update the policy settings', targetUpn: null, required: true, readinessKey: '', evidence: null, actionLabel: '', facts: [], steps: ['Open it.'] }
+  const withTask = policyCardsOf(contract, { tasks: [task], recommendedTaskId: 'policy-procedure' })
   assert.equal(withTask[0].satisfied, false)
-  assert.equal(withTask[0].instruction, 'Follow Update the policy settings in Implementation Tasks.')
+  assert.equal(withTask[0].instruction, '', 'one task needs no pointer sentence')
+  // Two tasks, and the card picks one, the way an Emergency Access card does.
+  const twoTasks = policyCardsOf(contract, { tasks: [task, { ...task, id: 'second', title: 'Move the mail devices' }], recommendedTaskId: 'policy-procedure' })
+  assert.equal(twoTasks[0].instruction, 'Follow Update the policy settings in Implementation Tasks.')
 })
 
 const read = (p: string): string => readFileSync(p, 'utf8')

@@ -24,11 +24,11 @@
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
-import { contentStepForPackage } from '../../content/stepTitle.ts'
+import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
-import { emergencySubjectTileOf } from './emergencyReadiness.ts'
+import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { mailDevicesFollowUp } from '../../roadmap/manualWork.ts'
@@ -71,6 +71,24 @@ function contentKindOf(stepId: string): string | null {
   return (contentStepForPackage(stepId) as { kind?: string } | undefined)?.kind ?? null
 }
 
+/** The step a card is on, as the content file has it: its own entry, or the guidance a generated step carries (a baseline-review row). */
+type CardStep = { id: string; goalId?: string; guidance?: { card?: { subject: string; check: string } | null; taskTitle?: string | null } }
+const entryOf = (step: CardStep): { card?: { subject: string; check: string } | null; taskTitle?: string | null } | undefined =>
+  contentStepFor({ id: step.id, goalId: step.goalId ?? (step.id.startsWith('s-goal-') ? step.id.slice('s-goal-'.length) : ''), guidance: step.guidance as never })
+
+/**
+ * The Tasks Remaining card's subject and next check, where the step's own
+ * content writes them (quality audit 2.1). A step that delivers a policy is
+ * headed by the policy; a step that delivers an object, runs a check or a
+ * campaign, or reviews a baseline policy, has no policy to be headed by, and
+ * without these words the card was headed by the step's kind and checked by the
+ * step's own title.
+ */
+export function cardWordsOf(step: CardStep): { subject: string; check: string } | null {
+  const card = entryOf(step)?.card
+  return card && typeof card.subject === 'string' && typeof card.check === 'string' ? card : null
+}
+
 /**
  * Whether this step draws the Establish Emergency Access anatomy *through this
  * module* — the cards below, the Entra procedure as an Implementation Task, and
@@ -102,7 +120,7 @@ type PortalArtifact = { id: string; text: () => string }
  */
 function taskTitle(step: Step, fallback: string): string {
   const ops = stepOperations(step)
-  if (ops.length === 0) return fallback
+  if (ops.length === 0) return entryOf(step)?.taskTitle ?? fallback
   if (ops.every((op) => op.mode === 'create')) {
     return ops.every((op) => String((op.body as { state?: unknown }).state ?? '') === 'enabledForReportingButNotEnforced')
       ? 'Create the policy in Report-only'
@@ -196,12 +214,14 @@ const POLICY_SUBJECT = 'Conditional Access policy'
  * "Check step", "Campaign step", "Hardening step"), and the step's title where
  * the content file names no kind.
  *
- * No taxonomy is added and no word is written here: a prerequisite step's card
- * is headed "Preparation step" because that is what the head above it says the
- * step is, exactly as a policy step's card is headed by the policy it delivers.
+ * Where the step's content writes its own card subject (`card.subject`) that is
+ * the subject, because "Preparation step" names the step's kind and not the
+ * thing the card is about. The eyebrow stays the fallback for a step whose
+ * content has not been given one, so no card is ever left without a head.
  */
-export function taskSubjectOf(stepId: string, eyebrow: string | null, title: string): string {
-  return contentKindOf(stepId) === 'policy' ? POLICY_SUBJECT : (eyebrow ?? title)
+export function taskSubjectOf(step: CardStep, eyebrow: string | null, title: string): string {
+  if (contentKindOf(step.id) === 'policy') return POLICY_SUBJECT
+  return cardWordsOf(step)?.subject ?? eyebrow ?? title
 }
 
 /**
@@ -254,8 +274,13 @@ function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null):
  * step has no task left to do, so "No tasks remaining" cannot be shown over work
  * that Implementation Tasks still lists.
  */
-export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT): EmergencySubjectTile[] {
+export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
+  // One task needs no pointer sentence (owner, 2026-09-20). On Emergency Access
+  // the sentence earns its place because the step has three or four tasks and
+  // the card picks one; with one task the section below carries the same words,
+  // and the card said it twice.
+  const pointer = (projected?.tasks.length ?? 0) > 1
   // The task the card sends the operator to: the one this step is recommending
   // now. A projection that recommends none is a step whose next thing is not the
   // procedure (policyTasksOf), so the card states the check and stops there.
@@ -271,9 +296,10 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     const satisfied = contract.state.satisfied || (stages.remaining === 0 && task === null)
     const here = contract.state.stage || contract.state.word
     // Where the step has no rollout to draw — a goal with no policy of its own,
-    // a step set aside — the next check is the task itself; there is no stage to
-    // name it by.
-    const next = stages.next ?? (contract.track.length === 0 ? task?.title ?? null : null)
+    // an object step, a check, a step set aside — the next check is the state
+    // the step's own content records (`card.check`), and the task's name only
+    // where it writes none.
+    const next = stages.next ?? (contract.track.length === 0 ? check ?? task?.title ?? null : null)
     return {
       key: subject.key,
       accountId: null,
@@ -285,7 +311,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
       detail: contract.whatToDo.text,
-      instruction: satisfied || directed === null ? '' : `Follow ${directed.title} in Implementation Tasks.`,
+      instruction: satisfied || directed === null || !pointer ? '' : followTask(directed.title),
       completed: stages.completed,
       remainingCount: stages.remaining !== null && stages.remaining > 0 ? stages.remaining : null,
       satisfied,
@@ -303,11 +329,15 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
  * satisfied card, so it folds under the completed disclosure the way it folded
  * under the strip's own.
  */
-export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT): EmergencySubjectTile[] {
+export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT, check: string | null = null): EmergencySubjectTile[] {
+  // One task needs no pointer sentence (owner, 2026-09-20): the one pointer the
+  // adapter can write on this step is to the step's only task, and the section
+  // below it carries the same words.
+  const only = projected && projected.tasks.length === 1 ? followTask(projected.tasks[0].title) : null
   const card = (tile: ContractReadiness['tiles'][number], satisfied: boolean): EmergencySubjectTile => {
     const subject = emergencySubjectTileOf(tile, projected)
     const link = tile.link && 'href' in tile.link ? tile.link : null
-    return { ...subject, satisfied, ...(link && !subject.link ? { link } : {}) }
+    return { ...subject, satisfied, ...(only !== null && subject.instruction === only ? { instruction: '' } : {}), ...(link && !subject.link ? { link } : {}) }
   }
   const rest = [...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one
@@ -317,6 +347,6 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // — the two cards read identically. The card that names the subject the
   // sentence is about keeps it; the general one drops it and states its check.
   const said = new Set(rest.map((c) => (c.instruction ?? '').trim()).filter((s) => s !== ''))
-  const own = policyCardsOf(contract, projected, subject).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
+  const own = policyCardsOf(contract, projected, subject, check).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
   return [...own, ...rest]
 }

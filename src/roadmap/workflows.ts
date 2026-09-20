@@ -83,7 +83,10 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     // report-only, exclusion-testing and rollback instructions the template
     // gives (docs/plans/ongoing-spec.md section 6). Locale-free, like every
     // other Learn URL in the product.
-    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' } }
+    // The Tasks Remaining card's subject is the baseline policy under review and
+    // its check is the state of that review, not the row's own title read back
+    // three times (quality audit 2.1).
+    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' } }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user

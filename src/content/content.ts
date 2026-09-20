@@ -33,6 +33,15 @@ export type ContentStep = {
   whatToDo?: Record<string, unknown> | null
   dates?: string | null
   doneWhen?: string[] | null
+  /**
+   * The Tasks Remaining card's own words on a step that delivers no policy: the
+   * subject the card is about, and the check the scan's reading is. Without
+   * them the card is headed by the step's kind and checked by the step's own
+   * title, so three of its four lines are the step's name (quality audit 2.1).
+   */
+  card?: { subject: string; check: string } | null
+  /** The Implementation Task's name where the step submits no operation: a verb phrase, not the step's title. */
+  taskTitle?: string | null
   /** A held policy's end state in this step's own words (stepContract.ts doneWhenOf), else the shared one. */
   doneEnd?: string | null
   ifWrong?: string | null

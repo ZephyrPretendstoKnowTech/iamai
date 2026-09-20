@@ -1062,7 +1062,7 @@
           "methods": "Nothing to do: the next scan retries the method list",
           "signIns": "Nothing to do: the next scan retries the sign-in records",
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
-        "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
+          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
         }
       },
       "notes": {
@@ -1546,7 +1546,7 @@
         "scanLink": "Scan the tenant",
         "constraintTip": "What set the plan length",
         "exclusionsGroupRailSub": "Select the group containing your emergency accounts for policy exclusions.",
-      "putBack": "Put this step back",
+        "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
@@ -2239,7 +2239,12 @@
           "unanswered": "{n} services still need an answer",
           "suggestionContext": "Suggested In use from scan evidence; not saved yet",
           "definitionTitle": "View Baseline Definition",
-          "definitionNote": "These are the original baseline settings, not a policy prepared for your tenant. Match its groups, locations and other tenant-specific references before implementing it."
+          "definitionNote": "These are the original baseline settings, not a policy prepared for your tenant. Match its groups, locations and other tenant-specific references before implementing it.",
+          "reviewCard": {
+            "subject": "Baseline policy",
+            "check": "Not reviewed yet"
+          },
+          "reviewTaskTitle": "Read the baseline definition"
         },
         "impactLabels": {
           "s-confirm-workloads": "Services in this tenant",
@@ -2258,7 +2263,7 @@
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
-      "s-ladder-phone-access-restriction": "Phone access",
+          "s-ladder-phone-access-restriction": "Phone access",
           "s-check-separate-admin-accounts": "Administrator accounts",
           "s-shared-devices": "Shared-device accounts",
           "s-goal-admin-portals-protected": "Administrator portals"
@@ -3012,7 +3017,12 @@
         ],
         "from": "Aug 1"
       },
-      "aiFocus": "Include each candidate's name, ID, recorded activity and evidence gaps. Separate a keep decision from a successful sign-in and from confirmed inactivity."
+      "aiFocus": "Include each candidate's name, ID, recorded activity and evidence gaps. Separate a keep decision from a successful sign-in and from confirmed inactivity.",
+      "card": {
+        "subject": "Dormant accounts",
+        "check": "Not reviewed yet"
+      },
+      "taskTitle": "Review each account"
     },
     {
       "id": "s-prereq-allowed-countries",
@@ -3118,7 +3128,12 @@
         "travelCountries": "[type the countries]",
         "from": "Aug 1"
       },
-      "aiFocus": "Distinguish approved countries from observed countries, identify additions and removals, and explain that IP location can differ from physical location."
+      "aiFocus": "Distinguish approved countries from observed countries, identify additions and removals, and explain that IP location can differ from physical location.",
+      "card": {
+        "subject": "Allowed countries location",
+        "check": "Not created yet"
+      },
+      "taskTitle": "Create the countries location"
     },
     {
       "id": "s-prereq-trusted-location",
@@ -3205,7 +3220,12 @@
         ],
         "from": "Aug 1"
       },
-      "aiFocus": "Explain which policies use the location, the approved ranges, observed matches and any unstable egress. Do not infer trust from traffic."
+      "aiFocus": "Explain which policies use the location, the approved ranges, observed matches and any unstable egress. Do not infer trust from traffic.",
+      "card": {
+        "subject": "Trusted network",
+        "check": "Not created yet"
+      },
+      "taskTitle": "Create the trusted location"
     },
     {
       "id": "s-prereq-service-accounts-group",
@@ -3282,7 +3302,12 @@
         ],
         "from": "Aug 1"
       },
-      "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed."
+      "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed.",
+      "card": {
+        "subject": "Service accounts group",
+        "check": "Not created yet"
+      },
+      "taskTitle": "Create the group"
     },
     {
       "id": "s-shared-devices",
@@ -3425,7 +3450,12 @@
         "from": "Aug 1"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
-      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified."
+      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
+      "card": {
+        "subject": "Security defaults",
+        "check": "Still on"
+      },
+      "taskTitle": "Turn security defaults off"
     },
     {
       "id": "s-prereq-per-user-mfa",
@@ -3489,7 +3519,12 @@
         "from": "Aug 1"
       },
       "placement": "Shown only when at least one account has per-user MFA set.",
-      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control."
+      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control.",
+      "card": {
+        "subject": "Per-user MFA states",
+        "check": "Still enforced"
+      },
+      "taskTitle": "Disable the per-user states"
     },
     {
       "id": "s-prereq-passkey-settings",
@@ -3620,7 +3655,12 @@
         "strengthName": "Modern MFA + TAP",
         "from": "Aug 1"
       },
-      "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength."
+      "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength.",
+      "card": {
+        "subject": "Authentication strength",
+        "check": "Not created yet"
+      },
+      "taskTitle": "Create the strength"
     },
     {
       "id": "s-ladder-operator-passkey",
@@ -3671,7 +3711,12 @@
       },
       "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do.",
       "aiFocus": "Separate registration from observed use. State the evidence's date and limits; a method-class sign-in record may not identify the exact credential.",
-      "why": "Test your own strong sign-in method before the rollout depends on it. A registered passkey is only useful if you can actually use it on the device needed for admin work."
+      "why": "Test your own strong sign-in method before the rollout depends on it. A registered passkey is only useful if you can actually use it on the device needed for admin work.",
+      "card": {
+        "subject": "Your passkey",
+        "check": "Not registered yet"
+      },
+      "taskTitle": "Register your passkey"
     },
     {
       "id": "s-prereq-device-plan",
@@ -3905,7 +3950,12 @@
         "passkeyEnforceLong": "Tuesday, September 15",
         "passkeyPolicy": "Require Phishing-Resistant MFA for Admins"
       },
-      "aiFocus": "Separate campaign configuration, method registration, observed use and holdout decisions. Do not promise every tenant receives the same campaign prompt or call Authenticator push a passkey."
+      "aiFocus": "Separate campaign configuration, method registration, observed use and holdout decisions. Do not promise every tenant receives the same campaign prompt or call Authenticator push a passkey.",
+      "card": {
+        "subject": "Sign-in method setup",
+        "check": "Not prepared yet"
+      },
+      "taskTitle": "Run the preparation"
     },
     {
       "id": "mfa-all-users",
@@ -6302,7 +6352,12 @@
           "Kaladin Stormblessed · Microsoft Teams"
         ]
       },
-      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover. Historical mail or Teams events do not mean a completed migration failed."
+      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover. Historical mail or Teams events do not mean a completed migration failed.",
+      "card": {
+        "subject": "Administrator accounts",
+        "check": "Not reviewed yet"
+      },
+      "taskTitle": "Review each administrator"
     },
     {
       "id": "service-accounts-trusted-network",
