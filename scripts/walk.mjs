@@ -1552,7 +1552,7 @@ async function walkFixture(fx) {
           if (/^Block the Admin Portals for Non-Admins$/.test(title) && !/^1 person without a directory role signed in to Azure since /m.test(bodyText)) add('P0', `${slabel}: the step does not name the person without a directory role who signed in to Azure`)
           if (/^Restrict Service Accounts to the Trusted Network$/.test(title)) {
             if (!cannotWriteYet && !/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
-            if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
+            if (!cannotWriteYet && !/Conditions → Locations → Configure: Yes, then Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
           if (/^Block Device Code Sign-in$/.test(title)) {

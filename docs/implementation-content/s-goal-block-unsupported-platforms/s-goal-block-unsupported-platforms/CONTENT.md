@@ -9,7 +9,7 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Linux and unidentified platforms stay in scope unless a reviewed decision changes the target.
+Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: set **Configure** to **Yes**, then include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Left at **No** the condition is not applied and this Block access policy reaches every platform. Linux and unidentified platforms stay in scope unless a reviewed decision changes the target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

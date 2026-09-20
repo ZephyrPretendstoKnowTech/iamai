@@ -87,6 +87,48 @@ test('portal include/exclude lines never name the same set on both sides', () =>
   assert.ok(/Include: Any device; Exclude: Android\./.test(kept.find((l) => l.startsWith('Conditions → Device platforms'))!))
 })
 
+// §S4-1: every condition the portal narrows through a Configure toggle is not
+// applied at all when the toggle is left at No, so the policy reaches
+// everything the condition was meant to narrow. The acceptance is the rule over
+// everything conditionLines() emits, never a line per branch: the 2026-09-19
+// fix asserted five branches and shipped two conditions without the toggle.
+test('every condition line the translator emits names the Configure toggle', () => {
+  const CONDITION = /^Conditions → /
+  const WITH_TOGGLE = /^Conditions → [^→]+ → Configure: Yes, then \S/
+  const offenders: string[] = []
+  const conditions = (lines: string[]): string[] => lines.filter((l) => CONDITION.test(l))
+  const check = (lines: string[]): string[] => {
+    for (const l of conditions(lines)) if (!WITH_TOGGLE.test(l)) offenders.push(l)
+    return conditions(lines)
+  }
+  for (const p of pinned.policies as Pol[]) check(portalLines(policyFacts(p, EMPTY), contextFor(p)))
+  // Every branch of the function at once, so the rule is never vacuous: one
+  // policy carrying all seven toggled conditions, read whole and as a correction.
+  const all = {
+    id: null,
+    displayName: 'Every condition',
+    placeholders: {},
+    conditions: {
+      users: { includeUsers: ['All'] },
+      applications: { includeApplications: ['All'] },
+      locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] },
+      platforms: { includePlatforms: ['windows'], excludePlatforms: ['android'] },
+      clientAppTypes: ['exchangeActiveSync', 'other'],
+      authenticationFlows: { transferMethods: 'deviceCodeFlow' },
+      devices: { deviceFilter: { mode: 'exclude', rule: 'device.trustType -eq "AzureAD"' } },
+      signInRiskLevels: ['high'],
+      userRiskLevels: ['high'],
+    },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+    sessionControls: null,
+  } as unknown as Pol
+  const facts = policyFacts(all, EMPTY)
+  const whole = check(portalLines(facts, contextFor(all)))
+  assert.equal(whole.length, 7, `all seven toggled conditions render: ${whole.join(' | ')}`)
+  check(portalLines(facts, contextFor(all), { mode: 'change', only: new Set(['conditions']) }))
+  assert.deepEqual(offenders, [], 'a condition line with no Configure toggle: at No the condition is not applied and the policy reaches everything it was meant to narrow')
+})
+
 test('every pinned baseline policy renders non-empty portal lines that end in a grant or session control, with no unresolved placeholder', () => {
   const failures: string[] = []
   for (const p of pinned.policies as Pol[]) {

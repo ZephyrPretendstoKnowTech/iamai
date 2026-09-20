@@ -9,7 +9,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.
 5. Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.
 6. Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Leave Browser unselected. Microsoft's own warning: not configuring this condition, or leaving Browser selected, can block web apps that sign in through the browser, Teams on the web among them.
-7. Under **Conditions > Filter for devices**, configure **Exclude filtered devices from policy** with `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`.
+7. Under **Conditions > Filter for devices**, set **Configure** to **Yes**, then set **Devices matching the rule** to **Exclude filtered devices from policy** with `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`. Left at **No** the filter is not applied and Microsoft Entra joined Cloud PCs, which token protection does not support, are blocked.
 8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.
 9. Set **Enable policy** to **Report-only**, then create it.
 10. Rescan IAMAI before considering enforcement.
@@ -44,7 +44,7 @@ Under **Conditions > Client apps**, set **Configure** to **Yes**, then select on
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.cloudpc-device-filter","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Conditions > Filter for devices**, set the filter to **Exclude filtered devices from policy** using `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`.
+Under **Conditions > Filter for devices**, set **Configure** to **Yes**, then set the filter to **Exclude filtered devices from policy** using `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`. Left at **No** the filter is not applied and Microsoft Entra joined Cloud PCs, which token protection does not support, are blocked.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.remove-noncanonical","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

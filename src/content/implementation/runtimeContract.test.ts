@@ -28,6 +28,35 @@ test('META impact.fallbackLabel (U13): a non-empty string validates, anything el
   has(impactErrors(null), /impact\.fallbackLabel: a non-empty string/)
 })
 
+// §S4-2: a condition left at Configure: No is not applied, so a portal
+// procedure that narrows one and never names the toggle describes a policy that
+// reaches everything the condition was meant to narrow. The rule is over the
+// passage, not the package: a block that leaves the condition unconfigured, or
+// removes it, or says Microsoft does not offer it, narrows nothing.
+test('a portal procedure that narrows a toggled condition names its Configure toggle', () => {
+  const entra = (body: string): string[] => errorsOf({}, block({ id: 'entra.create', channel: 'entra', states: ['missing'] }, body)).filter((e) => /Configure/.test(e))
+  has(entra('Conditions → Device platforms → Include: Android and iOS.'), /Device platforms is narrowed without naming Configure/)
+  has(entra('Under **Conditions > Filter for devices**, exclude `device.systemLabels -contains "CloudPC"`.'), /Filter for devices is narrowed without naming Configure/)
+  has(entra('Conditions → Locations → Include: Any location; Exclude: All trusted locations'), /Network is narrowed without naming Configure/)
+  has(entra('Conditions → Client apps → Browser.'), /Client apps is narrowed without naming Configure/)
+  has(entra('Conditions → Sign-in risk → High.'), /Sign-in risk is narrowed without naming Configure/)
+  has(entra('Conditions → User risk → High and Medium.'), /User risk is narrowed without naming Configure/)
+  has(entra('Conditions → Authentication flows → Device code flow.'), /Authentication flows is narrowed without naming Configure/)
+  // Each condition answers for its own toggle, even beside a sibling that has one.
+  has(entra('Conditions → Client apps → Configure: Yes, then Browser; Filter for devices to Exclude `device.isCompliant -eq True`.'), /Filter for devices is narrowed/)
+  // The toggle named, in either wording, is the whole of the rule.
+  assert.deepEqual(entra('Conditions → Device platforms → Configure: Yes, then Include: Android and iOS.'), [])
+  assert.deepEqual(entra('Under **Conditions > Filter for devices**, set **Configure** to **Yes**, then exclude `device.trustType -eq "AzureAD"`.'), [])
+  // A condition named but not narrowed: nothing to toggle.
+  assert.deepEqual(entra('Leave **Conditions → Client apps** unconfigured; an unconfigured condition reaches every client app.'), [])
+  assert.deepEqual(entra('Microsoft makes **Client apps**, **Filters for devices** and **Device state** unavailable for this user action.'), [])
+  assert.deepEqual(entra('Remove any user risk, network or location, device platform or authentication flow condition.'), [])
+  assert.deepEqual(entra('Restrict Service Accounts to the Trusted Network is waiting on the approved trusted network.'), [])
+  // The machine channels write the whole condition object, so a condition they
+  // name is always applied; the rule is about what a person types.
+  assert.deepEqual(errorsOf({}, block({ id: 'powershell.run', channel: 'powershell', states: ['missing'], format: 'powershell' }, "throw 'Sign-in risk must be High only'")).filter((e) => /Configure/.test(e)), [])
+})
+
 test('META milestone.actionText (U3): a non-empty string validates, anything else is refused', () => {
   const milestoneErrors = (milestone: unknown): string[] => errorsOf({ milestone } as Partial<PackageMeta>, '').filter((e) => /milestone\./.test(e))
   assert.deepEqual(milestoneErrors({ actionText: 'Create and verify two emergency accounts' }), [])

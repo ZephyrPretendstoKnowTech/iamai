@@ -498,7 +498,7 @@ Values recorded, not checked here: `campaignGroups` from the `MFA Registration C
 | same | `the platform deviation is not shown beside the baseline's version` (week2, writable) / `a platform condition shows before the device decision` (day 1) | P0 | `/the baseline's version/`, `/Device platforms/` | 1362-1363 |
 | `/^Register Your Own Passkey$/` | `step 12 asks for a key and a passkey; either is enough` | P0 | `/or a hardware security key/` absent | 1445 |
 | `/^Block the Admin Portals for Non-Admins$/` | `the step does not name the person without a directory role who signed in to Azure` | P0 | `/^1 person without a directory role signed in to Azure since /m` | 1451 |
-| `/^Restrict Service Accounts to the Trusted Network$/` | `the portal lines do not name the service-accounts group` / `… do not exclude the trusted network` (writable) | P0 | `/Users → Include: Groups: \S/`, `/Conditions → Locations → Include: Any location; Exclude: \S/` | 1452-1454 |
+| `/^Restrict Service Accounts to the Trusted Network$/` | `the portal lines do not name the service-accounts group` / `… do not exclude the trusted network` (writable) | P0 | `/Users → Include: Groups: \S/`, `/Conditions → Locations → Configure: Yes, then Include: Any location; Exclude: \S/` | 1452-1454 |
 | same | `an object id on the step` | P0 | GUID regex | 1455 |
 | `/^Block Unsupported Device Platforms$/` | `the step does not name the sign-in that carried no platform` | P0 | `/carried no platform \(Outlook Mobile\)/` | 1472 |
 | `/MFA Registration Campaign/` | `the campaign asks admins for a key as well as a passkey; either is enough` (inside the email check) | P0 | body `/passkey or a hardware security key/` | 1411 |

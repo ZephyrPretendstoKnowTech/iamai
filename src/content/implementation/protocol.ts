@@ -113,6 +113,60 @@ export const BLOCK_CHANNELS = ['entra', 'json', 'powershell', 'aiInfo', 'email',
 export const PROJECTION_CHANNELS = ['entra', 'json', 'powershell', 'aiInfo', 'email'] as const
 
 /**
+ * The prose channels an admin, or the assistant they paste them into, types
+ * into the portal by hand. The machine channels write the whole condition
+ * object, so a condition they name is always configured; these two are the only
+ * ones where a named condition can be left unapplied.
+ */
+const PORTAL_PROSE_CHANNELS = ['entra', 'aiInfo'] as const
+
+/**
+ * The conditions that carry the portal's Configure Yes/No toggle, each with the
+ * values that narrow it. A condition left at **Configure: No** is not applied,
+ * so the policy reaches everything the condition was meant to narrow — the
+ * policy-widening class the 2026-09-19 fix closed for five conditions and the
+ * V1 audit found again on two (docs/plans/v1-audit-findings.md §S4-1, §S4-2).
+ * `at` finds the condition by the portal's own blade name; `narrows` is the
+ * vocabulary of values that put the condition to work. A block that names a
+ * condition only to leave it unconfigured, to remove it, or to say Microsoft
+ * does not offer it names no such value and is not an instruction to narrow.
+ */
+export const TOGGLED_CONDITIONS: readonly { condition: string; at: RegExp; narrows: RegExp }[] = [
+  { condition: 'Client apps', at: /Client apps/, narrows: /Browser|Mobile apps and desktop clients|Exchange ActiveSync|Other clients|legacy authentication client/i },
+  { condition: 'Device platforms', at: /Device platforms/, narrows: /\b(Android|iOS|Windows|macOS|Linux|Any device)\b|\{\{policy\.target\.platform/ },
+  { condition: 'Filter for devices', at: /Filters? for devices/, narrows: /device\.[A-Za-z]|filtered devices/ },
+  // Locations is the blade's older name and Network its current one; both are
+  // only this condition when they follow Conditions, since "the trusted
+  // network" is also how the product names a location a person confirmed.
+  { condition: 'Network', at: /Conditions?\s*(?:→|>|-)?\s*(?:Network|Locations)|Network \(formerly/, narrows: /Any location|Any network or location|trusted location|named location|\{\{policy\.target\.location/i },
+  { condition: 'Sign-in risk', at: /Sign-in risk/, narrows: /\b(High|Medium|Low)\b/ },
+  { condition: 'User risk', at: /User risk/, narrows: /\b(High|Medium|Low)\b/ },
+  { condition: 'Device state', at: /Device state/, narrows: /Compliant|Hybrid|device\.trustType/i },
+  { condition: 'Authentication flows', at: /Authentication flows/, narrows: /Device code flow|Authentication transfer/i },
+]
+
+/**
+ * Every passage of a portal procedure that narrows a toggled condition without
+ * naming its Configure toggle. A passage runs from the condition's name to the
+ * next condition's name on the same line, so one line may instruct two
+ * conditions and each answers for its own toggle.
+ */
+export function unconfiguredConditions(text: string): { condition: string; passage: string }[] {
+  const out: { condition: string; passage: string }[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const marks: { condition: string; narrows: RegExp; at: number }[] = []
+    for (const c of TOGGLED_CONDITIONS) for (const m of line.matchAll(new RegExp(c.at.source, 'g'))) marks.push({ condition: c.condition, narrows: c.narrows, at: m.index })
+    marks.sort((a, b) => a.at - b.at)
+    marks.forEach((mark, i) => {
+      const passage = line.slice(mark.at, i + 1 < marks.length ? marks[i + 1].at : line.length)
+      if (!mark.narrows.test(passage) || /Configure/.test(passage)) return
+      out.push({ condition: mark.condition, passage: passage.trim() })
+    })
+  }
+  return out
+}
+
+/**
  * The engine's semantic facts about a correction, as the binding a Partial
  * projection selects its modules from: the policy fields an update changes,
  * named as Graph names them (roadmap/changedFields.ts). IAMAI supplies it; a
@@ -537,6 +591,11 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
     const at: IssueLocus = { kind: 'block', block: id }
     if (!(BLOCK_CHANNELS as readonly string[]).includes(b.meta.channel)) add(at, `${id}: unsupported channel ${b.meta.channel} (not a channel the runtime renders)`)
     for (const used of bindingsUsed(b.text)) if (!declared.has(used)) add(at, `${id}: undeclared binding ${used}`)
+    // A portal procedure that narrows a toggled condition names its Configure
+    // toggle, in every state: at No the condition is not applied and the policy
+    // reaches everything it was meant to narrow (§S4-2).
+    if ((PORTAL_PROSE_CHANNELS as readonly string[]).includes(b.meta.channel))
+      for (const u of unconfiguredConditions(b.text)) add(at, `${id}: ${u.condition} is narrowed without naming Configure — at No the condition is not applied: ${u.passage.slice(0, 80)}`)
     if (typeof b.meta.endpoint === 'string') {
       // A request the author repeats once per value of a list (`repeatForBinding`)
       // names its per-value variable in the endpoint. The runtime projects one
