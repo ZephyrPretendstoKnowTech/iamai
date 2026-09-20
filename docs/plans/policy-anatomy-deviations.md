@@ -366,3 +366,59 @@ in neither map draws "Tenant settings", which says nothing about the step.
 `impact.fallbackLabel`; `IMPACT_TOPICS` in `rowWho.ts` remains a second place
 where a row's word can live, keyed by goal id rather than step id. Two maps for
 one column is not this group's to collapse.
+
+Require Healthy Devices met the same thing on `s-ladder-phone-access-restriction`
+and answered it with the third map: `pages.app.plan.impactLabels`, keyed by step
+id, which is where every other named non-policy row keeps its word. So a row's
+Impact can now come from three places. Collapsing them is still one decision and
+still nobody's group.
+
+### 11. A Tasks Remaining card that says its own kind twice
+
+On Require a Fresh Sign-in for Intune Enrollment, follow-up scan, a card reads
+«Tenant fact · Tenant fact». `ui/surfaces/stepContract.ts` `engineTiles` handles
+each blocker kind it knows — a prerequisite step, a source mapping, a Direction
+answer — and then ends on
+
+    out.push({ key: ..., label: b.label, tone, value: b.label, note: null })
+
+so a blocker kind with no words of its own becomes a card whose label and value
+are both the kind. `planBoard.ts` BOARD.blockers supplies those kind names for
+the board's On Hold group headings, where "Tenant fact" is the right heading;
+read as a card it is a subject with no subject.
+
+**Why it was not built here.** The fallback is shared by every step in every
+group, and the fix is a decision about what a blocker with no binding should say
+— the fact itself, where the engine holds one, or no card at all. Either answer
+moves cards on steps outside this group. Recorded in
+`require-healthy-devices-spec.md` §8.5.
+
+### 12. The session-loop card states four things at once
+
+`shared.sessionLoopReview` is the Prerequisites card on Require a Fresh Sign-in
+for Intune Enrollment, and it reads: "Review MFA for this sign-in before enabling
+Every time. The intended policy has no MFA grant; without an applicable MFA
+requirement, repeated sign-in prompts can loop. Keep this policy in Report-only
+while the policy design is reviewed. More observation time will not resolve this
+configuration issue." Four sentences, three instructions and one fact, in a card
+the V1 standard asks to say one thing.
+
+Every claim in it is true and sourced — `concept-session-lifetime`, ms.date
+2026-04-08: "Using sign-in frequency to require reauthentication every time,
+without multifactor authentication might result in sign-in looping for your
+users." Nothing here is wrong; it is a card doing the work of a card and a
+paragraph.
+
+**Why it was not built here.** `shared.sessionLoopReview` is one string shared by
+every step the `session-loop` hold reaches (`generate.ts`), which includes Limit
+How Long Sessions Last and Require MFA at Every Role Activation in two other
+groups. Shortening it moves their rendered bodies and their snapshots.
+
+### 13. A step with no submittable operation is still titled after itself
+
+Recorded first in `close-doors-spec.md` §7 and unchanged: Keep Company Data Off
+Phones and Give Shared Devices Their Own Policy each draw one Implementation Task
+called after the step, because `policyTasks.ts` `taskTitle` falls back to the
+step's title where `stepOperations(step)` is empty. Both are steps whose work is
+a review IAMAI cannot submit, so there is no operation to name the task by. Still
+the anatomy's, still not one group's to change.

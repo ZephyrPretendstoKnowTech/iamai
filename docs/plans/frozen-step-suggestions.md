@@ -313,3 +313,25 @@ What the group did instead, so that nothing is unsaid while they stand:
 Nothing else. The four Emergency Access steps behaved correctly as the
 prerequisite these policy steps wait on, at 1280 on the demo and on the
 follow-up scan, and none of their snapshots moved.
+
+## From "Require Healthy Devices" (2026-09-20)
+
+Taking the four steps of `devices` to the V1 standard needed **no change to any
+frozen step**, and no Emergency Access or Direction snapshot moved.
+
+One thing to hold for the owner, about a Direction step rather than in it:
+
+- **Decide How People and Devices Sign In creates a step, and says nothing about
+  it.** Answering the phones half with "Blocked from company data" generates
+  `s-ladder-phone-access-restriction` (`roadmap/generate.ts`), a whole extra step
+  of work — a new Conditional Access policy, a report-only week, a test on two
+  kinds of phone — and it also sends Require a Managed Device Outside the Office
+  and Require a Fresh Sign-in for Intune Enrollment to the footer if it is the
+  only platform left. The Direction step's effect line for that option does not
+  say that a step appears. The other three phone options add nothing, so the
+  answer that looks like the least work is the one that makes the most.
+
+  This wave made the step it creates worth arriving at — it now carries the
+  policy in eight numbered steps instead of asking the operator to design one —
+  so the gap is what the question says beforehand, not what it leads to. Nothing
+  on the Direction step was touched.
