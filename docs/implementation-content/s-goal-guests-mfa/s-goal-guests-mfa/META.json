@@ -28,7 +28,10 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"e0fabad3-bd0f-42e4-a901-51ef7ab8889c":"4c820ee3","f25f94e0-98b6-41be-b9d6-68cb781004a4":"14baaf36"},
+    "reviewedMembers": {
+      "e0fabad3-bd0f-42e4-a901-51ef7ab8889c": "4c820ee3",
+      "f25f94e0-98b6-41be-b9d6-68cb781004a4": "14baaf36"
+    },
     "members": [
       {
         "role": "strong",
@@ -313,16 +316,36 @@
     {
       "id": "ms-ca-update",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-cross-tenant-b2b",
+      "url": "https://learn.microsoft.com/entra/external-id/cross-tenant-access-settings-b2b-collaboration"
     }
   ],
   "verifiedSources": [
     {
+      "id": "ms-external-ca",
+      "authority": "Microsoft Learn",
+      "title": "Authentication and Conditional Access for External ID",
+      "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-cross-tenant-b2b",
+      "authority": "Microsoft Learn",
+      "title": "Configure cross-tenant access settings for B2B collaboration",
+      "url": "https://learn.microsoft.com/entra/external-id/cross-tenant-access-settings-b2b-collaboration",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
       "id": "ms-b2b-mfa",
       "authority": "Microsoft Learn",
-      "title": "Tutorial: Multifactor authentication for B2B",
-      "url": "https://learn.microsoft.com/en-us/entra/external-id/b2b-tutorial-require-mfa",
-      "checkedOn": "2026-09-12",
-      "userFacing": true
+      "title": "Require multifactor authentication for B2B collaboration users",
+      "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa",
+      "checkedOn": "2026-09-20",
+      "userFacing": false
     }
   ],
   "schemaVersion": "2.5-compact",

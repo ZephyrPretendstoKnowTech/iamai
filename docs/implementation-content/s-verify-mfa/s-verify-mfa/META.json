@@ -198,6 +198,10 @@
     {
       "id": "ms-combined-registration",
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-registration-mfa-sspr-combined"
+    },
+    {
+      "id": "ms-passkeys",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
     }
   ],
   "verifiedSources": [
@@ -206,7 +210,15 @@
       "authority": "Microsoft Learn",
       "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
-      "checkedOn": "2026-09-12",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-passkeys",
+      "authority": "Microsoft Learn",
+      "title": "Enable passkeys (FIDO2) for your organization",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],

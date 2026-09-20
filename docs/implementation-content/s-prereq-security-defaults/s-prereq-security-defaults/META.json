@@ -115,6 +115,10 @@
     {
       "id": "ms-sd-graph",
       "url": "https://learn.microsoft.com/en-us/graph/api/identitysecuritydefaultsenforcementpolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-plan-ca",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
     }
   ],
   "schemaVersion": "2.5-compact",
@@ -135,5 +139,23 @@
     "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
     "status": "SELF-VERIFIED"
   },
-  "unresolvedIssues": []
+  "unresolvedIssues": [],
+  "verifiedSources": [
+    {
+      "id": "ms-sd",
+      "authority": "Microsoft Learn",
+      "title": "Security defaults in Microsoft Entra ID",
+      "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-plan-ca",
+      "authority": "Microsoft Learn",
+      "title": "Plan a Conditional Access deployment",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    }
+  ]
 }

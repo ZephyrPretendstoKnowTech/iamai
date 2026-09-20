@@ -385,7 +385,7 @@
     },
     "registrationScope": {
       "unknown": "Guest coverage is not resolved yet. Review the target policy before relying on it.",
-      "excluded": "The resolved registration policy excludes guests and external users.",
+      "excluded": "The resolved registration policy excludes guests and external users, because a Temporary Access Pass cannot be issued to them.",
       "partial": "The resolved registration policy excludes specific external-user types. Review its Users settings for the exact coverage.",
       "included": "The resolved registration policy includes guests within its selected scope; explicit user or group exclusions still apply.",
       "targeted": "Guest coverage depends on the users, groups or roles selected in the resolved registration policy."
@@ -3322,20 +3322,20 @@
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
-        "lead": "Everyone in {tenant}: security defaults apply today, and Require MFA for Everyone replaces that MFA requirement."
+        "lead": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it."
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:",
+        "lead": "Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
-          "Confirm Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all three enforce today.",
-          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled → Save.",
-          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
+          "Confirm Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all four enforce today.",
+          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
+          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.",
+        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
         "Test sign-in for representative users and admins right after the changeover."
       ],
       "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
@@ -3348,10 +3348,16 @@
           {
             "text": "A gap between turning defaults off and enforcing the MFA policy is a window with no MFA at all.",
             "applies": "always"
+          },
+          {
+            "text": "Security defaults also block device code sign-in, so that route reopens unless Block Device Code Sign-in is enforced in the same window.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass."
+          "Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.",
+          "Security defaults allowed only the Microsoft Authenticator app, so the switch day is the first day anyone here can use another method.",
+          "Guests were covered by security defaults the same as staff; Require MFA for Everyone is what covers them afterwards."
         ],
         "manager": null,
         "waits": "Every policy step waits on this."
@@ -3368,9 +3374,9 @@
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "Moving MFA enforcement into the access policies makes it easier to manage consistently. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
+      "why": "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides, and Microsoft says not to keep per-user MFA where Conditional Access is in use. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
+        "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
       },
       "who": {
         "lead": "{n} accounts with per-user MFA set to Enabled or Enforced:",
@@ -3380,10 +3386,9 @@
       "whatToDo": {
         "lead": "On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
-          "Confirm each method people use (Authenticator, phone, passkeys) is enabled under Policies.",
-          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → Per-user MFA → select the accounts above → Disable.",
-          "Manage migration → Migration complete."
+          "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
+          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → All users → Per-user MFA → select the accounts above → Disable MFA. You need at least the Authentication Policy Administrator role.",
+          "Read each state back as Disabled, then delete any app password these accounts still hold, because an app password bypasses MFA on its own."
         ]
       },
       "dates": null,
@@ -3391,7 +3396,7 @@
         "The legacy per-user MFA states have been reviewed and disabled for the intended accounts after replacement protection is verified.",
         "Authentication-method policy migration is tracked separately; its completion does not prove that legacy per-user MFA is disabled."
       ],
-      "ifWrong": "Set Migration in progress again; per-user settings can be re-enabled per account.",
+      "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -3401,9 +3406,19 @@
           {
             "text": "Disabling per-user MFA before the policy enforces removes MFA for that person.",
             "applies": "always"
+          },
+          {
+            "text": "An app password created under per-user MFA keeps working after the state is Disabled, and it answers no prompt at all.",
+            "applies": "always"
+          },
+          {
+            "text": "The old service settings carry a skip for federated requests from your intranet, which makes every such request read as a trusted location to every access policy.",
+            "applies": "always"
           }
         ],
-        "helpDesk": null,
+        "helpDesk": [
+          "Accounts still reading Disabled after the policy is On is the expected result: turning MFA on through an access policy never changes the per-user state."
+        ],
         "manager": null,
         "waits": null
       },
@@ -3729,13 +3744,16 @@
         ],
         "generic": [
           "Send the email below to everyone else; send the admin note to the admins.",
-          "To prompt eligible people to register Microsoft Authenticator, open Entra ID → Authentication methods → Registration campaign. Review the targeted users and excluded users, choose the snooze settings for your rollout, enable the campaign, and verify those settings. Check the separate passkey registration instructions for passkeys.",
+          "To prompt people during sign-in, open Entra ID → Authentication methods → Registration campaign → Edit. A campaign nudges one method at a time, either Passkey (FIDO2) or Microsoft Authenticator. Review the included and excluded users, set Days allowed to snooze and Limited number of snoozes, enable it, then reopen and verify those settings.",
+          "A passkey campaign does not nudge guests, because a guest cannot register a passkey here; the Authenticator campaign is the one that reaches them.",
           "Scan to update the plan after each batch; the lists above shrink as people are seen."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Everyone in this step has a suitable registered MFA method. Administrators have a phishing-resistant method, and the people needing help are identified."
+        "Everyone in this step has a registered MFA method they can use.",
+        "Every administrator has a phishing-resistant method.",
+        "The people who still need help are identified and on the support list."
       ],
       "ifWrong": null,
       "comms": {
@@ -3769,12 +3787,18 @@
           {
             "text": "A person who has not enrolled cannot complete sign-in once the policy is enforced; resolve it with them and their manager rather than with an exclusion.",
             "applies": "always"
+          },
+          {
+            "text": "An Authenticator campaign nudges anyone without the app, including someone who already signs in with a stronger method, so it can read as a step backwards.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Cannot register from home: issue a Temporary Access Pass and register together.",
           "New phone: Temporary Access Pass, then re-register Authenticator; delete the old device from their methods.",
-          "Guest cannot register: have them sign in from their home tenant, or accept their home tenant's MFA under cross-tenant access settings."
+          "Guest cannot register: have them sign in from their home tenant, or accept their home tenant's MFA under cross-tenant access settings.",
+          "In this tenant a guest can only use a text message, a voice call, an Authenticator push or a software token code; the stronger methods count only as a claim from their own tenant.",
+          "No prompt appeared: the nudge needs a fresh sign-in that completed MFA here, so it is skipped for single sign-on and it does not show on a phone."
         ],
         "manager": null,
         "waits": "Require MFA for Everyone, Require MFA at the Admin Portals and Require MFA to Register a Device wait on this."
@@ -3869,7 +3893,7 @@
             "applies": "noMethodInScope"
           },
           {
-            "text": "Someone whose only method is a text message, waiting on a text that does not arrive.",
+            "text": "Someone whose only method is a text message or a voice call: Microsoft is retiring both, and a person left with nothing else is made to register a passkey before they can sign in.",
             "applies": "smsOnlyInScope"
           },
           {
@@ -3883,7 +3907,8 @@
         ],
         "helpDesk": [
           "Cannot answer the prompt: issue a Temporary Access Pass and register together at https://aka.ms/mfasetup.",
-          "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership."
+          "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership.",
+          "A policy of this name you cannot rename or delete is Microsoft's own managed one; change its excluded identities rather than the policy."
         ],
         "manager": "Work sign-ins need a second factor, which makes a stolen password much less useful on its own. People confirm with a method they set up during the campaign.",
         "waits": null
@@ -3911,8 +3936,8 @@
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} {syncRoleNote}",
-          "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: Multifactor authentication",
+          "Target resources → Resources → All resources. Exclude: Microsoft Intune Enrollment, which the separate device-enrollment step covers.",
+          "Grant → Require multifactor authentication. This is the built-in control, not an authentication strength; a policy cannot carry both.",
           "{reportOnlyLine}"
         ]
       },
@@ -4122,7 +4147,7 @@
       "changeLine": null,
       "why": "External accounts can authenticate differently depending on their home organization and account type. Reviewing those differences helps require MFA without cutting off legitimate collaboration.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
+        "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access"
       },
       "who": {
         "lead": "{guests} guests and external users signed in during the last 30 days",
@@ -4130,6 +4155,8 @@
           "{list:guestsWithState}",
           "{n} service-provider accounts from {partners} partner tenants signed in since {from}; review their access path separately from ordinary guest collaboration.",
           "Guest directory membership does not establish the external-user type or home-tenant trust that applies to a particular sign-in.",
+          "In this tenant a guest can only answer with a text message, a voice call, an Authenticator push or a software token code. A passkey, Windows Hello for Business or a certificate counts only as a claim their own tenant makes.",
+          "Trusting a partner's MFA does not exempt them from the policy; it decides where they answer it. Without that trust they answer here, and have to register a method here first.",
           "{existingCoverage}"
         ]
       },
@@ -4175,6 +4202,18 @@
           {
             "text": "A phishing-resistant requirement needs a compatible method and, where relied on, verified inbound partner trust. A guest count alone cannot establish that compatibility.",
             "applies": "always"
+          },
+          {
+            "text": "A Temporary Access Pass cannot be issued to a guest, so a strength that relies on one is met only by a claim from their own tenant.",
+            "applies": "always"
+          },
+          {
+            "text": "With no inbound trust configured, a B2B direct connect user is blocked outright rather than prompted, because there is nowhere for them to answer.",
+            "applies": "always"
+          },
+          {
+            "text": "An authentication strength reaches only guests who sign in with Entra ID; a one-time passcode, SAML or Google account needs the plain MFA requirement instead.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
@@ -4213,18 +4252,18 @@
         "from": "Aug 1"
       },
       "whatToDoReference": {
-        "lead": "Policy A, every guest: and Policy B only for the partner tenants chosen above.",
+        "lead": "Two policies, split by external-user type, not by partner: A asks for plain MFA, B asks for a strength.",
         "steps": [
           "Cross-tenant trust first, if you chose a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
           "Policy A: {policyNameA}: {portalRoot}",
-          "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
+          "Users → Include: Guest or external users → B2B collaboration guest users, Other external users{serviceProviderClause}. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Grant → Require multifactor authentication",
           "{reportOnlyLine}",
-          "Policy B: {policyNameB} (only if a partner is chosen): {portalRoot}",
-          "Users → Include: Guest or external users → B2B collaboration guest users, B2B collaboration member users → Selected external tenants: {list:partnerTenantsList}. {exclusionsLine}",
+          "Policy B: {policyNameB}: {portalRoot}",
+          "Users → Include: Guest or external users → Internal guest users, B2B collaboration member users, B2B direct connect users, Service provider users → all external tenants. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: {strengthName}",
+          "Grant → Require authentication strength: {strengthName}. These accounts can meet it only from their own tenant, so confirm the inbound trust is in place before enforcing.",
           "{reportOnlyLine}"
         ]
       },
@@ -4279,11 +4318,17 @@
           {
             "text": "Office public IP changes can stop the named location matching the intended network.",
             "applies": "always"
+          },
+          {
+            "text": "Setting up Windows Hello for Business, or a Mac's Platform SSO credential, is registration too, so this policy decides whether it finishes.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Check the affected registration sign-in and the policy's actual network and grant requirements. Screen-sharing does not change the registering device's network or satisfy a grant control.",
-          "Use the approved recovery or enrollment path that meets those requirements. Update an office location only after verifying its public egress address."
+          "Use the approved recovery or enrollment path that meets those requirements. Update an office location only after verifying its public egress address.",
+          "A person with no method registers with a Temporary Access Pass: it is the one credential that satisfies a multifactor requirement before they have anything else.",
+          "A phishing-resistant requirement does not accept a Temporary Access Pass, so it locks out the new starter it was meant to protect. Keep this policy's grant as IAMAI resolved it."
         ],
         "manager": "Adding a sign-in method needs the resolved extra check, so a stolen password alone is less useful for adding a method. People already set up see no change until they register a new one.",
         "waits": null
@@ -5267,7 +5312,7 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Prepare and validate the replacement Conditional Access policy first. After it is enforced for the intended registration or join scope, set Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices to No; then test the relevant enrollment paths and rescan."
+          "While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced. Prepare and validate the policy first; on the day it is enforced for the intended registration or join scope, set that setting to No, then test the relevant enrollment paths and rescan."
         ],
         "verification": [
           "Use a representative account to register or join a device through each enrollment method this tenant uses. Confirm the applied Conditional Access policy and that the required MFA succeeds.",
@@ -5290,10 +5335,19 @@
           {
             "text": "Enrollment methods use different identities and sign-in paths. Test user-driven, bulk and automated paths actually used by this tenant.",
             "applies": "always"
+          },
+          {
+            "text": "Windows Hello for Business and a device-bound passkey cannot answer this policy: both need the device to be registered already, and it is not yet.",
+            "applies": "always"
+          },
+          {
+            "text": "Leaving the tenant-wide device-registration MFA setting at Yes stops this policy being properly enforced, so the prompt people see is the old setting's.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Setting up a new computer asks for MFA once at the join step; that is expected."
+          "Setting up a new computer asks for MFA once at the join step; that is expected.",
+          "Cannot finish the join with a passkey on that device: use another registered method, or a Temporary Access Pass, because the device is not registered yet."
         ],
         "manager": "Registering or joining a device asks for MFA, which makes a stolen password alone less useful for adding a device. Registration alone does not make a device compliant.",
         "waits": null
@@ -5316,8 +5370,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → User actions → Register or join devices",
-          "Grant → Require authentication strength: Multifactor authentication",
-          "Do not add device-state conditions to this policy; a first join has no device to check.",
+          "Grant → Require authentication strength: {strengthName}. This user action offers only Require multifactor authentication and Require authentication strength; every other control is greyed out.",
+          "Client apps, Filters for devices and Device state are not available for this user action, because each of them needs a device that is already registered.",
           "{reportOnlyLine}"
         ]
       },

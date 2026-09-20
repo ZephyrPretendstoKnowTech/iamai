@@ -24,7 +24,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-    "reviewedMembers": {"aeb49474-5250-4b65-8b0a-56c47127ee0f":"75f2c295"},
+    "reviewedMembers": {
+      "aeb49474-5250-4b65-8b0a-56c47127ee0f": "75f2c295"
+    },
     "memberStableId": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
     "reauthored": {
       "on": "2026-09-11",
@@ -388,7 +390,7 @@
       "title": "Require multifactor authentication for device registration",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
       "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": [
@@ -404,7 +406,7 @@
       "title": "Conditional Access: Target resources",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
       "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "technical",
       "audience": [
@@ -435,7 +437,7 @@
       "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
       "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
       "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": [

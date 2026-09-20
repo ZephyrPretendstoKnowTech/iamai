@@ -26,7 +26,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"a66e8427-e5e7-4072-bfd1-7e99db7a7dc4":"40f72c4c"},
+    "reviewedMembers": {
+      "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "40f72c4c"
+    },
     "memberStableId": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
     "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
     "sourceState": "enabledForReportingButNotEnforced",
@@ -288,6 +290,18 @@
     {
       "id": "ms-ca-grant",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-strengths",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
+    },
+    {
+      "id": "ms-managed-policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies"
+    },
+    {
+      "id": "ms-sms-retirement",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement"
     }
   ],
   "verifiedSources": [
@@ -296,7 +310,31 @@
       "authority": "Microsoft Learn",
       "title": "Require MFA for all users with Conditional Access",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
-      "checkedOn": "2026-09-12",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-strengths",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access authentication strength",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-managed-policies",
+      "authority": "Microsoft Learn",
+      "title": "Microsoft-managed policies in Conditional Access",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-sms-retirement",
+      "authority": "Microsoft Learn",
+      "title": "Passkeys by default and retirement of Microsoft-provided SMS and voice authentication",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],
