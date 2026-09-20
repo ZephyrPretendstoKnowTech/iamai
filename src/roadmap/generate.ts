@@ -1103,8 +1103,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // can lock out an account nobody uses. The risk is the other way round:
   // whoever signs in first registers the MFA method. Present only while there
   // is somebody to decide on; done when the count reaches 0 on re-scan.
+  //
+  // On every plan, not only where Conditional Access can exist: an account
+  // nobody signs in to is directory hygiene, and the free-tier ladder's
+  // stale-accounts rung was this same step under a second id
+  // (docs/plans/step-redundancy-analysis.md finding 9). The ladder covers it
+  // from here now (ladder.ts COVERED_BY_STEP), keeping its own position.
   const dormant = notActiveUsers(snapshot, snapshot.asOf, notPeopleIds(mapping))
-  if (canUseConditionalAccess) {
+  {
     const s = prereq('s-check-dormant-accounts')
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
@@ -1117,8 +1123,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Separate admin accounts (E6): a directory-role holder who also reads mail or
   // joins Teams on the same account. A Preparation check step, skippable, only
   // while somebody does; the admin policies name the same people beside it.
+  // On every plan, for the same reason as the dormant check above: the ladder's
+  // admin-accounts-separate rung was this step under a second id, with the same
+  // Completion Criteria word for word (finding 9).
   const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
-  if (canUseConditionalAccess) {
+  {
     const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
@@ -2490,7 +2499,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
   }
   applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, new Set(campaignIds(viability, snapshot, mapping)))
-  for (const s of steps.filter(s => ['s-check-dormant-accounts', 's-ladder-stale-accounts'].includes(s.id))) {
+  for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     const dormantIds = new Set(dormant.map(u => u.id))
     const reviewed = mapping.dormantAccountChoices ?? {}
     const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))

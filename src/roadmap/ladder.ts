@@ -32,9 +32,23 @@ export type LadderItem = { id: string; name: string; description: string; goalId
 
 export const LADDER_ITEMS: LadderItem[] = ladderData.items as LadderItem[]
 
-/** Ladder items an existing phase 0 step already covers; that step takes the ladder's place. */
+/**
+ * Ladder items an existing phase 0 step already covers; that step takes the
+ * ladder's place.
+ *
+ * The separate-admin-accounts and stale-accounts rungs were the same step with a
+ * second id: identical Completion Criteria word for word, one shared manual
+ * record, and every branch in roadmap/manualWork.ts treating the pair as one.
+ * They never appeared together, so nobody saw the duplicate — but the words and
+ * the evidence had to be changed twice, and one of the two would drift
+ * (docs/plans/step-redundancy-analysis.md finding 9). They are covered here
+ * instead, by the mechanism per-user-mfa-cleanup already used, so the free tier
+ * draws the same step the rest of the plan draws, in the ladder's own place.
+ */
 const COVERED_BY_STEP: Record<string, string> = {
   'per-user-mfa-cleanup': 's-prereq-per-user-mfa',
+  'admin-accounts-separate': 's-check-separate-admin-accounts',
+  'stale-accounts': 's-check-dormant-accounts',
 }
 
 export function ladderStepId(itemId: string): string {
@@ -144,8 +158,6 @@ function verdictFor(itemId: string, f: Facts): Verdict {
       return f.securityDefaults === true ? done('security defaults, which this tenant has on') : not
     case 'per-user-mfa-cleanup':
       return { done: false, evidence: [`Authentication methods migration: ${f.migrationState ?? 'not read'}. Check legacy per-user MFA separately in Entra.`] }
-    case 'admin-accounts-separate':
-      return { done: f.rolesReadable, evidence: f.rolesReadable ? ['Current active and eligible role assignments are readable; the separate scoped handover record determines completion.'] : [] } // Readable roles enable the scoped handover proof; mailbox licensing cannot prove account separation.
     case 'global-admin-count':
       return f.globalAdmins >= GLOBAL_ADMIN_MIN && f.globalAdmins <= GLOBAL_ADMIN_MAX ? done(`the ${f.globalAdmins} accounts holding Global Administrator, inside the two to four Microsoft recommends`) : not
     case 'guest-review':
@@ -183,7 +195,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
     const v = verdictFor(item.id, f)
     const id = ladderStepId(item.id)
     order.set(id, index)
-    const reviewIds = item.id === 'admin-accounts-separate' ? f.adminIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : item.id === 'authenticator-over-sms' ? f.replacement.ids : []
+    const reviewIds = item.id === 'authenticator-over-sms' ? f.replacement.ids : []
     steps.push({
       ...STEP_EXTRAS,
       ...(item.id === 'authenticator-over-sms' ? {

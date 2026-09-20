@@ -23,7 +23,7 @@ const IMPACT_TOPICS: Record<string, string> = {
 // including inactive accounts. Other prerequisites can carry an empty placeholder
 // population, so their topic must not turn into a misleading zero.
 const ACCOUNT_REVIEW_STEPS = new Set([
-  's-check-dormant-accounts', 's-ladder-stale-accounts', 's-prereq-per-user-mfa',
+  's-check-dormant-accounts', 's-prereq-per-user-mfa',
   's-ladder-per-user-mfa-cleanup', 's-check-separate-admin-accounts',
   's-shared-devices',
 ])
