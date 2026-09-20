@@ -4,7 +4,7 @@
 import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { personAccounts } from '../derive/sets.ts'
+import { activityKnown, personAccounts } from '../derive/sets.ts'
 import { adminUserIds } from '../roles.ts'
 import { readinessContextOf } from '../derive/readinessContext.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -106,7 +106,7 @@ export function buildViabilityInputs(
       methods: methodsAvailable ? (snapshot.authMethods[u.id] ?? 'unknown') : 'unknown',
       // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
       lastSuccessfulSignIn: u.lastSuccessfulSignIn,
-      successfulActivityAvailable: u.successfulSignInActivityRead === true || u.lastSuccessfulSignIn !== null,
+      successfulActivityAvailable: activityKnown(u),
       accountCreated: u.createdDateTime,
       evidence,
       history: snapshot.mfaHistory?.people?.[u.id] ?? null,

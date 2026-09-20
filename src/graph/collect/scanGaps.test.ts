@@ -7,9 +7,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
 import { REFUSED, USER_ROLE_ID, gapsSnapshot, noRolesToken, tokenWithRoles, tokenWithoutClaim } from '../../testing/gapsFixture.ts'
-import { CORE_SOURCES, coreGaps } from './coreSections.ts'
+import { CORE_SOURCES, coreGaps, unreadSources } from './coreSections.ts'
 import { coreRoleGap, rolesInToken } from './tokenRoles.ts'
-import { READ_EVERYTHING_ROLE } from './roles.ts'
+import { READ_EVERYTHING_ROLE, isLicenceGate } from './roles.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
 import { planTile } from '../../ui/scan/connectView.ts'
 import type { TenantSnapshot } from './types.ts'
 
@@ -52,5 +53,37 @@ test('a token without the roles does not start the scan and names the role to as
   assert.equal(rolesInToken(tokenWithoutClaim()), null)
   assert.equal(coreRoleGap(null), null, 'no claim: the gate has nothing to act on; the scan runs and its gaps decide')
   assert.equal(rolesInToken('not-a-token'), null)
+})
+
+// V1 audit S4-21. A tenant with no Entra ID P1 builds a complete plan, because
+// coreGaps exempts a licence gate — correctly. The case was untested: the
+// `micro` fixture wrote `status: 'insufficient'` where worker.ts writes
+// 'disabled', so coreGaps returned a gap for it and no surface ever rendered
+// the state. This binds the fixture to the collector's own contract, so a change
+// to either is a named failure rather than a silent divergence.
+test('the micro fixture is the shape worker.ts leaves a tenant with no Entra ID P1, and it builds a plan', () => {
+  const s = fixture('micro').snapshot
+  assert.equal(s.capabilities.entraP1.enabled, false)
+  // Lane B is skipped whole (worker.ts): the source is disabled with the worker's own sentence.
+  assert.equal(s.sources.signInEvidence?.status, 'disabled')
+  assert.equal(s.sources.signInEvidence?.reason, 'not available on this licence (needs Entra ID P1)')
+  assert.ok(isLicenceGate(s.sources.signInEvidence?.reason))
+  assert.deepEqual(s.signInEvidence, {}, 'no records were read, so none exist')
+  // The registration report is P1-gated too (registry.ts requiredCapability).
+  assert.equal(s.sources.registrationDetails?.status, 'disabled')
+  assert.ok(isLicenceGate(s.sources.registrationDetails?.reason))
+  assert.deepEqual(s.registrationDetails, [])
+  // The directory read degrades rather than failing: a plain user list, partial (collectors.ts collectUsers).
+  assert.equal(s.sources.users?.status, 'partial')
+  assert.match(s.sources.users?.reason ?? '', /signInActivity not available on this licence/)
+  assert.ok(s.users.length > 0, 'the people are read; only their activity is not')
+  assert.ok(s.users.every((u) => u.successfulSignInActivityRead === false && u.lastSuccessfulSignIn === null), 'every row reads activity NOT READ, never "never signed in"')
+  assert.equal(s.evidenceUsage, null)
+  assert.equal(s.evidenceAggregates, null)
+  // And so the guard lets the plan through, exactly as it does in production.
+  assert.deepEqual(coreGaps(s), [], 'a licence gate is not a permissions gap: the plan is built')
+  assert.deepEqual(unreadSources(s), [], 'nothing was refused or errored')
+  // The contrast case: a P1 fixture reads activity for everyone.
+  assert.ok(fixture('small').snapshot.users.every((u) => u.successfulSignInActivityRead === true))
 })
 

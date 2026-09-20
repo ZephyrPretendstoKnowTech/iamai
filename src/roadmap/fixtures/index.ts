@@ -633,6 +633,25 @@ export function buildFixture(spec: Spec): Fixture {
     }
   }
 
+  // A tenant with no Entra ID P1, in the shape the collector leaves it
+  // (graph/collect/worker.ts): Graph withholds `signInActivity` from the
+  // directory read, the registration report and the sign-in log, so every
+  // person's activity is NOT READ rather than absent, and nothing the records
+  // would have carried exists. The licence reason is the worker's own sentence,
+  // so `isLicenceGate` reads it and `coreGaps` exempts it exactly as it does in
+  // production — which is what makes the no-P1 tenant a state this suite renders.
+  const LICENCE_GATE = 'not available on this licence (needs Entra ID P1)'
+  if (!p1) {
+    for (const u of users) {
+      u.lastSuccessfulSignIn = null
+      u.lastSignInAttempt = null
+    }
+    registrationDetails.length = 0
+    for (const id of Object.keys(signInEvidence)) delete signInEvidence[id]
+    mfaHistory = null
+  }
+  for (const u of users) u.successfulSignInActivityRead = p1
+
   const section = (rows: unknown[], status: 'ok' | 'disabled' | 'error' = 'ok', reason: string | null = null) => ({ status, reason, rows })
   const ok = (extra: Partial<TenantSnapshot['sources'][keyof TenantSnapshot['sources']]> = {}) => ({ status: 'ok' as const, coveredWindow: null, reason: null, asOf: NOW, ...extra })
   const hostile = spec.hostile === true
@@ -644,13 +663,15 @@ export function buildFixture(spec: Spec): Fixture {
     recoveryAuditSource: ok(),
     sources: {
       config: ok(),
-      registrationDetails: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : ok(),
-      users: ok(),
+      registrationDetails: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : p1 ? ok() : { status: 'disabled', coveredWindow: null, reason: LICENCE_GATE, asOf: NOW },
+      users: p1 ? ok() : { ...ok(), status: 'partial' as const, reason: `signInActivity ${LICENCE_GATE}` },
       devices: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : ok(),
       spActivity: ok(),
       authMethods: unreadRegistration ? { ...ok(), status: 'partial' as const, reason: "1 users' methods unavailable" } : ok(),
       appSignInSummary: ok(),
-      signInEvidence: hostile || !p1 ? { status: 'insufficient', coveredWindow: null, reason: hostile ? 'no sign-in records could be read' : 'not available on this licence', asOf: NOW } : ok({ coveredWindow: { from: daysAgo(30), to: NOW } }),
+      signInEvidence: hostile ? { status: 'insufficient', coveredWindow: null, reason: 'no sign-in records could be read', asOf: NOW }
+        : !p1 ? { status: 'disabled', coveredWindow: null, reason: LICENCE_GATE, asOf: NOW }
+          : ok({ coveredWindow: { from: daysAgo(30), to: NOW } }),
     },
     config: {
       caPolicies: section(policies),
@@ -685,13 +706,13 @@ export function buildFixture(spec: Spec): Fixture {
     mfaHistory,
     evidencePolicyResults: week2Results,
     blockedToday: [],
-    evidenceUsage: hostile ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} } },
-    evidenceAggregates: hostile ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users }, signInsByCountry: { AU: spec.users * 8 }, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
+    evidenceUsage: hostile || !p1 ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} } },
+    evidenceAggregates: hostile || !p1 ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users }, signInsByCountry: { AU: spec.users * 8 }, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
     capabilities: caps,
     microsoftManagedPolicyIds: [],
     roles: { active: rolesActive, eligible: {} },
   }
-  if (!hostile) {
+  if (!hostile && p1) {
     const rows = scenarioRows(spec.name, ids, svcIds)
     const compliantOwners = new Set<string>()
     for (const d of snapshot.devices) if (d.isCompliant === true) for (const o of d.ownerIds) compliantOwners.add(o)
