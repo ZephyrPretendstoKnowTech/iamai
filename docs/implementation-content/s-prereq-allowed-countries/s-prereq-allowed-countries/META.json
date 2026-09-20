@@ -3,7 +3,7 @@
   "stepId": "s-prereq-allowed-countries",
   "title": "Create or Correct Allowed Countries Location",
   "impact": {
-    "fallbackLabel": "Country restrictions"
+    "fallbackLabel": "Allowed countries"
   },
   "baseline": "jon-hope-pinned",
   "relationship": "prerequisite",
@@ -233,10 +233,18 @@
     {
       "id": "ms-network",
       "authority": "Microsoft Learn",
-      "title": "Conditional Access Policy: Using Network Signals",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-      "checkedOn": "2026-09-12",
+      "title": "Network assignment in Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+      "checkedOn": "2026-09-20",
       "userFacing": true
+    },
+    {
+      "id": "ms-country-named-location",
+      "authority": "Microsoft Learn",
+      "title": "countryNamedLocation resource type",
+      "url": "https://learn.microsoft.com/graph/api/resources/countrynamedlocation",
+      "checkedOn": "2026-09-20",
+      "userFacing": false
     }
   ],
   "validation": {
