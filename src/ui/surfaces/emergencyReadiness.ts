@@ -45,6 +45,9 @@ export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; l
 
 const rank = (outcome: string | undefined): number => outcome === 'fail' ? 0 : outcome === 'unknown' ? 1 : 2
 
+/** The card's one action where it names an Implementation Task: one sentence, written once, so a caller can tell its own pointer from a task's own words. */
+export const followTask = (title: string): string => `Follow ${title} in Implementation Tasks.`
+
 /** A readiness tile of Steps 2–4 as a Step 1-standard subject tile. Presentation
  * only: which findings exist, and their outcomes, are the tile's own. */
 export function emergencySubjectTileOf(tile: ReadinessTile, projected: EmergencyTaskProjection | null): EmergencySubjectTile {
@@ -59,7 +62,7 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
   }))
   const pending = findings.filter(item => !passed(item)).map((item, index) => ({ item, index })).sort((x, y) => rank(x.item.outcome) - rank(y.item.outcome) || x.index - y.index).map(row => row.item)
   const completed = findings.filter(passed).map(item => [item.subjectLabel, `${item.factLabel ?? item.label}${item.value ? `: ${item.value}` : ''}`].filter(Boolean).join(' · '))
-  const direction = task ? task.readinessDirection ?? `Follow ${task.title} in Implementation Tasks.` : null
+  const direction = task ? task.readinessDirection ?? followTask(task.title) : null
   const base = { key: tile.key, accountId: null, heading: tile.label, completed, remainingCount: pending.length || null, satisfied }
   const next = pending[0]
   if (!next) {
