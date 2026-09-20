@@ -15167,7 +15167,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in-risk policy guidance, Medium/High recommendation, MFA requirement, Report-only rollout, and Every-time recommendation.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -15175,7 +15175,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Sign-in-risk semantics, P2 requirement, self-remediation, and legacy-policy retirement.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -15183,7 +15183,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 signInRiskLevels and clientAppTypes schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -15191,7 +15191,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 built-in MFA grant support.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -15199,7 +15199,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -15207,7 +15207,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID update endpoint and partial update semantics.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
@@ -15215,7 +15215,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -15265,7 +15265,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check Medium only.\n6. Grant → Grant access → Require multifactor authentication.\n7. Session: leave empty (no session controls).\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant → Grant access → Require multifactor authentication.\n8. Session: leave empty (no session controls).\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -15313,7 +15313,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > Sign-in risk: set **Medium** only. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.\n"
+          "text": "Conditions > Sign-in risk: set **Configure** to **Yes**, then **Medium** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -15325,7 +15325,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.\n"
+          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {

@@ -3,11 +3,12 @@
 2. Name: {{policy.target.displayName}}.
 3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
 4. Target resources: All resources.
-5. Conditions → Sign-in risk: check Medium only.
-6. Grant → Grant access → Require multifactor authentication.
-7. Session: leave empty (no session controls).
-8. Enable policy: Report-only.
-9. Create. Rescan in IAMAI.
+5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.
+6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.
+7. Grant → Grant access → Require multifactor authentication.
+8. Session: leave empty (no session controls).
+9. Enable policy: Report-only.
+10. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -25,11 +26,11 @@ Target resources: set **All resources** and remove any resource exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.risk","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Conditions > Sign-in risk: set **Medium** only. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.
+Conditions > Sign-in risk: set **Configure** to **Yes**, then **Medium** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove High and Low from this policy; High sign-in risk is covered by a separate IAMAI step.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.
+Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

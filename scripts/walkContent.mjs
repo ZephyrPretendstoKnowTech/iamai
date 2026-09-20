@@ -273,6 +273,12 @@ export const ACCEPTANCE = [
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'password hash synchronization and the on-premises password-change setting that clears user risk' },
   { item: '36', step: 'user-risk', path: 'more.risks', must: 'blocked rather than remediated' },
   { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
+  // Risk and Sessions C1-C2 (docs/plans/risk-and-sessions-spec.md section 5,
+  // Microsoft Learn checked 2026-09-20): what Medium means, and the grant and
+  // absent session control the pin actually holds.
+  { item: '37', step: 'sign-in-risk-medium', path: 'why', must: 'one or more moderate anomalies' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication. No session control: the baseline sets none here', mustNot: 'Sign-in frequency → Every time' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'dismiss the risk in Identity Protection' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },

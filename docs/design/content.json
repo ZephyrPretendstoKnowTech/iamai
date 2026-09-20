@@ -6004,7 +6004,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge Medium-Risk Sign-ins",
       "changeLine": null,
-      "why": "This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.",
+      "why": "A medium rating means Microsoft saw one or more moderate anomalies in the sign-in and is less confident than it is at high. This rule asks for multifactor authentication at that level, and leaves the High-risk rule its own stronger requirement.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -6012,13 +6012,14 @@
         "lead": "{active} active people",
         "evidence": [
           "A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA, and the High-risk policy keeps its own requirement.",
-          "{n} medium-risk sign-ins since {from} by {list:riskyUsers}.",
+          "{n} sign-ins were rated medium risk since {from}: {list:mediumRiskUsers}",
+          "The baseline asks for multifactor authentication here, not the authentication strength the High-risk policy uses, and it adds no session control.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions.",
+      "doneEnd": "A sign-in {tenant} rates medium risk cannot continue until it is answered with multifactor authentication, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions."
       ],
@@ -6032,10 +6033,15 @@
           {
             "text": "Travel and new devices trigger prompts more often; that is expected.",
             "applies": "always"
+          },
+          {
+            "text": "A person with no registered method is blocked rather than prompted, and this policy stops them registering one during the risky sign-in.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Repeated prompts after travel: confirm the sign-in and dismiss the risk in Identity Protection."
+          "Repeated prompts after travel: answering the prompt clears the sign-in risk by itself, so there is nothing to dismiss afterwards.",
+          "A sign-in blocked with AADSTS53004: the person has no registered method, and cannot register one while the sign-in is risky."
         ],
         "manager": "Sign-ins Microsoft rates medium risk need MFA before they continue; sign-ins outside that rating are not affected by this policy.",
         "waits": null
@@ -6044,7 +6050,7 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "riskyUsers": [],
+        "mediumRiskUsers": [],
         "policyName": "Core - Require - Medium sign-in risk",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -6056,8 +6062,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → Medium",
-          "Grant → Require authentication strength: Multifactor authentication. Session → Sign-in frequency → Every time",
+          "Conditions → Sign-in risk → Configure: Yes, then Medium",
+          "Grant → Require multifactor authentication. No session control: the baseline sets none here",
           "{reportOnlyLine}"
         ]
       },
