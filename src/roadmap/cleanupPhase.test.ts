@@ -12,7 +12,7 @@ import { isHeld } from './holds.ts'
 import { isWorkingDay } from './timing.ts'
 import { cleanup as cleanupContent } from '../content/content.ts'
 
-const ORDER = ['drill', 'alerting', 'naming', 'consolidation', 'notAssessed']
+const ORDER = ['drill', 'alerting', 'hardening', 'namedExclusions', 'naming', 'consolidation', 'notAssessed']
 
 test('emergency tests are early while optional hygiene follows enforcement', () => {
   const f = fixture('demo')
