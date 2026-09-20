@@ -253,7 +253,7 @@
         "setAside": "No action scheduled while this step is deferred.",
         "conflict": "This step is on hold until the baseline author resolves a contradiction. There is nothing for you to do.",
         "decide": "Confirm and save the required decision.",
-        "resolve": "Clear what this step is waiting on.",
+        "resolve": "Finish the steps this one waits on first.",
         "prepareHeld": "Create the policy in report-only now; turning it on waits for {measure} to reach {threshold}.",
         "prepareHeldOther": "Create the policy in report-only now.",
         "prepareScheduled": "Create the policy in report-only on {date}; turning it on waits for {measure} to reach {threshold}.",
@@ -1632,7 +1632,7 @@
             "minimumInPlace": "Minimum in place",
             "hardeningDeferred": "Hardening deferred"
           },
-          "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
+          "foundReadiness": "Enforcement waits for {measure} to reach {threshold}; it is {value} today.",
           "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
           "readinessScope": {
             "$comment": "Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE), in the enforced policy's informational threshold sentence (U22).",
@@ -1668,7 +1668,7 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
-          "fixConfirmExclusions": "Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
+          "fixConfirmExclusions": "Complete {step} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
@@ -3033,7 +3033,7 @@
         }
       },
       "whatToDo": {
-        "lead": null,
+        "lead": "Create the countries named location the country rule reads, holding exactly the countries people work from.",
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
@@ -3119,7 +3119,7 @@
         "save": "Save"
       },
       "whatToDo": {
-        "lead": null,
+        "lead": "Confirm the office's public IP ranges with the network owner, then create the named location and mark it trusted.",
         "steps": [
           "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
@@ -3205,7 +3205,7 @@
         "save": "Save"
       },
       "whatToDo": {
-        "lead": null,
+        "lead": "Create the group and add only the accounts an application owner confirmed run unattended.",
         "steps": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
@@ -3361,7 +3361,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:",
+        "lead": "Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on. Turn them off on the day Require MFA for Everyone enforces, and not before.",
         "steps": [
           "Confirm Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all four enforce today.",
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
@@ -3419,7 +3419,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before:",
+        "lead": "On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.",
         "steps": [
           "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
           "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → All users → Per-user MFA → select the accounts above → Disable MFA. You need at least the Authentication Policy Administrator role.",
@@ -3562,7 +3562,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": null,
+        "lead": "Create an authentication strength holding exactly the baseline's method combinations, so every policy that requires it accepts the same methods.",
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Authentication strengths → New authentication strength. It takes the Security Administrator role, and it is not under Conditional Access.",
           "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
@@ -3612,7 +3612,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": null,
+        "lead": "Register a passkey on your own administrator account, then sign in with it once so the record shows it working.",
         "steps": [
           "Sign in at https://mysignins.microsoft.com/security-info and answer the prompt there. A passkey can only be registered within five minutes of a completed prompt, so an old tab is refused.",
           "Add sign-in method → Passkey registers a security key; Add sign-in method → Passkey in Microsoft Authenticator registers one in the app. Either one is enough, and Microsoft recommends a security key for elevated privileges. Keep your existing sign-in methods until the new one works.",
@@ -4185,7 +4185,7 @@
     {
       "id": "guests-mfa",
       "preparation": [
-        "Review the Readiness section to see which guest-policy settings or prerequisites need attention.",
+        "Read the Tasks Remaining cards above to see which guest-policy settings or prerequisites need attention.",
         "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.",
         "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."
       ],

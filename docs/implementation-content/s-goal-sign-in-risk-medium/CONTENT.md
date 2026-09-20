@@ -1,7 +1,7 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Go to Entra admin center → Conditional Access → Policies → New policy.
 2. Name: {{policy.target.displayName}}.
-3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Target resources: All resources.
 5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.
 6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.

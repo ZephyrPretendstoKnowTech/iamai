@@ -14,7 +14,7 @@ This policy already exists. The correction sets its users, exclusions, target re
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
-3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.
+3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.
 @@IAMAI-END
 
