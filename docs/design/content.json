@@ -5267,7 +5267,7 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Prepare and validate the replacement Conditional Access policy first. After it is enforced for the intended registration or join scope, set Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices to No; then test the relevant enrollment paths and rescan."
+          "While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced. Prepare and validate the policy first; on the day it is enforced for the intended registration or join scope, set that setting to No, then test the relevant enrollment paths and rescan."
         ],
         "verification": [
           "Use a representative account to register or join a device through each enrollment method this tenant uses. Confirm the applied Conditional Access policy and that the required MFA succeeds.",
@@ -5290,10 +5290,19 @@
           {
             "text": "Enrollment methods use different identities and sign-in paths. Test user-driven, bulk and automated paths actually used by this tenant.",
             "applies": "always"
+          },
+          {
+            "text": "Windows Hello for Business and a device-bound passkey cannot answer this policy: both need the device to be registered already, and it is not yet.",
+            "applies": "always"
+          },
+          {
+            "text": "Leaving the tenant-wide device-registration MFA setting at Yes stops this policy being properly enforced, so the prompt people see is the old setting's.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Setting up a new computer asks for MFA once at the join step; that is expected."
+          "Setting up a new computer asks for MFA once at the join step; that is expected.",
+          "Cannot finish the join with a passkey on that device: use another registered method, or a Temporary Access Pass, because the device is not registered yet."
         ],
         "manager": "Registering or joining a device asks for MFA, which makes a stolen password alone less useful for adding a device. Registration alone does not make a device compliant.",
         "waits": null
@@ -5316,8 +5325,8 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → User actions → Register or join devices",
-          "Grant → Require authentication strength: Multifactor authentication",
-          "Do not add device-state conditions to this policy; a first join has no device to check.",
+          "Grant → Require authentication strength: {strengthName}. This user action offers only Require multifactor authentication and Require authentication strength; every other control is greyed out.",
+          "Client apps, Filters for devices and Device state are not available for this user action, because each of them needs a device that is already registered.",
           "{reportOnlyLine}"
         ]
       },

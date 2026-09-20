@@ -329,7 +329,10 @@ test('no rendered string starts with "Shown on"', () => {
 // may name it. This walks the source and fails if a product renderer references
 // whatToDoReference, whichever surface it is written on.
 test('no product renderer reads whatToDoReference (prompt 52 Part 2)', () => {
-  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts'])
+  // render.ts is the reviewer's rendering. A test that asserts what the
+  // reviewer's reference says is not a renderer either; mfaEveryone.test.ts
+  // reads it for the device-registration acceptance (mfa-everyone-spec.md B5).
+  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts', 'src/ui/surfaces/mfaEveryone.test.ts'])
   const offenders: string[] = []
   const walk = (dir: string): void => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

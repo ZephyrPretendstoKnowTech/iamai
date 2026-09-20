@@ -185,9 +185,15 @@ export const ACCEPTANCE = [
   // 29's device-settings toggle, 36's and 38's password writeback and 24's SharePoint
   // line are the content's own "before" lines (whatToDo.before), which the product
   // keeps above the translator's portal lines; the reference no longer carries them.
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'After it is enforced for the intended registration or join scope' },
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Require Multifactor Authentication to register or join devices' },
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
+  // MFA for Everyone B3-B5 (docs/plans/mfa-everyone-spec.md section 3, Microsoft
+  // Learn checked 2026-09-20): the tenant-wide setting is not hygiene — while it
+  // is Yes, "Conditional Access policies with this user action aren't properly
+  // enforced" — and the three conditions are unavailable, not unwise.
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'this policy is not properly enforced', mustNot: 'After it is enforced for the intended registration or join scope' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'on the day it is enforced for the intended registration or join scope' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Client apps, Filters for devices and Device state are not available for this user action' },
+  { item: '29', step: 'device-registration-mfa', path: 'more.risks', must: 'Windows Hello for Business and a device-bound passkey cannot answer this policy' },
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'An unsupported client or device path can be blocked.' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
