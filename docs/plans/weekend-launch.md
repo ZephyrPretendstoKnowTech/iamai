@@ -121,6 +121,29 @@ Landed on main (not pushed yet):
 - **A not-deployed policy waiting on Direction** says "Answer {Direction step} first" and offers no creation. Same agent.
 - Landed since Gate 2: `7d156f3d` (an enforced policy awaiting its workflow test no longer reads "Not supported"), `2acbd97f` (Direction waits are undated), `1e1528b2`/`c7682fb5` (smoke runs against its own production build; the cause of the blank-Plan flake was Chrome's `ERR_INSUFFICIENT_RESOURCES` on hundreds of dev-server modules). The walk still starts a dev server and needs the same move before its next local run.
 
+## Overnight, 2026-09-19 → 20: every group rebuilt
+
+Order of work: redundancy read first (the owner's rule — evaluate a step for redundancy BEFORE building it), then the anatomy, then each group end to end.
+
+- **`docs/plans/step-redundancy-analysis.md`** — 67 steps catalogued (asks / checks / produces / completes), 15 findings ranked. **Eleven step identities removed** with no outcome lost: five registry members the engine could never build (one not even a valid goal id), a cleanup row duplicating the baseline review rows, two "question" steps that were pointers at other steps, and two ladder rungs that defer to the steps they already were. The `s-question-` prefix is gone. The owner's own example — the Trusted Network step asking what D4 already asks — is fixed: it is the doing of D4's answer.
+- **Every step that carries work draws the Emergency Access anatomy.** One registry field decides it; two duplicate predicates deleted. Cleanup rows keep their shape (owner). Object, campaign, check and review steps now have real Tasks Remaining cards and real Implementation Tasks.
+- **"Settings for This Action"** folds under the Entra procedure on every policy step (owner-approved deviation).
+- **The frozen steps' links and portal paths** were corrected (dead passkey link; `Protection →` and `Identity →` are `Entra ID →` in Microsoft's current articles). Nothing else on them was touched; `docs/plans/frozen-step-suggestions.md` holds the rest.
+- **Groups 3–6 end to end**, each with a spec naming every Learn page, its `ms.date` and the date checked: `close-doors-spec.md`, `protect-admins-spec.md`, `mfa-everyone-spec.md`, `where-people-sign-in-spec.md`.
+
+### The trap that ran through the whole baseline
+
+A Conditional Access condition left at **Configure: No** matches *everything*. Every procedure that named Client apps, Network/Locations or Authentication flows without setting Configure first described a policy far wider than the one intended — a session limit that hits every mobile app, a registration policy that matches every location. Group 3 found it in four steps; group 4 found it in **`src/roadmap/portalLines.ts`**, the one translator that composes every policy step's portal lines, and fixed it at the source.
+
+### Other corrections worth the owner's eye
+
+- Turning security defaults off without **Block Device Code Sign-in** reopens that route: defaults now block it.
+- The device-registration policy cannot be satisfied by Windows Hello or a device-bound passkey (the device must already be registered), while the pinned strength leads with both.
+- PIM: the procedure created the policy in report-only and then told the admin to point roles at it — in report-only, activation then requires nothing at all.
+- A countries location has no "trusted" flag; the step instructed setting one.
+- Registering a passkey needs MFA within the past five minutes, which is why most first attempts fail.
+- Guests can register Microsoft Authenticator but not a passkey in the resource tenant, and cannot be issued a Temporary Access Pass.
+
 ## For the owner to confirm (decided so work could continue)
 
 1. **Direction waits and dates:** a policy waiting on a Direction answer keeps its date (the device policy on the demo shows "On Hold · Waiting on your direction" beside a date). If a wait should hold the date back, the Direction exception in `holdOf` (`src/roadmap/holds.ts`) comes out.
