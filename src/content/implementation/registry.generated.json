@@ -23343,6 +23343,41 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-teams-ca",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access and Intune compliance for Microsoft Teams Rooms",
+            "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices",
+            "purpose": "Exclude resource accounts from the policies written for people, give them one policy of their own, and never require user-interactive MFA of them.",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-teams-supported-ca",
+            "authority": "Microsoft Learn",
+            "title": "Supported Conditional Access and Intune compliance policies for Microsoft Teams devices",
+            "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/supported-ca-and-compliance-policies",
+            "purpose": "Sign-in frequency and authentication strength are not supported on Teams devices; network, device platforms and compliant device are.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-ca-location-configure",
+            "authority": "Microsoft Learn",
+            "title": "Require multifactor authentication for security info registration",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+            "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-assignment-network",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access: Network assignment",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+            "purpose": "Conditional Access policies apply to all locations by default, so the condition has to be configured to narrow one.",
+            "checkedOn": "2026-09-20"
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain current pin; no baseline change.",
@@ -23361,7 +23396,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name it **{{policy.target.displayName}}**.\n3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.\n4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.\n5. Target resources: **All resources**.\n6. Locations: Include **Any location**; Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.\n7. Grant: **Block access**.\n8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name it **{{policy.target.displayName}}**.\n3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.\n4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.\n5. Target resources: **All resources**.\n6. Conditions → Locations: set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.\n7. Grant: **Block access**. Do not add an interactive control: a room account has no second device to approve one with.\n8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -23409,7 +23444,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Locations to Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.\n"
+          "text": "Under **Conditions → Locations**, set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -23769,7 +23804,7 @@
             "format": "markdown",
             "kind": "referenceOnly"
           },
-          "text": "Review the dedicated access policy for the shared-device accounts listed on this step, then test each required work task from the approved network. Record the tested accounts, task, date and outcome below.\n\nProposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]\nShared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]\n\n1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.\n2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.\n3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.\n4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.\n5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.\n6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.\n"
+          "text": "Review the dedicated access policy for the shared-device accounts listed on this step, then test each required work task from the approved network. Record the tested accounts, task, date and outcome below.\n\nProposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]\nShared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]\n\n1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.\n2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.\n3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts and target All resources. Under **Conditions → Locations** set **Configure** to **Yes**, then include Any location and exclude only the approved trusted location; left at **No** the policy applies in the office too, and Block access there stops the device completely. Grant: Block access. Start in Report-only.\n4. Review the other policies that apply to these accounts. Microsoft's own guidance is to keep these accounts out of the policies written for people: they have no second device to approve a prompt, and on Teams devices a sign-in frequency signs them out and an authentication strength refuses them. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.\n5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.\n6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.\n"
         }
       }
     },

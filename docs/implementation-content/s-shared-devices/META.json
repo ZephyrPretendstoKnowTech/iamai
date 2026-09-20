@@ -289,5 +289,40 @@
     "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
     "status": "SELF-VERIFIED"
   },
-  "unresolvedIssues": []
+  "unresolvedIssues": [],
+  "verifiedSources": [
+    {
+      "id": "ms-teams-ca",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access and Intune compliance for Microsoft Teams Rooms",
+      "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices",
+      "purpose": "Exclude resource accounts from the policies written for people, give them one policy of their own, and never require user-interactive MFA of them.",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-teams-supported-ca",
+      "authority": "Microsoft Learn",
+      "title": "Supported Conditional Access and Intune compliance policies for Microsoft Teams devices",
+      "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/supported-ca-and-compliance-policies",
+      "purpose": "Sign-in frequency and authentication strength are not supported on Teams devices; network, device platforms and compliant device are.",
+      "checkedOn": "2026-09-20"
+    },
+    {
+      "id": "ms-ca-location-configure",
+      "authority": "Microsoft Learn",
+      "title": "Require multifactor authentication for security info registration",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+      "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
+      "checkedOn": "2026-09-20"
+    },
+    {
+      "id": "ms-assignment-network",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access: Network assignment",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+      "purpose": "Conditional Access policies apply to all locations by default, so the condition has to be configured to narrow one.",
+      "checkedOn": "2026-09-20"
+    }
+  ]
 }

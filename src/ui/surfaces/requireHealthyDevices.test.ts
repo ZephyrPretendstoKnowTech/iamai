@@ -327,3 +327,57 @@ test('P7: the row’s Impact is this step’s own subject, not the placeholder',
   assert.equal(impacts['s-ladder-phone-access-restriction'], 'Phone access')
   assert.notEqual(impacts['s-ladder-phone-access-restriction'], structuralWords.impactDefault)
 })
+
+// ---------------------------------------------------------------------------
+// Give Shared Devices Their Own Policy (spec section 6)
+// ---------------------------------------------------------------------------
+
+test('S1: About this Step is the outcome — one policy of their own, and out of the policies written for people', () => {
+  const about = aboutOf(bodyOf('demo', SHARED))
+  assert.match(about, /signs in with nobody standing at it/)
+  assert.match(about, /allowed on the approved network, blocked anywhere else/)
+  assert.doesNotMatch(about, /Review their accounts and normal networks before applying controls designed for staff\./)
+})
+
+test('S2: the Tasks Remaining card says this step’s own work, not the generic instruction to make an object', () => {
+  for (const name of ['demo', 'mid'] as const) {
+    const c = bodyOf(name, SHARED).contract
+    assert.equal(c.whatToDo.text, 'Confirm which accounts belong to shared devices, give them their own policy, and take them out of the policies that ask a person to act.', name)
+    assert.notEqual(c.whatToDo.text, 'Make the object this step names.', name)
+  }
+})
+
+test('S3: every procedure sets Configure to Yes on Locations and says what No would block', () => {
+  for (const id of ['entra.create', 'entra.correct.location', 'entra.manual-review']) {
+    const text = blockText(SHARED, id)
+    assert.match(text, /set \*\*Configure\*\* to \*\*Yes\*\*/, id)
+    assert.match(text, /stops the device completely/, id)
+  }
+  // And the step's own portal reference, which the review page and the export read.
+  assert.match(allText('s-shared-devices'), /Conditions → Locations: set Configure to Yes, then Include: Any location; Exclude: \{trustedLocation\}/)
+})
+
+test('S4: the grant is Block with no interactive control, and the reason is on the line', () => {
+  assert.match(blockText(SHARED, 'entra.create'), /Grant: \*\*Block access\*\*\. Do not add an interactive control: a room account has no second device to approve one with\./)
+})
+
+test('S5: the two controls Teams devices do not support are risks of this step', () => {
+  const risks = risksOf('s-shared-devices').join('\n')
+  assert.match(risks, /Sign-in frequency is not supported on Teams devices/)
+  assert.match(risks, /An authentication strength is not supported on Teams devices either/)
+})
+
+test('S6: help desk says the account cannot answer a prompt, and that the fix is an exclusion', () => {
+  const help = helpDeskOf('s-shared-devices').join('\n')
+  assert.match(help, /no second device at the room to approve it/)
+  assert.match(help, /Exclude the account from the policy that prompted it rather than finding it another method/)
+})
+
+test('S7: Completion Criteria still ends on the tested work task from the approved network', () => {
+  const b = bodyOf('demo', SHARED)
+  assert.ok(b.contract.doneWhen.some((l) => /Each shared device completes its required work tasks from the approved network/.test(l)), b.contract.doneWhen.join(' | '))
+})
+
+test('S8: the package’s checked date is 2026-09-20, where it had none at all', () => {
+  assert.equal(checkedOn(SHARED), '2026-09-20')
+})
