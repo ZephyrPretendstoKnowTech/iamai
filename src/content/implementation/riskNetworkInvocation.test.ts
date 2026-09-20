@@ -30,14 +30,17 @@ const CASES = [
       'tenant.displayName': 'Sample tenant',
       'policy.target.displayName': "Sample - O'Brien medium-risk users",
       'policy.target.excludeGroups': [ID(1), ID(2)],
+      'authStrength.target.id': ID(4),
+      'authStrength.target.displayName': 'Sample strength',
       'policy.current.id': ID(3),
       'policy.current.state': 'enabled',
     },
-    create: `Invoke-IAMAIStep -Mode 'Create' -DisplayName 'Sample - O''Brien medium-risk users' -ExcludeGroups @('${ID(1)}', '${ID(2)}')`,
+    create: `Invoke-IAMAIStep -Mode 'Create' -DisplayName 'Sample - O''Brien medium-risk users' -ExcludeGroups @('${ID(1)}', '${ID(2)}') -AuthenticationStrengthId '${ID(4)}'`,
     conditions: `Invoke-IAMAIStep -Mode 'CorrectConditions' -PolicyId '${ID(3)}' -ExcludeGroups @('${ID(1)}', '${ID(2)}')`,
     conditionsFacts: { 'policy.current.semanticMismatches': ['users.scope-or-exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'] },
-    grantFacts: { 'policy.current.semanticMismatches': ['grant.password-change-mfa'], [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] },
-    verify: `Invoke-IAMAIStep -Mode 'Verify' -PolicyId '${ID(3)}'`,
+    grant: `Invoke-IAMAIStep -Mode 'CorrectGrant' -PolicyId '${ID(3)}' -AuthenticationStrengthId '${ID(4)}'`,
+    grantFacts: { 'policy.current.semanticMismatches': ['grant.password-change-strength'], [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] },
+    verify: `Invoke-IAMAIStep -Mode 'Verify' -PolicyId '${ID(3)}' -AuthenticationStrengthId '${ID(4)}'`,
     enforce: /MfaRegistrationValidated/,
   },
   {
@@ -54,6 +57,7 @@ const CASES = [
     create: `Invoke-IAMAIStep -Mode 'Create' -DisplayName 'Sample - service accounts trusted network' -ServiceAccountsGroupId '${ID(5)}' -ExcludeGroups @('${ID(1)}') -TrustedLocations @('${ID(21)}', '${ID(22)}')`,
     conditions: `Invoke-IAMAIStep -Mode 'CorrectConditions' -PolicyId '${ID(3)}' -ServiceAccountsGroupId '${ID(5)}' -ExcludeGroups @('${ID(1)}') -TrustedLocations @('${ID(21)}', '${ID(22)}')`,
     conditionsFacts: { 'policy.current.semanticMismatches': ['network.outside-trusted'], [CHANGED_FIELDS_BINDING]: ['conditions.locations.excludeLocations'] },
+    grant: `Invoke-IAMAIStep -Mode 'CorrectGrant' -PolicyId '${ID(3)}'`,
     grantFacts: { 'policy.current.semanticMismatches': ['grant.block'], [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] },
     verify: `Invoke-IAMAIStep -Mode 'Verify' -PolicyId '${ID(3)}' -ServiceAccountsGroupId '${ID(5)}' -TrustedLocations @('${ID(21)}', '${ID(22)}')`,
     enforce: /IdentityTypesValidated/,
@@ -81,7 +85,7 @@ for (const c of CASES) {
   })
 
   test(`${c.id}: corrections call CorrectConditions and CorrectGrant on the policy and write no state`, () => {
-    for (const [facts, call] of [[c.conditionsFacts, c.conditions], [c.grantFacts, `Invoke-IAMAIStep -Mode 'CorrectGrant' -PolicyId '${ID(3)}'`]] as const) {
+    for (const [facts, call] of [[c.conditionsFacts, c.conditions], [c.grantFacts, c.grant]] as const) {
       const { p, ps } = psOf(pkg, 'partial', { ...c.bindings, ...facts })
       assert.ok(ps, JSON.stringify(p.hold ?? p.degraded))
       assert.deepEqual(callsOf(ps.text), [call])

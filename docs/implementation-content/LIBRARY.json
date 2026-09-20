@@ -1183,8 +1183,8 @@
         "notLicensed"
       ],
       "correctionModules": 6,
-      "requiredBindings": 4,
-      "optionalBindings": 11,
+      "requiredBindings": 6,
+      "optionalBindings": 10,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -2112,11 +2112,11 @@
       "binding": "authStrength.target.displayName",
       "requiredBy": [
         "s-goal-device-registration-mfa",
-        "s-goal-user-risk"
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
       ],
       "optionalBy": [
-        "s-goal-pim-activation-reauth",
-        "s-goal-user-risk-medium"
+        "s-goal-pim-activation-reauth"
       ],
       "packages": [
         "s-goal-device-registration-mfa",
@@ -2137,7 +2137,8 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-user-risk"
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
       ],
       "optionalBy": [],
       "packages": [
@@ -2145,7 +2146,8 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-user-risk"
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
       ],
       "type": "string",
       "meaning": "Stable tenant authentication-strength ID resolved by IAMAI for the retained baseline requirement",
@@ -5863,13 +5865,6 @@
       "type": "integrationGap",
       "status": "open-for-integration-review",
       "summary": "IAMAI must map its existing MFA-registration, hybrid/password-writeback, and High-risk-policy evidence into prerequisite/readiness bindings. Do not add new tenant reads solely for this content package."
-    },
-    {
-      "id": "s-goal-user-risk-medium-integration-gap-2",
-      "package": "s-goal-user-risk-medium",
-      "type": "integrationGap",
-      "status": "open-for-integration-review",
-      "summary": "Final library review should confirm the current-API normalization from retained-source authenticationStrength to the v1.0-supported mfa + passwordChange AND grant."
     }
   ],
   "technicalPrimitives": [

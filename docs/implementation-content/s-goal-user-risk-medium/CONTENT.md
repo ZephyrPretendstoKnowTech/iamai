@@ -16,7 +16,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 4. Target resources: **All resources**.
 5. Conditions → User risk: set **Configure** to **Yes**, then **Medium** only. Left at **No** the policy has no risk condition, and its password-change requirement reaches every sign-in.
 6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions. Microsoft's grant reference allows this policy only the users, applications and user-risk conditions.
-7. Grant: **Grant access** → Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change → **Require all selected controls**. That is the pair the pinned baseline holds, and it is what IAMAI compares the tenant against. Microsoft's Graph reference documents `passwordChange` paired with the built-in `mfa` control instead, which is the pair the JSON and PowerShell outputs on this step write; a policy built that way reads as a difference here until the baseline or the policy moves.
+7. Grant: **Grant access** → Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change → **Require all selected controls**. That is the pair the pinned baseline holds, and it is what IAMAI compares the tenant against.
 8. Session: not configured.
 9. Enable policy: **Report-only**.
 10. Create, read back, and rescan IAMAI.
@@ -113,7 +113,8 @@ Verify after the change: the policy reads back On with Medium user risk only, Al
   },
   "grantControls": {
     "operator": "AND",
-    "builtInControls": ["mfa", "passwordChange"],
+    "builtInControls": ["passwordChange"],
+    "authenticationStrength": {"id": {{json:authStrength.target.id}}},
     "customAuthenticationFactors": [],
     "termsOfUse": []
   },
@@ -153,8 +154,8 @@ Verify after the change: the policy reads back On with Medium user risk only, Al
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
-{"grantControls":{"operator":"AND","builtInControls":["mfa","passwordChange"],"customAuthenticationFactors":[],"termsOfUse":[]}}
+@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
+{"grantControls":{"operator":"AND","builtInControls":["passwordChange"],"authenticationStrength":{"id":{{json:authStrength.target.id}}},"customAuthenticationFactors":[],"termsOfUse":[]}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.correct.session","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
@@ -169,13 +170,14 @@ Verify after the change: the policy reads back On with Medium user risk only, Al
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -MfaRegistrationValidated, and with -HybridPasswordWritebackValidated where hybrid users are in scope, and this package declares no prerequisite IAMAI can check to pass them."}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectGrant","Verify","Enforce"]}},"withheldModes":{"Enforce":"Enforce runs only with -MfaRegistrationValidated, and with -HybridPasswordWritebackValidated where hybrid users are in scope, and this package declares no prerequisite IAMAI can check to pass them."}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,
   [string]$PolicyId,
   [string]$DisplayName,
   [string[]]$ExcludeGroups=@(),
+  [string]$AuthenticationStrengthId,
   [switch]$MfaRegistrationValidated,
   [switch]$HybridUsersInScope,
   [switch]$HybridPasswordWritebackValidated
@@ -203,7 +205,8 @@ function Conditions {
     clientAppTypes=@('all');userRiskLevels=@('medium');signInRiskLevels=@();servicePrincipalRiskLevels=@()
   }
 }
-function Grant { @{operator='AND';builtInControls=@('mfa','passwordChange');customAuthenticationFactors=@();termsOfUse=@()} }
+function Strength { if($AuthenticationStrengthId -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'){throw 'The IAMAI-resolved authentication-strength ID is required.'}; $AuthenticationStrengthId }
+function Grant { @{operator='AND';builtInControls=@('passwordChange');customAuthenticationFactors=@();termsOfUse=@();authenticationStrength=@{id=(Strength)}} }
 function GetPolicy {
   if($PolicyId -notmatch '^[0-9a-fA-F-]{36}$'){throw 'A stable policy GUID is required for read/update.'}
   InvokeCA GET "$Graph/identity/conditionalAccess/policies/$PolicyId"
@@ -212,7 +215,8 @@ function AssertCanonical($p){
   if(@($p.conditions.userRiskLevels).Count-ne1 -or $p.conditions.userRiskLevels[0]-ne'medium'){throw 'User risk is not Medium-only.'}
   if(-not (@($p.conditions.applications.includeApplications)-contains 'All')){throw 'Target is not All resources.'}
   $g=@($p.grantControls.builtInControls)
-  if(-not($g-contains'mfa' -and $g-contains'passwordChange') -or $p.grantControls.operator-ne'AND'){throw 'Grant is not MFA + passwordChange with AND.'}
+  if($g.Count-ne1 -or $g[0]-ne'passwordChange' -or $p.grantControls.operator-ne'AND'){throw 'Grant is not passwordChange with AND.'}
+  if($p.grantControls.authenticationStrength.id-ne(Strength)){throw 'Grant is not paired with the IAMAI-resolved authentication strength.'}
   if($null-ne$p.sessionControls){throw 'Noncanonical session controls remain.'}
 }
 NeedRead
@@ -254,14 +258,14 @@ This state for Reset Passwords for Medium-Risk Users in {{tenant.displayName}} i
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-This state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; the pinned baseline's authentication strength and Require password change, with all selected controls required; no session controls. The JSON and PowerShell outputs write Microsoft's documented pairing of password change with the built-in multifactor control instead, because the Graph grant reference pairs them that way; say so rather than presenting the two as the same policy.
+This state creates the Medium user-risk password-change policy in Report-only. Intended settings: All users, excluding the resolved groups and all guest/external user types; All resources; Medium user risk only; the pinned baseline's authentication strength and Require password change, with all selected controls required; no session controls. Every channel builds that grant.
 
 This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage. Do not add Require risk remediation to this grant, and do not retire the High-risk policy as part of this step.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 
-This state corrects the existing Medium user-risk policy. Differences IAMAI found: {{policy.current.semanticMismatches}}. Correct the same policy ID; do not create a new policy. The intended grant is built-in MFA and password change with AND, as Microsoft Graph v1.0 requires. Do not add exclusions or unrelated conditions.
+This state corrects the existing Medium user-risk policy. Differences IAMAI found: {{policy.current.semanticMismatches}}. Correct the same policy ID; do not create a new policy. The intended grant is the pinned baseline's authentication strength and password change with AND. Do not add exclusions or unrelated conditions.
 
 This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.
 
@@ -293,5 +297,5 @@ If your account is rated medium risk, you may need to complete MFA and securely 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["prerequisiteRequired","missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"mfa-not-registered","classification":"documented","symptom":"A risky user cannot complete secure password change.","check":"Confirm the user had an MFA method registered before the risk event.","fix":"Restore/register an approved MFA method through the organization's recovery process.","then":"Retry only after readiness changes.","sources":["ms-ca-grant","ms-risk-policy"]},{"id":"hybrid-writeback","classification":"documented","symptom":"A synchronized user's secure password change fails or doesn't update on-premises.","check":"Verify password writeback is enabled and healthy.","fix":"Correct writeback before enforcing this path.","then":"Retest the secure password-change flow.","sources":["ms-risk-policy"]},{"id":"sspr-confusion","classification":"documented","symptom":"Deployment is blocked only because SSPR isn't enabled.","check":"Determine whether the real blocker is MFA registration or hybrid writeback.","fix":"Do not treat SSPR as the Conditional Access secure-password-change flow.","then":"Re-evaluate actual prerequisites.","sources":["ms-ca-grant"]},{"id":"high-policy-retired","classification":"derived","symptom":"The separate High-risk policy is proposed for disablement just because Medium is enabled.","check":"Verify whether IAMAI has explicit overlap authority proving High-risk coverage remains.","fix":"Keep the High-risk policy unchanged unless that authority exists.","then":"Rescan and review overlap deliberately.","sources":["ms-risk-policy"]},{"id":"graph-grant-rejected","classification":"documented","symptom":"Graph rejects the password-change grant.","check":"Confirm builtInControls contains mfa and passwordChange with operator AND and no riskRemediation/authenticationStrength companion.","fix":"Use the supported bounded grant.","then":"Read back the stable policy.","sources":["ms-ca-grant-v1"]},{"id":"wrong-scope","classification":"documented","symptom":"The policy includes application exclusions or unrelated conditions.","check":"Password-change policy scope must remain All resources with only users/groups, applications, and userRisk conditions.","fix":"Return to the canonical bounded conditions object.","then":"Rescan IAMAI.","sources":["ms-ca-grant"]},{"id":"graph-403","classification":"documented","symptom":"Graph/PowerShell returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and an appropriate Conditional Access/Security Administrator role.","fix":"Reconnect with least required permissions.","then":"Retry the same bounded operation.","sources":["ms-ca-create-v1"]}]}
+{"scenarios":[{"id":"mfa-not-registered","classification":"documented","symptom":"A risky user cannot complete secure password change.","check":"Confirm the user had an MFA method registered before the risk event.","fix":"Restore/register an approved MFA method through the organization's recovery process.","then":"Retry only after readiness changes.","sources":["ms-ca-grant","ms-risk-policy"]},{"id":"hybrid-writeback","classification":"documented","symptom":"A synchronized user's secure password change fails or doesn't update on-premises.","check":"Verify password writeback is enabled and healthy.","fix":"Correct writeback before enforcing this path.","then":"Retest the secure password-change flow.","sources":["ms-risk-policy"]},{"id":"sspr-confusion","classification":"documented","symptom":"Deployment is blocked only because SSPR isn't enabled.","check":"Determine whether the real blocker is MFA registration or hybrid writeback.","fix":"Do not treat SSPR as the Conditional Access secure-password-change flow.","then":"Re-evaluate actual prerequisites.","sources":["ms-ca-grant"]},{"id":"high-policy-retired","classification":"derived","symptom":"The separate High-risk policy is proposed for disablement just because Medium is enabled.","check":"Verify whether IAMAI has explicit overlap authority proving High-risk coverage remains.","fix":"Keep the High-risk policy unchanged unless that authority exists.","then":"Rescan and review overlap deliberately.","sources":["ms-risk-policy"]},{"id":"graph-grant-rejected","classification":"documented","symptom":"Graph rejects the password-change grant.","check":"Confirm builtInControls contains passwordChange alone with operator AND, paired with the resolved authentication strength and no riskRemediation.","fix":"Use the pinned baseline's bounded grant.","then":"Read back the stable policy.","sources":["ms-ca-grant-v1"]},{"id":"wrong-scope","classification":"documented","symptom":"The policy includes application exclusions or unrelated conditions.","check":"Password-change policy scope must remain All resources with only users/groups, applications, and userRisk conditions.","fix":"Return to the canonical bounded conditions object.","then":"Rescan IAMAI.","sources":["ms-ca-grant"]},{"id":"graph-403","classification":"documented","symptom":"Graph/PowerShell returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and an appropriate Conditional Access/Security Administrator role.","fix":"Reconnect with least required permissions.","then":"Retry the same bounded operation.","sources":["ms-ca-create-v1"]}]}
 @@IAMAI-END
