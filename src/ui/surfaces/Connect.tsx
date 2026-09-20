@@ -65,6 +65,7 @@ import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, connectStatus, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
 import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
+import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { usePlanData } from './planData.ts'
 import { laneCountsOf, laneReadings } from './planLanes.ts'
@@ -506,7 +507,10 @@ function SignedIn({
       : runner.gaps.length > 0
         ? { kind: 'gaps', unread: runner.unread, lastScan }
         : lastScan
-          ? { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot) }
+          ? // What the scan it names did not read in full, from that scan's own
+            // snapshot, the way `degraded` is: a stored scan restored on the next
+            // visit says the same thing it said the day it ran (S4-7, S4-8).
+            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot) }
           : { kind: 'ready' }
   // The plan follows: it is ready after a complete scan (its step counts the way
   // the Plan header counts them, once the plan has computed; read-only, so

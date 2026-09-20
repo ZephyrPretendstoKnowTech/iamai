@@ -21,6 +21,7 @@ import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import { consentRows } from '../../copy/permissions.ts'
+import type { UnreadSection } from '../../graph/collect/coreSections.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
@@ -59,8 +60,8 @@ type Words = {
     limitsMore: string
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
-    complete: { state: string; again: string; degraded: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; ask: string; learn: { label: string; url: string } }
+    complete: { state: string; again: string; degraded: string; unread: string }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
@@ -345,9 +346,13 @@ export function baselineTile({
  */
 export type ScanCounts = { people: number; policies: number; steps: number }
 export type ScanInput =
-  /** `degraded`: the scan finished, but a material source (sign-in proof) was not read, so MFA readiness is not measured. */
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean }
-  | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
+  /**
+   * `degraded`: the scan finished, but a material source (sign-in proof) was not read, so MFA readiness is not measured.
+   * `unread`: the sections it did not read in full — refused, errored, or read in part. The plan was built
+   * (no core section was missing), so this is not a failure; it is what the plan was built without.
+   */
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[] }
+  | { kind: 'gaps'; unread: UnreadSection[]; lastScan: { at: string } | null }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
   | { kind: 'ready' }
@@ -382,15 +387,23 @@ export function scanTile(input: ScanInput): ScanTile {
   }
   const signInAnother: Action = { label: W.account.signInAnother, weight: 'primary' }
   const again: Action = { label: S.complete.again, weight: 'secondary' }
+  // One row per section the scan did not read in full, in both states. A section
+  // read in PART says so: "not read" would understate what IAMAI holds, and the
+  // two are different problems to take to whoever administers the tenant.
+  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : S.gaps.notRead })
   switch (input.kind) {
     case 'complete': {
       const c = input.counts
+      // The plan was built, so the tile stays done and says complete. What it
+      // was built without is listed under it rather than left unsaid (S4-7, S4-8).
+      const unread = input.unread ?? []
       return {
         ...base,
         kind: 'complete',
         state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
         meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
+        ...(unread.length > 0 ? { lead: fillText(S.complete.unread, { n: unread.length }), rows: unread.map(unreadRow) } : {}),
         ...(input.degraded ? { note: S.complete.degraded } : {}),
         actions: [again],
       }
@@ -403,7 +416,7 @@ export function scanTile(input: ScanInput): ScanTile {
         state: G.state,
         tone: 'wait',
         lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: input.unread.length }),
-        rows: input.unread.map((s) => ({ name: sectionLabel(s), value: G.notRead })),
+        rows: input.unread.map(unreadRow),
         ask: fillText(G.ask, { role: READ_EVERYTHING_ROLE }),
         learn: G.learn,
         actions: [signInAnother, again],

@@ -272,6 +272,20 @@ test('the scan stores what it read under the signed-in tenant, and returns only 
   // A scan asked for from Connect's first tile passes null and the page stays
   // where it is; every other caller names the page it wants back.
   assert.match(src, /if \(returnTo !== null\) go\(afterScanHref\(returnTo\)\)/)
+  // S4-8: what the scan could not read is computed for every finished scan, not
+  // only one that ended with core gaps. A tenant that refused ten non-core
+  // sections has no gap, and the list was thrown away before it reached a
+  // surface, so Connect said complete and named nothing.
+  assert.match(src, /gaps: found, unread: unreadSources\(result\)/, 'the unread list is computed for every scan')
+  assert.doesNotMatch(src, /unread: found\.length/, 'the unread list is thrown away when there is no core gap')
+})
+
+test('the Scan tile names what the scan it shows could not read, from that scan’s own snapshot', () => {
+  const src = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  // Read from lastScan.snapshot the way `degraded` is, so a stored scan restored
+  // on the next visit says the same thing it said the day it ran.
+  assert.match(src, /kind: 'complete',[^}]*unread: unreadSources\(lastScan\.snapshot\)/)
+  assert.match(src, /kind: 'gaps', unread: runner\.unread/, 'a scan with gaps stored no snapshot: its list is the one the scan produced')
 })
 
 /** Every non-test source file under a directory. */

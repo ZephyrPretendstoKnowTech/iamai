@@ -97,6 +97,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // Readiness's unmeasured headline renders now: the review page draws every
   // pages.readiness leaf, prompt 62.)
   '.pages.connect.scan.complete.degraded',
+  // And the lead a complete scan adds when some section was refused, errored or
+  // read only in part (coreSections.ts unreadSources): the same reason again —
+  // the review page's example scan read every section it asked for.
+  '.pages.connect.scan.complete.unread',
   '.shared.enforceIfWrong',
   // The Dates line of a policy already in report-only with nothing left to
   // submit but the enforcement its window has not earned (stepExport.ts
