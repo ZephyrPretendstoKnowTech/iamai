@@ -18886,9 +18886,9 @@
             "id": "ms-workload-identity-ca",
             "authority": "Microsoft Learn",
             "title": "Conditional Access for workload identities",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
             "purpose": "Workload scope, licensing, direct service-principal assignment, location policy, report-only, sign-in logs, and Enterprise applications Object ID requirement.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -18903,9 +18903,9 @@
             "id": "ms-workload-license-faq",
             "authority": "Microsoft Learn",
             "title": "Frequently asked questions about Microsoft Entra Workload ID",
-            "url": "https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-faqs",
+            "url": "https://learn.microsoft.com/entra/workload-id/workload-identities-faqs",
             "purpose": "Current Workload ID Premium licensing behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18917,9 +18917,9 @@
             "id": "ms-ca-client-applications",
             "authority": "Microsoft Graph",
             "title": "conditionalAccessClientApplications resource type - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
             "purpose": "v1.0 workload/service-principal include/exclude schema.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18931,9 +18931,9 @@
             "id": "ms-ip-named-location",
             "authority": "Microsoft Graph",
             "title": "ipNamedLocation resource type - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
             "purpose": "IP named-location shape and CIDR range semantics.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18945,9 +18945,9 @@
             "id": "ms-named-location-create",
             "authority": "Microsoft Graph",
             "title": "Create namedLocation - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
             "purpose": "v1.0 named-location POST endpoint, required IP-range fields, permissions, and roles.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -18960,9 +18960,9 @@
             "id": "ms-ip-named-location-update",
             "authority": "Microsoft Graph",
             "title": "Update ipNamedLocation - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
             "purpose": "v1.0 named-location PATCH behavior; complete desired ipRanges must be supplied because omitted ranges are removed.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -18975,16 +18975,43 @@
             "id": "ms-named-location-list",
             "authority": "Microsoft Graph",
             "title": "List namedLocations - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
             "purpose": "Stable list/collision-check surface and Policy.Read.All read permission.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
               "powershell"
             ]
+          },
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-connect-accounts",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra Connect: accounts and permissions",
+            "url": "https://learn.microsoft.com/entra/identity/hybrid/connect/reference-connect-accounts-permissions",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-cloud-sync-faq",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra Cloud Sync FAQ",
+            "url": "https://learn.microsoft.com/entra/identity/hybrid/cloud-sync/reference-cloud-sync-faq",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
           }
         ],
+        "impact": {
+          "fallbackLabel": "Directory synchronisation"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -19048,7 +19075,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "{{workload.identity.detail}} [omit this line when unavailable]\n\nIdentify the application that requests tokens for this sync workflow and its service principal. Check its ownership and sign-in audience against Microsoft's supported workload identity types. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.\n\nThe approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Conditions > Locations**, include **Any location** and exclude the IAMAI-resolved sync-server named location.\n7. Under **Grant**, select **Block access**.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
+          "text": "{{workload.identity.detail}} [omit this line when unavailable]\n\nIdentify the application that requests tokens for this sync workflow and its service principal. A workload identity policy covers a **single-tenant service principal registered in this tenant**; a Microsoft or third-party multitenant application, and any managed identity, is not covered at all. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity: Entra Connect Sync signs in as a user account with the Directory Synchronization Accounts role, while Cloud Sync uses a provisioning service principal, and only the second can be this policy's target. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.\n\nThe approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID. Select it directly: a policy assigned to a group that holds a service principal is not enforced for that service principal.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude the IAMAI-resolved sync-server named location. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.\n7. Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -19096,7 +19123,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals.\n"
+          "text": "Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals: a policy assigned to a group is not enforced for a service principal inside it, and a managed identity is not covered by a workload identity policy at all.\n"
         },
         "entra.correct.policy.all-resources": {
           "meta": {
@@ -19120,7 +19147,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Conditions > Locations**, include **Any location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted locations** or a broader office-location set.\n"
+          "text": "Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted networks and locations** or a broader office-location set.\n"
         },
         "entra.correct.policy.client-apps": {
           "meta": {
@@ -19156,7 +19183,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Grant**, select **Block access** as the only grant control.\n"
+          "text": "Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.\n"
         },
         "entra.correct.policy.report-only": {
           "meta": {

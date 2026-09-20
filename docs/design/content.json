@@ -5417,7 +5417,7 @@
       "licence": "Microsoft Entra Workload ID Premium",
       "title": "Restrict the Entra Connect Sync Account to Its Address",
       "changeLine": null,
-      "why": "Review which identity performs synchronization before relying on a network restriction. A policy aimed at the wrong identity can appear configured without protecting the sync process.",
+      "why": "A workload identity policy covers a single-tenant service principal registered in this tenant, and covers no Microsoft or multitenant application and no managed identity. Confirm which identity requests the sync tokens before relying on a network restriction: Entra Connect Sync signs in as a user account, while Cloud Sync uses a provisioning service principal.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
@@ -5430,7 +5430,7 @@
         "lead": "Confirm whether this sync identity supports the proposed restriction."
       },
       "dates": "{datesNew}",
-      "doneEnd": "For a supported identity, a later scan confirms the intended policy and its enabled state. Creating the policy alone does not establish protection.",
+      "doneEnd": "The identity that requests tokens for directory synchronisation in {tenant} is one Conditional Access can cover, and it can request them only from the sync server's own address.",
       "doneWhen": [
         "{policyDoneWhen}",
         "The expected sync workflow succeeds and the policy evaluates the intended token requests. Creating the policy alone does not establish protection."
@@ -5445,10 +5445,15 @@
           {
             "text": "The server's public address changes and sync stops until the location is updated.",
             "applies": "always"
+          },
+          {
+            "text": "A service principal must be selected directly: a policy assigned to a group that holds one is not enforced for it, so a group here would protect nothing.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Sync stopped: check the server's current public address against the named location."
+          "Sync stopped: check the server's current public address against the named location.",
+          "Nothing was blocked and nothing changed: check the target is a single-tenant service principal registered here. A Microsoft or multitenant application, and any managed identity, is outside what this policy can cover."
         ],
         "manager": "A network restriction protects synchronization only when it applies to the identity that requests the tokens. IAMAI has not confirmed that identity, so the proposed policy is not counted as protection yet.",
         "waits": null
@@ -5472,10 +5477,10 @@
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the provisioning agent server's public address {list:syncAddresses}",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users or workload identities → Workload identities → Select service principals → Cloud Sync's provisioning service principal",
+          "Users or workload identities → Workload identities → Select service principals → Cloud Sync's provisioning service principal, selected directly and not through a group",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {locationName}",
-          "Grant → Block access",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {locationName}",
+          "Grant → Block access, which is the only grant a workload identity policy offers",
           "{reportOnlyLine}"
         ]
       },
