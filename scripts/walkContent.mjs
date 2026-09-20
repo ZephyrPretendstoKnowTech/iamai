@@ -123,6 +123,13 @@ export const ACCEPTANCE = [
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Days allowed to snooze and Limited number of snoozes' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'This policy uses Require multifactor authentication.', mustNot: 'requires one the moment a sign-in looks wrong' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'Stronger method requirements belong to the separate policies that select an authentication strength.' },
+  // MFA for Everyone D1-D3 (docs/plans/mfa-everyone-spec.md section 5, Microsoft
+  // Learn checked 2026-09-20): the reference procedure named an authentication
+  // strength where the pin is builtInControls ["mfa"], and Learn says a policy
+  // cannot carry both controls. One fact, one source: the pin's.
+  { item: '14', step: 'mfa-all-users', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication.', mustNot: 'Grant → Require authentication strength: Multifactor authentication' },
+  { item: '14', step: 'mfa-all-users', path: 'more.risks', must: 'Microsoft is retiring both, and a person left with nothing else is made to register a passkey', mustNot: 'waiting on a text that does not arrive' },
+  { item: '14', step: 'mfa-all-users', path: 'more.helpDesk', must: "cannot rename or delete is Microsoft's own managed one" },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', mustNot: '{list:adminsWith}' },
   { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} will need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },

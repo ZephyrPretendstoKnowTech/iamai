@@ -3883,7 +3883,7 @@
             "applies": "noMethodInScope"
           },
           {
-            "text": "Someone whose only method is a text message, waiting on a text that does not arrive.",
+            "text": "Someone whose only method is a text message or a voice call: Microsoft is retiring both, and a person left with nothing else is made to register a passkey before they can sign in.",
             "applies": "smsOnlyInScope"
           },
           {
@@ -3897,7 +3897,8 @@
         ],
         "helpDesk": [
           "Cannot answer the prompt: issue a Temporary Access Pass and register together at https://aka.ms/mfasetup.",
-          "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership."
+          "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership.",
+          "A policy of this name you cannot rename or delete is Microsoft's own managed one; change its excluded identities rather than the policy."
         ],
         "manager": "Work sign-ins need a second factor, which makes a stolen password much less useful on its own. People confirm with a method they set up during the campaign.",
         "waits": null
@@ -3925,8 +3926,8 @@
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} {syncRoleNote}",
-          "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: Multifactor authentication",
+          "Target resources → Resources → All resources. Exclude: Microsoft Intune Enrollment, which the separate device-enrollment step covers.",
+          "Grant → Require multifactor authentication. This is the built-in control, not an authentication strength; a policy cannot carry both.",
           "{reportOnlyLine}"
         ]
       },

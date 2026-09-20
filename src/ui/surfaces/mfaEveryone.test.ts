@@ -374,6 +374,55 @@ test('F7: the step shows a source line at all, dated', () => {
   }
 })
 
+// ---------------------------------------------------------------------------
+// Require MFA for Everyone (spec section 5)
+// ---------------------------------------------------------------------------
+
+const ALL_USERS = 's-goal-mfa-all-users'
+
+test('D1: the reference grant is the control the evidence names, and the pin holds', () => {
+  const ref = referenceOf('mfa-all-users')
+  assert.ok(ref.some((l) => /^Grant → Require multifactor authentication\./.test(l)), ref.join('\n'))
+  assert.ok(!ref.some((l) => /Require authentication strength: Multifactor authentication/.test(l)), ref.join('\n'))
+  // The evidence line said this all along; now they agree.
+  const evidence = everyString((stepById['mfa-all-users'] as unknown as { who?: unknown }).who).join('\n')
+  assert.match(evidence, /This policy uses Require multifactor authentication\./)
+  // And Learn's reason for there being only one: the two controls are exclusive.
+  assert.match(ref.join('\n'), /a policy cannot carry both/)
+})
+
+test('D2: the SMS risk says the method is being retired, not that a text is late', () => {
+  const risks = risksOf('mfa-all-users')
+  assert.ok(risks.some((r) => /Microsoft is retiring both, and a person left with nothing else is made to register a passkey before they can sign in/.test(r)), risks.join('\n'))
+  assert.ok(!risks.some((r) => /waiting on a text that does not arrive/.test(r)), risks.join('\n'))
+})
+
+test('D3: help desk says a Microsoft-managed policy cannot be renamed or deleted', () => {
+  const lines = helpDeskOf('mfa-all-users')
+  assert.ok(lines.some((l) => /cannot rename or delete is Microsoft's own managed one/.test(l)), lines.join('\n'))
+})
+
+test('D4: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(ALL_USERS), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(ALL_USERS)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('D5: the numbered step does not disagree with the scope shown beside it', () => {
+  // The resolved settings on this task read "All users, Guest or external users
+  // → all types"; the procedure used to say flatly "All users", which is the
+  // same population (All users includes B2B guests) said two ways on one card.
+  const tasks = tasksTextOf(bodiesOf('demo').get(ALL_USERS)!)
+  assert.match(tasks, /the population the resolved settings below name; \*\*All users\*\* already covers guests/)
+  assert.doesNotMatch(tasks, /Users → Include: All users\. Exclude: the exclusions IAMAI resolved/)
+})
+
+test('D6: the SMS retirement carries no date on the step; it stays in the spec', () => {
+  const { example: _example, ...authored } = stepById['mfa-all-users'] as unknown as Record<string, unknown>
+  for (const s of everyString(authored)) {
+    assert.doesNotMatch(s, /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/, s)
+  }
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.

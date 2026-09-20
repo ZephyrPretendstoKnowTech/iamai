@@ -8807,7 +8807,31 @@
             "authority": "Microsoft Learn",
             "title": "Require MFA for all users with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-strengths",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access authentication strength",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-managed-policies",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft-managed policies in Conditional Access",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-sms-retirement",
+            "authority": "Microsoft Learn",
+            "title": "Passkeys by default and retirement of Microsoft-provided SMS and voice authentication",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -8848,7 +8872,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments from the target: **Users → Include: All users**, excluding the resolved exclusions. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
         },
         "entra.correct-open": {
           "meta": {
@@ -8872,7 +8896,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
+          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
         },
         "entra.correct-grant": {
           "meta": {
