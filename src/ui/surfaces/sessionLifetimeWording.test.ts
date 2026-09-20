@@ -115,3 +115,23 @@ test("session-lifetime: the Plan's own Why, Done when, comms and export text nam
   }
   assert.ok(rendered > 0, 'no sample plan carries the session-lifetime step: the rendered check proves nothing')
 })
+
+test('the two session steps no longer share one Completion Criteria: each says whose sessions it is about, and that the other exists', () => {
+  // docs/plans/step-redundancy-analysis.md finding 1, the most likely "why are
+  // there two of these?" moment in the product: Shorten Admin Sessions and Limit
+  // How Long Sessions Last sat 40 rows apart, under two headings, with
+  // byte-identical Completion Criteria. The pinned baseline defines two policies
+  // — the first scoped to the directory roles it names, the second to all users,
+  // both browser-only and never-persistent — so both steps stay, and each one's
+  // words say which.
+  const words = (id: string): string[] => ((content.steps as { id: string; doneWhen?: string[] }[]).find((x) => x.id === id)?.doneWhen ?? [])
+  const admin = words('admin-session')
+  const everyone = words('session-lifetime')
+  assert.ok(admin.length > 0 && everyone.length > 0)
+  assert.equal(admin.some((l) => everyone.includes(l)), false, 'a Completion Criteria line is shared word for word')
+  assert.match(admin[0], /for the administrator roles it names/)
+  assert.match(everyone[0], /for all users in the browser/)
+  // Each names the other, because an administrator is inside both and gets the stricter.
+  assert.ok(admin.some((l) => /Limit How Long Sessions Last/.test(l) && /shorter sign-in frequency/.test(l)), admin.join('\n'))
+  assert.ok(everyone.some((l) => /Shorten Admin Sessions/.test(l) && /shorter frequency/.test(l)), everyone.join('\n'))
+})
