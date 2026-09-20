@@ -385,7 +385,7 @@
     },
     "registrationScope": {
       "unknown": "Guest coverage is not resolved yet. Review the target policy before relying on it.",
-      "excluded": "The resolved registration policy excludes guests and external users.",
+      "excluded": "The resolved registration policy excludes guests and external users, because a Temporary Access Pass cannot be issued to them.",
       "partial": "The resolved registration policy excludes specific external-user types. Review its Users settings for the exact coverage.",
       "included": "The resolved registration policy includes guests within its selected scope; explicit user or group exclusions still apply.",
       "targeted": "Guest coverage depends on the users, groups or roles selected in the resolved registration policy."
@@ -4278,11 +4278,17 @@
           {
             "text": "Office public IP changes can stop the named location matching the intended network.",
             "applies": "always"
+          },
+          {
+            "text": "Setting up Windows Hello for Business, or a Mac's Platform SSO credential, is registration too, so this policy decides whether it finishes.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
           "Check the affected registration sign-in and the policy's actual network and grant requirements. Screen-sharing does not change the registering device's network or satisfy a grant control.",
-          "Use the approved recovery or enrollment path that meets those requirements. Update an office location only after verifying its public egress address."
+          "Use the approved recovery or enrollment path that meets those requirements. Update an office location only after verifying its public egress address.",
+          "A person with no method registers with a Temporary Access Pass: it is the one credential that satisfies a multifactor requirement before they have anything else.",
+          "A phishing-resistant requirement does not accept a Temporary Access Pass, so it locks out the new starter it was meant to protect. Keep this policy's grant as IAMAI resolved it."
         ],
         "manager": "Adding a sign-in method needs the resolved extra check, so a stolen password alone is less useful for adding a method. People already set up see no change until they register a new one.",
         "waits": null
