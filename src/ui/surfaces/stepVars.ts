@@ -391,12 +391,19 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
       const notExcluding = groupId === null ? [] : exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies?.rows ?? [], groupId, accountIds: ctx.mapping.breakGlassUserIds, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) }).filter(p => p.outcome !== 'pass').map(p => p.name)
       if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
     }
-    v.operator = ctx.operatorId ? ctx.nameOf(ctx.operatorId) : undefined
     v.tenantId = ctx.snapshot.tenantId
     v.onmicrosoftDomain = initialDomain(ctx.snapshot) ?? undefined
     // A suggested name for a new emergency account (display-name and create).
     v.exampleName = 'Emergency Access'
   }
+
+  // The signed-in person's own name. It depends on nothing but the context, so
+  // it is resolved for every step, not only for steps that carry checks: inside
+  // that block, Register Your Own Passkey — which has no checks and is the one
+  // step whose Who line and Completion Criteria are both about the operator —
+  // never got it, and both lines were dropped for a hole on every plan
+  // (docs/plans/protect-admins-spec.md section 2).
+  v.operator = ctx.operatorId ? ctx.nameOf(ctx.operatorId) : undefined
 
   if (step.goalId === 'register-info-protected') {
     const ops = operationsOf(step).length ? operationsOf(step) : step.action.resolution?.policies ?? []

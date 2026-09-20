@@ -9,6 +9,8 @@
 // package block is read instead, because that is the text the state would draw.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import { shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -142,6 +144,37 @@ test('A5: the step links the page that carries the registration procedure', () =
 test('A6: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(checkedOn(PASSKEY), '2026-09-20')
   assert.equal(bodiesOf('demo').get(PASSKEY)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('A7: the step says its own outcome in every state, because {operator} resolves', () => {
+  // stepVars set `operator` only inside the block for steps that carry checks,
+  // and this step carries none, so its Who line and its Completion Criteria
+  // were both dropped for a hole and the step fell back to sentences about
+  // accounts and assessed configuration.
+  for (const [name, want] of [['demo', 'Casey Kim'], ['messy', 'Priya Taylor']] as const) {
+    const b = bodiesOf(name).get(PASSKEY)!
+    assert.deepEqual(b.contract.doneWhen, [`${want} completed a phishing-resistant sign-in in the records.`], name)
+    assert.doesNotMatch(b.contract.doneWhen.join('\n'), /accounts this step names|assessed configuration in place/, name)
+  }
+})
+
+test('A8: the Cleanup row this step waits on is named, not printed as its id', () => {
+  // Read from the recorded renderings, which stepSnapshots.test.ts holds equal
+  // to the live plan: this step is the only prerequisite tile in the repository
+  // that points at a Cleanup row, and it printed the row's id.
+  const raw: string[] = []
+  const named: string[] = []
+  for (const fx of readdirSync('docs/qa/step-snapshots')) {
+    for (const f of readdirSync(join('docs/qa/step-snapshots', fx))) {
+      const snap = JSON.parse(readFileSync(join('docs/qa/step-snapshots', fx, f), 'utf8')) as { tiles: { label: string; state: string }[] }
+      for (const t of snap.tiles) {
+        if (/^(cleanup|s)-[a-z0-9-]+$/.test(t.state)) raw.push(`${fx}/${f}: ${t.state}`)
+        if (t.state === 'Verify Emergency Access') named.push(`${fx}/${f}`)
+      }
+    }
+  }
+  assert.deepEqual(raw, [], 'a step tile shows a raw step id instead of a title')
+  assert.ok(named.some((n) => n.endsWith(`${PASSKEY}.json`)), named.join(' | '))
 })
 
 // ---------------------------------------------------------------------------
