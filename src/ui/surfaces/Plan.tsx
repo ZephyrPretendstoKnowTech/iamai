@@ -25,7 +25,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -263,27 +263,36 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
-  // The pinned groups (roadmap/stepGroups.ts) come out of the lanes: each is
-  // drawn above the tabs while open and in the aside once complete.
+  // The pinned groups (roadmap/stepGroups.ts). Pinning is a POSITION and not an
+  // exemption from the filter (owner, 2026-09-20): a lane tab filters Emergency
+  // Access and Direction like every other group, and `splitPinned` lifts
+  // whatever the tab left of them above the tab strip. The partition is still
+  // read for the one thing lanes cannot say — a group all of whose rows are
+  // Completed, which folds into the aside under its completed title.
   const { pinned, remaining: remainingItems } = partitionPinnedGroups(items)
+  const completePinnedIds = new Set(pinned.filter((p) => p.complete).flatMap((p) => p.group.members))
   const summaryItems = summaryFilter === 'input' ? remainingItems.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? remainingItems.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? remainingItems.filter((i) => i.lane === 'Completed') : remainingItems
-  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(remainingItems, tab, focus)
-  const groups = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : groupsFor(tab, shown)
-  const aside = asideGroupsFor(shown)
-  const { active: pinnedActive, completed: pinnedCompleted } = pinnedBoardGroups(pinned, { completed: summaryFilter === 'completed' || focus.showCompleted, open })
+  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
+  const drawn = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : groupsFor(tab, shown)
+  const split = splitPinned(drawn)
+  const groups = summaryFilter ? drawn : split.rest
+  // A complete pinned group is drawn whole under its completed title, so its
+  // rows are not also loose in the flat Completed group beside it.
+  const aside = asideGroupsFor(summaryFilter ? shown : shown.filter((i) => !completePinnedIds.has(i.id)))
+  const { active: pinnedWhole, completed: pinnedCompleted } = pinnedBoardGroups(pinned, { completed: summaryFilter === 'completed' || focus.showCompleted, open })
+  // The summary views are not a lane, so they still draw a pinned group whole.
+  const pinnedActive = summaryFilter ? pinnedWhole : split.pinned
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
-  // tab follows the step; otherwise the link would open nothing on screen. A
-  // member of an open pinned group (Emergency Access or any other) is in no tab.
-  const openInActiveEmergency = openInActivePinnedGroup(pinned, open)
-  const openTab = open && !openInActiveEmergency ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
+  // tab follows the step; otherwise the link would open nothing on screen. Every
+  // row is under its lane's tab now, the pinned groups' rows included.
+  const openTab = open ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
-  // until then) and the day the plan started.
-  const remainingCounts = focusCounts(remainingItems)
-  const allCounts = focusCounts(items)
-  const counts = { ...remainingCounts, complete: allCounts.complete, deferred: allCounts.deferred }
+  // until then) and the day the plan started. Counted over the WHOLE row set:
+  // the pinned groups' rows are in the lane tabs, so they are in the badges.
+  const counts = focusCounts(items)
   const drawGroup = (scope: string) => (g: BoardGroup) => {
     const key = `${scope}:${g.key}`
     // A group holding the open step is not collapsed by default: switching
