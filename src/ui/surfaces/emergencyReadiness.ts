@@ -67,7 +67,14 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
   const next = pending[0]
   if (!next) {
     const labels = [...new Set(findings.map(item => item.subjectLabel).filter((label): label is string => !!label))]
-    return { ...base, upn: labels.length === 1 ? labels[0] : task?.subjectLabel ?? null, title: satisfied ? tile.value : task?.readinessTitle ?? tile.value, instruction: satisfied ? '' : direction ?? tile.note ?? '' }
+    // A check that passes keeps its own qualifier (V1 audit S4-6). The note is
+    // what made the pass honest — "Mailbox licensing and business sign-ins are
+    // clues, not proof of dedicated use", "No office network is selected;
+    // location-based exceptions are not applied" — and blanking it left a
+    // subject, a check and nothing else. It is the card's sentence and not its
+    // action, because a check that has passed has nothing left to do.
+    const note = tile.note ?? ''
+    return { ...base, upn: labels.length === 1 ? labels[0] : task?.subjectLabel ?? null, title: satisfied ? tile.value : task?.readinessTitle ?? tile.value, ...(satisfied && note ? { detail: note } : {}), instruction: satisfied ? '' : direction ?? note }
   }
   // The next check, and every subject it applies to alike (two accounts both needing a sign-in).
   const name = (item: ConfigurationFindingItem): string => item.factLabel ?? item.label

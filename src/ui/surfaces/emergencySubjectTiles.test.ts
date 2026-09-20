@@ -96,6 +96,45 @@ test('Step 4: Configuration shows one next check, a confirmed failure, with its 
   assert.ok(linesOf(configuration).length <= 6, 'one check, not every finding')
 })
 
+test('a check that passes keeps the qualifier that made the pass honest (S4-6)', () => {
+  // The note was blanked the moment the check passed, and what went with it was
+  // the caveat: "No office network is selected; location-based exceptions are
+  // not applied." The card read a subject, a check and nothing else.
+  const value = structuredClone(fixture('demo-week2'))
+  const tile = subjectsOf(value, 's-prereq-trusted-location').find(row => row.key === 'configuration:trusted-network-choice')!
+  assert.equal(tile.satisfied, true, 'the premise: the check passes')
+  assert.equal(tile.title, 'Everyone is remote')
+  assert.equal(tile.detail, 'No office network is selected; location-based exceptions are not applied.')
+  // The sentence, not the action: a check that has passed has nothing to do.
+  assert.equal(tile.instruction, '')
+  // And the other caveat the audit named, on the admin review.
+  const review = subjectsOf(structuredClone(fixture('mid')), 's-check-separate-admin-accounts').find(row => row.key === 'configuration:administrator-review-scope')!
+  assert.equal(review.satisfied, true)
+  assert.match(review.detail ?? '', /clues, not proof of dedicated use/)
+  // An open check still reads its direction first, then the note.
+  const open = emergencySubjectsOf({ tiles: [{ key: 'k', label: 'Subject', tone: 'warn', value: 'Not done', note: 'The note.' }], satisfied: [], bar: { key: 'x', main: '' } }, null)[0]
+  assert.equal(open.instruction, 'The note.')
+  assert.equal(open.detail, undefined)
+})
+
+test('the frozen Emergency Access runs are unchanged by it: no passing check of theirs hid a note', () => {
+  // emergencyReadiness.ts is shared with the four Establish Emergency Access
+  // steps, which are frozen (owner, 2026-09-19). Step 1 draws its own accounts;
+  // Steps 2 and 3 and the drill draw these cards, and not one of their passing
+  // checks carries a note, so restoring the note adds no line to any of them.
+  for (const name of ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const value = structuredClone(fixture(name))
+    for (const id of ['s-prereq-exclusion-group', 's-prereq-passkey-settings']) {
+      for (const tile of subjectsOf(value, id).filter(row => row.satisfied)) {
+        assert.equal(tile.detail, undefined, `${name}/${id}/${tile.key} gained a sentence`)
+      }
+    }
+    for (const tile of recoveryOf(value).tiles.filter(row => row.satisfied)) {
+      assert.equal(tile.detail, undefined, `${name}/cleanup-drill/${tile.key} gained a sentence`)
+    }
+  }
+})
+
 test('a finding that already states the action is not followed by the same action again', () => {
   const tile = emergencySubjectsOf({ tiles: [{ key: 'recovery-sign-ins', label: 'Sign-in evidence', tone: 'warn', value: 'Evidence needed', note: null, items: [
     { label: 'Sign in with the prepared passkey', factLabel: 'Sign in with the prepared passkey', value: 'Follow Verify emergency sign-in in Implementation Tasks. Then wait 5–10 minutes and scan to update the plan.', subjectLabel: 'a@contoso.onmicrosoft.com', accountId: 'a', outcome: 'fail' },

@@ -16,7 +16,9 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
-import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
+import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
+import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 
 const PILOT = 's-goal-admin-session'
 
@@ -173,16 +175,22 @@ test('a goal the tenant already delivers has a satisfied policy card and no task
   assert.equal(cards.every((item) => item.satisfied), true)
   assert.equal(cards[0].title, 'In place')
   assert.equal(cards[0].instruction, '')
-  assert.deepEqual(cards[0].completed, ['Report-only', 'Ready to enforce', 'Enforced'])
+  // The stages it passed through are not checks anybody completed (S4-5): this
+  // policy was found in place, on a scan that recorded no date, no evidence and
+  // no actor for any stage of it.
+  assert.deepEqual(cards[0].completed, [])
   assert.equal(policyBarOf(cards), 'Every task on this step is complete.')
 })
 
-test('a policy in report-only states the stage it has reached and the one it has not', () => {
+test('a policy in report-only is checked by what it must do next, not by a stage', () => {
   const { body } = bodyOf('s-goal-token-protection', 'demo-week2', true)
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
-  assert.equal(card.title, 'Enforced', 'the next stage')
-  assert.deepEqual(card.completed, ['Report-only', 'Ready to enforce'])
-  assert.equal(card.remainingCount, 1)
+  assert.equal(body.contract.state.lifecycle, 'ready-to-enforce', 'the premise: the policy is sitting in the rollout')
+  // Not `Enforced` — a stage it has not reached — and not `Ready to enforce`,
+  // the one it is sitting in (S4-4). The check is the task that moves it on.
+  assert.equal(card.title, 'Turn the policy on')
+  assert.deepEqual(card.completed, [])
+  assert.equal(card.remainingCount, null)
   assert.equal(card.instruction, '', 'one task needs no pointer sentence')
 })
 
@@ -218,17 +226,18 @@ test('the pilot step reads its Readiness tiles as cards, keeping the prerequisit
   }
 })
 
-test('the policy has a card of its own: its name, its rollout stages, the next one, and the task that reaches it', () => {
+test('the policy has a card of its own: its name, the next check, and the task that passes it', () => {
   // The foundation settled, so the card's one action is the procedure it names.
   const { body } = bodyOf(PILOT, 'demo', true)
   const [card, ...rest] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.heading, 'Conditional Access policy')
   assert.equal(card.upn, body.contract.members[0].name, 'the subject is the policy this step delivers')
-  // The checks are the step's own track: three stages ahead of a policy nobody has created.
-  assert.equal(card.remainingCount, 3)
+  // The rollout stages are not the card's checks, so there is no count of them
+  // and no list of them (S4-5).
+  assert.equal(card.remainingCount, null)
   assert.deepEqual(card.completed, [])
-  assert.equal(card.title, 'Report-only', 'the next stage is the next check')
-  assert.equal(card.detail, body.contract.whatToDo.text, 'what that stage means is the step’s own one action')
+  assert.equal(card.title, 'Create the policy in Report-only', 'the next check is the task that passes it')
+  assert.equal(card.detail, body.contract.whatToDo.text, 'what that check means is the step’s own one action')
   // One task needs no pointer (owner, 2026-09-20): the Implementation Tasks
   // section below carries the same words.
   assert.equal(body.emergencyAccountTasks?.tasks.length, 1, 'the premise: this step projects one task')
@@ -244,7 +253,7 @@ test('the step’s own work is in Tasks Remaining on the follow-up scan, where n
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   const remaining = cards.filter((card) => !card.satisfied)
   assert.equal(remaining.length, 1, '"No tasks remaining" cannot be shown over a task Implementation Tasks lists')
-  assert.equal(remaining[0].title, 'Report-only')
+  assert.equal(remaining[0].title, 'Create the policy in Report-only')
   assert.equal(remaining[0].instruction, '', 'one task needs no pointer sentence')
 })
 
@@ -252,7 +261,7 @@ test('a policy that has reached its last stage with nothing left to submit is a 
   const contract = {
     members: [{ key: 'sole', label: null, name: 'Core - Grant - MFA for all users', lifecycle: 'enforced' as const, reviewRequired: false, since: null, line: '' }],
     track: (['not-deployed', 'report-only', 'ready-to-enforce', 'enforced'] as const).map((key, i) => ({ key, label: ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced'][i], reached: true, current: key === 'enforced' })),
-    state: { lifecycle: 'enforced' as const, stage: 'In place', word: 'Completed' },
+    state: { lifecycle: 'enforced' as const, condition: 'healthy' as const, stage: 'In place', word: 'Completed' },
     milestone: { label: 'No change needed.' },
     whatToDo: { kind: 'preserve' as const, text: 'This is in place already: nothing to create. Keep the policy as it is.' },
     existing: null,
@@ -260,7 +269,7 @@ test('a policy that has reached its last stage with nothing left to submit is a 
   const [card] = policyCardsOf(contract, null)
   assert.equal(card.satisfied, true)
   assert.equal(card.title, 'In place')
-  assert.deepEqual(card.completed, ['Report-only', 'Ready to enforce', 'Enforced'])
+  assert.deepEqual(card.completed, [])
   assert.equal(card.remainingCount, null)
   assert.equal(card.instruction, '')
   // The same policy with a task left to do is not satisfied, whatever stage it is at.
@@ -271,6 +280,85 @@ test('a policy that has reached its last stage with nothing left to submit is a 
   // Two tasks, and the card picks one, the way an Emergency Access card does.
   const twoTasks = policyCardsOf(contract, { tasks: [task, { ...task, id: 'second', title: 'Move the mail devices' }], recommendedTaskId: 'policy-procedure' })
   assert.equal(twoTasks[0].instruction, 'Follow Update the policy settings in Implementation Tasks.')
+})
+
+/** The words the rollout lifecycle is drawn with (pages.app.plan.stepContract.lifecycle). A card's check is never one of them while the card is open. */
+const STAGE_WORDS = Object.values(CONTRACT.lifecycle)
+
+/** Every card this module produces, over the whole snapshot corpus, with the contract that produced it. */
+function corpus(): { where: string; contract: StepContract; card: ReturnType<typeof policySubjectsOf>[number] }[] {
+  const rows: { where: string; contract: StepContract; card: ReturnType<typeof policySubjectsOf>[number] }[] = []
+  for (const name of SNAPSHOT_FIXTURES) {
+    const value = structuredClone(fixture(name))
+    const run = runFixture(value)
+    for (const step of run.steps) {
+      if (!drawsTaskAnatomy(step.id)) continue
+      const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+      const body = stepBodyOf(step, ctx)
+      const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
+      for (const card of cards.filter((row) => row.key.startsWith('policy'))) rows.push({ where: `${name}/${step.id}`, contract: body.contract, card })
+    }
+  }
+  return rows
+}
+
+test('a card states no stage for a policy that does not exist (S4-3)', () => {
+  // The shipped demo: the step's own policy is gone from the plan, and the card
+  // read `Enforced` over three completed checks and "This step has no policy for
+  // IAMAI to write in this plan". An admin ticked "device code is blocked" off
+  // their list and had blocked nothing.
+  const { step, body } = bodyOf('s-goal-inforcer-mfa', 'demo-week2')
+  assert.equal(body.contract.members.length, 0, 'the premise: no policy member is resolved')
+  assert.equal(body.contract.existing, null, 'the premise: no tenant policy delivers it either')
+  assert.equal(body.contract.state.lifecycle, 'enforced', 'the premise: the lifecycle still reads enforced')
+  const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
+  assert.match(card.detail ?? '', /no policy for IAMAI to write in this plan/)
+  assert.equal(card.title, 'Blocked', 'the check is what holds the step, never the stage it is not at')
+  assert.deepEqual(card.completed, [])
+  assert.equal(card.remainingCount, null)
+  // No card with no policy of its own draws a stage anywhere in the corpus.
+  const none = corpus().filter((row) => row.contract.members.length === 0 && row.contract.existing === null && !row.card.satisfied)
+  assert.ok(none.length >= 20, `the corpus still holds these cards (${none.length})`)
+  for (const row of none) assert.equal(STAGE_WORDS.includes(row.card.title), false, `${row.where}: ${row.card.title}`)
+})
+
+test('an open card’s check is the next thing to check, never a lifecycle stage (S4-4)', () => {
+  const open = corpus().filter((row) => !row.card.satisfied)
+  assert.ok(open.length > 150, `the corpus still holds these cards (${open.length})`)
+  for (const row of open) {
+    assert.equal(STAGE_WORDS.includes(row.card.title), false, `${row.where}: the check is the stage word "${row.card.title}"`)
+    assert.notEqual(row.card.title, row.contract.state.stage, `${row.where}: the check is the stage the policy is at`)
+  }
+  // The two cards the audit named: one read `Ready to enforce` over a policy
+  // report-only and blocked, the other `Enforced` over one needing correction.
+  const held = bodyOf('s-goal-admins-phishing-resistant', 'demo')
+  assert.equal(held.body.contract.state.lifecycle, 'report-only', 'the premise: the policy is sitting in report-only')
+  assert.equal(policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)[0].title, 'Blocked')
+  const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
+  assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and needs correction')
+  assert.equal(policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)[0].title, 'Blocked')
+})
+
+test('no policy card claims a completed check the plan never recorded (S4-5)', () => {
+  const rows = corpus()
+  assert.ok(rows.length > 200, `the corpus still holds these cards (${rows.length})`)
+  for (const row of rows) {
+    assert.deepEqual(row.card.completed, [], `${row.where}: the card lists checks somebody completed`)
+    assert.equal(row.card.remainingCount, null, `${row.where}: the card counts stages as checks remaining`)
+  }
+  // A policy the very first scan found enforced: the stage is the tenant fact
+  // the step's head states, and the card claims no history for it.
+  const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
+  assert.equal(body.contract.state.fact, 'Enforced', 'the step still states the stage, as a fact of the tenant')
+})
+
+test('the frozen runs cannot be touched by the policy card: they draw none', () => {
+  // The four Establish Emergency Access steps have their own producers, and the
+  // four Direction steps draw the decision anatomy. Neither reaches
+  // `policyCardsOf`, so S4-3, S4-4 and S4-5 cannot change a word of them.
+  for (const id of ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill', ...DIRECTION_STEP_IDS]) {
+    assert.equal(drawsTaskAnatomy(id), false, id)
+  }
 })
 
 const read = (p: string): string => readFileSync(p, 'utf8')
