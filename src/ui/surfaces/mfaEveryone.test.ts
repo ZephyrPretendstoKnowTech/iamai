@@ -171,6 +171,65 @@ test('A7: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(REGISTER)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Require MFA to Register a Device (spec section 3)
+//
+// An unmapped baseline group holds this step on both demo snapshots, so it
+// draws no Implementation Task. Its own words are read from the step, and the
+// create procedure from the compiled package.
+// ---------------------------------------------------------------------------
+
+const DEVICE_REG = 's-goal-device-registration-mfa'
+
+/** A content step's `whatToDo.before` lines: the setting to change before the policy exists. */
+const beforeOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { whatToDo?: { before?: string[] } }).whatToDo?.before) ?? []) as string[]
+
+/** A content step's reviewer-facing reference procedure. */
+const referenceOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { whatToDoReference?: { steps?: string[] } }).whatToDoReference?.steps) ?? []) as string[]
+
+test('B1: a risk says Windows Hello and a device-bound passkey cannot answer this policy', () => {
+  const risks = risksOf('device-registration-mfa')
+  assert.ok(risks.some((r) => /Windows Hello for Business and a device-bound passkey cannot answer this policy/.test(r)), risks.join('\n'))
+  assert.ok(risks.some((r) => /need the device to be registered already/.test(r)), risks.join('\n'))
+})
+
+test('B2: the create procedure says the same where the strength is chosen', () => {
+  const create = blockText(DEVICE_REG, 'entra.create')
+  assert.match(create, /\*\*Windows Hello for Business\*\* and a \*\*device-bound passkey\*\* cannot answer this policy/)
+  assert.match(create, /the only controls this User Action offers/)
+})
+
+test('B3: the step says the policy is not properly enforced while the tenant setting is Yes', () => {
+  const before = beforeOf('device-registration-mfa')
+  assert.ok(before.some((l) => /this policy is not properly enforced/.test(l)), before.join('\n'))
+  // And the old ordering-only wording, which read as hygiene, is gone.
+  assert.ok(!before.some((l) => /After it is enforced for the intended registration or join scope/.test(l)), before.join('\n'))
+})
+
+test('B4: the tenant setting is named and pathed as its own Learn page names it', () => {
+  const before = beforeOf('device-registration-mfa').join('\n')
+  assert.match(before, /Devices → Overview → Device Settings/)
+  assert.match(before, /Require multifactor authentication to register or join devices with Microsoft Entra ID/)
+})
+
+test('B5: the reference says the three conditions are unavailable, not a bad idea', () => {
+  const ref = referenceOf('device-registration-mfa')
+  assert.ok(ref.some((l) => /Client apps, Filters for devices and Device state are not available for this user action/.test(l)), ref.join('\n'))
+  assert.ok(!ref.some((l) => /a first join has no device to check/.test(l)), ref.join('\n'))
+})
+
+test('B6: the reference grant is the resolved strength, not a hard-coded one', () => {
+  const ref = referenceOf('device-registration-mfa')
+  assert.ok(ref.some((l) => l.startsWith('Grant → Require authentication strength: {strengthName}')), ref.join('\n'))
+})
+
+test('B7: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(DEVICE_REG), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(DEVICE_REG)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.

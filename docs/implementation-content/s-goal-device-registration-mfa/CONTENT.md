@@ -13,7 +13,8 @@ Leave the tenant-wide legacy device-registration MFA setting unchanged while thi
 2. Select **New policy** and enter the IAMAI-resolved policy name.
 3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.
 4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.
-5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.
+5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place. **Require multifactor authentication** and **Require authentication strength** are the only controls this User Action offers; the rest are greyed out.
+   Whatever the strength allows, **Windows Hello for Business** and a **device-bound passkey** cannot answer this policy: both need the device to be registered already, and at this moment it is not. Check that the people who register devices hold something else the strength accepts.
 6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.
 7. Set **Enable policy** to **Report-only**.
 8. Create the policy.

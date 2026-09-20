@@ -5336,7 +5336,7 @@
             "title": "Require multifactor authentication for device registration",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
             "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -5352,7 +5352,7 @@
             "title": "Conditional Access: Target resources",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
             "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5383,7 +5383,7 @@
             "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
             "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
             "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5643,7 +5643,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\nLeave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
+          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\nLeave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place. **Require multifactor authentication** and **Require authentication strength** are the only controls this User Action offers; the rest are greyed out.\n   Whatever the strength allows, **Windows Hello for Business** and a **device-bound passkey** cannot answer this policy: both need the device to be registered already, and at this moment it is not. Check that the people who register devices hold something else the strength accepts.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
         },
         "entra.correct.open": {
           "meta": {
