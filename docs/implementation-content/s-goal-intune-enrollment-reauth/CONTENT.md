@@ -2,14 +2,14 @@
 Microsoft Entra admin center → Enterprise applications. Confirm **Microsoft Intune Enrollment** exists for application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`. If it is absent, create the service principal using the supported Microsoft Graph/Application Administrator path in this package, then rescan IAMAI before creating the CA policy. Do not substitute the Microsoft Intune admin-center app.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant. Microsoft names Intune enrollment as one of the actions Every time is for, and it asks for the sign-in again whenever the session is evaluated.
 
 1. Go to Entra admin center → Conditional Access → Policies → New policy.
 2. Name: {{policy.target.displayName}}.
 3. Users → Include: All users. Exclude → Groups: add the exclusions group.
 4. Target resources → Select resources → Microsoft Intune Enrollment (not "All resources" — this policy targets only the enrollment flow).
-5. Conditions: leave all blank. Client apps: All.
-6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.
+5. Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.
+6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft's own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.
 7. Session → Sign-in frequency: Every time.
 8. Enable policy: Report-only.
 9. Create. Rescan in IAMAI.
@@ -26,7 +26,7 @@ Under Users, set Include to All users and make Exclude exactly the resolved excl
 Under Target resources, select Microsoft Intune Enrollment only. Remove any other resource target. Leave users, exclusions and the Every time session control unchanged if IAMAI found no difference there.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Client apps remains All. Do not add device-based enrollment restrictions.
+Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Leave **Client apps** at **Configure: No**, which reaches every client app. Do not add a device-based enrollment restriction: Microsoft says not to, because a device cannot already be compliant while it is being enrolled.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Remove the Grant control IAMAI identified so this policy has no grant; it sets only a session control. Do not change another policy that separately requires MFA for device registration/join.

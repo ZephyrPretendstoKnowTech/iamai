@@ -8150,7 +8150,7 @@
             "title": "Common ways to use Conditional Access with Intune",
             "url": "https://learn.microsoft.com/en-us/intune/device-security/conditional-access-integration/scenarios",
             "purpose": "Confirms Microsoft Intune Enrollment is the CA application for enrollment workflow.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-intune-enrollment-mfa",
@@ -8158,7 +8158,7 @@
             "title": "Require multifactor authentication for Intune device enrollment",
             "url": "https://learn.microsoft.com/en-us/intune/device-enrollment/configure-multifactor-authentication",
             "purpose": "Confirms Intune Enrollment app ID/service-principal caveat, enrollment targeting, Every time option, and warns not to use device-based access rules for enrollment.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-session-lifetime",
@@ -8166,7 +8166,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Confirms Every time is supported for Microsoft Intune enrollment and describes full reauthentication behavior and loop warning without MFA.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -8174,7 +8174,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -8182,7 +8182,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -8190,7 +8190,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-sp-create-v1",
@@ -8198,15 +8198,15 @@
             "title": "Create servicePrincipal - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-serviceprincipals?view=graph-rest-1.0",
             "purpose": "Supported prerequisite creation when the Intune Enrollment service principal is absent.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-autopilot-selfdeploy",
             "authority": "Microsoft Learn",
-            "title": "Configure Windows Autopilot profiles",
-            "url": "https://learn.microsoft.com/en-us/autopilot/profiles",
-            "purpose": "Confirms self-deploying mode does not require user credentials, so user-driven reauthentication evidence must be evaluated separately.",
-            "checkedOn": "2026-09-10"
+            "title": "Windows Autopilot self-deploying mode",
+            "url": "https://learn.microsoft.com/en-us/autopilot/self-deploying",
+            "purpose": "Self-deploying mode authenticates the device with its own TPM and no user credentials, so it produces no user reauthentication evidence.",
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -8271,7 +8271,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.\n\n1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources → Select resources → Microsoft Intune Enrollment (not \"All resources\" — this policy targets only the enrollment flow).\n5. Conditions: leave all blank. Client apps: All.\n6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant. Microsoft names Intune enrollment as one of the actions Every time is for, and it asks for the sign-in again whenever the session is evaluated.\n\n1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources → Select resources → Microsoft Intune Enrollment (not \"All resources\" — this policy targets only the enrollment flow).\n5. Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.\n6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft's own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -8319,7 +8319,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Client apps remains All. Do not add device-based enrollment restrictions.\n"
+          "text": "Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Leave **Client apps** at **Configure: No**, which reaches every client app. Do not add a device-based enrollment restriction: Microsoft says not to, because a device cannot already be compliant while it is being enrolled.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -11580,6 +11580,8 @@
         ],
         "optionalBindings": [
           "policy.current.removedExclusions",
+          "policy.target.locationWords",
+          "policy.target.platformWords",
           "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
@@ -11790,8 +11792,56 @@
             "authority": "Microsoft Learn",
             "title": "How to Require Device Compliance with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
             "userFacing": true
+          },
+          {
+            "id": "ms-ca-grant",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access: Grant controls",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant",
+            "purpose": "What compliant device and Microsoft Entra hybrid joined device each accept, and the Edge InPrivate and device-code limits.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-intune-compliance",
+            "authority": "Microsoft Learn",
+            "title": "Device compliance overview",
+            "url": "https://learn.microsoft.com/en-us/intune/device-security/compliance/overview",
+            "purpose": "The Compliance policy settings path, the Not compliant default and the 30-day compliance status validity period.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-intune-noncompliance",
+            "authority": "Microsoft Learn",
+            "title": "Configure actions for noncompliant devices",
+            "url": "https://learn.microsoft.com/en-us/intune/device-security/compliance/configure-noncompliance-actions",
+            "purpose": "Mark device noncompliant is built in at zero days, and Schedule (days after noncompliance) is the grace period.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-ca-conditions",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access: Conditions",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-conditions",
+            "purpose": "The device-platform condition applies to every platform until it is configured, and the platform is what the client reports.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-ca-platform-configure",
+            "authority": "Microsoft Learn",
+            "title": "Require approved client app or app protection policy",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection",
+            "purpose": "Microsoft's own procedure sets Configure to Yes on the Device platforms condition.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-ca-location-configure",
+            "authority": "Microsoft Learn",
+            "title": "Require multifactor authentication for security info registration",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+            "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -11842,7 +11892,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "In **Intune admin center → Devices → Compliance → Compliance policy settings**, set **Mark devices with no compliance policy assigned as** to **Not compliant**. In the compliance policies assigned to the intended users and devices, review **Actions for noncompliance** and the **Mark device noncompliant** action. Apply the baseline's 3-day grace period where applicable. The Conditional Access policy accepts a compliant device **or** a Microsoft Entra hybrid joined device; registration alone does not satisfy either control.\n"
+          "text": "A device is compliant only where a compliance policy in Intune says so, and without one this Conditional Access policy will not do what it says. IAMAI reads no Intune policy, so this part is yours to check.\n\nIn **Intune admin center → Endpoint security → Device compliance → Compliance policy settings**, set **Mark devices with no compliance policy assigned as** to **Not compliant**. It ships as **Compliant**, which passes every device nobody wrote a policy for. Leave **Compliance status validity period (days)** where you want it: at the default of 30, a device that has not reported for that long is treated as not compliant.\n\nIn each compliance policy assigned to the people and devices in scope, open **Actions for noncompliance**. **Mark device noncompliant** is built in at **Schedule (days after noncompliance)** = 0, which marks a device the moment it fails; the baseline asks for 3 days there, so a device gets a working day to fix itself.\n\nThe Conditional Access policy accepts a compliant device **or** a Microsoft Entra hybrid joined device. Registering a device in Microsoft Entra ID satisfies neither on its own.\n"
         },
         "entra.create": {
           "meta": {
@@ -11854,7 +11904,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.\n4. Target resources: All resources.\n5. Conditions → Locations: Include → Any location. Exclude → the resolved trusted locations (the network you defined in the Trusted Network step).\n6. Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.\n7. Session: leave empty.\n8. Enable policy: Report-only. It will not enforce its access rule until you enable it.\n9. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.\n4. Target resources: All resources.\n5. Conditions → set only what IAMAI resolved, and set each one through its own **Configure** toggle:\n   Locations: set **Configure** to **Yes** — at **No** the policy asks for a managed device in the office too — then **{{policy.target.locationWords}}**. [omit this line when unavailable]\n   Device platforms: set **Configure** to **Yes** — at **No** it reaches every platform, including the ones your device answer left out — then **{{policy.target.platformWords}}**. [omit this line when unavailable]\n6. Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.\n7. Session: leave empty.\n8. Enable policy: Report-only. It will not enforce its access rule until you enable it.\n9. Create. Rescan in IAMAI.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -11866,7 +11916,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, excluding the exclusions group and any other exclusions IAMAI resolved from the saved device plan. Target resources: All resources. Locations → Include: Any location; Exclude: the resolved trusted locations. Correct this policy rather than creating a replacement.\n"
+          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, excluding the exclusions group and any other exclusions IAMAI resolved from the saved device plan. Target resources: All resources. Correct this policy rather than creating a replacement.\nConditions → Locations: set **Configure** to **Yes** — at **No** the policy asks for a managed device in the office too — then **{{policy.target.locationWords}}**. [omit this line when unavailable]\nConditions → Device platforms: set **Configure** to **Yes** — at **No** it reaches every platform, including the ones your device answer left out — then **{{policy.target.platformWords}}**. [omit this line when unavailable]\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -12077,7 +12127,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nState: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, Any location except the resolved trusted locations, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.\n\nThe Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant.\n"
+          "text": "\nState: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, the location and device-platform scope listed in the facts below, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.\n\nEach condition is set through its own **Configure** toggle. A condition left at **No** applies to everything, so a policy whose locations or device platforms were never configured reaches the office and the platforms the device answer left out.\n\nThe Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant. IAMAI has no permission to read Intune, so it cannot confirm that any compliance policy exists; say that it is unknown rather than treating the prerequisite as met.\n"
         },
         "ai.correct": {
           "meta": {
@@ -23348,6 +23398,41 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-teams-ca",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access and Intune compliance for Microsoft Teams Rooms",
+            "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices",
+            "purpose": "Exclude resource accounts from the policies written for people, give them one policy of their own, and never require user-interactive MFA of them.",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-teams-supported-ca",
+            "authority": "Microsoft Learn",
+            "title": "Supported Conditional Access and Intune compliance policies for Microsoft Teams devices",
+            "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/supported-ca-and-compliance-policies",
+            "purpose": "Sign-in frequency and authentication strength are not supported on Teams devices; network, device platforms and compliant device are.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-ca-location-configure",
+            "authority": "Microsoft Learn",
+            "title": "Require multifactor authentication for security info registration",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+            "purpose": "Microsoft's own procedure sets Configure to Yes on the Locations condition.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-assignment-network",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access: Network assignment",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+            "purpose": "Conditional Access policies apply to all locations by default, so the condition has to be configured to narrow one.",
+            "checkedOn": "2026-09-20"
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain current pin; no baseline change.",
@@ -23366,7 +23451,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name it **{{policy.target.displayName}}**.\n3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.\n4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.\n5. Target resources: **All resources**.\n6. Locations: Include **Any location**; Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.\n7. Grant: **Block access**.\n8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name it **{{policy.target.displayName}}**.\n3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.\n4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.\n5. Target resources: **All resources**.\n6. Conditions → Locations: set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.\n7. Grant: **Block access**. Do not add an interactive control: a room account has no second device to approve one with.\n8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -23414,7 +23499,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Locations to Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.\n"
+          "text": "Under **Conditions → Locations**, set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -23774,7 +23859,7 @@
             "format": "markdown",
             "kind": "referenceOnly"
           },
-          "text": "Review the dedicated access policy for the shared-device accounts listed on this step, then test each required work task from the approved network. Record the tested accounts, task, date and outcome below.\n\nProposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]\nShared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]\n\n1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.\n2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.\n3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.\n4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.\n5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.\n6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.\n"
+          "text": "Review the dedicated access policy for the shared-device accounts listed on this step, then test each required work task from the approved network. Record the tested accounts, task, date and outcome below.\n\nProposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]\nShared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]\n\n1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.\n2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.\n3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts and target All resources. Under **Conditions → Locations** set **Configure** to **Yes**, then include Any location and exclude only the approved trusted location; left at **No** the policy applies in the office too, and Block access there stops the device completely. Grant: Block access. Start in Report-only.\n4. Review the other policies that apply to these accounts. Microsoft's own guidance is to keep these accounts out of the policies written for people: they have no second device to approve a prompt, and on Teams devices a sign-in frequency signs them out and an authentication strength refuses them. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.\n5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.\n6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.\n"
         }
       }
     },

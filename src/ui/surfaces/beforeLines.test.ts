@@ -30,7 +30,8 @@ const BEFORE: { id: string; line: RegExp; on: FixtureName[] }[] = [
   // setting as its own Learn page does, before saying when it is set to No.
   { id: 'device-registration-mfa', line: /^While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced\. Prepare and validate the policy first; on the day it is enforced.*set that setting to No/, on: ['getiamai'] },
   // The managed-device policy needs Intune, which GetIAMAI does not hold: it renders on the demo (Intune) instead.
-  { id: 'require-managed-device', line: /^Before this policy: Intune → Devices → Compliance → Compliance policy settings/, on: ['getiamai', 'demo-week2'] },
+  // Require Healthy Devices D2: the compliance settings moved to Endpoint security → Device compliance.
+  { id: 'require-managed-device', line: /^Before this policy: Intune → Endpoint security → Device compliance → Compliance policy settings/, on: ['getiamai', 'demo-week2'] },
   // Editorial batch C: writeback is needed for synchronized users whose remediation is a password change, not every hybrid tenant.
   { id: 'user-risk', line: /^Synchronized users who remediate with a password change need password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
   { id: 'user-risk-medium', line: /^Synchronized users who change their password here need password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
