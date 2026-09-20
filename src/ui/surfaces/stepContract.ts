@@ -892,12 +892,15 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // Every artifact reads it from here, so the export, the calendar entry, the
   // prompt pack and the bundle say what the row and the badge say.
   //
-  // Not on a baseline that defines the policy two ways: that step's action already
-  // says there is nothing for anybody to do, and its own paragraph is the
-  // explanation (roadmap/baselineConflict.ts). A gate beside it would be the
-  // third saying of one fact, and nothing in the tenant clears it anyway.
+  // The wait and nothing else. A step whose action is `decide` is asking its own
+  // question — the answer is its work, not something it waits on — and the gate
+  // beside it would be that question restated ("Confirm and save the required
+  // decision. Until every answer is approved."). Nor on a baseline that defines
+  // the policy two ways: that step's action already says there is nothing for
+  // anybody to do, its own paragraph is the explanation
+  // (roadmap/baselineConflict.ts), and nothing in the tenant clears it anyway.
   const waitTail = lane !== undefined && lane !== null && (lane.lane === 'Up Next' || lane.lane === 'On Hold') ? lane.tail : null
-  const saysWait = (action.kind === 'resolve' || action.kind === 'decide') && step.state.condition !== 'baseline-conflict'
+  const saysWait = action.kind === 'resolve' && step.state.condition !== 'baseline-conflict'
   const gatedBy = saysWait && typeof bare.gatedBy === 'string' && bare.gatedBy.trim().length > 0 ? waitTail ?? bare.gatedBy : null
   const whatToDo: ContractAction = { ...action, gatedBy }
   const actionText = whatToDo.text
