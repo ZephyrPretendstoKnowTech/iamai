@@ -25,6 +25,7 @@ type Words = {
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
+  seamlessNotRead: string
   methodsInline: Record<MethodClass, string>
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
@@ -136,10 +137,14 @@ export function groupBodyLine(state: ReadinessState, seen: ComputersSeen): strin
 export function goalLine(counted: readonly ReadinessRow[]): string {
   const seamless = counted.filter((r) => r.state === 'seamless').length
   if (seamless > 0) return fillText(T.seamlessLine, { seamless })
-  const withDevices = counted.filter((r) => (r.readiness?.devices ?? []).length > 0)
-  if (withDevices.length === 0) return ''
+  // Both sentences below name a cause the DEVICE records carry. With no device
+  // record read for anybody there is no cause to name, and "everyone signs in
+  // from a device with no built-in option" asserted an absence the page had just
+  // said it could not measure (V1 audit S4-21). Without Entra ID P1 there are no
+  // sign-in records at all, so this is the free-tier tenant's reading.
+  if (!counted.some((r) => (r.readiness?.devices ?? []).length > 0)) return T.seamlessNotRead
   // A person can become Seamless only when every device they use is, or could be: one personal PC rules them out.
-  const couldBe = withDevices.some((r) => (r.readiness?.devices ?? []).every((d) => d.seamless || (d.builtIn && d.possible !== 'no')))
+  const couldBe = counted.some((r) => { const devices = r.readiness?.devices ?? []; return devices.length > 0 && devices.every((d) => d.seamless || (d.builtIn && d.possible !== 'no')) })
   return couldBe ? T.seamlessNone : T.seamlessNotPossible
 }
 
