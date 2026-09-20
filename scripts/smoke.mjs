@@ -578,14 +578,24 @@ try {
     await showLane(LANES[0])
     return out
   }
-  check('Plan: the three lanes are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false')
+  // The three lanes, then All work: the fourth tab is not a lane (owner,
+  // 2026-09-20) and shows every group that is not finished, whole.
+  check('Plan: the three lanes and All work are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false All work:false')
+  // All work reads how much of each group is done, and a group there is whole:
+  // it holds rows of more than one lane, which no lane tab can.
+  await showLane('All work')
+  const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-group-meta')].map((e) => (e.textContent || '').trim())`)
+  check('Plan: every group on All work reads how much of it is completed', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((t) => /^\d+ of \d+ completed$/.test(t)), JSON.stringify(allWorkMeta.slice(0, 4)))
+  const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
+  check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
+  await showLane('Ready')
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
   check('Plan: Ready names its action and waiting lanes use concise labels', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)).slice(0, 3)))
   // The focus controls are toggles over the same rows, and their counts come
   // from the board rather than from a constant.
   check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
-  check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All work|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
+  check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All types|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
   // RUN-CONTEXT-B decision 10: no row carries a "next" pill; the Ready tab's order says which step is next.
   const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
   check('Plan: no row carries a next pill', nextPills === 0, `next pills=${nextPills}`)
