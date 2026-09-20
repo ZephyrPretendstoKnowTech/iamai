@@ -203,3 +203,42 @@ test('C5: the held step names its own outcome, not "the baseline\'s target confi
   assert.doesNotMatch(end, /the baseline's target configuration/)
   assert.equal(checkedOn('s-goal-block-device-code'), '2026-09-19')
 })
+
+// ---------------------------------------------------------------------------
+// Block Authentication Transfer (spec section 6)
+// ---------------------------------------------------------------------------
+
+test('D1: About names the flow, not "a transfer path the business may not need"', () => {
+  const about = aboutOf(bodiesOf('demo-week2').get('s-goal-block-auth-transfer')!)
+  assert.match(about, /scanning a QR code shown in desktop Outlook/)
+  assert.match(about, /sign in on the device they are using/)
+  assert.doesNotMatch(about, /removes a transfer path/)
+})
+
+test('D2: protocol tracking is a risk here too, and is in the create procedure', () => {
+  assert.ok(risksOf('block-auth-transfer').some((t) => /later requests in it are blocked as well, which can sign a device out/.test(t)), risksOf('block-auth-transfer').join('\n'))
+  assert.match(blockText('s-goal-block-auth-transfer', 'entra.create'), /later requests in it are blocked too and a device can be signed out/)
+})
+
+test('D3: the authentication-flows condition is set through Configure: Yes', () => {
+  assert.match(blockText('s-goal-block-auth-transfer', 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+})
+
+test('D4: the package cites its Microsoft pages, checked with this group', () => {
+  assert.equal(checkedOn('s-goal-block-auth-transfer'), '2026-09-19')
+  assert.equal(bodiesOf('demo-week2').get('s-goal-block-auth-transfer')!.sourceLine, 'Source checked Sep 19, 2026')
+})
+
+test('D5: the held step\'s Completion Criteria is this step\'s outcome, on screen', () => {
+  const b = bodiesOf('messy').get('s-goal-block-auth-transfer')!
+  assert.ok(
+    b.contract.doneWhen.some((l: string) => /Nobody carries a signed-in session from one device to another/.test(l)),
+    b.contract.doneWhen.join('\n'),
+  )
+  assert.ok(!b.contract.doneWhen.some((l: string) => /the baseline's target configuration/.test(l)), b.contract.doneWhen.join('\n'))
+})
+
+test('D6: the finished step says what is true, not that the policy matches a target', () => {
+  const done = ((stepById['block-auth-transfer'] as unknown as { doneWhen?: string[] }).doneWhen ?? []).join('\n')
+  assert.match(done, /no longer signs anyone in on another/)
+})

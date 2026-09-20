@@ -153,7 +153,11 @@ export const ACCEPTANCE = [
   { item: '20b', step: 's-question-mail-devices', path: 'why', must: 'Microsoft is retiring that route too' },
   { item: '20b', step: 's-question-mail-devices', path: 'whatToDo', must: 'SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only' },
   // Per step, 21–30.
-  { item: '21', step: 'block-auth-transfer', path: 'why', must: 'Blocking it removes a transfer path the business may not need', mustNot: 'an attacker with a screenshot' },
+  // Close the Doors D1-D2 (docs/plans/close-doors-spec.md section 5, Microsoft
+  // Learn checked 2026-09-19): the flow is named concretely, and protocol
+  // tracking is a risk on every state rather than a report-only line.
+  { item: '21', step: 'block-auth-transfer', path: 'why', must: 'scanning a QR code shown in desktop Outlook', mustNot: 'removes a transfer path the business may not need' },
+  { item: '21', step: 'block-auth-transfer', path: 'more.risks', must: 'later requests in it are blocked as well, which can sign a device out' },
   { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.", mustNot: 'egress address to the trusted location' },
   { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates" },
   { item: '23', step: 'admin-session', path: 'comms.body', must: 'If your admin account is also your everyday account, that applies to everything you do with it.', mustNot: 'will not stay signed in when you close the browser' },
