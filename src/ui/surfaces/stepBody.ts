@@ -267,11 +267,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const instructed = decides || createIfNeeded || creates || ownSteps
   // The milestone the action column leads with, over the package's own words for
   // it or none (stepContract.ts railOf, U3).
-  // The rail's sub-line is the package's action text. A Direction step has no
-  // package, so its Next milestone was a date with nothing under it, where every
-  // other step has a sentence (owner, 2026-09-20). Its own contract already
-  // carries one, and it is the step's, not a sentence written here.
-  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? (usesDecisionAnatomy(step.id) ? contract.whatToDo.text : null))
+  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? null)
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)

@@ -13,7 +13,7 @@ import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionWords } from '../../content/content.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
 import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
-import { emergencyTaskSteps, emergencyTaskText, isProcedureHeading, procedureHeadingText } from './emergencyAccountTasks.ts'
+import { emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const W = directionWords
@@ -152,34 +152,37 @@ test('the six text fixes the owner approved on the frozen steps, 2026-09-20', ()
   assert.deepEqual(pair('partner'), ['yes', 'no'])
   assert.deepEqual(pair('externalMethods'), ['yes', 'no'])
 
-  // 4. A Direction step's Next milestone was a bare date where every other step
-  //    has a sentence. Its own contract already carried one.
+  // 4. The bare date under NEXT MILESTONE is NOT fixed here. The sub-line is the
+  //    package's actionText or nothing, never generated (stepLayout.test.ts U3),
+  //    and a Direction step has no package. It is an owner question, in
+  //    docs/plans/owner-questions-2026-09-20.md, not a sentence written in code.
   for (const id of DIRECTION_STEP_IDS) {
     const step = r.steps.find((s) => s.id === id)!
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[id] ?? null }
-    assert.notEqual(stepBodyOf(step, ctx).rail.sub, '', `${id}: a bare date under Next milestone`)
+    assert.equal(stepBodyOf(step, ctx).rail.sub, '', `${id}: a generated milestone sub-line`)
   }
 })
 
-test('a procedure heading heads a section instead of numbering an instruction', () => {
-  // Two lines of the passkey preparation were section headings numbered as if
-  // they were instructions, and the second's section held nothing because the
-  // chosen variant carries its steps (owner, 2026-09-20).
+test('every numbered line of the passkey preparation is a thing to do', () => {
+  // Two lines were section titles numbered as if they were instructions, and the
+  // second's section held nothing because the chosen variant carries its steps
+  // (owner-approved text fix, 2026-09-20). They are instructions now, so the
+  // count runs over things to do, with no new component and no new convention.
   const f = fixture('demo')
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'prepare-affected-passkeys')!
   const lines = emergencyTaskSteps(task, task.defaultVariantId)
-  const headings = lines.filter(isProcedureHeading).map(procedureHeadingText)
-  assert.deepEqual(headings, ['Compatible alternative', 'Replacement registration — only if needed'])
-  // The copied text numbers the instructions only, and bolds the headings.
-  const text = emergencyTaskText(task, task.defaultVariantId)
-  assert.match(text, /\n\*\*Compatible alternative\*\*\n/)
-  assert.doesNotMatch(text, /\d+\. \*\*Compatible alternative/)
-  const numbers = [...text.matchAll(/^(\d+)\. /gm)].map((m) => Number(m[1]))
-  assert.deepEqual(numbers, numbers.map((_, i) => i + 1), 'the numbering skips or repeats')
-  // The screen draws the headings outside the list, and the list carries on counting.
-  assert.match(CONTENT_STEP, /<ProcedureSteps lines=\{emergencyTaskSteps\(item, variant\)\} \/>/)
-  assert.match(CONTENT_STEP, /<ol start=\{block\.start\}>/)
+  for (const line of lines) {
+    const plain = line.replace(/\*\*/g, '').trim()
+    assert.ok(/\s/.test(plain.replace(/[:.]$/, '').trim().split(/(?<=[a-z]) /)[0] ?? '') || plain.split(/\s+/).length > 6, `a numbered line that instructs nothing: ${plain}`)
+    assert.doesNotMatch(plain, /^(Compatible alternative|Replacement registration[^:]*)$/, `a section title is numbered as an instruction: ${plain}`)
+  }
+  assert.match(lines.join('\n'), /Compatible alternative:\*\* sign in with the registered compatible alternative/)
+  assert.match(lines.join('\n'), /Replacement registration, only if needed:\*\* where no compatible alternative is registered/)
+  // The copied text numbers every line, as it always did.
+  const numbers = [...emergencyTaskText(task, task.defaultVariantId).matchAll(/^(\d+)\. /gm)].map((m) => Number(m[1]))
+  assert.deepEqual(numbers, numbers.map((_, i) => i + 1))
+  assert.equal(numbers.length, lines.length)
 })

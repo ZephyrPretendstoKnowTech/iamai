@@ -11,7 +11,10 @@ them back. Everything here was re-checked on `6cfcc1c9`; what no longer happens 
 1. **The office-network question** — agreed: add the third answer ("we have an office network, but it is not in Entra yet"), and make sure answering it pays off later in the plan rather than just recording a preference.
 2. **Block the Admin Portals for Non-Admins** — held. The pinned baseline contradicts itself on that policy (its README spares administrators; its export blocks All users), so a re-pin is what fixes it, and the pin is frozen for V1. Ship Monday without it; revisit after launch.
 3. **Mail devices** — agreed: their own group, so a temporary exception cannot become a permanent service account.
-4. **The four Direction text fixes** — agreed, text only, before Monday.
+4. **The four Direction text fixes** — agreed, text only, before Monday. Three landed
+   (2026-09-20): the device-code consequence, what picking *Blocked from company data* adds, and
+   the Yes/No pair on *Partner or MSP access* and *External authentication methods*. The fourth,
+   the bare date under NEXT MILESTONE, is not a text fix and is question 5 below.
 5. **The break-glass rename** — done by the owner.
 
 ## Questions for you
@@ -73,7 +76,24 @@ they are the four steps you froze, so none of it is mine to touch.
 **Recommendation.** Do all four as text only — no layout, no behaviour — before Monday. **If you say
 nothing:** they wait for the Direction UI pass and nothing changes.
 
-### 5. Rename the break-glass account in the GetIAMAI tenant
+### 5. A Direction step's NEXT MILESTONE is a date with nothing under it
+
+**Screen.** All four *Decide Your Tenant's Direction* steps, the action column. **NEXT
+MILESTONE**, then a date, then nothing. Every other step carries a sentence under the date.
+**Why it matters.** You named this as one of the four Direction text fixes on 2026-09-20. It
+turns out not to be a text fix: the sub-line is the package's own `milestone.actionText`, and a
+recorded rule says it is that or nothing, **never generated** (`stepLayout.test.ts` U3). Direction
+steps have no package, so there is nothing to read. I generated one from the contract, which read
+"Confirm and save the required decision." — filler the step already says in three other places —
+and broke U3 doing it. Reverted.
+**Outcomes.** (a) The four steps keep a bare date, inconsistent with every other step. (b) Four
+sentences are written into content, one per Direction step, saying what that step's next milestone
+actually is, and the rail reads them like any other step's.
+**Recommendation.** (b), four written sentences, because the value of the line is that it says
+something the step does not already say — and only you can say what those four should be. **If you
+say nothing:** (a), the bare date, and it goes on the post-launch list.
+
+### 6. Rename the break-glass account in the GetIAMAI tenant
 
 Only you can: IAMAI never writes. Its old name is in the public git history. Rename it in Entra,
 re-scan, and confirm Establish Emergency Access still reads Completed — before the link goes out.
@@ -89,7 +109,9 @@ re-scan, and confirm Establish Emergency Access still reads Completed — before
 - Risks, For the help desk, For your manager, Tell your people and the dates move behind "Why IAMAI
   says this". Risk is surfaced on the card only for a step with very high implementation risk.
 - The passkey procedure is unfrozen: its "Compatible alternative" and "Replacement registration"
-  become headings, not numbered instructions that instruct nothing.
+  become instructions rather than numbered lines that instruct nothing. Done as text, not as
+  headings: headings needed a renderer and a new authoring convention for two lines on one task,
+  which the no-new-component rule forbids and the benefit did not justify.
 - "Review the scan coverage details" is unfrozen and will name the place: MFA Readiness, where the
   account sits under Emergency access and "Evidence read" says what could not be read.
 - The card shape stands as agreed: subject → what the scan found → where to do it; no pointer

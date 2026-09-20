@@ -191,7 +191,9 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // One label, and one sentence per card: the 'Before enforcement' relabelling
   // and its composed caveat are gone (owner, 2026-09-19 — "both tasks basically
   // say the same thing"). A prerequisite states what is waited on and links to it.
-  for (const t of prerequisites) assert.ok(['Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
+  // The card is headed by what is being waited on, and checked by its state
+  // (owner, 2026-09-20; quality audit 2.4).
+  for (const t of prerequisites) assert.ok(['Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.value), `${t.label}: ${t.value}`)
   for (const t of prerequisites) assert.doesNotMatch(t.note ?? '', /does not enforce access restrictions/, t.key)
   // Its wait is on Decide How People and Devices Sign In (roadmap/direction.ts gateOnDirection), and a
   // Direction answer nobody has approved holds the step undated, like every other hold (owner, 2026-09-19):
