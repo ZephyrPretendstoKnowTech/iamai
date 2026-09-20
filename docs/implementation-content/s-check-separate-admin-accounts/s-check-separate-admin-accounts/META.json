@@ -173,12 +173,28 @@
   ],
   "verifiedSources": [
     {
+      "id": "ms-security-planning",
+      "authority": "Microsoft Learn",
+      "title": "Secure access practices for administrators in Microsoft Entra ID",
+      "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-role-best-practices",
+      "authority": "Microsoft Learn",
+      "title": "Best practices for Microsoft Entra roles",
+      "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
       "id": "ms-privileged-accounts",
       "authority": "Microsoft Learn",
       "title": "Securing privileged access accounts",
-      "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-accounts",
-      "checkedOn": "2026-09-12",
-      "userFacing": true
+      "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts",
+      "checkedOn": "2026-09-20",
+      "userFacing": false
     }
   ],
   "schemaVersion": "2.5-compact",

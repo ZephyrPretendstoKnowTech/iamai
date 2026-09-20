@@ -6131,21 +6131,23 @@
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
-      "why": "Using a separate admin account reduces the exposure of privileged access to everyday mail, meetings and browsing. Verify the replacement account before removing access from the old one.",
+      "why": "Personal email is phished constantly, so the account that opens mail should not also hold a directory role. Move the role to an account that does nothing else, and test it before taking access off the everyday one.",
       "learn": {
-        "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning"
       },
       "who": {
         "lead": "Review the {n} administrator accounts for dedicated administration.",
         "evidence": [
           "Recent mail or Teams activity: {list:adminsWithWorkload}"
-        ]
+        ],
+        "licenceNote": "Mail and Teams activity needs Entra ID P1; without it IAMAI sees no everyday use here, and the review is yours."
       },
       "decision": null,
       "whatToDo": {
         "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.",
         "steps": [
-          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name); no licence, no mailbox.",
+          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name).",
+          "Give it no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.",
           "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
           "Assign the role to the admin account under the same governance model, keeping PIM eligibility where the everyday account used it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment.",
           "Sign in with the admin account and complete the admin task it needs; only then remove the role from the everyday account.",
@@ -6166,6 +6168,10 @@
         "risks": [
           {
             "text": "An admin who keeps doing admin work from the everyday account never sees the separation; moving the role is what makes it real.",
+            "applies": "always"
+          },
+          {
+            "text": "Two marks Microsoft gives for this review: fewer than five Global Administrators, and fewer than ten privileged role assignments in all.",
             "applies": "always"
           }
         ],

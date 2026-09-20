@@ -191,3 +191,64 @@ test('A1–A7 on a free tenant: the licence note still stands beside the list', 
   assert.match(who, /Last sign-in dates need Entra ID P1/)
   assert.match(b.lead ?? '', /1 enabled account with no successful sign-in for 90 days, or none on record/)
 })
+
+// ---------------------------------------------------------------------------
+// Use Separate Accounts for Admin Work (spec section 3)
+// ---------------------------------------------------------------------------
+
+const SEPARATE = 's-check-separate-admin-accounts'
+
+test('B1: the admin account gets a working address, and nothing says to leave it without one', () => {
+  assert.doesNotMatch(allText(SEPARATE), /no licence, no mailbox/)
+  assert.doesNotMatch(packageText(SEPARATE), /assign no licence, so it has no mailbox/)
+  assert.match(allText(SEPARATE), /no mailbox to read, but an email address that reaches the person/)
+  assert.match(blockText(SEPARATE, 'entra.separate'), /no mailbox to read, but an email address that reaches the person/)
+})
+
+test('B2: About names phishing as the reason, not "exposure"', () => {
+  const why = String((stepById[SEPARATE] as unknown as { why: string }).why)
+  assert.match(why, /Personal email is phished constantly/)
+  assert.doesNotMatch(why, /reduces the exposure/)
+})
+
+test('B3: the procedure says why the admin account is cloud-only', () => {
+  assert.match(blockText(SEPARATE, 'entra.separate'), /Cloud-only keeps the role clear of a compromised on-premises directory/)
+})
+
+test('B4: Microsoft’s two counts are on the step and in the procedure', () => {
+  const risks = risksOf(SEPARATE)
+  assert.ok(risks.some((t) => /fewer than five Global Administrators/.test(t) && /fewer than ten privileged role assignments/.test(t)), risks.join('\n'))
+  assert.match(blockText(SEPARATE, 'entra.separate'), /fewer than five Global Administrators/)
+})
+
+test('B5: registration goes to the page Microsoft names, and no aka.ms alias is left', () => {
+  assert.match(blockText(SEPARATE, 'entra.separate'), /https:\/\/mysignins\.microsoft\.com\/security-info/)
+  assert.doesNotMatch(packageText(SEPARATE), /aka\.ms/)
+  assert.doesNotMatch(allText(SEPARATE), /aka\.ms/)
+})
+
+test('B6: the Learn link is the page that carries this instruction', () => {
+  const url = String((stepById[SEPARATE] as unknown as { learn: { url: string } }).learn.url)
+  assert.equal(url, 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning')
+})
+
+test('B7: the package carries the checked date, and the step shows it', () => {
+  assert.equal(checkedOn(SEPARATE), '2026-09-20')
+  const b = bodiesOf('demo').get(SEPARATE)
+  assert.ok(b, 'the demo plan has no separate-admin-accounts step')
+  assert.equal(b.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('B8: on a free tenant the step says it cannot see everyday use, and still asks for the review', () => {
+  const b = bodiesOf('micro').get(SEPARATE)
+  assert.ok(b, 'the micro plan has no separate-admin-accounts step')
+  const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')
+  // micro has no sign-in evidence at all, so the licence note is the only who-line there is.
+  assert.match(who, /Mail and Teams activity needs Entra ID P1/)
+  assert.doesNotMatch(who, /Recent mail or Teams activity/)
+  assert.match(b.lead ?? '', /Review the 1 administrator account for dedicated administration\./)
+  // The demo has the evidence, and the note sits under it rather than replacing it.
+  const demoWho = (bodiesOf('demo').get(SEPARATE)?.whoFull ?? []).map((w) => w.lead)
+  assert.ok(demoWho.some((l) => /Recent mail or Teams activity/.test(l)), demoWho.join('\n'))
+  assert.ok(demoWho.some((l) => /needs Entra ID P1/.test(l)), demoWho.join('\n'))
+})
