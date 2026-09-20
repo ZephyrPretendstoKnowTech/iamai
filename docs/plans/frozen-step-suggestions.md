@@ -313,3 +313,29 @@ What the group did instead, so that nothing is unsaid while they stand:
 Nothing else. The four Emergency Access steps behaved correctly as the
 prerequisite these policy steps wait on, at 1280 on the demo and on the
 follow-up scan, and none of their snapshots moved.
+
+---
+
+## From Respond to Risk and Limit Sessions (group 8, 2026-09-20)
+
+`docs/plans/risk-and-sessions-spec.md`. The four Establish Emergency Access steps
+and the four Direction steps were not touched, and none of their snapshots moved.
+Two things this group's steps wait on, for whoever unfreezes them:
+
+- **Decide How People and Devices Sign In holds Require Token Protection on
+  Windows, and the step cannot say why it would matter.** On the demo's follow-up
+  scan the token-protection step reads «Waiting on your direction · Decide How
+  People and Devices Sign In». Approving the answers releases it. The Direction
+  step itself never mentions token protection, so a reader who opens the question
+  from that card answers three questions about computers, phones and exception
+  devices with no sign that one of them is what the policy in front of them is
+  waiting on. A one-line "what this answer releases" on the Direction step would
+  close it. Not made: the step is frozen.
+
+- **Verify Emergency Access is the last thing between this group and
+  enforcement.** With the Direction answers approved, token protection's only
+  remaining prerequisite is the drill, and Limit How Long Sessions Last reaches
+  «Ready · Create» while token protection stays «Up Next». That is correct
+  sequencing. It is recorded because it means the drill, not the policy work, is
+  what decides when this group's steps can be enforced — a fact the Emergency
+  Access group's own words do not carry.
