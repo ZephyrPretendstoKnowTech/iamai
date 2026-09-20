@@ -12,12 +12,7 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Trusted Network",
-      "state": "Choose your office networks"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",
