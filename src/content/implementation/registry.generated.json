@@ -13385,12 +13385,27 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-mfa-settings",
+            "authority": "Microsoft Learn",
+            "title": "Configure Microsoft Entra multifactor authentication settings",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-mfasettings",
+            "purpose": "Where Remember multifactor authentication on trusted devices lives, and that it is not compatible with the sign-in frequency Conditional Access control.",
+            "checkedOn": "2026-09-20",
+            "userFacing": true,
+            "priority": "primary",
+            "audience": [
+              "step",
+              "entra",
+              "aiInfo"
+            ]
+          },
+          {
             "id": "ms-session-lifetime-config",
             "authority": "Microsoft Learn",
             "title": "Configure adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
             "purpose": "Current portal configuration, Report-only rollout, What If validation, sign-in frequency and persistent browser behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13407,7 +13422,7 @@
             "title": "Configure authentication session management with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Current sign-in-frequency semantics and reauthentication behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -13423,7 +13438,7 @@
             "title": "conditionalAccessSessionControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
             "purpose": "Graph v1.0 session-control shape and requirement that persistentBrowser target All apps/resources.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13437,7 +13452,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 sign-in frequency properties.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13451,7 +13466,7 @@
             "title": "persistentBrowserSessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/persistentbrowsersessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 persistent-browser mode values always/never.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13465,7 +13480,7 @@
             "title": "conditionalAccessDevices resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessdevices?view=graph-rest-1.0",
             "purpose": "Graph v1.0 device filter container used by the unmanaged-device companion policy.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -13544,7 +13559,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.\n   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\nSave once. Rescan IAMAI so it records the new policy ID.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.\n\nBefore this policy: turn off **Remember multifactor authentication on trusted devices** (Entra ID → Users → Per-user MFA → service settings). Microsoft says to disable it before using sign-in frequency; the two together prompt people at times neither setting intends, and it is a tenant-wide setting, so turning it off once covers this policy and Shorten Admin Sessions.\n\nEntra admin center → Entra ID → Conditional Access → Policies → New policy.\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.\n   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n3. Target resources: **All resources**.\n4. Conditions → Client apps: set **Configure** to **Yes**, then **Browser** only. Left at **No** the condition reaches every client app, and the interval would apply to desktop and mobile apps as well.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\nSave once. Rescan IAMAI so it records the new policy ID.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -13568,7 +13583,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps Browser; no grant; Sign-in frequency 12 hours (Periodic reauthentication); Persistent browser session Never persistent.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps set through Configure: Yes, then Browser; no grant; Sign-in frequency set to the interval in the intended target (Periodic reauthentication); Persistent browser session Never persistent.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
         },
         "entra.correct.browser.conditions": {
           "meta": {
@@ -13580,7 +13595,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps to Browser. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
+          "text": "For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps through Configure: Yes, then Browser only, because at No the condition reaches every client app. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
         },
         "entra.correct.browser.session": {
           "meta": {
@@ -13592,7 +13607,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the browser policy, set Sign-in frequency to 12 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.\n"
+          "text": "For the browser policy, set Sign-in frequency to the interval in the intended target (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.\n"
         },
         "entra.correct.browser.grant-none": {
           "meta": {
@@ -13700,7 +13715,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with the intended target's sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -13712,7 +13727,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\nOpen the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.\n\nVerify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the 12-hour frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.\n"
+          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\nOpen the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.\n\nVerify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the intended target's frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.\n"
         },
         "json.browser.create": {
           "meta": {
@@ -13977,7 +13992,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n"
+          "text": "\nSTATE\nThis state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n"
         },
         "ai.correct": {
           "meta": {
@@ -13989,7 +14004,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "\nSTATE\nThis state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Do not add a companion policy, conditions or exclusions that the baseline does not contain.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -14001,7 +14016,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThe browser session policy is in Report-only. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Configuration alone does not show the sign-in experience.\n\nNEXT STEP\nExplain which What If results, sign-in records and browser tests are still needed before enforcement.\n"
+          "text": "\nSTATE\nThe browser session policy is in Report-only. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. Configuration alone does not show the sign-in experience.\n\nNEXT STEP\nExplain which What If results, sign-in records and browser tests are still needed before enforcement.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -14013,7 +14028,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nSTATE\nThis state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session.\n\nNEXT STEP\nExplain the change and the browser tests to run afterwards, in managed and unmanaged browsers, including any account the resolved target excludes.\n"
+          "text": "\nSTATE\nThis state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nINTENDED POLICY\nAll users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps set through Configure: Yes, then Browser; Sign-in frequency as the intended target sets it (periodic reauthentication); Persistent browser session Never persistent; no grant.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nCAUTIONS\nShared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session.\n\nNEXT STEP\nExplain the change and the browser tests to run afterwards, in managed and unmanaged browsers, including any account the resolved target excludes.\n"
         },
         "email.users.pre-enforcement": {
           "meta": {
@@ -14029,7 +14044,7 @@
             "recommendation": "recommended",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Planned change: Limit How Long Sessions Last\n\nHi everyone,\n\nWe plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.\n\nThanks,\nIT\n"
+          "text": "Subject: Planned change: Limit How Long Sessions Last\n\nHi everyone,\n\nWe plan to change browser sign-in to the new frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.\n\nThanks,\nIT\n"
         },
         "readiness.model": {
           "meta": {
@@ -14065,7 +14080,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured 12-hour value suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved exclusions on the browser policy, and whether the resolved target names it at all.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy to the resolved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured interval suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved exclusions on the browser policy, and whether the resolved target names it at all.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy to the resolved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
         }
       }
     },

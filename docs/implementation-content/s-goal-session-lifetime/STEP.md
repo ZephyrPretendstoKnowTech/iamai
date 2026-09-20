@@ -4,7 +4,7 @@
 Apply the pinned baseline's browser session lifetime and persistence limits with its one browser policy. The pinned baseline has no unmanaged-device session policy, so this step creates, corrects and enables the browser policy alone.
 
 ## Why this exists
-A browser session that persists indefinitely can keep working after the original interactive sign-in is long forgotten. The pinned baseline sets one boundary: every browser session is non-persistent and reauthenticates every 12 hours. Apps outside the browser are not limited by this step.
+A browser session that persists indefinitely can keep working after the original interactive sign-in is long forgotten. The pinned baseline sets one boundary: every browser session is non-persistent and reauthenticates on the target's interval. Apps outside the browser are not limited by this step.
 
 ## Applies when
 Use this implementation only when IAMAI classifies this exact step as actionable and has resolved the tenant-specific exclusions and shared-device accounts. The browser policy is evaluated on its own.
@@ -25,7 +25,7 @@ No new owner decision is introduced here. The current Jon Hope baseline pin `846
 IAMAI may use the current matching session policies, unmanaged-browser evidence, shared-device accounts, canonical exclusions, target frequency/persistence values, and device-compliance state already available to the product. Unknown evidence remains Unknown.
 
 ## Target state
-**Policy A — browser:** All users; canonical exclusion groups plus any individual accounts the resolved target names (the pinned target names none); All resources; Client apps = Browser; no other security-significant condition; no grant control; Sign-in frequency = 12 hours, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
+**Policy A — browser:** All users; canonical exclusion groups plus any individual accounts the resolved target names (the pinned target names none); All resources; Client apps = Browser, set through Configure = Yes (at No the condition reaches every client app); no other security-significant condition; no grant control; Sign-in frequency = the resolved target's interval, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
 
 **No unmanaged-device policy.** The pinned baseline has no unmanaged-device session policy. The package's retained unmanaged-device blocks and script modes are not offered, and are left for a separately authorized change.
 
