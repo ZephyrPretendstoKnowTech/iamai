@@ -2603,7 +2603,7 @@
       "why": "An alert is how anyone finds out an emergency account was used. It also tells a planned drill apart from access nobody expected.",
       "whatToDo": [
         "Send the sign-in logs somewhere they can be queried first: Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting, pick the sign-in categories, then Send to Log Analytics workspace. That takes at least the Security Administrator role, an Azure subscription and a workspace — or the SIEM you already use.",
-        "Take each emergency account's object ID from Entra ID → Users. The rule matches on the object ID, not the sign-in name, because a name can be changed under it. The accounts are {list:emergencyAccountUpns}.",
+        "The accounts are {list:emergencyAccountUpns}. Take each one's object ID from Entra ID → Users; the rule matches on the object ID, not the sign-in name, because a name can be changed under it.",
         "In the Azure portal, as at least a Monitoring Contributor: Monitor → Alerts → + Create → Alert rule. Scope: the workspace. Condition: Signal name Custom log search, Query type Aggregated logs, a SigninLogs query filtered to those object IDs. Alert logic: Static, Greater than, threshold 0.",
         "Give it an action group that reaches a person by email, SMS, push or voice, set Severity 0 - Critical, enable it on creation, and name who answers it.",
         "Test it with one controlled sign-in and confirm the alert arrives. Agree what the responder then does: keep the logs, and decide whether the use was a drill, a real emergency, or neither.",
