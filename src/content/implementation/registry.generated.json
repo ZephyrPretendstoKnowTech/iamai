@@ -19530,6 +19530,32 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-security-key-passkey",
+            "authority": "Microsoft Learn",
+            "title": "Register a passkey with a FIDO2 security key",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-authenticator-passkey",
+            "authority": "Microsoft Learn",
+            "title": "Register passkeys in Authenticator on Android and iOS devices",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-passkey-enable",
+            "authority": "Microsoft Learn",
+            "title": "How to enable passkeys (FIDO2) in Microsoft Entra ID",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "The IAMAI operator must register and prove a phishing-resistant passkey/security key before stronger admin policy rollout.",
@@ -19547,7 +19573,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Sign in as **{{operator.displayName}}** on a device you control.\n2. Open **Security info** (`https://aka.ms/mfasetup`) and choose **Add sign-in method > Passkey**.\n3. Register either the already-approved Microsoft Authenticator passkey or a FIDO2 security key. Do not change tenant passkey policy here.\n4. Finish the authenticator's local PIN/biometric/security-key interaction.\n5. Leave existing recovery methods intact unless another IAMAI step explicitly removes them.\n"
+          "text": "1. Sign in as **{{operator.displayName}}** on a device you control, at **Security info** (`https://mysignins.microsoft.com/security-info`), and complete multifactor authentication there.\n2. Register within five minutes of that check: Microsoft requires an MFA completed in the last five minutes before a passkey (FIDO2) can be registered, so an old browser tab is refused.\n3. Choose the method by its own menu entry: **Add sign-in method > Passkey** registers a FIDO2 security key; **Add sign-in method > Passkey in Microsoft Authenticator** registers one in the app. Microsoft recommends a security key for users with elevated privileges. Do not change tenant passkey policy here.\n4. Finish the authenticator's local PIN, biometric or security-key interaction. A passkey in Authenticator also needs a screen lock on the phone and Authenticator enabled as the device's passkey provider.\n5. Leave existing recovery methods intact unless another IAMAI step explicitly removes them.\n"
         },
         "entra.prove": {
           "meta": {

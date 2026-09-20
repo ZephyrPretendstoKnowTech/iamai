@@ -1,0 +1,147 @@
+// The "Protect Your Administrators" group, taken to the V1 standard:
+// docs/plans/protect-admins-spec.md holds the outcome, the Microsoft Learn page
+// behind every technical claim and the date it was checked. One test per
+// acceptance item in that spec.
+//
+// A test here reads the OPENED STEP, not the content file, wherever the claim is
+// about what an admin sees: the acceptance is what is on screen (CLAUDE.md).
+// Where a claim is about a lifecycle state no fixture reaches, the compiled
+// package block is read instead, because that is the text the state would draw.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { stepById } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { setDisplayTimeZone } from '../../copy/dates.ts'
+import { laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { laneReadings } from './planLanes.ts'
+import { planDates } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
+import type { StepBody } from './stepBody.ts'
+import { membersOf } from '../../roadmap/stepGroups.ts'
+
+/** The group's five members, in registry order (roadmap/stepGroups.ts). */
+const PROTECT_ADMINS = [
+  's-ladder-operator-passkey',
+  's-prereq-auth-strength',
+  's-goal-admins-phishing-resistant',
+  's-goal-admin-session',
+  's-goal-pim-activation-reauth',
+]
+
+/** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
+function bodiesOf(name: FixtureName): Map<string, StepBody> {
+  setDisplayTimeZone('UTC')
+  try {
+    const f: Fixture = fixture(name)
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const out = new Map<string, StepBody>()
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+      out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+    }
+    return out
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+/** A compiled package block's authored text, for a lifecycle state no fixture reaches. */
+function blockText(stepId: string, blockId: string): string {
+  const pkg = (registry.packages as Record<string, { blocks?: Record<string, { text?: string }> }>)[stepId]
+  const text = pkg?.blocks?.[blockId]?.text
+  assert.ok(typeof text === 'string' && text !== '', `${stepId}: the package has no ${blockId} block`)
+  return text as string
+}
+
+/** The package's own last-checked date (project.ts sourceUpdatedOn reads the max). */
+function checkedOn(stepId: string): string {
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { checkedOn: string }[] } }>)[stepId]?.meta
+  const dates = (meta?.verifiedSources ?? []).map((s) => s.checkedOn).sort()
+  return dates[dates.length - 1] ?? ''
+}
+
+/** A content step's own instruction lines, unfilled. */
+const stepsOf = (id: string): string[] =>
+  ((stepById[id] as unknown as { whatToDo?: { steps?: string[] } }).whatToDo?.steps ?? []) as string[]
+
+/** A step's risk lines from the content file, whatever their `applies`. */
+const risksOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { more?: { risks?: { text?: string }[] } }).more?.risks ?? []).map((r) => r.text ?? '')) as string[]
+
+/** A step's help-desk lines from the content file. */
+const helpDeskOf = (id: string): string[] => ((stepById[id] as unknown as { more?: { helpDesk?: unknown } }).more?.helpDesk ?? []) as string[]
+
+/** The step's About sentence as the opened step fills it. */
+const aboutOf = (b: StepBody): string => fillText(String((b.cs as Record<string, unknown>).why ?? ''), b.ex as Record<string, unknown>)
+
+/** Every Implementation Task line the opened step lists, as one block of text. */
+const tasksTextOf = (b: StepBody): string =>
+  (b.emergencyAccountTasks?.tasks ?? []).map((t) => [t.title, ...t.steps, ...(t.facts ?? []).map((f) => `${f.label}: ${f.value}`)].join('\n')).join('\n')
+
+// ---------------------------------------------------------------------------
+// The group itself
+// ---------------------------------------------------------------------------
+
+test('the group draws its five members in the spec order', () => {
+  assert.deepEqual([...membersOf('protect-admins')], PROTECT_ADMINS)
+})
+
+// ---------------------------------------------------------------------------
+// Register Your Own Passkey (spec section 2)
+// ---------------------------------------------------------------------------
+
+const PASSKEY = 's-ladder-operator-passkey'
+
+test('A1: registration starts where Microsoft documents it, not at the old shortcut', () => {
+  const steps = stepsOf(PASSKEY).join('\n')
+  assert.match(steps, /https:\/\/mysignins\.microsoft\.com\/security-info/)
+  assert.doesNotMatch(steps, /aka\.ms\/mfasetup/)
+  assert.match(blockText(PASSKEY, 'entra.register'), /https:\/\/mysignins\.microsoft\.com\/security-info/)
+})
+
+test('A2: the five-minute window before a passkey can be registered is stated', () => {
+  assert.match(stepsOf(PASSKEY).join('\n'), /only be registered within five minutes of a completed prompt/)
+  assert.match(blockText(PASSKEY, 'entra.register'), /an MFA completed in the last five minutes/)
+})
+
+test('A3: the two methods are named by their own menu entries, and either is enough', () => {
+  const steps = stepsOf(PASSKEY).join('\n')
+  assert.match(steps, /Add sign-in method → Passkey registers a security key/)
+  assert.match(steps, /Add sign-in method → Passkey in Microsoft Authenticator registers one in the app/)
+  assert.match(steps, /Either one is enough, and Microsoft recommends a security key for elevated privileges/)
+})
+
+test('A4: a refused passkey names the three settings that refuse it', () => {
+  const steps = stepsOf(PASSKEY).join('\n')
+  assert.match(steps, /Allow self-service set up, which stops registration here when it is No/)
+  assert.match(steps, /enforced attestation/)
+  assert.match(steps, /key restriction that excludes the key you used/)
+})
+
+test('A5: the step links the page that carries the registration procedure', () => {
+  const b = bodiesOf('demo').get(PASSKEY)!
+  assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key')
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)[PASSKEY]?.meta
+  assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === b.learnUrl), 'the package cites a different page from the step')
+})
+
+test('A6: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(PASSKEY), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(PASSKEY)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+// The unused readers below are kept for the sections that follow.
+void risksOf
+void helpDeskOf
+void aboutOf
+void tasksTextOf
