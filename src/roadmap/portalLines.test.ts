@@ -73,7 +73,7 @@ test('portal include/exclude lines never name the same set on both sides', () =>
   const loc = lines.find((l) => l.startsWith('Conditions → Locations'))!
   assert.ok(!/Exclude/.test(loc), `no exclude of the included location: ${loc}`)
   const plat = lines.find((l) => l.startsWith('Conditions → Device platforms'))!
-  assert.ok(/Include: Android, iOS$/.test(plat), `no exclude of an included platform: ${plat}`)
+  assert.ok(/Include: Android, iOS\./.test(plat), `no exclude of an included platform: ${plat}`)
   // The same excludes against a different include stay.
   const apart = policy({
     users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: ['g1'], includeRoles: [], excludeRoles: [], excludeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } } },
@@ -84,7 +84,7 @@ test('portal include/exclude lines never name the same set on both sides', () =>
   const users2 = kept.find((l) => l.startsWith('Users → '))!
   assert.ok(/Exclude → Groups: the exclusions group/.test(users2) && /Also exclude Guest/.test(users2), users2)
   assert.ok(/Exclude: /.test(kept.find((l) => l.startsWith('Conditions → Locations'))!))
-  assert.ok(/Include: Any device; Exclude: Android$/.test(kept.find((l) => l.startsWith('Conditions → Device platforms'))!))
+  assert.ok(/Include: Any device; Exclude: Android\./.test(kept.find((l) => l.startsWith('Conditions → Device platforms'))!))
 })
 
 test('every pinned baseline policy renders non-empty portal lines that end in a grant or session control, with no unresolved placeholder', () => {
