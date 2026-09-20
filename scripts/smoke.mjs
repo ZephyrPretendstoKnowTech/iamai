@@ -655,7 +655,13 @@ try {
   // waits on the people it reaches being able to sign in the way it asks says so
   // and links there. Opening the link filters the page to those people and keeps
   // a way back to the step.
-  await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
+  // The step that hands off may sit on any lane tab: a policy held by the
+  // foundation (owner, 2026-09-19) is Up Next or On Hold, not Ready.
+  for (const lane of LANES) {
+    await showLane(lane)
+    const found = await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
+    if (found) break
+  }
   const handoff = await evaluate(`(() => { const a = document.querySelector('main.page a[href^="#/readiness/step/"]'); if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
   check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /not yet confirmed ready for this sign-in requirement/.test(handoff.text), handoff && handoff.text)
   if (handoff) {
@@ -1175,7 +1181,9 @@ try {
   await sleep(300)
   const intunePreview = intuneJsonTab ? await evaluate(`(() => { const p = ${intuneStep}.querySelector('.implementation-section .impl-preview .preview-text'); return p ? p.innerText : '' })()`) : ''
   const copiedBefore = await evaluate('window.__copied.length')
-  if (intuneJsonTab) await evaluate(`(() => { const b = ${intuneStep}.querySelector('.implementation-section .preview-actions button'); if (b) b.click(); return !!b })()`)
+  // The task anatomy puts Copy in the channel toolbar beside the tabs; the older
+  // frame puts it over the preview. Either is the step's own copy control.
+  if (intuneJsonTab) await evaluate(`(() => { const st = ${intuneStep}; const b = st.querySelector('.implementation-section .preview-actions button') || [...st.querySelectorAll('.implementation-section .icon-btn')].find((x) => /copy/i.test(x.title || '')); if (b) b.click(); return !!b })()`)
   await waitFor(`window.__copied.length > ${copiedBefore}`, 3000)
   const intuneCopied = await evaluate(`window.__copied.length > ${copiedBefore} ? window.__copied[window.__copied.length - 1] : ''`)
   let intuneParses = false
