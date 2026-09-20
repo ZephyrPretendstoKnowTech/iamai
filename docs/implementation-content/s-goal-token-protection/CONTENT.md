@@ -1,14 +1,14 @@
 # IAMAI renderable content — Require Token Protection on Windows
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below; it does not cover browser sessions or devices on other platforms.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below. It does not cover browser sessions, other platforms or any other resource — those are not protected by this policy and are not blocked by it either.
 
 1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
 2. Name the policy **{{policy.target.displayName}}**.
 3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.
 4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.
-5. Under **Conditions > Device platforms**, include **Windows** only.
-6. Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Leave Browser unselected.
+5. Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.
+6. Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Leave Browser unselected. Microsoft's own warning: not configuring this condition, or leaving Browser selected, can block web apps that sign in through the browser, Teams on the web among them.
 7. Under **Conditions > Filter for devices**, configure **Exclude filtered devices from policy** with `device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"`.
 8. Under **Access controls > Session**, select **Require token protection for sign-in sessions**.
 9. Set **Enable policy** to **Report-only**, then create it.
@@ -36,11 +36,11 @@ Under **Target resources > Resources**, select exactly Exchange Online, SharePoi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.windows-platform","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Conditions > Device platforms**, include **Windows** only.
+Under **Conditions > Device platforms**, set **Configure** to **Yes**, then include **Windows** only. Left at **No** the policy applies to all device platforms.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.mobile-desktop-clients","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Remove Browser or any other client-app selection.
+Under **Conditions > Client apps**, set **Configure** to **Yes**, then select only **Mobile apps and desktop clients**. Remove Browser or any other client-app selection: at **No**, or with Browser selected, web apps that sign in through the browser are blocked.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.cloudpc-device-filter","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -379,7 +379,7 @@ INTENDED POLICY
 All users; the resolved exclusions; exactly the baseline Exchange Online, SharePoint Online, Teams Services, Azure Virtual Desktop and Windows 365 resources; Windows; Mobile apps and desktop clients; the baseline CloudPC exclusion filter; no grant; Require token protection for sign-in sessions; Report-only.
 
 SCOPE LIMIT
-Token protection applies only to supported Windows native clients for these resources. It does not protect browser sessions, other platforms, or every token.
+Token protection applies only to supported Windows native clients for these resources. It does not protect browser sessions, other platforms, or every token, and it does not block them either: what falls outside this policy is simply not evaluated by it. Microsoft's own advice is to cover that gap with a policy that blocks unknown platforms and one that requires a managed device, which are separate steps in this plan.
 
 API NOTE
 The JSON and PowerShell outputs use Microsoft Graph beta only because `secureSignInSession` is not exposed in the current v1.0 session-controls schema.
@@ -565,8 +565,8 @@ We are preparing extra sign-in protection for supported apps on Windows. If an a
       "channels": ["entra", "json", "powershell"],
       "states": ["missing", "partial", "readyToEnforce", "inPlace"],
       "symptom": "Browser-based use is affected even though this retained step is for Windows native clients.",
-      "likelyCauses": ["Browser was selected, or the Client apps condition was left broader than Mobile apps and desktop clients."],
-      "check": ["Inspect Conditions > Client apps and compare with the canonical policy."],
+      "likelyCauses": ["Browser was selected, or the Client apps condition was left unconfigured, which reaches every client app."],
+      "check": ["Inspect Conditions > Client apps: Configure must be Yes with Mobile apps and desktop clients the only selection."],
       "fix": ["Correct the same policy to Mobile apps and desktop clients only and return to Report-only for validation."],
       "doNot": ["Do not add more application exclusions to compensate for an incorrect client-app condition."],
       "then": ["Rescan IAMAI and retest the browser/native-client boundary."],

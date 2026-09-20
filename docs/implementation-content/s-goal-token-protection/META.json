@@ -185,12 +185,23 @@
   ],
   "verifiedSources": [
     {
+      "id": "ms-token-protection-concept",
+      "authority": "Microsoft Learn",
+      "title": "Token protection",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-token-protection",
+      "purpose": "The platform and client availability table: which platforms and application kinds token protection reaches, and which resources it can enforce on. What falls outside it is not evaluated by the policy.",
+      "checkedOn": "2026-09-20",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": ["step", "entra", "aiInfo"]
+    },
+    {
       "id": "ms-token-protection-windows",
       "authority": "Microsoft Learn",
       "title": "Token Protection Deployment Guide - Windows",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows",
-      "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and portal procedure.",
-      "checkedOn": "2026-09-10",
+      "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and the portal procedure — including setting Configure to Yes on both the Device platforms and the Client apps conditions, and the warning that not configuring Client apps can block browser-based web apps.",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "primary",
       "audience": ["step", "entra", "aiInfo", "email", "readiness", "troubleshooting"]
@@ -201,7 +212,7 @@
       "title": "conditionalAccessSessionControls resource type - v1.0",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
       "purpose": "Confirms secureSignInSession is not present in the current v1.0 session-controls schema.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": ["json", "powershell"]
@@ -212,7 +223,7 @@
       "title": "conditionalAccessSessionControls resource type - beta",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-beta",
       "purpose": "Confirms secureSignInSession is exposed in the beta session-controls schema and that beta APIs are not supported for production use.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "technical",
       "audience": ["step", "json", "powershell", "troubleshooting"]
@@ -223,7 +234,7 @@
       "title": "secureSignInSessionControl resource type - beta",
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/securesigninsessioncontrol?view=graph-rest-beta",
       "purpose": "Confirms the secure sign-in session control shape and isEnabled property.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": false,
       "priority": "technical",
       "audience": ["json", "powershell"]
@@ -234,7 +245,7 @@
       "title": "Create conditionalAccessPolicy - beta",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-beta",
       "purpose": "Beta POST endpoint, permissions, roles, response, and production-support warning.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "technical",
       "audience": ["json", "powershell", "troubleshooting"]
@@ -245,7 +256,7 @@
       "title": "Update conditionalAccessPolicy - beta",
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-beta",
       "purpose": "Beta PATCH endpoint, permissions, roles, omitted-property preservation, and production-support warning.",
-      "checkedOn": "2026-09-10",
+      "checkedOn": "2026-09-20",
       "userFacing": true,
       "priority": "technical",
       "audience": ["json", "powershell", "troubleshooting"]
