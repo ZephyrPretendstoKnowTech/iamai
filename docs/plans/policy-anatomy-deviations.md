@@ -109,3 +109,43 @@ These need no decision unless the owner wants them equalised.
    value is the tile's own (the Cleanup row has no title to resolve) and reads
    the same in the old strip; the cards did not introduce it, and it was left
    alone as out of scope.
+
+## Found taking Close the Doors to V1 (2026-09-19)
+
+Neither of these was built. Both are the anatomy's, not one group's.
+
+### 5. "More" is on no screen, in any state
+
+`ContentStep.tsx` draws the `More` region only when `printing` is true. So
+**Risks**, **For the help desk**, **For your manager**, **Tell your people**,
+**Dates** and the names behind the counts are in the printed plan and in the
+export text (`stepExport.ts` reads `more.risks` and `more.helpDesk`), and on no
+screen at all — on a policy step or on an Emergency Access one.
+
+**Why it matters here.** Wave 1 found two consequences that an admin needs
+*before* creating the policy, not after printing it: device code flow's protocol
+tracking, and an all-resources authentication-flows policy reaching Device
+Registration Service. They are now risks, so they reach the export and the
+print; to put them on a screen they were also written into the create
+procedure's numbered steps, which is a surface the anatomy already draws. That
+works, but it means a fact worth stating has to be written in two places, and
+"the same words on screen, in the export and in print" is only true of the
+second copy.
+
+**The question for the owner.** Should a policy step's risks be reachable on
+screen — for example under the evidence dialog the Tasks Remaining foot already
+links to ("Why IAMAI says this") — or is print-and-export the intended home?
+Either answer is one decision; neither is built.
+
+### 6. A group's row numbers are registry positions, so an ungenerated member leaves a gap
+
+On the demo, "Close the Doors Nobody Should Use" heads "4 steps" and numbers its
+rows **1, 3, 4, 5**. The 2 is `s-question-mail-devices`, the group's second
+registry member, which the plan generates only when the mail-sending-devices
+decision answers "Temporary exception accounts" (`roadmap/answers.ts`
+`CARVE_OUT_STEP_ID`). The same shape appears in every group with a conditional
+member ("Protect Your Administrators — 1 step", numbered 4).
+
+The number is a stable handle, which is worth keeping; the heading counts the
+rows drawn, which is also worth keeping. They simply disagree in front of the
+reader. No change was made.
