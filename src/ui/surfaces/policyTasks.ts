@@ -27,6 +27,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
+import { CONTRACT } from './stepContract.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
@@ -240,23 +241,27 @@ export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
 }
 
 /**
- * A policy's own checks: the rollout stages the step's track already records
- * (stepContract.ts `stepTrack`), read for one policy. Nothing is classified
- * here — `reached`/`current` are the track's, and the stage a policy has not
- * got to yet is the next check.
+ * Whether this policy is at the last stage of the step's rollout track — the
+ * one thing the track still decides on a card, because a policy at its last
+ * stage with nothing left to submit has nothing remaining. Null where there is
+ * no track to read.
  *
- * The first stage is where every policy starts, so it is never a check anybody
- * completed and never counted as one remaining.
+ * The track used to be read as the card's checks: the stages at or below the
+ * current index became "Completed checks", the count above it became "N checks
+ * remaining", and the next one became the check. All three were wrong in the
+ * same way (V1 audit S4-3, S4-4, S4-5). The rollout lifecycle is a state the
+ * scan reads, not a checklist anybody worked through: nothing in the plan
+ * records who reached a stage or when, so a policy the very first scan found
+ * enforced listed three checks somebody completed, with no date, no evidence
+ * and no actor. The card no longer says it. Where the tenant holds the fact —
+ * a policy in report-only, a policy enforced — the step's head states it beside
+ * the badge (stepContract.ts `factOf`), which claims only what the scan read.
  */
-function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null): { completed: string[]; remaining: number | null; next: string | null } {
+function atLastStage(track: readonly ContractStage[], lifecycle: Lifecycle | null): boolean | null {
   const at = track.findIndex((stage) => stage.key === lifecycle)
   const index = at >= 0 ? at : track.findIndex((stage) => stage.current)
-  if (track.length === 0 || index < 0) return { completed: [], remaining: null, next: null }
-  return {
-    completed: track.filter((_, i) => i > 0 && i <= index).map((stage) => stage.label),
-    remaining: track.length - 1 - index,
-    next: track[index + 1]?.label ?? null,
-  }
+  if (track.length === 0 || index < 0) return null
+  return index === track.length - 1
 }
 
 /**
@@ -265,10 +270,14 @@ function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null):
  * because the policy is this step's subject the way an account is that step's.
  *
  * Every line is already somewhere in the contract: the policy's name is its
- * member's (Foundation B), its checks are the step's own rollout stages, the
- * next stage is the next check, what that stage means is Foundation B's own
- * milestone, and the one action is the matching Implementation Task, directed to
- * in the words emergencyReadiness.ts already uses. No taxonomy is invented.
+ * member's (Foundation B), the next check is the step's own content, its
+ * condition or its task, what that check means is the step's one action, and
+ * the action is the matching Implementation Task, directed to in the words
+ * emergencyReadiness.ts already uses. No taxonomy is invented.
+ *
+ * The rollout stages are not the card's checks (V1 audit S4-3, S4-4, S4-5):
+ * `atLastStage` says why, and where the tenant holds the stage as a fact the
+ * step's head states it beside the badge.
  *
  * A card is satisfied only when the policy has reached the last stage and the
  * step has no task left to do, so "No tasks remaining" cannot be shown over work
@@ -289,17 +298,36 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? subject, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
     : [{ key: 'policy', heading: subject, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
   return subjects.map((subject) => {
-    const stages = stagesOf(contract.track, subject.lifecycle)
     // Nothing is left on the policy itself when the goal is already delivered
     // (Foundation B's own `satisfied`: "nothing to create; keep it as it is"),
     // or when it has reached its last stage with nothing left to submit.
-    const satisfied = contract.state.satisfied || (stages.remaining === 0 && task === null)
-    const here = contract.state.stage || contract.state.word
-    // Where the step has no rollout to draw — a goal with no policy of its own,
-    // an object step, a check, a step set aside — the next check is the state
-    // the step's own content records (`card.check`), and the task's name only
-    // where it writes none.
-    const next = stages.next ?? (contract.track.length === 0 ? check ?? task?.title ?? null : null)
+    const satisfied = contract.state.satisfied || (atLastStage(contract.track, subject.lifecycle) === true && task === null)
+    // A policy IAMAI has resolved: a member this step delivers, or the tenant's
+    // own policy that already delivers the goal. With neither there is no policy
+    // for a stage to be a stage of, and the card states none (S4-3) — an admin
+    // ticking "device code is blocked" off a card that read `Enforced` over
+    // "This step has no policy for IAMAI to write in this plan" had blocked
+    // nothing. The step's own state word is all that is left to say.
+    const resolved = contract.members.length > 0 || contract.existing !== null
+    const here = resolved ? contract.state.stage || contract.state.word : contract.state.word
+    // The next check, and never a rollout stage (S4-4). One slot cannot mean the
+    // stage a policy is sitting in on one card and a stage it has not reached on
+    // the next, with nothing marking which, so it means neither: a stage is
+    // where the policy is, and the check is what has to pass next.
+    //
+    // In order: the check the step's own content writes (`card.check`); then the
+    // condition that holds the step, which is the thing that has to clear before
+    // any stage is reachable at all — the hold outranks the stage track, which
+    // is the inversion of the one root cause all three tile passes named; then
+    // the decision, where the step's one action is to make one; then the task
+    // the step has to complete. Every word is one the product already uses for
+    // this state (`stepContract.condition`), so no second vocabulary is made. A
+    // satisfied card states where the policy ended up, which is an outcome and
+    // not a promise.
+    const next = check
+      ?? (contract.state.condition !== 'healthy' ? CONTRACT.condition[contract.state.condition] : null)
+      ?? (contract.whatToDo.kind === 'decide' ? CONTRACT.condition['needs-decision'] : null)
+      ?? task?.title ?? null
     return {
       key: subject.key,
       accountId: null,
@@ -312,8 +340,10 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       // Contoso does not have yet", "in place already: nothing to create").
       detail: contract.whatToDo.text,
       instruction: satisfied || directed === null || !pointer ? '' : followTask(directed.title),
-      completed: stages.completed,
-      remainingCount: stages.remaining !== null && stages.remaining > 0 ? stages.remaining : null,
+      // The rollout lifecycle is not a list of checks anybody completed, and
+      // stages left are not checks remaining (S4-5): the card claims neither.
+      completed: [],
+      remainingCount: null,
       satisfied,
     }
   })
