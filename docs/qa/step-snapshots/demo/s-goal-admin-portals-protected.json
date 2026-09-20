@@ -7,11 +7,11 @@
   "bar": "Baseline conflict",
   "rail": "Not scheduled",
   "headings": [
-    "Why",
-    "Readiness",
+    "About this Step",
+    "Tasks Remaining",
     "Do not deploy this policy from the current baseline",
-    "Implementation",
-    "Done when"
+    "Implementation Tasks",
+    "Completion Criteria"
   ],
   "tiles": [
     {

@@ -7,10 +7,10 @@
   "bar": "After Prepare Emergency Access Accounts",
   "rail": "Not scheduled",
   "headings": [
-    "Why",
-    "Readiness",
-    "Implementation",
-    "Done when"
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
   ],
   "tiles": [
     {
