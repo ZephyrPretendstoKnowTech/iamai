@@ -41,7 +41,10 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   assert.ok(camp.doneWhen.some((l) => /Administrators have a phishing-resistant method/.test(l)))
   assert.ok(camp.whatToDo.steps.some((l) => l.includes('Admins: a passkey or a hardware security key; either is phishing-resistant.')))
   const op = stepById['s-ladder-operator-passkey'] as unknown as { whatToDo: { steps: string[] } }
-  assert.ok(op.whatToDo.steps[0].includes('or a hardware security key'), 'step 12 says or')
+  // protect-admins A3: the two methods are now named by the menu entries
+  // Microsoft documents, which are different items; the "or" this test owns is
+  // the sentence that says either of them finishes the step.
+  assert.ok(op.whatToDo.steps.some((l) => l.includes('Either one is enough')), 'step 12 says either')
 })
 
 test('the campaign email fills the MFA enforcement day and the window; firstEnforce is gone', () => {

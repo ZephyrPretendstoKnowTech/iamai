@@ -2,7 +2,7 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Under **Users**, include exactly the built-in directory roles resolved from the baseline, and apply the intended exclusions.
-4. Target **All resources** and **all client apps**; configure no additional conditions.
+4. Target **All resources**. Leave **Conditions > Client apps** unconfigured, with **Configure** at **No**: that is what reaches all client apps. Ticking every box instead sets a narrower list than the target, and IAMAI reads it as a difference for good. Configure no other condition.
 5. Grant **Require authentication strength** and select the custom authentication strength resolved for this tenant.
 6. Leave session controls unconfigured.
 7. Set **Enable policy: Report-only**, create, re-open, verify, and rescan.
@@ -20,7 +20,7 @@ This policy already exists. Correct only the settings below, which IAMAI found d
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 3. Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.
 4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.
-5. Target resources: All resources. Client apps: All. Remove any other condition.
+5. Target resources: All resources. Leave Conditions → Client apps unconfigured, with Configure at No; that is what reaches all client apps, and ticking every box sets a narrower list than the target. Remove any other condition.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

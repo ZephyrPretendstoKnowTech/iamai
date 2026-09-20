@@ -33,7 +33,7 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
+import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -1372,7 +1372,7 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
     const [kind, ...rest] = f.key.split(':')
     if (kind === 'step' || kind === 'missing') {
       const id = rest.join(':')
-      const title = stepById[id]?.title ?? id
+      const title = stepById[id]?.title ?? cleanupTitleOf(id) ?? id
       if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: t.mapping, tone: 'warn', value: title, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
       return { key: f.key, label: prerequisiteLabel(id) ?? t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
     }
@@ -1385,6 +1385,17 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
     if (kind === 'check') return { key: f.key, label: t.check, tone: 'warn', value: f.text, note: null }
     return { key: f.key, label: t.blockers, tone: 'warn', value: f.text, note: null }
   })
+}
+
+/**
+ * A Cleanup row's title, for the one place a prerequisite can be one. Its words
+ * are keyed by kind under `content.cleanup`, not by id under `content.steps`,
+ * so a tile that looked the id up in `stepById` found nothing and printed
+ * `cleanup-drill` at the reader.
+ */
+function cleanupTitleOf(id: string): string | null {
+  const kind = id.startsWith('cleanup-') ? id.slice('cleanup-'.length) : null
+  return kind === null ? null : (cleanup[kind]?.title ?? null)
 }
 
 /**
@@ -1403,7 +1414,12 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     const tone: ReadinessTone = b.abnormal ? 'warn' : 'wait'
     if (b.kind === 'step' || b.kind === 'suspendedPrerequisite') {
       if (present.has(`step:${b.id}`) || present.has(`missing:${b.id}`)) continue
-      const title = stepById[b.id]?.title ?? b.title ?? b.id
+      // A Cleanup row is `cleanup-<kind>` and its words live under
+      // content.cleanup, not content.steps, so neither lookup above finds it and
+      // the tile printed the raw id — the one prerequisite that does
+      // (Register Your Own Passkey waiting on Verify Emergency Access,
+      // docs/plans/protect-admins-spec.md section 2).
+      const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
       out.push({ key: `engine:${b.kind}:${b.id}`, label: prerequisiteLabel(b.id) ?? b.label, tone, value: title, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
       continue
     }

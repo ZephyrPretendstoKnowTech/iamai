@@ -3508,13 +3508,13 @@
       "who": {
         "lead": "Custom strengths in {tenant} today: {list:strengths}",
         "match": "{matchedStrength} already allows exactly the baseline's combinations; it is used as is.",
-        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass."
+        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass in both its one-time and its multi-use form."
       },
       "decision": null,
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Conditional Access → Authentication strengths → New authentication strength.",
+          "Entra admin center → Entra ID → Authentication methods → Authentication strengths → New authentication strength. It takes the Security Administrator role, and it is not under Conditional Access.",
           "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
           "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
           "Next → Create. The policies that reference it are created in later steps."
@@ -3525,7 +3525,7 @@
         "An authentication strength named \"{strengthName}\" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.",
         "Every policy already using the strength still accepts the methods its users rely on."
       ],
-      "ifWrong": "Delete the strength; no policy references it yet.",
+      "ifWrong": "Delete the strength; no policy references it yet. Once one does, Entra refuses the delete and asks you to confirm every edit.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -3555,7 +3555,7 @@
       "title": "Register Your Own Passkey",
       "changeLine": null,
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key"
       },
       "who": {
         "lead": "{operator}: strongest method today {method}, {evidence}."
@@ -3564,9 +3564,10 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone). Keep your existing sign-in methods until the new one works.",
+          "Sign in at https://mysignins.microsoft.com/security-info and answer the prompt there. A passkey can only be registered within five minutes of a completed prompt, so an old tab is refused.",
+          "Add sign-in method → Passkey registers a security key; Add sign-in method → Passkey in Microsoft Authenticator registers one in the app. Either one is enough, and Microsoft recommends a security key for elevated privileges. Keep your existing sign-in methods until the new one works.",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
-          "If the passkey is refused, check the error, the Passkey (FIDO2) settings in Configure Passkey Authentication, and whether the device supports the method."
+          "If the passkey is refused, open Configure Passkey Authentication and read three settings: Allow self-service set up, which stops registration here when it is No; enforced attestation, which stops a passkey made in Authenticator through the browser; and any key restriction that excludes the key you used."
         ]
       },
       "dates": null,
@@ -3941,7 +3942,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} with the baseline's authentication strength and the exclusions group, and every admin holds a qualifying phishing-resistant method.",
+      "doneEnd": "Admins in the baseline's built-in directory roles can only sign in to {tenant} with a method its authentication strength accepts, and every admin in scope has one registered.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Each affected admin has signed in with an accepted method, and the role scope and authentication strength match the plan."
@@ -3959,7 +3960,7 @@
       "more": {
         "risks": [
           {
-            "text": "An admin without a passkey, security key or Windows Hello for Business is locked out of admin work.",
+            "text": "An admin holding no method the strength accepts is locked out of admin work.",
             "applies": "adminsWithoutInScope"
           },
           {
@@ -3972,11 +3973,11 @@
           }
         ],
         "helpDesk": [
-          "A Temporary Access Pass satisfies the phishing-resistant strength once, for the first sign-in.",
-          "Only a registered passkey, security key or Windows Hello gets through; do not add exclusions.",
-          "Windows Hello for Business needs the device joined and the PIN set up first."
+          "A Temporary Access Pass satisfies this policy's strength in both its forms; Microsoft's own phishing-resistant strength accepts neither.",
+          "Anything the strength does not list is refused, including a code or an approval; do not add exclusions.",
+          "An admin who signed in with a password first is never prompted for Windows Hello: they restart the sign-in and choose Sign-in options."
         ],
-        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass for first sign-ins.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass, which is temporary but can be issued for repeated use.",
         "waits": null
       },
       "example": {
@@ -4741,12 +4742,17 @@
             "applies": "always"
           },
           {
+            "text": "Remember multifactor authentication on trusted devices, left on, prompts these admins at times neither setting intends. Turn it off before this policy is enforced.",
+            "applies": "always"
+          },
+          {
             "text": "A PIM-eligible admin who activates a role mid-task is prompted at once.",
             "applies": "pimInUse"
           }
         ],
         "helpDesk": [
           "Prompts every few hours in admin portals are deliberate.",
+          "Stay signed in? stops working for these admins: the policy's browser setting overrides that prompt.",
           "Unexpected repeated prompts: check the sign-in result, policies applied, client support and browser session settings before changing the device or policy."
         ],
         "manager": "Admin browser sessions reauthenticate every {wanted} and do not persist, which limits how long a signed-in browser stays useful. Sign-in frequency is not a hard lifetime for every token.",
@@ -4797,12 +4803,12 @@
           "Name: {policyName}",
           "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Client apps → Browser",
+          "Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.",
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "State four hours and browser-only scope. Explain that application sessions and token behavior do not all end at an exact four-hour boundary."
+      "aiFocus": "State the target's interval and its browser-only scope, which depends on the Client apps condition being configured. Explain that application sessions and token behavior do not all end at that boundary."
     },
     {
       "id": "unmanaged-browser",
@@ -5600,14 +5606,19 @@
       "more": {
         "risks": [
           {
-            "text": "A role setting that still points at the old \"require MFA on activation\" option is redundant with this; switch each role to the authentication context.",
+            "text": "A role still set to the old \"require MFA on activation\" option accepts a check from earlier in the session, so it is weaker than this rather than the same; switch each role to the authentication context.",
+            "applies": "always"
+          },
+          {
+            "text": "A role pointed at this context while the policy is still report-only requires nothing at all on activation: Entra's fall back to MFA on activation is not triggered in that state.",
             "applies": "always"
           }
         ],
         "helpDesk": [
-          "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength."
+          "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength.",
+          "The context is checked at activation only; Require Phishing-Resistant MFA for Admins is what covers the role once it is active."
         ],
-        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A recent successful check can be reused within Microsoft's window.",
+        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A check just made can be reused for another activation within ten minutes, across Entra roles, Azure resource roles and groups.",
         "waits": null
       },
       "example": {
@@ -5635,11 +5646,11 @@
           "Entra admin center → Entra ID → Conditional Access → Authentication context → New: name it {contextName}, publish it.",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
+          "Users → Include: All users, never directory roles: at activation the person does not hold the role yet, so a role-scoped policy would not apply. {exclusionsLine}",
           "Target resources → Authentication context → {contextName}",
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}",
-          "Privileged Identity Management → Entra roles → Settings → each role → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
+          "After the policy is On, and not before: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → each role → Role settings → Edit → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
         ]
       },
       "aiFocus": "Explain the setup order, 10-minute reauthentication window and activation-only boundary. Do not claim that a context controls all use of a role after activation.",

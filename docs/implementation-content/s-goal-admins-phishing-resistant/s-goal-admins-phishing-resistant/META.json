@@ -299,8 +299,32 @@
       "id": "ms-admin-phish",
       "authority": "Microsoft Learn",
       "title": "Require phishing-resistant multifactor authentication for Microsoft Entra administrator roles",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
-      "checkedOn": "2026-09-12",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-strength-overview",
+      "authority": "Microsoft Learn",
+      "title": "Overview of Conditional Access authentication strengths",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-ca-users-groups",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access: Users, groups, agents, and workload identities",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-ca-conditions",
+      "authority": "Microsoft Learn",
+      "title": "How to use conditions in Conditional Access policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],
