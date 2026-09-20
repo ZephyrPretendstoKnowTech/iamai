@@ -200,7 +200,7 @@ export const PACKAGE = {
   waysTitle: 'Three ways to make one',
   way1Title: 'Entra admin center',
   way1: [
-    'Entra admin center → Protection → Conditional Access → Policies.',
+    'Entra admin center → Entra ID → Conditional Access → Policies.',
     'Open a policy, then choose Edit → the "…" menu at the top right → "JSON view".',
     'Click "Download" (or copy the text into a file). Repeat per policy, or use the Overview page\'s "Export" for all policies at once.',
   ],
