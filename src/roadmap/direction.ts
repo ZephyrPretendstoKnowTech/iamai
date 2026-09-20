@@ -102,6 +102,11 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     label: Q.deviceCode.label, control: 'choice', options: optionsOf(Q.deviceCode.options),
     suggested: answer(code !== null && code.count > 0 ? 'used' : 'unused'),
     evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(Q.deviceCode.seen, { n: code.userIds.length || code.count }) : Q.deviceCode.notSeen,
+    // What the answer does, which the question never said (owner, 2026-09-20).
+    // The policy step carries protocol tracking as a risk
+    // (docs/plans/close-doors-spec.md section 4, ms-auth-flows); the question
+    // that decides whether the policy is built showed only its suggestion.
+    note: Q.deviceCode.note,
   }))
   const partners = snapshot.scenarioEvidence?.serviceProviderSignIns ?? null
   out.push(question('partner', ctx, {
@@ -158,6 +163,10 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
       suggested: answer('apps'), evidence: W.baselineEvidence,
       today: phones === undefined ? null : phones > 0 ? fillText(Q.phones.today, { n: phones }) : Q.phones.todayNone,
+      // Blocked from company data is not a setting on this step: it adds a
+      // policy step of its own (generate.ts s-ladder-phone-access-restriction),
+      // which the question never said (owner, 2026-09-20).
+      note: Q.phones.note,
     }),
     question('deviceExceptions', ctx, {
       label: Q.deviceExceptions.label, control: 'choice', options: optionsOf(Q.deviceExceptions.options),
