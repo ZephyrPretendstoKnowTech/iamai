@@ -187,26 +187,20 @@ export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswe
   return a === null ? null : a.index > 0
 }
 
-/**
- * The steps an answered question adds to the plan (their words are content steps).
+/*
+ * There are no carve-out steps left. Three answers each used to add a step of
+ * their own (docs/plans/step-redundancy-analysis.md findings 4, 5 and 6):
  *
- * Two members are gone. `travel` named a step nothing ever pushed, so it could
- * not be generated. `partner` named a step whose whole instruction was to go and
- * read two other steps: the Service provider exclusion it was about is applied
- * to both policies by roadmap/deviations.ts, each of those steps says so, and
- * the one thing the step added that they did not — that delegated administration
- * and ordinary B2B collaboration are separate paths — is now the guests policy's
- * help-desk line (docs/plans/step-redundancy-analysis.md findings 4 and 5). Both
- * questions still ask and store exactly as they did.
+ *   travel        named a step nothing ever pushed, so it could not be generated;
+ *   partner       named a step whose whole instruction was to read two others,
+ *                 both of which already carry the Service provider exclusion;
+ *   mailDevices   named a step whose work is the second half of Block Legacy
+ *                 Authentication's own outcome, and which drew a different
+ *                 anatomy beside it in the same group.
+ *
+ * Each answer still asks, stores and changes the plan exactly as it did; what
+ * changed is that the work landed on the step that owns the outcome.
  */
-export const CARVE_OUT_STEP_ID = { mailDevices: 's-question-mail-devices' } as const
-
-/** The carve-out steps the stored answers call for: the mail-sending devices' relay. */
-export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>): string[] {
-  const out: string[] = []
-  if (mailDevicesOf(mapping).length > 0) out.push(CARVE_OUT_STEP_ID.mailDevices)
-  return out
-}
 
 /**
  * The conditional inputs (U28): questions whose answer changes the plan and that

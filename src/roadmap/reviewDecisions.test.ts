@@ -73,9 +73,9 @@ test('retained foundational rows re-evaluate and dormant Keep requires a reason'
   }
 })
 
-test('a mail-device follow-up ignores unrelated policy edits', () => {
+test('the folded mail follow-up ignores unrelated policy edits', () => {
   const f = fixture('demo-week2')
-  const step = { id: 's-question-mail-devices', population: { ids: [...f.mapping.serviceAccountUserIds] } } as Step
+  const step = { id: 's-goal-block-legacy-auth', population: { ids: [...f.mapping.serviceAccountUserIds] } } as Step
   const before = manualBasis(step, f.snapshot, f.mapping)
   f.snapshot.config.caPolicies.rows.push({ id: 'unrelated', state: 'enabled', conditions: { clientAppTypes: ['browser'] }, grantControls: { builtInControls: ['mfa'] } })
   assert.equal(manualBasis(step, f.snapshot, f.mapping), before)

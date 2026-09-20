@@ -28,7 +28,6 @@ test('every package is classified by what it stands on, and only a package the p
   assert.equal(of('s-prereq-exclusion-group'), 'tenant-prerequisite')
   assert.equal(of('s-shared-devices'), 'tenant-prerequisite', 'a policy IAMAI proposes beside the baseline is not a baseline goal')
   assert.equal(of('s-verify-mfa'), 'workflow-check')
-  assert.equal(of('s-question-mail-devices'), 'workflow-check')
   assert.equal(of('cleanup-drill'), 'rollout-proof')
 })
 
@@ -37,5 +36,6 @@ test('the registry and LIBRARY.json carry the same provenance the classification
     assert.equal(p.provenance, provenanceOf(p.stepId, p.relationship), `LIBRARY.json ${p.stepId}`)
     if (REGISTRY.provenance && p.stepId in REGISTRY.provenance) assert.equal(REGISTRY.provenance[p.stepId], p.provenance, `registry ${p.stepId}`)
   }
-  assert.ok(REGISTRY.provenance && Object.keys(REGISTRY.provenance).length >= 44, 'the registry carries no provenance')
+  // 42 after findings 4, 5 and 6 retired three packages with their steps.
+  assert.ok(REGISTRY.provenance && Object.keys(REGISTRY.provenance).length >= 42, 'the registry carries no provenance')
 })

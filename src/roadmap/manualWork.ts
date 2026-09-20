@@ -5,12 +5,28 @@ import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
 import type { Step } from './types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { CARVE_OUT_STEP_ID, QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
+import { QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
 
 export const MANUAL_REVIEW_ID = 'manual-review'
 const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'stale-accounts', 'admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
 const SCAN_REQUIRED = new Set(['admin-accounts-separate', 'global-admin-count', 'authenticator-over-sms'])
-const FOLLOW_UPS = new Set<string>(Object.values(CARVE_OUT_STEP_ID))
+/**
+ * Block Legacy Authentication, which now owns both halves of its own outcome:
+ * the policy, and moving every device the mail-sending answer named onto a
+ * supported route before its temporary exception is removed. That second half
+ * was a step of its own (`s-question-mail-devices`) until
+ * docs/plans/step-redundancy-analysis.md finding 6 folded it in.
+ */
+export const LEGACY_AUTH_STEP_ID = 's-goal-block-legacy-auth'
+
+/**
+ * True on Block Legacy Authentication when the answer named exception accounts,
+ * so the step carries the mail follow-up's task and evidence. A tenant that
+ * answered "None" has nothing to move and the step is the policy alone.
+ */
+export function mailDevicesFollowUp(stepId: string, mapping?: Pick<MappingState, 'questionAnswers'>): boolean {
+  return stepId === LEGACY_AUTH_STEP_ID && !!mapping && mailDevicesOf(mapping).length > 0
+}
 
 function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
   const matched = new Set([...(step.tracking?.members.map(m => m.policyId).filter((id): id is string => !!id) ?? []), ...(step.satisfiedBy?.policies ?? [])])
@@ -22,7 +38,7 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
     const targets = c.users ?? {}
     const available = selected.filter(id => !(targets.excludeUsers ?? []).includes(id))
     const potentiallyTargeted = selected.length === 0 || available.length > 0 && ((targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).some((id: string) => available.includes(id)) || (targets.includeGroups ?? []).length > 0 || !!targets.includeGuestsOrExternalUsers || (targets.includeRoles ?? []).some((role: string) => available.some(id => (snapshot.roles.active[id] ?? []).includes(role))))
-    if (step.id === CARVE_OUT_STEP_ID.mailDevices) return potentiallyTargeted && (c.clientAppTypes ?? []).some((x: string) => ['exchangeActiveSync', 'other'].includes(x))
+    if (step.id === LEGACY_AUTH_STEP_ID) return potentiallyTargeted && (c.clientAppTypes ?? []).some((x: string) => ['exchangeActiveSync', 'other'].includes(x))
     if (step.id === 's-shared-devices') {
       const users = c.users ?? {}
       const remaining = step.population.ids.filter(id => !(users.excludeUsers ?? []).includes(id))
@@ -44,16 +60,16 @@ const POLICY_WORKFLOWS: Record<string, string> = {
   's-goal-block-device-code': 'Device-Code Client and Workflow Tested',
 }
 const ADMIN_SEPARATION = new Set(['s-ladder-admin-accounts-separate', 's-check-separate-admin-accounts'])
-const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-question-mail-devices', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
+const SCOPED_MANUAL = new Set(['s-check-separate-admin-accounts', 's-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-admin-accounts-separate', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
 /** Only the existing manual steps receive scoped evidence inputs. */
-export function manualEvidenceFields(stepId: string): ManualEvidenceField[] {
-  if (!SCOPED_MANUAL.has(stepId)) return []
+export function manualEvidenceFields(stepId: string, mapping?: Pick<MappingState, 'questionAnswers'>): ManualEvidenceField[] {
+  if (!SCOPED_MANUAL.has(stepId) && !mailDevicesFollowUp(stepId, mapping)) return []
   const fields: ManualEvidenceField[] = [
     { key: 'accountIds', label: ADMIN_SEPARATION.has(stepId) ? 'Reviewed Accounts' : stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' },
   ]
-  if (stepId !== 's-ladder-guest-review') fields.push({ key: 'workflow', label: POLICY_WORKFLOWS[stepId] ?? ({ 's-ladder-global-admin-count': 'Purpose of Retained Global Administrator Assignments', 's-ladder-authenticator-over-sms': 'Replacement Sign-in and Recovery Test', 's-ladder-legacy-auth-inventory': 'Dependency Owners and Replacement or Follow-up Plans' } as Record<string, string>)[stepId] ?? (stepId === 's-question-mail-devices' ? 'Mail Job and Delivery Route' : stepId === 's-shared-devices' ? 'Work Task Tested' : stepId === 's-ladder-app-passwords' ? 'Credential Retirement and Creation Restriction' : 'Dedicated Use or Handover Test'), type: 'text', required: true })
+  if (stepId !== 's-ladder-guest-review') fields.push({ key: 'workflow', label: POLICY_WORKFLOWS[stepId] ?? ({ 's-ladder-global-admin-count': 'Purpose of Retained Global Administrator Assignments', 's-ladder-authenticator-over-sms': 'Replacement Sign-in and Recovery Test', 's-ladder-legacy-auth-inventory': 'Dependency Owners and Replacement or Follow-up Plans' } as Record<string, string>)[stepId] ?? (stepId === LEGACY_AUTH_STEP_ID ? 'Mail Job and Delivery Route' : stepId === 's-shared-devices' ? 'Work Task Tested' : stepId === 's-ladder-app-passwords' ? 'Credential Retirement and Creation Restriction' : 'Dedicated Use or Handover Test'), type: 'text', required: true })
   if (ADMIN_SEPARATION.has(stepId)) fields.push({ key: 'replacementAccountId', label: 'Dedicated Administrator Account', type: 'accounts', required: true, whenOutcome: ['passed'] }, { key: 'roleIds', label: 'Required Roles', type: 'accounts', required: true, whenOutcome: ['passed'] })
   if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'roleIds', label: 'Roles Tested', type: 'accounts', required: true }, { key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
   if (stepId === 's-goal-service-accounts-trusted-network') fields.push({ key: 'networkId', label: 'Named Network Tested', type: 'select', required: true })
@@ -64,7 +80,7 @@ export function manualEvidenceFields(stepId: string): ManualEvidenceField[] {
   // step asked for, and it belongs beside the guest workflow it sits next to.
   // Optional, because a tenant with no partner has no path to name.
   if (stepId === 's-goal-guests-mfa') fields.push({ key: 'providerAccessPath', label: 'Partner or Provider Access Path', type: 'text', required: false })
-  if (stepId === 's-question-mail-devices') fields.push({ key: 'exceptionRemoved', label: 'Temporary Exception Removed', type: 'checkbox', required: true })
+  if (stepId === LEGACY_AUTH_STEP_ID) fields.push({ key: 'exceptionRemoved', label: 'Temporary Exception Removed', type: 'checkbox', required: true })
   fields.push({ key: 'reference', label: 'Change Record', type: 'text', required: false })
   return fields
 }
@@ -99,7 +115,6 @@ function scopedBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingStat
   // The guests policy carries the partner answer's own evidence now that the
   // partner follow-up is folded into it (finding 5): a changed answer reopens it.
   const additional = POLICY_WORKFLOWS[step.id] ? [strengths, step.id === 's-goal-device-registration-mfa' ? (snapshot.config.deviceRegistrationPolicy?.rows ?? []) : null, step.id === 's-goal-guests-mfa' ? [(snapshot.config.crossTenantAccess?.rows ?? []), mapping ? answerOf(mapping, QUESTION_STEP.partner, 'question')?.index ?? null : null] : null]
-    : step.id === CARVE_OUT_STEP_ID.mailDevices ? [mapping ? mailDevicesOf(mapping) : []]
     : step.id === 's-ladder-authenticator-over-sms' ? [snapshot.config.authMethodsPolicy?.rows ?? [], snapshot.config.securityDefaults?.rows ?? []]
     : step.id === 's-ladder-legacy-auth-inventory' ? [Object.keys(snapshot.evidenceUsage?.legacyAuth.byDetail ?? {}).sort()]
     : step.id === 's-ladder-app-passwords' ? [ids.map(id => [id, snapshot.perUserMfa?.[id]?.state ?? 'unknown'])]
@@ -151,16 +166,16 @@ function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.roleAssignments?.status !== 'ok') return false
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.pimEligibility?.status !== 'ok') return false
   if (step.id === 's-ladder-authenticator-over-sms' && (snapshot.config.authMethodsPolicy?.status !== 'ok' || scopedPeople(step, snapshot).some(id => !Array.isArray(snapshot.authMethods[id])))) return false
-  if ((POLICY_WORKFLOWS[step.id] && snapshot.config.caPolicies?.status !== 'ok') || ['s-shared-devices', CARVE_OUT_STEP_ID.mailDevices].includes(step.id) && snapshot.config.caPolicies?.status !== 'ok') return false
+  if ((POLICY_WORKFLOWS[step.id] || step.id === 's-shared-devices' || step.id === LEGACY_AUTH_STEP_ID) && snapshot.config.caPolicies?.status !== 'ok') return false
   if (step.id === 's-goal-guests-mfa' && snapshot.config.crossTenantAccess?.status !== 'ok') return false
   if (step.id === 's-goal-service-accounts-trusted-network' && snapshot.config.namedLocations?.status !== 'ok') return false
   if (step.id === 's-goal-device-registration-mfa' && snapshot.config.deviceRegistrationPolicy?.status !== 'ok') return false
   if (ADMIN_SEPARATION.has(step.id) && (snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.pimEligibility?.status !== 'ok' || step.population.ids.some(id => snapshot.authMethods[id] === 'unknown' || !snapshot.authMethods[id]))) return false
   return true
 }
-export function completeManualEvidence(stepId: string, record: OwnerConfirmation | undefined, now = new Date().toISOString()): boolean {
+export function completeManualEvidence(stepId: string, record: OwnerConfirmation | undefined, now = new Date().toISOString(), mapping?: Pick<MappingState, 'questionAnswers'>): boolean {
   if (!record || !Number.isFinite(Date.parse(record.at)) || Date.parse(record.at) > Date.parse(now)) return false
-  for (const field of manualEvidenceFields(stepId).filter(f => f.required && (!f.whenOutcome || f.whenOutcome.includes(record.outcome!)))) {
+  for (const field of manualEvidenceFields(stepId, mapping).filter(f => f.required && (!f.whenOutcome || f.whenOutcome.includes(record.outcome!)))) {
     const value = record[field.key]
     if (field.type === 'checkbox' ? value !== true : Array.isArray(value) ? value.length === 0 : typeof value !== 'string' || value.trim().length === 0) return false
   }
@@ -181,9 +196,9 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
     }).map(raw => { const p = raw as Record<string, unknown>; return [p.id, p.state, p.conditions, p.grantControls] }).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
     return JSON.stringify(['per-user-mfa-review', snapshot.users.map(u => [u.id, u.accountEnabled]).sort(), snapshot.perUserMfa ?? null, snapshot.config.authMethodsPolicy?.rows, snapshot.config.securityDefaults?.rows, policies])
   }
-  if (FOLLOW_UPS.has(step.id)) {
+  if (step.id === LEGACY_AUTH_STEP_ID) {
     const answer = mapping ? answerOf(mapping, QUESTION_STEP.mailDevices, 'decision') : null
-    // A new answer or changed policy reopens the follow-up. Scan timestamps alone do not.
+    // A new answer or changed policy reopens the folded follow-up. Scan timestamps alone do not.
     return JSON.stringify([step.id, answer, mapping ? mailDevicesOf(mapping).slice().sort() : [], relevantPolicies(step, snapshot)])
   }
   if (step.id === 's-shared-devices') {
@@ -209,7 +224,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
   const accountCache = new Map<string, string>()
   for (const step of steps) {
     const item = step.id.replace('s-ladder-', '')
-    if (!SCOPED_MANUAL.has(step.id) && !FOLLOW_UPS.has(step.id) && step.id !== 's-shared-devices' && step.id !== 's-prereq-per-user-mfa' && (!step.id.startsWith('s-ladder-') || !REVIEWS.has(item))) continue
+    if (!SCOPED_MANUAL.has(step.id) && !mailDevicesFollowUp(step.id, mapping) && step.id !== 's-shared-devices' && step.id !== 's-prereq-per-user-mfa' && (!step.id.startsWith('s-ladder-') || !REVIEWS.has(item))) continue
     if (step.id === 's-shared-devices' && step.state.setAside && step.doesntApply) {
       const record = confirmations[step.id]?.[MANUAL_REVIEW_ID]
       step.manualReview = { basis: manualBasis(step, snapshot, mapping, accountCache), readyToConfirm: false, confirmedAt: null, fields: [], ...(record ? { record, verification: 'historical' as const } : {}) }
@@ -259,15 +274,18 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     const basis = manualBasis(step, snapshot, mapping, accountCache)
     const alias = step.id === 's-prereq-per-user-mfa' ? 's-ladder-per-user-mfa-cleanup' : step.id === 's-ladder-per-user-mfa-cleanup' ? 's-prereq-per-user-mfa' : null
     const confirmation = confirmations[step.id]?.[MANUAL_REVIEW_ID] ?? (alias ? confirmations[alias]?.[MANUAL_REVIEW_ID] : undefined)
-    const readyToConfirm = ADMIN_SEPARATION.has(step.id) ? evidenceRead(step, snapshot) : item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
+    // The folded mail follow-up is confirmed once the policy itself is in place,
+    // as every other policy-workflow step is (finding 6): an exception cannot be
+    // removed from a policy that is not there.
+    const readyToConfirm = ADMIN_SEPARATION.has(step.id) ? evidenceRead(step, snapshot) : item === 'global-admin-count' ? evidenceRead(step, snapshot) : POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) ? step.state.satisfied : !SCAN_REQUIRED.has(item) || step.state.satisfied
     const confirmedAt = readyToConfirm && confirmation?.basis === basis && Date.parse(confirmation.at) <= Date.now() ? confirmation.at : null
-    if (SCOPED_MANUAL.has(step.id)) {
+    if (SCOPED_MANUAL.has(step.id) || mailDevicesFollowUp(step.id, mapping)) {
       const populationIds = new Set(step.population.ids)
-      const fields = manualEvidenceFields(step.id).map(field => field.key === 'accountIds' ? { ...field, options: snapshot.users.filter(u => step.id === 's-ladder-guest-review' ? u.userType === 'guest' : step.id === 's-goal-pim-activation-reauth' ? u.accountEnabled && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible[u.id]?.length ?? 0) > 0) : step.population.ids.length ? populationIds.has(u.id) : true).map(u => ({ value: u.id, label: u.displayName || u.userPrincipalName || u.id })) } : field.key === 'roleIds' ? { ...field, options: [...new Map([...(snapshot.config.roleAssignments?.rows ?? []), ...(snapshot.config.pimEligibility?.rows ?? [])].flatMap(raw => { const p = raw as Record<string, any>; return p.roleDefinitionId ? [[String(p.roleDefinitionId), { value: String(p.roleDefinitionId), label: String(p.roleDefinition?.displayName ?? p.roleDefinitionId) }] as const] : [] })).values()] } : field.key === 'networkId' ? { ...field, options: (snapshot.config.namedLocations?.rows ?? []).filter(raw => Array.isArray((raw as Record<string, unknown>).ipRanges)).map(raw => { const p = raw as Record<string, unknown>; return { value: String(p.id), label: String(p.displayName ?? p.id) } }) } : field)
+      const fields = manualEvidenceFields(step.id, mapping).map(field => field.key === 'accountIds' ? { ...field, options: snapshot.users.filter(u => step.id === 's-ladder-guest-review' ? u.userType === 'guest' : step.id === 's-goal-pim-activation-reauth' ? u.accountEnabled && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible[u.id]?.length ?? 0) > 0) : step.population.ids.length ? populationIds.has(u.id) : true).map(u => ({ value: u.id, label: u.displayName || u.userPrincipalName || u.id })) } : field.key === 'roleIds' ? { ...field, options: [...new Map([...(snapshot.config.roleAssignments?.rows ?? []), ...(snapshot.config.pimEligibility?.rows ?? [])].flatMap(raw => { const p = raw as Record<string, any>; return p.roleDefinitionId ? [[String(p.roleDefinitionId), { value: String(p.roleDefinitionId), label: String(p.roleDefinition?.displayName ?? p.roleDefinitionId) }] as const] : [] })).values()] } : field.key === 'networkId' ? { ...field, options: (snapshot.config.namedLocations?.rows ?? []).filter(raw => Array.isArray((raw as Record<string, unknown>).ipRanges)).map(raw => { const p = raw as Record<string, unknown>; return { value: String(p.id), label: String(p.displayName ?? p.id) } }) } : field)
       const read = evidenceRead(step, snapshot)
-      const complete = completeManualEvidence(step.id, confirmation)
+      const complete = completeManualEvidence(step.id, confirmation, undefined, mapping)
       const people = scopedPeople(step, snapshot)
-      const pendingAccountIds = POLICY_WORKFLOWS[step.id] || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id) && !(ADMIN_SEPARATION.has(step.id) && (confirmation?.outcome === 'passed' && id === confirmation.replacementAccountId || mapping?.breakGlassUserIds.includes(id))))
+      const pendingAccountIds = POLICY_WORKFLOWS[step.id] || mailDevicesFollowUp(step.id, mapping) || step.id === 's-ladder-authenticator-over-sms' ? [] : people.filter(id => !confirmation?.accountIds?.includes(id) && !(ADMIN_SEPARATION.has(step.id) && (confirmation?.outcome === 'passed' && id === confirmation.replacementAccountId || mapping?.breakGlassUserIds.includes(id))))
       const matching = confirmation?.basis === (confirmation ? scopeManualBasis(basis, confirmation) : basis)
       let observedDefect = !readyToConfirm
       if (step.id === 's-goal-service-accounts-trusted-network' && confirmation?.networkId) {

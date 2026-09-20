@@ -4,7 +4,7 @@
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
     "expectedPackageCount": 47,
-    "packageCount": 44,
+    "packageCount": 43,
     "complete": true
   },
   "packages": [
@@ -1670,48 +1670,6 @@
       "review": "current"
     },
     {
-      "stepId": "s-question-mail-devices",
-      "title": "Set Up an SMTP Relay for Mail-Sending Devices",
-      "packagePath": "docs/implementation-content/s-question-mail-devices/",
-      "relationship": "prerequisite",
-      "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
-      "sourceFiles": 3,
-      "contentBlocks": 10,
-      "outputs": {
-        "entra": false,
-        "json": false,
-        "powershell": true,
-        "aiInfo": true,
-        "email": true,
-        "readiness": true,
-        "troubleshooting": true
-      },
-      "statesSupported": [
-        "routeDecisionRequired",
-        "migrationRequired",
-        "relayConnectorReady",
-        "verificationRequired",
-        "inPlace",
-        "blocked",
-        "missing",
-        "needsDecision"
-      ],
-      "correctionModules": 0,
-      "requiredBindings": 3,
-      "optionalBindings": 9,
-      "verifiedSourceCount": 5,
-      "packageSpecificMicrosoftSources": 4,
-      "sharedPrimitivesReused": 0,
-      "betaDependencies": 0,
-      "unresolvedIssues": 0,
-      "family": "external-admin",
-      "strictValidationErrors": 15,
-      "registered": true,
-      "provenance": "workflow-check",
-      "review": "current"
-    },
-    {
       "stepId": "s-shared-devices",
       "title": "Give Shared Devices Their Own Policy",
       "packagePath": "docs/implementation-content/s-shared-devices/",
@@ -2370,7 +2328,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-question-mail-devices",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -2414,7 +2371,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-question-mail-devices",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -3721,126 +3677,6 @@
       "optionalBy": [],
       "packages": [
         "s-prereq-trusted-location"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.acceptedDomain",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.connector.certificateName",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.connector.mxEndpoint",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.connector.name",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.connector.senderDomains",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.connector.staticPublicIp",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.devices",
-      "requiredBy": [
-        "s-question-mail-devices"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.route",
-      "requiredBy": [
-        "s-question-mail-devices"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.serviceAccountIds",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "mail.testRecipient",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-mail-devices"
-      ],
-      "packages": [
-        "s-question-mail-devices"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -5766,7 +5602,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-question-mail-devices",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -5845,7 +5680,6 @@
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
-        "s-question-mail-devices",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -6216,18 +6050,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 44,
+    "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 957,
-    "uniqueBindings": 273,
-    "bindingsRequiredByAtLeastOneProjection": 89,
-    "bindingsOptionalInAtLeastOnePackage": 188,
+    "contentBlocks": 947,
+    "uniqueBindings": 263,
+    "bindingsRequiredByAtLeastOneProjection": 87,
+    "bindingsOptionalInAtLeastOnePackage": 180,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 228,
+    "bindingDefinitionsPendingHolisticReview": 218,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 228,
+    "knownIAMAIInputUnreviewed": 218,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6281,16 +6115,16 @@
     ],
     "legacyDependencies": 0,
     "packagesPassingStrictValidation": 2,
-    "packagesWithWithheldParts": 42,
+    "packagesWithWithheldParts": 41,
     "provenance": {
       "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
       "tenant-prerequisite": 10,
-      "workflow-check": 6
+      "workflow-check": 5
     },
     "review": {
-      "current": 43,
+      "current": 42,
       "reviewNeeded": 1
     }
   },

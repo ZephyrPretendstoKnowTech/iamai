@@ -15,7 +15,7 @@ import type { FixtureRun } from './fixtures/run.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
-import { CARVE_OUT_STEP_ID, QUESTION_STEP, answerKey, answerOf, effectLine, mailDevicesOf, questionLabels, serviceProvidersExcluded, travelCountriesOf } from './answers.ts'
+import { QUESTION_STEP, answerKey, answerOf, effectLine, mailDevicesOf, questionLabels, serviceProvidersExcluded, travelCountriesOf } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { decisionsOf } from './progress.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
@@ -70,31 +70,29 @@ test('saved travel stays separate from workplace countries; provider and printer
   assert.equal(m.questionAnswers?.travel, undefined)
   assert.equal(m.questionAnswers?.partner, undefined)
 
-  // The plan: the carve-out steps appear only once answered.
+  // The plan: an answer changes the step it is asked on, and adds no row of its
+  // own. The three steps that used to be added are gone
+  // (docs/plans/step-redundancy-analysis.md findings 4, 5 and 6): trip
+  // operations, which nothing ever pushed; the partner follow-up, whose whole
+  // instruction was to read two other steps; and the mail follow-up, which is
+  // now Block Legacy Authentication's second Implementation Task.
   const r0 = runFixture({ ...f, mapping: before }, { mapping: before })
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
-  for (const id of Object.values(CARVE_OUT_STEP_ID)) {
-    assert.ok(!r0.steps.some((s) => s.id === id), `${id}: not on the plan before the answer`)
-    const step = r.steps.find((s) => s.id === id)
-    assert.ok(step, `${id}: on the plan once answered`)
-    assert.ok(contentStepFor(step), `${id}: has content`)
+  assert.deepEqual(r.steps.map((s) => s.id).filter((id) => !r0.steps.some((s) => s.id === id)), [], 'an answer added a step of its own')
+  for (const id of ['s-question-travel', 's-question-partner', 's-question-mail-devices']) {
+    assert.equal(stepById[id], undefined, `${id}: the carved-out words are still here`)
+    assert.ok(!r.steps.some((s) => s.id === id), `${id}: still generated`)
   }
-  // Trip operations were a third carve-out that nothing ever pushed, so the step
-  // it named could not be generated and the registry listed it anyway
-  // (docs/plans/step-redundancy-analysis.md finding 4). Id, plumbing and words
-  // are gone; the travellers question that fed it is untouched.
-  assert.equal(Object.keys(CARVE_OUT_STEP_ID).includes('travel'), false)
-  assert.equal(stepById['s-question-travel'], undefined, 'the trip-operations words are gone')
-  assert.ok(!r.steps.some((s) => s.id === 's-question-travel'))
 
-  // The partner follow-up was a fourth: its whole instruction was to read two
-  // other steps' Implementation (finding 5). The answer still excludes the
-  // Service provider type from both policies, the guests policy carries the one
-  // warning that step added and its evidence field, and no row is added.
+  // Each answer still does what it did. The partner answer excludes the Service
+  // provider type from both policies, and the guests policy carries the one
+  // warning that step added and its evidence field.
   assert.equal(serviceProvidersExcluded(m), true, 'the partner answer still excludes service providers')
-  assert.equal(Object.keys(CARVE_OUT_STEP_ID).includes('partner'), false)
-  assert.equal(stepById['s-question-partner'], undefined, 'the partner follow-up words are gone')
-  assert.ok(!r.steps.some((s) => s.id === 's-question-partner'))
+  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  assert.ok(legacy.manualReview, 'the named devices bring the folded mail evidence onto the legacy block')
+  assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.label === 'Mail Job and Delivery Route'), 'the mail route field did not move')
+  assert.ok((legacy.manualReview!.fields ?? []).some((field) => field.key === 'exceptionRemoved'), 'the removed-exception checkbox did not move')
+  assert.equal(r0.steps.find((s) => s.id === 's-goal-block-legacy-auth')!.manualReview, undefined, 'a tenant that named no device is asked for no mail evidence')
   const guestsHelp = (stepById['guests-mfa'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
   assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
   const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []

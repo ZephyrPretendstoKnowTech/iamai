@@ -40,7 +40,6 @@ const REVIEWED: Readonly<Record<string, Readonly<Record<string, readonly [string
   's-prereq-security-defaults': { 'email.cutover': ['help-desk', 'We plan to replace Security Defaults with the reviewed access policies in one change window. Please be av'] },
   's-prereq-service-accounts-group': { 'email.owners.confirm': ['application-owners', 'Please confirm which listed accounts run unattended jobs, the workload each supports, and its owner. Flag'] },
   's-prereq-trusted-location': { 'email.network.confirm': ['network-owner', 'Please confirm the public IP ranges we may treat as trusted, who controls them, and whether they can chan'] },
-  's-question-mail-devices': { 'email.owner': ['device-owner', 'Please send IT the device\'s current mail settings, supported authentication methods, recipient requiremen'], 'email.device-owner': ['device-owner', 'Please provide a test window'] },
   's-shared-devices': { 'email.change': ['help-desk', 'If a room or shared device stops signing in, record'] },
   's-verify-mfa': { 'email.everyone': ['all-users', 'Please complete the sign-in method setup requested by IT, then sign in once using that method. Contact IT'], 'email.admins': ['administrators', 'Admin sign-ins need a stronger method than the general setup request. If IT has asked you to, register a '], 'email.holdout': ['rollout-administrators', 'The enrollment date has passed and some active people still have not shown a successful sign-in with a re'] },
 }
@@ -99,8 +98,9 @@ test('every Email audience is the author’s or established by the Email’s own
   // creation Email was since authored with its reader (content corrections pass): 48. The
   // trip-operations package left with its step and took its three Emails
   // (finding 4): 45. The partner follow-up folded into the guests policy and took
-  // its one (finding 5): 44.
-  assert.equal(reviewed, 44, 'the reviewed Email count changed: review the new audience against its text')
+  // its one (finding 5): 44. The mail follow-up folded into Block Legacy
+  // Authentication and took its two (finding 6): 42.
+  assert.equal(reviewed, 42, 'the reviewed Email count changed: review the new audience against its text')
 })
 
 test('an Email withheld for authoring is refused by the validator, so it is never shown with a guessed recipient', () => {

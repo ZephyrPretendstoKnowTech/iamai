@@ -148,9 +148,13 @@ export const ACCEPTANCE = [
   // Learn checked 2026-09-19): basic authentication is already gone for the mail
   // protocols and SMTP AUTH is the one still standing. The retirement's dates
   // stay in the spec, because no content string carries a hard date (C3).
-  { item: '20b', step: 's-question-mail-devices', path: 'why', must: 'Exchange Online already refuses a password for POP, IMAP and ActiveSync', mustNot: 'may depend on a mail-sending method' },
-  { item: '20b', step: 's-question-mail-devices', path: 'why', must: 'Microsoft is retiring that route too' },
-  { item: '20b', step: 's-question-mail-devices', path: 'whatToDo', must: 'SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only' },
+  // The mail follow-up folded into Block Legacy Authentication, whose outcome it
+  // was (docs/plans/step-redundancy-analysis.md finding 6): its About facts are
+  // that step's, and its route instructions are shared.mailDevices, the second
+  // Implementation Task's words.
+  { item: '20b', step: 'block-legacy-auth', path: 'why', must: 'Exchange Online already refuses a password for POP, IMAP and ActiveSync', mustNot: 'may depend on a mail-sending method' },
+  { item: '20b', step: 'block-legacy-auth', path: 'why', must: 'Microsoft is retiring that route too' },
+  { item: '20b', path: 'shared.mailDevices.steps', must: 'SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only' },
   // Per step, 21–30.
   // Close the Doors D1-D2 (docs/plans/close-doors-spec.md section 5, Microsoft
   // Learn checked 2026-09-19): the flow is named concretely, and protocol

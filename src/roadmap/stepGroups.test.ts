@@ -147,7 +147,7 @@ test('a number is a place among the group’s own rows, in registry order, and t
   // set does not carry, because the board would draw no row there.
   assert.equal(all.get('s-goal-block-legacy-auth'), 1)
   assert.equal(all.get('s-goal-block-auth-transfer'), 2)
-  assert.equal(positionInGroup('s-goal-block-auth-transfer'), 4, 'the registry position is still the registry’s')
+  assert.equal(positionInGroup('s-goal-block-auth-transfer'), 3, 'the registry position is still the registry’s')
   assert.equal(all.get('s-goal-mfa-all-users'), 1)
   // A prefix member has no registry position: it numbers after every listed one, by id.
   assert.equal(positionInGroup('s-review-baseline-one'), null)

@@ -62,6 +62,15 @@ the answer asks for. Its one original warning is now the guests policy's
 help-desk line and its evidence field is on that step, so Turn On MFA for
 Everyone is 7 (finding 5).
 
+A twelfth was half of another step's outcome. `s-question-mail-devices` moved
+every device the mail-sending answer named onto a supported route and removed its
+temporary exception — which is the second half of what Block Legacy
+Authentication is for, and it drew a `check` step's headings beside four policy
+steps in the same group. It is now that step's second Implementation Task, shown
+only where an exception account is named. Close the Doors Nobody Should Use is 4,
+which is what it already drew, and its rows number 1–4 with no gap
+(`docs/plans/close-doors-spec.md` §3, §8.4; finding 6).
+
 ### 1. Establish Emergency Access — pinned, unchanged
 
 Frozen. Drawn above the lanes until all four are Completed.
@@ -87,10 +96,9 @@ Frozen. Drawn above the lanes until all four are Completed.
 | # | Step | Id |
 |---|---|---|
 | 1 | Block Legacy Authentication | `s-goal-block-legacy-auth` |
-| 2 | Update How Devices Send Email | `s-question-mail-devices` |
-| 3 | Block Device Code Sign-in | `s-goal-block-device-code` |
-| 4 | Block Authentication Transfer | `s-goal-block-auth-transfer` |
-| 5 | Block Unsupported Device Platforms | `s-goal-block-unsupported-platforms` |
+| 2 | Block Device Code Sign-in | `s-goal-block-device-code` |
+| 3 | Block Authentication Transfer | `s-goal-block-auth-transfer` |
+| 4 | Block Unsupported Device Platforms | `s-goal-block-unsupported-platforms` |
 
 ### 4. Protect Your Administrators — new (§3 wave 2)
 

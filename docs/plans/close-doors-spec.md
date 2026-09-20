@@ -127,17 +127,27 @@ is ticked. A re-scan reopens the step only if the policy's own semantics move.
 
 ---
 
-## 3. `s-question-mail-devices` — Update How Devices Send Email
+## 3. Moving the exception devices — Block Legacy Authentication's second task
+
+**Folded in, 2026-09-19** (`docs/plans/step-redundancy-analysis.md` finding 6).
+This was `s-question-mail-devices`, and §8.4 below is why: it drew the default
+headings beside four policy steps in its own group, and its work is the second
+half of Block Legacy Authentication's outcome. It is now that step's second
+Implementation Task (`shared.mailDevices`, `ui/surfaces/policyTasks.ts`), shown
+only where the mail-sending answer named exception accounts, with the same
+manual evidence. The acceptance below is unchanged and is read on that step; the
+group heads four steps and numbers its rows 1–4.
+
+### What it was
 
 **Outcome.** *Every device and application that sent mail with a password now
 sends through a supported route, and its temporary exception is gone.*
 
-**It is not a policy step.** Its content kind is `check`, so it draws the
+**It was not a policy step.** Its content kind was `check`, so it drew the
 default step headings beside four policy steps that draw the Emergency Access
-anatomy, and it is generated only when the mail-devices decision on Block Legacy
-Authentication answers "Temporary exception accounts" (`roadmap/answers.ts`
-`CARVE_OUT_STEP_ID`). It appears in no fixture snapshot. Reported, not
-redesigned: §7.4.
+anatomy, and it was generated only when the mail-devices decision on Block Legacy
+Authentication answered "Temporary exception accounts". It appeared in no fixture
+snapshot. Reported in §7.4 and now resolved by the fold above.
 
 **Microsoft facts.**
 
@@ -164,13 +174,15 @@ is manual evidence (`roadmap/manualWork.ts` records the mail job, the route and
 the removal of the exception) — one of the V1 §3.3 exceptions.
 
 **Acceptance.**
-- B1 `why` says basic authentication is already off for the mail protocols and
-  that SMTP AUTH is the remaining one.
-- B2 `why` says Microsoft is retiring that route too. It carries no date: no
+- B1 Block Legacy Authentication's `why` says basic authentication is already off
+  for the mail protocols and that SMTP AUTH is the remaining one.
+- B2 That `why` says Microsoft is retiring that route too. It carries no date: no
   content string may hold a hard date (`scripts/walkContent.mjs` C3), so the
   December 2026 and 2027 milestones stay in this spec.
-- B3 `whatToDo` keeps the three supported routes and does not recommend a
-  password route.
+- B3 `shared.mailDevices.steps` keeps the three supported routes and does not
+  recommend a password route.
+- B4 The second task appears only where an exception account is named, and the
+  step that carried it is gone.
 
 ---
 
@@ -337,6 +349,8 @@ Two readings that are the anatomy's, not this group's words, and were left alone
 3. **Microsoft's authentication-transfer recipe skips report-only.** IAMAI does
    not. This is the tool being stricter; nothing to change, but it is a place
    where the screen and the linked page differ.
-4. **`s-question-mail-devices` reads as a different kind of step** beside the
-   four policy steps in its group. §3 above; the report says why.
+4. **`s-question-mail-devices` read as a different kind of step** beside the
+   four policy steps in its group. Resolved on 2026-09-19: it is Block Legacy
+   Authentication's second Implementation Task (§3 above), so the group draws one
+   anatomy and numbers 1–4 with no gap.
 

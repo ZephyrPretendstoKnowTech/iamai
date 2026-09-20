@@ -109,7 +109,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'close-doors',
     titleKey: 'pages.app.plan.groups.closeDoors.title',
     completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
-    members: ['s-goal-block-legacy-auth', 's-question-mail-devices', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
+    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-block-auth-transfer', 's-goal-block-unsupported-platforms'],
     pinned: false,
     anatomy: null,
   },
