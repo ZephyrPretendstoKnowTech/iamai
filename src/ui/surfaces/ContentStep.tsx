@@ -289,7 +289,7 @@ export function ContentStep({
     ],
     doNot: ['Do not assume Temporary Access Pass bypasses Conditional Access or authentication-strength requirements. Do not weaken a blocking policy automatically.'],
     then: ['Return to Set up an approved passkey and finish the selected method procedure.'],
-    sources: [{ id: 'microsoft-temporary-access-pass', title: 'Temporary Access Pass roles and use', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass', checkedOn: '2026-09-12' }],
+    sources: [{ id: 'microsoft-temporary-access-pass', title: 'Temporary Access Pass roles and use', url: 'https://learn.microsoft.com/entra/identity/authentication/howto-authentication-temporary-access-pass', checkedOn: '2026-09-12' }],
   }] : scenarios
   const hasPasskeyFindings = isPasskeySettings && !!step.configurationFindings?.length
   const baseReadiness = passkeyReadiness(step, readiness)
