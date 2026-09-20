@@ -1,11 +1,13 @@
 # V1 audit: the merged findings, ranked
 
-Six independent passes (`docs/plans/v1-audit/pass1a–pass2c.md`) merged, deduplicated
-and ordered. The pass files are kept whole; this document is the ranking, and every
-row names the passes that found it so a disagreement can be traced back.
+Eight independent passes (`docs/plans/v1-audit/pass1a–pass4.md`) merged, deduplicated
+and ordered: three over every Tasks Remaining card, three over every Implementation
+Task and channel, one journey walkthrough, one claim-integrity pass. The pass files
+are kept whole; this document is the ranking, and every row names the passes that
+found it so a disagreement can be traced back.
 
-**Status:** passes 1 and 2 merged. Passes 3 (journey) and 4 (claim integrity) were
-still running when this was written and are appended in §9 when they land.
+**Status:** complete. Passes 1 and 2 are ranked in §1–§8; passes 3 and 4 are merged in
+§9, including two of their findings that did not survive verification.
 
 **How severity is judged** (`audit-method.md`): Nielsen 0–4 on frequency × impact ×
 persistence, with one override — *anything that could lead an admin to build a policy
@@ -430,4 +432,134 @@ this audit. They are not started: the owner ranks this list first.
 
 ## 9. Passes 3 and 4
 
-*Appended when the journey audit and the claim-integrity pass land.*
+Both landed. `pass3.md` (journey, 22 findings) and `pass4.md` (claim integrity, 15)
+are in `docs/plans/v1-audit/`. Their severity-4 material, merged into the ranking
+above, is below. Two of their findings did not survive verification and are recorded
+as such rather than deleted.
+
+### S4-19 · The plan has one date — **verified independently**
+
+Every fixture's schedule produces **one wave and one day**. Every `createReportOnly`
+transition lands on `2026-08-31`, including four scheduled for the same day as the
+prepare step they wait on. The step snapshots agree: the only future date in any
+fixture is `Aug 31, 2026`; everything else reads `After prerequisites`,
+`Not scheduled`, `Review now` or `Already in place`.
+
+Meanwhile Connect advertises **"3 weeks · estimated rollout"**, the Export card is
+headed **"Timing"**, and the ICS writes 11–13 events all on one day.
+
+The product's headline claim is a *dated* rollout plan. Pass 3 rated this 3; it is
+ranked **4** here under the overstatement override, because the claim is the product's
+own and the artifact does not support it. `planFinish` reports `held: true` on 8 of 8
+fixtures, so the three-week figure is not merely wrong, it is unreachable.
+
+*Found by 3 (J-schedule). Reranked here; the owner should confirm or reverse that.*
+
+### S4-20 · Security defaults block the plan's own first move, and nothing says so
+
+`messy` has `securityDefaults: [{isEnabled: true}]` and ~30 Conditional Access steps
+offered. `s-prereq-security-defaults` is **On Hold**, behind a step that is itself On
+Hold. Microsoft Learn, checked 2026-09-20: *"Organizations that choose to implement
+Conditional Access policies that replace security defaults must disable security
+defaults."*
+
+So every CA step on the Ready tab is impossible until a held step completes, and no
+surface says it. This is the same defect as **S4-16** seen from the journey rather
+than from the card; they are one fix.
+
+*Found by 3 and 1B independently.*
+
+### S4-21 · A tenant with no Entra ID P1 builds a full plan — the strongest structural finding
+
+`coreGaps()` refuses to build a plan when Conditional Access policies, users or the
+sign-in log could not be read. Pass 4 calls this a genuinely strong guard and killed
+several of its own candidate findings on it.
+
+**But it exempts a licence gate.** A tenant with no P1 therefore builds a complete
+plan, and **no fixture covers that state** — `micro` writes `status:'insufficient'`
+where the worker writes `'disabled'`, so the case has never been rendered. Correcting
+that one field made **five overstatements fire at once**.
+
+This is the day-one public-beta case, and it is untested. It compounds with S4-7 and
+S4-8: the guard that would have caught it is the same one that swallows `partial` and
+whose unread list is discarded.
+
+*Found by 4.*
+
+### S4-22 · Nobody is named on anything
+
+`StepDecision = { picked?, option?, answers?, at }` and `OwnerConfirmation = { at,
+basis, … }`. Only a timestamp. Every decision, confirmation and completed check in the
+plan is anonymous.
+
+The inheritor scenario exists to find this: a person who must answer to an auditor six
+months later has a plan full of ticks with no name against any of them. Pair it with
+**S4-5** — completed checks fabricated from the current lifecycle index — and the
+record is neither attributed nor true.
+
+*Found by 3 and 1C independently.*
+
+### S4-23 · MFA Readiness asserts a cause with no status check
+
+`readinessCells.ts:137`: *"Nobody can be seamless yet: everyone signs in from a device
+with no built-in option this tenant allows, such as a personal computer."* — rendered
+with `counted = 0` and **zero device records**, one line under *"Readiness can't be
+measured for {cohort}…"*. The sentence explains an absence the product has just said
+it cannot measure.
+
+*Found by 4.*
+
+### S4-24 · The export loses every qualifier the screen keeps
+
+`stepExport.ts:231` — `who: contract.who?.text ?? null`. Screen and print agree
+throughout; the export drops the evidence lines. No print artifact states a source
+failure, and the covered sign-in window reaches no export at all.
+
+The comment at `whoBlocks.ts:18-21` asserting screen/export parity is **false**:
+`whoEvidenceLines`' only non-test caller is the screen.
+
+*Found by 4.*
+
+### Unknown rounded to known — eleven sites
+
+Pass 4's §2 lists them in full. The ones that reach a number a person acts on:
+`notActiveUsers` and `sets.ts:172-180` rounding **"activity not read"** to
+**dormant** — 10 of 10 users — under the instruction *"Disable it: … Account enabled:
+No."*; `rolloutBucket` discarding the `activity: 'unknown'` that `mfaViability`
+models correctly, producing **"0 active people"** on Connect, the Plan header and MFA
+Readiness; and the dormant step's population overwritten at `generate.ts:2511`,
+undoing what `generate.ts:1121` deliberately set. That last one is **S4-9** from the
+other side — the same card, found by two passes on different evidence.
+
+### Two findings that did not survive verification
+
+The method says reproduce or drop, and it applies to the passes too.
+
+- **Pass 4's finding 3 — dropped.** It claims the new `notInEntra` office-network
+  answer is indistinguishable from `remote` at `generate.ts:1042`, giving *"Trusted
+  Network — Everyone is remote"*, outcome `pass`, step In place. Run end to end
+  through `legacyDecisionsOf` → `applyStepDecisions` → `runFixture`: `remote` gives
+  satisfied `true` / *"Everyone is remote"* / `pass`; `notInEntra` gives satisfied
+  **`false`** and no finding at all. They are distinguishable, because `notInEntra`
+  leaves `wizardAnswered.trustedLocations` false.
+- **The real defect next to it — kept, severity 2.** `notInEntra` produces **no
+  configuration finding**, so on the step itself it is indistinguishable from *not
+  having answered*. The person answered the question and the step does not
+  acknowledge it. This is a gap in the change landed on 2026-09-20, not in the code
+  that preceded it.
+
+### Pass 3's twelve "asks twice" items
+
+Recorded in `pass3.md` and not re-ranked here; the headline is that `ANSWERED_IN`
+routes three questions to Direction, so *Block Legacy Authentication*, *Block Device
+Code Sign-in* and *Require MFA for Guests* each read **"Needs a decision"** while
+drawing the answered-in panel instead of a decision form — and `demo`'s **Needs your
+input** tile counts those three twice.
+
+### What pass 4 found sound
+
+`coreSections.ts`'s no-plan gate; `mfaViability`'s activity modelling; MFA Readiness's
+Evidence-read panel; `whoOf`'s refusal to write an unknown reach as a number;
+`covers N enabled` travelling intact to all three artifacts; and the device-code line
+*"…that does not prove nothing uses it"*, which pass 4 names as the model sentence for
+the whole class.
