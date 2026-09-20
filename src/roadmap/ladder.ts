@@ -45,7 +45,7 @@ export const LADDER_ITEMS: LadderItem[] = ladderData.items as LadderItem[]
  * instead, by the mechanism per-user-mfa-cleanup already used, so the free tier
  * draws the same step the rest of the plan draws, in the ladder's own place.
  */
-const COVERED_BY_STEP: Record<string, string> = {
+export const COVERED_BY_STEP: Record<string, string> = {
   'per-user-mfa-cleanup': 's-prereq-per-user-mfa',
   'admin-accounts-separate': 's-check-separate-admin-accounts',
   'stale-accounts': 's-check-dormant-accounts',
