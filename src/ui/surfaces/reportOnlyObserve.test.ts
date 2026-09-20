@@ -383,7 +383,9 @@ test('005.5: at least one observation gate is still open, so the step stays Repo
   assert.notEqual(step.status, 'ready-to-enforce')
   // Done when states the gates, so the operator can read what would clear it.
   const done = stepContract(step, ctx).doneWhen.join(' | ')
-  assert.match(done, /policy is On.*blocking authentication transfer/i)
+  // The step says what is true of the tenant now, in its own words (close-doors
+  // spec, 2026-09-19): the policy is On and a session no longer travels.
+  assert.match(done, /policy is On.*no longer signs anyone in on another/i)
   assert.equal(step.tracking!.readyNow, false, 'concise completion text does not bypass observation')
 })
 
