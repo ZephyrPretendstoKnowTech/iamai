@@ -5577,7 +5577,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "Nobody's browser session at {tenant} survives closing the browser, and every one of them authenticates again every {wanted}, with the exclusions group applied.",
+      "doneEnd": "Nobody's browser session at {tenant} survives closing the browser, and every one of them authenticates again on the interval the baseline sets, with the exclusions group applied.",
       "doneWhen": [
         "A scan confirms the session policy is On for all users in the browser, with the intended sign-in frequency, browser persistence, assignments and exclusions.",
         "Representative browser sign-ins across the workforce behave as intended without interrupting normal work.",
@@ -5959,7 +5959,7 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation {strengthName} accepts, and the exclusions group is applied.",
+      "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation the baseline's authentication strength accepts, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms the high-risk user policy is On with the intended recovery controls and exclusions.",
         "People rated at risk were reviewed. Affected users can complete the required remediation, including the on-premises password route where their account is synchronized."
@@ -6121,7 +6121,7 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered {strengthName} and changed the password, and the exclusions group is applied.",
+      "doneEnd": "An account {tenant} rates medium risk cannot be used again until its owner has answered the baseline's authentication strength and changed the password, and the exclusions group is applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "People in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."

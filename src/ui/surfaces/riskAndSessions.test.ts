@@ -464,7 +464,7 @@ test('D4: the step says why guests are excluded here, and names its own people',
 })
 
 test('D5: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
-  assert.match(String((stepById['user-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /rates medium risk cannot be used again until its owner has answered \{strengthName\} and changed the password/)
+  assert.match(String((stepById['user-risk-medium'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /rates medium risk cannot be used again until its owner has answered the baseline's authentication strength and changed the password/)
   assert.match(doneWhenOf('user-risk-medium').join('\n'), /the High user-risk policy remains in place/)
   assert.equal(sourceCheckedOn(USER_RISK_MEDIUM), '2026-09-20')
 })
@@ -608,7 +608,7 @@ test('F7: token protection reaches the report-only state on the follow-up scan',
 })
 
 test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
-  assert.match(String((stepById['user-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot be used again until its owner has completed the remediation \{strengthName\} accepts/)
+  assert.match(String((stepById['user-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot be used again until its owner has completed the remediation the baseline's authentication strength accepts/)
   assert.match(doneWhenOf('user-risk').join('\n'), /People rated at risk were reviewed/)
   assert.equal(sourceCheckedOn(USER_RISK), '2026-09-20')
 })
