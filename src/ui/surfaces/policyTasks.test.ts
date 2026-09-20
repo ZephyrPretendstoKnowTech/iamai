@@ -183,10 +183,14 @@ test('a policy that has reached its last stage with nothing left to submit is a 
 
 const read = (p: string): string => readFileSync(p, 'utf8')
 
-test('one label for one control: finished work folds under Completed checks wherever the task anatomy draws it', () => {
+test('the folds read as Emergency Access reads them: a card’s finished checks, and the satisfied subjects', () => {
+  // The Emergency Access steps are frozen (owner, 2026-09-19), so the words are
+  // theirs and a policy step takes them: the card’s own finished checks fold
+  // under "Completed checks · N", and the subjects with nothing left fold under
+  // "Satisfied · N". One control, one word, on every step that draws the anatomy.
   const contentStep = read('src/ui/surfaces/ContentStep.tsx')
-  assert.equal(/Satisfied · \{/.test(contentStep), false, 'the task anatomy still has a second word for finished work')
-  assert.equal((contentStep.match(/Completed checks · \{/g) ?? []).length, 2, 'the card’s fold and the section’s fold do not read alike')
+  assert.equal((contentStep.match(/Completed checks · \{/g) ?? []).length, 1, 'the card fold is drawn more than once, or not at all')
+  assert.equal((contentStep.match(/Satisfied · \{/g) ?? []).length, 1, 'the satisfied fold is drawn more than once, or not at all')
 })
 
 test('the bar over the evidence link instructs, as Prepare Emergency Access Accounts does', () => {

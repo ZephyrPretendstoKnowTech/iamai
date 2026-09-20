@@ -162,8 +162,9 @@ test('Connect never hides a step action to make the phone layout fit', () => {
 test('Plan collapses the roadmap row at the pack\'s 940 and stacks the opened body at 900', () => {
   const at940 = mediaBody(APP, 940)
   // Four zones become two: the state's column narrows and who/when drop under
-  // the title and left-align. Nothing is dropped.
-  assert.match(at940, /\.plan-row\s*\{[^}]*grid-template-columns:\s*110px/, 'the roadmap row keeps its four-zone grid')
+  // the title and left-align. Nothing is dropped. The number column (owner,
+  // 2026-09-19) leads the row at both widths and narrows with it.
+  assert.match(at940, /\.plan-row\s*\{[^}]*grid-template-columns:\s*28px 110px/, 'the roadmap row keeps its numbered four-zone grid')
   assert.match(at940, /text-align:\s*left/, 'the row metadata does not re-align')
   assert.doesNotMatch(at940, /\.step-body\.has-rail\s*\{/, 'the opened body stacks at 940 rather than 900 (U2)')
   // The body stacks at 900 (U2): the action column moves BELOW Readiness and
