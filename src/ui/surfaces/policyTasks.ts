@@ -1,7 +1,9 @@
-// A policy step drawn with the Establish Emergency Access anatomy (owner,
-// 2026-09-19: "there will be ZERO lack of uniformity among UI that SHOULD be
-// identical"). Every policy step is, after the one-step pilot: the gate is the
-// step's own content kind, and no step of another kind moves.
+// A step drawn with the Establish Emergency Access anatomy (owner, 2026-09-19:
+// "there will be ZERO lack of uniformity among UI that SHOULD be identical").
+// Every step that carries work is, after the policy-step pilot: the gate is the
+// step group registry's `anatomy` field (roadmap/stepGroups.ts), which every
+// group that draws work now sets to `task`, so there is no second list of ids
+// and the board's grouping and the step's interior cannot answer differently.
 //
 // Nothing here is a new surface, and nothing here decides anything.
 //
@@ -23,6 +25,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepForPackage } from '../../content/stepTitle.ts'
+import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf } from './emergencyReadiness.ts'
@@ -63,24 +66,24 @@ function mailDevicesTaskOf(step: Step, mapping?: Pick<MappingState, 'questionAns
   }
 }
 
-/**
- * Whether this step draws the Emergency Access task anatomy although it is a
- * policy step. Every policy step does (owner, 2026-09-19, after the one-step
- * pilot): the gate is the step's own content kind, so there is no second list
- * of ids to keep in step with the content.
- */
-export function usesPolicyTaskAnatomy(stepId: string): boolean {
-  return (contentStepForPackage(stepId) as { kind?: string } | undefined)?.kind === 'policy'
+/** This step's content kind (`policy`, `object`, `check`, `campaign`, `ladder`, `blocker`), or null where the content file has no entry for it. */
+function contentKindOf(stepId: string): string | null {
+  return (contentStepForPackage(stepId) as { kind?: string } | undefined)?.kind ?? null
 }
 
 /**
- * Whether this step's Entra task offers its resolved settings on screen, folded
- * under the procedure. Every policy step does (owner, 2026-09-19, after the
- * one-step pilot on s-goal-admin-session): the gate is the step's own content
- * kind, the same one the anatomy uses, so there is no second list of ids.
+ * Whether this step draws the Establish Emergency Access anatomy *through this
+ * module* — the cards below, the Entra procedure as an Implementation Task, and
+ * the resolved settings folded under it.
+ *
+ * Every step that carries work draws the anatomy (owner, 2026-09-19), and the
+ * registry says which those are. The four Establish Emergency Access steps draw
+ * the same anatomy from their own producers (emergencyAccountTasks.ts,
+ * emergencyGroupTasks.ts, emergencyPasskeyTasks.ts) and are frozen, so they are
+ * not this module's: one subject producer per step, never two.
  */
-export function drawsPolicySettings(stepId: string): boolean {
-  return usesPolicyTaskAnatomy(stepId)
+export function drawsTaskAnatomy(stepId: string): boolean {
+  return usesTaskAnatomy(stepId) && !isGroupMember(stepId, EMERGENCY_ACCESS_GROUP)
 }
 
 /** A step's portal channel, as stepBody.ts built it; only its text is read. */
@@ -91,6 +94,11 @@ type PortalArtifact = { id: string; text: () => string }
  * step's own state already uses: a create lands in report-only (generate.ts
  * buildCreateAction), the state-only update is the one that turns the policy on,
  * and anything else changes settings.
+ *
+ * A step that submits no operation — an object step that makes a named location
+ * or a group, the MFA campaign, a check or a baseline review — has no operation
+ * to read, so the task is called what the step is called. That is the fallback,
+ * and it is the step's own title, not a sentence written here.
  */
 function taskTitle(step: Step, fallback: string): string {
   const ops = stepOperations(step)
@@ -134,8 +142,18 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
 /**
  * This step's Implementation Tasks: one task for the step's one Entra procedure,
  * and — on Block Legacy Authentication with exception devices named — a second
- * for moving them to a supported mail route (finding 6). A step whose portal channel has no procedure gets no projection and
- * keeps the body it always drew — and so does a step whose baseline contradicts
+ * for moving them to a supported mail route (finding 6).
+ *
+ * The procedure is whatever the step's portal channel carries, whole: the policy
+ * create or update on a policy step, the portal path that makes the named
+ * location or the group on an object step, the campaign's own preparation on
+ * `s-verify-mfa`, and what to read and where to read it on a check or a
+ * baseline-review step. Nothing is written here — this reads the artifact the
+ * step already drew under Implementation and calls it a task.
+ *
+ * A step whose portal channel has no numbered procedure gets no projection and
+ * keeps the body it always drew — its artifact is still on the page, which a
+ * "no action" frame would hide — and so does a step whose baseline contradicts
  * itself, because nothing anybody does in the portal resolves that (stepContract
  * `fixOf`: such a step asks for nothing), and a task there would be work offered
  * over a step that says there is none.
@@ -170,6 +188,21 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
 
 /** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */
 const POLICY_SUBJECT = 'Conditional Access policy'
+
+/**
+ * The subject a Tasks Remaining card names on a step with no policy member: the
+ * kind the step already calls itself in its own eyebrow (stepContract.ts
+ * `eyebrowOf` over `pages.app.plan.stepContract.kind` — "Preparation step",
+ * "Check step", "Campaign step", "Hardening step"), and the step's title where
+ * the content file names no kind.
+ *
+ * No taxonomy is added and no word is written here: a prerequisite step's card
+ * is headed "Preparation step" because that is what the head above it says the
+ * step is, exactly as a policy step's card is headed by the policy it delivers.
+ */
+export function taskSubjectOf(stepId: string, eyebrow: string | null, title: string): string {
+  return contentKindOf(stepId) === 'policy' ? POLICY_SUBJECT : (eyebrow ?? title)
+}
 
 /**
  * The bar over the evidence link: what to do, as Prepare Emergency Access
@@ -221,15 +254,15 @@ function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null):
  * step has no task left to do, so "No tasks remaining" cannot be shown over work
  * that Implementation Tasks still lists.
  */
-export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
+export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT): EmergencySubjectTile[] {
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
   // The task the card sends the operator to: the one this step is recommending
   // now. A projection that recommends none is a step whose next thing is not the
   // procedure (policyTasksOf), so the card states the check and stops there.
   const directed = projected && (projected.recommendedTaskId ?? null) !== null ? task : null
   const subjects = contract.members.length > 0
-    ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? POLICY_SUBJECT, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
-    : [{ key: 'policy', heading: POLICY_SUBJECT, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
+    ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? subject, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
+    : [{ key: 'policy', heading: subject, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
   return subjects.map((subject) => {
     const stages = stagesOf(contract.track, subject.lifecycle)
     // Nothing is left on the policy itself when the goal is already delivered
@@ -270,11 +303,11 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
  * satisfied card, so it folds under the completed disclosure the way it folded
  * under the strip's own.
  */
-export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
+export function policySubjectsOf(contract: StepContract, readiness: ContractReadiness, projected: EmergencyTaskProjection | null, subject: string = POLICY_SUBJECT): EmergencySubjectTile[] {
   const card = (tile: ContractReadiness['tiles'][number], satisfied: boolean): EmergencySubjectTile => {
     const subject = emergencySubjectTileOf(tile, projected)
     const link = tile.link && 'href' in tile.link ? tile.link : null
     return { ...subject, satisfied, ...(link && !subject.link ? { link } : {}) }
   }
-  return [...policyCardsOf(contract, projected), ...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
+  return [...policyCardsOf(contract, projected, subject), ...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
 }
