@@ -224,10 +224,15 @@ test('C1: help desk says what a Temporary Access Pass does here, in both its for
   assert.ok(lines.some((l) => /Microsoft's own phishing-resistant strength accepts neither/.test(l)), lines.join('\n'))
 })
 
-test('C2: no help-desk line still claims only a passkey, key or Hello gets through', () => {
+test('C2: no line still enumerates the accepted methods against the strength', () => {
   const lines = helpDeskOf('admins-phishing-resistant')
   assert.ok(!lines.some((l) => /Only a registered passkey, security key or Windows Hello gets through/.test(l)), lines.join('\n'))
   assert.ok(lines.some((l) => /Anything the strength does not list is refused/.test(l)), lines.join('\n'))
+  // And the lockout risk beside it reads the same way, so no two cards disagree
+  // about whether a Temporary Access Pass gets an admin in.
+  const risks = risksOf('admins-phishing-resistant')
+  assert.ok(risks.some((t) => /An admin holding no method the strength accepts is locked out of admin work\./.test(t)), risks.join('\n'))
+  assert.ok(!risks.some((t) => /without a passkey, security key or Windows Hello for Business/.test(t)), risks.join('\n'))
 })
 
 test('C3: help desk names the Windows Hello prompt that never arrives after a password', () => {
