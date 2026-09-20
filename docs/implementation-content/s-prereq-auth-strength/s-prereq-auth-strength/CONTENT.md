@@ -1,5 +1,5 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Go to Entra admin center → Authentication methods → Authentication strengths.
+1. Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.
 2. Click + New authentication strength.
 3. Name: {{strength.target.displayName}}.
 4. Select exactly these methods: {{strength.target.methodNames}}.
