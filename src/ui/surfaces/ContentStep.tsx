@@ -494,6 +494,11 @@ export function ContentStep({
         <StepActionColumn rail={displayRail}>
           {/* A question that moved to Decide Your Tenant's Direction is answered there; this step says where, and what (roadmap/direction.ts ANSWERED_IN). */}
           {ANSWERED_IN[step.id] ? <AnsweredInDirection stepId={step.id} ctx={ctx} /> : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+          {/* The one thing a scan cannot see, recorded where every other control
+              on a step is (owner, 2026-09-20). It used to stand in the main
+              column below Completion Criteria — a sixth section, outside the four
+              the anatomy has, on twelve steps. */}
+          {step.manualReview && !printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={false} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -533,7 +538,9 @@ export function ContentStep({
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={taskHead?.doneWhen ?? decisionHead?.doneWhen ?? HEAD.doneWhen} lines={contract.doneWhen} />
-          {step.manualReview && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={printing} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
+          {/* Printing keeps it in the main column: a printed plan is one column,
+              and the recorded result belongs with the step it is about. */}
+          {step.manualReview && printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
 
           {/* The printed plan is the whole step: the evidence and More stand on
               the page there, in the order they always printed. */}
@@ -1379,10 +1386,49 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
   )
 }
 
+/**
+ * Disable or Confirm Dormant Accounts, as one control.
+ *
+ * It drew a dropdown and a text box per account — two controls on the demo, and
+ * **1,462 on a directory with 731 dormant accounts**, in the action column of one
+ * step. Nobody works a list that long through a form (owner, 2026-09-20: if a
+ * step looks like too much, it is).
+ *
+ * Only one of the three answers was ever needed here. The step completes when
+ * every listed account is disabled, active again, or kept with a recorded reason
+ * (generate.ts), and the first two the scan sees for itself — an account
+ * disabled in Entra reads back disabled. "Investigate" clears nothing. So the
+ * only thing a person has to tell IAMAI is which accounts they are **keeping**,
+ * and why: the picker Establish Emergency Access already uses for exactly this
+ * shape of answer, and one reason for the set.
+ */
 function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
   const rows = step.dormantChoices ?? []
-  const [draft, setDraft] = useState<Record<string, string>>({})
-  const outcomeOf = (row: typeof rows[number]) => draft[`outcome:${row.id}`] ?? row.outcome
-  const reasonOf = (row: typeof rows[number]) => draft[`reason:${row.id}`] ?? row.reason
-  return <div className="decision-form dormant-decisions">{rows.map(row => <fieldset key={row.id}><legend>{row.name}</legend>{printing ? <p>{outcomeOf(row) || 'Not Reviewed'}{reasonOf(row) ? ` — ${reasonOf(row)}` : ''}</p> : <><label><span className="dlabel">Account Decision</span><select value={outcomeOf(row)} onChange={e => setDraft({ ...draft, [`outcome:${row.id}`]: e.target.value })}><option value="">Choose…</option><option value="keep">Keep</option><option value="disable">Disable</option><option value="investigate">Investigate</option></select></label>{outcomeOf(row) === 'keep' && <label><span className="dlabel">Reason to Keep</span><input value={reasonOf(row)} onChange={e => setDraft({ ...draft, [`reason:${row.id}`]: e.target.value })} /></label>}{outcomeOf(row) === 'disable' && <p>{row.disabled ? 'Account disabled.' : 'Disable this account in Entra, then scan again.'}</p>}</>}</fieldset>)}{!printing && <Button variant="primary" disabled={rows.some(row => outcomeOf(row) === 'keep' && !reasonOf(row).trim())} onClick={() => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => [[`outcome:${row.id}`, outcomeOf(row)], [`reason:${row.id}`, reasonOf(row)]])) })}>Save Account Decisions</Button>}</div>
+  const open = rows.filter(row => !row.disabled)
+  const kept = rows.filter(row => row.outcome === 'keep')
+  const [picked, setPicked] = useState<PickerOption[]>(() => kept.map(row => ({ id: row.id, name: row.name })))
+  const [reason, setReason] = useState<string>(() => kept.find(row => row.reason.trim())?.reason ?? '')
+  const [query, setQuery] = useState('')
+  const labelId = `dormant-${step.id}`
+  const options: PickerOption[] = open.map(row => ({ id: row.id, name: row.name }))
+  const results = options.filter(option => option.name.toLowerCase().includes(query.toLowerCase()))
+  const disabled = rows.filter(row => row.disabled).length
+  if (printing) return <div className="decision">
+    <p className="reason">{kept.length > 0 ? `Kept: ${kept.map(row => row.name).join(', ')}${reason ? ` — ${reason}` : ''}` : 'No account is recorded as kept.'}</p>
+    {disabled > 0 && <p className="reason">{disabled} already disabled in the directory.</p>}
+  </div>
+  // Every account the picker does not hold is expected to be disabled in Entra;
+  // the next scan is what completes it, so nothing is saved for them here.
+  const save = (): void => onDecide?.({ answers: Object.fromEntries(rows.flatMap(row => {
+    const keep = picked.some(option => option.id === row.id)
+    return [[`outcome:${row.id}`, keep ? 'keep' : ''], [`reason:${row.id}`, keep ? reason.trim() : '']]
+  })) })
+  return <div className="decision">
+    <h5 className="dlabel" id={labelId}>Accounts you are keeping</h5>
+    <Picker labelledBy={labelId} selected={picked} options={results} suggestions={options.slice(0, 3)} onSearch={setQuery} onChange={setPicked} />
+    <label className="dlabel" htmlFor={`${labelId}-reason`}>Why they are kept</label>
+    <input id={`${labelId}-reason`} value={reason} onChange={e => setReason(e.currentTarget.value)} />
+    <p className="reason">Disable the rest in Entra, then scan again. {disabled > 0 ? `${disabled} of these are already disabled.` : 'None of these are disabled yet.'}</p>
+    <Button variant="primary" disabled={picked.length > 0 && !reason.trim()} onClick={save}>Save</Button>
+  </div>
 }

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, curatedFixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
+import { manualEvidenceFields, applyManualReviews, manualBasis, scopeManualBasis, MANUAL_REVIEW_ID } from './manualWork.ts'
 import { ownerConfirmationOf } from './decisions.ts'
 import type { OwnerConfirmation } from './decisions.ts'
 import type { Step } from './types.ts'
@@ -180,15 +180,25 @@ test('historical snapshots without optional configuration sections remain review
 })
 
 
-test('PIM workflow account choices show active or eligible role holders, and representative evidence does not require the All-users population', () => {
+test('a workflow step asks for the outcome and what IAMAI can check, and for no list of people', () => {
+  // PIM's completion is counted per workflow, not per person
+  // (`pendingAccountIds` is empty for every POLICY_WORKFLOWS step), so the
+  // account picker gathered an answer nothing read. It is gone (owner,
+  // 2026-09-20). What is left is checked against the tenant: an authentication
+  // context the policies do not reference is a defect IAMAI raises.
   const { f, step } = setup('s-goal-pim-activation-reauth')
   step.population.ids = f.snapshot.users.map(user => user.id)
   applyManualReviews([step], f.snapshot, {}, f.mapping)
-  const choices = step.manualReview!.fields!.find(field => field.key === 'accountIds')!.options!
-  assert.ok(choices.length > 0)
-  assert.ok(choices.length < f.snapshot.users.length)
-  for (const choice of choices) assert.ok((f.snapshot.roles.active[choice.value]?.length ?? 0) + (f.snapshot.roles.eligible[choice.value]?.length ?? 0) > 0)
+  const keys = step.manualReview!.fields!.map(field => field.key)
+  assert.deepEqual(keys, ['contextId', 'configurationVerified', 'outcome', 'testedAt'])
+  assert.equal(keys.includes('accountIds'), false, 'a list of people nothing reads')
   assert.deepEqual(step.manualReview!.pendingAccountIds, [])
+  // No step asks for free text the product only prints back.
+  for (const id of ['s-goal-pim-activation-reauth', 's-goal-block-legacy-auth', 's-check-separate-admin-accounts', 's-goal-guests-mfa']) {
+    for (const dead of ['workflow', 'reference', 'providerAccessPath']) {
+      assert.equal(manualEvidenceFields(id, f.mapping).some(field => field.key === dead), false, `${id} still asks for ${dead}`)
+    }
+  }
 })
 
 

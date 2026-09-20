@@ -73,22 +73,34 @@ const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome',
 /** Only the existing manual steps receive scoped evidence inputs. */
 export function manualEvidenceFields(stepId: string, mapping?: Pick<MappingState, 'questionAnswers'>): ManualEvidenceField[] {
   if (!SCOPED_MANUAL.has(stepId) && !mailDevicesFollowUp(stepId, mapping)) return []
-  const fields: ManualEvidenceField[] = [
-    { key: 'accountIds', label: ADMIN_SEPARATION.has(stepId) ? 'Reviewed Accounts' : stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' },
-  ]
-  if (stepId !== 's-ladder-guest-review') fields.push({ key: 'workflow', label: POLICY_WORKFLOWS[stepId] ?? ({ 's-ladder-global-admin-count': 'Purpose of Retained Global Administrator Assignments', 's-ladder-authenticator-over-sms': 'Replacement Sign-in and Recovery Test', 's-ladder-legacy-auth-inventory': 'Dependency Owners and Replacement or Follow-up Plans' } as Record<string, string>)[stepId] ?? (stepId === LEGACY_AUTH_STEP_ID ? 'Mail Job and Delivery Route' : stepId === 's-shared-devices' ? 'Work Task Tested' : stepId === 's-ladder-app-passwords' ? 'Credential Retirement and Creation Restriction' : 'Dedicated Use or Handover Test'), type: 'text', required: true })
+  const fields: ManualEvidenceField[] = []
+  // A field is here only if the product reads it. The form had grown to eight:
+  // an account picker, free text for the workflow, the roles, an authentication
+  // context, a named network, a partner path, a change record. Three of those
+  // were transcription — nothing read `workflow`, `reference` or
+  // `providerAccessPath` except to print them back on the step and in the export
+  // — and the account picker did nothing at all on the steps whose completion is
+  // counted per workflow rather than per person. They are gone (owner,
+  // 2026-09-20: if a step looks like too much, it is).
+  //
+  // What is left earns its place, and the rule is the same for each: it decides
+  // whether the step is complete, or it is a specific fact the scan cannot see.
+
+  // Counted per person: the step is not complete until every scoped account has
+  // a record (`pendingAccountIds` below). Steps keyed by workflow do not count
+  // people, so the picker would gather an answer nothing reads.
+  const perAccount = !POLICY_WORKFLOWS[stepId] && !mailDevicesFollowUp(stepId, mapping) && stepId !== 's-ladder-authenticator-over-sms'
+  if (perAccount) fields.push({ key: 'accountIds', label: ADMIN_SEPARATION.has(stepId) ? 'Reviewed Accounts' : stepId === 's-ladder-guest-review' ? 'Reviewed Guests' : stepId === 's-ladder-global-admin-count' ? 'Reviewed Global Administrators' : stepId === 's-ladder-legacy-auth-inventory' ? 'Reviewed Legacy Accounts' : 'Tested Accounts', type: 'accounts', required: stepId !== 's-ladder-legacy-auth-inventory' })
+  // The replacement account clears its own person from the pending list.
   if (ADMIN_SEPARATION.has(stepId)) fields.push({ key: 'replacementAccountId', label: 'Dedicated Administrator Account', type: 'accounts', required: true, whenOutcome: ['passed'] }, { key: 'roleIds', label: 'Required Roles', type: 'accounts', required: true, whenOutcome: ['passed'] })
-  if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'roleIds', label: 'Roles Tested', type: 'accounts', required: true }, { key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
+  // Checked against the tenant: an authentication context the policies do not
+  // reference, or a named network that is not the one tested, is a defect IAMAI
+  // raises rather than a string it stores (`observedDefect` below).
+  if (stepId === 's-goal-pim-activation-reauth') fields.push({ key: 'contextId', label: 'Authentication Context', type: 'text', required: true }, { key: 'configurationVerified', label: 'Role Settings Use This Authentication Context', type: 'checkbox', required: true })
   if (stepId === 's-goal-service-accounts-trusted-network') fields.push({ key: 'networkId', label: 'Named Network Tested', type: 'select', required: true })
   if (stepId === 's-goal-user-risk' || stepId === 's-goal-user-risk-medium') fields.push({ key: 'configurationVerified', label: 'Recovery Prerequisites Verified, Including Writeback for Hybrid Accounts', type: 'checkbox', required: true })
-  fields.push(ADMIN_SEPARATION.has(stepId) ? { key: 'outcome', label: 'Outcome', type: 'select', required: true, options: [{ value: 'retained', label: 'Already dedicated to admin work' }, { value: 'passed', label: 'Handover tested' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] } : outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
-  // Folded in from the deleted partner follow-up (finding 5): where a tenant
-  // excludes service providers, the path that access takes is the evidence that
-  // step asked for, and it belongs beside the guest workflow it sits next to.
-  // Optional, because a tenant with no partner has no path to name.
-  if (stepId === 's-goal-guests-mfa') fields.push({ key: 'providerAccessPath', label: 'Partner or Provider Access Path', type: 'text', required: false })
   if (stepId === LEGACY_AUTH_STEP_ID) fields.push({ key: 'exceptionRemoved', label: 'Temporary Exception Removed', type: 'checkbox', required: true })
-  fields.push({ key: 'reference', label: 'Change Record', type: 'text', required: false })
+  fields.push(ADMIN_SEPARATION.has(stepId) ? { key: 'outcome', label: 'Outcome', type: 'select', required: true, options: [{ value: 'retained', label: 'Already dedicated to admin work' }, { value: 'passed', label: 'Handover tested' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] } : outcomeField(stepId === 's-ladder-guest-review'), { key: 'testedAt', label: ['s-ladder-guest-review', 's-ladder-global-admin-count', 's-ladder-legacy-auth-inventory'].includes(stepId) ? 'Reviewed On' : 'Tested On', type: 'date', required: true })
   return fields
 }
 
