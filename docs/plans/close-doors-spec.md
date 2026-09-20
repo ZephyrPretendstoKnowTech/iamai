@@ -166,7 +166,9 @@ the removal of the exception) — one of the V1 §3.3 exceptions.
 **Acceptance.**
 - B1 `why` says basic authentication is already off for the mail protocols and
   that SMTP AUTH is the remaining one.
-- B2 the step names the December 2026 default-off date for SMTP AUTH.
+- B2 `why` says Microsoft is retiring that route too. It carries no date: no
+  content string may hold a hard date (`scripts/walkContent.mjs` C3), so the
+  December 2026 and 2027 milestones stay in this spec.
 - B3 `whatToDo` keeps the three supported routes and does not recommend a
   password route.
 

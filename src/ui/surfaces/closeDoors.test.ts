@@ -125,3 +125,39 @@ test('A6: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(checkedOn('s-goal-block-legacy-auth'), '2026-09-19')
   assert.equal(bodiesOf('demo').get('s-goal-block-legacy-auth')!.sourceLine, 'Source checked Sep 19, 2026')
 })
+
+// ---------------------------------------------------------------------------
+// Update How Devices Send Email (spec section 3)
+//
+// It is a `check` step carved out by the mail-sending-devices decision
+// (roadmap/answers.ts CARVE_OUT_STEP_ID), so no fixture generates it and there
+// is no opened step to read. Its words are read from the content file.
+// ---------------------------------------------------------------------------
+
+/** A content step's own `why`, unfilled. */
+const whyOf = (id: string): string => String((stepById[id] as unknown as { why?: string }).why ?? '')
+
+test('B1: About says the mail protocols already refuse a password, and names the one that does not', () => {
+  const why = whyOf('s-question-mail-devices')
+  assert.match(why, /Exchange Online already refuses a password for POP, IMAP and ActiveSync/)
+  assert.match(why, /SMTP AUTH is the last route that accepts one/)
+  assert.doesNotMatch(why, /may depend on a mail-sending method/)
+})
+
+test('B2: About says that route is going too, and carries no date of its own', () => {
+  const why = whyOf('s-question-mail-devices')
+  assert.match(why, /Microsoft is retiring that route too/)
+  // walkContent C3: no content string carries a hard date. The retirement's
+  // milestones live in docs/plans/close-doors-spec.md section 3.
+  assert.doesNotMatch(why, /\b(19|20)\d{2}\b/)
+})
+
+test('B3: the step offers only supported routes, never a password one', () => {
+  const steps = ((stepById['s-question-mail-devices'] as unknown as { whatToDo?: { steps?: string[] } }).whatToDo?.steps ?? []).join('\n')
+  assert.match(steps, /SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only/)
+  assert.match(steps, /Graph sendMail API/)
+})
+
+test('B4: the mail-route package cites its Microsoft pages, checked with this group', () => {
+  assert.equal(checkedOn('s-question-mail-devices'), '2026-09-19')
+})
