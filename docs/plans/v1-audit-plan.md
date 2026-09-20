@@ -4,15 +4,36 @@ The method is `audit-method.md`. This is the running order, what each pass owns,
 and how findings become fixes. The order matters: each pass reads what the one
 before it produced, and auditing text that is about to change wastes the audit.
 
-## 0. Land the answered decisions first
+## 0. Land the shape decisions first — but only those
 
 The owner answered eleven things on 2026-09-20 (`owner-questions-2026-09-20.md`).
-Several change the very sentences the audits would read — the tile shape, the
-pointer line, the source date, the card headings, the risk regions. Build them
-first, push green, and the audits then read the product as it will ship.
+They do not all belong in the same place, and the split is deliberate: **the audit
+is what decides what is worth fixing, so nothing else gets built ahead of it.**
+
+**Step 0, before any audit — the rules that decide the shape of every tile and
+task:** the card shape (subject → what the scan found → where to do it), no
+pointer sentence where a step has one task, a card heading that is what is being
+waited on with its state beneath, the dated source line on every step, and risks
+behind the "Why IAMAI says this" dialog rather than print-only. Land these first
+or every one of the ~45 steps produces the same finding — "this tile has the old
+shape" — and the audit becomes forty-five restatements of one change. With them
+landed, a tile finding is about content: is this true, is it useful, is it fluff.
+
+**Step 0 as well, because they are cheap, approved and contingent on nothing:**
+the four Direction text fixes, the two Emergency Access instruction fixes, and
+making the medium user-risk policy build the same thing on every channel.
+
+**Step 2.5, after the two heuristic audits and before the walkthrough:** the third
+office-network answer, and mail devices getting their own group. Both change what
+a person is asked and what the plan contains, so the walkthrough should test the
+real flow; the tile and instruction audits are indifferent to them.
+
+**Everything else waits for the audit to rank it** — the items taken over on
+2026-09-20, the anatomy deviations, the wave specs' leftovers. Some of it the
+audit will say to delete rather than polish, which is the cheapest fix available.
 
 **Out of scope for now, owner's call:** the admin-portals re-pin (held until after
-launch) and anything on the frozen steps beyond the four text fixes he approved.
+launch) and anything on the frozen steps beyond the six text fixes he approved.
 
 ## 1. Readiness tile audit — heuristic, three independent passes
 
@@ -61,8 +82,9 @@ who inherits the plan and has to finish it; the tenant where half the reads fail
 (no premium licence, refused permission). Use Claude-in-Chrome against the
 deployed site where a real browser makes the answer more honest.
 
-**Reads:** the outputs of passes 1 and 2 — a journey fault is often a tile fault
-seen from further away.
+**Reads:** the outputs of passes 1 and 2, and it runs after step 2.5 has landed —
+a journey fault is often a tile fault seen from further away, and the walkthrough
+must test the flow as it will ship.
 
 **Produces:** the coherence findings, each tied to the scenario and the step, and
 an explicit list of places the story breaks, repeats itself, or asks twice.

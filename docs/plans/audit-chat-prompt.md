@@ -21,15 +21,21 @@ Read these first, in order, and do not start work until you have:
 
 Your job, in the order `v1-audit-plan.md` sets out:
 
-**Step 0.** Build the eleven decisions the owner has already answered (they are
-listed as answered or decided in `owner-questions-2026-09-20.md`). They change the
-sentences the audits will read, so they land first. Push, with CI green.
+**Step 0.** Build the *shape* decisions only — the card shape, the pointer line,
+the card headings, the dated source line, risks behind the Why dialog — plus the
+six approved text fixes and the medium user-risk channel consistency. Not the
+whole list: `v1-audit-plan.md` §0 says what belongs here, what waits for step 2.5,
+and what waits for the audit to rank it. The audit decides what is worth fixing,
+so nothing else is built ahead of it. Push, with CI green.
 
 **Step 1.** The Readiness tile audit — heuristic, three independent passes,
 merged.
 
 **Step 2.** The Implementation Task audit — heuristic, three independent passes,
 merged, every channel.
+
+**Step 2.5.** The third office-network answer, and mail devices getting their own
+group — before the walkthrough, so it tests the flow as it will ship.
 
 **Step 3.** The journey audit — cognitive walkthrough with the four scenarios,
 then the service blueprint. Use Claude-in-Chrome against the deployed site where a
