@@ -298,7 +298,31 @@ any sign-in that reports no platform are blocked.*
 
 ---
 
-## 7. Recorded for the owner
+## 7. Rendered at 1280, on the demo and the follow-up scan
+
+Read on `http://localhost:5203/planner/?demo=1#/plan`, 2026-09-19. Every state
+the group's steps reach on those two snapshots, and what it says now.
+
+| State | Step and snapshot | What it reads |
+|---|---|---|
+| Not deployed, free to create | Block Unsupported Device Platforms, initial | «Core - Block - Unsupported platforms · 3 checks remaining · Report-only · Create the policy in report-only now.» The create task's step 3 sets **Configure** to **Yes**, and step 4 says Linux falls inside the block. |
+| Waiting on the foundation | Block Legacy Authentication, initial | Up Next; a card reads «Prerequisite · To do · Prepare Emergency Access Accounts · Finish Prepare Emergency Access Accounts first» with its link. About states the MFA fact; Completion Criteria is the step's own two lines. |
+| Report-only, observing | Block Authentication Transfer, follow-up | On Hold · Report-only. The policy card's next check is «Ready to enforce», the Observation card says time alone does not complete it, and a second card waits on Decide How People and Devices Sign In. Completion Criteria: «A scan confirms the policy is On, so a signed-in session on one device no longer signs anyone in on another…» |
+| Ready to enforce | not reached by either snapshot for this group | The check itself is drawn (above); no fixture puts one of these four in the Ready · Ready to enforce badge. Recorded, not invented. |
+| Enforced / in place | Block Legacy Authentication, follow-up | Completed · Enforced. About unchanged; Tasks Remaining holds only «New evidence · Review required», and the Entra task is the compare-and-confirm procedure. |
+| A hold this step can reach | Block Device Code Sign-in, follow-up | On Hold · Enforced: «This step has no policy for IAMAI to write in this plan. Scan Contoso Pty Ltd again to rebuild it», beside «New evidence · Review required». True, and it names the one action. |
+| Needs a decision | Block Device Code Sign-in / Block Legacy Authentication, initial | The action column reads «Answered in Confirm What You Use» with the unanswered question and its link. |
+
+Two readings that are the anatomy's, not this group's words, and were left alone
+(`policy-anatomy-deviations.md`):
+
+- A step with no submittable operation titles its one Implementation Task with
+  the **step's own name** ("Block Authentication Transfer"), where a step with
+  operations titles it by the work ("Update the policy settings").
+- The group heads "4 steps" and numbers its rows 1, 3, 4, 5, because the number
+  is the registry position and `s-question-mail-devices` is not generated.
+
+## 8. Recorded for the owner
 
 1. **Microsoft against the pinned baseline, Block Legacy Authentication.**
    Learn's Exchange ActiveSync guidance asks for a policy assigned to users or
