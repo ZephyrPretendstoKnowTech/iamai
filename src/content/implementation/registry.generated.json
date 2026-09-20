@@ -21952,6 +21952,24 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-sd",
+            "authority": "Microsoft Learn",
+            "title": "Security defaults in Microsoft Entra ID",
+            "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-plan-ca",
+            "authority": "Microsoft Learn",
+            "title": "Plan a Conditional Access deployment",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Disable Security Defaults only as a coordinated cutover to already validated replacement Conditional Access protection.",
@@ -21969,7 +21987,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.\n2. Go to **Entra ID > Overview > Properties > Manage security defaults**.\n3. Set **Security defaults** to **Disabled** and Save.\n4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models.\n5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.\n6. Rescan IAMAI.\n"
+          "text": "1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.\n2. Go to **Entra ID > Overview > Properties > Manage security defaults**. You need at least the **Conditional Access Administrator** role.\n3. Set **Security defaults** to **Disabled (not recommended)** and Save. Once Conditional Access policies exist you cannot turn security defaults back on.\n4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models: security defaults required MFA, blocked legacy authentication and blocked device code sign-in, and each of those needs its own policy On.\n5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.\n6. Rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {
@@ -21981,7 +21999,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open **Manage security defaults** and confirm it is Disabled. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.\n"
+          "text": "Re-open **Manage security defaults** and confirm it reads **Disabled (not recommended)**. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.\n"
         },
         "json.disable": {
           "meta": {

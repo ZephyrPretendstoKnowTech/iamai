@@ -1,14 +1,14 @@
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["readyToDisable"],"format":"markdown","kind":"template"}
 1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.
-2. Go to **Entra ID > Overview > Properties > Manage security defaults**.
-3. Set **Security defaults** to **Disabled** and Save.
-4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models.
+2. Go to **Entra ID > Overview > Properties > Manage security defaults**. You need at least the **Conditional Access Administrator** role.
+3. Set **Security defaults** to **Disabled (not recommended)** and Save. Once Conditional Access policies exist you cannot turn security defaults back on.
+4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models: security defaults required MFA, blocked legacy authentication and blocked device code sign-in, and each of those needs its own policy On.
 5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.
 6. Rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
-Re-open **Manage security defaults** and confirm it is Disabled. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.
+Re-open **Manage security defaults** and confirm it reads **Disabled (not recommended)**. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.disable","channel":"json","states":["readyToDisable"],"format":"json","kind":"template"}

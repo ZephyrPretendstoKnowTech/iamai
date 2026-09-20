@@ -3322,20 +3322,20 @@
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
-        "lead": "Everyone in {tenant}: security defaults apply today, and Require MFA for Everyone replaces that MFA requirement."
+        "lead": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it."
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:",
+        "lead": "Security defaults and Conditional Access are not meant to run together: once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
-          "Confirm Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all three enforce today.",
-          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled → Save.",
-          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
+          "Confirm Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all four enforce today.",
+          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
+          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.",
+        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
         "Test sign-in for representative users and admins right after the changeover."
       ],
       "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
@@ -3348,10 +3348,16 @@
           {
             "text": "A gap between turning defaults off and enforcing the MFA policy is a window with no MFA at all.",
             "applies": "always"
+          },
+          {
+            "text": "Security defaults also block device code sign-in, so that route reopens unless Block Device Code Sign-in is enforced in the same window.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass."
+          "Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.",
+          "Security defaults allowed only the Microsoft Authenticator app, so the switch day is the first day anyone here can use another method.",
+          "Guests were covered by security defaults the same as staff; Require MFA for Everyone is what covers them afterwards."
         ],
         "manager": null,
         "waits": "Every policy step waits on this."

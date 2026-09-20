@@ -64,12 +64,19 @@ export const ACCEPTANCE = [
   { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Signing in by transferring a session from another device is turned off', mustNot: /nobody here/i },
   { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Sign-ins from countries outside the approved list are blocked', mustNot: /nobody signed in/i },
   // C7: the security-defaults switch is dated to the day Require MFA for Everyone
-  // enforces, with the legacy block and the admin MFA policy the same day, and
-  // the step says so (report-only policies can exist with security defaults on).
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.' },
+  // enforces, with the other three replacement policies the same day.
+  // MFA for Everyone F1-F6 (docs/plans/mfa-everyone-spec.md section 7, Microsoft
+  // Learn checked 2026-09-20): security defaults now block device code flow too,
+  // so the replacement list is four policies, not three; and no Learn page says
+  // a report-only policy may coexist with security defaults — what Learn says is
+  // that creating Conditional Access policies prevents enabling them.
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', mustNot: 'Report-only policies can exist while security defaults are on' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'more.risks', must: 'Security defaults also block device code sign-in' },
   // Per step, 1–10.
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.mfa-method', must: 'register a passkey from the approved model list', mustNot: /hardware security key \(FIDO2\).*not a passkey in Authenticator/i },
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.recent-sign-in', must: '{name} signed in {ago}, not a recorded drill: confirm who signed in and why.', mustNot: 'run the drill' },
