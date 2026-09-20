@@ -83,6 +83,8 @@ export type CleanupPhaseInput = {
   hardening?: string[]
   hardeningTracked?: boolean
   hardeningVerified?: boolean
+  /** The tenant's policies that exclude an emergency account by name, worded (cleanup.ts namedEmergencyExclusions). */
+  namedExclusions?: string[]
   early?: string
 }
 
@@ -140,6 +142,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     renames: convention ? namingProposals.length ? namingProposals.map(p => `${p.from} → ${p.to} (ID: ${p.id})${p.collision ? ' — Name collision: choose a distinct name before renaming.' : ''}`) : naming.outliers.map((from) => renameLine(from, naming)) : [],
     overlaps: [...overlaps.map(line => `${line}${policyRows.filter(p => line.includes(String(p.displayName))).map(p => `; ${p.displayName} (ID: ${p.id})`).join('')}`), ...comparisonLines],
     hardening: input.hardening ?? [],
+    namedExclusions: input.namedExclusions ?? [],
   })
   // Intended retirement removes the overlap that originally created this row;
   // keep its recorded result visible and reassess the retained replacement.
