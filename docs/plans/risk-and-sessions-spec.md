@@ -318,12 +318,12 @@ controls**.
    forbids `passwordChange` beside an authentication strength, and the pin — an
    export of a real tenant — holds exactly that.
 
-   **The pinned baseline wins** (CLAUDE.md). The Entra procedure, the correction
-   and the reviewer reference now name the pin's pair, which is what IAMAI
-   compares the tenant against, and they say in the same breath that the JSON and
-   PowerShell outputs write Microsoft's documented pair instead. The package's
-   authors had already normalised the machine channels and flagged it; their note
-   now carries the quote and the date. Recorded for the owner in §10.1.
+   **The pinned baseline wins** (CLAUDE.md). The owner decided on 2026-09-20 that
+   every channel builds what the pin intends, so the JSON body and the PowerShell
+   moved to `passwordChange` with the custom authentication strength under `AND`,
+   the Entra procedure and the correction are unchanged, and the per-channel
+   caveat that explained the divergence is gone — with the channels agreeing it
+   had nothing to say. Recorded for the owner in §10.1.
 2. **What Medium means on an account**, as §5.1.
 3. **The guest exclusion is the pin's, and it is right.** The pin excludes every
    guest and external type. `ms-idp-b2b` says why that is the correct shape: a
@@ -335,7 +335,7 @@ controls**.
 **Completion from the scan.** The policy is On and matches the target, the guest
 exclusion included.
 
-**Acceptance.** D1 the pin's pair and which channels write which · D2 password
+**Acceptance.** D1 the pin's pair in every channel · D2 password
 change never beside risk remediation · D3 Configure: Yes, Client apps left alone
 · D4 why guests are excluded, and its own people · D5 the outcome, checked
 2026-09-20.
@@ -539,12 +539,12 @@ is the rule `closeDoors.test.ts` set. Recorded, not invented.
    must be accompanied by `mfa` using an `AND` operator". The pin pairs
    `passwordChange` with the custom authentication strength instead — a shape the
    reference does not describe and does not forbid. The baseline is unchanged.
-   The Entra procedure names the pin's pair, because that is what IAMAI compares
-   the tenant against; the package's deployable JSON and PowerShell keep the
-   documented pair, as their authors left them, and the step says which is which.
-   **The owner's decision to make:** re-pin the medium user-risk member to
-   `mfa + passwordChange`, or accept that a policy built from this step's JSON
-   channel reads as a difference until it is corrected by hand.
+   **Decided 2026-09-20:** the pinned baseline wins, so every channel — the Entra
+   procedure, the JSON body and the PowerShell — builds the pin's pair, and the
+   caveat that explained the divergence is deleted. A policy built from any
+   channel of this step now reads as a match. The JSON and the script need the
+   resolved strength id, so the step holds where IAMAI has not resolved one,
+   exactly as Remediate High-Risk Users already does.
 2. **Microsoft recommends a different risk shape than the pin.**
    `ms-risk-configure`: "Require Microsoft Entra multifactor authentication when
    sign-in risk level is **Medium** or **High**", in one policy, and
