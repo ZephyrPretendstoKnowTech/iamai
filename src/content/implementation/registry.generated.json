@@ -17351,7 +17351,7 @@
             "title": "Require remediation for risky users",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-user",
             "purpose": "Current portal configuration for Require risk remediation at High user risk and mandatory Every-time reauthentication.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-policy",
@@ -17359,7 +17359,7 @@
             "title": "Configure and enable risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "P2 requirement, MFA registration prerequisite, hybrid password-writeback prerequisite, guest/external limitation, and Report-only rollout.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -17367,7 +17367,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Adaptive risk-remediation behavior, precedence, guest/external limitation, and secure remediation flow.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-remediation",
@@ -17375,7 +17375,7 @@
             "title": "Remediate risks and unblock users",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
             "purpose": "Distinguishes Conditional Access password-change remediation from SSPR recovery.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-writeback",
@@ -17383,7 +17383,7 @@
             "title": "Enable Microsoft Entra password writeback",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr-writeback",
             "purpose": "Hybrid password-writeback configuration when on-premises-synced users are in scope.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-grant-v1",
@@ -17391,7 +17391,7 @@
             "title": "conditionalAccessGrantControls resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
             "purpose": "v1.0 riskRemediation enum and requirement to pair riskRemediation with authenticationStrength using AND.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -17399,7 +17399,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "v1.0 userRiskLevels and condition schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -17407,7 +17407,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and least-privileged permissions/roles.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -17415,7 +17415,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "v1.0 update semantics and stable-ID PATCH endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
@@ -17423,7 +17423,7 @@
             "title": "Get conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "v1.0 stable-ID verification readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -17474,7 +17474,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.\n- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}.\n- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change.\n- Guest/external users: Require risk remediation is not supported. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.\n- Active risk: investigate/remediate current risky users before turning on a new broad policy.\nSSPR may remain available for recovery, but do not treat SSPR enablement as the CA remediation prerequisite by itself.\n"
+          "text": "Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.\n- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}. A user who is not registered is blocked and needs an administrator to reset the account; they cannot remediate.\n- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change. Where the password is changed on-premises instead, password hash synchronization and the on-premises password-change setting that clears user risk both have to be on.\n- Guest/external users: Require risk remediation is not supported for them, and a guest this policy reaches is blocked rather than remediated, because the password and the risk both live in the account's home directory. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.\n- Active risk: investigate/remediate current risky users before turning on a new broad policy.\nThe remediation password change is not the self-service password reset flow: SSPR may remain available for recovery, but do not treat SSPR enablement as the Conditional Access remediation prerequisite.\n"
         },
         "entra.create": {
           "meta": {
@@ -17486,7 +17486,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: **High** only.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.\n\nIn Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users**. Add only the resolved exclusions.\n3. Target resources: **All resources**; do not exclude applications.\n4. Conditions > User risk: set **Configure** to **Yes**, then **High** only. Left at **No** the policy has no risk condition, and its remediation requirement reaches every sign-in.\n5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.\n6. Session: confirm **Sign-in frequency = Every time**.\n7. Enable policy: **Report-only**.\n8. Create, then rescan IAMAI. Do not turn it On in this create action.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -17534,7 +17534,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > User risk: set **High** only. Do not add Sign-in risk to this policy.\n"
+          "text": "Conditions > User risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its requirement reaches every sign-in. Do not add Sign-in risk to this policy.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -17546,7 +17546,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope.\n"
+          "text": "Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches; ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -17606,7 +17606,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus password-writeback readiness for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. High user risk can require remediation. The required action can differ for password-based and passwordless users. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus the working password route for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. Require risk remediation lets Microsoft pick the remediation each person's registered methods allow, so the required action differs between password-based and passwordless users. Most user risk is worked out after a sign-in rather than during it, so a report-only window can gain results later. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.\n"
         },
         "entra.enforce": {
           "meta": {

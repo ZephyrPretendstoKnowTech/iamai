@@ -262,6 +262,16 @@ export const ACCEPTANCE = [
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '36', step: 'user-risk', path: 'doneWhen', must: 'People rated at risk were reviewed' },
+  // Risk and Sessions B1-B5 (docs/plans/risk-and-sessions-spec.md section 4,
+  // Microsoft Learn checked 2026-09-20): user risk is about the account and is
+  // mostly read after the sign-in; the pinned grant is Require risk remediation
+  // with the strength, never MFA plus a password change; remediation needs a
+  // registered method and is not the SSPR flow; a guest is blocked, not helped.
+  { item: '36', step: 'user-risk', path: 'why', must: 'the account itself is compromised', mustNot: 'outside a single suspicious sign-in' },
+  { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', must: 'Grant → Require risk remediation with Require authentication strength: {strengthName}' },
+  { item: '36', step: 'user-risk', path: 'who.evidence', must: 'registered for multifactor authentication before this policy reaches them' },
+  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'password hash synchronization and the on-premises password-change setting that clears user risk' },
+  { item: '36', step: 'user-risk', path: 'more.risks', must: 'blocked rather than remediated' },
   { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
   { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
