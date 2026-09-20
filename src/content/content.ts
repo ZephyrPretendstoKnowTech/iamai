@@ -5,7 +5,14 @@
 // (fill.ts) and the renderers (render.ts) read from it.
 import contentJson from '../../docs/design/content.json' with { type: 'json' }
 
-export type Learn = { url: string }
+/**
+ * A step's Microsoft page. `checkedOn` (ISO date) is the day the repository
+ * records that page as read — a wave spec's source table — and is what a step
+ * with no implementation-content package dates its source line from
+ * (stepPackage.ts sourceCheckedLine). Absent where nothing recorded a check; it
+ * is never inferred (S6).
+ */
+export type Learn = { url: string; checkedOn?: string }
 
 /**
  * One entry in the step catalogue; fields absent on a given step are

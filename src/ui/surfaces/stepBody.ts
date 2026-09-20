@@ -41,7 +41,7 @@ import { laneViewFor } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, sourceCheckedLine, entraWithSettings } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -423,10 +423,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // says a channel is missing is not implementation content, and whatever really
   // holds the step is a Readiness tile already.
   // A package the semantic re-pin review set aside (stepPackage.ts packageReviewFor):
-  // the step draws the baseline's own channels, and says why, before anything else.
-  // A step the baseline defines two ways draws no channels at all, so it says
-  // nothing about where they come from (content review S4).
-  const review = conflictWords === null ? packageReviewFor(step) : null
+  // the step draws the baseline's own channels. A step the baseline defines two
+  // ways draws no channels at all, so it says nothing about where they come from
+  // (content review S4).
   const notes: string[] = []
   // Every step draws its Implementation region, a decision, a question and a check
   // included (content review D2, which replaces the owner's 2026-09-11 rule that a
@@ -447,11 +446,17 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
           : hold.invalid.length > 0
             ? heldBox('packageFault')
             : heldBox('bindingMissing')
-  // The date the package's Microsoft sources were last checked (stepPackage.ts
-  // packageSourceLine), or no line: never a pin, never a fabricated date (S6). A
-  // package the re-pin review set aside keeps its date beside why it is set aside.
-  const sourcePkg = pkg ?? (review ? reviewedPackageFor(step) : null)
-  const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W) : null
+  // The date the step's Microsoft sources were last checked (stepPackage.ts
+  // sourceCheckedLine), or no line: never a pin, never a fabricated date (S6).
+  // Every step that shows a Learn link shows the date it was checked beside it
+  // (owner, 2026-09-20), and there are two ways to hold one. A package the
+  // re-pin review set aside keeps its date: when its sources were checked is a
+  // fact about the pages, not about whether its guidance applies, so a baseline
+  // conflict does not take the date away either (quality audit §2.5). A step with
+  // no package at all carries the date on its own Learn entry (`learn.checkedOn`),
+  // which is where a generated row records what its wave spec dated.
+  const sourcePkg = pkg ?? reviewedPackageFor(step)
+  const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W) : sourceCheckedLine(typeof learn.checkedOn === 'string' ? learn.checkedOn : null, W)
   // The step's Microsoft Learn link (its content entry's `learn.url`): at the end
   // of Why on every step (RUN-CONTEXT-B decision 14), and under Implementation,
   // beside Troubleshooting, where the region is drawn (S6).
