@@ -8150,7 +8150,7 @@
             "title": "Common ways to use Conditional Access with Intune",
             "url": "https://learn.microsoft.com/en-us/intune/device-security/conditional-access-integration/scenarios",
             "purpose": "Confirms Microsoft Intune Enrollment is the CA application for enrollment workflow.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-intune-enrollment-mfa",
@@ -8158,7 +8158,7 @@
             "title": "Require multifactor authentication for Intune device enrollment",
             "url": "https://learn.microsoft.com/en-us/intune/device-enrollment/configure-multifactor-authentication",
             "purpose": "Confirms Intune Enrollment app ID/service-principal caveat, enrollment targeting, Every time option, and warns not to use device-based access rules for enrollment.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-session-lifetime",
@@ -8166,7 +8166,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Confirms Every time is supported for Microsoft Intune enrollment and describes full reauthentication behavior and loop warning without MFA.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -8174,7 +8174,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -8182,7 +8182,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -8190,7 +8190,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-sp-create-v1",
@@ -8198,15 +8198,15 @@
             "title": "Create servicePrincipal - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-serviceprincipals?view=graph-rest-1.0",
             "purpose": "Supported prerequisite creation when the Intune Enrollment service principal is absent.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-autopilot-selfdeploy",
             "authority": "Microsoft Learn",
-            "title": "Configure Windows Autopilot profiles",
-            "url": "https://learn.microsoft.com/en-us/autopilot/profiles",
-            "purpose": "Confirms self-deploying mode does not require user credentials, so user-driven reauthentication evidence must be evaluated separately.",
-            "checkedOn": "2026-09-10"
+            "title": "Windows Autopilot self-deploying mode",
+            "url": "https://learn.microsoft.com/en-us/autopilot/self-deploying",
+            "purpose": "Self-deploying mode authenticates the device with its own TPM and no user credentials, so it produces no user reauthentication evidence.",
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -8271,7 +8271,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.\n\n1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources → Select resources → Microsoft Intune Enrollment (not \"All resources\" — this policy targets only the enrollment flow).\n5. Conditions: leave all blank. Client apps: All.\n6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant. Microsoft names Intune enrollment as one of the actions Every time is for, and it asks for the sign-in again whenever the session is evaluated.\n\n1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources → Select resources → Microsoft Intune Enrollment (not \"All resources\" — this policy targets only the enrollment flow).\n5. Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.\n6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft's own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -8319,7 +8319,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Client apps remains All. Do not add device-based enrollment restrictions.\n"
+          "text": "Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Leave **Client apps** at **Configure: No**, which reaches every client app. Do not add a device-based enrollment restriction: Microsoft says not to, because a device cannot already be compliant while it is being enrolled.\n"
         },
         "entra.correct.grant": {
           "meta": {

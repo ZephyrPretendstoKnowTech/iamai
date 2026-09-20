@@ -183,7 +183,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   const INTUNE = 's-goal-intune-enrollment-reauth'
   // Editorial batch C: the shared Create sentence and what this policy does and does not do lead the procedure.
   assert.deepEqual(authoredParts(packageOf(INTUNE).blocks['entra.create'].text), [
-    { kind: 'line', text: 'Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.' },
+    { kind: 'line', text: 'Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant. Microsoft names Intune enrollment as one of the actions Every time is for, and it asks for the sign-in again whenever the session is evaluated.' },
     { kind: 'break' },
     {
       kind: 'list', ordered: true, start: 1, items: [
@@ -191,8 +191,9 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
         ['Name: {{policy.target.displayName}}.'],
         ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
         ['Target resources → Select resources → Microsoft Intune Enrollment (not "All resources" — this policy targets only the enrollment flow).'],
-        ['Conditions: leave all blank. Client apps: All.'],
-        ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.'],
+        // Require Healthy Devices E2/E3: an unconfigured condition is a choice, and it is said as one.
+        ['Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.'],
+        ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft\'s own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.'],
         ['Session → Sign-in frequency: Every time.'],
         ['Enable policy: Report-only.'],
         ['Create. Rescan in IAMAI.'],
@@ -217,7 +218,8 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   assert.equal(ownAi(b), AI)
   const words = stepWords('intune-enrollment-reauth')
   assert.equal(words.doneEnd, 'The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.')
-  assert.equal(words.why, 'A fresh authentication check during user-driven enrollment reduces reliance on an older sign-in session. Test the enrollment methods your organization uses so setup can still finish.')
+  // Require Healthy Devices E1: About this Step is the step's own outcome.
+  assert.equal(words.why, 'Enrolling a device in Intune asks the person to sign in again, so an open session cannot quietly turn a device into a managed one. It is a session control and nothing else: it adds no MFA requirement and it does not make the device compliant.')
   // The shared readiness sentence stays (BLOCKED.md).
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
 })
