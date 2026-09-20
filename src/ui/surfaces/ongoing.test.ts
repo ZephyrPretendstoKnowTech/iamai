@@ -359,3 +359,83 @@ test('D7: the row’s Impact names the subject instead of the placeholder', () =
     assert.equal(rowWho(step), 'Inforcer sign-ins')
   }
 })
+
+// ---------------------------------------------------------------------------
+// The baseline review family (spec section 6)
+// ---------------------------------------------------------------------------
+
+/** The template every generated review row draws (roadmap/workflows.ts W). */
+const REVIEW = (contentJson as unknown as { pages: { app: { plan: { workflows: Record<string, unknown> } } } }).pages.app.plan.workflows
+
+/** The generated review rows of a fixture, which have no constant ids. */
+function reviewRows(name: FixtureName): Step[] {
+  return stepsOf(name).filter((s) => s.id.startsWith('s-review-baseline-'))
+}
+
+/** One generated row's instruction lines, as the opened step draws them. */
+function reviewSteps(name: FixtureName): string[] {
+  const bodies = bodiesOf(name)
+  for (const [id, b] of bodies) {
+    if (!id.startsWith('s-review-baseline-')) continue
+    const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+    if (steps.length > 0) return steps
+  }
+  assert.fail(`${name}: no generated review row with instructions`)
+}
+
+test('E1: the family’s Learn link is locale-free and is the planning page', () => {
+  const rows = reviewRows('demo')
+  assert.ok(rows.length > 0, 'the demo generates no review rows')
+  for (const r of rows) {
+    const url = (r.guidance as unknown as { learn?: { url?: string } } | undefined)?.learn?.url
+    assert.equal(url, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access')
+    assert.doesNotMatch(String(url), /\/en-us\//)
+  }
+})
+
+test('E2: report-only is an instruction, not a hedge', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /Create it in report-only, leave it there for a week, and read the sign-in logs/.test(l)), lines.join('\n'))
+  assert.ok(!lines.some((l) => /Where the policy supports report-only/.test(l)), lines.join('\n'))
+})
+
+test('E3: the template says to test the exclusions, not only to preserve them', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /Test the exclusions as well as the rule/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /exclude the emergency access accounts/.test(l) && /report-only policy blocks nobody/.test(l)), lines.join('\n'))
+})
+
+test('E4: the template says to disable rather than delete when rolling back', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /disable the policy rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+})
+
+test('E5: Completion Criteria says what the record is held against, and what reopens it', () => {
+  assert.match(String(REVIEW.reviewDone), /holds that record against the version you read, and asks again when the policy or the objects it names change/)
+  const bodies = bodiesOf('demo')
+  const row = [...bodies].find(([id]) => id.startsWith('s-review-baseline-'))
+  assert.ok(row, 'the demo draws no review row')
+  assert.ok(row[1].contract.doneWhen.some((l) => /asks again when the policy or the objects it names change/.test(l)), row[1].contract.doneWhen.join('\n'))
+})
+
+test('E6: the four demo rows still draw their own per-policy titles and About lines', () => {
+  // The row's own words are its guidance; `step.title` stays the template's fallback.
+  const guidance = (r: Step): { title?: string; why?: string } => (r.guidance ?? {}) as { title?: string; why?: string }
+  const titles = reviewRows('demo').map((r) => guidance(r).title ?? '').sort()
+  assert.deepEqual(titles, [
+    'Review MFA for the Baseline’s Azure Application Scope',
+    'Review SharePoint and OneDrive Access outside Trusted Locations',
+    'Review Where Azure Virtual Desktop Can Be Used',
+    'Review Who Can Use Azure Virtual Desktop',
+  ])
+  // None of them fell back to the template's own title or About.
+  for (const r of reviewRows('demo')) {
+    assert.doesNotMatch(guidance(r).title ?? '', /^Review access protection for /)
+    assert.doesNotMatch(guidance(r).why ?? '', /^Check the baseline's control for /)
+  }
+  // And the opened step draws the per-policy About, not the fallback.
+  for (const [id, b] of bodiesOf('demo')) {
+    if (!id.startsWith('s-review-baseline-')) continue
+    assert.doesNotMatch(b.contract.why, /^Check the baseline's control for /)
+  }
+})
