@@ -131,7 +131,31 @@ when the step and its words can go through the same review as everything else.
 told; (a) fixes the silence on Monday, and (c) fixes the lifetime properly with a step that has
 been read. **If you say nothing:** (a) for Monday, (c) the week after.
 
-### 7. Rename the break-glass account in the GetIAMAI tenant
+### 7. Nothing in the plan records who did it — and fixing that stores a person's identity
+
+**Screen.** Every saved decision, every confirmed check, every completed step.
+**What it says today.** A date. `StepDecision` is `{ picked, option, answers, at }` and
+`OwnerConfirmation` is `{ at, basis }`. There is no actor on either.
+**Why it matters.** The audit's inheritor scenario exists to find this: somebody scans,
+decides, does three steps and leaves, and the person who picks it up — and who has to
+answer to an auditor six months later — has a plan full of ticks with no name against
+any of them. Paired with the completed-checks fault (fixed), the record was neither
+attributed nor true.
+**Why I did not build it.** Recording who means putting a person's identity into an
+artifact that is stored in the browser and can be exported, so it has to travel through
+the redaction the export already offers for names and addresses, through print, and
+through the prompt pack. That is a new privacy surface, and it is not mine to open at
+midnight on launch eve.
+**Outcomes.** (a) Ship as it is: dates only, and the plan is a single-operator record
+that does not claim to be an audit trail. (b) Record the operator's object id on each
+decision and confirmation, render the name only where names already render, and let the
+existing redaction switch govern it in the export.
+**Recommendation.** (b), in the first week after launch, with the redaction path tested.
+For a single-operator tool used in one browser, (a) is defensible until then — the
+"who" is nearly always the person reading it. **If you say nothing:** (a) for Monday,
+(b) the week after.
+
+### 8. Rename the break-glass account in the GetIAMAI tenant
 
 Only you can: IAMAI never writes. Its old name is in the public git history. Rename it in Entra,
 re-scan, and confirm Establish Emergency Access still reads Completed — before the link goes out.
