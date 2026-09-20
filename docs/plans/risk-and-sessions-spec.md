@@ -176,7 +176,8 @@ the step and its package cite one page, checked 2026-09-20.
 ## 4. `s-goal-user-risk` — Remediate High-Risk Users
 
 **Outcome.** *An account this tenant rates high risk cannot be used again until
-its owner has completed the remediation the baseline's strength accepts.*
+its owner has completed the remediation the baseline's authentication strength
+accepts.*
 
 **Baseline reading.** Pinned member `544cd9ef-5e37-4568-9ad8-b8e151be1814`,
 `IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation`: All users with
@@ -344,7 +345,7 @@ change never beside risk remediation · D3 Configure: Yes, Client apps left alon
 ## 7. `s-goal-all-users-no-persistence` — Limit How Long Sessions Last
 
 **Outcome.** *Nobody's browser session survives closing the browser, and every
-one of them authenticates again on the baseline's interval.*
+one of them authenticates again on the interval the baseline sets.*
 
 **Baseline reading.** Pinned member `ea9459a9-91b6-4d2b-b929-03781ac81d54`,
 `IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)`: All users with the
@@ -429,7 +430,7 @@ check that ordinary browser work stays practical.
 
 **Acceptance.** E1 Configure: Yes everywhere it is instructed · E2 Remember MFA
 off first, said once · E3 the "Stay signed in?" prompt and the PRT difference ·
-E4 no interval of its own · E5 two Completion Criteria, neither the other's · E6
+E4 no interval of its own (the Completion Criteria sentence names the baseline's interval rather than filling a variable, because a fixture with no resolved target would otherwise leave a hole in it) · E5 two Completion Criteria, neither the other's · E6
 the outcome, checked 2026-09-20.
 
 ---
