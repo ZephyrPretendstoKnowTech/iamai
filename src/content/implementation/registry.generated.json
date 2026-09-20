@@ -14366,12 +14366,36 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-risk-signin-policy",
+            "authority": "Microsoft Learn",
+            "title": "Require multifactor authentication for risky sign-ins",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-sign-in",
+            "purpose": "The page the step links: what sign-in risk represents, the Configure toggle on the sign-in-risk condition, the MFA registration prerequisite and AADSTS53004, and the report-only rollout.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-risk-detection-types",
+            "authority": "Microsoft Learn",
+            "title": "Risk detection types and levels",
+            "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-detection-types",
+            "purpose": "Which detections are real-time and which are calculated offline, what High and Medium mean, and the reporting latency.",
+            "checkedOn": "2026-09-20"
+          },
+          {
+            "id": "ms-risk-remediate",
+            "authority": "Microsoft Learn",
+            "title": "Remediate risks and unblock users",
+            "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
+            "purpose": "What answering the prompt does to the sign-in risk state, and the detections that are no longer cleared by it.",
+            "checkedOn": "2026-09-20"
+          },
+          {
             "id": "ms-risk-policy",
             "authority": "Microsoft Learn",
             "title": "Risk policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
             "purpose": "Current sign-in risk Conditional Access guidance, MFA/authentication-strength options, Every time, and Report-only rollout.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-concept",
@@ -14379,7 +14403,7 @@
             "title": "Risk-based access policies",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
             "purpose": "Current risk semantics, P2 requirement, self-remediation, and legacy risk-policy retirement date.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-risk-reports",
@@ -14387,7 +14411,7 @@
             "title": "ID Protection Risk Reports",
             "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-reports",
             "purpose": "Risky sign-in evidence fields and current reporting window.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-auth-strength",
@@ -14395,7 +14419,7 @@
             "title": "Conditional Access authentication strengths",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths",
             "purpose": "Authentication-strength semantics and allowed method combinations.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-session-lifetime",
@@ -14403,7 +14427,7 @@
             "title": "Conditional Access adaptive session lifetime policies",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
             "purpose": "Every-time reauthentication semantics for risky sign-ins.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-condition-v1",
@@ -14411,7 +14435,7 @@
             "title": "conditionalAccessConditionSet resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
             "purpose": "Graph v1.0 signInRiskLevels schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-signin-frequency-v1",
@@ -14419,7 +14443,7 @@
             "title": "signInFrequencySessionControl resource type - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
             "purpose": "Graph v1.0 Every time session-control shape.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
@@ -14427,7 +14451,7 @@
             "title": "Create conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy create endpoint and permissions.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
@@ -14435,7 +14459,7 @@
             "title": "Update conditionalAccessPolicy - v1.0",
             "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Graph v1.0 policy update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -14485,7 +14509,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check High only (not Medium).\n6. Grant: {{policy.target.grantWords}}. Use only the controls listed here.\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check High only (not Medium). Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant: {{policy.target.grantWords}}. Use only the controls listed here.\n8. Session → Sign-in frequency: Every time.\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -14533,7 +14557,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions > Sign-in risk: set **High** only. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.\n"
+          "text": "Conditions > Sign-in risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its grant reaches every sign-in. Remove Medium and Low from this policy; Medium sign-in risk is covered by a separate IAMAI step.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -14545,7 +14569,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Client apps remains All.\n"
+          "text": "Remove any user risk, network or location, device platform, device filter, authentication flow, insider risk or service principal risk condition. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches. Ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.\n"
         },
         "entra.correct.grant": {
           "meta": {
@@ -14605,7 +14629,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.\n"
+          "text": "Keep the policy in Report-only while you review the evidence listed for this step. Check that it still targets High sign-in risk only through **Configure: Yes**, uses the selected grant ({{policy.target.grantWords}}) and Every time sign-in frequency. Review available High-risk sign-ins and whether affected users can satisfy that grant; a registered MFA method does not always satisfy an authentication strength, and somebody with no accepted method registered is blocked rather than prompted, because this policy also stops them registering during a risky sign-in. Some risk is worked out after the sign-in rather than during it, so a report-only window can gain results later. No recent risk events does not prove future readiness, and do not try to create a risky sign-in to test the policy. Keep the separate Medium-risk policy unchanged.\n"
         },
         "entra.enforce": {
           "meta": {

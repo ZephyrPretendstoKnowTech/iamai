@@ -251,6 +251,14 @@ export const ACCEPTANCE = [
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
   { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Available risky sign-ins were reviewed' },
+  // Risk and Sessions A1, A4-A6 (docs/plans/risk-and-sessions-spec.md section 3,
+  // Microsoft Learn checked 2026-09-20): sign-in risk is a reading of one
+  // request; the reading this step has is the sign-in record's and not Identity
+  // Protection's; an unregistered person is blocked rather than prompted.
+  { item: '35', step: 'sign-in-risk', path: 'why', must: 'one authentication request', mustNot: 'flags a sign-in as suspicious' },
+  { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: "Identity Protection's own risk reports are a separate surface this plan does not read" },
+  { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'blocked, not prompted' },
+  { item: '35', step: 'sign-in-risk', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'then dismiss the risk in Identity Protection.' },
   { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '36', step: 'user-risk', path: 'doneWhen', must: 'People rated at risk were reviewed' },
@@ -336,7 +344,10 @@ export function contentFindings(content, pinned = null, contracts = null) {
       if (!s || !p) continue
       const want = [...(p.conditions?.[field] ?? [])].map(cap).sort().join(', ')
       const line = levelsLine(s, kind)
-      const have = line ? line.split('→').pop().trim().split(/,\s*/).sort().join(', ') : null
+      // The line names the portal's Configure toggle before the levels
+      // (docs/plans/risk-and-sessions-spec.md section 2): the levels are what
+      // follows "Configure: Yes, then", and they are what this compares.
+      const have = line ? line.split('→').pop().trim().replace(/^Configure:\s*Yes,\s*then\s*/, '').split(/,\s*/).sort().join(', ') : null
       if (have !== want) add('P0', `content ${id}: the condition line reads "${have}" but the baseline's policy carries ${field} ${want} (C6)`)
     }
     const managed = stepById['require-managed-device']

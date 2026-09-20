@@ -5811,7 +5811,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge High-Risk Sign-ins",
       "changeLine": null,
-      "why": "A risk-based rule can ask for stronger verification when Microsoft flags a sign-in as suspicious. Review the selected requirement so people have a working way to meet it.",
+      "why": "Sign-in risk is Microsoft's reading of one authentication request: how likely it is that the request did not come from the person who owns the account. A high reading stops the sign-in until it is answered with a method the baseline's authentication strength accepts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -5819,10 +5819,12 @@
         "lead": "{active} active people",
         "evidence": [
           "The baseline requires {strengthName} on a high-risk sign-in; it accepts the methods that strength lists, including a Temporary Access Pass where it allows one. Your saved first-enforcement choice decides the grant used now.",
-          "{n} risky sign-ins since {from} by {list:riskyUsers}.",
-          "No sign-in was rated risky since {from}.",
+          "{n} sign-ins were rated high risk since {from}: {list:riskyUsers}",
+          "No sign-in in the records was rated high risk since {from}.",
+          "That rating is read from the sign-in records; a record without one counts as unknown, never as no risk. Identity Protection's own risk reports are a separate surface this plan does not read.",
           "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
           "{pushOnlyCount} people with only Authenticator approval would be stopped by a risky sign-in.",
+          "Somebody with no registered method that meets the requirement is stopped rather than prompted, and cannot register one during the risky sign-in; the error is AADSTS53004.",
           "{existingCoverage}"
         ]
       },
@@ -5841,7 +5843,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.",
+      "doneEnd": "A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
@@ -5860,12 +5862,18 @@
           {
             "text": "With the baseline strength, a person with only Authenticator approval cannot satisfy it until they register an accepted method; the campaign's lists say who.",
             "applies": "always"
+          },
+          {
+            "text": "A person with no registered method that meets the requirement is blocked, not prompted, and this policy stops them registering one during the risky sign-in. Somebody has to reset it for them.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "A risky sign-in that keeps prompting: confirm it was the person, then dismiss the risk in Identity Protection."
+          "A high-risk sign-in answered with an accepted method clears itself: the sign-in risk is remediated and nothing has to be dismissed by hand.",
+          "A person prompted again straight afterwards: some detections are no longer cleared by answering the prompt, and the person has to complete a secure password change instead. Read the detection before dismissing anything.",
+          "A sign-in blocked with AADSTS53004: the person has no registered method that meets the requirement, and cannot register one while the sign-in is risky."
         ],
-        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue.",
+        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue. The rating is about one request, not about the account.",
         "waits": null
       },
       "example": {
@@ -5894,7 +5902,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → High",
+          "Conditions → Sign-in risk → Configure: Yes, then High",
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
