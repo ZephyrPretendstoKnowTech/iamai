@@ -3151,7 +3151,7 @@
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Protect Sign-in Method Registration and Restrict Service Accounts to the Trusted Network wait on this."
+        "waits": "Give Shared Devices Their Own Policy, Protect Sign-in Method Registration, Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
@@ -3187,7 +3187,7 @@
       },
       "decision": {
         "label": "Service accounts",
-        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts; service principals and managed identities do not belong in it.",
+        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts: a policy scoped to users does not block a call made by a service principal, and one assigned to a group is not enforced for a service principal inside it.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
       },
@@ -3196,13 +3196,14 @@
         "steps": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add: {list:serviceAccounts}.",
+          "Add: {list:serviceAccounts}",
+          "Any account named as a mail-sending device in Confirm What You Use is already on that list.",
           "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "The group exists with exactly the confirmed accounts.",
+        "The group holds exactly the user accounts confirmed as running unattended jobs, the mail-sending devices named in Confirm What You Use among them.",
         "Each member's workload owner confirmed it runs unattended and no person signs in with it."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
@@ -3217,13 +3218,17 @@
             "applies": "serviceAccountHasRole"
           },
           {
-            "text": "Accounts in this group are outside the legacy, countries and token policies; the baseline's Block Service Accounts policy pins them to the trusted network: see Restrict Service Accounts to the Trusted Network.",
+            "text": "These accounts sit outside the policies that cover people; the baseline pins them to the trusted network instead: see Restrict Service Accounts to the Trusted Network.",
+            "applies": "always"
+          },
+          {
+            "text": "A Conditional Access policy assigned to a group is not enforced for a service principal in that group, so putting one here would protect nothing.",
             "applies": "always"
           }
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Block Legacy Authentication, Block Sign-ins From Countries Not Allowed and Require Token Protection on Windows wait on this."
+        "waits": "Restrict Service Accounts to the Trusted Network and Require Token Protection on Windows wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",

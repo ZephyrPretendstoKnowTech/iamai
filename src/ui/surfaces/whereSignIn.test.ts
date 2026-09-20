@@ -141,9 +141,16 @@ test('T4: the step says a trusted location cannot be deleted while the trusted m
   assert.match(blockText('s-prereq-trusted-location', 'entra.correct.trusted'), /cannot be deleted until the mark is taken off/)
 })
 
-test('T5: the step names both steps that wait on it', () => {
+test('T5: the step names every step that waits on it, which the board proves is four', () => {
   const waits = String((stepById['s-prereq-trusted-location'] as unknown as { more?: { waits?: string } }).more?.waits ?? '')
-  assert.match(waits, /Protect Sign-in Method Registration and Restrict Service Accounts to the Trusted Network wait on this\./)
+  // The demo's board holds exactly these four waiting on this object.
+  const waiting = ['s-shared-devices', 's-goal-register-info-protected', 's-goal-require-managed-device', 's-goal-service-accounts-trusted-network']
+  const bodies = bodiesOf('demo')
+  for (const id of waiting) {
+    const tiles = JSON.stringify(bodies.get(id)!.allTiles)
+    assert.match(tiles, /Define the Trusted Network/, `${id}: the board does not show it waiting on the trusted network`)
+    assert.ok(waits.includes(bodies.get(id)!.title), `${waits}\n  does not name ${bodies.get(id)!.title}`)
+  }
 })
 
 test('T6: the step shows the date its Microsoft sources were checked, on both scans', () => {
@@ -249,4 +256,50 @@ test('G7: the step shows the date its Microsoft sources were checked, on both sc
   assert.equal(checkedOn('s-goal-geo-restriction'), '2026-09-20')
   assert.equal(bodiesOf('demo').get('s-goal-geo-restriction')!.sourceLine, 'Source checked Sep 20, 2026')
   assert.equal(bodiesOf('demo-week2').get('s-goal-geo-restriction')!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+// ---------------------------------------------------------------------------
+// Create or Correct Service Accounts Group (spec section 6)
+// ---------------------------------------------------------------------------
+
+test('S1: the step says a policy assigned to a group is not enforced for a service principal in it', () => {
+  assert.ok(
+    risksOf('s-prereq-service-accounts-group').some((t) => /assigned to a group is not enforced for a service principal in that group/.test(t)),
+    risksOf('s-prereq-service-accounts-group').join('\n'),
+  )
+  assert.match(blockText('s-prereq-service-accounts-group', 'entra.create'), /not enforced for a service principal inside it/)
+})
+
+test('S2: the step says why a service principal is out of a user-scoped policy’s reach', () => {
+  const help = String((stepById['s-prereq-service-accounts-group'] as unknown as { decision?: { help?: string } }).decision?.help ?? '')
+  assert.match(help, /a policy scoped to users does not block a call made by a service principal/)
+  assert.match(blockText('s-prereq-service-accounts-group', 'entra.create'), /does not block a call made by a service principal/)
+})
+
+test('S3: the step says the mail-sending devices from Confirm What You Use are in this group', () => {
+  // The merge itself is a frozen step's behaviour (docs/plans/frozen-step-suggestions.md
+  // section 8) and is unchanged; what changed is that this step explains the count.
+  assert.match(allText('s-prereq-service-accounts-group'), /named as a mail-sending device in Confirm What You Use is already on that list/)
+  assert.match(blockText('s-prereq-service-accounts-group', 'entra.create'), /named as a mail-sending device in Confirm What You Use is already on that list/)
+  const done = bodiesOf('demo').get('s-prereq-service-accounts-group')!.contract.doneWhen
+  assert.ok(done.some((l: string) => /the mail-sending devices named in Confirm What You Use among them/.test(l)), done.join('\n'))
+})
+
+test('S4: the sibling policies are named once in the step, and are the ones that really wait', () => {
+  const waits = String((stepById['s-prereq-service-accounts-group'] as unknown as { more?: { waits?: string } }).more?.waits ?? '')
+  assert.equal(waits, 'Restrict Service Accounts to the Trusted Network and Require Token Protection on Windows wait on this.')
+  // The risk beside it no longer repeats that list.
+  const risks = risksOf('s-prereq-service-accounts-group').join('\n')
+  assert.ok(!/Block Legacy Authentication/.test(risks) && !/Block Sign-ins From Countries Not Allowed/.test(risks), risks)
+  assert.ok(!/Require Token Protection on Windows/.test(risks), risks)
+  // And the board agrees: on the mid plan both named steps wait on this object.
+  const mid = bodiesOf('mid')
+  for (const id of ['s-goal-service-accounts-trusted-network', 's-goal-token-protection']) {
+    assert.match(JSON.stringify(mid.get(id)!.allTiles), /Create or Correct Service Accounts Group/, id)
+  }
+})
+
+test('S5: the package carries a dated Microsoft Learn source, where it carried none', () => {
+  assert.equal(checkedOn('s-prereq-service-accounts-group'), '2026-09-20')
+  assert.equal(bodiesOf('demo').get('s-prereq-service-accounts-group')!.sourceLine, 'Source checked Sep 20, 2026')
 })

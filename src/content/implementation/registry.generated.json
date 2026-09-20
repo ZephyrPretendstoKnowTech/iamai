@@ -22227,6 +22227,32 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-secure-service-accounts",
+            "authority": "Microsoft Learn",
+            "title": "Securing cloud-based service accounts",
+            "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-workload-ca",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access for workload identities",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-block-location",
+            "authority": "Microsoft Learn",
+            "title": "Block access by location with Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -22246,7 +22272,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Do not add service principals or managed identities; this group is for user accounts.\n6. Create the group and rescan IAMAI before changing the policies that use it.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Any account named as a mail-sending device in Confirm What You Use is already on that list.\n6. Do not add service principals or managed identities. A policy scoped to users does not block a call made by a service principal, and a policy assigned to a group is not enforced for a service principal inside it, so one added here would be protected by nothing.\n7. Create the group and rescan IAMAI before changing the policies that use it.\n"
         },
         "entra.correct.open": {
           "meta": {
