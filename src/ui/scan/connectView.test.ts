@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
 import { gapsSnapshot, noRolesToken } from '../../testing/gapsFixture.ts'
 import { coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
-import { unreadSources } from '../../graph/collect/coreSections.ts'
+import { CONFIG_KEYS, SOURCE_KEYS, unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
@@ -215,9 +215,49 @@ test('tile 3, Scan, complete: no beats, no read-only line, the five limitations 
   scanOnlyItsOwn(t)
 })
 
+// S4-7 and S4-8: a scan that built a plan could still have been refused ten
+// sections or have read one only in part, and the tile said "complete" and
+// nothing else. The plan was built, so the tile stays done — this is not a
+// failure — but it names what it was built without, and a section read in part
+// says so rather than reading as one that was never read.
+test('tile 3, Scan, complete with sections it did not read in full: the same complete heading and accent badge, and the sections under it, partly read told apart from not read', () => {
+  const t = scanTile({
+    kind: 'complete',
+    at: full.asOf,
+    now: twoMinutesLater,
+    unread: [
+      { source: 'config:caPolicies', partial: true },
+      { source: 'config:roleAssignments', partial: false },
+      { source: 'devices', partial: false },
+    ],
+  })
+  assert.equal(t.state, 'complete · 2 minutes ago', 'a plan was built: the scan is complete and says so')
+  assert.equal(t.tone, 'done', 'not a failure, and not the gaps tile')
+  assert.equal(t.lead, '3 sections were not read in full with this account. The plan is built from what IAMAI did read, so check these before you act on it.')
+  assert.deepEqual(t.rows, [
+    { name: 'Conditional Access policies', value: 'partly read' },
+    { name: 'Role assignments', value: 'not read' },
+    { name: 'Devices', value: 'not read' },
+  ])
+  assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'secondary' }], 'no Sign in with another account: the plan was built')
+  scanOnlyItsOwn(t)
+  // One section: the line counts itself down (content/render.ts pluralise).
+  const one = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: [{ source: 'devices', partial: false }] })
+  assert.match(one.lead ?? '', /^1 section was not read in full/)
+})
+
+test('every section label the unread list can name is a phrase, never a Graph key', () => {
+  const every = [...CONFIG_KEYS.map((k) => `config:${k}`), ...SOURCE_KEYS]
+  const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: every.map((source) => ({ source, partial: false })) })
+  for (const row of t.rows ?? []) assert.doesNotMatch(row.name, /^config:|^[a-z]+[A-Z]/, `${row.name} reaches the operator as its Graph key`)
+})
+
 test('tile 3, finished with gaps: the unread rows, one ask for Global Reader with the Microsoft link, Sign in with another account (primary), Scan again (secondary), the amber badge; no plan button', () => {
   const unread = unreadSources(gapsSnapshot())
-  assert.deepEqual(unread, ['config:caPolicies', 'signInEvidence'])
+  assert.deepEqual(unread, [
+    { source: 'config:caPolicies', partial: false },
+    { source: 'signInEvidence', partial: false },
+  ])
   const t = scanTile({ kind: 'gaps', unread, lastScan: last })
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')

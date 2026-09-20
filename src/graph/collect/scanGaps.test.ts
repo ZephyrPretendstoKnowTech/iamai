@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
 import { REFUSED, USER_ROLE_ID, gapsSnapshot, noRolesToken, tokenWithRoles, tokenWithoutClaim } from '../../testing/gapsFixture.ts'
-import { CORE_SOURCES, coreGaps } from './coreSections.ts'
+import { CORE_SOURCES, coreGaps, unreadSources } from './coreSections.ts'
 import { coreRoleGap, rolesInToken } from './tokenRoles.ts'
 import { READ_EVERYTHING_ROLE } from './roles.ts'
 import { planTile } from '../../ui/scan/connectView.ts'
@@ -33,6 +33,45 @@ test('a scan without its policies section or its sign-in records ends with gaps,
   assert.deepEqual(coreGaps(fixtureSnapshot()), [], 'the full fixture scan builds a plan')
   assert.deepEqual(coreGaps(unlicensed()), [], 'sign-in records a licence withholds were not there to read: not a gap')
   assert.deepEqual([...CORE_SOURCES], ['config:caPolicies', 'users', 'signInEvidence'])
+})
+
+// S4-7: a core section read in PART used to count as read, so Connect said the
+// scan was complete and the plan was built from a policy list with a policy
+// missing — the enforced policy IAMAI did not see reads exactly like one the
+// tenant does not have, and the plan says to create it. The plan is still
+// built (a partial read returned real rows, and refusing would leave the
+// operator with nothing), but it is never counted as read.
+test('a core section read in part still builds a plan, and is never counted as read: unreadSources names it, marked partly read', () => {
+  const partial = (): TenantSnapshot => {
+    const s = fixtureSnapshot()
+    s.config.caPolicies = { ...s.config.caPolicies, status: 'partial', reason: 'one policy could not be read' }
+    s.sources.users = { ...s.sources.users, status: 'partial', reason: 'some pages failed' }
+    return s
+  }
+  const s = partial()
+  assert.deepEqual(coreGaps(s), [], 'a partly read core section is not a gap: what came back still builds a plan')
+  assert.deepEqual(unreadSources(s), [
+    { source: 'config:caPolicies', partial: true },
+    { source: 'users', partial: true },
+  ])
+  // Both loops agree on one meaning of read: a configuration section and a
+  // source in the same state are reported the same way.
+  assert.deepEqual(unreadSources(fixtureSnapshot()), [], 'a scan that read everything reports nothing unread')
+  // And a licence gate is still not a shortfall to chase: there was nothing to read.
+  assert.deepEqual(unreadSources(unlicensed()), [])
+})
+
+test('every section a scan could not read reaches the list, core or not, gaps or none', () => {
+  const s = fixtureSnapshot()
+  s.config.namedLocations = { ...s.config.namedLocations, status: 'error', reason: 'refused' }
+  s.config.authStrengths = { ...s.config.authStrengths, status: 'error', reason: 'refused' }
+  s.sources.devices = { ...s.sources.devices, status: 'error', reason: 'refused' }
+  assert.deepEqual(coreGaps(s), [], 'no core section is missing: the plan is built')
+  assert.deepEqual(unreadSources(s), [
+    { source: 'config:namedLocations', partial: false },
+    { source: 'config:authStrengths', partial: false },
+    { source: 'devices', partial: false },
+  ])
 })
 
 test('a token without the roles does not start the scan and names the role to ask for; Global Reader, Global Administrator or Security Reader start it; a token without the claim says nothing', () => {

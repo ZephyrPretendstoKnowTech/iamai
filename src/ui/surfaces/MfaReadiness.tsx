@@ -494,7 +494,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
         <div className="answer-top">
           <div>
             <h2 className="headline">{summary}</h2>
-            {active > 0 && <p className="goal">{goal}</p>}
+            {active > 0 && goal !== '' && <p className="goal">{goal}</p>}
           </div>
           {progress && !context && (
             <div className="readiness-change">

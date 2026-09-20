@@ -4,6 +4,9 @@
 // plan is built or stored, and the last good plan and its record stay as they
 // were. A section a licence withholds (sign-in records without Entra ID P1) is
 // not a gap: there was nothing to read, and the plan says so where it matters.
+// A section read in part is not a gap either — the plan is built from what came
+// back — but it is never counted as read: `unreadSources()` names it, and
+// Connect lists it under every finished scan, complete or not.
 // Pure; the runner (ui/scan/useScanRunner.ts) decides from it.
 import { isLicenceGate, rolesForSource } from './roles.ts'
 import type { ConfigSectionKey, SourceKey, TenantSnapshot } from './types.ts'
@@ -19,7 +22,14 @@ export type CoreGap = {
   roles: string[]
 }
 
-const READ = new Set(['ok', 'partial'])
+/**
+ * A section the scan got data out of, whole or in part. It is the test for
+ * BUILDING a plan, and only that: a partly read section returned real rows, and
+ * the rest of the derivation (scoring/fromSnapshot.ts, derive/readinessContext.ts)
+ * reads it the same way. It is NOT a test for "read": `unreadSources()` below
+ * counts only `ok`, so a partly read section is always named on Connect.
+ */
+const BUILDABLE = new Set(['ok', 'partial'])
 
 function stateOf(snapshot: TenantSnapshot, source: CoreSource): { status: string; reason: string | null } | null {
   if (source === 'config:caPolicies') {
@@ -30,48 +40,73 @@ function stateOf(snapshot: TenantSnapshot, source: CoreSource): { status: string
   return s ? { status: s.status, reason: s.reason } : null
 }
 
-/** The core sections the scan could not read, in registry order; empty when the scan can build a plan. */
+/**
+ * The core sections the scan could not read, in registry order; empty when the
+ * scan can build a plan.
+ *
+ * A section read in PART is not a gap. A gap builds and stores no plan at all
+ * and leaves the last good plan standing, and a partial read did return rows:
+ * throwing away everything the scan did see, because some of it did not arrive,
+ * would leave the operator with less than they had and no way forward. So the
+ * plan is built from what was read and the shortfall is *named* instead —
+ * `unreadSources()` reports the partly read section and Connect lists it under
+ * the scan, on the complete tile as much as the gaps one (S4-7).
+ */
 export function coreGaps(snapshot: TenantSnapshot): CoreGap[] {
   const gaps: CoreGap[] = []
   for (const source of CORE_SOURCES) {
     const s = stateOf(snapshot, source)
-    if (s && READ.has(s.status)) continue
+    if (s && BUILDABLE.has(s.status)) continue
     if (s && s.status === 'disabled' && isLicenceGate(s.reason)) continue
     gaps.push({ source, reason: s?.reason ?? null, roles: rolesForSource(source).least })
   }
   return gaps
 }
 
-const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'roleAssignmentSchedules', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
-const SOURCE_KEYS: SourceKey[] = ['registrationDetails', 'users', 'devices', 'spActivity', 'authMethods', 'appSignInSummary', 'signInEvidence']
+/** Every section the scan reads, in scan order: the list the unread report walks. */
+export const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'roleAssignmentSchedules', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
+export const SOURCE_KEYS: SourceKey[] = ['registrationDetails', 'users', 'devices', 'spActivity', 'authMethods', 'appSignInSummary', 'signInEvidence']
+
+export type UnreadSection = {
+  /** The registry key, which carries the section's label (pages.app.scan.sections). */
+  source: string
+  /** Some of it arrived and some did not, so the plan is built on less than the tenant holds. */
+  partial: boolean
+}
 
 /**
- * Every section the scan could not read (a refusal or an error, never a licence
- * gate), in scan order: the configuration sections, then the sources. A core
- * section the scan lacks altogether counts; any other missing key does not.
+ * Every section the scan did not read in full (a refusal, an error, or a read
+ * that returned only part of the section — never a licence gate), in scan
+ * order: the configuration sections, then the sources. A core section the scan
+ * lacks altogether counts; any other missing key does not.
+ *
+ * `ok` is the only status that means read. `partial` is reported here for both
+ * the configuration sections and the sources, marked as such, because a section
+ * the scan half saw is the one thing the plan cannot warn about by itself: the
+ * policy it did not see reads exactly like a policy the tenant does not have.
  */
-export function unreadSources(snapshot: TenantSnapshot): string[] {
-  const out: string[] = []
+export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
+  const out: UnreadSection[] = []
   for (const key of CONFIG_KEYS) {
     const s = snapshot.config?.[key]
     const source = `config:${key}`
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push(source)
+      if ((CORE_SOURCES as readonly string[]).includes(source)) out.push({ source, partial: false })
       continue
     }
     if (s.status === 'ok') continue
     if (s.status === 'disabled' && isLicenceGate(s.reason)) continue
-    out.push(source)
+    out.push({ source, partial: s.status === 'partial' })
   }
   for (const key of SOURCE_KEYS) {
     const s = snapshot.sources?.[key]
     if (!s) {
-      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push(key)
+      if ((CORE_SOURCES as readonly string[]).includes(key)) out.push({ source: key, partial: false })
       continue
     }
-    if (READ.has(s.status)) continue
+    if (s.status === 'ok') continue
     if (s.status === 'disabled' && isLicenceGate(s.reason)) continue
-    out.push(key)
+    out.push({ source: key, partial: s.status === 'partial' })
   }
   return out
 }

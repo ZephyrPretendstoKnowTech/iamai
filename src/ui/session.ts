@@ -11,7 +11,7 @@
 import { useSyncExternalStore } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TokenSource } from '../graph/collect/runScan.ts'
-import type { CoreGap } from '../graph/collect/coreSections.ts'
+import type { CoreGap, UnreadSection } from '../graph/collect/coreSections.ts'
 import type { RoleGap } from '../graph/collect/tokenRoles.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
 import type { BaselineResult } from './baseline.ts'
@@ -30,8 +30,8 @@ export type ScanState = {
   error: string | null
   /** The core sections the last scan could not read (coreSections.ts): a scan with gaps is done, and no plan is built or stored from it. */
   gaps: CoreGap[]
-  /** Every section the last scan could not read, for the gaps tile's rows; empty unless the scan ended with gaps. */
-  unread: string[]
+  /** Every section the last scan did not read in full (coreSections.ts), for the Scan tile's rows; computed whether or not the scan ended with gaps. */
+  unread: UnreadSection[]
   /** The token's roles read none of the core sections: the scan did not start (tokenRoles.ts). */
   roleGap: RoleGap | null
   startedAt: number | null
