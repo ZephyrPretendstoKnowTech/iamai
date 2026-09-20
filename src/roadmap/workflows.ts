@@ -77,7 +77,13 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     const applicable = key ? answer(key) : 'yes'
     step.manualReview = { basis, confirmedAt: applicable === 'yes' && confirmed?.basis === basis && Date.parse(confirmed.at) <= Date.now() ? confirmed.at : null, readyToConfirm: applicable === 'yes' }
     const words = W.policies.find((p: { pattern: string }) => new RegExp(p.pattern, 'i').test(policy.name))
-    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/overview' } }
+    // The Learn link is the planning page, not the Conditional Access overview:
+    // this row's job is Microsoft's own "Ask the right questions" — record the
+    // answers for each policy before creating it — and the same page carries the
+    // report-only, exclusion-testing and rollback instructions the template
+    // gives (docs/plans/ongoing-spec.md section 6). Locale-free, like every
+    // other Learn URL in the product.
+    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' } }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user

@@ -2163,16 +2163,18 @@
           "save": "Save service choices",
           "notUsed": "You confirmed that {service} is not in use.",
           "reviewTitle": "Review access protection for {service}",
-          "reviewWhy": "Check the baseline control against how you use {service}. IAMAI cannot verify this policy automatically.",
+          "reviewWhy": "Check the baseline's control for {service} against the way this tenant really uses it, before deciding whether it belongs here.",
           "source": "Baseline reference: {policy}. Open View Baseline Definition below to inspect the original settings.",
           "generic": "Identify what the policy protects, who it includes and excludes, and which access requirements it applies.",
           "reviewInstructions": [
             "Match every application, group, location and authentication strength in the baseline to the intended object in this tenant. Never reuse a baseline author’s tenant-specific IDs.",
-            "Check existing policies before making a change. Preserve emergency access and confirm the effect on the intended people or identities.",
-            "Where the policy supports report-only, use it first and review the results. Otherwise use the service’s supported test process before enabling it.",
+            "Check the policies already here, and exclude the emergency access accounts from anything that blocks or restricts sign-in. A report-only policy blocks nobody and needs no exclusion.",
+            "Create it in report-only, leave it there for a week, and read the sign-in logs before you turn it on.",
+            "Test the exclusions as well as the rule: another policy can still ask an excluded person for MFA.",
+            "To back a change out, disable the policy rather than delete it; a deleted one can be restored for 30 days and no longer.",
             "Confirm that the intended access works and unwanted access is blocked. Record the review below only after you have validated the control; IAMAI does not verify completion of this manual step."
           ],
-          "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions.",
+          "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions. IAMAI holds that record against the version you read, and asks again when the policy or the objects it names change.",
           "policies": [
             {
               "pattern": "SharePoint",
@@ -2258,7 +2260,8 @@
           "s-prereq-device-plan": "Phones and computers",
       "s-ladder-phone-access-restriction": "Phone access",
           "s-check-separate-admin-accounts": "Administrator accounts",
-          "s-shared-devices": "Shared-device accounts"
+          "s-shared-devices": "Shared-device accounts",
+          "s-goal-admin-portals-protected": "Administrator portals"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -2599,15 +2602,18 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "An alert helps your team notice emergency-account use and distinguish a planned drill from unexpected access.",
+      "why": "An alert is how anyone finds out an emergency account was used. It also tells a planned drill apart from access nobody expected.",
       "whatToDo": [
-        "Use your approved monitoring system to alert on sign-ins by the selected emergency accounts: for example, send SignInLogs to a Log Analytics workspace (Entra admin center → Entra ID → Monitoring & health → Diagnostic settings) or the SIEM you already use.",
-        "Create an alert rule for sign-ins where UserPrincipalName is one of {list:emergencyAccountUpns}.",
-        "Send it to a monitored destination and name who responds; test it with one controlled sign-in and confirm the alert arrives.",
+        "Send the sign-in logs somewhere they can be queried first: Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting, pick the sign-in categories, then Send to Log Analytics workspace. That takes at least the Security Administrator role, an Azure subscription and a workspace — or the SIEM you already use.",
+        "The accounts are {list:emergencyAccountUpns}. Take each one's object ID from Entra ID → Users; the rule matches on the object ID, not the sign-in name, because a name can be changed under it.",
+        "In the Azure portal, as at least a Monitoring Contributor: Monitor → Alerts → + Create → Alert rule. Scope: the workspace. Condition: Signal name Custom log search, Query type Aggregated logs, a SigninLogs query filtered to those object IDs. Alert logic: Static, Greater than, threshold 0.",
+        "Give it an action group that reaches a person by email, SMS, push or voice, set Severity 0 - Critical, enable it on creation, and name who answers it.",
+        "Test it with one controlled sign-in and confirm the alert arrives. Agree what the responder then does: keep the logs, and decide whether the use was a drill, a real emergency, or neither.",
         "Review ingestion, retention and cost for the monitoring service you use."
       ],
       "doneWhen": [
-        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt."
+        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt.",
+        "The response owner knows what happens next: keep the logs, then decide whether the use was a drill, a real emergency, or neither."
       ]
     },
     "hardening": {
@@ -2615,10 +2621,10 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
-      "why": "These improvements were deferred after the minimum emergency checks passed. Completing them makes the recovery process more resilient.",
+      "why": "These emergency-access checks were deferred once the minimum ones passed. This is the Cleanup row a scan can close for you: each deferred check has to pass again on the tenant.",
       "whatToDo": [
         "{list:hardening}",
-        "Verify each result and scan again: the row closes when they pass. An earlier deferral does not count as done."
+        "Do each one, then scan again: the row closes when they pass. A deferral was a decision to wait, never a result, so nothing here counts as done until the scan finds it."
       ],
       "doneWhen": [
         "Every deferred emergency access recommendation passes on a scan."
@@ -2629,9 +2635,11 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "Consistent names make policy reviews easier for the next person responsible for the tenant.",
+      "why": "A naming standard lets the next person find a policy and understand its purpose without opening it. That is what makes the review after this one possible.",
       "whatToDo": [
         "Rename {list:renames}",
+        "A name that carries its own meaning has a sequence number, the resources it applies to, the response, who it applies to and when. IAMAI proposes names in the convention this tenant already uses.",
+        "A Conditional Access policy has no owner field, so put ownership in the name — a team prefix will do — and keep a register elsewhere of who answers for each one.",
         "Renaming changes no Conditional Access evaluation, but scripts or reports that find policies by name may need updating; keep the same policy IDs and settings."
       ],
       "doneWhen": [
@@ -2644,10 +2652,11 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "Overlapping policies can make later changes harder to understand. Consolidate only when the remaining policy preserves the access requirements that matter.",
+      "why": "A tenant is capped at 240 Conditional Access policies, the ones that are off included, so an overlap costs something. It also makes the next change harder to reason about.",
       "whatToDo": [
         "Compare the complete settings of {list:overlaps}: scope, exclusions, conditions, controls, risk levels and guest types.",
         "Choose Retain Both and record why when the policies serve different requirements. Otherwise select and save the retained policy and the policies to retire below before disabling or deleting anything. After the approved retirement, scan again so IAMAI can verify the retained policy is enforced and the retired policies are disabled or absent.",
+        "Retire by disabling, not deleting: a disabled policy comes back with one switch, while a deleted one can be restored for 30 days and no longer.",
         "Retire a policy only after the remaining one is shown to preserve the required coverage, tested and approved; keep a rollback record. Never remove High-risk coverage because a Medium-only policy exists."
       ],
       "doneWhen": [
@@ -2923,12 +2932,12 @@
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Unused accounts can leave access behind after a person or service stops needing it. Review these candidates with their owners; an old or missing sign-in record is a reason to investigate, not proof that an account is unused.",
+      "why": "Unused accounts can leave access behind after a person or service stops needing it. IAMAI lists an account with no successful sign-in for 90 days; Microsoft calls 90 to 180 a reasonable window. A blank record is not proof of disuse: the directory keeps sign-ins only so far back, and never fills the gap in later.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
       "who": {
-        "lead": "{n} enabled accounts with no sign-in for 90 days or none on record:",
+        "lead": "{n} enabled accounts with no successful sign-in for 90 days, or none on record:",
         "accounts": "{list:accountsWithState}",
         "licenceNote": "Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record."
       },
@@ -2937,13 +2946,13 @@
         "lead": "Review each account with its owner and record the outcome.",
         "steps": [
           "Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.",
-          "Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.",
+          "Or confirm it is in use and have the owner sign in; the directory's record can take a day to catch up.",
           "Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Each listed account is disabled, blocked from sign-in, or shows a sign-in on the next scan.",
+        "Each listed account is disabled, blocked from sign-in, or shows a successful sign-in on a later scan.",
         "An account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
@@ -2959,7 +2968,9 @@
           }
         ],
         "helpDesk": [
-          "A disabled account that turns out to be needed: re-enable it, then register MFA with the owner before their first sign-in."
+          "A disabled account that turns out to be needed: re-enable it, then register MFA with the owner before their first sign-in.",
+          "A failed sign-in is not use. IAMAI reads the last successful one, which is the reading Microsoft names for this.",
+          "A guest on this list goes through Microsoft's stale-guest review instead; a guest leaves a tenant differently."
         ],
         "manager": null,
         "waits": null
@@ -4082,7 +4093,7 @@
       "kind": "policy",
       "title": "Block the Admin Portals for Non-Admins",
       "changeLine": null,
-      "why": "Restricting administrative portals can reduce unnecessary access. The rule must still allow the administrators and approved workflows that need those portals.",
+      "why": "This policy blocks the Microsoft admin portals and the Azure management resource for everyone the baseline names. Its definition spares no administrator, so who it must spare has to be settled before anyone deploys it.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
@@ -4116,6 +4127,18 @@
           },
           {
             "text": "Anyone with an Azure RBAC role but no directory role is blocked from the Azure portal and CLI.",
+            "applies": "always"
+          },
+          {
+            "text": "That Azure management resource also reaches Azure PowerShell, the Azure CLI and the Microsoft 365 admin center. It no longer reaches Azure DevOps.",
+            "applies": "always"
+          },
+          {
+            "text": "The admin-portals resource covers the portals, not the services behind them, so Microsoft Graph and its PowerShell stay open to whoever holds the role.",
+            "applies": "always"
+          },
+          {
+            "text": "A block here also stops everyone from the Microsoft 365 install page, because that page lives inside the admin center.",
             "applies": "always"
           }
         ],
@@ -6200,21 +6223,23 @@
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
-      "why": "Using a separate admin account reduces the exposure of privileged access to everyday mail, meetings and browsing. Verify the replacement account before removing access from the old one.",
+      "why": "Personal email is phished constantly, so the account that opens mail should not also hold a directory role. Move the role to an account that does nothing else, and test it before taking access off the everyday one.",
       "learn": {
-        "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning"
       },
       "who": {
         "lead": "Review the {n} administrator accounts for dedicated administration.",
         "evidence": [
           "Recent mail or Teams activity: {list:adminsWithWorkload}"
-        ]
+        ],
+        "licenceNote": "Mail and Teams activity needs Entra ID P1; without it IAMAI sees no everyday use here, and the review is yours."
       },
       "decision": null,
       "whatToDo": {
         "lead": "Review active and eligible administrator accounts. If they are already dedicated to admin work, record that outcome. Otherwise test a dedicated replacement before removing everyday access.",
         "steps": [
-          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name); no licence, no mailbox.",
+          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name).",
+          "Give it no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.",
           "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
           "Assign the role to the admin account under the same governance model, keeping PIM eligibility where the everyday account used it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment.",
           "Sign in with the admin account and complete the admin task it needs; only then remove the role from the everyday account.",
@@ -6235,6 +6260,10 @@
         "risks": [
           {
             "text": "An admin who keeps doing admin work from the everyday account never sees the separation; moving the role is what makes it real.",
+            "applies": "always"
+          },
+          {
+            "text": "Two marks Microsoft gives for this review: fewer than five Global Administrators, and fewer than ten privileged role assignments in all.",
             "applies": "always"
           }
         ],
@@ -6653,7 +6682,7 @@
       "kind": "policy",
       "title": "Require MFA for Inforcer Access",
       "changeLine": null,
-      "why": "Require MFA when people sign in to Inforcer.",
+      "why": "A token for Inforcer needs MFA, whichever app asks for it: Conditional Access follows the resource, not the client. One policy therefore covers every route people take into the application.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps"
       },
@@ -6681,7 +6710,16 @@
       "skip": true,
       "scanControl": true,
       "more": {
-        "risks": [],
+        "risks": [
+          {
+            "text": "A policy scoped to users never reaches a service principal calling Inforcer; a workload identity needs a policy of its own.",
+            "applies": "always"
+          },
+          {
+            "text": "One policy per application adds up: a tenant is capped at 240, and Microsoft prefers one policy covering all resources.",
+            "applies": "always"
+          }
+        ],
         "helpDesk": [
           "Inspect the affected Inforcer sign-in and its Conditional Access result. Check the target application ID, user scope, exclusions and accepted MFA claim."
         ],

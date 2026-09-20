@@ -361,3 +361,40 @@ One thing to hold for the owner, about a Direction step rather than in it:
   policy in eight numbered steps instead of asking the operator to design one —
   so the gap is what the question says beforehand, not what it leads to. Nothing
   on the Direction step was touched.
+
+## From Ongoing Checks and Cleanup (group 9, 2026-09-20)
+
+`docs/plans/ongoing-spec.md`. Taking the group to the V1 standard needed **no
+change to any frozen step**. Two observations, both about Verify Emergency
+Access (`cleanup-drill`), which this wave stood beside but did not touch.
+
+### 10. Verify Emergency Access is 2,783 characters in the prompt pack
+
+Cleanup shared one 4,000-character data block in `roadmap/prompts.ts`, and the
+drill's own words took seven tenths of it, so the rows after it were clipped —
+on the demo, the alerting row's procedure and the consolidation row's Completion
+Criteria. The engine was fixed rather than the row: each Cleanup row now gets
+its own bounded block, the way each step already did (spec §11.7), so the drill
+costs only itself.
+
+**Left for the owner.** The drill's length is not itself wrong — it carries the
+emergency recovery procedure, which is the one thing a reader may need offline —
+but it is the longest row in the plan by a factor of two, and it is the row most
+likely to be read under pressure. If the recovery procedure were its own
+artifact rather than part of the row's instructions, the row would read as a
+drill and the procedure would read as a procedure. That is a design change to a
+frozen step, so it is here and not in the build.
+
+### 11. The drill is the only Cleanup row that draws the task anatomy
+
+`CleanupStep.tsx`: `taskHead = row.kind === 'drill' ? TASK_HEAD : null`. Verify
+Emergency Access draws About this Step / Tasks Remaining / Implementation Tasks
+/ Completion Criteria; the other four draw Why / Implementation / Done when.
+That split is the owner's decision and this wave kept it exactly. It is recorded
+only so the next person reading the four rows beside it does not take the
+difference for a bug and "fix" it.
+
+Nothing else. The four Emergency Access steps and the four Direction steps
+behaved correctly as the prerequisites and the gate this group's rows wait on,
+at 1280 on the demo and on the follow-up scan, and none of their snapshots
+moved.

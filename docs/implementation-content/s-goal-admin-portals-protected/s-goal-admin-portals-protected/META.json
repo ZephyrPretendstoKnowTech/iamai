@@ -95,8 +95,8 @@
       "id": "ms-admin-portals-resource",
       "authority": "Microsoft Learn",
       "title": "Targeting Resources in Conditional Access Policies",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
-      "checkedOn": "2026-09-12",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],
