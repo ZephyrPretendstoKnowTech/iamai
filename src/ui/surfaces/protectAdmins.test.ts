@@ -9,8 +9,12 @@
 // package block is read instead, because that is the text the state would draw.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { stepById } from '../../content/content.ts'
+import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
+import { shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { policyFacts } from '../../coverage/facts.ts'
+import { buildNameDirectory } from '../../names.ts'
+import { portalLines } from '../../roadmap/portalLines.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
@@ -221,6 +225,77 @@ test('C6: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(ADMINS)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Shorten Admin Sessions (spec section 5)
+// ---------------------------------------------------------------------------
+
+const SESSION = 's-goal-admin-session'
+
+test('D1: the generated portal line sets Configure to Yes, for every policy that narrows client apps', () => {
+  // The one place the product composes this line (roadmap/portalLines.ts): the
+  // close-doors packages carried the toggle in their authored words, the
+  // translator did not, and the translator is what a policy step renders.
+  const p = (pinned.policies as unknown as { id: string; displayName: string }[]).find((x) => x.id === '04b969aa-3e98-4e0f-8b32-2319b199b56a')!
+  const dir = buildNameDirectory(null, [], new Map())
+  const lines = portalLines(policyFacts(p as never, new Map()), {
+    policyName: p.displayName,
+    nameOf: (id: string) => dir.label(id),
+    portalRoot: shared.portalRoot as string,
+    reportOnlyLine: shared.reportOnlyLine as string,
+    exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', 'the exclusions group'),
+  })
+  assert.ok(
+    lines.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'),
+    lines.join('\n'),
+  )
+  // The step's reviewer reference says the same, so the two cannot drift.
+  const ref = ((stepById['admin-session'] as unknown as { whatToDoReference?: { new?: string[] } }).whatToDoReference?.new ?? []).join('\n')
+  assert.ok(ref.includes('Conditions → Client apps → Configure: Yes, then Browser. Left at No it reaches every client app.'), ref)
+})
+
+test('D1b: the step’s own procedures set Configure to Yes, on screen and in the correction', () => {
+  // The demo has no such policy, so the create procedure is the one on screen.
+  const tasks = tasksTextOf(bodiesOf('demo').get(SESSION)!)
+  assert.match(tasks, /set \*\*Configure\*\* to \*\*Yes\*\*, then select \*\*Browser\*\* only/)
+  assert.match(tasks, /Left at \*\*No\*\*, the condition reaches every client app/)
+  // And the correction, for the state no fixture is in.
+  assert.match(blockText(SESSION, 'entra.correct-conditions'), /Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app/)
+})
+
+test('D2: turning off Remember MFA on trusted devices is a risk and a first step', () => {
+  assert.ok(
+    risksOf('admin-session').some((t) => /Remember multifactor authentication on trusted devices, left on, prompts these admins at times neither setting intends/.test(t)),
+    risksOf('admin-session').join('\n'),
+  )
+  assert.match(blockText(SESSION, 'entra.create'), /turn \*\*Remember multifactor authentication on trusted devices\*\* off/)
+})
+
+test('D3: help desk says the Stay signed in? prompt stops working for these admins', () => {
+  const lines = helpDeskOf('admin-session')
+  assert.ok(lines.some((l) => /Stay signed in\? stops working for these admins/.test(l)), lines.join('\n'))
+})
+
+test('D4: only the resolved target names the interval; the package no longer repeats it', () => {
+  const pkg = (registry.packages as Record<string, { blocks?: Record<string, { text?: string }> }>)[SESSION]
+  const all = Object.values(pkg?.blocks ?? {}).map((b) => b.text ?? '').join('\n')
+  assert.doesNotMatch(all, /\b4 hours\b|four-hour|four hours/)
+  assert.match(blockText(SESSION, 'entra.create'), /set to the interval in the intended target shown on this step/)
+  // The step's own words read it from the target already.
+  assert.match(((stepById['admin-session'] as unknown as { whatToDoReference?: { new?: string[] } }).whatToDoReference?.new ?? []).join('\n'), /\{wantedValue\}/)
+})
+
+test('D5: Completion Criteria still says the shorter of two sign-in frequencies wins', () => {
+  const b = bodiesOf('demo').get(SESSION)!
+  assert.ok(
+    b.contract.doneWhen.some((l: string) => /where both apply, the shorter sign-in frequency is the one that takes effect/.test(l)),
+    b.contract.doneWhen.join('\n'),
+  )
+})
+
+test('D6: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(SESSION), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(SESSION)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
 // The unused readers below are kept for the sections that follow.
-void risksOf
 void aboutOf

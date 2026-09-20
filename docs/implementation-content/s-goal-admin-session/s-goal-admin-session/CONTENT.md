@@ -1,10 +1,11 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps: Browser**. Do not use IDs from another tenant, and do not widen or narrow the role list.
-4. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured.
-5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
-6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
+3. Before you start, check **Entra ID > Multifactor authentication > Additional cloud-based MFA settings** and turn **Remember multifactor authentication on trusted devices** off. Microsoft documents that leaving it on alongside sign-in frequency prompts people unexpectedly.
+4. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps**: set **Configure** to **Yes**, then select **Browser** only. Left at **No**, the condition reaches every client app, and the interval applies to desktop and mobile apps too. Do not use IDs from another tenant, and do not widen or narrow the role list.
+5. Session → Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step. Persistent browser session: Never persistent. Leave Grant unconfigured.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+7. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -13,7 +14,7 @@ This policy already exists. The correction sets its conditions to the intended t
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
 3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
-4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.
+4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -23,8 +24,8 @@ Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, th
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) in Entra ID → Conditional Access → Policies.
 
-- Under Session, set Sign-in frequency to **4 hours**.
-- Set Persistent browser session to **Never persistent**.
+- Under Session, set Sign-in frequency to the interval in the intended target shown on this step.
+- Set Persistent browser session to **Never persistent**. This overrides the "Stay signed in?" prompt for the same people.
 - Match the remaining session controls to the target shown for this dedicated session policy.
 @@IAMAI-END
 
@@ -47,7 +48,7 @@ Verify the same policy and its prerequisites, set it to On, then complete the ch
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.
 - Change **Enable policy** to **On** and save.
-- Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the four-hour interval. Check that normal admin work remains practical and emergency access still works.
+- Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the target's interval. Check that normal admin work remains practical and emergency access still works.
 - Rescan in IAMAI.
 @@IAMAI-END
 
@@ -125,13 +126,13 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to 4 hours, Persistent browser session set to Never persistent, and no grant control.
+IAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to the interval in the resolved target, Persistent browser session set to Never persistent, and no grant control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 Policy {{policy.current.id}} for **Shorten Admin Sessions** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy.
 
-The intended target applies to the resolved admin roles, all resources and Browser client apps. It sets Sign-in frequency to 4 hours and Persistent browser session to Never persistent, with no grant control. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session.
+The intended target applies to the resolved admin roles, all resources and Browser client apps. It sets Sign-in frequency to the interval in the resolved target and Persistent browser session to Never persistent, with no grant control. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session.
 
 The exclusions group in the target keeps emergency access accounts out of this policy.
 
@@ -147,7 +148,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, Sign-in frequency of 4 hours, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.
+**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, the resolved target's sign-in frequency, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
@@ -165,7 +166,7 @@ Subject: Planned change: Shorten Admin Sessions
 
 Admins,
 
-We plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
+We plan to shorten admin browser sessions to a fixed sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
 
 {{signature}}
 @@IAMAI-END
@@ -175,13 +176,13 @@ Subject: Planned change: Shorten Admin Sessions
 
 Admins,
 
-We plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
+We plan to shorten admin browser sessions to a fixed sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Check the four-hour frequency, non-persistent browser setting and affected admin workflows. Ready only when the admin roles and exclusions IAMAI resolved match the baseline target, the policy targets Browser client apps and All resources, Grant is unconfigured, Sign-in frequency is 4 hours, Persistent browser session is Never persistent, and Report-only results or a controlled test show acceptable behavior.
+Check the resolved target's sign-in frequency, the non-persistent browser setting and affected admin workflows. Ready only when the admin roles and exclusions IAMAI resolved match the baseline target, the policy targets Browser client apps and All resources, Grant is unconfigured, Sign-in frequency matches the resolved target, Persistent browser session is Never persistent, and Report-only results or a controlled test show acceptable behavior.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

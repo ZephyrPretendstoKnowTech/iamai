@@ -280,8 +280,24 @@
       "id": "ms-session-howto",
       "authority": "Microsoft Learn",
       "title": "Configure adaptive session lifetime policies",
-      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
-      "checkedOn": "2026-09-12",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-ca-conditions",
+      "authority": "Microsoft Learn",
+      "title": "How to use conditions in Conditional Access policies",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-prompts-session-lifetime",
+      "authority": "Microsoft Learn",
+      "title": "Microsoft Entra multifactor authentication prompts and session lifetime",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/concepts-azure-multi-factor-authentication-prompts-session-lifetime",
+      "checkedOn": "2026-09-20",
       "userFacing": true
     }
   ],

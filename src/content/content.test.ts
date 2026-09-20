@@ -329,7 +329,9 @@ test('no rendered string starts with "Shown on"', () => {
 // may name it. This walks the source and fails if a product renderer references
 // whatToDoReference, whichever surface it is written on.
 test('no product renderer reads whatToDoReference (prompt 52 Part 2)', () => {
-  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts'])
+  // protectAdmins.test.ts reads the reference only to assert it agrees with the
+  // translator's generated line, which is the opposite of a renderer reading it.
+  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts', 'src/ui/surfaces/protectAdmins.test.ts'])
   const offenders: string[] = []
   const walk = (dir: string): void => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

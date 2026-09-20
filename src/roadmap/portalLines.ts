@@ -197,9 +197,21 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     const exc = [...f.locations.exclude].filter((l) => !includedLoc.has(lc(l))).map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
     out.push(`Conditions → Locations → Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
   }
+  // Client apps and Authentication flows both carry the portal's Configure
+  // toggle, and a line that names only the boxes to tick describes a policy
+  // that never narrows anything, so the toggle belongs in the line wherever the
+  // target narrows the condition. docs/plans/close-doors-spec.md found this in
+  // the authored packages; these are the generated portal lines, which is where
+  // the product composes the same instruction.
+  // Client apps: Microsoft Learn, concept-conditional-access-conditions —
+  // "The Configure toggle when set to Yes applies to checked items, when set to
+  // No it applies to all client apps, including modern and legacy
+  // authentication clients", so the consequence of No is stated.
+  // Authentication flows: policy-block-authentication-flows says to set
+  // Configure to Yes and does not document what No does, so nothing is claimed.
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
-  if (clientApps.length > 0) out.push(`Conditions → Client apps → ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}`)
-  if (f.flows.size > 0) out.push(`Conditions → Authentication flows → ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
+  if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}. Left at No it reaches every client app.`)
+  if (f.flows.size > 0) out.push(`Conditions → Authentication flows → Configure: Yes, then ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
   if (f.platforms && (f.platforms.include.size > 0 || f.platforms.exclude.size > 0)) {
     // Graph's `all` is the portal's Any device, never a name.
     const named = new Set([...f.platforms.include].filter((p) => !/^all$/i.test(p)))
