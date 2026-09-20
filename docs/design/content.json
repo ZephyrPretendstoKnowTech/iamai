@@ -3942,7 +3942,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} with the baseline's authentication strength and the exclusions group, and every admin holds a qualifying phishing-resistant method.",
+      "doneEnd": "Admins in the baseline's built-in directory roles can only sign in to {tenant} with a method its authentication strength accepts, and every admin in scope has one registered.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Each affected admin has signed in with an accepted method, and the role scope and authentication strength match the plan."
@@ -3973,11 +3973,11 @@
           }
         ],
         "helpDesk": [
-          "A Temporary Access Pass satisfies the phishing-resistant strength once, for the first sign-in.",
-          "Only a registered passkey, security key or Windows Hello gets through; do not add exclusions.",
-          "Windows Hello for Business needs the device joined and the PIN set up first."
+          "A Temporary Access Pass satisfies this policy's strength in both its forms; Microsoft's own phishing-resistant strength accepts neither.",
+          "Anything the strength does not list is refused, including a code or an approval; do not add exclusions.",
+          "An admin who signed in with a password first is never prompted for Windows Hello: they restart the sign-in and choose Sign-in options."
         ],
-        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass for first sign-ins.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass, which is temporary but can be issued for repeated use.",
         "waits": null
       },
       "example": {
