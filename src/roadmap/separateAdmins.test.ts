@@ -30,7 +30,12 @@ test('the review includes role holders and separately lists observed mail or Tea
   const cs = stepById[SEPARATE_ADMIN_ACCOUNTS_STEP_ID]
   assert.equal(cs.title, TITLE)
   assert.equal(cs.skip, true, 'skippable')
-  assert.match(cs.learn?.url ?? '', /privileged-access/, "Microsoft's privileged-access guidance")
+  // Ongoing Checks and Cleanup (docs/plans/ongoing-spec.md sections 3 and 9): the
+  // Learn link moved from the privileged-access-workstations concept page to the one
+  // that carries the instruction — personal email is phished constantly, so the
+  // account that opens mail should not hold a directory role. That page is also
+  // where the two counts the procedure reviews against come from.
+  assert.equal(cs.learn?.url, 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning', "Microsoft's secure-access guidance for administrators")
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const ex = stepVars(s, ctx) as { adminsWithWorkload: string[]; n: number }
   assert.equal(ex.adminsWithWorkload.length, 2)
