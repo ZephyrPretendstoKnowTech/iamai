@@ -115,3 +115,28 @@ test('no step widens its body by what its main column contains', () => {
   assert.doesNotMatch(CSS, /\.step-body[^{]*:has\(/, 'a step body still reshapes itself from its own contents')
   assert.doesNotMatch(CSS, /workflow-choice/, 'the Direction questions still carry their own layout')
 })
+
+test('every control a step takes is in the action column, and the anatomy is four sections', () => {
+  // Owner, 2026-09-20. The Workflow Check stood in the main column *below*
+  // Completion Criteria — a fifth section, outside the four the anatomy has, on
+  // twelve steps. Emergency Access puts its one control in the action column
+  // beside the milestone; so does every step now.
+  const col = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<StepActionColumn'), CONTENT_STEP.indexOf('</StepActionColumn>'))
+  assert.match(col, /<ManualReviewForm/, 'the Workflow Check is not in the action column')
+  assert.match(col, /<DormantDecision/)
+  assert.match(col, /<Decision key=/, 'the decision control left the action column')
+  // The main column draws it only while printing, where the page is one column.
+  const rest = CONTENT_STEP.slice(CONTENT_STEP.indexOf('</StepActionColumn>'))
+  assert.match(rest, /step\.manualReview && printing && <ManualReviewForm/, 'the main column draws it on screen')
+})
+
+test('the dormant step asks one question however many accounts there are', () => {
+  // It drew a dropdown and a text box per account: two controls on the demo and
+  // 1,462 on a directory with 731 dormant accounts. The step completes when each
+  // account is disabled, active again, or kept with a reason — and the scan sees
+  // the first two for itself, so the only answer needed is which are kept.
+  const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function DormantDecision('), CONTENT_STEP.indexOf('function DormantDecision(') + 2600)
+  assert.match(body, /<Picker/, 'the dormant step does not use the shared picker')
+  assert.equal(/rows\.map\(row => <fieldset/.test(body), false, 'a control per account came back')
+  assert.equal((body.match(/<select/g) ?? []).length, 0, 'a per-account dropdown came back')
+})

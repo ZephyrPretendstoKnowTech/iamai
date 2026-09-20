@@ -1,0 +1,584 @@
+[
+ {
+  "step": "s-check-dormant-accounts",
+  "title": "Disable or Confirm Dormant Accounts",
+  "kind": "check",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 2
+   },
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 6
+   },
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 33
+   },
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 731
+   },
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 14
+   },
+   {
+    "kind": "per-account-dropdowns",
+    "entries": 10
+   }
+  ]
+ },
+ {
+  "step": "s-check-separate-admin-accounts",
+  "title": "Use Separate Accounts for Admin Work",
+  "kind": "check",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 7
+   }
+  ]
+ },
+ {
+  "step": "s-direction-accounts",
+  "title": "Identify Service and Shared Accounts",
+  "kind": "decision",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "direction-questions",
+    "entries": 2
+   }
+  ]
+ },
+ {
+  "step": "s-direction-devices",
+  "title": "Decide How People and Devices Sign In",
+  "kind": "decision",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "direction-questions",
+    "entries": 3
+   }
+  ]
+ },
+ {
+  "step": "s-direction-locations",
+  "title": "Decide Where People Sign In From",
+  "kind": "decision",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "direction-questions",
+    "entries": 3
+   }
+  ]
+ },
+ {
+  "step": "s-direction-use",
+  "title": "Confirm What You Use",
+  "kind": "decision",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "direction-questions",
+    "entries": 9
+   },
+   {
+    "kind": "direction-questions",
+    "entries": 7
+   }
+  ]
+ },
+ {
+  "step": "s-goal-block-device-code",
+  "title": "Block Device Code Sign-in",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   },
+   {
+    "kind": "workflow-check-form",
+    "entries": 5
+   }
+  ]
+ },
+ {
+  "step": "s-goal-block-legacy-auth",
+  "title": "Block Legacy Authentication",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-goal-device-registration-mfa",
+  "title": "Require MFA to Register a Device",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 5
+   }
+  ]
+ },
+ {
+  "step": "s-goal-guests-mfa",
+  "title": "Require MFA for Guests",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   },
+   {
+    "kind": "workflow-check-form",
+    "entries": 6
+   }
+  ]
+ },
+ {
+  "step": "s-goal-intune-enrollment-reauth",
+  "title": "Require a Fresh Sign-in for Intune Enrollment",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "large"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 5
+   }
+  ]
+ },
+ {
+  "step": "s-goal-pim-activation-reauth",
+  "title": "Require MFA at Every Role Activation",
+  "kind": "policy",
+  "fixtures": [
+   "mid"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 8
+   }
+  ]
+ },
+ {
+  "step": "s-goal-register-info-protected",
+  "title": "Protect Sign-in Method Registration",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 5
+   }
+  ]
+ },
+ {
+  "step": "s-goal-service-accounts-trusted-network",
+  "title": "Restrict Service Accounts to the Trusted Network",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "mid"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 6
+   }
+  ]
+ },
+ {
+  "step": "s-goal-sign-in-risk",
+  "title": "Challenge High-Risk Sign-ins",
+  "kind": "policy",
+  "fixtures": [
+   "mid"
+  ],
+  "panels": [
+   {
+    "kind": "decision",
+    "entries": 2,
+    "picker": false,
+    "question": false,
+    "strict": false
+   }
+  ]
+ },
+ {
+  "step": "s-goal-user-risk-medium",
+  "title": "Reset Passwords for Medium-Risk Users",
+  "kind": "policy",
+  "fixtures": [
+   "mid"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 6
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-allowed-countries",
+  "title": "Create or Correct Allowed Countries Location",
+  "kind": "object",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-break-glass",
+  "title": "Prepare Emergency Access Accounts",
+  "kind": "blocker",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "decision",
+    "entries": 0,
+    "picker": true,
+    "question": false,
+    "strict": false
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-exclusion-group",
+  "title": "Configure Emergency Exclusions",
+  "kind": "blocker",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "decision",
+    "entries": 0,
+    "picker": true,
+    "question": false,
+    "strict": false
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-passkey-settings",
+  "title": "Configure Passkey Authentication",
+  "kind": "object",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "aaguid-adder",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-per-user-mfa",
+  "title": "Finish Moving Off Per-User MFA",
+  "kind": "object",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-service-accounts-group",
+  "title": "Create or Correct Service Accounts Group",
+  "kind": "object",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-prereq-trusted-location",
+  "title": "Define the Trusted Network",
+  "kind": "object",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-review-baseline-iac-app-block-avd-nontrustedlocations-1qsycmx",
+  "title": "Review Where Azure Virtual Desktop Can Be Used",
+  "kind": "check",
+  "fixtures": [
+   "demo",
+   "demo-week2"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8",
+  "title": "Review SharePoint and OneDrive Access outside Trusted Locations",
+  "kind": "check",
+  "fixtures": [
+   "demo",
+   "demo-week2"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-review-baseline-iac-global-grant-mfa-windowsazuread-baselinescopes-1uqb8zb",
+  "title": "Review MFA for the Baseline’s Azure Application Scope",
+  "kind": "check",
+  "fixtures": [
+   "demo",
+   "demo-week2"
+  ],
+  "panels": [
+   {
+    "kind": "workflow-check-form",
+    "entries": 0
+   }
+  ]
+ },
+ {
+  "step": "s-shared-devices",
+  "title": "Give Shared Devices Their Own Policy",
+  "kind": "policy",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "mid"
+  ],
+  "panels": [
+   {
+    "kind": "answered-elsewhere",
+    "entries": 0
+   },
+   {
+    "kind": "workflow-check-form",
+    "entries": 5
+   }
+  ]
+ },
+ {
+  "step": "s-verify-mfa",
+  "title": "Prepare Your Team for MFA",
+  "kind": "campaign",
+  "fixtures": [
+   "demo",
+   "demo-week2",
+   "small",
+   "mid",
+   "large",
+   "messy",
+   "midflight",
+   "hostile"
+  ],
+  "panels": [
+   {
+    "kind": "decision",
+    "entries": 0,
+    "picker": true,
+    "question": false,
+    "strict": false
+   }
+  ]
+ }
+]
