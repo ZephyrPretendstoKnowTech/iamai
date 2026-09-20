@@ -1,21 +1,22 @@
 @@IAMAI-BEGIN {"id":"entra.separate","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:
-1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.
-2. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://aka.ms/mysecurityinfo. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.
-3. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.
-4. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.
-5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.
+1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name). Cloud-only keeps the role clear of a compromised on-premises directory.
+2. Give the admin account no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.
+3. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://mysignins.microsoft.com/security-info. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.
+4. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent. This is the moment to count: Microsoft asks for fewer than five Global Administrators, and fewer than ten privileged role assignments in all.
+5. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.
+6. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.separate","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only, unlicensed admin account; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.
+IAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only admin account with no mailbox to read but an email address that reaches the person; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create-and-stage","channel":"entra","states":["actionRequired"],"format":"markdown","kind":"template"}
 Review {{admin.peopleToSeparate}}. Record Already dedicated to admin work for existing dedicated accounts. Where a handover is needed:
 1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.
-2. Do not assign ordinary mail/Teams/files productivity use to the admin account.
+2. Do not assign ordinary mail/Teams/files productivity use to the admin account. Give it an email address that reaches the person, so role approvals and service notices still arrive.
 3. Inventory the everyday account's current directory role assignments and distinguish direct active assignments from PIM eligibility/activation.
 4. Reproduce only the intended role assignment on the new admin account under the **same governance model**. Do not turn PIM eligibility into a permanent assignment.
 5. Keep the old role assignment until the new account's approved sign-in and required administrative task both work.

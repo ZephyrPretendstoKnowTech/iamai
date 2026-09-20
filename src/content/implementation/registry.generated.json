@@ -116,6 +116,24 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-inactive",
+            "authority": "Microsoft Learn",
+            "title": "How to manage inactive user accounts",
+            "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-signinactivity",
+            "authority": "Microsoft Graph",
+            "title": "signInActivity resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/signinactivity",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -134,7 +152,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused. Record one outcome for each account:\n1. No longer needed: disable sign-in. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. If the owner signs in, the account leaves this list on the next scan.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
+          "text": "Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:\n1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.\n2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.\n3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
         },
         "ai.dormant": {
           "meta": {
@@ -146,7 +164,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI lists enabled accounts with no sign-in recorded in the last 90 days, or none on record. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
+          "text": "\nIAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.\n"
         },
         "entra.disable": {
           "meta": {
@@ -159,7 +177,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Disable sign-in only for the account whose owner approved it.\n\n1. Open **Entra admin center → Entra ID → Users → All users**.\n2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.\n3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.\n4. Under **Account status**, edit the account and clear **Account enabled**.\n5. Save.\n6. Do not delete the user, remove licenses, alter mailbox content, or revoke sessions as part of this step.\n7. Rescan IAMAI.\n"
+          "text": "Disable sign-in only for the account whose owner approved it.\n\n1. Open **Entra admin center → Entra ID → Users → All users**, as at least a User Administrator.\n2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.\n3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.\n4. Under **Account status**, edit the account and clear **Account enabled**.\n5. Save.\n6. Do not delete the user, remove licenses, alter mailbox content, or revoke sessions as part of this step.\n7. Rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {
@@ -424,12 +442,28 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-security-planning",
+            "authority": "Microsoft Learn",
+            "title": "Secure access practices for administrators in Microsoft Entra ID",
+            "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-role-best-practices",
+            "authority": "Microsoft Learn",
+            "title": "Best practices for Microsoft Entra roles",
+            "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
             "id": "ms-privileged-accounts",
             "authority": "Microsoft Learn",
             "title": "Securing privileged access accounts",
-            "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-accounts",
-            "checkedOn": "2026-09-12",
-            "userFacing": true
+            "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "milestone": {
@@ -452,7 +486,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.\n2. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://aka.ms/mysecurityinfo. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.\n3. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.\n4. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.\n5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
+          "text": "Review the listed active and eligible administrator accounts. Record Already dedicated to admin work when that is true. For an account also used for everyday work:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name). Cloud-only keeps the role clear of a compromised on-premises directory.\n2. Give the admin account no mailbox to read, but an email address that reaches the person: role approvals and service notices still have to arrive.\n3. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://mysignins.microsoft.com/security-info. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.\n4. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent. This is the moment to count: Microsoft asks for fewer than five Global Administrators, and fewer than ten privileged role assignments in all.\n5. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.\n6. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
         },
         "ai.separate": {
           "meta": {
@@ -464,7 +498,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only, unlicensed admin account; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.\n"
+          "text": "\nIAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only admin account with no mailbox to read but an email address that reaches the person; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.\n"
         },
         "entra.create-and-stage": {
           "meta": {
@@ -476,7 +510,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Review {{admin.peopleToSeparate}}. Record Already dedicated to admin work for existing dedicated accounts. Where a handover is needed:\n1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.\n2. Do not assign ordinary mail/Teams/files productivity use to the admin account.\n3. Inventory the everyday account's current directory role assignments and distinguish direct active assignments from PIM eligibility/activation.\n4. Reproduce only the intended role assignment on the new admin account under the **same governance model**. Do not turn PIM eligibility into a permanent assignment.\n5. Keep the old role assignment until the new account's approved sign-in and required administrative task both work.\n"
+          "text": "Review {{admin.peopleToSeparate}}. Record Already dedicated to admin work for existing dedicated accounts. Where a handover is needed:\n1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.\n2. Do not assign ordinary mail/Teams/files productivity use to the admin account. Give it an email address that reaches the person, so role approvals and service notices still arrive.\n3. Inventory the everyday account's current directory role assignments and distinguish direct active assignments from PIM eligibility/activation.\n4. Reproduce only the intended role assignment on the new admin account under the **same governance model**. Do not turn PIM eligibility into a permanent assignment.\n5. Keep the old role assignment until the new account's approved sign-in and required administrative task both work.\n"
         },
         "entra.register-and-prove": {
           "meta": {
@@ -689,8 +723,8 @@
             "id": "ms-admin-portals-resource",
             "authority": "Microsoft Learn",
             "title": "Targeting Resources in Conditional Access Policies",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
-            "checkedOn": "2026-09-12",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -7467,6 +7501,27 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-ca-resources",
+            "authority": "Microsoft Learn",
+            "title": "Targeting Resources in Conditional Access Policies",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-ca-conditions",
+            "authority": "Microsoft Learn",
+            "title": "How to Use Conditions in Conditional Access Policies",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
+        "impact": {
+          "fallbackLabel": "Inforcer sign-ins"
+        },
         "baselineAuthority": {
           "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
           "sourceGoalKey": "inforcer-mfa",
@@ -7507,7 +7562,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID → Conditional Access → Policies → New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Users: **All users**. Apply the resolved exclusions shown in Settings for This Action.\n4. Target resources → Select resources: select **Inforcer**, application ID **708861da-226e-4d65-a57a-24128df64524**. Match the application ID, not a similar name.\n5. Client apps: **All**. Leave other conditions and session controls unconfigured. Grant access: **Require multifactor authentication**.\n6. Set **Enable policy: Report-only** and create it. Reopen the policy, compare its settings with the intended target and rescan.\n"
+          "text": "1. Open **Entra ID → Conditional Access → Policies → New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Users: **All users**. Apply the resolved exclusions shown in Settings for This Action.\n4. Target resources → Select resources: select the Inforcer application, **708861da-226e-4d65-a57a-24128df64524**. Match that application ID, not a similar name.\n5. Leave **Conditions → Client apps** unconfigured: an unconfigured condition already applies to every client app, and ticking the boxes writes a narrower policy than the target. Leave the session controls unconfigured too. Grant access: **Require multifactor authentication**.\n6. Set **Enable policy: Report-only** and create it. Reopen the policy, compare its settings with the intended target and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -7519,7 +7574,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, Target resources to Inforcer (application ID 708861da-226e-4d65-a57a-24128df64524), and Client apps to All. Match the remaining conditions to Settings for This Action.\n"
+          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target. Match the remaining conditions to Settings for This Action.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -7733,7 +7788,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create the Inforcer user sign-in policy in Report-only. Its target application ID is 708861da-226e-4d65-a57a-24128df64524, with All users, confirmed exclusions, All client apps and built-in Require multifactor authentication. This controls user sign-ins to that resource; it does not grant installation permissions or protect workload identities.\n"
+          "text": "Create the Inforcer user sign-in policy in Report-only. Its target application ID is 708861da-226e-4d65-a57a-24128df64524, with All users, confirmed exclusions, an unconfigured Client apps condition (which reaches every client app type) and built-in Require multifactor authentication. This controls user sign-ins to that resource; it does not grant installation permissions or protect workload identities.\n"
         },
         "ai.correct": {
           "meta": {

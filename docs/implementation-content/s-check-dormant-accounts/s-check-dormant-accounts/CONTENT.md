@@ -1,19 +1,19 @@
 @@IAMAI-BEGIN {"id":"entra.dormant","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused. Record one outcome for each account:
-1. No longer needed: disable sign-in. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.
-2. Still needed: confirm its purpose and owner, and verify legitimate use. If the owner signs in, the account leaves this list on the next scan.
+Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:
+1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.
+2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.
 3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.dormant","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-IAMAI lists enabled accounts with no sign-in recorded in the last 90 days, or none on record. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.
+IAMAI lists enabled accounts with no successful sign-in recorded in the last 90 days, or none on record. It reads the directory's last successful sign-in together with the sign-in records it collected; a failed attempt is not use. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["disableConfirmed"],"format":"markdown","kind":"template"}
 Disable sign-in only for the account whose owner approved it.
 
-1. Open **Entra admin center → Entra ID → Users → All users**.
+1. Open **Entra admin center → Entra ID → Users → All users**, as at least a User Administrator.
 2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.
 3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.
 4. Under **Account status**, edit the account and clear **Account enabled**.

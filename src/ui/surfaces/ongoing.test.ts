@@ -1,0 +1,552 @@
+// The "Ongoing Checks and Cleanup" group (`ongoing`, the catch-all), taken to
+// the V1 standard: docs/plans/ongoing-spec.md holds the outcome, the Microsoft
+// Learn page behind every technical claim and the date it was checked. One test
+// per acceptance item in that spec.
+//
+// A test here reads the OPENED STEP wherever the claim is about what an admin
+// sees, and the compiled package block where the claim is about a lifecycle
+// state no fixture reaches — the same rule closeDoors.test.ts and
+// whereSignIn.test.ts follow. Two members are read differently again: the
+// `s-review-baseline-*` rows are generated per tenant, so their words are read
+// off the template in `pages.app.plan.workflows` and off a generated row on the
+// demo; and the four `cleanup-*` rows are not content steps, so they are read
+// off `content.cleanup` and through `cleanupEntry`.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { stepById } from '../../content/content.ts'
+import contentJson from '../../../docs/design/content.json' with { type: 'json' }
+import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { setDisplayTimeZone } from '../../copy/dates.ts'
+import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { laneReadings } from './planLanes.ts'
+import { planDates } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
+import type { StepBody } from './stepBody.ts'
+import { membersOf } from '../../roadmap/stepGroups.ts'
+import { rowWho } from './rowWho.ts'
+import { cleanupEntry, cleanupExportViews } from './cleanupExport.ts'
+import { stepExportView } from './stepExport.ts'
+import { promptPack } from '../../roadmap/prompts.ts'
+import type { MappingState } from '../../mapping/types.ts'
+import type { Step } from '../../roadmap/types.ts'
+
+/** The group's eight listed members, in registry order (roadmap/stepGroups.ts). */
+const ONGOING = [
+  's-goal-admin-portals-protected',
+  's-goal-inforcer-mfa',
+  's-check-dormant-accounts',
+  's-check-separate-admin-accounts',
+  'cleanup-alerting',
+  'cleanup-hardening',
+  'cleanup-consolidation',
+  'cleanup-naming',
+]
+
+/** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
+function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBody> {
+  setDisplayTimeZone('UTC')
+  try {
+    const f: Fixture = mapping ? { ...fixture(name), mapping } : fixture(name)
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const out = new Map<string, StepBody>()
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      if (!reading) continue
+      const lane = laneViewOf(reading, titleOf)
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+      out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+    }
+    return out
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+/** The steps of a fixture's plan, for the rows a body cannot answer for. */
+function stepsOf(name: FixtureName): Step[] {
+  setDisplayTimeZone('UTC')
+  try {
+    const f = fixture(name)
+    return runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf).steps
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+/** A step's risk lines from the content file, whatever their `applies`. */
+const risksOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { more?: { risks?: { text?: string }[] } }).more?.risks ?? []).map((r) => r.text ?? '')) as string[]
+
+/** A step's help-desk lines from the content file. */
+const helpDeskOf = (id: string): string[] => ((stepById[id] as unknown as { more?: { helpDesk?: unknown } }).more?.helpDesk ?? []) as string[]
+
+/** Every string a step's content entry carries, joined: the whole of what it can say. */
+function allText(id: string): string {
+  const out: string[] = []
+  const walk = (n: unknown): void => {
+    if (typeof n === 'string') out.push(n)
+    else if (Array.isArray(n)) n.forEach(walk)
+    else if (n && typeof n === 'object') for (const [k, v] of Object.entries(n)) if (k !== 'example') walk(v)
+  }
+  walk(stepById[id])
+  return out.join('\n')
+}
+
+/** A compiled package block's authored text. */
+function blockText(stepId: string, blockId: string): string {
+  const pkg = (registry.packages as Record<string, { blocks?: Record<string, { text?: string }> }>)[stepId]
+  const text = pkg?.blocks?.[blockId]?.text
+  assert.ok(typeof text === 'string' && text !== '', `${stepId}: the package has no ${blockId} block`)
+  return text as string
+}
+
+/** Every authored block of a package, joined. */
+function packageText(stepId: string): string {
+  const pkg = (registry.packages as Record<string, { blocks?: Record<string, { text?: string }> }>)[stepId]
+  return Object.values(pkg?.blocks ?? {}).map((b) => b.text ?? '').join('\n')
+}
+
+/** The package's own last-checked date (project.ts sourceUpdatedOn reads the max). */
+function checkedOn(stepId: string): string {
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { checkedOn: string }[] } }>)[stepId]?.meta
+  const dates = (meta?.verifiedSources ?? []).map((s) => s.checkedOn).sort()
+  return dates[dates.length - 1] ?? ''
+}
+
+// ---------------------------------------------------------------------------
+// The group itself
+// ---------------------------------------------------------------------------
+
+test('the group lists its eight members in the spec order, and takes every unclaimed step', () => {
+  assert.deepEqual([...membersOf('ongoing')], ONGOING)
+})
+
+// ---------------------------------------------------------------------------
+// Disable or Confirm Dormant Accounts (spec section 2)
+// ---------------------------------------------------------------------------
+
+const DORMANT = 's-check-dormant-accounts'
+
+test('A1: About says 90 days is IAMAI’s window, and names Microsoft’s range around it', () => {
+  const why = String((stepById[DORMANT] as unknown as { why: string }).why)
+  assert.match(why, /no successful sign-in for 90 days/)
+  assert.match(why, /90 to 180/)
+})
+
+test('A2: About says a blank record is not proof, and why the directory has none', () => {
+  const why = String((stepById[DORMANT] as unknown as { why: string }).why)
+  assert.match(why, /blank record is not proof/)
+  assert.match(why, /keeps sign-ins only so far back, and never fills the gap in later/)
+  // The on-screen procedure carries the same reason, so the step and its package agree.
+  assert.match(blockText(DORMANT, 'entra.dormant'), /keeps sign-ins only so far back, and never fills the gap in later/)
+})
+
+test('A3: nothing promises the row clears on the next scan; the record can take a day', () => {
+  assert.doesNotMatch(allText(DORMANT), /leaves this list on the next scan/)
+  assert.doesNotMatch(packageText(DORMANT), /leaves this list on the next scan/)
+  assert.match(allText(DORMANT), /the directory's record can take a day to catch up/)
+  assert.match(blockText(DORMANT, 'entra.dormant'), /can take a day to catch up, so scan again after that/)
+  const doneWhen = (stepById[DORMANT] as unknown as { doneWhen: string[] }).doneWhen
+  assert.ok(doneWhen.some((l) => /shows a successful sign-in on a later scan/.test(l)), doneWhen.join('\n'))
+})
+
+test('A4: help desk says the reading is a successful sign-in, and a failed attempt is not use', () => {
+  const lines = helpDeskOf(DORMANT)
+  assert.ok(lines.some((l) => /A failed sign-in is not use/.test(l)), lines.join('\n'))
+  assert.match(blockText(DORMANT, 'ai.dormant'), /a failed attempt is not use/)
+})
+
+test('A5: help desk sends a stale guest to Microsoft’s own guest review', () => {
+  assert.ok(helpDeskOf(DORMANT).some((l) => /stale-guest review/.test(l)), helpDeskOf(DORMANT).join('\n'))
+})
+
+test('A6: the disable procedure names the least-privileged role, on screen and in the package', () => {
+  assert.match(blockText(DORMANT, 'entra.dormant'), /as at least a User Administrator/)
+  assert.match(blockText(DORMANT, 'entra.disable'), /as at least a User Administrator/)
+})
+
+test('A7: the package carries the checked date, so the step can show it', () => {
+  assert.equal(checkedOn(DORMANT), '2026-09-20')
+})
+
+test('A1–A7 on screen: the demo draws the corrected About and the corrected procedure', () => {
+  const b = bodiesOf('demo').get(DORMANT)
+  assert.ok(b, 'the demo plan has no dormant-accounts step')
+  assert.match(b.contract.why, /no successful sign-in for 90 days/)
+  assert.match(b.lead ?? '', /enabled accounts with no successful sign-in for 90 days, or none on record/)
+  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+  assert.ok(steps.some((s) => /as at least a User Administrator/.test(s)), steps.join('\n'))
+  assert.ok(steps.some((s) => /can take a day to catch up/.test(s)), steps.join('\n'))
+})
+
+test('A1–A7 on a free tenant: the licence note still stands beside the list', () => {
+  const b = bodiesOf('micro').get(DORMANT)
+  assert.ok(b, 'the micro plan has no dormant-accounts step')
+  const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')
+  assert.match(who, /Last sign-in dates need Entra ID P1/)
+  assert.match(b.lead ?? '', /1 enabled account with no successful sign-in for 90 days, or none on record/)
+})
+
+// ---------------------------------------------------------------------------
+// Use Separate Accounts for Admin Work (spec section 3)
+// ---------------------------------------------------------------------------
+
+const SEPARATE = 's-check-separate-admin-accounts'
+
+test('B1: the admin account gets a working address, and nothing says to leave it without one', () => {
+  assert.doesNotMatch(allText(SEPARATE), /no licence, no mailbox/)
+  assert.doesNotMatch(packageText(SEPARATE), /assign no licence, so it has no mailbox/)
+  assert.match(allText(SEPARATE), /no mailbox to read, but an email address that reaches the person/)
+  assert.match(blockText(SEPARATE, 'entra.separate'), /no mailbox to read, but an email address that reaches the person/)
+})
+
+test('B2: About names phishing as the reason, not "exposure"', () => {
+  const why = String((stepById[SEPARATE] as unknown as { why: string }).why)
+  assert.match(why, /Personal email is phished constantly/)
+  assert.doesNotMatch(why, /reduces the exposure/)
+})
+
+test('B3: the procedure says why the admin account is cloud-only', () => {
+  assert.match(blockText(SEPARATE, 'entra.separate'), /Cloud-only keeps the role clear of a compromised on-premises directory/)
+})
+
+test('B4: Microsoft’s two counts are on the step and in the procedure', () => {
+  const risks = risksOf(SEPARATE)
+  assert.ok(risks.some((t) => /fewer than five Global Administrators/.test(t) && /fewer than ten privileged role assignments/.test(t)), risks.join('\n'))
+  assert.match(blockText(SEPARATE, 'entra.separate'), /fewer than five Global Administrators/)
+})
+
+test('B5: registration goes to the page Microsoft names, and no aka.ms alias is left', () => {
+  assert.match(blockText(SEPARATE, 'entra.separate'), /https:\/\/mysignins\.microsoft\.com\/security-info/)
+  assert.doesNotMatch(packageText(SEPARATE), /aka\.ms/)
+  assert.doesNotMatch(allText(SEPARATE), /aka\.ms/)
+})
+
+test('B6: the Learn link is the page that carries this instruction', () => {
+  const url = String((stepById[SEPARATE] as unknown as { learn: { url: string } }).learn.url)
+  assert.equal(url, 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-planning')
+})
+
+test('B7: the package carries the checked date, and the step shows it', () => {
+  assert.equal(checkedOn(SEPARATE), '2026-09-20')
+  const b = bodiesOf('demo').get(SEPARATE)
+  assert.ok(b, 'the demo plan has no separate-admin-accounts step')
+  assert.equal(b.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('B8: on a free tenant the step says it cannot see everyday use, and still asks for the review', () => {
+  const b = bodiesOf('micro').get(SEPARATE)
+  assert.ok(b, 'the micro plan has no separate-admin-accounts step')
+  const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')
+  // micro has no sign-in evidence at all, so the licence note is the only who-line there is.
+  assert.match(who, /Mail and Teams activity needs Entra ID P1/)
+  assert.doesNotMatch(who, /Recent mail or Teams activity/)
+  assert.match(b.lead ?? '', /Review the 1 administrator account for dedicated administration\./)
+  // The demo has the evidence, and the note sits under it rather than replacing it.
+  const demoWho = (bodiesOf('demo').get(SEPARATE)?.whoFull ?? []).map((w) => w.lead)
+  assert.ok(demoWho.some((l) => /Recent mail or Teams activity/.test(l)), demoWho.join('\n'))
+  assert.ok(demoWho.some((l) => /needs Entra ID P1/.test(l)), demoWho.join('\n'))
+})
+
+// ---------------------------------------------------------------------------
+// Block the Admin Portals for Non-Admins (spec section 4)
+// ---------------------------------------------------------------------------
+
+const PORTALS = 's-goal-admin-portals-protected'
+/** The goal step's words live under the goal id, which is what the plan resolves. */
+const PORTALS_CONTENT = 'admin-portals-protected'
+
+test('C1: About names the unsettled scope, not a benefit the step does not deliver', () => {
+  const why = String((stepById[PORTALS_CONTENT] as unknown as { why: string }).why)
+  assert.match(why, /spares no administrator/)
+  assert.match(why, /settled before anyone deploys it/)
+  assert.doesNotMatch(why, /can reduce unnecessary access/)
+})
+
+test('C2: a risk says the admin-portals resource stops at the portals', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /covers the portals, not the services behind them/.test(t) && /Microsoft Graph/.test(t)), risks.join('\n'))
+})
+
+test('C3: a risk says a block here stops the Microsoft 365 install page for everyone', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /Microsoft 365 install page/.test(t)), risks.join('\n'))
+})
+
+test('C4: the Azure management risk names what that resource really reaches', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /Azure PowerShell, the Azure CLI and the Microsoft 365 admin center/.test(t) && /no longer reaches Azure DevOps/.test(t)), risks.join('\n'))
+})
+
+test('C5: the step reaches no create on the demo, and its Completion Criteria is the author’s', () => {
+  const b = bodiesOf('demo').get(PORTALS)
+  assert.ok(b, 'the demo plan has no admin-portals step')
+  assert.equal(b.empty?.key, 'conflict')
+  assert.ok(b.conflictWords, 'the conflicted step draws no explanation')
+  assert.deepEqual(b.contract.doneWhen, ['The baseline author publishes a version that resolves the contradiction between the policy’s documentation and its definition.'.replace('’', "'")])
+  // Nothing in the body offers a policy to write.
+  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+  assert.equal(steps.length, 0, steps.join('\n'))
+})
+
+test('C6: the row’s Impact names the subject instead of the placeholder', () => {
+  for (const name of ['demo', 'messy'] as const) {
+    const step = stepsOf(name).find((s) => s.id === PORTALS)
+    assert.ok(step, `${name}: no admin-portals step`)
+    assert.equal(rowWho(step), 'Administrator portals')
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Require MFA for Inforcer Access (spec section 5)
+// ---------------------------------------------------------------------------
+
+const INFORCER = 's-goal-inforcer-mfa'
+const INFORCER_CONTENT = 'inforcer-mfa'
+
+test('D1: the Client apps condition is left unconfigured, with the reason, and nothing says "Client apps: All"', () => {
+  for (const block of ['entra.create', 'entra.correct-conditions']) {
+    const text = blockText(INFORCER, block)
+    assert.match(text, /Client apps\*\* unconfigured/, `${block}: the condition is not left unconfigured`)
+    assert.match(text, /every client app/, `${block}: the reason is missing`)
+  }
+  assert.doesNotMatch(packageText(INFORCER), /Client apps: \*\*All\*\*/)
+  assert.doesNotMatch(packageText(INFORCER), /Client apps to All/)
+  assert.doesNotMatch(packageText(INFORCER), /All client apps/)
+})
+
+test('D2: a risk says a user-scoped policy does not cover service principals', () => {
+  const risks = risksOf(INFORCER_CONTENT)
+  assert.ok(risks.some((t) => /service principal/.test(t) && /workload identity needs a policy of its own/.test(t)), risks.join('\n'))
+})
+
+test('D3: About says the requirement follows the resource, whatever client asks', () => {
+  const why = String((stepById[INFORCER_CONTENT] as unknown as { why: string }).why)
+  assert.match(why, /follows the resource, not the client/)
+  assert.notEqual(why, 'Require MFA when people sign in to Inforcer.')
+})
+
+test('D4: a risk names the cost of one policy per application', () => {
+  const risks = risksOf(INFORCER_CONTENT)
+  assert.ok(risks.some((t) => /capped at 240/.test(t)), risks.join('\n'))
+})
+
+test('D5: no rendered line calls a display name an application ID', () => {
+  const b = bodiesOf('demo').get(INFORCER)
+  assert.ok(b, 'the demo plan has no Inforcer step')
+  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+  const target = steps.find((s) => /Target resources/.test(s))
+  assert.ok(target, steps.join('\n'))
+  assert.doesNotMatch(target, /application ID [“"]/)
+  // The baseline's own name marker is still there: it is provenance, not a hole (src/names.ts).
+  assert.match(target, /Inforcer \(baseline name\)/)
+})
+
+test('D6: the package carries the checked date, and the step shows it', () => {
+  assert.equal(checkedOn(INFORCER), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(INFORCER)?.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('D7: the row’s Impact names the subject instead of the placeholder', () => {
+  for (const name of ['demo', 'messy'] as const) {
+    const step = stepsOf(name).find((s) => s.id === INFORCER)
+    assert.ok(step, `${name}: no Inforcer step`)
+    assert.equal(rowWho(step), 'Inforcer sign-ins')
+  }
+})
+
+// ---------------------------------------------------------------------------
+// The baseline review family (spec section 6)
+// ---------------------------------------------------------------------------
+
+/** The template every generated review row draws (roadmap/workflows.ts W). */
+const REVIEW = (contentJson as unknown as { pages: { app: { plan: { workflows: Record<string, unknown> } } } }).pages.app.plan.workflows
+
+/** The generated review rows of a fixture, which have no constant ids. */
+function reviewRows(name: FixtureName): Step[] {
+  return stepsOf(name).filter((s) => s.id.startsWith('s-review-baseline-'))
+}
+
+/** One generated row's instruction lines, as the opened step draws them. */
+function reviewSteps(name: FixtureName): string[] {
+  const bodies = bodiesOf(name)
+  for (const [id, b] of bodies) {
+    if (!id.startsWith('s-review-baseline-')) continue
+    const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+    if (steps.length > 0) return steps
+  }
+  assert.fail(`${name}: no generated review row with instructions`)
+}
+
+test('E1: the family’s Learn link is locale-free and is the planning page', () => {
+  const rows = reviewRows('demo')
+  assert.ok(rows.length > 0, 'the demo generates no review rows')
+  for (const r of rows) {
+    const url = (r.guidance as unknown as { learn?: { url?: string } } | undefined)?.learn?.url
+    assert.equal(url, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access')
+    assert.doesNotMatch(String(url), /\/en-us\//)
+  }
+})
+
+test('E2: report-only is an instruction, not a hedge', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /Create it in report-only, leave it there for a week, and read the sign-in logs/.test(l)), lines.join('\n'))
+  assert.ok(!lines.some((l) => /Where the policy supports report-only/.test(l)), lines.join('\n'))
+})
+
+test('E3: the template says to test the exclusions, not only to preserve them', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /Test the exclusions as well as the rule/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /exclude the emergency access accounts/.test(l) && /report-only policy blocks nobody/.test(l)), lines.join('\n'))
+})
+
+test('E4: the template says to disable rather than delete when rolling back', () => {
+  const lines = reviewSteps('demo')
+  assert.ok(lines.some((l) => /disable the policy rather than delete it/.test(l) && /30 days/.test(l)), lines.join('\n'))
+})
+
+test('E5: Completion Criteria says what the record is held against, and what reopens it', () => {
+  assert.match(String(REVIEW.reviewDone), /holds that record against the version you read, and asks again when the policy or the objects it names change/)
+  const bodies = bodiesOf('demo')
+  const row = [...bodies].find(([id]) => id.startsWith('s-review-baseline-'))
+  assert.ok(row, 'the demo draws no review row')
+  assert.ok(row[1].contract.doneWhen.some((l) => /asks again when the policy or the objects it names change/.test(l)), row[1].contract.doneWhen.join('\n'))
+})
+
+test('E6: the four demo rows still draw their own per-policy titles and About lines', () => {
+  // The row's own words are its guidance; `step.title` stays the template's fallback.
+  const guidance = (r: Step): { title?: string; why?: string } => (r.guidance ?? {}) as { title?: string; why?: string }
+  const titles = reviewRows('demo').map((r) => guidance(r).title ?? '').sort()
+  assert.deepEqual(titles, [
+    'Review MFA for the Baseline’s Azure Application Scope',
+    'Review SharePoint and OneDrive Access outside Trusted Locations',
+    'Review Where Azure Virtual Desktop Can Be Used',
+    'Review Who Can Use Azure Virtual Desktop',
+  ])
+  // None of them fell back to the template's own title or About.
+  for (const r of reviewRows('demo')) {
+    assert.doesNotMatch(guidance(r).title ?? '', /^Review access protection for /)
+    assert.doesNotMatch(guidance(r).why ?? '', /^Check the baseline's control for /)
+  }
+  // And the opened step draws the per-policy About, not the fallback.
+  for (const [id, b] of bodiesOf('demo')) {
+    if (!id.startsWith('s-review-baseline-')) continue
+    assert.doesNotMatch(b.contract.why, /^Check the baseline's control for /)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// The four Cleanup rows (spec sections 7 and 8)
+//
+// A Cleanup row is not a content step: its words are keyed by kind under
+// content.cleanup and the CleanupBody draws them. The owner left these rows out
+// of the 2026-09-19 anatomy change, so these tests check the words and check
+// that the shape did not move.
+// ---------------------------------------------------------------------------
+
+const cleanupOf = (kind: string): { why: string; whatToDo: string[]; doneWhen: string[]; learn?: { url: string } | null } => {
+  const entry = cleanupEntry(kind)
+  assert.ok(entry, `content.cleanup has no ${kind} row`)
+  return entry as { why: string; whatToDo: string[]; doneWhen: string[]; learn?: { url: string } | null }
+}
+
+test('F1: the alert rule matches the accounts’ object IDs, not their sign-in names', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /object ID, not the sign-in name, because a name can be changed under it/)
+  assert.doesNotMatch(steps, /where UserPrincipalName is one of/)
+})
+
+test('F2: the alert rule’s signal, threshold, severity and Azure role are on screen', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /at least a Monitoring Contributor/)
+  assert.match(steps, /Signal name Custom log search/)
+  assert.match(steps, /Query type Aggregated logs/)
+  assert.match(steps, /Static, Greater than, threshold 0/)
+  assert.match(steps, /Severity 0 - Critical/)
+})
+
+test('F3: the diagnostic-setting prerequisite names the Entra role and the workspace', () => {
+  const steps = cleanupOf('alerting').whatToDo.join('\n')
+  assert.match(steps, /Monitoring & health → Diagnostic settings → \+ Add diagnostic setting/)
+  assert.match(steps, /Send to Log Analytics workspace/)
+  assert.match(steps, /at least the Security Administrator role, an Azure subscription and a workspace/)
+  // The walk's two pinned lines are still there (scripts/walkContent.mjs item 'cleanup').
+  assert.match(steps, /the SIEM you already use/)
+  assert.match(steps, /Review ingestion, retention and cost for the monitoring service you use\./)
+})
+
+test('F4: Completion Criteria names who answers the alert and what they do with it', () => {
+  const done = cleanupOf('alerting').doneWhen
+  assert.equal(done.length, 2)
+  assert.ok(done.some((l) => /keep the logs, then decide whether the use was a drill, a real emergency, or neither/.test(l)), done.join('\n'))
+})
+
+test('F5: the four Cleanup rows keep their shape — Why, the instructions, Done when', () => {
+  for (const kind of ['alerting', 'hardening', 'naming', 'consolidation']) {
+    const entry = cleanupOf(kind)
+    assert.ok(typeof entry.why === 'string' && entry.why.length > 0, `${kind}: no Why`)
+    assert.ok(entry.whatToDo.length > 0, `${kind}: no instructions`)
+    assert.ok(entry.doneWhen.length > 0, `${kind}: no Done when`)
+    assert.ok(entry.learn?.url, `${kind}: no Learn link`)
+    // No row grew an anatomy of its own: these are the only four keys a row draws.
+    assert.deepEqual(Object.keys(entry).sort(), ['doneWhen', 'learn', 'title', 'whatToDo', 'why'])
+  }
+})
+
+test('G1: the hardening row says the scan closes it, and a deferral is not a pass', () => {
+  const entry = cleanupOf('hardening')
+  assert.match(entry.why, /the Cleanup row a scan can close for you/)
+  assert.match(entry.whatToDo.join('\n'), /A deferral was a decision to wait, never a result/)
+})
+
+test('H1: the naming row’s Why is a name you do not have to open the policy to read', () => {
+  assert.match(cleanupOf('naming').why, /find a policy and understand its purpose without opening it/)
+  assert.doesNotMatch(cleanupOf('naming').why, /Consistent names make policy reviews easier/)
+})
+
+test('H2: the naming row says what a policy name should carry', () => {
+  assert.match(cleanupOf('naming').whatToDo.join('\n'), /a sequence number, the resources it applies to, the response, who it applies to and when/)
+})
+
+test('H3: the naming row says ownership goes in the name, because there is no owner field', () => {
+  assert.match(cleanupOf('naming').whatToDo.join('\n'), /no owner field, so put ownership in the name/)
+})
+
+test('J1: the consolidation row names the per-tenant policy limit as the reason', () => {
+  const why = cleanupOf('consolidation').why
+  assert.match(why, /capped at 240 Conditional Access policies, the ones that are off included/)
+})
+
+test('J2: the consolidation row says disable before delete, and what the delete window is', () => {
+  assert.match(cleanupOf('consolidation').whatToDo.join('\n'), /Retire by disabling, not deleting/)
+  assert.match(cleanupOf('consolidation').whatToDo.join('\n'), /restored for 30 days and no longer/)
+})
+
+test('K1: every Cleanup row reaches the prompt pack whole, not clipped at the block cap', () => {
+  setDisplayTimeZone('UTC')
+  try {
+    const f = fixture('demo')
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const rows = cleanupExportViews(r.schedule.cleanup)
+    assert.ok(rows.length >= 3, 'the demo draws fewer Cleanup rows than this checks')
+    const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[s.id] ?? null, naming: r.coverage.organisation.naming })
+    const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx(s)), tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', planSummary: r.schedule.derivation.criticalPath, announcement: null, cleanup: rows })
+    const summarise = pack.find((p) => /Summarise/i.test(p.title))
+    assert.ok(summarise, 'the pack has no summarise prompt')
+    for (const row of rows) {
+      assert.ok(summarise.prompt.includes(row.title), `the pack drops ${row.kind}`)
+      for (const line of [row.why, ...row.whatToDo, ...row.doneWhen]) {
+        assert.ok(summarise.prompt.includes(line), `the pack clips ${row.kind}: ${line.slice(0, 60)}`)
+      }
+    }
+  } finally {
+    setDisplayTimeZone(null)
+  }
+})

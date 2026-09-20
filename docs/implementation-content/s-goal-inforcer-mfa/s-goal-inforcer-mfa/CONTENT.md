@@ -2,13 +2,13 @@
 1. Open **Entra ID → Conditional Access → Policies → New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Users: **All users**. Apply the resolved exclusions shown in Settings for This Action.
-4. Target resources → Select resources: select **Inforcer**, application ID **708861da-226e-4d65-a57a-24128df64524**. Match the application ID, not a similar name.
-5. Client apps: **All**. Leave other conditions and session controls unconfigured. Grant access: **Require multifactor authentication**.
+4. Target resources → Select resources: select the Inforcer application, **708861da-226e-4d65-a57a-24128df64524**. Match that application ID, not a similar name.
+5. Leave **Conditions → Client apps** unconfigured: an unconfigured condition already applies to every client app, and ticking the boxes writes a narrower policy than the target. Leave the session controls unconfigured too. Grant access: **Require multifactor authentication**.
 6. Set **Enable policy: Report-only** and create it. Reopen the policy, compare its settings with the intended target and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, Target resources to Inforcer (application ID 708861da-226e-4d65-a57a-24128df64524), and Client apps to All. Match the remaining conditions to Settings for This Action.
+Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**). Keep its current state. Set Users to All users with the resolved exclusions, and Target resources to the Inforcer application, 708861da-226e-4d65-a57a-24128df64524. Leave **Conditions → Client apps** unconfigured, which is what reaches every client app; ticking the boxes writes a narrower policy than the target. Match the remaining conditions to Settings for This Action.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -115,7 +115,7 @@ $actual=IG GET $uri
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-Create the Inforcer user sign-in policy in Report-only. Its target application ID is 708861da-226e-4d65-a57a-24128df64524, with All users, confirmed exclusions, All client apps and built-in Require multifactor authentication. This controls user sign-ins to that resource; it does not grant installation permissions or protect workload identities.
+Create the Inforcer user sign-in policy in Report-only. Its target application ID is 708861da-226e-4d65-a57a-24128df64524, with All users, confirmed exclusions, an unconfigured Client apps condition (which reaches every client app type) and built-in Require multifactor authentication. This controls user sign-ins to that resource; it does not grant installation permissions or protect workload identities.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
