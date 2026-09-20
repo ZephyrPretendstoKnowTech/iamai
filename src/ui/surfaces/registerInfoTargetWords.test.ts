@@ -45,7 +45,10 @@ for (const [name, make] of [['demo-week2+curated', () => curatedFixture('demo-we
     const entra = body.artifacts.find((a) => a.id === 'portal')
     assert.ok(entra && !entra.unavailable, 'the Entra tab is withheld')
     const text = entra.text()
-    assert.ok(text.includes(`Conditions > Locations: **${location[0]}**.`), text)
+    // mfa-everyone-spec.md §2 A1 (ms-security-info step 7, ms-network): the
+    // Include and Exclude are named only after Configure is set to Yes, because
+    // "Conditional Access policies apply to all locations by default".
+    assert.ok(text.includes(`Conditions > Locations: set **Configure** to **Yes**, then **${location[0]}**.`), text)
     assert.ok(text.includes(`4. Grant: **${grant[0]}**, exactly as IAMAI resolved the target.`), text)
     assert.doesNotMatch(text, /\{\{|mode|blockOutsideTrusted/)
     for (const id of ['ps', 'json', 'ai']) {
