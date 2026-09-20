@@ -67,7 +67,7 @@ test('affected-passkey task keeps users as facts and one method selector', () =>
   const rendered = emergencyTaskText({ ...task, facts: [{ label: 'user@example.com', value: 'Security key · Replacement needed' }] }, task.defaultVariantId)
   assert.match(rendered, /Compatible alternative registered|Replacement needed/)
   assert.match(rendered, /Compatible alternative/)
-  assert.match(rendered, /Replacement registration — only if needed/)
+  assert.match(rendered, /Replacement registration, only if needed:/)
   assert.match(rendered, /Return to IAMAI.*Scan to update the plan/s)
 })
 

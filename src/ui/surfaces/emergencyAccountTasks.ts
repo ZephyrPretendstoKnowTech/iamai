@@ -305,17 +305,6 @@ export function emergencyTaskFacts(task: EmergencyAccountTask, variantId?: strin
   return selected?.facts ?? task.facts ?? []
 }
 
-/**
- * A procedure line that heads a section rather than instructing: `## `, the
- * convention the portal artifact is already read back with (policyTasks.ts
- * portalProcedureOf). Two of them number an Emergency Access procedure's
- * sections, and numbering them made steps that instruct nothing.
- */
-export const PROCEDURE_HEADING = /^#{1,6}\s+/
-export const isProcedureHeading = (line: string): boolean => PROCEDURE_HEADING.test(line)
-/** A heading line without its marker. */
-export const procedureHeadingText = (line: string): string => line.replace(PROCEDURE_HEADING, '')
-
 export function emergencyTaskSteps(task: EmergencyAccountTask, variantId?: string | null): string[] {
   if (!task.variants?.length) return task.steps
   const selected = task.variants.find(variant => variant.id === variantId) ?? task.variants.find(variant => variant.id === task.defaultVariantId) ?? task.variants[0]
@@ -328,11 +317,7 @@ export function emergencyTaskText(task: EmergencyAccountTask, variantId?: string
   const heading = `**${task.title}**${task.targetUpn ? `\n\nTarget: ${task.targetUpn}` : ''}`
   const taskFacts = emergencyTaskFacts(task, variantId)
   const facts = taskFacts.length ? `\n\n${taskFacts.map(row => `- **${row.label}:** ${row.value}`).join('\n')}` : ''
-  // A heading numbers nothing: the count runs over the instructions only, so
-  // the copied text and the screen read the same procedure.
-  let n = 0
-  const lines = emergencyTaskSteps(task, variantId).map((line) => (isProcedureHeading(line) ? `**${procedureHeadingText(line)}**` : `${++n}. ${line}`))
-  return `${heading}${facts}\n\n${lines.join('\n')}`
+  return `${heading}${facts}\n\n${emergencyTaskSteps(task, variantId).map((line, index) => `${index + 1}. ${line}`).join('\n')}`
 }
 
 /** Deterministic flattened output for exports and the Entra artifact. */
