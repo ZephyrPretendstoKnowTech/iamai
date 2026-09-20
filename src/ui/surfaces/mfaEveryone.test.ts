@@ -230,6 +230,99 @@ test('B7: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(DEVICE_REG)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Prepare Your Team for MFA (spec section 4)
+//
+// The campaign is not a policy step, so `policyTasks.ts` draws it no
+// Implementation Task on either snapshot. Its procedures are read from the
+// compiled package; its own words from the step.
+// ---------------------------------------------------------------------------
+
+const CAMPAIGN = 's-verify-mfa'
+
+/** A content step's `whatToDo.generic` lines: what to do for everyone else. */
+const genericOf = (id: string): string[] =>
+  (((stepById[id] as unknown as { whatToDo?: { generic?: string[] } }).whatToDo?.generic) ?? []) as string[]
+
+test('C1: the campaign instructions name both methods and say one at a time', () => {
+  const generic = genericOf(CAMPAIGN).join('\n')
+  assert.match(generic, /nudges one method at a time, either Passkey \(FIDO2\) or Microsoft Authenticator/)
+  assert.doesNotMatch(generic, /Check the separate passkey registration instructions/)
+  assert.match(blockText(CAMPAIGN, 'entra.campaign'), /A campaign nudges one of them at a time/)
+})
+
+test('C2: the step says a passkey campaign does not nudge guests', () => {
+  const generic = genericOf(CAMPAIGN).join('\n')
+  assert.match(generic, /A passkey campaign does not nudge guests, because a guest cannot register a passkey here/)
+  assert.match(blockText(CAMPAIGN, 'entra.campaign'), /A passkey campaign does not reach guests/)
+})
+
+test('C3: a risk says the Authenticator nudge reaches someone already stronger', () => {
+  const risks = risksOf(CAMPAIGN)
+  assert.ok(risks.some((r) => /already signs in with a stronger method, so it can read as a step backwards/.test(r)), risks.join('\n'))
+})
+
+test('C4: the configure procedure names the Authenticator authentication-mode prerequisite', () => {
+  const configure = blockText(CAMPAIGN, 'entra.configure')
+  assert.match(configure, /\*\*Authentication mode\*\* set to \*\*Passwordless\*\*, nobody is eligible and the campaign nudges no one/)
+  assert.match(configure, /It must be \*\*Any\*\* or \*\*Push\*\*/)
+})
+
+test('C5: the campaign block says when the prompt appears and when it does not', () => {
+  const campaign = blockText(CAMPAIGN, 'entra.campaign')
+  assert.match(campaign, /after an interactive sign-in that completed MFA here/)
+  assert.match(campaign, /skipped where they arrive by single sign-on/)
+  assert.match(campaign, /does not prompt on a mobile device/)
+  // The same fact reaches the help desk, where the symptom is reported.
+  assert.ok(helpDeskOf(CAMPAIGN).some((l) => /No prompt appeared/.test(l)))
+})
+
+test('C6: the snooze fields are named as the blade names them, and say three', () => {
+  for (const id of ['entra.campaign', 'entra.configure']) {
+    const text = blockText(CAMPAIGN, id)
+    assert.match(text, /Days allowed to snooze/, id)
+    assert.match(text, /Limited number of snoozes/, id)
+    assert.match(text, /three times/, id)
+  }
+  assert.match(genericOf(CAMPAIGN).join('\n'), /Days allowed to snooze and Limited number of snoozes/)
+})
+
+test('C7: the configure procedure says what Microsoft managed does now', () => {
+  const configure = blockText(CAMPAIGN, 'entra.configure')
+  assert.match(configure, /Left at \*\*Microsoft managed\*\*, Microsoft runs the campaign/)
+  assert.match(configure, /reaches everyone who can do MFA rather than only the people on a text message or a voice call/)
+  assert.doesNotMatch(configure, /not Microsoft managed, because the plan keeps an explicit Microsoft Authenticator campaign/)
+})
+
+test('C8: help desk names the four methods a guest can use in this tenant', () => {
+  const lines = helpDeskOf(CAMPAIGN)
+  assert.ok(lines.some((l) => /a text message, a voice call, an Authenticator push or a software token code/.test(l)), lines.join('\n'))
+})
+
+test('C9: Completion Criteria is three lines, each saying one thing', () => {
+  for (const name of ['demo', 'demo-week2'] as FixtureName[]) {
+    const done = bodiesOf(name).get(CAMPAIGN)!.contract.doneWhen
+    assert.deepEqual(done, [
+      'Everyone in this step has a registered MFA method they can use.',
+      'Every administrator has a phishing-resistant method.',
+      'The people who still need help are identified and on the support list.',
+    ], name)
+  }
+})
+
+test('C10: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(CAMPAIGN), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(CAMPAIGN)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
+test('C11: the owner rule holds — guests are counted beside people in the Impact', () => {
+  // The owner settled this on 2026-09-19: guests stay in the campaign and are
+  // counted as "N people and M guests" (mfa-everyone-spec.md section 4).
+  for (const name of ['demo', 'demo-week2'] as FixtureName[]) {
+    assert.match(impactOf(name, CAMPAIGN), /^\d+ people and \d+ guests?$/, name)
+  }
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.

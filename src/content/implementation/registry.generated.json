@@ -23619,7 +23619,15 @@
             "authority": "Microsoft Learn",
             "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-passkeys",
+            "authority": "Microsoft Learn",
+            "title": "Enable passkeys (FIDO2) for your organization",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -23647,7 +23655,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.\n2. State: Enabled.\n3. Target: All users, keeping any existing exclusions.\n4. Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets.\n5. Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.\n6. Save, reopen the settings and rescan.\n\nWhether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.\n"
+          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.\n2. State: Enabled.\n3. Target: All users, keeping any existing exclusions.\n4. Authentication method: **Passkey (FIDO2)** or **Microsoft Authenticator**. A campaign nudges one of them at a time. A passkey campaign does not reach guests, who cannot register a passkey in this tenant; an Authenticator campaign does.\n5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one. With **Limited number of snoozes** enabled, a person may skip the prompt three times and must then register.\n6. Save, reopen the settings and rescan.\n\nA person sees the prompt after an interactive sign-in that completed MFA here. It is skipped where they arrive by single sign-on, and an Authenticator campaign does not prompt on a mobile device.\n"
         },
         "ai.walkthrough": {
           "meta": {
@@ -23671,7 +23679,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** (not Microsoft managed, because the plan keeps an explicit Microsoft Authenticator campaign).\n3. Authentication method: **Microsoft Authenticator**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. Set the IAMAI-resolved snooze duration to **{{campaign.snoozeDurationInDays}} day(s)**.\n6. Keep **Limited number of snoozes** enabled so registration is required after the allowed snoozes, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
+          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.\n   For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. Set **Days allowed to snooze** to the IAMAI-resolved **{{campaign.snoozeDurationInDays}} day(s)**.\n6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
         },
         "entra.run-workflow": {
           "meta": {
@@ -23707,7 +23715,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Reopen the campaign and confirm it still targets Microsoft Authenticator with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.\n"
+          "text": "Reopen the campaign and confirm it still targets the intended method with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.\n"
         },
         "json.configure": {
           "meta": {
