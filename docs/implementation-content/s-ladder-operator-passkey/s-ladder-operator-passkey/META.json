@@ -96,6 +96,32 @@
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-register-passkey-with-security-key"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-security-key-passkey",
+      "authority": "Microsoft Learn",
+      "title": "Register a passkey with a FIDO2 security key",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-with-security-key",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-authenticator-passkey",
+      "authority": "Microsoft Learn",
+      "title": "Register passkeys in Authenticator on Android and iOS devices",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-passkey-enable",
+      "authority": "Microsoft Learn",
+      "title": "How to enable passkeys (FIDO2) in Microsoft Entra ID",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-ladder-operator-passkey",
   "title": "Register Your Own Passkey",

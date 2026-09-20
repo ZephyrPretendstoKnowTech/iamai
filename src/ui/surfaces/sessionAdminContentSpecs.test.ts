@@ -63,7 +63,10 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
         ['Go to Entra admin center → Conditional Access → Policies.'],
         ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).'],
         ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
-        ['Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.'],
+        // protect-admins D1/D4: the Client apps condition only narrows once
+        // Configure is Yes, and the interval belongs to the resolved target,
+        // which the package must not restate (docs/plans/protect-admins-spec.md).
+        ['Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.'],
       ],
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
@@ -74,7 +77,9 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
   const ai = packageOf(SESSION).blocks['ai.correct'].text
   // Editorial batch C (factual fix): sign-in frequency is not a hard lifetime for every token, and nothing promises the attacker lacks a passkey.
   assert.match(ai, /^Policy \{\{policy\.current\.id\}\} for \*\*Shorten Admin Sessions\*\* differs from the intended target: \{\{policy\.current\.semanticMismatches\}\}\. The next action is to correct those settings on the same policy\.$/m)
-  assert.match(ai, /^The intended target applies to the resolved admin roles, all resources and Browser client apps\. It sets Sign-in frequency to 4 hours and Persistent browser session to Never persistent, with no grant control\. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session\.$/m)
+  // protect-admins D4: the interval is the resolved target's, and the package
+  // no longer restates it (docs/plans/protect-admins-spec.md section 5).
+  assert.match(ai, /^The intended target applies to the resolved admin roles, all resources and Browser client apps\. It sets Sign-in frequency to the interval in the resolved target and Persistent browser session to Never persistent, with no grant control\. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session\.$/m)
   assert.match(ai, /^The exclusions group in the target keeps emergency access accounts out of this policy\.$/m)
   assert.ok(ai.includes(KEEP_STATE))
   assert.doesNotMatch(ai, /expires quickly|a passkey the attacker doesn't have/)
