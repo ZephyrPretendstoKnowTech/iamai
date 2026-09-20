@@ -74,7 +74,9 @@ export const ACCEPTANCE = [
   // so the replacement list is four policies, not three; and no Learn page says
   // a report-only policy may coexist with security defaults — what Learn says is
   // that creating Conditional Access policies prevents enabling them.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on.', mustNot: '{firstPolicy}' },
+  // The lead is a Tasks Remaining card's one sentence, so the dating is a whole sentence and not a colon leading a list.
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'on the day Require MFA for Everyone enforces, and not before.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', mustNot: 'Report-only policies can exist while security defaults are on' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
@@ -108,7 +110,9 @@ export const ACCEPTANCE = [
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
   { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
   { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'Each shared device completes its required work tasks from the approved network', mustNot: 'requires a compliant device' },
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
+  // The lead is a Tasks Remaining card's one sentence and nothing leads a list
+  // under it (U1: no step draws What to do), so it is a whole sentence, not a colon.
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before,', mustNot: 'and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
   // MFA for Everyone G1-G7 (docs/plans/mfa-everyone-spec.md section 8, Microsoft
   // Learn checked 2026-09-20): the step's outcome is the per-user state, not the
