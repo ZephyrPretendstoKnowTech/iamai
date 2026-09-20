@@ -85,7 +85,11 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).']] },
     {
       kind: 'list', ordered: true, start: 3, items: [
-        ['Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
+        // mfa-everyone-spec.md §5: the scope line no longer hard-codes a population
+        // the resolved settings beside it already name, and it says what All users
+        // covers — guests included (§6 F6, ms-mfa-all-users), so the reader does not
+        // go looking for a second policy for them.
+        ['Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.'],
         ['Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.'],
         ['Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.'],
       ],
