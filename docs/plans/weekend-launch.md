@@ -100,6 +100,21 @@ The owner likes the scan screen in Jon's CA Policy Analyzer:
 - **The exclusions group goes on every On or Report-only policy**, whatever it reaches today: "that's the intent from Jon's baseline" (`7467521e`; replaces item 3 below). The GetIAMAI live check should confirm Emergency Access still reads Completed.
 - **"Never used" passkeys:** keep the flag; verify it against GetIAMAI on Sunday.
 
+## The policy step rework (2026-09-19, evening) — owner-directed
+
+The owner rejected the first policy-anatomy build for inventing its own UI, and set the rule: **a policy step must look IDENTICAL to an Establish Emergency Access step. "There will be ZERO lack of uniformity among UI that SHOULD be identical."** Nothing may be added that an Emergency Access step does not already draw; anything that seems needed is written to `docs/plans/policy-anatomy-deviations.md` for approval, never built. Less is more.
+
+**Frozen:** the four Emergency Access steps and the four Direction steps. No UI, wording or behaviour change; suggestions go to `docs/plans/frozen-step-suggestions.md`. (The Direction steps' UI is separately acknowledged as poor and gets its own pass later — not folded into anything else.)
+
+Landed on main (not pushed yet):
+- Every policy step renders through the Emergency Access components: the same cards, the same task frame with Task/Method selectors, the same footer. No new component or CSS class; the task-anatomy styling is addressed by `data-policy-task`, so every policy step gets it (it was pinned to five step ids, which would have clipped the procedure everywhere else).
+- The policy's own work is a card of its own, so a step can never read "No tasks remaining" while a task sits below it. The lifecycle track is unnecessary rather than hidden: its stages are the card's checks.
+- Each card says one thing: the policy card states its next stage, the prerequisite cards state what is waited on. "Report-only doesn't enforce" appears once per step.
+- **No policy step is Ready until both pinned groups are settled** (owner): Emergency Access complete and every Direction answer approved. Demo first visit: Ready 16 → 8; held rows are undated and name what they wait on. Prerequisite objects and the campaign are not gated.
+- "Settings for This Action" is back on one policy only (`s-goal-admin-session`), folded, for the owner to judge before it goes wider.
+- Every step now sits in a group (`src/roadmap/stepGroups.ts`), nine groups; each group's rows are numbered from 1, tinted with the existing lane tone, and the numbers do not renumber when a lane tab filters. Renaming, moving, reordering, splitting or merging is a one-file edit. `docs/plans/policy-groups-proposal.md` is written to be redlined.
+- The By Area tab was dropped: a group heading already says what it said.
+
 ## Owner answers at Gate 1 (CI fully green at `c7682fb5`, 2026-09-19 evening)
 
 - **Require MFA for Everyone (and any enforced policy):** a correction that only adds exclusions is offered now, not held by readiness. The body keeps the tenant's existing exclusions; a Cleanup row asks to remove a by-name emergency-account exclusion once the group covers it. An agent is building it.
