@@ -14,7 +14,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -165,10 +165,11 @@ test('Step 5: while the plan dates nothing the campaign email is written without
     assert.equal(email!.body, fillText(comms[key], ex), `${p.label}: the undated form`)
     assert.doesNotMatch([email!.body, ...email!.extra].join(' '), NO_DAY, `${p.label}: the email names a day or a window`)
   }
-  // A plan that dates the MFA enforcement keeps the email that states it.
-  const g = plans()[2]
+  // A plan that dates the MFA enforcement keeps the email that states it. Until
+  // the plan's foundation is settled no plan dates one at all (roadmap/foundations.ts),
+  // so the dated case is week two with its direction approved.
+  const g = planOf('demo week two settled', withDirectionApproved(curatedFixture('demo-week2')))
   const camp = g.r.steps.find((s) => s.id === 's-verify-mfa')!
   const dated = commsFor(contentStepFor(camp) as Record<string, unknown>, stepVars(camp, g.ctx(camp)) as Record<string, unknown>, camp)
-  // Editorial batch C: the planned day sits mid-sentence ("… from Monday, September 7.").
-  assert.match(dated?.body ?? '', /\bfrom (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [A-Z][a-z]+ \d{1,2}\b/)
+  assert.match(dated?.body ?? '', new RegExp(NO_DAY.source, 'i'), 'the dated form states the day or the window it runs over')
 })

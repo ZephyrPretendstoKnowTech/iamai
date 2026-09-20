@@ -32,7 +32,9 @@
 // (roadmap/forecast.ts enforcementUnearned). Nor a prerequisite, check or campaign
 // waiting on the operator's own decision: the decision is the work, and it is
 // actionable today. Nor a wait on another step of this plan (owner decision,
-// Step 4): the schedule places the step after it, and that is sequencing.
+// Step 4): the schedule places the step after it, and that is sequencing — with
+// one exception, the wait a policy carries on the plan's foundation
+// (FOUNDATION_WAIT, roadmap/foundations.ts), which is a hold.
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
@@ -41,6 +43,19 @@ import { enforcementHeld, isOpenPolicy, unavailableReason } from './operations.t
 import { readyWhen } from '../derive/readyWhen.ts'
 
 export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision' | 'conflict' | 'review' | 'evidence'
+
+/**
+ * The label a wait on the plan's foundation carries (roadmap/foundations.ts
+ * gateOnFoundations): the two pinned groups, Establish Emergency Access and
+ * Decide Your Tenant's Direction.
+ *
+ * It is the one wait on another step that is a hold whatever that step's own
+ * state (owner, 2026-09-19): nothing dates a policy before the way back into the
+ * tenant is verified and the answers it is written from are approved, so the
+ * step is undated until both groups are settled rather than scheduled behind
+ * them. Every other wait on a step stays sequencing (Step 4).
+ */
+export const FOUNDATION_WAIT = 'foundation-gate'
 
 export type Hold = { kind: HoldKind }
 
@@ -101,7 +116,9 @@ export function isHeld(step: Step): boolean {
  */
 export function markHoldChains(steps: readonly Step[]): void {
   const byId = new Map(steps.map((s) => [s.id, s]))
-  for (const s of steps) for (const b of s.blockers) if (b.kind === 'step') delete b.held
+  // A wait on the plan's foundation is a hold from the start (FOUNDATION_WAIT);
+  // every other mark is recomputed below from the step waited on.
+  for (const s of steps) for (const b of s.blockers) if (b.kind === 'step') { if (b.label === FOUNDATION_WAIT) b.held = true; else delete b.held }
   // The dependency graph is acyclic, so a chain is at most every step long.
   for (let pass = 0, changed = true; changed && pass <= steps.length; pass++) {
     changed = false

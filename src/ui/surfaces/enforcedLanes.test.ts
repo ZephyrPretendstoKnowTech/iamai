@@ -10,7 +10,7 @@ import { buildGraph, deriveLane } from '../../actionability/lanes.ts'
 import type { ConditionState, PrerequisiteState, StepObservation, TenantState } from '../../actionability/lanes.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { QUESTION_STEP, answerKey, deviceCodeWorkflowsOf, questionLabels, unsavedInputsOf } from '../../roadmap/answers.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
@@ -83,7 +83,13 @@ const stepOf = (run: ReturnType<typeof runFixture>, id: string): Step => {
   return s
 }
 
-test('U21 (owner contract): on the demo Initial scan an enforced policy with a resolved correction is Ready to Correct, on the board and in its export alike, and its operations are untouched', () => {
+test('U21: an enforced policy with a resolved correction waits on the plan’s foundation, and is Ready to Correct once it is settled', () => {
+  // U21 said such a correction is Ready on the demo Initial scan. The owner's
+  // 2026-09-19 rule supersedes that: no policy step reads Ready until Establish
+  // Emergency Access and Decide Your Tenant's Direction are settled
+  // (roadmap/foundations.ts). What U21 still holds is everything else — the
+  // drift is read, the correction is built, the operations are untouched, and the
+  // export says the same state as the board.
   const before = demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s)))
   const readings = laneReadings(demoRun.steps)
   const drifted = demoRun.steps.filter((s) => s.state.lifecycle === 'enforced' && s.status !== 'done')
@@ -92,13 +98,18 @@ test('U21 (owner contract): on the demo Initial scan an enforced policy with a r
   for (const s of drifted) {
     assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
     const r = readings.get(s.id)
-    assert.equal(r?.lane, 'Ready', s.id)
-    assert.equal(r?.substatus, 'Correct', s.id)
-    assert.equal(r?.reason, null, 'a bounded correction to an already enforced policy is available before future enforcement prerequisites')
+    assert.notEqual(r?.lane, 'Ready', `${s.id}: Ready while the foundation is unsettled`)
     const view = laneViewFor(s, demoRun.steps)
     const exported = stepExportView(s, ctx, view)
     assert.deepEqual([exported.state, exported.lane], [view.label, view.lane], `${s.id}: the export says another state`)
-    assert.equal(exported.reason, null, `${s.id}: a Ready correction carries a hold reason`)
+  }
+  // Settled, the correction is the next thing again.
+  const settled = runFixture(withDirectionApproved(demo))
+  const settledReadings = laneReadings(settled.steps)
+  for (const s of settled.steps.filter((x) => x.state.lifecycle === 'enforced' && x.status !== 'done' && driftOutcomeOf(x) !== null)) {
+    if (settledReadings.get(s.id)?.lane !== 'Ready') continue
+    assert.equal(settledReadings.get(s.id)?.substatus, 'Correct', s.id)
+    assert.equal(settledReadings.get(s.id)?.reason, null, 'a bounded correction to an already enforced policy carries no hold reason')
   }
   // Classification reads the operations; it never changes them.
   assert.deepEqual(demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s))), before)

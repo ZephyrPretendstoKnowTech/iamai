@@ -7,7 +7,11 @@ import { schedulingWords, structuralWords } from '../content/content.ts'
 //
 // A wait on another step of this plan is sequencing, not a hold (owner decision):
 // the step stays in its numbered phase, dated after the step it waits on. What
-// withdraws a step is what the plan cannot schedule.
+// withdraws a step is what the plan cannot schedule — and, since 2026-09-19, the
+// plan's own foundation: a policy step waiting on Establish Emergency Access or
+// Decide Your Tenant's Direction is held, not sequenced (roadmap/foundations.ts),
+// so the cases below settle the foundation before they ask what a dated step
+// reads.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -126,16 +130,21 @@ test('Step 4 A: a policy not deployed that something holds is Blocked, undated a
   assert.equal(held.status, 'blocked')
   assert.equal(holdOf(held)?.kind, 'unavailable')
   nothingIsDated(p, held)
-  // Sequencing: waiting on emergency access, which Preparation schedules, and nothing else.
-  // Its one Direction answer (mail-sending devices) is approved: an open one is a wait on a person.
-  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
-  const sequenced = stepOf(g, 's-goal-block-legacy-auth')
-  assert.ok(sequenced.blockers.length > 0 && sequenced.blockers.every((b) => b.kind === 'step'), 'the premise: it waits on another step only')
-  assert.equal(isHeld(sequenced), false)
-  assert.ok(phased(g).has(sequenced.id), 'it sits in a numbered phase')
-  assert.ok(sequenced.reportOnlyAt, 'the day its report-only policy is created')
-  assert.match(rowWhen(sequenced), YEAR)
-  assert.ok(booked(g, sequenced.id), 'and the calendar books it')
+  // Dated: the foundation is settled (Emergency Access complete on the follow-up
+  // scan, every Direction answer approved), so a policy nothing else holds keeps
+  // its place and its days.
+  const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
+  const dated = stepOf(g, 's-goal-block-unsupported-platforms')
+  assert.equal(isHeld(dated), false)
+  assert.ok(phased(g).has(dated.id), 'it sits in a numbered phase')
+  assert.ok(dated.reportOnlyAt, 'the day its report-only policy is created')
+  assert.match(rowWhen(dated), YEAR)
+  assert.ok(booked(g, dated.id), 'and the calendar books it')
+  // The same policy before the foundation is settled: the wait is a hold, not
+  // sequencing, and it carries no day (owner, 2026-09-19).
+  const gated = stepOf(planOf(curatedFixture('demo')), 's-goal-block-unsupported-platforms')
+  assert.equal(holdOf(gated)?.kind, 'prerequisite')
+  assert.equal(gated.reportOnlyAt ?? null, null)
 })
 
 // ---- B. report-only, with the exclusions prerequisite unresolved ----
@@ -153,7 +162,7 @@ test('Step 4 B: a report-only policy held on an unresolved exclusions group goes
 // ---- C. report-only, clean but incomplete: the review day ----
 
 test('Step 4 C: a report-only policy whose clean records are not complete yet reads its review day, from its own history, on every surface', () => {
-  const p = planOf(curatedFixture('demo-week2'))
+  const p = planOf(withDirectionApproved(curatedFixture('demo-week2')))
   const s = stepOf(p, 's-goal-block-auth-transfer')
   const ready = readyWhen(s)!
   assert.equal(isHeld(s), false)
@@ -173,7 +182,7 @@ test('Step 4 C: a report-only policy whose clean records are not complete yet re
 // ---- D. report-only, a new failure ----
 
 test('Step 4 D: a report-only policy whose records show people stopped is held on its evidence: never Ready to enforce, and no date anywhere', () => {
-  const f = curatedFixture('demo-week2')
+  const f = withDirectionApproved(curatedFixture('demo-week2'))
   const target = runFixture(f).steps.find((s) => s.id === 's-goal-token-protection')!.tracking!.policyId!
   const results = ((f.snapshot.evidencePolicyResults ?? []) as unknown as Record<string, unknown>[]).map((r) => {
     if (r.policyId !== target) return r
@@ -202,7 +211,7 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
   const held = noExclusionsAnswer(curatedFixture('demo-week2'))
   const before = stepOf(planOf(held, { mapping: held.mapping }), 's-goal-token-protection')
   assert.ok(isHeld(before), 'the premise: held without the answer')
-  const p = planOf(curatedFixture('demo-week2'))
+  const p = planOf(withDirectionApproved(curatedFixture('demo-week2')))
   const token = stepOf(p, 's-goal-token-protection')
   assert.equal(isHeld(token), false)
   assert.equal(token.status, 'ready-to-enforce')
@@ -326,15 +335,21 @@ test('Step 4 F: a step already in place has no future date and no calendar entry
 // ---- final correction 1: a scheduled dependency never reads Held ----
 
 test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is dated and never Held; one waiting on an unresolved one is Held and undated', () => {
-  // Its one Direction answer (mail-sending devices) is approved: an open one holds it (owner, 2026-09-19).
-  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
-  const sequenced = stepOf(g, 's-goal-block-legacy-auth')
-  assert.ok(sequenced.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the premise: it waits on emergency access, which Preparation schedules')
-  assert.equal(isHeld(sequenced), false)
-  assert.ok(phased(g).has(sequenced.id), 'it stays in its numbered phase')
-  assert.match(boardWhenOf(sequenced), YEAR, 'the board shows its date')
-  assert.notEqual(boardWhenOf(sequenced), WHEN.none, 'and never the placeholder')
-  assert.match(rowReason(sequenced) ?? '', /^after: /, 'the row names what it comes after')
+  // The foundation is settled (Emergency Access complete on the follow-up scan,
+  // every Direction answer approved), so a policy nothing else holds is dated.
+  const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
+  const dated = stepOf(g, 's-goal-block-unsupported-platforms')
+  assert.equal(isHeld(dated), false)
+  assert.ok(phased(g).has(dated.id), 'it stays in its numbered phase')
+  assert.match(boardWhenOf(dated), YEAR, 'the board shows its date')
+  assert.notEqual(boardWhenOf(dated), WHEN.none, 'and never the placeholder')
+  // The wait a policy carries on the foundation itself is a hold, not sequencing
+  // (owner, 2026-09-19): the board shows no day, and the row names what it waits on.
+  const gate = stepOf(planOf(withDirectionApproved(curatedFixture('getiamai'))), 's-goal-block-legacy-auth')
+  assert.ok(gate.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the premise: it waits on emergency access')
+  assert.equal(holdOf(gate)?.kind, 'prerequisite')
+  assert.equal(boardWhenOf(gate), 'After prerequisites')
+  assert.match(rowReason(gate) ?? '', /^after: /, 'the row names what it comes after')
   const p = planOf(curatedFixture('demo'))
   const held = stepOf(p, 's-goal-service-accounts-trusted-network')
   assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
@@ -359,7 +374,9 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
 
 test('Step 4 correction 2: a held, unwritable step not yet deployed reads Blocked, never Ready, and sits undated under Waiting', () => {
   const d = demoTenant(true)
-  const f = { ...fixture('demo-week2'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  const base = { ...fixture('demo-week2'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  // The foundation is settled, so what holds these steps is Foundation A alone.
+  const f = withDirectionApproved(base)
   f.mapping.records.__globalExclusion = { ...f.mapping.records.__globalExclusion, resolvedId: null }
   const p = planOf(f)
   for (const id of ['s-goal-admin-session', 's-goal-block-unsupported-platforms', 's-goal-all-users-no-persistence']) {
@@ -405,10 +422,14 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
 // ---- final correction 4: a hold chain ----
 
 test('Step 4 correction 4: a step waiting on a held step is held too; waiting on a scheduled one it is sequenced', () => {
-  // Its one Direction answer (mail-sending devices) is approved: an open one holds it (owner, 2026-09-19).
-  const g = planOf(withDirectionApproved(curatedFixture('getiamai'), [DIRECTION_STEP.use]))
-  const a = stepOf(g, 's-prereq-break-glass')
-  const b = stepOf(g, 's-goal-block-legacy-auth')
+  // The plan's foundation is settled, so a wait on another step is sequencing
+  // again (roadmap/foundations.ts): A is an object the schedule dates, B a policy
+  // dated after it.
+  const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
+  const a = stepOf(g, 's-prereq-allowed-countries')
+  const b = stepOf(g, 's-goal-block-unsupported-platforms')
+  b.blockers.push({ kind: 'step', stepId: a.id, label: 'create-object' })
+  markHoldChains(g.r.steps)
   assert.ok(b.blockers.some((x) => x.kind === 'step' && x.stepId === a.id), 'the premise: B waits on A')
   assert.equal(isHeld(a), false, 'A is scheduled')
   assert.equal(isHeld(b), false, 'so B is sequenced after it')
@@ -425,7 +446,7 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   assert.equal(phased({ ...g }).has(b.id), false, 'and sits in no numbered phase')
   assert.equal(b.blockedReason, BLOCKED_REASON.after(a.plainTitle || a.title), 'its reason names the held step it waits on')
   // The board's column is a day or the placeholder (A1b): the step it waits on is the lane label's (planBoard.ts laneTailOf).
-  assert.equal(boardWhenOf(b), 'After prerequisites')
+  assert.doesNotMatch(boardWhenOf(b), YEAR, 'the board dates a held step')
   // And the mark is the hold's, not a record of it: clear A and B is sequenced again.
   a.blockers.pop()
   a.state = { ...a.state, condition: 'healthy' }

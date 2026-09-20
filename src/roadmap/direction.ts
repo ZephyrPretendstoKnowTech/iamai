@@ -45,8 +45,8 @@ import { QUESTION_STEP } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { checkStep, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
-export { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf } from './directionAnswers.ts'
+export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
 
@@ -203,9 +203,6 @@ const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string 
 
 /** A Direction step's title (content.json pages.app.plan.direction.steps). */
 export const directionTitleOf = (id: DirectionStepId): string => STEP_WORDS[id].title
-
-/** Done: every answer saved, and none contradicted by new evidence. */
-export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
 
 /** After approving one Direction step: the next one, in order and wrapping round, whose answers are not all approved yet; null for none. */
 export function nextDirectionStep(id: string, steps: readonly Step[]): DirectionStepId | null {

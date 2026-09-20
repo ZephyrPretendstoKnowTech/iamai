@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -17,8 +17,9 @@ import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 
 const PILOT = 's-goal-admin-session'
 
-function bodyOf(stepId: string, name: FixtureName = 'demo') {
-  const value = fixture(name)
+/** `settled` approves every Direction answer, so the plan's foundation no longer holds the step (roadmap/foundations.ts). */
+function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false) {
+  const value = settled ? withDirectionApproved(fixture(name)) : fixture(name)
   const run = runFixture(value)
   const step = run.steps.find((row) => row.id === stepId)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
@@ -93,7 +94,7 @@ test('a goal the tenant already delivers has a satisfied policy card and no task
 })
 
 test('a policy in report-only states the stage it has reached and the one it has not', () => {
-  const { body } = bodyOf('s-goal-token-protection', 'demo-week2')
+  const { body } = bodyOf('s-goal-token-protection', 'demo-week2', true)
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.title, 'Enforced', 'the next stage')
   assert.deepEqual(card.completed, ['Report-only', 'Ready to enforce'])
@@ -149,7 +150,7 @@ test('the policy has a card of its own: its name, its rollout stages, the next o
 })
 
 test('the step’s own work is in Tasks Remaining on the follow-up scan, where no Readiness tile is left', () => {
-  const { body } = bodyOf(PILOT, 'demo-week2')
+  const { body } = bodyOf(PILOT, 'demo-week2', true)
   assert.deepEqual(body.readiness.tiles, [], 'the premise: nothing unresolved is left in Readiness')
   assert.ok(body.emergencyAccountTasks?.tasks.length, 'the premise: Implementation Tasks still lists the policy’s own task')
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)

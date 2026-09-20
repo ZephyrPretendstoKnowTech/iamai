@@ -40,7 +40,7 @@ import { groupLanes, unlockCounts } from '../../actionability/sorting.ts'
 import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
-import { isHeld } from '../../roadmap/holds.ts'
+import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { submitsEnforcementOnly, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
@@ -147,7 +147,11 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       // turn the pending choice itself into dependent work.
       if (action === 'decide') continue
       if (!GRAPH.steps.has(b.stepId) || byId.get(b.stepId)?.status === 'done') continue
-      const on: Action = policy && GATE.has(b.stepId) ? 'enforce' : action
+      // The emergency gate held a policy's enforcement and never its report-only
+      // preparation (A3 B3) — except where the wait is the plan's foundation
+      // (roadmap/foundations.ts; owner, 2026-09-19), which holds the step's own
+      // next action, so no policy reads Ready while a pinned group is unsettled.
+      const on: Action = policy && GATE.has(b.stepId) && b.label !== FOUNDATION_WAIT ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
@@ -403,6 +407,10 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
   for (const step of steps) {
     const reading = out.get(step.id)
+    // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
+    // promoted back into Ready by any of the readings below: the two pinned
+    // groups come first, and that is the whole of the rule.
+    const gated = step.blockers.some((b) => b.label === FOUNDATION_WAIT)
     // Reviewing an unread or unsupported configuration is available now; this
     // does not clear the engine's blockers or enable generated write operations.
     if (reading && step.id === PASSKEY_SETTINGS_STEP_ID && step.status !== 'done' && step.status !== 'skipped' && step.blockers.some(b => b.label.startsWith('passkey-settings-'))) {
@@ -411,6 +419,8 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
       reading.reason = null
       reading.blockers = []
     }
+    // A review is not a write: an unmatched pair asks a person to look, and the
+    // foundation gate leaves review rows where they are (owner, 2026-09-19).
     if (reading && step.goalId === 'guests-mfa' && step.action.unmatchedPair && step.status !== 'done' && step.status !== 'skipped') {
       reading.lane = 'Ready'
       reading.substatus = 'Review'
@@ -421,7 +431,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // added to existing policies. Its final completion must not prevent the safe
     // report-only preparation that contributes to finishing those exclusions.
     const safePreparation = implementationOffered(step) && !(step.action.missing?.length) && operationsOf(step).length > 0 && operationsOf(step).every(op => !enforcesOnRun(op))
-    if ((reading?.lane === 'On Hold' || reading?.lane === 'Up Next') && reading.blockers.length > 0 && reading.blockers.every(b => b.kind === 'step' && b.id === EXCLUSION_GROUP_STEP_ID) && safePreparation) {
+    if (!gated && (reading?.lane === 'On Hold' || reading?.lane === 'Up Next') && reading.blockers.length > 0 && reading.blockers.every(b => b.kind === 'step' && b.id === EXCLUSION_GROUP_STEP_ID) && safePreparation) {
       Object.assign(reading, { lane: 'Ready', substatus: operationsOf(step).some(op => op.mode === 'create') ? 'Create' : 'Correct', reason: null, blockers: [] })
     }
     // Authentication-method configuration already exists in Entra, even when
