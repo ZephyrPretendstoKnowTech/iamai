@@ -22,6 +22,7 @@ import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
+import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
@@ -118,6 +119,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const v: Record<string, unknown> = {
     tenant: tenantNameOf(ctx.snapshot),
     tenantName: tenantNameOf(ctx.snapshot),
+    // A licence caveat is a fact about THIS tenant, not a standing note: a step's
+    // `who.licenceNote` is drawn only where the licence actually withheld the
+    // sign-in records (stepExport.ts whoEvidenceLines).
+    signInsNeedP1: signInsNeedP1(ctx.snapshot),
     active: view?.active,
     admins: view?.admins,
     guests: view?.guests,

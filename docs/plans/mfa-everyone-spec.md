@@ -556,9 +556,28 @@ so no step word changes.
 `isEnabled: false` and the four replacement policies are enforced. Nothing is
 ticked.
 
+8. **The lead named only the direction that blocks nobody.** V1 audit S4-16 /
+   S4-20: it said "once these policies exist you cannot turn security defaults
+   back on" — true (`ms-plan-ca`), and no reason anyone is stuck — while the
+   direction that decides the shape of the whole plan went unsaid. Re-checked
+   2026-09-20: `ms-security-defaults` (https://learn.microsoft.com/entra/fundamentals/security-defaults,
+   page updated 2026-07-01) "Organizations that choose to implement Conditional
+   Access policies that replace security defaults must disable security
+   defaults", and "After administrators disable security defaults, organizations
+   should immediately enable Conditional Access policies to protect their
+   organization." The report-only page (updated 2026-06-01) still contains no
+   sentence about security defaults, so playbook V3 stands: report-only creation
+   is not restricted, the `sd-enabled` gate stays on `enforce`, and the step's
+   sequencing — build the four replacements in report-only, turn security
+   defaults off, enforce them the same day — is what Learn describes.
+   **The lead now states both directions and says what the first one gates.**
+
 **Acceptance.**
 - F1 `whatToDo.lead` says security defaults must be off before the policies
   replace them, and does not claim a report-only policy may coexist.
+- F1a the lead names the blocking direction — security defaults off before the
+  replacements take over, and nothing in the plan enforces before this step —
+  beside the direction that does not block.
 - F2 `whatToDo`, `doneWhen` and `who.lead` name Block Device Code Sign-in among
   the replacements.
 - F3 a risk says device code flow reopens if that policy is not enforced in the

@@ -186,12 +186,18 @@ test('A1–A7 on screen: the demo draws the corrected About and the corrected pr
   assert.ok(steps.some((s) => /can take a day to catch up/.test(s)), steps.join('\n'))
 })
 
-test('A1–A7 on a free tenant: the licence note still stands beside the list', () => {
+// V1 audit S4-21. Without Entra ID P1 Graph withholds signInActivity from every
+// person, and the step used to read those blanks as dormancy: 10 of 10 accounts
+// listed under "Disable it … Account enabled: No". Absence of a date the licence
+// withheld is not absence of sign-in, so the step now lists nobody and the note
+// beside it says why.
+test('A1–A7 on a free tenant: nobody is called dormant, and the licence note says why', () => {
   const b = bodiesOf('micro').get(DORMANT)
   assert.ok(b, 'the micro plan has no dormant-accounts step')
   const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')
   assert.match(who, /Last sign-in dates need Entra ID P1/)
-  assert.match(b.lead ?? '', /1 enabled account with no successful sign-in for 90 days, or none on record/)
+  assert.match(who, /cannot tell a dormant account from one in daily use, so it lists none/)
+  assert.match(b.lead ?? '', /0 enabled accounts with no successful sign-in for 90 days, or none on record/)
 })
 
 // ---------------------------------------------------------------------------
@@ -249,10 +255,14 @@ test('B8: on a free tenant the step says it cannot see everyday use, and still a
   assert.match(who, /Mail and Teams activity needs Entra ID P1/)
   assert.doesNotMatch(who, /Recent mail or Teams activity/)
   assert.match(b.lead ?? '', /Review the 1 administrator account for dedicated administration\./)
-  // The demo has the evidence, and the note sits under it rather than replacing it.
+  // The demo has the evidence, and no licence caveat: the note has no
+  // placeholder, so `whole()` could never gate it and it was drawn on all eight
+  // fixtures — seven of which hold P1, which made the one honest sentence about
+  // the licence carry no information at all (V1 audit S4-21). It is now drawn
+  // only where the licence actually withheld the records.
   const demoWho = (bodiesOf('demo').get(SEPARATE)?.whoFull ?? []).map((w) => w.lead)
   assert.ok(demoWho.some((l) => /Recent mail or Teams activity/.test(l)), demoWho.join('\n'))
-  assert.ok(demoWho.some((l) => /needs Entra ID P1/.test(l)), demoWho.join('\n'))
+  assert.ok(!demoWho.some((l) => /needs Entra ID P1/.test(l)), demoWho.join('\n'))
 })
 
 // ---------------------------------------------------------------------------

@@ -142,6 +142,19 @@ export function lastSuccessOf(snapshot: Pick<TenantSnapshot, 'signInEvidence'>, 
 }
 
 /**
+ * Whether this person's successful-sign-in activity was read at all. Without
+ * Entra ID P1 Graph withholds `signInActivity` from the directory read and the
+ * sign-in log with it (graph/collect/collectors.ts collectUsers), so every
+ * person comes back with no date — which is NOT READ, never "never signed in".
+ * The one reading; scoring/fromSnapshot.ts takes it for `successfulActivityAvailable`
+ * and notActiveUsers takes it below, so the dormant list and the activity score
+ * cannot disagree (V1 audit S4-21).
+ */
+export function activityKnown(u: Pick<UserRow, 'successfulSignInActivityRead' | 'lastSuccessfulSignIn'>): boolean {
+  return u.successfulSignInActivityRead === true || u.lastSuccessfulSignIn !== null
+}
+
+/**
  * Enabled people holding a role in the admin catalogue. `adminUserIds` in
  * roles.ts is the one definition of "admin"; this narrows it to accounts that
  * can actually sign in, so the admin count and the enabled count are subsets of
@@ -168,10 +181,15 @@ export function adminUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds:
  * This is not the complement of the active people: an account that signs in
  * only to scripting tools is neither dormant nor an active person. The active
  * people are one set, derive/population.ts activePeopleIds.
+ *
+ * A person whose activity was never read is not here. Without Entra ID P1 that
+ * is everybody, and the step this list fills says "Disable it … Account enabled:
+ * No" — an instruction the scan has no evidence for (V1 audit S4-21).
  */
 export function notActiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
+    if (!activityKnown(u) && (snapshot.signInEvidence?.[u.id]?.platforms ?? []).length === 0) return false
     // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
     const last = lastSuccessOf(snapshot, u)
     const at = last ? Date.parse(last) : Number.NaN

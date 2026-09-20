@@ -1,0 +1,21 @@
+{
+  "lane": "Completed",
+  "substatus": null,
+  "reason": null,
+  "fact": null,
+  "badge": "Completed",
+  "bar": "In place",
+  "rail": "Completed",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Already in place"
+}

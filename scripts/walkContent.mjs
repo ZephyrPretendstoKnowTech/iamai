@@ -91,7 +91,9 @@ export const ACCEPTANCE = [
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes.not-mail-enabled', must: 'recreate it as a plain security group', mustNot: 'remove the mail address and the licence' },
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes.no-admin-members', must: 'besides the emergency accounts' },
   { item: '3', step: 's-check-dormant-accounts', path: 'title', must: 'Disable or Confirm Dormant Accounts', mustNot: 'Address Problematic Accounts' },
-  { item: '3', step: 's-check-dormant-accounts', path: 'who', must: 'Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record.' },
+  // V1 audit S4-21: the caveat no longer claims those accounts are listed, because
+  // an activity the licence withheld is not dormancy and the step now lists none.
+  { item: '3', step: 's-check-dormant-accounts', path: 'who', must: 'Last sign-in dates need Entra ID P1; without it this scan cannot tell a dormant account from one in daily use, so it lists none and the review is yours.' },
   { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Select the countries where people normally work.', mustNot: /add one people (will )?travel to/ },
   // Control Where People Sign In From T2-T4 (docs/plans/where-people-sign-in-spec.md
   // section 3, Microsoft Learn checked 2026-09-20): the step told an admin not to

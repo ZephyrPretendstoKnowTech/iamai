@@ -487,6 +487,27 @@ than from the card; they are one fix.
 
 *Found by 3 and 1B independently.*
 
+**Resolved 2026-09-20 — the copy, not the graph.** Verified against Microsoft
+Learn on 2026-09-20: https://learn.microsoft.com/entra/fundamentals/security-defaults
+(page updated 2026-07-01) says under *Disabling security defaults* —
+"Organizations that choose to implement Conditional Access policies that replace
+security defaults must disable security defaults" — and "After administrators
+disable security defaults, organizations should immediately enable Conditional
+Access policies to protect their organization." The report-only page
+(https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-report-only,
+updated 2026-06-01) still contains **no** sentence about security defaults, so
+the playbook's V3 resolution stands: report-only *creation* is not restricted by
+first-party documentation and the `sd-enabled` gate stays on `enforce`.
+
+So the plan's sequencing — build the four replacements in report-only, turn
+security defaults off, enforce them the same day — is what Learn describes, and
+`s-prereq-security-defaults` being On Hold behind its replacements is that
+sequencing working, not a deadlock. The audit's stronger reading ("every CA step
+on the Ready tab is impossible") does not reproduce: on `messy` exactly one CA
+goal is Ready, and it is Ready · Decision, not a create. What was genuinely wrong
+was the step's own lead, which named only the direction that blocks nobody. It
+now names both, and says which one the plan waits on.
+
 ### S4-21 · A tenant with no Entra ID P1 builds a full plan — the strongest structural finding
 
 `coreGaps()` refuses to build a plan when Conditional Access policies, users or the
@@ -503,6 +524,43 @@ S4-8: the guard that would have caught it is the same one that swallows `partial
 whose unread list is discarded.
 
 *Found by 4.*
+
+**Fixed 2026-09-20.** `micro` now carries the shape `worker.ts` leaves a no-P1
+tenant — `signInEvidence` and `registrationDetails` `disabled` with the worker's
+own licence sentence, `users` `partial` with `collectUsers`' sentence, no
+`signInActivity` on any row, no records, no aggregates — and `micro` joined the
+step-snapshot corpus, so the free-tier tenant is a committed, diffable record.
+Four of the five overstatements are fixed (pass 4 findings 1, 2, 5, 13, and the
+MFA Readiness half of 4); `derive/sets.ts activityKnown()` is the one reading of
+"was this person's activity read at all", taken by both `notActiveUsers` and
+`scoring/fromSnapshot.ts`.
+
+**Three items the fixture exposed are still open**, all needing one file
+(`src/roadmap/manualWork.ts`) that was reserved by another change:
+
+1. **`evidenceRead` (`manualWork.ts:171`) treats a licence gate as unread.**
+   `if (snapshot.sources.users?.status !== 'ok') return false`. Without P1 the
+   directory read is `partial` forever, so every manual review on a free-tier
+   tenant reads `verification: 'unread'`, keeps `confirmedAt: null`, and **can
+   never be completed** — the plan is unfinishable on the day-one case. It should
+   exempt a licence gate the way `coreSections.ts:39` does (`status === 'partial'
+   && isLicenceGate(reason)`). Red test: `src/roadmap/structuralCorrections.test.ts`
+   "guest review can finish while keeping guests".
+
+2. **`manualWork.ts:274` reads "active" as "enabled".**
+   `const activeIds = ids.filter(id => snapshot.users.find(u => u.id === id)?.accountEnabled)`
+   — the ADMIN_SEPARATION branch eight lines above does it correctly against the
+   active-people set. On `micro` this gives `s-ladder-global-admin-count`
+   `population.active = 3` over a tenant whose active count is 0. Red tests:
+   `src/derive/agreement.test.ts` "one denominator" and "micro: Today's tiles …".
+
+3. **"0 active people" beyond MFA Readiness** (pass 4 finding 4) is unfixed on
+   Connect's meta row (`content.json` `pages.connect.meta.people`), the Plan
+   header (`content.json:3991`) and the ~15 step `who.lead` keys that render
+   `{active} active people`. Each prints a counted zero where the scan took no
+   count. The one-source fix is a `PeopleCounts` field for the people whose
+   activity was not read, and a rendering per surface; it is a change of shape,
+   not of wording, and it is not started.
 
 ### S4-22 · Nobody is named on anything
 

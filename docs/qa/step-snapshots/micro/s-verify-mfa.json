@@ -1,0 +1,28 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Registration Support",
+      "state": "Not confirmed"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info",
+    "Email"
+  ],
+  "when": "Aug 31, 2026"
+}

@@ -1,0 +1,26 @@
+{
+  "lane": "Ready",
+  "substatus": "Review",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Review",
+  "bar": "Complete the review below",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Replacement Methods",
+      "state": "0 of 9 accounts ready"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Est. Aug 31, 2026"
+}

@@ -77,3 +77,24 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
   assert.equal(fillText('{guests} guests', { guests: 1 }), '1 guest')
   assert.equal(fillText('{n} people', { n: 1 }), '1 person')
 })
+
+// V1 audit S4-21. The dormant step is the one place never-signed-in accounts are
+// a population: generate.ts sets activeIds to the accounts it names, "though
+// none are active". A second pass over the same step then overwrote the whole
+// population object with `population(ids, index)`, whose activeIds are the ids
+// inside the active index — empty for dormant accounts by definition. The row
+// and the Affected-people tile read "No user impact", satisfied, over a step
+// whose own body named 731 accounts to disable, on all eight fixtures.
+test('the dormant step\'s impact is the accounts it names, not "No user impact"', () => {
+  for (const f of allFixtures()) {
+    const s = runFixture(f).steps.find((x) => x.id === 's-check-dormant-accounts')
+    if (!s) continue
+    const view = stepPopulation(s)
+    assert.ok(view, `${f.name}: the dormant step has a settled scope`)
+    assert.equal(view.active, s.population.total, `${f.name}: every account it names is its reach`)
+    const row = whoLine(reached(s)!)
+    if (s.population.total === 0) continue
+    assert.notEqual(row, 'No user impact', `${f.name}: ${s.population.total} accounts to disable is not "No user impact"`)
+    assert.match(row, new RegExp(`^${s.population.total} (?:person|people)`), `${f.name}: the row counts them (${row})`)
+  }
+})

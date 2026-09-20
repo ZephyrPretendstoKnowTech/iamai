@@ -10,7 +10,10 @@ import { readinessView, shows } from '../../derive/mfaReadiness.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import type { SourceState, TenantSnapshot } from '../../graph/collect/types.ts'
 import { pages } from '../../content/content.ts'
-import { needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
+import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
+import { whoEvidenceLines } from './stepExport.ts'
+import { stepById } from '../../content/content.ts'
+import { activityKnown, notActiveUsers } from '../../derive/sets.ts'
 
 const W = pages.readiness as unknown as { summaryNoP1: string; groupNoP1: { title: string; why: string }; chip: { unread: string }; next: { none: string } }
 const source = (status: SourceState['status'], reason: string | null): SourceState => ({ status, reason, coveredWindow: null, asOf: '2026-09-19T00:00:00Z' })
@@ -79,4 +82,68 @@ test('Needs action counts the people with something to do, and the people IAMAI 
   assert.equal(needsActionWords(clean), `${N} · ${clean.filter((r) => shows(r, 'needsAction')).length}`)
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   assert.match(page, /k === 'needsAction' \? needsActionWords\(counted\)/, 'the pill reads the one count')
+})
+
+// ---------------------------------------------------------------------------
+// The whole no-P1 tenant, rendered (V1 audit S4-21). `micro` is that tenant:
+// Graph withheld signInActivity, the registration report and the sign-in log, so
+// NOBODY has a readiness state and the page's counted set is empty. Three
+// sentences claimed more than the scan read in exactly that state.
+// ---------------------------------------------------------------------------
+
+const MICRO = () => {
+  const f = fixture('micro')
+  return { f, view: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
+}
+
+test('no-P1: nobody has a readiness state, because nobody\'s activity was read', () => {
+  const { f, view } = MICRO()
+  assert.equal(signInsNeedP1(f.snapshot), true)
+  assert.ok(view.rows.length > 0, 'the people are read; only their activity is not')
+  assert.equal(view.rows.filter((r) => r.state !== null).length, 0, 'an unknown activity puts nobody in the rollout')
+  assert.ok(view.rows.every((r) => (r.readiness?.devices ?? []).length === 0), 'no device record was read for anybody')
+})
+
+test('no-P1: the second line does not name a device cause the scan never read', () => {
+  const { view } = MICRO()
+  const counted = view.rows.filter((r) => r.state !== null)
+  const W2 = pages.readiness as unknown as { seamlessNotRead: string; seamlessNotPossible: string }
+  assert.equal(goalLine(counted), W2.seamlessNotRead)
+  assert.notEqual(goalLine(counted), W2.seamlessNotPossible, 'it said everyone signs in from a device with no built-in option, over zero device records')
+  assert.match(W2.seamlessNotRead, /read no record of the devices/)
+  // A tenant whose records WERE read still gets the device reading it earns.
+  const demo = fixture('demo')
+  const demoCounted = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state !== null)
+  assert.notEqual(goalLine(demoCounted), W2.seamlessNotRead)
+})
+
+test('no-P1: the headline says the activity was not read, never "No active people to count"', () => {
+  const { f } = MICRO()
+  const W2 = pages.readiness as unknown as { summaryNone: string; summaryNoneNoP1: string }
+  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  assert.match(page, /active === 0 \? \(signInsNeedP1\(snapshot\) \? T\.summaryNoneNoP1 : T\.summaryNone\)/)
+  assert.equal(signInsNeedP1(f.snapshot), true, 'so this tenant reads the second of the two')
+  assert.match(W2.summaryNoneNoP1, /Entra ID P1/)
+  assert.doesNotMatch(W2.summaryNoneNoP1, /No active people/)
+  assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')
+})
+
+test('no-P1: a licence caveat is drawn only where the licence withheld the records', () => {
+  const dormant = stepById['s-check-dormant-accounts'] as unknown as { who: Record<string, unknown> }
+  const note = String(dormant.who.licenceNote)
+  assert.match(note, /need Entra ID P1/)
+  // The gate: whoEvidenceLines skips it unless the step's vars say the licence withheld them.
+  assert.ok(whoEvidenceLines(dormant.who, { signInsNeedP1: true, n: 0 }).includes(note), 'drawn on the free-tier tenant')
+  assert.ok(!whoEvidenceLines(dormant.who, { signInsNeedP1: false, n: 3, accountsWithState: ['a', 'b', 'c'] }).includes(note), 'not drawn on the seven fixtures that hold P1')
+  assert.ok(!whoEvidenceLines(dormant.who, { n: 3 }).includes(note), 'and never by default: the note has no placeholder, so whole() could not gate it')
+})
+
+test('no-P1: no account is called dormant, because no account\'s activity was read', () => {
+  const { f } = MICRO()
+  assert.deepEqual(notActiveUsers(f.snapshot, f.snapshot.asOf), [], 'absence of a date the licence withheld is not absence of sign-in')
+  assert.ok(f.snapshot.users.every((u) => !activityKnown(u)))
+  // A tenant that holds P1 still lists the accounts it read no recent sign-in for.
+  const g = fixture('getiamai')
+  assert.ok(g.snapshot.users.every(activityKnown), 'the premise: their activity was read')
+  assert.ok(notActiveUsers(g.snapshot, g.snapshot.asOf).length > 0, 'and the dormant list is unchanged')
 })
