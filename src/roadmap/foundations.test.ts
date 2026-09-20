@@ -49,9 +49,10 @@ test('demo first visit: a gated policy step is held, undated, and names what it 
   const gate = unsettledFoundations(r.steps)[0]
   assert.equal(gate.id, 's-prereq-break-glass')
   for (const step of policySteps(r.steps)) {
-    // A baseline that defines the policy two ways is its own hold: nothing about
-    // the foundation clears it, so the gate leaves it alone.
-    if (step.state.condition === 'baseline-conflict') continue
+    // A baseline that defines the policy two ways is its own hold, and a pair
+    // IAMAI cannot match is a review: nothing about the foundation clears either,
+    // so the gate leaves them alone.
+    if (step.state.condition === 'baseline-conflict' || step.action.unmatchedPair) continue
     const wait = step.blockers.find((b) => b.kind === 'step' && b.label === FOUNDATION_WAIT)
     assert.ok(wait, `${step.id} carries no wait on the foundation`)
     assert.equal(wait.kind === 'step' && wait.stepId, gate.id)
@@ -66,9 +67,11 @@ test('Emergency Access settled and Direction still open: the wait moves to the D
   assert.deepEqual(unsettledFoundations(r.steps).map((s) => s.id), [...membersOf(DIRECTION_GROUP)])
   const readings = laneReadings(r.steps, [], r.input.mapping)
   for (const step of policySteps(r.steps)) {
-    if (readings.get(step.id)?.substatus === 'Review') continue
+    // A policy the tenant already enforces asks its Direction question where it
+    // is (owner decision 3): the gate leaves it alone, as gateOnDirection does.
+    if (readings.get(step.id)?.substatus === 'Review' || step.state.lifecycle === 'enforced') continue
     assert.notEqual(readings.get(step.id)?.lane, 'Ready', `${step.id} reads Ready with Direction unapproved`)
-    if (step.state.condition === 'baseline-conflict' || step.state.lifecycle === 'enforced') continue
+    if (step.state.condition === 'baseline-conflict') continue
     assert.ok(step.blockers.some((b) => b.kind === 'decision' && b.label === `${DIRECTION_BLOCKER}s-direction-use`), `${step.id} carries no wait on the Direction step`)
     assert.notEqual(holdOf(step), null, `${step.id} is not held`)
   }

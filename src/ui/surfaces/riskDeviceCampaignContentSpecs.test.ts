@@ -153,8 +153,11 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // The demo carries each person's devices since 95228ecc (withDeviceFacts), which moved the compliant share; the script account left the people counted in 8b71ec1a (29% -> 30%).
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '30% of devices compliant')
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))
-  for (const t of prerequisites) assert.ok(['Before enforcement', 'Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
-  assert.ok(prerequisites.some(t => t.label === 'Before enforcement'), 'the safe report-only path is not distinguished from enforcement prerequisites')
+  // One label, and one sentence per card: the 'Before enforcement' relabelling
+  // and its composed caveat are gone (owner, 2026-09-19 — "both tasks basically
+  // say the same thing"). A prerequisite states what is waited on and links to it.
+  for (const t of prerequisites) assert.ok(['Prerequisite · To do', 'Prerequisite · Waiting'].includes(t.label), t.label)
+  for (const t of prerequisites) assert.doesNotMatch(t.note ?? '', /does not enforce access restrictions/, t.key)
   // Its wait is on Decide How People and Devices Sign In (roadmap/direction.ts gateOnDirection), and a
   // Direction answer nobody has approved holds the step undated, like every other hold (owner, 2026-09-19):
   // no create day either, until the answer is approved.

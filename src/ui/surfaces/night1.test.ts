@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'
 import { pages, shared } from '../../content/content.ts'
 import { sessionWantedForGoal, sessionWantedLongForGoal } from './stepPortal.ts'
@@ -31,7 +31,9 @@ test('a shared reference with an unfilled variable is a hole in the line that na
 
 test('a policy already in report-only dates its Report-only line from the scan', () => {
   // Week two: the policy names nothing this tenant lacks, so it is datable.
-  const f = fixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.goalId === 'block-auth-transfer')!
   assert.equal(step.status, 'in-report-only')

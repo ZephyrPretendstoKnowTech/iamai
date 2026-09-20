@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { commsFor, stepExportView, stepLines } from './stepExport.ts'
 import { stepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
@@ -124,7 +124,9 @@ const EMAIL_VARIABLES: [string, string[]][] = [
 test('on the demo, an email body fills every variable it names', () => {
   // Week two: the objects the policies name exist, so the policies are datable
   // and their announcements render (stepJson.ts implementationOffered).
-  const f = fixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   let announced = 0
   for (const [goalId, vars] of EMAIL_VARIABLES) {

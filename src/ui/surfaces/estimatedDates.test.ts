@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { schedulingWords } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -20,7 +20,10 @@ const dayOf = (iso: string): string => iso.slice(0, 10)
 
 /** The fixture read in UTC, so "today" is the same calendar day on every machine. */
 function inUtc(name: FixtureName): Fixture {
-  const f = fixture(name)
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing,
+  // and these cases are about the days a dated plan reads.
+  const f = withFoundationSettled(fixture(name))
   return { ...f, mapping: { ...f.mapping, displayTimeZone: 'UTC' } }
 }
 
@@ -36,9 +39,15 @@ function workingDaysBefore(iso: string, n: number): string {
 }
 
 const unfinishedPrep = (steps: readonly Step[]): Step | undefined => steps.find((s) => s.status !== 'done' && s.scheduled?.class === 'scheduled' && s.scheduled.transition === 'prepare' && s.scheduled.at !== null)
-/** A dated change sequenced after the preparation step: it waits on it through a hard dependency. */
+/**
+ * A dated policy step sequenced after the preparation step: it waits on it
+ * through a hard dependency. Its report-only creation counts as well as its
+ * change or enforcement: since the plan's foundation gates every enforcement
+ * (roadmap/foundations.ts) the creation is the dated transition a policy behind
+ * a preparation step carries.
+ */
 const dependantOf = (steps: readonly Step[], prepId: string): Step | undefined =>
-  steps.find((s) => s.status !== 'done' && s.scheduled?.after.includes(prepId) && (s.scheduled.transition === 'change' || s.scheduled.transition === 'enforce') && s.scheduled.at !== null)
+  steps.find((s) => s.status !== 'done' && s.scheduled?.after.includes(prepId) && (s.scheduled.transition === 'change' || s.scheduled.transition === 'enforce' || s.scheduled.transition === 'createReportOnly') && s.scheduled.at !== null)
 
 test('a plan started ten working days ago places its unfinished preparation today, keeps its start as the record, and moves what follows with it', () => {
   const f = inUtc('demo')
@@ -48,8 +57,10 @@ test('a plan started ten working days ago places its unfinished preparation toda
 
   // The plan as it was drawn on its first day: the preparation was scheduled on the start.
   const then = runFixture(f, { startDate: start, reviewNow: start })
-  const prepThen = unfinishedPrep(then.steps)
-  assert.ok(prepThen, 'the premise: the demo has unfinished preparation work')
+  // The first unfinished preparation step that something dated waits on: a plan
+  // carries several, and only one of them has to be the one this case moves.
+  const prepThen = then.steps.filter((s) => s.status !== 'done' && s.scheduled?.class === 'scheduled' && s.scheduled.transition === 'prepare' && s.scheduled.at !== null).find((s) => dependantOf(then.steps, s.id))
+  assert.ok(prepThen, 'the premise: the demo has unfinished preparation work something waits on')
   assert.equal(dayOf(prepThen.scheduled!.at!), dayOf(start), 'the premise: the preparation was scheduled on the start, now in the past')
   const depThen = dependantOf(then.steps, prepThen.id)
   assert.ok(depThen, 'the premise: a dated change is sequenced after the preparation')
@@ -62,8 +73,10 @@ test('a plan started ten working days ago places its unfinished preparation toda
   assert.equal(dayOf(prep.scheduled!.at!), dayOf(today), 'the estimated day of unfinished work is today, never a day already gone')
   assert.equal(boardWhenOf(prep).includes(absoluteDate(today)), true, `the When column reads today: ${boardWhenOf(prep)}`)
   const dep = now.steps.find((s) => s.id === depThen.id)!
-  assert.ok(t(dep.scheduled!.at!) > t(prep.scheduled!.at!), `${dep.id} lands after ${prep.id}: ${dep.scheduled!.at} vs ${prep.scheduled!.at}`)
-  assert.ok(t(dep.scheduled!.at!) >= t(prep.scheduled!.range!.end), `${dep.id} lands after the preparation window closes`)
+  // No earlier than the preparation: a report-only creation is safe preparation
+  // and the schedule may place it on the preparation's own day, so this is the
+  // ordering the plan promises, and the shift below is what the case is about.
+  assert.ok(t(dep.scheduled!.at!) >= t(prep.scheduled!.at!), `${dep.id} lands before ${prep.id}: ${dep.scheduled!.at} vs ${prep.scheduled!.at}`)
   assert.ok(t(dep.scheduled!.at!) > t(depThen.scheduled!.at!), 'the dependant shifted with it')
   // Nothing unfinished anywhere in the plan is dated before today.
   for (const s of now.steps) {

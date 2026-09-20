@@ -55,8 +55,11 @@ export const isFoundationStep = (id: string): boolean => FOUNDATION_STEP_IDS.inc
 
 /** Whether one foundation member this plan carries is settled. */
 function settled(step: Step): boolean {
-  if (isDirectionStep(step.id)) return directionComplete(step.directionQuestions ?? [])
-  return step.state.satisfied || step.status === 'done' || step.doesntApply != null
+  if (step.state.satisfied || step.status === 'done' || step.doesntApply != null) return true
+  // A Direction step is settled by its answers, which is the same fact its own
+  // builder projects as satisfied (direction.ts directionStep); read here too, so
+  // a step built with its questions but not yet projected still reads settled.
+  return isDirectionStep(step.id) && directionComplete(step.directionQuestions ?? [])
 }
 
 /** The foundation members this plan carries that are not settled yet, in group order. */
@@ -91,8 +94,15 @@ export function gateOnFoundations(steps: Step[]): void {
     if (step.state.condition === 'baseline-conflict') continue
     // A review the plan is asking for now keeps today's behaviour (owner): it
     // reads the tenant and changes nothing, and holds.ts already holds it on nothing.
-    if (workflowReviewIsCurrent(step)) continue
+    // A pair IAMAI cannot match is the same answer (ui/surfaces/planLanes.ts): the
+    // step asks a person to look, offers no write, and is already held by that.
+    if (workflowReviewIsCurrent(step) || step.action.unmatchedPair) continue
     if (isDirectionStep(gate.id)) {
+      // A policy the tenant already enforces is never held by a Direction answer
+      // (owner decision 3, direction.ts gateOnDirection): it asks its question
+      // where it is, and the engine reads no decision blocker on an enforced
+      // policy at all (ui/surfaces/planLanes.ts observe).
+      if (step.state.lifecycle === 'enforced') continue
       const label = `${DIRECTION_BLOCKER}${gate.id}`
       if (!step.blockers.some((b) => b.kind === 'decision' && b.label === label)) step.blockers.push({ kind: 'decision', label, binding })
     } else {

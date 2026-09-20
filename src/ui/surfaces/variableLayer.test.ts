@@ -8,7 +8,7 @@ import { activePeopleIds, campaignIdsFor } from '../../derive/population.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allCuratedFixtures, allFixtures } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fillText, missingVars } from '../../content/render.ts'
@@ -110,7 +110,9 @@ test('the short and long date forms name the same day, one short format everywhe
   // A policy the plan can write: one it cannot has no enforcement date at all —
   // and on the pinned baseline nothing holds week two's policies less than that,
   // so this reads the curated one (roadmap/holds.ts).
-  const f = allCuratedFixtures().find((x) => x.name === 'demo-week2')!
+  // And with the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and carries no enforcement date.
+  const f = withFoundationSettled(allCuratedFixtures().find((x) => x.name === 'demo-week2')!)
   const run = runFixture(f)
   const policy = run.steps.find((s) => s.events?.enforce && run.schedule.reportOnlyAt[s.id])!
   assert.ok(policy, 'a policy step with an enforcement date and a report-only date')

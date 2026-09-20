@@ -12,7 +12,7 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { personReadiness } from '../../scoring/phishingResistant.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
@@ -95,7 +95,9 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     },
   ]
   for (const c of cases) {
-    const f = fixture(c.name)
+    // With the plan's foundation settled (roadmap/foundations.ts): until both
+    // pinned groups are, every policy step is held and carries no Dates line.
+    const f = withFoundationSettled(fixture(c.name))
     const snapshot = c.snapshot ? c.snapshot(f) : f.snapshot
     readyEvidence(f, snapshot)
     const first = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)

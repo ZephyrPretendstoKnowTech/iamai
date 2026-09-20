@@ -28,7 +28,7 @@ import { join } from 'node:path'
 import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import { isHeld } from './holds.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withDirectionApproved } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
@@ -134,7 +134,7 @@ test('the lifecycle belongs to a policy: a step that deploys none has no stage',
   // Ready to enforce is reached on the curated baseline: on the pinned one every
   // report-only policy the fixtures deploy is held, and a held policy is never
   // Ready to enforce (roadmap/holds.ts).
-  const seen = new Set([...everyStep().map(({ s }) => s.state.lifecycle), ...runFixture(curatedFixture('demo-week2')).steps.map((s) => s.state.lifecycle)])
+  const seen = new Set([...everyStep().map(({ s }) => s.state.lifecycle), ...runFixture(withDirectionApproved(curatedFixture('demo-week2'))).steps.map((s) => s.state.lifecycle)])
   for (const stage of ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']) assert.ok(seen.has(stage as Lifecycle), `no fixture reaches ${stage}`)
 })
 
@@ -1096,7 +1096,7 @@ test('every step ends in one next thing, and none of them invents a date', () =>
   assert.deepEqual(wrong, [])
   // An open observation window is reached on the curated baseline: on the pinned
   // one every report-only policy the fixtures deploy is held (roadmap/holds.ts).
-  const kinds = new Set([...everyStep().map(({ s }) => nextMilestone(s).kind), ...runFixture(curatedFixture('demo-week2')).steps.map((s) => nextMilestone(s).kind)])
+  const kinds = new Set([...everyStep().map(({ s }) => nextMilestone(s).kind), ...runFixture(withDirectionApproved(curatedFixture('demo-week2'))).steps.map((s) => nextMilestone(s).kind)])
   for (const kind of ['resolve', 'deploy', 'observe', 'preserve']) assert.ok(kinds.has(kind as ReturnType<typeof nextMilestone>['kind']), `no fixture step is waiting to ${kind}`)
 })
 
@@ -1124,7 +1124,11 @@ test('a stored word reads back as the state it stood for, and only there', () =>
 // because the numbers that matter are worked out during a scan.
 
 const GUESTS = stepIdForGoal('guests-mfa')
-const W2 = fixtures.find((f) => f.name === 'demo-week2') as Fixture
+// The pair cases are about how members aggregate. Until the plan's foundation is
+// settled every policy step is held (roadmap/foundations.ts) and a held step is
+// never ready, so every case would be testing the hold: demo-week2 already has
+// Establish Emergency Access complete, and its direction is approved here.
+const W2 = withDirectionApproved(fixtures.find((f) => f.name === 'demo-week2') as Fixture)
 const A_ID = '0a11a11a-0000-4000-8000-00000000000a'
 const B_PAIR_ID = '0b22b22b-0000-4000-8000-00000000000b'
 const B_OTHER_ID = '0c33c33c-0000-4000-8000-00000000000c'

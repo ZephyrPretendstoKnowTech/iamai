@@ -16,7 +16,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { applyProgress } from './progress.ts'
 import { stepIdForGoal } from './generate.ts'
 import { holdOf } from './holds.ts'
@@ -239,7 +239,9 @@ test('drift:report-only-before-enforcement — an enforced policy moved back to 
 // audit's Evidence column describes and asserts its Correction direction
 // (docs/product/actionability/reference/audit-a1-a6.md).
 
-const ANSWERED = curatedFixture('demo-week2')
+// With the plan's foundation settled (roadmap/foundations.ts): these cases are
+// about drift in a policy the plan would otherwise be offering.
+const ANSWERED = withFoundationSettled(curatedFixture('demo-week2'))
 const MFA_ALL = 'Core - Grant - MFA for all users'
 const LEGACY = 'Core - Block - Legacy authentication'
 const TOKEN = 'Core - Session - Token protection'

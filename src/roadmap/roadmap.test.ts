@@ -17,6 +17,8 @@ import { SOLE_MEMBER } from './tracking.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 import { setState } from './lifecycle.ts'
+import { isFoundationStep } from './foundations.ts'
+import type { Step } from './types.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 
 /** The tenant's Conditional Access rows, as the tests build them. */
@@ -146,6 +148,16 @@ function withExclusions(mapping: MappingState): MappingState {
 // security, type and direct membership are unread is not a usable exclusion.
 const exclusionsMembers = (): GroupMembers => new Map([[XGROUP, { memberIds: ['u9'], memberCount: 1, sampled: false, directMembers: 'complete', directMemberIds: ['u9'], displayName: 'CA - Exclusions', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] }]])
 
+/**
+ * The plan's two pinned groups settled (roadmap/foundations.ts). Until they are,
+ * every policy step is held and none is dated, which is that gate's case and not
+ * the translator's: these cases are about what a policy the plan can write does.
+ */
+function settleFoundation(steps: Step[]): Step[] {
+  for (const s of steps) if (isFoundationStep(s.id)) setState(s, { satisfied: true, inPlace: true, condition: 'healthy' })
+  return steps
+}
+
 function build(args: {
   tenantPolicies?: P[]
   baselinePolicies?: P[]
@@ -257,7 +269,7 @@ test('5: MFA step with 6 of 9 in-scope accounts prepared → blocked with the un
 test('6: re-scan matching — report-only, then exit criterion, then enabled', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })
-  const steps = generateRoadmap(input).steps
+  const steps = settleFoundation(generateRoadmap(input).steps)
   const step = stepFor(steps, 'mfa-all-users')
   const tag = `[IAMAI:${PLAN}:${step.id}]`
 

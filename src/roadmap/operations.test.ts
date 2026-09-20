@@ -24,7 +24,7 @@ import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
@@ -159,7 +159,7 @@ test('the translator output is not empty, and holds a single-policy and a paired
 // ---- the plan around a step that cannot be written stays usable ----
 
 test('a step the plan cannot write is not scheduled, and the rest of the plan is', () => {
-  const f = fixture('demo-week2')
+  const f = withFoundationSettled(fixture('demo-week2'))
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const held = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null)
@@ -195,7 +195,10 @@ const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability
 
 /** The demo's week two, with the tenant's own policies replaced and the mapping overridden. */
 function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({}), opts: { adminsReady?: boolean; guestsReady?: boolean } = {}) {
-  const f = fixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and none of these cases could
+  // be about what a policy the plan CAN write does.
+  const f = withFoundationSettled(fixture('demo-week2'))
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } }, ...snapshotOver(f) } as typeof f.snapshot
   const mapping = { ...f.mapping, ...mappingOver } as typeof f.mapping

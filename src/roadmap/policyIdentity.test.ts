@@ -12,7 +12,7 @@ import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { nextSafeAction } from './nextSafeAction.ts'
@@ -190,7 +190,7 @@ type GroupShape = {
 function groupRun(opts: GroupShape): FixtureRun & { ctx: StepVarContext } {
   // The curated week-two demo (its source groups answered), as R1 reproduced it:
   // the tenant's other policies stay, the three this shape stands in for go.
-  const base = curatedFixture('demo-week2')
+  const base = withFoundationSettled(curatedFixture('demo-week2'))
   const f = { ...base, groups: new Map(base.groups) }
   const exclusions = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })
   assert.ok(exclusions, 'the demo tenant has a chosen exclusions group')

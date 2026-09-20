@@ -82,7 +82,8 @@ test('Step 5: a held step still handing over its report-only create says to crea
           assert.match(c.whatToDo.text, /^Create the policy in report-only on /, `${where}: "${c.whatToDo.text}"`)
           assert.equal(nextMilestone(s).at, scheduled.at, `${where}: the day it is created`)
         } else {
-          assert.match(c.whatToDo.text, /^Create the policy in report-only now; /, `${where}: "${c.whatToDo.text}"`)
+          // What it waits on is the prerequisite's own line, not this one (owner, 2026-09-19).
+          assert.match(c.whatToDo.text, /^Create the policy in report-only now(\.|; turning it on waits for )/, `${where}: "${c.whatToDo.text}"`)
           assert.equal(nextMilestone(s).at, null, `${where}: still no date`)
         }
         offering += 1

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { effectiveFirstDeployment, proposedFirstDeployment, proposedStart } from '../../derive/planStart.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { dateSpan } from '../../copy/dates.ts'
 import { BOARD, WHEN, boardWhenOf, laneViewFor } from './planBoard.ts'
@@ -85,7 +85,9 @@ test('a first plan starts today, and its first deployment is the next eligible w
 })
 
 test('moving the first deployment or the start moves report-only creation, the phases and every date downstream', () => {
-  const f = fixture('small')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy step is held and the plan dates nothing.
+  const f = withFoundationSettled(fixture('small'))
   const base = runFixture(f)
   const later = runFixture(f, { firstDeployment: '2026-09-15T12:00:00.000Z' })
   const first = (r: typeof base): string => Object.values(r.schedule.reportOnlyAt ?? {}).sort()[0]
