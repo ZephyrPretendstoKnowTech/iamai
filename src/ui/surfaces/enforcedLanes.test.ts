@@ -212,11 +212,11 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   }
   const mfa = stepOf(demoRun, 's-goal-mfa-all-users')
   assert.equal(mfa.state.lifecycle, 'enforced')
-  assert.equal(note(mfa), `MFA readiness is not measured today; enforcement waits for ${mfa.action.readinessGate!.threshold}.`, 'unknown evidence must not be phrased as a measured percentage')
+  assert.equal(note(mfa), `Enforcement waits for MFA readiness to reach ${mfa.action.readinessGate!.threshold}; it is not measured today.`, 'unknown evidence must not be phrased as a measured percentage')
   const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
   const gate = admins.action.readinessGate!
   assert.equal(admins.state.lifecycle, 'report-only')
-  assert.equal(note(admins), `admin readiness is ${gate.value} today; enforcement waits for ${gate.threshold}.`)
+  assert.equal(note(admins), `Enforcement waits for admin readiness to reach ${gate.threshold}; it is ${gate.value} today.`)
   const on = { ...admins, state: { ...admins.state, lifecycle: 'enforced' } } as Step
   assert.equal(note(on), `${gate.value} of admins have a qualifying method.`)
 })

@@ -19,7 +19,7 @@ This policy already exists. Correct only the settings below, which IAMAI found d
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 3. Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.
-4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.
+4. Users → Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions. Remove any exclusion the resolved target does not list.
 5. Target resources: All resources. Leave Conditions → Client apps unconfigured, with Configure at No; that is what reaches all client apps, and ticking every box sets a narrower list than the target. Remove any other condition.
 @@IAMAI-END
 

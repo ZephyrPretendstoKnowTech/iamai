@@ -135,7 +135,7 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
     'service accounts group display name': 'the group selected in Create or Correct Service Accounts Group',
     'service accounts group': 'the Object ID on that group’s Overview page in Entra',
     'exclusions group': 'the group selected in Configure Emergency Exclusions',
-    'trusted locations display names': 'the named locations selected in Trusted Network',
+    'trusted locations display names': 'the named locations selected in Define the Trusted Network',
     'authentication context name': 'the authentication context configured for the intended PIM role',
     'authentication context ID': 'the ID of that context in Conditional Access → Authentication context',
     'browser session policy name': 'the browser-session policy named in this step',

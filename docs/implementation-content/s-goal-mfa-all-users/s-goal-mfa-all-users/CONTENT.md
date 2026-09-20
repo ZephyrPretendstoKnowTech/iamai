@@ -18,7 +18,7 @@ This policy already exists. The correction changes only the settings IAMAI found
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.
+3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.
 5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.
 @@IAMAI-END
