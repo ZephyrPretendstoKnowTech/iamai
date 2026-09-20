@@ -111,7 +111,10 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     // reading: this snapshot is the previous turn's and belongs to nobody now.
     if (!stillThisTurn(turn)) return
     const found = coreGaps(result)
-    setScan({ state: 'done', gaps: found, unread: found.length > 0 ? unreadSources(result) : [] })
+    // Unconditionally: a scan with no CORE gap can still have been refused ten
+    // other sections, and the list the surfaces show is the only place that is
+    // ever said (S4-8). It is what this scan could not read, gaps or none.
+    setScan({ state: 'done', gaps: found, unread: unreadSources(result) })
     if (found.length > 0) return
     // MFA Readiness's evidence history (Step 7, scoring/mfaHistory.ts): what the
     // last saved scan established, folded forward into this one. A saved scan
