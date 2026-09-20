@@ -13,7 +13,7 @@ This policy already exists. The correction sets its conditions to the intended t
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).
-3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
+3. Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.
 4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.
 @@IAMAI-END
 

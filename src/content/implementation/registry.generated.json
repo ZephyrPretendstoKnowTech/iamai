@@ -1075,7 +1075,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.\n"
+          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -1732,7 +1732,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.\n4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.\n5. Target resources: All resources. Leave Conditions → Client apps unconfigured, with Configure at No; that is what reaches all client apps, and ticking every box sets a narrower list than the target. Remove any other condition.\n"
+          "text": "3. Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.\n4. Users → Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions. Remove any exclusion the resolved target does not list.\n5. Target resources: All resources. Leave Conditions → Client apps unconfigured, with Configure at No; that is what reaches all client apps, and ticking every box sets a narrower list than the target. Remove any other condition.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -2938,7 +2938,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction sets its users, exclusions, target resources and conditions to the intended target on the same policy.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.\n"
+          "text": "This policy already exists. The correction sets its users, exclusions, target resources and conditions to the intended target on the same policy.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources: All resources. Conditions → Authentication flows → Configure: Yes, then Authentication transfer. Client apps remains All. Grant → Block access.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -3551,7 +3551,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.\n"
+          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Configure: Yes, then Device code flow. Client apps remains All. Grant → Block access.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -9015,7 +9015,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
+          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -15385,7 +15385,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant → Grant access → Require multifactor authentication.\n8. Session: leave empty (no session controls).\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: set **Configure** to **Yes**, then check Medium only. Left at **No** the policy carries no risk condition, and its grant applies to every sign-in.\n6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.\n7. Grant → Grant access → Require multifactor authentication.\n8. Session: leave empty (no session controls).\n9. Enable policy: Report-only.\n10. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {

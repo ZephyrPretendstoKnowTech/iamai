@@ -1668,7 +1668,7 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
-          "fixConfirmExclusions": "Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
+          "fixConfirmExclusions": "Complete {step} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
@@ -4185,7 +4185,7 @@
     {
       "id": "guests-mfa",
       "preparation": [
-        "Review the Readiness section to see which guest-policy settings or prerequisites need attention.",
+        "Read the Tasks Remaining cards above to see which guest-policy settings or prerequisites need attention.",
         "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.",
         "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."
       ],
