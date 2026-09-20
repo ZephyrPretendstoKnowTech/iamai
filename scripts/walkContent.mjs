@@ -101,7 +101,14 @@ export const ACCEPTANCE = [
   { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'Each shared device completes its required work tasks from the approved network', mustNot: 'requires a compliant device' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Manage migration → Migration complete.' },
+  // MFA for Everyone G1-G7 (docs/plans/mfa-everyone-spec.md section 8, Microsoft
+  // Learn checked 2026-09-20): the step's outcome is the per-user state, not the
+  // methods-policy migration, which its own Completion Criteria already said.
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Per-user MFA → select the accounts above → Disable MFA', mustNot: 'Manage migration → Migration complete.' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'it never requires MFA, so finishing its migration is not what finishes this step' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'why', must: 'asked for MFA at every sign-in whatever the policy decides' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'skip for federated requests from your intranet' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa', mustNot: 'how-to-authentication-methods-manage' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Enforce attestation: Yes; it applies to new registrations only.' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Microsoft Authenticator → Enable: On, All users, for push and codes', mustNot: 'so passkeys in the app can be registered' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'more.risks', must: 'Synced passkeys (iCloud Keychain, Google Password Manager) fail attestation and cannot register under these settings.' },

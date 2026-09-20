@@ -3374,9 +3374,9 @@
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "Moving MFA enforcement into the access policies makes it easier to manage consistently. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
+      "why": "An account left on Enforced is asked for MFA at every sign-in whatever the policy decides, and Microsoft says not to keep per-user MFA where Conditional Access is in use. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
+        "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
       },
       "who": {
         "lead": "{n} accounts with per-user MFA set to Enabled or Enforced:",
@@ -3386,10 +3386,9 @@
       "whatToDo": {
         "lead": "On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
-          "Confirm each method people use (Authenticator, phone, passkeys) is enabled under Policies.",
-          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → Per-user MFA → select the accounts above → Disable.",
-          "Manage migration → Migration complete."
+          "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
+          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → All users → Per-user MFA → select the accounts above → Disable MFA. You need at least the Authentication Policy Administrator role.",
+          "Read each state back as Disabled, then delete any app password these accounts still hold, because an app password bypasses MFA on its own."
         ]
       },
       "dates": null,
@@ -3397,7 +3396,7 @@
         "The legacy per-user MFA states have been reviewed and disabled for the intended accounts after replacement protection is verified.",
         "Authentication-method policy migration is tracked separately; its completion does not prove that legacy per-user MFA is disabled."
       ],
-      "ifWrong": "Set Migration in progress again; per-user settings can be re-enabled per account.",
+      "ifWrong": "Per-user MFA can be set back to Enabled or Enforced one account at a time, which restores the old requirement while you investigate.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -3407,9 +3406,19 @@
           {
             "text": "Disabling per-user MFA before the policy enforces removes MFA for that person.",
             "applies": "always"
+          },
+          {
+            "text": "An app password created under per-user MFA keeps working after the state is Disabled, and it answers no prompt at all.",
+            "applies": "always"
+          },
+          {
+            "text": "The old service settings carry a skip for federated requests from your intranet, which makes every such request read as a trusted location to every access policy.",
+            "applies": "always"
           }
         ],
-        "helpDesk": null,
+        "helpDesk": [
+          "Accounts still reading Disabled after the policy is On is the expected result: turning MFA on through an access policy never changes the per-user state."
+        ],
         "manager": null,
         "waits": null
       },

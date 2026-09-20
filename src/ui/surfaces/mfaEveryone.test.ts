@@ -478,6 +478,76 @@ test('E8: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(GUESTS)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Finish Moving Off Per-User MFA (spec section 8)
+// ---------------------------------------------------------------------------
+
+const PER_USER = 's-prereq-per-user-mfa'
+
+test('G1: About gives Learn\'s reason: Enforced asks every time, whatever the policy decides', () => {
+  const why = whyOf(PER_USER)
+  assert.match(why, /asked for MFA at every sign-in whatever the policy decides/)
+  assert.match(why, /Microsoft says not to keep per-user MFA where Conditional Access is in use/)
+  assert.doesNotMatch(why, /makes it easier to manage consistently/)
+  // And on screen, where the admin reads it.
+  assert.match(aboutOf(bodiesOf('demo').get(PER_USER)!), /at every sign-in whatever the policy decides/)
+})
+
+test('G2: help desk says Conditional Access does not change the per-user state', () => {
+  const lines = helpDeskOf(PER_USER)
+  assert.ok(lines.some((l) => /turning MFA on through an access policy never changes the per-user state/.test(l)), lines.join('\n'))
+  assert.match(blockText(PER_USER, 'entra.disable'), /never changes the per-user state/)
+})
+
+test('G3: the portal step reads Per-user MFA and Disable MFA', () => {
+  const w = whatToDoOf(PER_USER)
+  assert.match(w, /Users → All users → Per-user MFA → select the accounts above → Disable MFA/)
+  assert.match(w, /Authentication Policy Administrator role/)
+  assert.match(blockText(PER_USER, 'entra.disable'), /Select \*\*Disable MFA\*\*/)
+})
+
+test('G4: a risk names the intranet skip that reads as a trusted location', () => {
+  const risks = risksOf(PER_USER)
+  assert.ok(risks.some((r) => /skip for federated requests from your intranet, which makes every such request read as a trusted location/.test(r)), risks.join('\n'))
+})
+
+test('G5: a risk says an app password survives the change, and the procedure deletes it', () => {
+  const risks = risksOf(PER_USER)
+  assert.ok(risks.some((r) => /app password created under per-user MFA keeps working after the state is Disabled/.test(r)), risks.join('\n'))
+  assert.match(whatToDoOf(PER_USER), /delete any app password these accounts still hold/)
+  assert.match(blockText(PER_USER, 'entra.disable'), /Delete any app password these accounts hold/)
+})
+
+test('G6: the methods-policy line is a pre-check, not the outcome', () => {
+  const w = whatToDoOf(PER_USER)
+  assert.match(w, /it never requires MFA, so finishing its migration is not what finishes this step/)
+  assert.doesNotMatch(w, /Manage migration → Migration complete\./)
+  // Which is what this step's own second criterion has always said.
+  const done = bodiesOf('demo').get(PER_USER)!.contract.doneWhen
+  assert.ok(done.some((d) => /its completion does not prove that legacy per-user MFA is disabled/.test(d)), done.join('\n'))
+})
+
+test('G7: the step and its package cite the action plan this step performs', () => {
+  const b = bodiesOf('demo').get(PER_USER)!
+  assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa')
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)[PER_USER]?.meta
+  assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === b.learnUrl), 'the package cites a different page from the step')
+})
+
+test('G8: the step shows a source line at all, dated', () => {
+  assert.equal(checkedOn(PER_USER), '2026-09-20')
+  for (const name of ['demo', 'demo-week2'] as FixtureName[]) {
+    assert.equal(bodiesOf(name).get(PER_USER)!.sourceLine, 'Source checked Sep 20, 2026', name)
+  }
+})
+
+test('G9: per-user MFA is never called retired; no Learn page gives it an end date', () => {
+  const { example: _example, ...authored } = stepById[PER_USER] as unknown as Record<string, unknown>
+  for (const s of everyString(authored)) {
+    assert.doesNotMatch(s, /\bretir(ed|ing|ement)\b/i, s)
+  }
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.

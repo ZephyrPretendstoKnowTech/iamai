@@ -21769,7 +21769,33 @@
           "troubleshooting": [
             "troubleshooting.model"
           ]
-        }
+        },
+        "verifiedSources": [
+          {
+            "id": "ms-turn-off-per-user",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra recommendation: Turn off per-user MFA",
+            "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-user-states",
+            "authority": "Microsoft Learn",
+            "title": "Enable per-user Microsoft Entra multifactor authentication",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-mfa-settings",
+            "authority": "Microsoft Learn",
+            "title": "Configure Microsoft Entra multifactor authentication settings",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ]
       },
       "blocks": {
         "entra.migrate": {
@@ -21782,7 +21808,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra ID > Authentication methods > Policies** and open the migration guidance/status.\n2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups.\n3. Move the migration state through Microsoft's supported migration workflow only after method coverage is preserved.\n4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.\n"
+          "text": "1. Go to **Entra ID > Authentication methods > Policies** and open the migration guidance/status.\n2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups. Methods can no longer be managed in the legacy MFA and SSPR policies, so the unified policy is where the coverage has to exist.\n3. Move the migration state through Microsoft's supported migration workflow only after method coverage is preserved.\n4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement, and marking it complete does not disable anybody's per-user state. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.\n"
         },
         "entra.disable": {
           "meta": {
@@ -21794,7 +21820,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Verify the replacement Conditional Access policy is enabled and covers these accounts: {{dependencies.replacementMfaSummary}}.\n2. Open the per-user MFA management experience and select only these accounts: {{mfa.perUser.accounts}}.\n3. Set their per-user MFA state to **Disabled**.\n4. This does **not** remove MFA; the enabled Conditional Access policy now requires it.\n5. Read the states back and rescan IAMAI.\n"
+          "text": "1. Verify the replacement Conditional Access policy is enabled and covers these accounts: {{dependencies.replacementMfaSummary}}.\n2. Go to **Entra ID > Users > All users > Per-user MFA** and select only these accounts: {{mfa.perUser.accounts}}. You need at least the **Authentication Policy Administrator** role.\n3. Select **Disable MFA**, so each state reads **Disabled**. An account left on **Enforced** is asked for MFA at every sign-in whatever the access policy decides.\n4. This does **not** remove MFA; the enabled Conditional Access policy now requires it. Turning MFA on through an access policy never changes the per-user state, so Disabled is the state to expect afterwards.\n5. Delete any app password these accounts hold, under **Manage user settings**: an app password created under per-user MFA keeps working and answers no prompt.\n6. Read the states back and rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {

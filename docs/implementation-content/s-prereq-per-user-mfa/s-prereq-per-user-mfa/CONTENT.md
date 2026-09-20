@@ -1,16 +1,17 @@
 @@IAMAI-BEGIN {"id":"entra.migrate","channel":"entra","states":["migrationRequired"],"format":"markdown","kind":"template"}
 1. Go to **Entra ID > Authentication methods > Policies** and open the migration guidance/status.
-2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups.
+2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups. Methods can no longer be managed in the legacy MFA and SSPR policies, so the unified policy is where the coverage has to exist.
 3. Move the migration state through Microsoft's supported migration workflow only after method coverage is preserved.
-4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.
+4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement, and marking it complete does not disable anybody's per-user state. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["readyToDisablePerUser"],"format":"markdown","kind":"template"}
 1. Verify the replacement Conditional Access policy is enabled and covers these accounts: {{dependencies.replacementMfaSummary}}.
-2. Open the per-user MFA management experience and select only these accounts: {{mfa.perUser.accounts}}.
-3. Set their per-user MFA state to **Disabled**.
-4. This does **not** remove MFA; the enabled Conditional Access policy now requires it.
-5. Read the states back and rescan IAMAI.
+2. Go to **Entra ID > Users > All users > Per-user MFA** and select only these accounts: {{mfa.perUser.accounts}}. You need at least the **Authentication Policy Administrator** role.
+3. Select **Disable MFA**, so each state reads **Disabled**. An account left on **Enforced** is asked for MFA at every sign-in whatever the access policy decides.
+4. This does **not** remove MFA; the enabled Conditional Access policy now requires it. Turning MFA on through an access policy never changes the per-user state, so Disabled is the state to expect afterwards.
+5. Delete any app password these accounts hold, under **Manage user settings**: an app password created under per-user MFA keeps working and answers no prompt.
+6. Read the states back and rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
