@@ -234,5 +234,31 @@
     "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
     "status": "SELF-VERIFIED"
   },
-  "unresolvedIssues": []
+  "unresolvedIssues": [],
+  "verifiedSources": [
+    {
+      "id": "ms-secure-service-accounts",
+      "authority": "Microsoft Learn",
+      "title": "Securing cloud-based service accounts",
+      "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-workload-ca",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access for workload identities",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-block-location",
+      "authority": "Microsoft Learn",
+      "title": "Block access by location with Conditional Access policy",
+      "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+      "checkedOn": "2026-09-20",
+      "userFacing": false
+    }
+  ]
 }

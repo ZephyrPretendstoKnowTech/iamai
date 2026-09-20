@@ -6273,9 +6273,17 @@
           {
             "id": "ms-block-location",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access - Block access by location",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-by-location",
-            "checkedOn": "2026-09-12",
+            "title": "Block access by location with Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -6317,7 +6325,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): include **Any network or location** and exclude the approved countries named location. Do not use IDs from another tenant, and do not widen or narrow the population. The location list applies to everyone the policy covers.\n4. Grant: **Block access**. Leave session controls unconfigured.\n5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): set **Configure** to **Yes**, then include **Any network or location** and exclude the approved countries named location. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default. Do not use IDs from another tenant, and do not widen or narrow the population. The location list applies to everyone the policy covers.\n4. Grant: **Block access**. Leave session controls unconfigured.\n5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -6329,7 +6337,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): include **Any network or location** and exclude the approved countries named location. The location list applies to everyone the policy covers.\n"
+          "text": "Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Network** (older portal: **Conditions > Locations**): set **Configure** to **Yes**, then include **Any network or location** and exclude the approved countries named location. The location list applies to everyone the policy covers.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -12510,68 +12518,68 @@
         },
         "verifiedSources": [
           {
-            "id": "ms-secure-service-accounts",
+            "id": "ms-network",
             "authority": "Microsoft Learn",
-            "title": "Introduction to securing Microsoft Entra service accounts",
-            "url": "https://learn.microsoft.com/en-us/entra/architecture/secure-service-accounts",
-            "purpose": "Service-account types and preference for managed identities/service principals over user-based service accounts.",
-            "checkedOn": "2026-09-10"
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
           },
           {
-            "id": "ms-ca-network",
+            "id": "ms-block-location",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access Policy: Using network signals",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-            "purpose": "Any network/location, selected named locations, public egress IP behavior, and trusted location semantics.",
-            "checkedOn": "2026-09-10"
+            "title": "Block access by location with Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
           },
           {
             "id": "ms-workload-ca",
             "authority": "Microsoft Learn",
             "title": "Conditional Access for workload identities",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity",
-            "purpose": "Service principals require workload-identity targeting; user-scoped CA does not protect service-principal calls.",
-            "checkedOn": "2026-09-10"
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
           },
           {
-            "id": "ms-ca-users",
+            "id": "ms-secure-service-accounts",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access users, groups, agents, and workload identities",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups",
-            "purpose": "User/group vs workload-identity targeting boundary.",
-            "checkedOn": "2026-09-10"
+            "title": "Securing cloud-based service accounts",
+            "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           },
           {
             "id": "ms-ca-locations-v1",
             "authority": "Microsoft Graph",
             "title": "conditionalAccessLocations resource type - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesslocations?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccesslocations?view=graph-rest-1.0",
             "purpose": "includeLocations/excludeLocations v1.0 schema.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-create-v1",
             "authority": "Microsoft Graph",
             "title": "Create conditionalAccessPolicy - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
             "purpose": "v1.0 create endpoint and location-policy example.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-update-v1",
             "authority": "Microsoft Graph",
             "title": "Update conditionalAccessPolicy - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
             "purpose": "Stable-ID update endpoint.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           },
           {
             "id": "ms-ca-get-v1",
             "authority": "Microsoft Graph",
             "title": "Get conditionalAccessPolicy - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
             "purpose": "Stable-ID readback.",
-            "checkedOn": "2026-09-10"
+            "checkedOn": "2026-09-20"
           }
         ],
         "baselineAuthority": {
@@ -12624,7 +12632,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Resolve these before implementation:\n1. Confirm the service-accounts group and its object ID.\n2. Confirm each intended member is a **user-based** service account. Service principals and managed identities are not covered by this user policy.\n3. Confirm the approved trusted named location ID(s). Do not infer them from sign-in history.\n4. Confirm each required job's public source network with its owner, including scheduled, infrequent and vendor-hosted jobs.\n5. Confirm the intended exclusions.\n"
+          "text": "Resolve these before implementation:\n1. Confirm the service-accounts group and its object ID.\n2. Confirm each intended member is a **user-based** service account. A call made by a service principal is not blocked by a policy scoped to users, and a policy assigned to a group is not enforced for a service principal inside it; covering one takes Conditional Access for workload identities.\n3. Confirm the approved trusted named location ID(s). Do not infer them from sign-in history.\n4. Confirm each required job's public source network with its owner, including scheduled, infrequent and vendor-hosted jobs.\n5. Confirm the intended exclusions.\n"
         },
         "entra.create": {
           "meta": {
@@ -12636,7 +12644,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include Groups → service-accounts group `{{serviceAccounts.group.displayName}}` / ID `{{serviceAccounts.group.id}}`. Exclude exactly `{{policy.target.excludeGroups}}`.\n4. Target resources: All resources.\n5. Conditions → Network: Include Any network/location; Exclude the approved trusted location(s): `{{trustedLocations.displayNames}}`.\n6. Client apps: All. Configure no other conditions.\n7. Grant: Block access.\n8. Session: not configured.\n9. Enable policy: Report-only.\n10. Create, reopen the policy to check the settings, and rescan in IAMAI.\n"
+          "text": "Create this policy in Report-only. It will not enforce its access rule until you enable it.\n1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: `{{policy.target.displayName}}`.\n3. Users: Include Groups → service-accounts group `{{serviceAccounts.group.displayName}}` / ID `{{serviceAccounts.group.id}}`. Exclude exactly `{{policy.target.excludeGroups}}`.\n4. Target resources: All resources.\n5. Conditions → **Network** (older portal: **Locations**): set **Configure** to **Yes**, then Include **Any network or location**; Exclude the approved trusted location(s): `{{trustedLocations.displayNames}}`. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.\n6. Client apps: All. Configure no other conditions.\n7. Grant: Block access.\n8. Session: not configured.\n9. Enable policy: Report-only.\n10. Create, reopen the policy to check the settings, and rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -12684,7 +12692,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions → Network: Include **Any network or location** and exclude only the approved trusted location ID(s) `{{trustedLocations.ids}}`. Check the direction: the policy blocks sign-ins from everywhere except those excluded locations.\n"
+          "text": "Conditions → Network: set **Configure** to **Yes**, then Include **Any network or location** and exclude only the approved trusted location ID(s) `{{trustedLocations.ids}}`. Check the direction: the policy blocks sign-ins from everywhere except those excluded locations.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -18966,9 +18974,9 @@
             "id": "ms-workload-identity-ca",
             "authority": "Microsoft Learn",
             "title": "Conditional Access for workload identities",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
             "purpose": "Workload scope, licensing, direct service-principal assignment, location policy, report-only, sign-in logs, and Enterprise applications Object ID requirement.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -18983,9 +18991,9 @@
             "id": "ms-workload-license-faq",
             "authority": "Microsoft Learn",
             "title": "Frequently asked questions about Microsoft Entra Workload ID",
-            "url": "https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-faqs",
+            "url": "https://learn.microsoft.com/entra/workload-id/workload-identities-faqs",
             "purpose": "Current Workload ID Premium licensing behavior.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -18997,9 +19005,9 @@
             "id": "ms-ca-client-applications",
             "authority": "Microsoft Graph",
             "title": "conditionalAccessClientApplications resource type - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
             "purpose": "v1.0 workload/service-principal include/exclude schema.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -19011,9 +19019,9 @@
             "id": "ms-ip-named-location",
             "authority": "Microsoft Graph",
             "title": "ipNamedLocation resource type - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
             "purpose": "IP named-location shape and CIDR range semantics.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -19025,9 +19033,9 @@
             "id": "ms-named-location-create",
             "authority": "Microsoft Graph",
             "title": "Create namedLocation - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
             "purpose": "v1.0 named-location POST endpoint, required IP-range fields, permissions, and roles.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -19040,9 +19048,9 @@
             "id": "ms-ip-named-location-update",
             "authority": "Microsoft Graph",
             "title": "Update ipNamedLocation - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
             "purpose": "v1.0 named-location PATCH behavior; complete desired ipRanges must be supplied because omitted ranges are removed.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -19055,16 +19063,43 @@
             "id": "ms-named-location-list",
             "authority": "Microsoft Graph",
             "title": "List namedLocations - v1.0",
-            "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
+            "url": "https://learn.microsoft.com/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
             "purpose": "Stable list/collision-check surface and Policy.Read.All read permission.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
               "powershell"
             ]
+          },
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-connect-accounts",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra Connect: accounts and permissions",
+            "url": "https://learn.microsoft.com/entra/identity/hybrid/connect/reference-connect-accounts-permissions",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-cloud-sync-faq",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra Cloud Sync FAQ",
+            "url": "https://learn.microsoft.com/entra/identity/hybrid/cloud-sync/reference-cloud-sync-faq",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
           }
         ],
+        "impact": {
+          "fallbackLabel": "Directory synchronisation"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -19128,7 +19163,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "{{workload.identity.detail}} [omit this line when unavailable]\n\nIdentify the application that requests tokens for this sync workflow and its service principal. Check its ownership and sign-in audience against Microsoft's supported workload identity types. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.\n\nThe approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Conditions > Locations**, include **Any location** and exclude the IAMAI-resolved sync-server named location.\n7. Under **Grant**, select **Block access**.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
+          "text": "{{workload.identity.detail}} [omit this line when unavailable]\n\nIdentify the application that requests tokens for this sync workflow and its service principal. A workload identity policy covers a **single-tenant service principal registered in this tenant**; a Microsoft or third-party multitenant application, and any managed identity, is not covered at all. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity: Entra Connect Sync signs in as a user account with the Directory Synchronization Accounts role, while Cloud Sync uses a provisioning service principal, and only the second can be this policy's target. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.\n\nThe approved sync-server named location is already resolved. Create only the workload policy.\n\n1. Go to **Entra ID > Conditional Access > Policies > New policy**.\n2. Name the policy **{{policy.target.displayName}}**.\n3. Under **Users or workload identities**, choose **Workload identities**.\n4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID. Select it directly: a policy assigned to a group that holds a service principal is not enforced for that service principal.\n5. Under **Target resources > Resources**, include **All resources**.\n6. Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude the IAMAI-resolved sync-server named location. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.\n7. Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.\n8. Set **Enable policy** to **Report-only**, then create it.\n9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.\n\nMicrosoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -19176,7 +19211,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals.\n"
+          "text": "Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals: a policy assigned to a group is not enforced for a service principal inside it, and a managed identity is not covered by a workload identity policy at all.\n"
         },
         "entra.correct.policy.all-resources": {
           "meta": {
@@ -19200,7 +19235,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Conditions > Locations**, include **Any location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted locations** or a broader office-location set.\n"
+          "text": "Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted networks and locations** or a broader office-location set.\n"
         },
         "entra.correct.policy.client-apps": {
           "meta": {
@@ -19236,7 +19271,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Under **Grant**, select **Block access** as the only grant control.\n"
+          "text": "Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.\n"
         },
         "entra.correct.policy.report-only": {
           "meta": {
@@ -19840,14 +19875,22 @@
           {
             "id": "ms-network",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access Policy: Using Network Signals",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-12",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
+          },
+          {
+            "id": "ms-country-named-location",
+            "authority": "Microsoft Learn",
+            "title": "countryNamedLocation resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/countrynamedlocation",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "impact": {
-          "fallbackLabel": "Country restrictions"
+          "fallbackLabel": "Allowed countries"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -19867,7 +19910,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. Leave **Include unknown countries/regions** off.\n6. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**. Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. The other option, **Determine location by GPS coordinates**, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. Leave **Include unknown countries/regions** off, so an address that maps to no country stays outside this list.\n6. There is no trusted mark on a countries location; trust belongs to the IP ranges location Define the Trusted Network creates.\n7. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22377,6 +22420,32 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-secure-service-accounts",
+            "authority": "Microsoft Learn",
+            "title": "Securing cloud-based service accounts",
+            "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-workload-ca",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access for workload identities",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-block-location",
+            "authority": "Microsoft Learn",
+            "title": "Block access by location with Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -22396,7 +22465,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Do not add service principals or managed identities; this group is for user accounts.\n6. Create the group and rescan IAMAI before changing the policies that use it.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Add only the service-account users whose application owners confirmed them, as IAMAI lists. Any account named as a mail-sending device in Confirm What You Use is already on that list.\n6. Do not add service principals or managed identities. A policy scoped to users does not block a call made by a service principal, and a policy assigned to a group is not enforced for a service principal inside it, so one added here would be protected by nothing.\n7. Create the group and rescan IAMAI before changing the policies that use it.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22754,10 +22823,18 @@
           {
             "id": "ms-network",
             "authority": "Microsoft Learn",
-            "title": "Conditional Access Policy: Using Network Signals",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
-            "checkedOn": "2026-09-12",
+            "title": "Network assignment in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
+          },
+          {
+            "id": "ms-ip-named-location",
+            "authority": "Microsoft Learn",
+            "title": "ipNamedLocation resource type",
+            "url": "https://learn.microsoft.com/graph/api/resources/ipnamedlocation",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "impact": {
@@ -22781,7 +22858,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges.\n4. Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.\n2. Name: {{location.target.displayName}}.\n3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a \"what is my IP\" check, is not approval. Do not use private LAN ranges: behind a private network Entra sees the address the network uses to reach the internet, not the device's own.\n4. Add only the approved public ranges in CIDR notation, including VPN exits only where the network owner has approved that trust. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.\n5. Check \"Mark as trusted location.\"\n6. Create.\n7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22817,7 +22894,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted.\n"
+          "text": "Set **Mark as trusted location** on for this exact object. Do not mark any other named location trusted. A location that carries the trusted mark cannot be deleted until the mark is taken off, so remove the mark first if you ever retire this one.\n"
         },
         "entra.correct.name": {
           "meta": {

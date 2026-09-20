@@ -306,3 +306,63 @@ the scan cannot see, and it is the half that never renders on these snapshots.
 
 **No change was made**: this is the contract's held reading, shared by every
 group, and changing it would move every held step's Completion Criteria.
+
+## Found taking Control Where People Sign In From to V1 (2026-09-20)
+
+Neither was built. Both are the anatomy's, not one group's.
+
+### 8. A held policy states the same wait in three cards
+
+On the demo, Block Sign-ins From Countries Not Allowed draws the prerequisite
+"Create or Correct Allowed Countries Location" three times in Tasks Remaining:
+
+- the policy card's next check — "Create or Correct Allowed Countries Location
+  first: this policy names an object Contoso Pty Ltd does not have yet";
+- the Affected people card — "Policy scope awaits: Create or Correct Allowed
+  Countries Location.";
+- a card of its own — "Prerequisite · To do / Create or Correct Allowed
+  Countries Location / Finish Create or Correct Allowed Countries Location
+  first."
+
+Restrict Service Accounts to the Trusted Network does the same with two objects
+at once, so six of its lines carry two facts. This is
+`step-redundancy-analysis.md` finding 3, and its own recommendation is a merge
+in `planLanes.ts` / `stepContract.ts`.
+
+**Why it was not built here.** The three sentences come from
+`shared.engine.*.jsonWaits`, `stepContract.ts:597` and `planLanes.ts` — one
+producer each, all shared by every policy step in every group. Merging them
+moves the rendered body and the step snapshot of every policy step at once,
+which is an anatomy decision and not one group's words. The group's own
+duplication (three policy names stated twice inside Create or Correct Service
+Accounts Group) was fixed; this was not.
+
+**The question for the owner.** Should a subject card whose only content is a
+prerequisite step's name be suppressed when the policy card's next check already
+names that step? The nearest-cause rule finding 3 proposes would do it in one
+place. Either answer is one decision; neither is built.
+
+### 9. A step no fixture generates has no snapshot and no rendered state
+
+`s-goal-workload-identity-block` needs both the Workload ID Premium licence and
+D1's Entra Connect answer, and no fixture supplies both. It is in no
+`docs/qa/step-snapshots` directory, and on the demo it sits under "Not licensed"
+with no body drawn, on the initial scan and the follow-up alike. Its corrected
+words still reach the printed plan, the export and the prompt pack, which is
+where they were verified.
+
+This is the same shape as `close-doors-spec.md` §7.4 (`s-question-mail-devices`)
+without the fold: the step is real and the fixtures simply never reach it. The
+fix is a fixture that grants the licence beside the answer — a fixture change,
+not a step change, and outside a wave that is not allowed to move other groups'
+snapshots.
+
+### 10. The Impact column falls back to "Tenant settings" for a step with no topic
+
+`rowWho.ts` resolves a row's Impact as `IMPACT_TOPICS[goalId]` → the package's
+`impact.fallbackLabel` → `structuralWords.impactDefault`. A policy step that is
+in neither map draws "Tenant settings", which says nothing about the step.
+`s-goal-workload-identity-block` was such a step and now carries an
+`impact.fallbackLabel`; `IMPACT_TOPICS` in `rowWho.ts` remains a second place
+where a row's word can live, keyed by goal id rather than step id. Two maps for
+one column is not this group's to collapse.

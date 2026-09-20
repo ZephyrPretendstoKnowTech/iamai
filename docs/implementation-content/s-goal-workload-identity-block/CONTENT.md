@@ -16,17 +16,17 @@ Microsoft reference: https://learn.microsoft.com/en-us/graph/api/conditionalacce
 @@IAMAI-BEGIN {"id":"entra.policy.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 {{workload.identity.detail}} [omit this line when unavailable]
 
-Identify the application that requests tokens for this sync workflow and its service principal. Check its ownership and sign-in audience against Microsoft's supported workload identity types. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.
+Identify the application that requests tokens for this sync workflow and its service principal. A workload identity policy covers a **single-tenant service principal registered in this tenant**; a Microsoft or third-party multitenant application, and any managed identity, is not covered at all. Do not substitute a directory-sync user account or assume the provisioning configuration is the calling identity: Entra Connect Sync signs in as a user account with the Directory Synchronization Accounts role, while Cloud Sync uses a provisioning service principal, and only the second can be this policy's target. If the identity is supported, verify its actual token-request addresses before choosing the allowed public ranges. Keep an existing policy unchanged while investigating.
 
 The approved sync-server named location is already resolved. Create only the workload policy.
 
 1. Go to **Entra ID > Conditional Access > Policies > New policy**.
 2. Name the policy **{{policy.target.displayName}}**.
 3. Under **Users or workload identities**, choose **Workload identities**.
-4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID.
+4. Under **Include > Select service principals**, select the service principal you confirmed requests tokens for this sync workflow and is a supported workload identity. Use the service principal **Object ID from Enterprise applications**, not the App registrations Object ID. Select it directly: a policy assigned to a group that holds a service principal is not enforced for that service principal.
 5. Under **Target resources > Resources**, include **All resources**.
-6. Under **Conditions > Locations**, include **Any location** and exclude the IAMAI-resolved sync-server named location.
-7. Under **Grant**, select **Block access**.
+6. Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude the IAMAI-resolved sync-server named location. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.
+7. Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.
 8. Set **Enable policy** to **Report-only**, then create it.
 9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.
 
@@ -50,7 +50,7 @@ Open the resolved IP named location and replace its IP ranges with the **complet
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.service-principal","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals.
+Under **Users or workload identities > Workload identities**, directly include only the IAMAI-resolved Cloud Sync provisioning service principal. Do not substitute a group, managed identity, App registrations Object ID, or all service principals: a policy assigned to a group is not enforced for a service principal inside it, and a managed identity is not covered by a workload identity policy at all.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.all-resources","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -58,7 +58,7 @@ Under **Target resources > Resources**, set Include to **All resources**. Remove
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.location-boundary","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Conditions > Locations**, include **Any location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted locations** or a broader office-location set.
+Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude only the IAMAI-resolved sync-server named location. Do not replace it with **All trusted networks and locations** or a broader office-location set.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.client-apps","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -70,7 +70,7 @@ Remove user/group, device, platform, authentication-flow, and risk conditions th
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.grant-block","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Grant**, select **Block access** as the only grant control.
+Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy.report-only","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

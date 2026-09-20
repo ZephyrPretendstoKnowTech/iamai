@@ -1,7 +1,7 @@
 @@IAMAI-BEGIN {"id":"entra.prerequisites","channel":"entra","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
 Resolve these before implementation:
 1. Confirm the service-accounts group and its object ID.
-2. Confirm each intended member is a **user-based** service account. Service principals and managed identities are not covered by this user policy.
+2. Confirm each intended member is a **user-based** service account. A call made by a service principal is not blocked by a policy scoped to users, and a policy assigned to a group is not enforced for a service principal inside it; covering one takes Conditional Access for workload identities.
 3. Confirm the approved trusted named location ID(s). Do not infer them from sign-in history.
 4. Confirm each required job's public source network with its owner, including scheduled, infrequent and vendor-hosted jobs.
 5. Confirm the intended exclusions.
@@ -13,7 +13,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 2. Name: `{{policy.target.displayName}}`.
 3. Users: Include Groups → service-accounts group `{{serviceAccounts.group.displayName}}` / ID `{{serviceAccounts.group.id}}`. Exclude exactly `{{policy.target.excludeGroups}}`.
 4. Target resources: All resources.
-5. Conditions → Network: Include Any network/location; Exclude the approved trusted location(s): `{{trustedLocations.displayNames}}`.
+5. Conditions → **Network** (older portal: **Locations**): set **Configure** to **Yes**, then Include **Any network or location**; Exclude the approved trusted location(s): `{{trustedLocations.displayNames}}`. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.
 6. Client apps: All. Configure no other conditions.
 7. Grant: Block access.
 8. Session: not configured.
@@ -36,7 +36,7 @@ Set Target resources to All resources, with no resource exclusions, and client a
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.network","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Conditions → Network: Include **Any network or location** and exclude only the approved trusted location ID(s) `{{trustedLocations.ids}}`. Check the direction: the policy blocks sign-ins from everywhere except those excluded locations.
+Conditions → Network: set **Configure** to **Yes**, then Include **Any network or location** and exclude only the approved trusted location ID(s) `{{trustedLocations.ids}}`. Check the direction: the policy blocks sign-ins from everywhere except those excluded locations.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

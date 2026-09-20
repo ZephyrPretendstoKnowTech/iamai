@@ -3024,9 +3024,9 @@
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Determine location by IP address, not GPS. Select {list:countriesList}",
+          "Determine location by IP address: Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. Select {list:countriesList}",
           "Leave \"Include unknown countries/regions\" off, so a sign-in whose address maps to no country is treated as outside the list.",
-          "Do not mark it as trusted; it is a list, not a trusted network."
+          "A countries location carries no trusted mark; trust belongs to the IP ranges location Define the Trusted Network creates."
         ],
         "correct": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
@@ -3037,8 +3037,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "A countries named location with exactly {countries} exists in the tenant.",
-        "It determines location by IP address and leaves unknown countries or regions out."
+        "A countries named location in the tenant lists exactly {countries}, the countries people work from.",
+        "It decides country by IP address, and a sign-in whose country cannot be worked out stays outside the list."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3049,6 +3049,10 @@
         "risks": [
           {
             "text": "A sign-in whose address maps to no country is blocked by the countries policy. That is deliberate, and it is what a VPN with a broken exit looks like.",
+            "applies": "always"
+          },
+          {
+            "text": "The other option, Determine location by GPS coordinates, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.",
             "applies": "always"
           }
         ],
@@ -3107,7 +3111,7 @@
           "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add each approved range, as narrow as the network owner's allocation; never 0.0.0.0/0.",
+          "Add each approved range in CIDR notation, as narrow as the network owner's allocation. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.",
           "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
           "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
         ],
@@ -3118,8 +3122,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "A trusted IP named location exists in the tenant.",
-        "Its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them."
+        "An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted.",
+        "The sign-ins that should match it do, without widening a range to make them."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3133,17 +3137,21 @@
             "applies": "always"
           },
           {
-            "text": "A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.",
+            "text": "Sign-ins from a trusted location improve the accuracy of Microsoft Entra ID Protection's risk calculation, so keep the ranges tight.",
             "applies": "always"
           },
           {
             "text": "One address means one broken link takes the office out of its own trusted location.",
             "applies": "singleAddress"
+          },
+          {
+            "text": "A location marked as trusted cannot be deleted until the trusted mark is removed, so a tidy-up is two steps.",
+            "applies": "always"
           }
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Protect Sign-in Method Registration waits on this."
+        "waits": "Give Shared Devices Their Own Policy, Protect Sign-in Method Registration, Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
@@ -3179,7 +3187,7 @@
       },
       "decision": {
         "label": "Service accounts",
-        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts; service principals and managed identities do not belong in it.",
+        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts: a policy scoped to users does not block a call made by a service principal, and one assigned to a group is not enforced for a service principal inside it.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
       },
@@ -3188,13 +3196,14 @@
         "steps": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add: {list:serviceAccounts}.",
+          "Add: {list:serviceAccounts}",
+          "Any account named as a mail-sending device in Confirm What You Use is already on that list.",
           "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "The group exists with exactly the confirmed accounts.",
+        "The group holds exactly the user accounts confirmed as running unattended jobs, the mail-sending devices named in Confirm What You Use among them.",
         "Each member's workload owner confirmed it runs unattended and no person signs in with it."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
@@ -3209,13 +3218,17 @@
             "applies": "serviceAccountHasRole"
           },
           {
-            "text": "Accounts in this group are outside the legacy, countries and token policies; the baseline's Block Service Accounts policy pins them to the trusted network: see Restrict Service Accounts to the Trusted Network.",
+            "text": "These accounts sit outside the policies that cover people; the baseline pins them to the trusted network instead: see Restrict Service Accounts to the Trusted Network.",
+            "applies": "always"
+          },
+          {
+            "text": "A Conditional Access policy assigned to a group is not enforced for a service principal in that group, so putting one here would protect nothing.",
             "applies": "always"
           }
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Block Legacy Authentication, Block Sign-ins From Countries Not Allowed and Require Token Protection on Windows wait on this."
+        "waits": "Restrict Service Accounts to the Trusted Network and Require Token Protection on Windows wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
@@ -4666,7 +4679,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from countries not in the allowed list, with the exclusions group applied and partner and travel exceptions addressed.",
+      "doneEnd": "Nobody signs in to {tenant} from a country that is not on the approved list, the exclusions group is applied, and every trip, VPN exit and partner route that crosses it is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Blocked sign-ins in the records were reviewed, and legitimate travel and network routes are addressed."
@@ -4684,7 +4697,7 @@
       "more": {
         "risks": [
           {
-            "text": "A VPN or proxy whose exit is in another country, because the policy reads the exit address.",
+            "text": "A VPN or proxy whose exit is in another country: Conditional Access reads the proxy's own address, and it ignores the X-Forwarded-For header that carries the person's.",
             "applies": "always"
           },
           {
@@ -4692,14 +4705,16 @@
             "applies": "always"
           },
           {
-            "text": "A country rule does not bite until the token refreshes, so a traveller is not unblocked the moment the list changes.",
+            "text": "A country rule bites when the token is reissued, which is hourly by default, so a traveller is not blocked or unblocked the moment the list changes.",
             "applies": "always"
           }
         ],
         "helpDesk": [
           "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
           "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.",
-          "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault."
+          "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault.",
+          "An app or a sync job that keeps working from abroad is not a fault: a call made by a service principal is not blocked by a policy scoped to users. Restricting one takes a workload identity policy, which Restrict the Entra Connect Sync Account to Its Address builds.",
+          "Where this tenant synchronises from on-premises, Microsoft's own recipe for an all-users policy also excludes the Directory Synchronization Accounts directory role; the pinned baseline excludes the exclusions group and the service accounts group instead."
         ],
         "manager": "Sign-ins from countries outside the approved list are blocked, based on the network address the sign-in comes from.",
         "waits": null,
@@ -4735,7 +4750,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}{serviceProviderClause}.",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {allowedCountriesLocation}",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {allowedCountriesLocation}",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
@@ -5462,7 +5477,7 @@
       "licence": "Microsoft Entra Workload ID Premium",
       "title": "Restrict the Entra Connect Sync Account to Its Address",
       "changeLine": null,
-      "why": "Review which identity performs synchronization before relying on a network restriction. A policy aimed at the wrong identity can appear configured without protecting the sync process.",
+      "why": "A workload identity policy covers a single-tenant service principal registered in this tenant, and covers no Microsoft or multitenant application and no managed identity. Confirm which identity requests the sync tokens before relying on a network restriction: Entra Connect Sync signs in as a user account, while Cloud Sync uses a provisioning service principal.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
@@ -5475,7 +5490,7 @@
         "lead": "Confirm whether this sync identity supports the proposed restriction."
       },
       "dates": "{datesNew}",
-      "doneEnd": "For a supported identity, a later scan confirms the intended policy and its enabled state. Creating the policy alone does not establish protection.",
+      "doneEnd": "The identity that requests tokens for directory synchronisation in {tenant} is one Conditional Access can cover, and it can request them only from the sync server's own address.",
       "doneWhen": [
         "{policyDoneWhen}",
         "The expected sync workflow succeeds and the policy evaluates the intended token requests. Creating the policy alone does not establish protection."
@@ -5490,10 +5505,15 @@
           {
             "text": "The server's public address changes and sync stops until the location is updated.",
             "applies": "always"
+          },
+          {
+            "text": "A service principal must be selected directly: a policy assigned to a group that holds one is not enforced for it, so a group here would protect nothing.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Sync stopped: check the server's current public address against the named location."
+          "Sync stopped: check the server's current public address against the named location.",
+          "Nothing was blocked and nothing changed: check the target is a single-tenant service principal registered here. A Microsoft or multitenant application, and any managed identity, is outside what this policy can cover."
         ],
         "manager": "A network restriction protects synchronization only when it applies to the identity that requests the tokens. IAMAI has not confirmed that identity, so the proposed policy is not counted as protection yet.",
         "waits": null
@@ -5517,10 +5537,10 @@
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the provisioning agent server's public address {list:syncAddresses}",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users or workload identities → Workload identities → Select service principals → Cloud Sync's provisioning service principal",
+          "Users or workload identities → Workload identities → Select service principals → Cloud Sync's provisioning service principal, selected directly and not through a group",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {locationName}",
-          "Grant → Block access",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {locationName}",
+          "Grant → Block access, which is the only grant a workload identity policy offers",
           "{reportOnlyLine}"
         ]
       },
@@ -6170,7 +6190,7 @@
       "changeLine": null,
       "why": "Restricting user-based service accounts to approved networks can reduce where their passwords are useful. Review all job locations so an infrequent or vendor-hosted process is not missed.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
       "who": {
         "lead": "{n} service accounts, in {serviceAccountsGroup}:",
@@ -6182,6 +6202,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The user-based service accounts in the group can sign in to {tenant} only from the approved trusted network, and every job that uses one has been run from there and recorded.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Each required job works from its expected network, including scheduled and infrequent ones."
@@ -6205,7 +6226,7 @@
         "helpDesk": [
           "Inspect the failed job's account, sign-in result and public egress address. Confirm whether the job belongs on an already approved network; adding a new trusted network changes every policy that relies on that trust."
         ],
-        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. This does not cover service principals or managed identities.",
+        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. A call made by a service principal is not blocked by a policy scoped to users; covering one takes Conditional Access for workload identities, which Restrict the Entra Connect Sync Account to Its Address builds.",
         "waits": null
       },
       "example": {
@@ -6231,7 +6252,7 @@
           "Name: {policyName}",
           "Users → Include: Groups: {serviceAccountsGroup}. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {trustedLocation}",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]

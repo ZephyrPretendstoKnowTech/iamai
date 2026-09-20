@@ -65,8 +65,8 @@ If an in-place country-list correction is wrong, restore the previously recorded
 Country-by-IP location is based on the sign-in IP mapping. VPNs, mobile networks, and unknown IP geolocation can produce results that differ from physical location.
 
 ## Source verification
-Verified against current Microsoft first-party documentation on September 10, 2026:
-- countryNamedLocation: https://learn.microsoft.com/en-us/graph/api/resources/countrynamedlocation?view=graph-rest-1.0
-- Create namedLocation: https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0
-- Update countryNamedLocation: https://learn.microsoft.com/en-us/graph/api/countrynamedlocation-update?view=graph-rest-1.0
-- Conditional Access network signals: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network
+Verified against current Microsoft first-party documentation on September 20, 2026 (docs/plans/where-people-sign-in-spec.md section 4):
+- countryNamedLocation: https://learn.microsoft.com/graph/api/resources/countrynamedlocation?view=graph-rest-1.0
+- Create namedLocation: https://learn.microsoft.com/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0
+- Update countryNamedLocation: https://learn.microsoft.com/graph/api/countrynamedlocation-update?view=graph-rest-1.0
+- Conditional Access network signals: https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network

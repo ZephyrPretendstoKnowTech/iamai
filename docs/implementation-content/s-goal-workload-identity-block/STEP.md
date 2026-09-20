@@ -93,7 +93,10 @@ If synchronization fails after enforcement, return the same stable policy to Rep
 - Current first-party workload documentation includes beta sample JSON, but the required `clientApplications` and named-location condition shapes are available in Microsoft Graph v1.0; this package therefore uses v1.0.
 
 ## Source verification
-Checked 2026-09-10 against current first-party Microsoft documentation:
+Checked 2026-09-20 against current first-party Microsoft documentation (docs/plans/where-people-sign-in-spec.md section 8):
+- Supported targets: a single-tenant service principal registered in this tenant only; Microsoft and multitenant applications and managed identities are not covered, and a policy assigned to a group is not enforced for a service principal in it.
+- Block access is the only grant control a workload identity policy offers.
+- The two sync identities: Entra Connect Sync uses a user account with the Directory Synchronization Accounts role; Cloud Sync uses a provisioning service principal.
 - Conditional Access for workload identities: eligible service principals, Workload ID Premium, direct workload assignment, location-based Block policy, Report-only, service-principal sign-in logs, and Enterprise applications Object ID requirement.
 - Microsoft Graph v1.0 `conditionalAccessClientApplications`: direct service-principal include/exclude fields.
 - Microsoft Graph v1.0 named-location APIs: IP named-location create/update/list and CIDR requirements; updating `ipRanges` requires the complete desired collection.

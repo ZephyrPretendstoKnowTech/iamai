@@ -59,8 +59,8 @@ Restore the previously recorded range set or trusted flag on the same object. Do
 Microsoft evaluates network location from the public IP seen at sign-in. Consumer broadband, VPNs, mobile carriers, proxies, and cloud egress can change that IP.
 
 ## Source verification
-Verified against current Microsoft first-party documentation on September 10, 2026:
-- Conditional Access network signals: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network
-- ipNamedLocation: https://learn.microsoft.com/en-us/graph/api/resources/ipnamedlocation?view=graph-rest-1.0
+Verified against current Microsoft first-party documentation on September 20, 2026 (docs/plans/where-people-sign-in-spec.md section 3):
+- Conditional Access network signals: https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network
+- ipNamedLocation: https://learn.microsoft.com/graph/api/resources/ipnamedlocation?view=graph-rest-1.0
 - Create namedLocation: https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0
 - Update ipNamedLocation: https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0
