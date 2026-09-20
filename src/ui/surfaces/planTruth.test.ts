@@ -14,8 +14,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
-import { isHeld, waitsOnDirection } from '../../roadmap/holds.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { isHeld, waitsOnFoundation } from '../../roadmap/holds.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
@@ -54,7 +54,20 @@ const appDemo = (week2: boolean): Plan => {
   return planOf(week2 ? 'app demo week two' : 'app demo day one', { ...fixture(week2 ? 'demo-week2' : 'demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) })
 }
 let PLANS: Plan[] | null = null
-const plans = (): Plan[] => (PLANS ??= [appDemo(false), appDemo(true), planOf('getiamai (curated)', curatedFixture('getiamai')), planOf('small', fixture('small')), planOf('demo week two (curated)', curatedFixture('demo-week2'))])
+// The last plan is the one whose foundation is settled (roadmap/foundations.ts):
+// with Emergency Access complete and every Direction answer approved, a policy
+// still held by its own readiness threshold is where Foundation A's safe
+// preparation is still offered, and the create branch below has its live example.
+const SETTLED = 'demo week two, foundation settled (curated)'
+const plans = (): Plan[] =>
+  (PLANS ??= [
+    appDemo(false),
+    appDemo(true),
+    planOf('getiamai (curated)', curatedFixture('getiamai')),
+    planOf('small', fixture('small')),
+    planOf('demo week two (curated)', curatedFixture('demo-week2')),
+    planOf(SETTLED, withFoundationSettled(curatedFixture('demo-week2'))),
+  ])
 const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
 const CREATE_WALKTHROUGH = /Conditional Access → Policies → New policy|Enable policy: Report-only → Create/
 
@@ -72,12 +85,13 @@ test('Step 5: a held step still handing over its report-only create says to crea
       const lines = stepLines(s, ctx)
       const ex = stepVars(s, ctx) as Record<string, unknown>
       const portal = stepPortalLines(s, portalNamesFor(ctx, ex, s.title))
-      if (c.implementation.offered && s.state.lifecycle === 'not-deployed' && waitsOnDirection(s)) {
-        // A Direction answer nobody has approved is what the policy would be
-        // written from, so there is no safe preparation to offer yet (owner,
+      if (c.implementation.offered && s.state.lifecycle === 'not-deployed' && waitsOnFoundation(s)) {
+        // The plan's foundation is unsettled — the way back into the tenant is
+        // unverified, or the answer the policy would be written from is
+        // unapproved — so there is no safe preparation to offer yet (owner,
         // 2026-09-19: such a step "offers no creation"). The action is the wait,
-        // and the answer's own card says which step asks it.
-        assert.equal(c.whatToDo.text, engine.milestone.resolve, `${where}: "${c.whatToDo.text}" over an unapproved Direction answer`)
+        // and the foundation member's own card says which step to finish.
+        assert.equal(c.whatToDo.text, engine.milestone.resolve, `${where}: "${c.whatToDo.text}" while the foundation is unsettled`)
         assert.equal(nextMilestone(s).at, null, `${where}: still no date`)
         assert.equal(implementationIsCurrent(s), false, `${where}: the create is still the step's current action`)
         nothing += 1
@@ -105,13 +119,14 @@ test('Step 5: a held step still handing over its report-only create says to crea
       }
     }
   }
-  assert.ok(offering > 3 && nothing > 10, `held steps checked: ${offering} offering a create, ${nothing} offering nothing`)
-  // Where a readiness threshold is what waits, the line names it.
-  const g = plans()[2]
-  const mfa = g.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
-  const mfaDay = mfa.scheduled && scheduleOf(mfa).class === 'scheduled' ? scheduleOf(mfa).at : null
-  const gate = { measure: mfa.action.readinessGate!.measure, threshold: mfa.action.readinessGate!.threshold }
-  assert.equal(stepContract(mfa, g.ctx(mfa)).whatToDo.text, mfaDay ? fillText(engine.milestone.prepareScheduled, { ...gate, date: absoluteDate(mfaDay) }) : fillText(engine.milestone.prepareHeld, gate))
+  assert.ok(offering > 1 && nothing > 10, `held steps checked: ${offering} offering a create, ${nothing} offering nothing`)
+  // Where a readiness threshold is what waits — and the foundation is settled,
+  // so nothing bigger waits first — the line names the threshold.
+  const g = plans().find((p) => p.label === SETTLED)!
+  const reg = g.r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const regDay = reg.scheduled && scheduleOf(reg).class === 'scheduled' ? scheduleOf(reg).at : null
+  const gate = { measure: reg.action.readinessGate!.measure, threshold: reg.action.readinessGate!.threshold }
+  assert.equal(stepContract(reg, g.ctx(reg)).whatToDo.text, regDay ? fillText(engine.milestone.prepareScheduled, { ...gate, date: absoluteDate(regDay) }) : fillText(engine.milestone.prepareHeld, gate))
 })
 
 // ---- 2. Impact is who the step reaches ----

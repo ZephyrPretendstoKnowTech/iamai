@@ -11,7 +11,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneReadings } from './planLanes.ts'
@@ -30,11 +30,17 @@ import type { StepVarContext } from './stepVars.ts'
 
 type Opened = { step: Step; ctx: StepVarContext; lane: LaneView }
 const plans = new Map<string, { steps: Step[]; open: (s: Step) => Opened }>()
-function planOf(name: FixtureName): { steps: Step[]; open: (s: Step) => Opened } {
-  const hit = plans.get(name)
+/**
+ * `settled` settles the plan's foundation (fixtures/run.ts withFoundationSettled):
+ * until both pinned groups are settled a policy step hands nothing over, so a
+ * case about what its artifacts say starts there (roadmap/foundations.ts).
+ */
+function planOf(name: FixtureName, settled = false): { steps: Step[]; open: (s: Step) => Opened } {
+  const key = settled ? `${name}+settled` : name
+  const hit = plans.get(key)
   if (hit) return hit
   setDisplayTimeZone('UTC')
-  const f = fixture(name)
+  const f = settled ? withFoundationSettled(fixture(name)) : fixture(name)
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const readings = laneReadings(r.steps)
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
@@ -46,7 +52,7 @@ function planOf(name: FixtureName): { steps: Step[]; open: (s: Step) => Opened }
     return { step, ctx, lane }
   }
   const out = { steps: r.steps, open }
-  plans.set(name, out)
+  plans.set(key, out)
   return out
 }
 function opened(name: FixtureName, id: string): Opened {
@@ -129,7 +135,9 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
 test('every packaged policy step whose lines are handed over: the export lines are the translation of the body its JSON sends', () => {
   let compared = 0
   for (const name of ['demo', 'demo-week2', 'small', 'mid', 'large', 'midflight', 'hostile'] as FixtureName[]) {
-    const p = planOf(name)
+    // With the foundation settled: a policy step waiting on it hands nothing over
+    // in any channel, so there would be no pair of renderings to compare.
+    const p = planOf(name, true)
     for (const step of p.steps) {
       if (!implementationOffered(step) || !implementationIsCurrent(step)) continue
       const o = p.open(step)

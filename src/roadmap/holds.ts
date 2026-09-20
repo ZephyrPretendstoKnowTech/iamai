@@ -59,25 +59,28 @@ export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision'
 export const FOUNDATION_WAIT = 'foundation-gate'
 
 /**
- * Whether the step is waiting on a Direction answer nobody has approved — the
- * `decision` blocker direction.ts writes per answer and foundations.ts writes
- * for the gate.
+ * Whether the step is waiting on the plan's foundation — either half, in the
+ * shape that half's waits have: the `decision` blocker direction.ts writes per
+ * answer and foundations.ts writes for a Direction gate, or the FOUNDATION_WAIT
+ * step blocker foundations.ts writes for an Emergency Access member.
  *
- * The one reading of "this policy is not written yet because the answer it
- * would be written from has not been given". A policy held this way offers no
- * creation (owner, 2026-09-19: "a not-deployed policy waiting on Direction says
- * 'Answer {Direction step} first' and offers no creation"), because what the
- * answer decides is what the policy would say. Everything that draws the step
- * reads it through `implementationIsCurrent` (roadmap/nextSafeAction.ts), so the
- * screen, the export, the print and the prompt pack withdraw the create
- * together.
+ * The one reading of "this policy is not written yet because the plan's
+ * foundation is not settled". A policy waiting this way offers no creation
+ * (owner, 2026-09-19: a not-deployed policy waiting on Direction says "'Answer
+ * {Direction step} first' and offers no creation"; the same rule on the
+ * Emergency Access half, because a step whose card already says to finish
+ * Establish Emergency Access first cannot also be told to create the policy
+ * now, and two directions is none). Everything that draws the step reads it
+ * through `implementationIsCurrent` (roadmap/nextSafeAction.ts), so the screen,
+ * the export, the print and the prompt pack withdraw the create together, and
+ * the milestone falls through to "Clear what this step is waiting on."
  *
- * A wait on Establish Emergency Access is NOT this: that policy is fully
- * resolved and a report-only create denies nobody, so it is still handed over
- * (Step 5, and roadmap/foundations.ts).
+ * Not this: a wait on a step that is not the foundation's gate. The schedule
+ * places the step after it and dates it there (Step 4), and Foundation A's safe
+ * preparation stands.
  */
-export function waitsOnDirection(step: Step): boolean {
-  return step.blockers.some((b) => directionBlockerStep(b) !== null)
+export function waitsOnFoundation(step: Step): boolean {
+  return step.blockers.some((b) => directionBlockerStep(b) !== null || (b.kind === 'step' && b.label === FOUNDATION_WAIT))
 }
 
 export type Hold = { kind: HoldKind }

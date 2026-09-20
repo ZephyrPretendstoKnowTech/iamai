@@ -11,7 +11,7 @@ import { runFixture, withDirectionApproved } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { referenceOptions } from './answers.ts'
 import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from './sourceMappings.ts'
-import { holdOf, isHeld } from './holds.ts'
+import { FOUNDATION_WAIT, holdOf, isHeld } from './holds.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { unavailableReason } from './operations.ts'
 import type { Schedule } from './schedule.ts'
@@ -108,7 +108,13 @@ test('readiness gates enforcement, not creation: a create only a threshold holds
   assert.equal(s.at, step.reportOnlyAt, 'the day is the day the plan creates it')
   assert.equal(s.wave, 0, 'creation is Preparation work')
   assert.ok(r.schedule.phases![0].stepIds.includes(step.id))
-  const m = nextMilestone(step)
+  // The plan's foundation is unsettled on the demo's first visit and withdraws
+  // the create with it (roadmap/holds.ts waitsOnFoundation), so the milestone is
+  // that wait. With it cleared, the threshold is what is left, and the milestone
+  // is the day the plan creates the policy.
+  const released = structuredClone(step)
+  released.blockers = released.blockers.filter((b) => b.label !== FOUNDATION_WAIT)
+  const m = nextMilestone(released)
   assert.equal(m.at, s.at, 'the next milestone is that day')
   assert.match(m.label, new RegExp(step.action.readinessGate!.threshold), 'and says turning it on waits for the threshold')
 })
