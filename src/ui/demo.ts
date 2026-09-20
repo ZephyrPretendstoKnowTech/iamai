@@ -15,6 +15,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
+import { displayZone } from '../copy/dates.ts'
 import { isCleanupCheckpoint, recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
 // The demo's switches and its tenant id live in demoMode.ts, which is light;
 // this module carries the fixture and the engine, and loads only on demand.
@@ -74,7 +75,16 @@ export function demoTenant(week2 = false): DemoTenant {
   const retenant = (id: string | null | undefined): string | null | undefined => (id && id.toLowerCase() === f.snapshot.tenantId.toLowerCase() ? DEMO_TENANT_ID : id)
   const signInEvidence = Object.fromEntries(Object.entries(f.snapshot.signInEvidence).map(([id, e]) => [id, e.recoveryCandidates ? { ...e, recoveryCandidates: e.recoveryCandidates.map(c => ({ ...c, resourceTenantId: retenant(c.resourceTenantId) ?? null })) } : e]))
   const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID, signInEvidence, config: { ...f.snapshot.config, caPolicies: { ...caPolicies, rows } } }, offset)
-  const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID }
+  // The visitor's own time zone, as the Setup wizard gives a real tenant
+  // (mapping/wizard.ts `defaultTimeZone`). The fixtures are written for an
+  // Australian tenant and name Australia/Sydney, and every date the plan draws
+  // is rendered in that zone (copy/dates.ts) while the scan stamp beside them is
+  // rendered in the browser's own, on purpose — so for a visitor anywhere west
+  // of Sydney the sample's 30-day window ended "Sep 20" over a scan stamped
+  // "Sep 19", its follow-up scan completed a Direction step tomorrow, and the
+  // whole plan ran a day ahead of the scan it was drawn from. Demo only: the
+  // fixtures, the wizard and the collector are untouched.
+  const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID, displayTimeZone: displayZone(null) }
   // The group members carry no dates, so they travel unshifted; they are what
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
   // Week two's decisions (the technician's answers from week one) are dated with the snapshot.

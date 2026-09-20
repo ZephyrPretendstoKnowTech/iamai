@@ -40,6 +40,7 @@ import { demoSnapshotKey, demoTenant, nextDemoRecord } from './demo.ts'
 import type { DemoPlanRecord, DemoSnapshotState, DemoTenant } from './demo.ts'
 import type { Step } from '../roadmap/types.ts'
 import { cleanupRecord, isRecordedDrill, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
+import { absoluteDate, absoluteLocal, displayZone, setDisplayTimeZone } from '../copy/dates.ts'
 
 test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC hour', (t) => {
   let now = 0
@@ -53,6 +54,50 @@ test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC 
       const { context } = recoveryEvidenceOf(demo.snapshot, demo.mapping, demo.groups, record.records ?? [], demo.snapshot.asOf, id)
       assert.equal(isRecordedDrill(signIn, record.drills, id, record.records, context), true, `hour ${hour}, account ${id}`)
     }
+  }
+})
+
+test("the sample's dates never run ahead of the scan stamp beside them, at every UTC hour", (t) => {
+  const visitor = displayZone(null)
+  let now = 0
+  t.mock.method(Date, 'now', () => now)
+  try {
+    for (const week2 of [false, true]) {
+      const f = fixture(week2 ? 'demo-week2' : 'demo')
+      // The fixtures are written for an Australian tenant and name its zone; the
+      // visitor is wherever they are, and the sample is read as their own tenant,
+      // so it takes their zone as the Setup wizard would (mapping/wizard.ts).
+      if (f.mapping.displayTimeZone !== visitor) assert.notEqual(demoTenant(week2).mapping.displayTimeZone, f.mapping.displayTimeZone, 'the sample keeps the fixture author’s zone')
+      for (let hour = 0; hour < 24; hour++) {
+        now = Date.parse(`2026-09-15T${String(hour).padStart(2, '0')}:30:00.000Z`)
+        const d = demoTenant(week2)
+        assert.equal(d.mapping.displayTimeZone, visitor, `hour ${hour}: the sample does not render in the visitor’s zone`)
+        setDisplayTimeZone(d.mapping.displayTimeZone)
+        // The scan stamp is always the browser's own zone (copy/dates.ts
+        // absoluteLocal: scan context belongs to the session), so the plan's dates
+        // agree with it only while the plan renders in that zone too.
+        const stamp = absoluteLocal(d.snapshot.asOf)
+        const day = absoluteDate(d.snapshot.asOf)
+        assert.ok(stamp.startsWith(day), `hour ${hour}: the plan says ${day} and the scan stamp says ${stamp}`)
+        // And nothing the sample carries is dated after the scan it came from.
+        const ahead: string[] = []
+        const walk = (v: unknown, path: string): void => {
+          if (typeof v === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && Date.parse(v) > Date.parse(d.snapshot.asOf)) ahead.push(`${path} = ${v}`)
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(v) && v > d.snapshot.asOf.slice(0, 10)) ahead.push(`${path} = ${v}`)
+            return
+          }
+          if (Array.isArray(v)) return void v.forEach((x, i) => walk(x, `${path}[${i}]`))
+          if (v && typeof v === 'object') for (const [k, x] of Object.entries(v as Record<string, unknown>)) walk(x, `${path}.${k}`)
+        }
+        walk(d.snapshot, 'snapshot')
+        walk(d.decisions, 'decisions')
+        walk(d.checkpoints, 'checkpoints')
+        assert.deepEqual(ahead, [], `hour ${hour}: dated after the sample's own scan`)
+      }
+    }
+  } finally {
+    setDisplayTimeZone(null)
   }
 })
 
