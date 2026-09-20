@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · To do",
-      "state": "Prepare Emergency Access Accounts"
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     },
     {
-      "label": "Waiting on your direction",
-      "state": "Decide How People and Devices Sign In"
+      "label": "Decide How People and Devices Sign In",
+      "state": "Waiting on your direction"
     }
   ],
   "channels": [

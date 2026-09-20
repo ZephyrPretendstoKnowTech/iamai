@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Verify Emergency Access"
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [

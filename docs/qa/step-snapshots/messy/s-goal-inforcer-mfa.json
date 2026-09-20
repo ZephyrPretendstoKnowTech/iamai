@@ -19,11 +19,11 @@
     },
     {
       "label": "Prerequisites",
-      "state": "after: Identify the Inforcer application"
+      "state": "The Inforcer application"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Turn Off Security Defaults"
+      "label": "Turn Off Security Defaults",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [

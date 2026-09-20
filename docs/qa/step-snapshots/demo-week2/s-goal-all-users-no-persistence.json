@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Waiting on your direction",
-      "state": "Confirm What You Use"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your direction"
     }
   ],
   "channels": [

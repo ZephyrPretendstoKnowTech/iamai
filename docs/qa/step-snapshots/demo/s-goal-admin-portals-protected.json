@@ -19,8 +19,8 @@
       "state": "Conflict unresolved"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Configure Emergency Exclusions"
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

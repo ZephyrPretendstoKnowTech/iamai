@@ -20,7 +20,7 @@ import { laneReadings } from './planLanes.ts'
 import type { HoldBlockerKind } from '../../actionability/lanes.ts'
 import { BOARD, laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
-import { BLOCKED_REASON } from '../../copy/reasons.ts'
+import { BLOCKED_REASON, BLOCKED_SUBJECT } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
@@ -50,7 +50,11 @@ test('one tile per outstanding fix, each linking to its step or to Baseline mapp
   const r = readinessOf(step, c, blockers)
   assert.equal(r.tiles.some(t => t.key === 'mapping'), false)
   const prereq = r.tiles.find((t) => t.key === `step:${EMERGENCY}`)!
-  assert.equal(prereq.label, CONTRACT.readiness.tiles.prerequisite)
+  // The card is headed by what is being waited on, with its state beneath
+  // (owner, 2026-09-20): the step it waits on heads it, and the prerequisite
+  // word is the check.
+  assert.equal(prereq.label, 'Prepare Emergency Access Accounts')
+  assert.equal(prereq.value, CONTRACT.readiness.tiles.prerequisite)
   assert.ok(prereq.link && 'href' in prereq.link && prereq.link.href === returnToStep(EMERGENCY), 'the step tile does not open its step')
   assert.equal(r.tiles.some((t) => t.key === 'blockers' || /remaining$/.test(t.value)), false, 'a prerequisites count tile is back')
   // The engine's pending mappings beside the fix's mapping are the one mapping tile: the same blocker is never shown twice.
@@ -167,4 +171,46 @@ test('the printed step and the screen read the same blockers, the row hands them
   const { reading, blockers } = opened('demo', 's-goal-mfa-all-users')
   assert.equal(blockers.length, reading.blockers.length)
   for (const b of blockers) assert.equal(b.label, BOARD.blockers[b.kind as HoldBlockerKind])
+})
+
+test('a card is headed by what is being waited on, with its state beneath', () => {
+  // The card shape (owner, 2026-09-20; quality audit 2.4): a step that waits on
+  // four others drew four cards all headed "Prerequisite · To do", each naming a
+  // different step underneath — the inverse of an Emergency Access card, where
+  // the subject heads it and the check is beneath.
+  const { step, c, blockers } = opened('demo', 's-goal-geo-restriction')
+  const r = readinessOf(step, c, blockers)
+  const waits = r.tiles.filter((t) => /^(?:step|missing|direction|engine:step|engine:suspendedPrerequisite|engine:decision):/.test(t.key))
+  assert.ok(waits.length > 1, 'the premise: this step waits on more than one thing')
+  assert.equal(new Set(waits.map((t) => t.label)).size, waits.length, 'two cards are headed the same')
+  for (const t of waits) {
+    assert.match(t.value, /^(?:Prerequisite\b|Baseline mapping$|Waiting on your direction$)/, `${t.key}: the check is not a state`)
+    assert.notEqual(t.label, t.value, `${t.key}: the heading and the check say the same thing`)
+    assert.ok(t.link, `${t.key}: the card does not open what it names`)
+  }
+})
+
+test('a blocker heads its card with its subject and states the binding beneath', () => {
+  // The `blocked.*` bindings were written to follow "Blocked · ", so as card
+  // headings they read lowercase and mid-clause: "when 1 Temporary Access Pass
+  // policy exists (now 0)", "after: Identify the Inforcer application" (quality
+  // audit 2.3). The subject is the heading; the binding is the note.
+  const { step, c, blockers } = opened('demo', 's-goal-inforcer-mfa')
+  const r = readinessOf(step, c, blockers)
+  const blocker = r.tiles.find((t) => t.key === 'evidence:inforcer-application')
+  assert.ok(blocker, 'the premise: this step waits on the Inforcer application')
+  assert.equal(blocker.value, BLOCKED_SUBJECT['inforcer-application'])
+  assert.equal(blocker.note, BLOCKED_REASON.after('Identify the Inforcer application'))
+  // Every subject is a heading, not a clause: no leading lowercase, no "after:".
+  for (const [key, subject] of Object.entries(BLOCKED_SUBJECT)) {
+    assert.match(subject, /^[A-Z]/, `${key}: a card heading starts mid-sentence`)
+    assert.ok(subject.length <= 40, `${key}: a card heading is a paragraph`)
+  }
+})
+
+test('a count of one bends the verb a binding uses', () => {
+  // "when 1 Temporary Access Pass policy exist (now 0)" — the pluraliser bends
+  // the verb after a count, and `exist` was missing from its table.
+  assert.equal(BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0), 'when 1 Temporary Access Pass policy exists (now 0)')
+  assert.equal(BLOCKED_REASON.exist(2, 'trusted location', 0), 'when 2 trusted locations exist (now 0)')
 })

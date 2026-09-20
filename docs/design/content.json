@@ -830,7 +830,20 @@
         "rename": "{policy}: off the tenant's naming convention · proposed {proposed}"
       },
       "startControl": "Start the plan",
-      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
+      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
+      "blockedSubject": {
+        "operator": "Your own way back in",
+        "readiness": "Readiness threshold",
+        "registration-no-tap": "Temporary Access Pass",
+        "registration-coverage": "People without a method",
+        "registration-no-trusted-location": "Trusted location",
+        "work-countries-review": "Work countries",
+        "passkey-settings-unread": "Authentication methods policy",
+        "unverified-exclusion": "Excluded group",
+        "inforcer-application": "The Inforcer application",
+        "workload-identity-support": "Sync identity",
+        "baseline-conflict": "Baseline definition"
+      }
     },
     "readiness": {
       "$comment": "MFA Readiness (prompt 62, docs/design/approved/anatomy/mfa-readiness-v3.html): phishing-resistant sign-in for everyone, seamless on every device. Every state, device reading, credential and next action is scoring/phishingResistant.ts personReadiness; the groups, the setup checks and the progress are derive/mfaReadiness.ts, derive/readinessSetup.ts and derive/readinessProgress.ts. These are only their words (surfaces/readinessCells.ts).",
