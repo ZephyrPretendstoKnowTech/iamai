@@ -80,8 +80,12 @@ const ABSENT_TITLES = new Set(contentSteps.filter((s) => ABSENT_STEP_IDS.has(s.i
 const CATALOGUE_TITLES = new Map(goalsData.goals.map((g) => [g.id, g.name]))
 const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGUE_TITLES.has(id) ? [CATALOGUE_TITLES.get(id)] : [])))
 const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed account', '168h', 'undefined', '[object Object]', 'NaN']
-// The steps an answered question adds to the plan (generate.ts carve-outs): each has a content entry.
-const CARVE_OUT_IDS = ['s-question-partner', 's-question-mail-devices'] // Travel management remains hidden in V1.
+// No answer adds a step of its own any more (docs/plans/step-redundancy-analysis.md
+// findings 4, 5 and 6): the partner follow-up folded into Require MFA for Guests
+// and Block Sign-ins From Countries Not Allowed, the mail follow-up became Block
+// Legacy Authentication's second Implementation Task, and trip management never
+// generated at all. These are the titles that must NOT come back as rows.
+const RETIRED_CARVE_OUT_TITLES = ['Exclude the Partner or MSP Accounts', 'Update How Devices Send Email', 'Arrange Access Before Travel']
 // The policy steps whose content carries a "before" line (a setting to change
 // before the policy exists) that the step keeps above the translator's portal
 // lines. The list and the "every one of them has a line" check both live in
@@ -1861,12 +1865,8 @@ async function walkFixture(fx) {
       const chosen = rowTitlesAfter.findIndex(t => /Decide How Devices Are Managed/.test(t))
       if (chosen < 0 || rowLabelsAfter[chosen] !== 'Completed') add('P0', `${fx.name}: saved device decision is not retained in Completed`)
     }
-    if (rowTitles.some(t => /^Arrange Access Before Travel$/.test(t))) add('P0', `${fx.name}: hidden operational travel management was reintroduced`)
-    for (const id of CARVE_OUT_IDS) {
-      const t = contentSteps.find((s) => s.id === id)?.title
-      if (!t) add('P0', `content.json has no step ${id}: an answered question's step has no words`)
-      else if (fx.week2 && !rowTitles.includes(t)) add('P0', `${fx.name}: the answered question's step "${t}" is not on the plan`)
-      else if (!fx.week2 && rowTitles.includes(t)) add('P0', `${fx.name}: "${t}" is on the plan before its question was answered`)
+    for (const t of RETIRED_CARVE_OUT_TITLES) {
+      if (rowTitles.includes(t)) add('P0', `${fx.name}: "${t}" is a row again; an answer must change the step it is asked on, not add one`)
     }
   }
   return summary
