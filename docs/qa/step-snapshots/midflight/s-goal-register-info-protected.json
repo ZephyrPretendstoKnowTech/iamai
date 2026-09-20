@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
+  "lane": "Up Next",
+  "substatus": null,
   "reason": "when MFA readiness reaches 90% (now 70%)",
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -18,7 +18,7 @@
       "state": "70% MFA-ready"
     },
     {
-      "label": "Before enforcement",
+      "label": "Prerequisite · To do",
       "state": "Prepare Emergency Access Accounts"
     }
   ],

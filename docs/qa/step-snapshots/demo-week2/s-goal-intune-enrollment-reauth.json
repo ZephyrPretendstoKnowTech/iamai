@@ -26,6 +26,10 @@
       "state": "Decide How People and Devices Sign In"
     },
     {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
+    },
+    {
       "label": "Tenant fact",
       "state": "Tenant fact"
     }

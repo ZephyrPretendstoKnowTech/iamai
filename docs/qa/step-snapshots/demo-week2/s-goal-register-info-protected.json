@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": null,
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
-  "rail": "Aug 31, 2026",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -16,6 +16,22 @@
     {
       "label": "Threshold",
       "state": "not measured"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "when 1 Temporary Access Pass policy exist (now 0)"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "when people without a method reaches 0 (now 7)"
+    },
+    {
+      "label": "Prerequisites",
+      "state": "when 1 trusted location exist (now 0)"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
     }
   ],
   "channels": [
@@ -24,5 +40,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "Not scheduled"
 }

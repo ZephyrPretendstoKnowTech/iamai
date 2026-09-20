@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { curatedFixture, fixture, noExclusionsAnswer } from '../roadmap/fixtures/index.ts'
 import { PREREQ_STEP_ID } from '../roadmap/stepIds.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
-import { runFixture } from '../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../roadmap/fixtures/run.ts'
 import { operationsOf } from '../roadmap/operations.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
@@ -208,7 +208,9 @@ test('no usable exclusions group: the step is partly in place, held on the exclu
   // of that is an owner-confirmed exclusions group any more.
   // On the curated baseline: the token policy's window is earned there and nothing
   // else holds it, so the exclusions group is the one thing the answer takes away.
-  const answered = curatedFixture('demo-week2')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both
+  // pinned groups are, every policy is held and nothing is Ready to enforce.
+  const answered = withFoundationSettled(curatedFixture('demo-week2'))
   const f = noExclusionsAnswer(answered)
   const run = runFixture(f, { mapping: f.mapping })
   assert.equal(actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') }), null)

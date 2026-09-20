@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
+  "lane": "Up Next",
+  "substatus": null,
   "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
-  "rail": "Aug 31, 2026",
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -14,7 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Before enforcement",
+      "label": "Prerequisite · To do",
       "state": "Prepare Emergency Access Accounts"
     }
   ],
@@ -24,5 +24,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "After prerequisites"
 }

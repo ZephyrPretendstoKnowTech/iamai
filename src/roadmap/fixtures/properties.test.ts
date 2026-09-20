@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { allFixtures } from './index.ts'
-import { runFixture } from './run.ts'
+import { runFixture, withFoundationSettled } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { enforcementHeld, unavailableReason } from '../operations.ts'
 import { holdOf, isHeld } from '../holds.ts'
@@ -395,7 +395,9 @@ test('hostile: every step still produced with readiness marked unknown', () => {
 })
 
 test('getiamai: 2 active people (the emergency accounts are not people) and 9 who never signed in plan in four weeks with no registration window on the critical path', () => {
-  const r = runFixture(byName('getiamai'))
+  // With the plan's foundation settled (roadmap/foundations.ts): until both pinned
+  // groups are, every policy is held and there is no enforcement to schedule at all.
+  const r = runFixture(withFoundationSettled(byName('getiamai')))
   assert.equal(r.schedule.activeUsers, 2)
   assert.equal(r.schedule.band, 'small')
   assert.ok(r.schedule.weeks <= 4, `${r.schedule.weeks} weeks`)
@@ -409,7 +411,9 @@ test('getiamai: 2 active people (the emergency accounts are not people) and 9 wh
 })
 
 test('owner travels with the plan file; a per-step date no longer moves the schedule (target-state §9)', () => {
-  const f = byName('small')
+  // With the plan's foundation settled (roadmap/foundations.ts): until both pinned
+  // groups are, every policy is held and no step carries a rollout to move.
+  const f = withFoundationSettled(byName('small'))
   const first = runFixture(f)
   const moved = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!
   moved.owner = 'Identity team'

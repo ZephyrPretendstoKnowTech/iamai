@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Confirm What You Use",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
@@ -18,7 +18,7 @@
       "state": "Confirm no legitimate use"
     },
     {
-      "label": "Before enforcement",
+      "label": "Prerequisite · To do",
       "state": "Prepare Emergency Access Accounts"
     },
     {

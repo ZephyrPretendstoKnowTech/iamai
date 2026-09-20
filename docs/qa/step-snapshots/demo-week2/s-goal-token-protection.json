@@ -1,23 +1,32 @@
 {
-  "lane": "Ready",
-  "substatus": "Ready to enforce",
-  "reason": "ready now: 0 failures in 7 days",
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
   "fact": "Report-only",
-  "badge": "Ready · Ready to enforce",
-  "bar": "Ready to enforce",
-  "rail": "Sep 15, 2026",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Observation",
+      "state": "Report-only"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",
     "JSON",
     "AI Info"
   ],
-  "when": "Sep 15, 2026"
+  "when": "Not scheduled"
 }

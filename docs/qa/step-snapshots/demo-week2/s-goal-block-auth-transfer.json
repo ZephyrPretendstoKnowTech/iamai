@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": null,
+  "reason": "after: Confirm What You Use",
   "fact": "Report-only",
   "badge": "On Hold",
-  "bar": "Observing",
-  "rail": "Aug 29, 2026",
+  "bar": "Waiting on your direction",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -15,7 +15,11 @@
   "tiles": [
     {
       "label": "Observation",
-      "state": "Until Aug 29, 2026"
+      "state": "Report-only"
+    },
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
     }
   ],
   "channels": [
@@ -24,5 +28,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Aug 29, 2026"
+  "when": "Not scheduled"
 }

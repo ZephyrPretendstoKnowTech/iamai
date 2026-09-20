@@ -1,18 +1,23 @@
 {
-  "lane": "Ready",
-  "substatus": "Create",
-  "reason": null,
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
   "fact": null,
-  "badge": "Ready · Create",
-  "bar": "Ready now",
-  "rail": "Aug 31, 2026",
+  "badge": "On Hold",
+  "bar": "Waiting on your direction",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",
@@ -20,5 +25,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Not scheduled"
 }

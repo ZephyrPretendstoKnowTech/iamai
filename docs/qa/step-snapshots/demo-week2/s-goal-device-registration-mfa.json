@@ -22,6 +22,10 @@
       "state": "Baseline references an unmapped group"
     },
     {
+      "label": "Waiting on your direction",
+      "state": "Confirm What You Use"
+    },
+    {
       "label": "Exclusions",
       "state": "Not met"
     },
