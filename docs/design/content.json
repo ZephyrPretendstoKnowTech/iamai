@@ -1645,7 +1645,7 @@
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
             "mfa": "{value} MFA-ready",
             "admin": "{value} of admins phishing-resistant",
-            "device": "{value} of devices compliant"
+            "device": "{value} of people on a compliant device"
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
@@ -1810,6 +1810,7 @@
               "excludeGroups": "Excluded groups",
               "excludeUsers": "Excluded accounts",
               "locations": "Locations",
+              "platforms": "Device platforms",
               "grant": "Grant",
               "strength": "Authentication strength",
               "accounts": "Accounts IAMAI observed",
@@ -4976,7 +4977,7 @@
       "kind": "policy",
       "title": "Require a Managed Device Outside the Office",
       "changeLine": null,
-      "why": "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.",
+      "why": "Away from the trusted network, work access needs a device this business manages: one Intune has marked compliant, or a Microsoft Entra hybrid joined Windows computer. A device only registered in Entra meets neither, and a managed device whose app sends no device information is refused as if it were unmanaged.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
       },
@@ -4995,7 +4996,7 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Before this policy: Intune → Devices → Compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant; and set a grace period of 3 days on the Mark device non-compliant action in each compliance policy."
+          "Before this policy: Intune → Endpoint security → Device compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant, which ships as Compliant; and set Schedule (days after noncompliance) to 3 on the Mark device noncompliant action in each compliance policy, where it is built in at 0."
         ]
       },
       "dates": "{datesNew}",
@@ -5017,7 +5018,7 @@
       "more": {
         "risks": [
           {
-            "text": "A device that stops reporting is treated as non-compliant once the compliance validity period runs out, thirty days by default; a laptop back from a month away is blocked.",
+            "text": "A device that stops reporting to Intune is treated as not compliant once the compliance status validity period runs out, thirty days unless you change it; a laptop back from a month away is blocked.",
             "applies": "always"
           },
           {
@@ -5029,13 +5030,18 @@
             "applies": "always"
           },
           {
-            "text": "Windows Home editions, Linux builds Intune cannot mark compliant, and Edge InPrivate.",
+            "text": "Windows Home cannot be hybrid joined, Intune marks only the Ubuntu and Red Hat builds it supports as compliant, and Microsoft Edge in InPrivate counts as neither compliant nor hybrid joined.",
+            "applies": "always"
+          },
+          {
+            "text": "Nothing here is read from Intune: IAMAI has no permission to see a compliance policy, so whether a device can become compliant at all is yours to confirm.",
             "applies": "always"
           }
         ],
         "helpDesk": [
           "Check the sign-in's device ID, compliance and hybrid-join claims against the actual policy. Review Intune assignment/check-in and the application's supported device-claim flow.",
-          "Entra registration alone does not meet this grant. Use a compliant device or Microsoft Entra hybrid joined device within the saved platform scope."
+          "Entra registration alone does not meet this grant. Use a compliant device or Microsoft Entra hybrid joined device within the saved platform scope.",
+          "A sign-in that used device code flow cannot meet this grant at all: Microsoft does not support the managed-device controls on that flow."
         ],
         "manager": "Outside the trusted network, work access needs a device that meets the selected requirements. {n} people on devices that do not yet meet them need to enroll or use another approved path.",
         "waits": null

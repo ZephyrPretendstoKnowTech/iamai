@@ -72,6 +72,8 @@ type AiFactWords = typeof CONTRACT.implementation.aiFacts & {
   request: string
   focus: string
   unavailable: string
+  /** The device-platform scope the resolved target sets, beside the location scope (`policy.target.platformWords`). */
+  platforms: string
 }
 
 /** The most names one list in a briefing carries; the rest are counted. */
@@ -211,6 +213,7 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
       excludeGroups === null ? null : `${W.excludeGroups}: ${excludeGroups.length === 0 ? W.none : excludeGroups.map(named).join(', ')}`,
       excludeUsers === null ? null : `${W.excludeUsers}: ${excludeUsers}`,
       text('policy.target.locationWords') ? `${W.locations}: ${text('policy.target.locationWords')}` : null,
+      text('policy.target.platformWords') ? `${W.platforms}: ${text('policy.target.platformWords')}` : null,
       text('policy.target.grantWords') ? `${W.grant}: ${text('policy.target.grantWords')}` : null,
       text('authStrength.target.displayName') ? `${W.strength}: ${text('authStrength.target.displayName')}` : null,
     )
