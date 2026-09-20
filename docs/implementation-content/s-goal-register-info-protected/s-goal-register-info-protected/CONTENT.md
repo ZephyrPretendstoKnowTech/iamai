@@ -2,7 +2,7 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Configure this intended scope: **Target resources > User actions > Register security information**. Apply the IAMAI-resolved users and exclusions, and set Conditions only as IAMAI resolved them.
-   Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]
+   Conditions > Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. Left at **No**, the condition matches every location, including the network you meant to leave out. [omit this line when unavailable]
 4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.
 5. Leave session controls unconfigured; the intended target has none.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
@@ -11,7 +11,7 @@
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: **Target resources > User actions > Register security information**, the IAMAI-resolved users and exclusions, and the location rule below. Correct this policy rather than creating a replacement.
-Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]
+Conditions > Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. Left at **No**, the condition matches every location, including the network you meant to leave out. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
