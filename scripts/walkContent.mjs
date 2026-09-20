@@ -43,7 +43,7 @@ export const ACCEPTANCE = [
   // tutorial is the page. The audit's Intune-enrollment URL answers 404 too, and
   // the audit said keep the current one in that case.
   { item: 'C2', step: 's-check-dormant-accounts', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts', mustNot: '/users/users-inactive' },
-  { item: 'C2', step: 'admins-phishing-resistant', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa', mustNot: 'policy-admin-phishing-resistant-mfa' },
+  { item: 'C2', step: 'admins-phishing-resistant', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa', mustNot: 'policy-admin-phishing-resistant-mfa' },
   // The howto- path still serves this page, but the page declares
   // policy-block-legacy-authentication as its canonical URL, which is also the
   // one the step's package cites: one fact, one source

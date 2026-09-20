@@ -126,7 +126,7 @@
             "They set the key's PIN if it has none, then touch the key to finish."
           ],
           "learn": {
-            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-authentication-passwordless-security-key"
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
           }
         },
         {
@@ -3565,7 +3565,7 @@
       "title": "Register Your Own Passkey",
       "changeLine": null,
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
       },
       "who": {
         "lead": "{operator}: strongest method today {method}, {evidence}."
@@ -3616,7 +3616,7 @@
       "changeLine": null,
       "why": "Choose how phones, work apps and computers should be managed so the plan can show the right setup and access requirements.",
       "learn": {
-        "url": "https://learn.microsoft.com/mem/intune/fundamentals/deployment-guide-enrollment"
+        "url": "https://learn.microsoft.com/intune/device-enrollment/enroll-devices"
       },
       "who": {
         "lead": "{n} people signed in from a phone or from a computer that is not joined since {from}.",
@@ -4085,7 +4085,7 @@
       "changeLine": null,
       "why": "Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
       },
       "who": {
         "lead": "{admins} people hold an admin role",
@@ -6384,7 +6384,7 @@
       "id": "s-ladder-app-passwords",
       "kind": "ladder",
       "learn": {
-        "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-userdevicesettings#delete-users-existing-app-passwords"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userdevicesettings#delete-users-existing-app-passwords"
       },
       "whatToDo": {
         "lead": "App passwords let older applications sign in without an interactive MFA check. Replace each dependency before retiring the credential.",
@@ -6526,7 +6526,7 @@
       "id": "s-ladder-authenticator-over-sms",
       "kind": "ladder",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods"
+        "url": "https://learn.microsoft.com/entra/identity/authentication/overview-authentication"
       },
       "whatToDo": {
         "lead": "Move people from text and voice codes to a stronger approved method, and test it before retiring the old one.",
@@ -6643,7 +6643,7 @@
         "lead": "People who access company resources from iOS or Android."
       },
       "learn": {
-        "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
       },
       "whatToDo": {
         "lead": "Implement and test the phone access restriction before marking this review complete.",
