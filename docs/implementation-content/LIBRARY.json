@@ -4,7 +4,7 @@
   "libraryRevision": "2026-09-10-full-workbook",
   "coverage": {
     "expectedPackageCount": 47,
-    "packageCount": 47,
+    "packageCount": 46,
     "complete": true
   },
   "packages": [
@@ -1791,47 +1791,6 @@
       "review": "current"
     },
     {
-      "stepId": "s-question-travel",
-      "title": "Add a Travel Notice and Exclusion",
-      "packagePath": "docs/implementation-content/s-question-travel/",
-      "relationship": "prerequisite",
-      "status": "SELF-VERIFIED",
-      "validationResult": "parts-withheld",
-      "sourceFiles": 3,
-      "contentBlocks": 12,
-      "outputs": {
-        "entra": true,
-        "json": false,
-        "powershell": false,
-        "aiInfo": true,
-        "email": true,
-        "readiness": true,
-        "troubleshooting": true
-      },
-      "statesSupported": [
-        "approvalRequired",
-        "approvedPendingApply",
-        "activeTrip",
-        "revertDue",
-        "inPlace",
-        "blocked",
-        "needsDecision"
-      ],
-      "correctionModules": 0,
-      "requiredBindings": 5,
-      "optionalBindings": 5,
-      "verifiedSourceCount": 1,
-      "packageSpecificMicrosoftSources": 1,
-      "sharedPrimitivesReused": 0,
-      "betaDependencies": 0,
-      "unresolvedIssues": 0,
-      "family": "operational",
-      "strictValidationErrors": 9,
-      "registered": true,
-      "provenance": "workflow-check",
-      "review": "current"
-    },
-    {
       "stepId": "s-shared-devices",
       "title": "Give Shared Devices Their Own Policy",
       "packagePath": "docs/implementation-content/s-shared-devices/",
@@ -2529,7 +2488,6 @@
         "s-prereq-trusted-location",
         "s-question-mail-devices",
         "s-question-partner",
-        "s-question-travel",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -2576,7 +2534,6 @@
         "s-prereq-trusted-location",
         "s-question-mail-devices",
         "s-question-partner",
-        "s-question-travel",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -3675,30 +3632,6 @@
       "optionalBy": [],
       "packages": [
         "s-goal-unmanaged-browser"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "location.allowedCountries.currentCountries",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-travel"
-      ],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "location.allowedCountries.displayName",
-      "requiredBy": [
-        "s-question-travel"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-travel"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6086,8 +6019,7 @@
         "s-goal-workload-identity-block",
         "s-prereq-auth-strength",
         "s-prereq-passkey-settings",
-        "s-prereq-per-user-mfa",
-        "s-question-travel"
+        "s-prereq-per-user-mfa"
       ],
       "packages": [
         "cleanup-drill",
@@ -6133,7 +6065,6 @@
         "s-prereq-trusted-location",
         "s-question-mail-devices",
         "s-question-partner",
-        "s-question-travel",
         "s-shared-devices",
         "s-verify-mfa"
       ],
@@ -6151,78 +6082,6 @@
       ],
       "packages": [
         "cleanup-notAssessed"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.approver",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-travel"
-      ],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.countries",
-      "requiredBy": [
-        "s-question-travel"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.endDate",
-      "requiredBy": [
-        "s-question-travel"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.logReference",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-question-travel"
-      ],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.startDate",
-      "requiredBy": [
-        "s-question-travel"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-travel"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "travel.traveler",
-      "requiredBy": [
-        "s-question-travel"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-question-travel"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6588,18 +6447,18 @@
     }
   ],
   "aggregate": {
-    "packageCount": 47,
+    "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 988,
-    "uniqueBindings": 293,
-    "bindingsRequiredByAtLeastOneProjection": 99,
-    "bindingsOptionalInAtLeastOnePackage": 198,
+    "contentBlocks": 976,
+    "uniqueBindings": 285,
+    "bindingsRequiredByAtLeastOneProjection": 94,
+    "bindingsOptionalInAtLeastOnePackage": 195,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 248,
+    "bindingDefinitionsPendingHolisticReview": 240,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 248,
+    "knownIAMAIInputUnreviewed": 240,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -6653,17 +6512,17 @@
     ],
     "legacyDependencies": 0,
     "packagesPassingStrictValidation": 2,
-    "packagesWithWithheldParts": 45,
+    "packagesWithWithheldParts": 44,
     "provenance": {
       "baseline-member": 23,
       "microsoft-template-floor": 4,
       "rollout-proof": 1,
       "source-review": 1,
       "tenant-prerequisite": 10,
-      "workflow-check": 8
+      "workflow-check": 7
     },
     "review": {
-      "current": 46,
+      "current": 45,
       "reviewNeeded": 1
     }
   },

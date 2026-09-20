@@ -187,14 +187,20 @@ export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswe
   return a === null ? null : a.index > 0
 }
 
-/** The steps an answered question adds to the plan (their words are content steps). */
-export const CARVE_OUT_STEP_ID = { travel: 's-question-travel', partner: 's-question-partner', mailDevices: 's-question-mail-devices' } as const
+/**
+ * The steps an answered question adds to the plan (their words are content steps).
+ *
+ * `travel` was a third member and is gone: nothing ever pushed it, so the step
+ * it named could not be generated (docs/plans/step-redundancy-analysis.md
+ * finding 4). The travellers question itself is unaffected — it lives on
+ * `QUESTION_STEP.travel` (the allowed-countries step) and `travelCountriesOf`
+ * still reads its saved answer.
+ */
+export const CARVE_OUT_STEP_ID = { partner: 's-question-partner', mailDevices: 's-question-mail-devices' } as const
 
-/** The carve-out steps the stored answers call for: a travel notice when anyone travels, the partner exclusion, the mail-sending devices' relay. */
+/** The carve-out steps the stored answers call for: the partner exclusion, the mail-sending devices' relay. */
 export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>): string[] {
   const out: string[] = []
-  // Operational trip management is hidden for V1. Retain its definition and
-  // saved answers so enabling it later does not destroy historical choices.
   if (serviceProvidersExcluded(mapping)) out.push(CARVE_OUT_STEP_ID.partner)
   if (mailDevicesOf(mapping).length > 0) out.push(CARVE_OUT_STEP_ID.mailDevices)
   return out

@@ -9,6 +9,16 @@ import type { StepGroup } from './stepGroups.ts'
 import { EMERGENCY_STEP_IDS, groupTitleOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups } from '../ui/surfaces/planBoard.ts'
 import type { BoardItem } from '../ui/surfaces/planBoard.ts'
 import { DECISION_HEAD, TASK_HEAD, decisionHeadingsOf, taskHeadingsOf } from '../ui/surfaces/stepHeadings.ts'
+import { PINNED_GOAL_MAP, goalInMap, goalMapFor } from './goalMap.ts'
+import { isFloorGoal } from './floor.ts'
+import { stepIdForGoal } from './stepIds.ts'
+import { CONTENT_ALIAS } from '../content/stepTitle.ts'
+import { stepById } from '../content/content.ts'
+import goalsData from '../../data/goals.json' with { type: 'json' }
+import pinnedBaseline from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
+import type { CaPolicy } from '../baseline/types.ts'
+
+const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
 const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
@@ -78,6 +88,45 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
   for (const g of STEP_GROUPS) for (const complete of [false, true]) assert.ok(groupTitleOf(g, complete).length > 0, `${g.key}: no title`)
   // Only the two pinned groups carry an anatomy; the rest leave the step's own.
   for (const g of STEP_GROUPS) assert.equal(g.anatomy !== null, g.pinned, `${g.key}: anatomy and pinning disagree`)
+})
+
+// docs/plans/step-redundancy-analysis.md finding 4: a group may not list a step
+// the engine cannot build. Five such ids were listed, and three group sizes were
+// overstated because of them.
+const NEVER_GENERATED = ['s-prereq-device-plan', 's-question-travel', 's-goal-mobile-app-protection', 's-goal-azure-management-mfa', 's-goal-unmanaged-browser']
+
+test('no group lists a step the engine can never generate', () => {
+  const listed = STEP_GROUPS.flatMap((g) => [...g.members])
+  for (const id of NEVER_GENERATED) assert.equal(listed.includes(id), false, `${id} is still a registry member`)
+
+  // The general rule behind those five: an `s-goal-` member names a goal the
+  // pinned baseline maps or the floor supplies. Anything else renders nothing.
+  const goalIds = new Set((goalsData.goals as { id: string }[]).map((g) => g.id))
+  for (const id of listed.filter((m) => m.startsWith('s-goal-'))) {
+    const goalId = id.slice('s-goal-'.length)
+    assert.equal(goalIds.has(goalId), true, `${id}: ${goalId} is not a goal in data/goals.json`)
+    assert.equal(goalInMap(PINNED_GOAL_MAP, goalId) || isFloorGoal(goalId), true, `${id}: the pinned baseline does not map ${goalId} and the floor does not supply it`)
+  }
+
+  // Require Healthy Devices lists what it actually draws; the other two shrank by one each.
+  assert.deepEqual([...membersOf('devices')], ['s-goal-require-managed-device', 's-goal-intune-enrollment-reauth', 's-ladder-phone-access-restriction', 's-shared-devices'])
+  assert.equal(membersOf('protect-admins').length, 5)
+  assert.equal(membersOf('where-people-sign-in').length, 6)
+})
+
+test('the two browser goals can never render as two steps with one title', () => {
+  // `unmanaged-browser` is a content entry, not a goal: two goals alias to it, so
+  // if both could be mapped the plan would draw two rows with one title, one why
+  // and one Completion Criteria. The merge is what makes that impossible — the
+  // anchor maps to the ordered pair and the partner is never a key of its own —
+  // so the only browser step id the engine can build is the anchor's.
+  assert.equal(new Set((goalsData.goals as { id: string }[]).map((g) => g.id)).has('unmanaged-browser'), false, 'unmanaged-browser is a content id, never a goal id')
+  assert.equal(stepById['unmanaged-browser']?.title, 'Limit Unmanaged Devices in the Browser')
+  for (const goalId of ['byod-session-controls', 'block-downloads-unmanaged']) assert.equal(CONTENT_ALIAS[goalId], 'unmanaged-browser', goalId)
+  for (const map of [PINNED_GOAL_MAP, goalMapFor(pinnedPolicies, new Map()).map]) {
+    assert.equal(goalInMap(map, 'block-downloads-unmanaged'), false, 'the merged partner took a mapping of its own — two rows would draw one title')
+  }
+  assert.equal(stepIdForGoal('byod-session-controls'), 's-goal-byod-session-controls')
 })
 
 test('a number is a place among the group’s own rows, in registry order, and the whole row set decides it', () => {

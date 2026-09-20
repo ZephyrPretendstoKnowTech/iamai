@@ -24,7 +24,6 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
     const potentiallyTargeted = selected.length === 0 || available.length > 0 && ((targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).some((id: string) => available.includes(id)) || (targets.includeGroups ?? []).length > 0 || !!targets.includeGuestsOrExternalUsers || (targets.includeRoles ?? []).some((role: string) => available.some(id => (snapshot.roles.active[id] ?? []).includes(role))))
     if (step.id === CARVE_OUT_STEP_ID.mailDevices) return potentiallyTargeted && (c.clientAppTypes ?? []).some((x: string) => ['exchangeActiveSync', 'other'].includes(x))
     if (step.id === CARVE_OUT_STEP_ID.partner) return potentiallyTargeted && (!!c.users?.includeGuestsOrExternalUsers || !!c.users?.excludeGuestsOrExternalUsers || !!c.locations || (c.users?.includeUsers ?? []).includes('All'))
-    if (step.id === CARVE_OUT_STEP_ID.travel) return !!c.locations
     if (step.id === 's-shared-devices') {
       const users = c.users ?? {}
       const remaining = step.population.ids.filter(id => !(users.excludeUsers ?? []).includes(id))
@@ -178,7 +177,7 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
     return JSON.stringify(['per-user-mfa-review', snapshot.users.map(u => [u.id, u.accountEnabled]).sort(), snapshot.perUserMfa ?? null, snapshot.config.authMethodsPolicy?.rows, snapshot.config.securityDefaults?.rows, policies])
   }
   if (FOLLOW_UPS.has(step.id)) {
-    const question = step.id === CARVE_OUT_STEP_ID.travel ? QUESTION_STEP.travel : step.id === CARVE_OUT_STEP_ID.partner ? QUESTION_STEP.partner : QUESTION_STEP.mailDevices
+    const question = step.id === CARVE_OUT_STEP_ID.partner ? QUESTION_STEP.partner : QUESTION_STEP.mailDevices
     const answer = mapping ? answerOf(mapping, question, step.id === CARVE_OUT_STEP_ID.mailDevices ? 'decision' : 'question') : null
     // A new answer or changed policy reopens the follow-up. Scan timestamps alone do not.
     return JSON.stringify([step.id, answer, step.id === CARVE_OUT_STEP_ID.mailDevices && mapping ? mailDevicesOf(mapping).slice().sort() : [], relevantPolicies(step, snapshot)])
