@@ -189,22 +189,17 @@ function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
 
 /** Each condition present, one line each (§6.5 lists conditions before the control). */
 function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
-  const out: string[] = []
-  if (f.locations) {
-    const inc = [...f.locations.include].map((l) => (/^all$/i.test(l) ? 'Any location' : ctx.nameOf(l))).join(', ')
-    // A location the include names is not excluded beside it (the same set on both sides names nobody).
-    const includedLoc = new Set([...f.locations.include].map(lc))
-    const exc = [...f.locations.exclude].filter((l) => !includedLoc.has(lc(l))).map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
-    out.push(`Conditions → Locations → Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
-  }
-  // Client apps, Authentication flows, Device platforms, Sign-in risk and User
-  // risk all carry the portal's Configure toggle, and a line that names only the
-  // boxes to tick describes a policy that never narrows anything, so the toggle
-  // belongs in the line wherever the target narrows the condition.
+  // Locations/Network, Client apps, Authentication flows, Device platforms,
+  // Filter for devices, Sign-in risk and User risk all carry the portal's
+  // Configure toggle, and a line that names only the boxes to tick describes a
+  // policy that never narrows anything, so the toggle belongs in the line
+  // wherever the target narrows the condition.
   // docs/plans/close-doors-spec.md found this in the authored packages;
   // docs/plans/protect-admins-spec.md brought Client apps and Authentication
   // flows here, which is where the product composes the same instruction;
-  // docs/plans/risk-and-sessions-spec.md brought the other three.
+  // docs/plans/risk-and-sessions-spec.md brought the other three; the V1 audit
+  // (docs/plans/v1-audit-findings.md §S4-1) brought the two this function had
+  // missed, Locations and Filter for devices.
   //
   // The consequence of leaving the toggle at No is stated only where Microsoft
   // documents it:
@@ -214,6 +209,10 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   //   clients."
   // - Device platforms: the same page — "By default, it applies to all device
   //   platforms."
+  // - Filter for devices: concept-condition-filters-for-devices sets the
+  //   toggle to Yes in its own procedure and states that the filter is what
+  //   puts a device in or out of scope, so an unconfigured filter is no filter
+  //   and every device stays in scope.
   // - Authentication flows: policy-block-authentication-flows says to set
   //   Configure to Yes and does not document what No does.
   // - Sign-in risk: policy-risk-based-sign-in says "set Configure to Yes" and
@@ -221,6 +220,18 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   //   control "Configure user risk levels needed for policy to be enforced".
   //   Neither says what an unconfigured risk condition reaches, so neither line
   //   claims it.
+  // - Locations/Network: the page says only that a policy applies to all
+  //   locations by default and never states what Configure: No means, so the
+  //   line carries the toggle and claims no more than Microsoft does — the same
+  //   treatment the two risk conditions get (owner, 2026-09-20).
+  const out: string[] = []
+  if (f.locations) {
+    const inc = [...f.locations.include].map((l) => (/^all$/i.test(l) ? 'Any location' : ctx.nameOf(l))).join(', ')
+    // A location the include names is not excluded beside it (the same set on both sides names nobody).
+    const includedLoc = new Set([...f.locations.include].map(lc))
+    const exc = [...f.locations.exclude].filter((l) => !includedLoc.has(lc(l))).map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
+    out.push(`Conditions → Locations → Configure: Yes, then Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
+  }
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
   if (clientApps.length > 0) out.push(`Conditions → Client apps → Configure: Yes, then ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}. Left at No it reaches every client app.`)
   if (f.flows.size > 0) out.push(`Conditions → Authentication flows → Configure: Yes, then ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
@@ -234,7 +245,7 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     const exc = excluded.size > 0 ? `; Exclude: ${platformList(excluded, ctx)}` : ''
     out.push(`Conditions → Device platforms → Configure: Yes, then Include: ${inc}${exc}. Left at No it applies to all device platforms.`)
   }
-  if (f.deviceFilter) out.push(`Conditions → Filter for devices → ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}`)
+  if (f.deviceFilter) out.push(`Conditions → Filter for devices → Configure: Yes, then ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}. Left at No the filter is not applied and the policy reaches every device.`)
   if (f.signInRisk.size > 0) out.push(`Conditions → Sign-in risk → Configure: Yes, then ${riskList(f.signInRisk)}`)
   if (f.userRisk.size > 0) out.push(`Conditions → User risk → Configure: Yes, then ${riskList(f.userRisk)}`)
   return out

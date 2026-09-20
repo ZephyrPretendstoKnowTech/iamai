@@ -7,7 +7,7 @@
 @@IAMAI-BEGIN {"id":"entra.create-set","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 After the SharePoint setting has changed **and IAMAI has rescanned**, create each policy in Report-only. It will not enforce its access rule until you enable it. Leave Grant unconfigured on both.
 
-- **{{policies.unmanagedBrowser.a.target.displayName}}** (Policy A): Target resources: Office 365; Client apps: Browser; apply the device condition shown in the intended target; Session: **Use app enforced restrictions**.
+- **{{policies.unmanagedBrowser.a.target.displayName}}** (Policy A): Target resources: Office 365; Client apps: set **Configure** to **Yes**, then Browser — left at **No** it reaches every client app; apply the device condition shown in the intended target; Session: **Use app enforced restrictions**.
 - **{{policies.unmanagedBrowser.b.target.displayName}}** (Policy B), only when Defender for Cloud Apps is licensed (`license.defenderCloudApps` is true): Target resources: Office 365; apply the device filter and the other conditions shown in the intended target; Session: **Use Conditional Access App Control** with **Block downloads**.
 
 If Defender for Cloud Apps is not licensed, do not create Policy B; the step is not complete without it. Test each affected service separately after enforcement: the SharePoint setting does not configure Exchange mailbox restrictions.

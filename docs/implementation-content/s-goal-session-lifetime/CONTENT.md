@@ -43,7 +43,7 @@ Set the browser component to Report-only while material corrections are being va
 Create only the missing unmanaged-device component using the Policy B procedure from this package. Do not recreate the browser component.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.unmanaged.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the unmanaged-device component, set Users to All users with IAMAI's canonical group/shared-device exclusions; Target resources to All resources; Client apps to All; and Filter for devices to Exclude `device.isCompliant -eq True`. Remove noncanonical risk, location, platform, authentication-flow, application-exclusion, or other conditions.
+For the unmanaged-device component, set Users to All users with IAMAI's canonical group/shared-device exclusions; Target resources to All resources; Client apps to All; and Filter for devices with **Configure** set to **Yes** and the rule set to Exclude `device.isCompliant -eq True` — left at **No** the filter is not applied and the component reaches compliant devices too. Remove noncanonical risk, location, platform, authentication-flow, application-exclusion, or other conditions.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.unmanaged.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 For the unmanaged-device component, set Sign-in frequency to 9 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove other noncanonical v1.0 session controls. Do not add a grant requirement.

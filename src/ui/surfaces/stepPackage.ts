@@ -594,8 +594,15 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const declares = (key: string): boolean => [...(declared?.requiredBindings ?? []), ...((declared as { optionalBindings?: string[] } | undefined)?.optionalBindings ?? [])].includes(key)
   if (declares('policy.target.locationWords') || declares('policy.target.platformWords') || declares('policy.target.grantWords')) {
     const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
+    // A condition's line carries the portal's Configure toggle and, where
+    // Microsoft documents it, what No means (roadmap/portalLines.ts). The
+    // packages that read these words write the toggle in their own sentence —
+    // "set **Configure** to **Yes**, then **{{…Words}}**" — so the binding
+    // carries the values that follow it and the step never states the toggle
+    // twice.
+    const valuesOnly = (words: string): string => words.replace(/^Configure: Yes, then /, '').replace(/\s*Left at No [^.]*\./g, '')
     const wordsAfter = (head: string): string | undefined => {
-      const found = portal.filter((l) => l.startsWith(head)).map((l) => l.slice(head.length))
+      const found = portal.filter((l) => l.startsWith(head)).map((l) => valuesOnly(l.slice(head.length)))
       return found.length > 0 ? found.join('; ') : undefined
     }
     if (settled('conditions') !== null) put('policy.target.locationWords', wordsAfter('Conditions → Locations → '))
