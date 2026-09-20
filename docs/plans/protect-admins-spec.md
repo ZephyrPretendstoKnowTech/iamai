@@ -11,10 +11,11 @@ page is its own `ms.date`, read from the live page on that day.
 
 **Frozen, and not touched by this wave:** the four Establish Emergency Access
 steps and the four Direction steps. The policy anatomy is Emergency Access's:
-no component, class, heading, pill or tag is added here. Two of this group's
-five members still draw the default step headings (§8.4); another agent is
-generalising the task anatomy to non-policy steps, so this wave judged the
-words and left the frame alone.
+no component, class, heading, pill or tag is added here. While this wave ran,
+another agent generalised the task anatomy to the non-policy steps and landed it
+on main; the words below were written against the old frame and merged onto the
+new one, where all five members draw About this Step / Tasks Remaining /
+Implementation Tasks / Completion Criteria (§8.1).
 
 ---
 
@@ -481,11 +482,14 @@ the P2 step is not generated there.
 
 ## 8. Recorded for the owner
 
-1. **Two steps of this group still draw the default headings.** Register Your Own
-   Passkey and Create the Baseline's Authentication Strength render *Why /
-   Readiness / Implementation / Done when*, where the three policy steps render
-   the Emergency Access anatomy. Another agent is generalising the task anatomy
-   to non-policy steps; this wave judged the words and left the frame alone.
+1. **The anatomy landed mid-wave, and the two non-policy steps moved onto it.**
+   Register Your Own Passkey and Create the Baseline's Authentication Strength
+   rendered *Why / Readiness / Implementation / Done when* while this wave was
+   written; main's `b7c10e73` gave every step that carries work the Establish
+   Emergency Access anatomy, and after the merge all five members draw *About
+   this Step / Tasks Remaining / Implementation Tasks / Completion Criteria*.
+   The §7 readings taken before the merge name the old headings where they do;
+   the words themselves did not move.
 2. **Microsoft against the pinned baseline, admins.** `ms-admin-phish` recommends
    the built-in Phishing-resistant MFA strength over 14 roles; the pin uses a
    custom strength that also accepts both Temporary Access Pass forms, over 46
