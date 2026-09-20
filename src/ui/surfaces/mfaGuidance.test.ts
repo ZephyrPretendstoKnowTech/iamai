@@ -338,8 +338,11 @@ test('the campaign step hands person-level setup to MFA Readiness and keeps its 
     // The handoff.
     assert.ok(lines.includes(GUIDE_POINTER), `${name}: the step points at MFA Readiness`)
     assert.ok(text.includes('Help people set up the sign-in methods'), `${name}: preparation purpose`)
-    assert.ok(text.includes('Everyone in this step has a suitable registered MFA method'), `${name}: exact preparation cohort`)
-    assert.ok(text.includes('Administrators have a phishing-resistant method'), `${name}: stronger administrator requirement`)
+    // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says
+    // one thing — the cohort, the administrator gate, the support list.
+    assert.ok(text.includes('Everyone in this step has a registered MFA method they can use'), `${name}: exact preparation cohort`)
+    assert.ok(text.includes('Every administrator has a phishing-resistant method'), `${name}: stronger administrator requirement`)
+    assert.ok(text.includes('The people who still need help are identified and on the support list'), `${name}: who is still owed help`)
     assert.doesNotMatch(text, /Readiness reaches 90%/, 'preparation cannot mask people without a suitable method')
     // And the long per-method manual is not back: no guide's instruction list
     // renders inline on the step.

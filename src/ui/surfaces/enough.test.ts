@@ -38,7 +38,10 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))
   const camp = stepById['s-verify-mfa'] as unknown as { doneWhen: string[]; whatToDo: { steps: string[] } }
   // Editorial batch C: the admin gate is its own line; the campaign settings check is a human check.
-  assert.ok(camp.doneWhen.some((l) => /Administrators have a phishing-resistant method/.test(l)))
+  // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says one
+  // thing, and the admin gate's line now reads "Every administrator has…".
+  assert.ok(camp.doneWhen.some((l) => /Every administrator has a phishing-resistant method/.test(l)))
+  assert.equal(camp.doneWhen.length, 3, camp.doneWhen.join(' | '))
   assert.ok(camp.whatToDo.steps.some((l) => l.includes('Admins: a passkey or a hardware security key; either is phishing-resistant.')))
   const op = stepById['s-ladder-operator-passkey'] as unknown as { whatToDo: { steps: string[] } }
   // protect-admins A3: the two methods are now named by the menu entries
