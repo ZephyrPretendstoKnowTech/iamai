@@ -2162,16 +2162,18 @@
           "save": "Save service choices",
           "notUsed": "You confirmed that {service} is not in use.",
           "reviewTitle": "Review access protection for {service}",
-          "reviewWhy": "Check the baseline control against how you use {service}. IAMAI cannot verify this policy automatically.",
+          "reviewWhy": "Check the baseline's control for {service} against the way this tenant really uses it, before deciding whether it belongs here.",
           "source": "Baseline reference: {policy}. Open View Baseline Definition below to inspect the original settings.",
           "generic": "Identify what the policy protects, who it includes and excludes, and which access requirements it applies.",
           "reviewInstructions": [
             "Match every application, group, location and authentication strength in the baseline to the intended object in this tenant. Never reuse a baseline author’s tenant-specific IDs.",
-            "Check existing policies before making a change. Preserve emergency access and confirm the effect on the intended people or identities.",
-            "Where the policy supports report-only, use it first and review the results. Otherwise use the service’s supported test process before enabling it.",
+            "Check the policies already here, and exclude the emergency access accounts from anything that blocks or restricts sign-in. A report-only policy blocks nobody and needs no exclusion.",
+            "Create it in report-only, leave it there for a week, and read the sign-in logs before you turn it on.",
+            "Test the exclusions as well as the rule: another policy can still ask an excluded person for MFA.",
+            "To back a change out, disable the policy rather than delete it; a deleted one can be restored for 30 days and no longer.",
             "Confirm that the intended access works and unwanted access is blocked. Record the review below only after you have validated the control; IAMAI does not verify completion of this manual step."
           ],
-          "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions.",
+          "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions. IAMAI holds that record against the version you read, and asks again when the policy or the objects it names change.",
           "policies": [
             {
               "pattern": "SharePoint",
