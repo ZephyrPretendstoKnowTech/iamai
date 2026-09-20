@@ -60,10 +60,10 @@ function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBo
   }
 }
 
-/** A content step's own `why`, unfilled. */
+/** A content step's own `why`, unfilled: the words About this Step draws. */
 const whyOf = (id: string): string => String((stepById[id] as unknown as { why?: string }).why ?? '')
 
-/** The step's About sentence as the opened step fills it. */
+/** The step's About sentence as the OPENED step fills it, which is what a person reads. */
 const aboutOf = (b: StepBody): string => fillText(String((b.cs as Record<string, unknown>).why ?? ''), b.ex as Record<string, unknown>)
 
 /** A step's risk lines from the content file, whatever their `applies`. */
@@ -362,6 +362,14 @@ test('N6: the step shows the date its Microsoft sources were checked, on both sc
 // compiled package — the text the printed plan, the export and the prompt pack
 // carry, and the text the step would draw wherever it is reached.
 // ---------------------------------------------------------------------------
+
+test('N7: About this Step still reads as its own sentence on screen, on both scans', () => {
+  for (const f of ['demo', 'demo-week2'] as const) {
+    const about = aboutOf(bodiesOf(f).get('s-goal-service-accounts-trusted-network')!)
+    assert.match(about, /^Restricting user-based service accounts to approved networks can reduce where their passwords are useful\./)
+    assert.doesNotMatch(about, /\{[^}]+\}/, 'an unfilled placeholder reached the screen')
+  }
+})
 
 test('W0: the premise — no fixture draws this step, so its words are read where they are carried', () => {
   for (const f of ['demo', 'demo-week2', 'mid', 'messy', 'large'] as const) {
