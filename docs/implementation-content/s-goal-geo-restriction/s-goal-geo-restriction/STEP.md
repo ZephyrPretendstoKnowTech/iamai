@@ -45,4 +45,4 @@ Confirm the named location has the owner-approved country set, review sign-ins t
 Move the same policy back to Report-only. Correct the dated country/travel record or canonical target; do not add a permanent named-user bypass.
 
 ## Source verification
-Pinned member plus current Microsoft block-by-location, named-location, and Graph v1.0 documentation rechecked September 10, 2026.
+Pinned member plus current Microsoft block-by-location, named-location, and Graph v1.0 documentation rechecked September 20, 2026 (docs/plans/where-people-sign-in-spec.md section 5).

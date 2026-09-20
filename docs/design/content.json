@@ -4628,7 +4628,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from countries not in the allowed list, with the exclusions group applied and partner and travel exceptions addressed.",
+      "doneEnd": "Nobody signs in to {tenant} from a country that is not on the approved list, the exclusions group is applied, and every trip, VPN exit and partner route that crosses it is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Blocked sign-ins in the records were reviewed, and legitimate travel and network routes are addressed."
@@ -4646,7 +4646,7 @@
       "more": {
         "risks": [
           {
-            "text": "A VPN or proxy whose exit is in another country, because the policy reads the exit address.",
+            "text": "A VPN or proxy whose exit is in another country: Conditional Access reads the proxy's own address, and it ignores the X-Forwarded-For header that carries the person's.",
             "applies": "always"
           },
           {
@@ -4654,14 +4654,16 @@
             "applies": "always"
           },
           {
-            "text": "A country rule does not bite until the token refreshes, so a traveller is not unblocked the moment the list changes.",
+            "text": "A country rule bites when the token is reissued, which is hourly by default, so a traveller is not blocked or unblocked the moment the list changes.",
             "applies": "always"
           }
         ],
         "helpDesk": [
           "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
           "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.",
-          "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault."
+          "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault.",
+          "An app or a sync job that keeps working from abroad is not a fault: a call made by a service principal is not blocked by a policy scoped to users. Restricting one takes a workload identity policy, which Restrict the Entra Connect Sync Account to Its Address builds.",
+          "Where this tenant synchronises from on-premises, Microsoft's own recipe for an all-users policy also excludes the Directory Synchronization Accounts directory role; the pinned baseline excludes the exclusions group and the service accounts group instead."
         ],
         "manager": "Sign-ins from countries outside the approved list are blocked, based on the network address the sign-in comes from.",
         "waits": null,
@@ -4697,7 +4699,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}{serviceProviderClause}.",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {allowedCountriesLocation}",
+          "Network (formerly Conditions → Locations) → Configure: Yes, then Include: Any network or location; Exclude: {allowedCountriesLocation}",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
