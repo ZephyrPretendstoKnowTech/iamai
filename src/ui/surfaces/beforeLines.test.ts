@@ -24,8 +24,11 @@ import { absentStepIds } from '../../roadmap/baselineScope.ts'
 const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
 
 const BEFORE: { id: string; line: RegExp; on: FixtureName[] }[] = [
-  // Editorial batch C: the toggle is changed in the same change that enables the policy, so the line leads with when.
-  { id: 'device-registration-mfa', line: /^Prepare and validate the replacement Conditional Access policy first\. After it is enforced.*Require Multifactor Authentication to register or join devices to No/, on: ['getiamai'] },
+  // mfa-everyone-spec.md §3 B3/B4 (ms-user-actions, ms-device-registration and
+  // ms-device-settings): the line leads with what leaving the tenant-wide setting
+  // at Yes costs — the policy is not properly enforced — and names and paths the
+  // setting as its own Learn page does, before saying when it is set to No.
+  { id: 'device-registration-mfa', line: /^While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced\. Prepare and validate the policy first; on the day it is enforced.*set that setting to No/, on: ['getiamai'] },
   // The managed-device policy needs Intune, which GetIAMAI does not hold: it renders on the demo (Intune) instead.
   { id: 'require-managed-device', line: /^Before this policy: Intune → Devices → Compliance → Compliance policy settings/, on: ['getiamai', 'demo-week2'] },
   // Editorial batch C: writeback is needed for synchronized users whose remediation is a password change, not every hybrid tenant.
