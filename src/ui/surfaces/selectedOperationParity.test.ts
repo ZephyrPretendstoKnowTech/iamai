@@ -67,33 +67,28 @@ const jsonOf = (o: Opened): Record<string, unknown> => {
   return JSON.parse(a.text()) as Record<string, unknown>
 }
 
-test('Medium user risk on mid: the export states the guest exclusion and no session control, as the JSON sends', () => {
+test("Medium user risk on mid: the export states the guest exclusion and no session control, and names the pin's grant pair", () => {
   const o = opened('mid', 's-goal-user-risk-medium')
-  const body = jsonOf(o) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } }; grantControls: { builtInControls: string[] }; sessionControls: unknown }
-  assert.ok(body.conditions.users.excludeGuestsOrExternalUsers, 'the premise: the JSON excludes guest and external users')
-  assert.equal(body.sessionControls, null, 'the premise: the JSON sets no session control')
   // The resolved operation of this stand-in baseline says otherwise: the case the export used to read.
-  const resolved = o.step.action.resolution!.policies[0].body as { sessionControls?: unknown }
+  const resolved = o.step.action.resolution!.policies[0].body as { sessionControls?: unknown; grantControls?: { authenticationStrength?: unknown } }
   assert.ok(resolved.sessionControls, 'the premise: the resolved operation carries a session control')
+  assert.equal(resolved.grantControls?.authenticationStrength, undefined, 'the premise: this stand-in resolves no authentication strength')
 
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
   const text = lines.join('\n')
   assert.match(text, /Users: Include All users/)
   assert.match(text, /Also exclude Guest or external users.*all types/)
   assert.match(text, /Session: not configured/)
-  // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md §5):
-  // the pin pairs Require password change with the baseline's authentication
-  // strength, while Microsoft's Graph grant reference says "passwordChange must be
-  // accompanied by mfa using an AND operator" (conditionalAccessGrantControls v1.0,
-  // ms.date 2026-04-06, checked 2026-09-20), which is the pair the JSON and
-  // PowerShell write. The export no longer has to pick one: the procedure names the
-  // pin's pair, because that is what IAMAI compares the tenant against, and says
-  // which pair the machine channels send; the settings block is still the
-  // translation of the body the JSON actually sends.
-  assert.deepEqual(body.grantControls.builtInControls, ['mfa', 'passwordChange'], 'the premise: the JSON sends Microsoft documented pair')
+  // Respond to Risk and Limit Sessions (docs/plans/risk-and-sessions-spec.md §6): the pin
+  // pairs Require password change with the baseline's authentication strength, while
+  // conditionalAccessGrantControls v1.0 (ms.date 2026-04-06, checked 2026-09-20) says
+  // "passwordChange must be accompanied by mfa using an AND operator" — the pair the JSON
+  // and PowerShell used to write, under a caveat saying so. The pinned baseline wins
+  // (CLAUDE.md, owner 2026-09-20): every channel builds the pin's pair, the procedure and
+  // the settings block name that one pair, and the caveat is gone.
   assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
-  assert.match(text, /Microsoft's Graph reference documents `passwordChange` paired with the built-in `mfa` control instead, which is the pair the JSON and PowerShell outputs on this step write/)
-  assert.match(text, /^- Grant → Require multifactor authentication, Require password change; Require all the selected controls$/m)
+  assert.match(text, /^- Grant → Require authentication strength: .+, Require password change; Require all the selected controls$/m)
+  assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 
 test('Medium sign-in risk on mid: the export grants built-in MFA with no session control, as the JSON sends', () => {

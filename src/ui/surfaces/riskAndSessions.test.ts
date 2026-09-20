@@ -423,12 +423,15 @@ test('C5: an unregistered person is blocked here too, and answering clears the r
 // Section 6: s-goal-user-risk-medium — Reset Passwords for Medium-Risk Users
 // ---------------------------------------------------------------------------
 
-test('D1: the step names the grant pair the pin holds, and says which one the machine channels write', () => {
+test('D1: every channel on the step builds the grant pair the pin holds', () => {
   // The pinned member carries builtInControls ["passwordChange"] with the custom
   // authentication strength and no session control. conditionalAccessGrantControls
   // v1.0 (ms.date 2026-04-06), checked 2026-09-20: "passwordChange must be
   // accompanied by mfa using an AND operator" — a pair that reference does not
-  // describe, so the difference is stated instead of hidden.
+  // describe. The pinned baseline wins (CLAUDE.md, owner 2026-09-20), so the JSON
+  // and PowerShell moved to the pin's pair and the caveat that explained the
+  // divergence is gone. Cross-channel agreement is asserted in
+  // src/content/implementation/channelParity.test.ts.
   const p = (pinned.policies as unknown as { id: string; grantControls: { builtInControls?: string[]; authenticationStrength?: unknown }; sessionControls: unknown }[]).find((x) => x.id === '7475b373-0544-4ee8-8827-cff35009136d')!
   assert.deepEqual(p.grantControls.builtInControls, ['passwordChange'])
   assert.ok(p.grantControls.authenticationStrength, 'the pinned member carries an authentication strength')
@@ -437,7 +440,9 @@ test('D1: the step names the grant pair the pin holds, and says which one the ma
   assert.ok(ref.includes('Grant → Require authentication strength: {strengthName} and Require password change'), ref)
   assert.ok(!/Sign-in frequency → Every time/.test(ref), ref)
   assert.match(blockText(USER_RISK_MEDIUM, 'entra.create'), /Require authentication strength/)
-  assert.match(blockText(USER_RISK_MEDIUM, 'entra.create'), /the JSON and PowerShell outputs on this step write/)
+  assert.doesNotMatch(blockText(USER_RISK_MEDIUM, 'entra.create'), /the JSON and PowerShell outputs on this step write/)
+  assert.match(blockText(USER_RISK_MEDIUM, 'json.create'), /"builtInControls": \["passwordChange"\]/)
+  assert.match(blockText(USER_RISK_MEDIUM, 'powershell.run'), /builtInControls=@\('passwordChange'\)/)
 })
 
 test('D2: password change is never paired with risk remediation', () => {

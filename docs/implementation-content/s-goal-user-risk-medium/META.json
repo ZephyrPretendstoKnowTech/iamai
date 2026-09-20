@@ -38,23 +38,23 @@
     "userRiskLevels": [
       "medium"
     ],
-    "grant": "built-in multifactor authentication + password change",
+    "grant": "password change + the tenant's custom authentication strength",
     "grantOperator": "AND",
     "sessionControls": null,
-    "compatibilityNote": "Current Microsoft Graph v1.0 requires passwordChange to be paired with built-in mfa using AND. Available retained-source evidence also shows an authenticationStrength relationship on the existing member; that relationship is not reproduced in deployable authoring because the current v1.0 grant contract does not support it as the passwordChange companion. Preserve the secure-password-change intent and flag this normalization for final library review.",
     "overlapSafety": "Do not disable the separate High-user-risk policy merely because this Medium-only policy is enforced. Any consolidation requires explicit IAMAI overlap authority proving equivalent or stronger High-risk coverage."
   },
   "requiredBindings": [
     "policy.target.displayName",
     "policy.target.excludeGroups",
     "policy.current.id",
-    "policy.current.semanticMismatches"
+    "policy.current.semanticMismatches",
+    "authStrength.target.id",
+    "authStrength.target.displayName"
   ],
   "optionalBindings": [
     "policy.current.removedExclusions",
     "tenant.displayName",
     "policy.current.state",
-    "authStrength.target.displayName",
     "people.affected.count",
     "evidence.atRiskUsers",
     "evidence.mfaRegistration",
@@ -78,7 +78,9 @@
     "missing": {
       "requires": [
         "policy.target.displayName",
-        "policy.target.excludeGroups"
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
       ],
       "entra": [
         "entra.create"
@@ -201,12 +203,14 @@
             }
           ]
         },
-        "grant.password-change-mfa": {
+        "grant.password-change-strength": {
           "facts": [
             "grantControls"
           ],
           "requires": [
-            "policy.current.id"
+            "policy.current.id",
+            "authStrength.target.id",
+            "authStrength.target.displayName"
           ],
           "entra": [
             "entra.correct.grant"
@@ -255,7 +259,8 @@
     "reportOnly": {
       "requires": [
         "policy.current.id",
-        "policy.target.excludeGroups"
+        "policy.target.excludeGroups",
+        "authStrength.target.id"
       ],
       "entra": [
         "entra.observe",
@@ -276,7 +281,9 @@
     "readyToEnforce": {
       "requires": [
         "policy.current.id",
-        "policy.target.excludeGroups"
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
       ],
       "entra": [
         "entra.enforce",
@@ -403,8 +410,7 @@
   "authoringReviewNotes": [
     "The workbook described SSPR/writeback as prerequisites. Current Microsoft guidance says the secure Conditional Access password-change flow itself does not use SSPR; MFA registration is required and hybrid users require working password writeback.",
     "Do not automatically retire the High-user-risk policy. Medium-only risk scope does not itself establish High-risk coverage.",
-    "Deployable JSON uses the current v1.0-supported passwordChange + mfa AND grant shape. The retained-source authenticationStrength relationship is recorded as a compatibility normalization for final library review.",
-    "Rechecked 2026-09-20 against conditionalAccessGrantControls v1.0 (ms.date 2026-04-06): 'passwordChange must be accompanied by mfa using an AND operator', 'passwordChange and riskRemediation must be used separately, not in combination', and the policy 'can't contain any other condition except users, applications, and userRiskLevels'. The normalization stands, and the pinned member's passwordChange + authenticationStrength pair is a shape that reference does not describe. The pinned baseline wins, so the Entra procedure names the pin's pair — which is what IAMAI compares the tenant against — and says the JSON and PowerShell outputs write Microsoft's documented pair instead. Recorded for the owner in docs/plans/risk-and-sessions-spec.md."
+    "The pinned baseline wins (CLAUDE.md): every channel builds the pin's grant, passwordChange with the tenant's custom authentication strength under AND. conditionalAccessGrantControls v1.0 documents passwordChange paired with built-in mfa; the pin is an export of a real tenant that holds the strength instead, and nothing on that reference forbids it. Owner decision 2026-09-20, recorded in docs/plans/risk-and-sessions-spec.md."
   ],
   "email": {
     "recommendation": "recommended",
@@ -419,8 +425,7 @@
     ]
   },
   "integrationGaps": [
-    "IAMAI must map its existing MFA-registration, hybrid/password-writeback, and High-risk-policy evidence into prerequisite/readiness bindings. Do not add new tenant reads solely for this content package.",
-    "Final library review should confirm the current-API normalization from retained-source authenticationStrength to the v1.0-supported mfa + passwordChange AND grant."
+    "IAMAI must map its existing MFA-registration, hybrid/password-writeback, and High-risk-policy evidence into prerequisite/readiness bindings. Do not add new tenant reads solely for this content package."
   ],
   "mechanicalValidation": {
     "status": "PASS_WITH_LIMITATION",
