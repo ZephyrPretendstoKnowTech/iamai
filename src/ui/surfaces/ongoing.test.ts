@@ -252,3 +252,52 @@ test('B8: on a free tenant the step says it cannot see everyday use, and still a
   assert.ok(demoWho.some((l) => /Recent mail or Teams activity/.test(l)), demoWho.join('\n'))
   assert.ok(demoWho.some((l) => /needs Entra ID P1/.test(l)), demoWho.join('\n'))
 })
+
+// ---------------------------------------------------------------------------
+// Block the Admin Portals for Non-Admins (spec section 4)
+// ---------------------------------------------------------------------------
+
+const PORTALS = 's-goal-admin-portals-protected'
+/** The goal step's words live under the goal id, which is what the plan resolves. */
+const PORTALS_CONTENT = 'admin-portals-protected'
+
+test('C1: About names the unsettled scope, not a benefit the step does not deliver', () => {
+  const why = String((stepById[PORTALS_CONTENT] as unknown as { why: string }).why)
+  assert.match(why, /spares no administrator/)
+  assert.match(why, /settled before anyone deploys it/)
+  assert.doesNotMatch(why, /can reduce unnecessary access/)
+})
+
+test('C2: a risk says the admin-portals resource stops at the portals', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /covers the portals, not the services behind them/.test(t) && /Microsoft Graph/.test(t)), risks.join('\n'))
+})
+
+test('C3: a risk says a block here stops the Microsoft 365 install page for everyone', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /Microsoft 365 install page/.test(t)), risks.join('\n'))
+})
+
+test('C4: the Azure management risk names what that resource really reaches', () => {
+  const risks = risksOf(PORTALS_CONTENT)
+  assert.ok(risks.some((t) => /Azure PowerShell, the Azure CLI and the Microsoft 365 admin center/.test(t) && /no longer reaches Azure DevOps/.test(t)), risks.join('\n'))
+})
+
+test('C5: the step reaches no create on the demo, and its Completion Criteria is the author’s', () => {
+  const b = bodiesOf('demo').get(PORTALS)
+  assert.ok(b, 'the demo plan has no admin-portals step')
+  assert.equal(b.empty?.key, 'conflict')
+  assert.ok(b.conflictWords, 'the conflicted step draws no explanation')
+  assert.deepEqual(b.contract.doneWhen, ['The baseline author publishes a version that resolves the contradiction between the policy’s documentation and its definition.'.replace('’', "'")])
+  // Nothing in the body offers a policy to write.
+  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
+  assert.equal(steps.length, 0, steps.join('\n'))
+})
+
+test('C6: the row’s Impact names the subject instead of the placeholder', () => {
+  for (const name of ['demo', 'messy'] as const) {
+    const step = stepsOf(name).find((s) => s.id === PORTALS)
+    assert.ok(step, `${name}: no admin-portals step`)
+    assert.equal(rowWho(step), 'Administrator portals')
+  }
+})
