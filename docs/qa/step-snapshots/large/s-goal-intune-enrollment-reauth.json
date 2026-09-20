@@ -20,10 +20,6 @@
     {
       "label": "Waiting on your direction",
       "state": "Decide How People and Devices Sign In"
-    },
-    {
-      "label": "Fresh sign-in proof",
-      "state": "Unknown"
     }
   ],
   "channels": [
