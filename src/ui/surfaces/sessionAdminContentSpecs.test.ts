@@ -110,9 +110,15 @@ test('s-goal-admin-portals-protected: the conflict says there is nothing to do, 
 test('s-goal-token-protection: Why says what token protection is, AI Info explains the attack and the Windows limit, and Done when names the target', () => {
   const TOKEN = 's-goal-token-protection'
   const words = stepWords('token-protection')
-  // Editorial batch C: the register Why.
-  assert.equal(words.why, 'Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.')
-  assert.equal(words.doneEnd, "A scan confirms token protection is On for the intended Windows clients and resources, with the correct exclusions. Supported work apps sign in successfully with token protection.")
+  // Require Healthy Devices (docs/plans/require-healthy-devices-spec.md): About this
+  // Step says what token protection is — a token bound to the device that earned it —
+  // and what it is not, because a browser, another platform or another resource is
+  // neither protected by this policy nor blocked by it
+  // (deployment-guide-token-protection-windows, ms.date 2026-03-24, updated
+  // 2026-09-10, checked 2026-09-20).
+  assert.equal(words.why, 'Token protection binds a sign-in token to the device that earned it, so a token copied off that device is no use elsewhere. It reaches the Windows desktop apps and the resources this policy names, and nothing else: a browser, another platform or another resource is not protected and is not blocked either.')
+  // Completion Criteria was its own two lines repeated; the end state is the outcome now.
+  assert.equal(words.doneEnd, 'Every supported Windows desktop client reaching the resources this policy names at {tenant} presents a token bound to its own device, and the exclusions group is applied.')
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   const ai = packageOf(TOKEN).blocks['ai.correct'].text
   // Editorial batch C (factual fix): supported session tokens on the pinned resources and platform only, never every token, and no claim that the correction only adds the exclusions group.
