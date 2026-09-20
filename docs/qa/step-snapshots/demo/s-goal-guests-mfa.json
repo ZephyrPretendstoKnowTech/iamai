@@ -7,10 +7,10 @@
   "bar": "Complete the review below",
   "rail": "Review now",
   "headings": [
-    "Why",
-    "Readiness",
-    "Implementation",
-    "Done when"
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
   ],
   "tiles": [
     {

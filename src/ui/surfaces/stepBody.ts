@@ -38,7 +38,7 @@ import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewFor } from './planBoard.ts'
-import { DECISION_HEAD, HEAD } from './stepHeadings.ts'
+import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
@@ -500,15 +500,24 @@ export type StepBody = ReturnType<typeof stepBodyOf>
  * and Readiness always; the conflict attention where the source contradicts
  * itself; Implementation where the step offers or owes one; Done when where the
  * contract has lines. No step draws What to do (U1).
+ *
+ * A step drawn with the task anatomy — an Establish Emergency Access step, and
+ * every policy step since 2026-09-19 — names those same four sections its own
+ * way (stepHeadings.ts taskHeadingsOf), and this says what the step draws, so it
+ * says those. Without this the step-snapshot corpus recorded "Why, Readiness,
+ * Implementation, Done when" for every one of them while the screen read "About
+ * this Step, Tasks Remaining, Implementation Tasks, Completion Criteria", which
+ * is the one thing a snapshot of a rendered step must not do.
  */
 export function headingsOf(b: StepBody): string[] {
   // A decision-anatomy step (Decide Your Tenant's Direction) draws its own three: nothing is built.
   if (usesDecisionAnatomy(b.contract.id)) return [DECISION_HEAD.why, DECISION_HEAD.questions, ...(b.contract.doneWhen.length > 0 ? [DECISION_HEAD.doneWhen] : [])]
+  const task = taskHeadingsOf(b.contract.id)
   return [
-    HEAD.why,
-    CONTRACT.readiness.heading,
+    task?.why ?? HEAD.why,
+    task?.remaining ?? CONTRACT.readiness.heading,
     ...(b.conflictWords ? [CONTRACT.attentionConflict] : []),
-    ...(b.showImplementation ? [CONTRACT.implementation.heading] : []),
-    ...(b.contract.doneWhen.length > 0 ? [HEAD.doneWhen] : []),
+    ...(b.showImplementation ? [task?.implementation ?? CONTRACT.implementation.heading] : []),
+    ...(b.contract.doneWhen.length > 0 ? [task?.doneWhen ?? HEAD.doneWhen] : []),
   ]
 }
