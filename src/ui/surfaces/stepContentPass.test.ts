@@ -16,7 +16,8 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { CONTRACT, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { packageSourceLine } from './stepPackage.ts'
+import { packageSourceLine, sourceCheckedLine } from './stepPackage.ts'
+import { sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
 import { TASK_HEAD } from './stepHeadings.ts'
 
@@ -52,6 +53,61 @@ test('every package a step doc asks to date shows a dated Microsoft Learn source
     )
     assert.ok(packageSourceLine(pkg, CONTRACT.implementation), `${id}: no Source checked line`)
   }
+})
+
+// Every step that shows a Microsoft Learn link shows the day it was checked
+// beside it (owner, 2026-09-20; quality audit section 2.5). Two families showed
+// the link alone, for two different reasons, and neither may be given a date it
+// does not hold.
+
+test('a package the re-pin review set aside still dates its Learn page, a baseline conflict included', () => {
+  // s-goal-admin-portals-protected: its package is set aside (the baseline
+  // changed under it) and on the demo its source is also self-contradictory, so
+  // the step draws the translator's channels. When the page was checked is a
+  // fact about the page, so the date stays on both plans.
+  const expected = packageSourceLine(PACKAGES['s-goal-admin-portals-protected'], CONTRACT.implementation)
+  assert.equal(sourceUpdatedOn(PACKAGES['s-goal-admin-portals-protected']), '2026-09-20')
+  assert.ok(expected, 'the package records no checked date')
+  for (const name of ['mid', 'demo'] as const) {
+    const { r, ctx } = planOf(name)
+    const step = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')
+    assert.ok(step, `${name}: the step is not on the plan`)
+    const b = stepBodyOf(step, ctx)
+    assert.ok(b.learnUrl, `${name}: no Learn link`)
+    assert.equal(b.sourceLine, expected, `${name}: the Learn link shows no checked date`)
+  }
+  // The demo is the plan whose source contradicts itself; that is what used to
+  // take the date away.
+  const demo = planOf('demo')
+  assert.notEqual(stepBodyOf(demo.r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!, demo.ctx).conflictWords, null)
+})
+
+test('every generated baseline-review row dates the planning page its Learn link points at', () => {
+  // The rows are built per tenant (roadmap/workflows.ts PLAN_CA) and have no
+  // package, so the date is on the row's own Learn entry, from the source table
+  // in docs/plans/ongoing-spec.md section 1 (`ms-plan-ca`, checked 2026-09-20).
+  const expected = sourceCheckedLine('2026-09-20', CONTRACT.implementation)
+  assert.ok(expected, 'no Source checked line for a recorded date')
+  const { r, ctx } = planOf('demo')
+  const rows = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
+  assert.equal(rows.length, 4, 'the demo generates four review rows')
+  for (const step of rows) {
+    assert.equal((step.guidance as { learn?: { checkedOn?: string } } | undefined)?.learn?.checkedOn, '2026-09-20', step.id)
+    const b = stepBodyOf(step, ctx)
+    assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', step.id)
+    assert.equal(b.sourceLine, expected, `${step.id}: the Learn link shows no checked date`)
+  }
+})
+
+test('a step with no recorded check shows no date, and no line is invented for it', () => {
+  // The rule has one direction only (S6): a date nothing recorded is not
+  // rendered. `sourceCheckedLine` is the one producer, and it refuses anything
+  // that is not a recorded ISO day.
+  const W = CONTRACT.implementation
+  assert.equal(sourceCheckedLine(null, W), null)
+  assert.equal(sourceCheckedLine('', W), null)
+  assert.equal(sourceCheckedLine('recently', W), null)
+  assert.equal(sourceCheckedLine('2026-09', W), null)
 })
 
 test('the Impact and milestone words the step docs name are what the Plan reads from each package', () => {
