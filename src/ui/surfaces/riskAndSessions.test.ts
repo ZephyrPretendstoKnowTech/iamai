@@ -612,4 +612,3 @@ test('B7: Completion Criteria is this step’s outcome, and the package date is 
   assert.match(doneWhenOf('user-risk').join('\n'), /People rated at risk were reviewed/)
   assert.equal(sourceCheckedOn(USER_RISK), '2026-09-20')
 })
-
