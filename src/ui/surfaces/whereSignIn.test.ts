@@ -199,3 +199,54 @@ test('A6: Done when opens on this step’s outcome, on screen', () => {
   assert.ok(done.some((l: string) => /lists exactly .+, the countries people work from/.test(l)), done.join('\n'))
   assert.ok(done.some((l: string) => /a sign-in whose country cannot be worked out stays outside the list/.test(l)), done.join('\n'))
 })
+
+// ---------------------------------------------------------------------------
+// Block Sign-ins From Countries Not Allowed (spec section 5)
+// ---------------------------------------------------------------------------
+
+test('G1: the network condition is set through Configure: Yes, in create and in correct', () => {
+  const create = blockText('s-goal-geo-restriction', 'entra.create')
+  assert.match(create, /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(create, /Left at \*\*No\*\* the network condition is not configured/)
+  assert.match(blockText('s-goal-geo-restriction', 'entra.correct-conditions'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  // And the reviewer's transcription of the same policy says it too.
+  assert.match(allText('geo-restriction'), /Configure: Yes, then Include: Any network or location/)
+})
+
+test('G2: no procedure of this step says "Any location"; the current label is used', () => {
+  assert.doesNotMatch(packageText('s-goal-geo-restriction').replace(/Any network or location/g, ''), /Any location/)
+  assert.doesNotMatch(allText('geo-restriction').replace(/Any network or location/g, ''), /Any location/)
+})
+
+test('G3: a risk names the header Conditional Access ignores behind a proxy', () => {
+  assert.ok(
+    risksOf('geo-restriction').some((t) => /ignores the X-Forwarded-For header that carries the person's/.test(t)),
+    risksOf('geo-restriction').join('\n'),
+  )
+})
+
+test('G4: a risk says when the rule bites, not just that it is not instant', () => {
+  assert.ok(risksOf('geo-restriction').some((t) => /reissued, which is hourly by default/.test(t)), risksOf('geo-restriction').join('\n'))
+  assert.ok(!risksOf('geo-restriction').some((t) => /does not bite until the token refreshes/.test(t)), risksOf('geo-restriction').join('\n'))
+})
+
+test('G5: help desk says this policy does not reach a service principal, and names the step that does', () => {
+  const lines = helpDeskOf('geo-restriction')
+  assert.ok(lines.some((l) => /a call made by a service principal is not blocked by a policy scoped to users/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Restrict the Entra Connect Sync Account to Its Address/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Directory Synchronization Accounts directory role/.test(l)), lines.join('\n'))
+})
+
+test('G6: the held step’s Completion Criteria is this step’s outcome, on screen and on both scans', () => {
+  for (const f of ['demo', 'demo-week2'] as const) {
+    const done = bodiesOf(f).get('s-goal-geo-restriction')!.contract.doneWhen
+    assert.ok(done.some((l: string) => /^Nobody signs in to .+ from a country that is not on the approved list/.test(l)), `${f}: ${done.join('\n')}`)
+    assert.ok(!done.some((l: string) => /blocking sign-ins from countries not in the allowed list/.test(l)), `${f}: ${done.join('\n')}`)
+  }
+})
+
+test('G7: the step shows the date its Microsoft sources were checked, on both scans', () => {
+  assert.equal(checkedOn('s-goal-geo-restriction'), '2026-09-20')
+  assert.equal(bodiesOf('demo').get('s-goal-geo-restriction')!.sourceLine, 'Source checked Sep 20, 2026')
+  assert.equal(bodiesOf('demo-week2').get('s-goal-geo-restriction')!.sourceLine, 'Source checked Sep 20, 2026')
+})
