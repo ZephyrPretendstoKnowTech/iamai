@@ -26,6 +26,8 @@ const base = (): Record<string, unknown> => ({
   'tenant.displayName': 'Sample tenant',
   'policies.session.browser.target.displayName': 'Sample - browser sessions',
   'policies.session.browser.current.id': ID(3),
+  // S4-10: the interval is the resolved target's own session controls in every channel that needs a value.
+  'policies.session.browser.target.sessionControls': { signInFrequency: { isEnabled: true, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication', type: 'hours', value: 12 }, persistentBrowser: { isEnabled: true, mode: 'never' }, applicationEnforcedRestrictions: null, cloudAppSecurity: null, disableResilienceDefaults: null },
   'policy.target.excludeGroups': [ID(1)],
   'policy.target.excludeUsers': [ID(2)],
 })
@@ -66,8 +68,9 @@ test('session-lifetime: every projected explanation in every state describes the
     assert.match(ai, /The baseline has one session policy for this step/, state)
     // A state that writes settings also says not to add a companion.
     if (state === 'missing' || state === 'partial') assert.match(ai, /Do not add a companion policy, conditions or exclusions that the baseline does not contain/, state)
-    // Every channel but the script, whose retained modes are execution and unchanged in this pass.
-    for (const c of p.channels.filter((x) => x.channel !== 'powershell')) {
+    // Every channel, the script included: S4-10 removed its unmanaged-device modes and
+    // its hardcoded intervals, so it is read on the same terms as the others.
+    for (const c of p.channels) {
       assert.doesNotMatch(c.text, COMPANION, `${state}/${c.channel}: ${c.text.match(COMPANION)?.[0]}`)
       // Only the resolved target carries the interval, so no channel writes one out.
       assert.doesNotMatch(c.text, INTERVAL, `${state}/${c.channel}: ${c.text.match(INTERVAL)?.[0]}`)

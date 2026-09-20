@@ -22,6 +22,8 @@ const NONE = CONTRACT.implementation.excludeUsersNone
 const base = (state: PackageState): Record<string, unknown> => ({
   'tenant.displayName': 'Sample tenant',
   'policies.session.browser.target.displayName': 'Sample - browser sessions',
+  // S4-10: the interval is the resolved target's own session controls, in every channel that needs a value.
+  'policies.session.browser.target.sessionControls': { signInFrequency: { isEnabled: true, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication', type: 'hours', value: 12 }, persistentBrowser: { isEnabled: true, mode: 'never' }, applicationEnforcedRestrictions: null, cloudAppSecurity: null, disableResilienceDefaults: null },
   'policy.target.excludeGroups': [ID(1)],
   ...(state === 'missing' ? {} : { 'policies.session.browser.current.id': ID(3) }),
 })
@@ -37,7 +39,9 @@ test('a resolved empty excludeUsers is a value: every channel draws, the JSON an
   assert.equal(create.hold, null, JSON.stringify(create.hold))
   assert.deepEqual(create.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
   assert.deepEqual([usersOf(create).excludeUsers, usersOf(create).excludeGroups], [[], [ID(1)]])
-  assert.deepEqual(calls(create), [`Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Sample - browser sessions' -ExcludeGroupIds @('${ID(1)}') -ExcludeUserIds @()`])
+  assert.equal(calls(create).length, 1)
+  assert.ok(calls(create)[0].startsWith("Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Sample - browser sessions' -BrowserSessionControlsJson '{"), calls(create)[0])
+  assert.ok(calls(create)[0].endsWith(`-ExcludeGroupIds @('${ID(1)}') -ExcludeUserIds @()`), calls(create)[0])
   for (const ch of ['entra', 'aiInfo']) {
     assert.ok(channel(create, ch).includes(`Individual accounts the resolved target excludes: ${NONE}.`), `${ch}: ${channel(create, ch)}`)
     assert.doesNotMatch(channel(create, ch), MANDATORY_SHARED, ch)

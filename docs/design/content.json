@@ -2001,9 +2001,8 @@
               "policies.guests.targets.json": "both guest policy targets",
               "policies.session.browser.current.id": "browser session policy ID",
               "policies.session.browser.target.displayName": "browser session policy name",
+              "policies.session.browser.target.sessionControls": "browser policy session controls",
               "policies.session.semanticMismatches": "session policy differences",
-              "policies.session.unmanaged.current.id": "unmanaged device session policy ID",
-              "policies.session.unmanaged.target.displayName": "unmanaged device session policy name",
               "policies.unmanagedBrowser.a.current.id": "first unmanaged browser policy ID",
               "policies.unmanagedBrowser.a.target.conditions": "first unmanaged browser policy conditions",
               "policies.unmanagedBrowser.a.target.displayName": "first unmanaged browser policy name",
@@ -4841,7 +4840,7 @@
           "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
           "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.",
           "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault.",
-          "An app or a sync job that keeps working from abroad is not a fault: a call made by a service principal is not blocked by a policy scoped to users. Restricting one takes a workload identity policy, which Restrict the Entra Connect Sync Account to Its Address builds.",
+          "An app or a sync job that keeps working from abroad is not a fault: a call made by a service principal is not blocked by a policy scoped to users. Restricting one takes a workload identity policy, which Restrict the Directory Sync Service Principal to Its Address builds.",
           "Where this tenant synchronises from on-premises, Microsoft's own recipe for an all-users policy also excludes the Directory Synchronization Accounts directory role; the pinned baseline excludes the exclusions group and the service accounts group instead."
         ],
         "manager": "Sign-ins from countries outside the approved list are blocked, based on the network address the sign-in comes from.",
@@ -5618,7 +5617,7 @@
       "id": "workload-identity-block",
       "kind": "policy",
       "licence": "Microsoft Entra Workload ID Premium",
-      "title": "Restrict the Entra Connect Sync Account to Its Address",
+      "title": "Restrict the Directory Sync Service Principal to Its Address",
       "changeLine": null,
       "why": "A workload identity policy covers a single-tenant service principal registered in this tenant, and covers no Microsoft or multitenant application and no managed identity. Confirm which identity requests the sync tokens before relying on a network restriction: Entra Connect Sync signs in as a user account, while Cloud Sync uses a provisioning service principal.",
       "learn": {
@@ -6423,7 +6422,7 @@
         "helpDesk": [
           "Inspect the failed job's account, sign-in result and public egress address. Confirm whether the job belongs on an already approved network; adding a new trusted network changes every policy that relies on that trust."
         ],
-        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. A call made by a service principal is not blocked by a policy scoped to users; covering one takes Conditional Access for workload identities, which Restrict the Entra Connect Sync Account to Its Address builds.",
+        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. A call made by a service principal is not blocked by a policy scoped to users; covering one takes Conditional Access for workload identities, which Restrict the Directory Sync Service Principal to Its Address builds.",
         "waits": null
       },
       "example": {

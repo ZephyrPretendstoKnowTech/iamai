@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-workload-identity-block",
-  "title": "Restrict the Entra Connect Sync Account to Its Address",
+  "title": "Restrict the Directory Sync Service Principal to Its Address",
   "baseline": "jon-hope-pinned",
   "relationship": "baseline-goal-composite",
   "packagePath": "docs/implementation-content/s-goal-workload-identity-block/",
