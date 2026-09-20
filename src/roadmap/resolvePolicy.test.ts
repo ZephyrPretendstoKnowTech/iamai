@@ -722,7 +722,11 @@ test('an unresolved step is not scheduled and carries nothing that implies a rol
   // before continuing's (owner, 2026-09-11) — never the rollout's gates.
   assert.deepEqual(view.doneWhen, stepContract(step, ctx).doneWhen, "the completion is not the screen's")
   assert.equal(view.doneWhen.length, 1, `the end state: ${view.doneWhen.join(' | ')}`)
-  assert.equal(view.doneWhen[0], 'The policy is enforced in Contoso Pty Ltd.', 'the end state, not the removal of the blocker')
+  // where-people-sign-in-spec.md §7 N1: the step now authors its own `doneEnd`,
+  // so the held step draws its outcome instead of the shared "The policy is
+  // enforced in {tenant}." Still the end state, and still not the blocker's removal.
+  assert.equal(view.doneWhen[0], 'The user-based service accounts in the group can sign in to Contoso Pty Ltd only from the approved trusted network, and every job that uses one has been run from there and recorded.', 'the end state, not the removal of the blocker')
+  assert.doesNotMatch(view.doneWhen[0], /Service Accounts Group|group is created|group exists/i, 'the completion is not the blocker being cleared')
   assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null, 'no rollback instructions')
   assert.equal(view.dates, null, 'no rollout dates')
