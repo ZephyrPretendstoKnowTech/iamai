@@ -964,8 +964,24 @@
             "id": "ms-session-howto",
             "authority": "Microsoft Learn",
             "title": "Configure adaptive session lifetime policies",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
-            "checkedOn": "2026-09-12",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-ca-conditions",
+            "authority": "Microsoft Learn",
+            "title": "How to use conditions in Conditional Access policies",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-prompts-session-lifetime",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra multifactor authentication prompts and session lifetime",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concepts-azure-multi-factor-authentication-prompts-session-lifetime",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -1013,7 +1029,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps: Browser**. Do not use IDs from another tenant, and do not widen or narrow the role list.\n4. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured.\n5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Before you start, check **Entra ID > Multifactor authentication > Additional cloud-based MFA settings** and turn **Remember multifactor authentication on trusted devices** off. Microsoft documents that leaving it on alongside sign-in frequency prompts people unexpectedly.\n4. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps**: set **Configure** to **Yes**, then select **Browser** only. Left at **No**, the condition reaches every client app, and the interval applies to desktop and mobile apps too. Do not use IDs from another tenant, and do not widen or narrow the role list.\n5. Session → Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step. Persistent browser session: Never persistent. Leave Grant unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -1025,7 +1041,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.\n"
+          "text": "This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (ID: {{policy.current.id}}).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Conditions → Client apps → Configure: Yes, then Browser only, because at No the condition reaches every client app. Also check the session controls: Sign-in frequency set to the interval in the intended target. Persistent browser session: Never persistent. Grant stays unconfigured.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -1049,7 +1065,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) in Entra ID → Conditional Access → Policies.\n\n- Under Session, set Sign-in frequency to **4 hours**.\n- Set Persistent browser session to **Never persistent**.\n- Match the remaining session controls to the target shown for this dedicated session policy.\n"
+          "text": "Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) in Entra ID → Conditional Access → Policies.\n\n- Under Session, set Sign-in frequency to the interval in the intended target shown on this step.\n- Set Persistent browser session to **Never persistent**. This overrides the \"Stay signed in?\" prompt for the same people.\n- Match the remaining session controls to the target shown for this dedicated session policy.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -1097,7 +1113,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\n- Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.\n- Change **Enable policy** to **On** and save.\n- Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the four-hour interval. Check that normal admin work remains practical and emergency access still works.\n- Rescan in IAMAI.\n"
+          "text": "Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.\n\n- Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.\n- Change **Enable policy** to **On** and save.\n- Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the target's interval. Check that normal admin work remains practical and emergency access still works.\n- Rescan in IAMAI.\n"
         },
         "json.target-policy": {
           "meta": {
@@ -1236,7 +1252,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nIAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to 4 hours, Persistent browser session set to Never persistent, and no grant control.\n"
+          "text": "\nIAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to the interval in the resolved target, Persistent browser session set to Never persistent, and no grant control.\n"
         },
         "ai.correct": {
           "meta": {
@@ -1248,7 +1264,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Policy {{policy.current.id}} for **Shorten Admin Sessions** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy.\n\nThe intended target applies to the resolved admin roles, all resources and Browser client apps. It sets Sign-in frequency to 4 hours and Persistent browser session to Never persistent, with no grant control. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session.\n\nThe exclusions group in the target keeps emergency access accounts out of this policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save. Accounts the correction newly includes are asked to authenticate again once the interval passes; accounts it newly excludes stop receiving these session limits.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "Policy {{policy.current.id}} for **Shorten Admin Sessions** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy.\n\nThe intended target applies to the resolved admin roles, all resources and Browser client apps. It sets Sign-in frequency to the interval in the resolved target and Persistent browser session to Never persistent, with no grant control. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session.\n\nThe exclusions group in the target keeps emergency access accounts out of this policy.\n\nKeep the policy's current state. If it is On, the changed rule can affect access after you save. Accounts the correction newly includes are asked to authenticate again once the interval passes; accounts it newly excludes stop receiving these session limits.\n\nThis change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -1272,7 +1288,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, Sign-in frequency of 4 hours, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.\n"
+          "text": "\n**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, the resolved target's sign-in frequency, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.\n"
         },
         "ai.blocked": {
           "meta": {
@@ -1312,7 +1328,7 @@
             "audience": "privileged-administrators",
             "communicationTrigger": "before-report-only"
           },
-          "text": "Subject: Planned change: Shorten Admin Sessions\n\nAdmins,\n\nWe plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.\n\n{{signature}}\n"
+          "text": "Subject: Planned change: Shorten Admin Sessions\n\nAdmins,\n\nWe plan to shorten admin browser sessions to a fixed sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.\n\n{{signature}}\n"
         },
         "email.enforce": {
           "meta": {
@@ -1326,7 +1342,7 @@
             "audience": "privileged-administrators",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Planned change: Shorten Admin Sessions\n\nAdmins,\n\nWe plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.\n\n{{signature}}\n"
+          "text": "Subject: Planned change: Shorten Admin Sessions\n\nAdmins,\n\nWe plan to shorten admin browser sessions to a fixed sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.\n\n{{signature}}\n"
         },
         "readiness.model": {
           "meta": {
@@ -1344,7 +1360,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Check the four-hour frequency, non-persistent browser setting and affected admin workflows. Ready only when the admin roles and exclusions IAMAI resolved match the baseline target, the policy targets Browser client apps and All resources, Grant is unconfigured, Sign-in frequency is 4 hours, Persistent browser session is Never persistent, and Report-only results or a controlled test show acceptable behavior.\n"
+          "text": "Check the resolved target's sign-in frequency, the non-persistent browser setting and affected admin workflows. Ready only when the admin roles and exclusions IAMAI resolved match the baseline target, the policy targets Browser client apps and All resources, Grant is unconfigured, Sign-in frequency matches the resolved target, Persistent browser session is Never persistent, and Report-only results or a controlled test show acceptable behavior.\n"
         },
         "troubleshooting.model": {
           "meta": {
