@@ -4,8 +4,8 @@
 3. Users → Include: only the owner-confirmed shared-device accounts, by the IDs IAMAI shows.
 4. Users → Exclude → Groups: the emergency access exclusions group {{policy.target.excludeGroups}}.
 5. Target resources: **All resources**.
-6. Locations: Include **Any location**; Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.
-7. Grant: **Block access**.
+6. Conditions → Locations: set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.
+7. Grant: **Block access**. Do not add an interactive control: a room account has no second device to approve one with.
 8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.
 @@IAMAI-END
 
@@ -22,7 +22,7 @@ Set Target resources to **All resources**. Leave the other intended conditions u
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.location","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Locations to Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`.
+Under **Conditions → Locations**, set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -175,8 +175,8 @@ Shared-device account IDs: {{policy.target.includeUsers}}. [omit this line when 
 
 1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.
 2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.
-3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.
-4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.
+3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts and target All resources. Under **Conditions → Locations** set **Configure** to **Yes**, then include Any location and exclude only the approved trusted location; left at **No** the policy applies in the office too, and Block access there stops the device completely. Grant: Block access. Start in Report-only.
+4. Review the other policies that apply to these accounts. Microsoft's own guidance is to keep these accounts out of the policies written for people: they have no second device to approve a prompt, and on Teams devices a sign-in frequency signs them out and an authentication strength refuses them. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.
 5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.
 6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.
 @@IAMAI-END

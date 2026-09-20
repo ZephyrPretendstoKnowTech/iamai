@@ -3255,7 +3255,7 @@
       "kind": "policy",
       "title": "Give Shared Devices Their Own Policy",
       "changeLine": null,
-      "why": "Room systems and other shared devices can stop working when a policy expects a person to answer a prompt. Review their accounts and normal networks before applying controls designed for staff.",
+      "why": "A room system signs in with nobody standing at it, so a policy that waits for someone to approve a prompt stops it dead. These accounts get one policy of their own — allowed on the approved network, blocked anywhere else — and come out of the policies written for people.",
       "learn": {
         "url": "https://learn.microsoft.com/microsoftteams/rooms/conditional-access-and-compliance-for-devices"
       },
@@ -3287,10 +3287,19 @@
           {
             "text": "A device that leaves the trusted network, for a firmware update or a move, is blocked until it is back.",
             "applies": "always"
+          },
+          {
+            "text": "Sign-in frequency is not supported on Teams devices: a policy that sets one signs them out on its own schedule. Check the session-length policies as well as the ones that ask for MFA.",
+            "applies": "always"
+          },
+          {
+            "text": "An authentication strength is not supported on Teams devices either, a security key included. A strength policy that reaches these accounts blocks them however well they are set up.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "A room device that stops signing in: check it is on the office network and its account is in this policy and out of the others."
+          "A room device that stops signing in: check it is on the office network and its account is in this policy and out of the others.",
+          "These accounts cannot answer an MFA prompt at all: there is no second device at the room to approve it. Exclude the account from the policy that prompted it rather than finding it another method."
         ],
         "manager": "Meeting-room and shared devices get a rule that fits them instead of prompts meant for people. Without it, a person-specific prompt can stop a room device from signing in.",
         "waits": null
@@ -3313,13 +3322,13 @@
         "from": "Aug 1"
       },
       "whatToDo": {
-        "lead": null,
+        "lead": "Confirm which accounts belong to shared devices, give them their own policy, and take them out of the policies that ask a person to act.",
         "steps": [
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
+          "Conditions → Locations: set Configure to Yes, then Include: Any location; Exclude: {trustedLocation}. Left at No the policy applies everywhere, including the office, and Block access there stops the device completely.",
           "Grant → Block access",
           "{reportOnlyLine}",
           "Separately, apply the resolved exclusions for these accounts to the policies that ask a person to act: {list:peoplePolicies}"
