@@ -82,3 +82,39 @@ export function changedFieldsOf(patch: Record<string, unknown>, current: Record<
   }
   return [...out].sort()
 }
+
+/**
+ * True when every material field the patch changes is a list of what the policy
+ * excludes, and each list keeps everything the tenant's list holds: the change
+ * only adds exclusions. Nobody the policy does not reach today is reached by it
+ * afterwards, and nobody is asked for anything new. A patch that changes nothing
+ * material is not one (there is no correction to speak of), and neither is one
+ * whose `current` this scan did not read.
+ *
+ * Read by the readiness gate, which has nothing to hold on such a change to a
+ * policy already on (roadmap/operations.ts enforcementHeld; owner, 2026-09-19).
+ */
+export function addsExclusionsOnly(patch: Record<string, unknown>, current: Record<string, unknown> | null): boolean {
+  if (current === null) return false
+  const ids = (v: unknown): string[] | null => (v === undefined || v === null ? [] : Array.isArray(v) ? v.map((x) => String(x).toLowerCase()) : null)
+  const exclusion = (path: string): boolean => (path.split('.').at(-1) ?? '').startsWith('exclude')
+  const keeps = (path: string): boolean => {
+    const was = ids(at(current, path))
+    const next = ids(at(patch, path))
+    return was !== null && next !== null && was.every((id) => next.includes(id))
+  }
+  const fields = changedFieldsOf(patch, current)
+  if (fields.length === 0 || !fields.every((path) => exclusion(path) && keeps(path))) return false
+  // A section the patch writes replaces the tenant's whole section, so an
+  // exclusion the tenant has there and the patch leaves out is taken away.
+  for (const root of MATERIAL_ROOTS) {
+    if (!(root in patch)) continue
+    const held = new Map<string, unknown>()
+    leaves(current[root], root, held)
+    for (const path of held.keys()) {
+      const section = path.split('.').slice(0, -1).join('.')
+      if (exclusion(path) && isObject(at(patch, section)) && !keeps(path)) return false
+    }
+  }
+  return true
+}

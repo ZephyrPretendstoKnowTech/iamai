@@ -19,7 +19,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 
-export type CleanupKind = 'alerting' | 'drill' | 'hardening' | 'naming' | 'consolidation'
+export type CleanupKind = 'alerting' | 'drill' | 'hardening' | 'namedExclusions' | 'naming' | 'consolidation'
 
 /** A Cleanup row: which content.cleanup entry to render, and the lists it fills. */
 export type CleanupRow = {
@@ -38,6 +38,11 @@ export type CleanupInputs = {
   overlaps: string[]
   /** Emergency-access hardening the operator deferred, already worded (owner, 2026-09-11); empty when nothing is deferred and outstanding. */
   hardening?: string[]
+  /**
+   * The tenant's own On or Report-only policies that exclude an emergency account
+   * by name, one line each (namedEmergencyExclusions); empty when none does.
+   */
+  namedExclusions?: string[]
 }
 
 // The order Cleanup renders in (§5): alerting, drill, naming, consolidation.
@@ -49,6 +54,11 @@ const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists:
   // stable fourth step and can point back to the selection work it needs.
   { kind: 'drill', present: () => true, lists: (i) => ({ emergencyAccounts: i.emergencyAccounts }) },
   { kind: 'hardening', present: (i) => (i.hardening ?? []).length > 0, lists: (i) => ({ hardening: i.hardening ?? [] }) },
+  // A correction never removes an exclusion the tenant already has (owner,
+  // 2026-09-19), so an emergency account the tenant excluded by name stays named
+  // in the policy IAMAI corrects. The group is the one carve-out (CLAUDE.md), and
+  // this row is where the name comes out, once the group covers the account.
+  { kind: 'namedExclusions', present: (i) => (i.namedExclusions ?? []).length > 0, lists: (i) => ({ namedExclusions: i.namedExclusions ?? [] }) },
   { kind: 'naming', present: (i) => i.renames.length > 0, lists: (i) => ({ renames: i.renames }) },
   { kind: 'consolidation', present: (i) => i.overlaps.length > 0, lists: (i) => ({ overlaps: i.overlaps }) },
 ]
@@ -61,4 +71,23 @@ const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists:
  */
 export function cleanupRows(inputs: CleanupInputs): CleanupRow[] {
   return ORDER.filter((e) => e.present(inputs)).map((e) => ({ kind: e.kind, lists: e.lists(inputs) }))
+}
+
+/**
+ * The tenant's On or Report-only policies that exclude an emergency account by
+ * name, one line each: the policy, its id, and the accounts it names. A policy
+ * that is off evaluates nobody and is not listed.
+ */
+export function namedEmergencyExclusions(policies: readonly unknown[] | null | undefined, emergencyIds: readonly string[], nameOf: (id: string) => string): string[] {
+  const emergency = new Map(emergencyIds.map((id) => [id.toLowerCase(), id]))
+  const out: string[] = []
+  for (const raw of policies ?? []) {
+    const p = raw as { id?: unknown; displayName?: unknown; state?: unknown; conditions?: { users?: { excludeUsers?: unknown } } }
+    if (p.state !== 'enabled' && p.state !== 'enabledForReportingButNotEnforced') continue
+    const excluded: unknown[] = Array.isArray(p.conditions?.users?.excludeUsers) ? p.conditions.users.excludeUsers : []
+    const named = [...new Set(excluded.map((id) => emergency.get(String(id).toLowerCase())).filter((id): id is string => id !== undefined))]
+    if (named.length === 0) continue
+    out.push(`${String(p.displayName ?? p.id)} (ID: ${String(p.id)}): ${named.map(nameOf).join(', ')}`)
+  }
+  return out
 }

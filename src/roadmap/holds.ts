@@ -109,8 +109,12 @@ export function holdOf(step: Step): Hold | null {
     // A readiness condition that binds a tenant fact — a number to reach, an
     // object to exist, a safe way in — holds until the scan finds it. One with no
     // binding is an ordering rule: it waits on the step it names, and that is
-    // sequencing (roadmap/generate.ts blockLate).
-    if (step.blockers.some((b) => b.kind === 'readiness' && typeof b.binding === 'string' && b.binding.length > 0)) return { kind: 'readiness' }
+    // sequencing (roadmap/generate.ts blockLate). The readiness threshold's own
+    // blocker is `enforcementHeld`'s to answer (above); where that says the gate
+    // holds nothing — a correction that only adds exclusions to a policy already
+    // on (owner, 2026-09-19) — neither does this.
+    const threshold = (b: Step['blockers'][number]): boolean => b.label === 'readiness' && step.action.readinessGate !== undefined && !enforcementHeld(step)
+    if (step.blockers.some((b) => b.kind === 'readiness' && typeof b.binding === 'string' && b.binding.length > 0 && !threshold(b))) return { kind: 'readiness' }
   }
   // Records that show people being stopped, or a window that has closed on records
   // that do not clear it: the evidence is unresolved, and nothing schedules it
