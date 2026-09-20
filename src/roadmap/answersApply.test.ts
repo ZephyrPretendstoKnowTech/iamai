@@ -24,6 +24,7 @@ import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
+import { manualEvidenceFields } from './manualWork.ts'
 import { stepById } from '../content/content.ts'
 
 /** The mapping as the plan derives it: the detected defaults, then the saved decisions. */
@@ -85,6 +86,20 @@ test('saved travel stays separate from workplace countries; provider and printer
   assert.equal(Object.keys(CARVE_OUT_STEP_ID).includes('travel'), false)
   assert.equal(stepById['s-question-travel'], undefined, 'the trip-operations words are gone')
   assert.ok(!r.steps.some((s) => s.id === 's-question-travel'))
+
+  // The partner follow-up was a fourth: its whole instruction was to read two
+  // other steps' Implementation (finding 5). The answer still excludes the
+  // Service provider type from both policies, the guests policy carries the one
+  // warning that step added and its evidence field, and no row is added.
+  assert.equal(serviceProvidersExcluded(m), true, 'the partner answer still excludes service providers')
+  assert.equal(Object.keys(CARVE_OUT_STEP_ID).includes('partner'), false)
+  assert.equal(stepById['s-question-partner'], undefined, 'the partner follow-up words are gone')
+  assert.ok(!r.steps.some((s) => s.id === 's-question-partner'))
+  const guestsHelp = (stepById['guests-mfa'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
+  assert.ok(guestsHelp.some((l) => /Delegated administration \(GDAP\) and ordinary guest \(B2B\) access are separate/.test(l)), 'the GDAP warning did not land on the guests policy')
+  const geoHelp = (stepById['geo-restriction'] as unknown as { more?: { helpDesk?: string[] } }).more?.helpDesk ?? []
+  assert.ok(geoHelp.some((l) => /exclude service providers/.test(l)), 'the countries policy does not say it carries the exclusion')
+  assert.ok(manualEvidenceFields('s-goal-guests-mfa').some((f) => f.key === 'providerAccessPath'), 'the provider access path did not move to the guests policy')
 
   // The service-accounts step names the printer.
   const sa = r.steps.find((s) => s.id === PREREQ_STEP_ID.serviceAccountsGroup)

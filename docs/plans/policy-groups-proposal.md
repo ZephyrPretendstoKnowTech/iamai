@@ -55,6 +55,13 @@ Cleanup deriver an empty array. The row, its words and its note control are gone
 the review rows are the one source (finding 8). Ongoing Checks and Cleanup is 8
 listed members plus the review rows.
 
+An eleventh was a pointer. `s-question-partner`'s whole instruction was to go and
+read the Implementation of Require MFA for Guests and Block Sign-ins From
+Countries Not Allowed, both of which already carry the Service provider exclusion
+the answer asks for. Its one original warning is now the guests policy's
+help-desk line and its evidence field is on that step, so Turn On MFA for
+Everyone is 7 (finding 5).
+
 ### 1. Establish Emergency Access — pinned, unchanged
 
 Frozen. Drawn above the lanes until all four are Completed.
@@ -105,8 +112,7 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 4 | Turn Off Security Defaults | `s-prereq-security-defaults` |
 | 5 | Require MFA for Everyone | `s-goal-mfa-all-users` |
 | 6 | Require MFA for Guests | `s-goal-guests-mfa` |
-| 7 | Exclude the Partner or MSP Accounts | `s-question-partner` |
-| 8 | Finish Moving Off Per-User MFA | `s-prereq-per-user-mfa` |
+| 7 | Finish Moving Off Per-User MFA | `s-prereq-per-user-mfa` |
 
 ### 6. Control Where People Sign In From — new (§3 wave 5)
 
@@ -173,7 +179,7 @@ member, in the order the board hands it over.
 2. **Group 8's name.** It carries two different jobs — risk response (P2 only)
    and session hardening — because neither is four steps on its own. Splitting
    them gives a 4 and a 2.
-3. **Group 5's length.** Eight steps is the longest list here. Splitting the
+3. **Group 5's length.** Seven steps is the longest list here. Splitting the
    registration pair (1–2) into the "Close the Doors" group would give a 7 and
    a 7, at the cost of putting protective work under a blocking heading.
 4. **The On Hold tab's headings.** They used to be the blocker kind ("Baseline

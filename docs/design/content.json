@@ -3672,53 +3672,6 @@
       "aiFocus": "Explain the tradeoffs of the existing choices and their downstream scope. Do not invent a default or imply that saving a choice configures devices."
     },
     {
-      "id": "s-question-partner",
-      "kind": "check",
-      "title": "Exclude the Partner or MSP Accounts",
-      "changeLine": null,
-      "why": "Partner access can use a different sign-in path from ordinary guest collaboration. Identify that path before changing external-user rules so approved support access is not accidentally interrupted.",
-      "learn": {
-        "url": "https://learn.microsoft.com/partner-center/customers/gdap-introduction"
-      },
-      "who": {
-        "lead": "You said: {partnerAnswer}"
-      },
-      "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed carry your chosen Service provider exclusion in their Implementation instructions. Follow each policy step's current action; do not recreate a policy that is already in place.",
-          "Delegated administration (GDAP) and ordinary guest (B2B) access are separate paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
-        ]
-      },
-      "dates": null,
-      "doneWhen": [
-        "Both policies exclude the Service provider type on the next scan, where you chose to exclude service providers.",
-        "The partner's approved access path still works."
-      ],
-      "ifWrong": null,
-      "comms": null,
-      "doesntApply": false,
-      "skip": true,
-      "scanControl": true,
-      "more": {
-        "risks": [
-          {
-            "text": "A partner whose own tenant does not require MFA signs in here with a password alone.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": null,
-        "manager": null,
-        "waits": null
-      },
-      "example": {
-        "tenant": "Contoso Pty Ltd",
-        "partnerAnswer": "Exclude service providers (they use their own tenant's MFA)"
-      },
-      "aiFocus": "Distinguish delegated administration, external-user types and B2B trust. Include affected policies and the saved decision without inferring trust from a partner name."
-    },
-    {
       "id": "s-question-mail-devices",
       "kind": "check",
       "title": "Update How Devices Send Email",
@@ -4270,7 +4223,8 @@
         ],
         "helpDesk": [
           "For a blocked guest, inspect the sign-in result, applied guest policy, external-user type and home organization. Compare the required authentication strength with the method and trust evidence on that path.",
-          "Review inbound MFA trust only for the specific partner and approved collaboration requirement. A trust change is a security decision, not a general sign-in workaround."
+          "Review inbound MFA trust only for the specific partner and approved collaboration requirement. A trust change is a security decision, not a general sign-in workaround.",
+          "Delegated administration (GDAP) and ordinary guest (B2B) access are separate sign-in paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
         ],
         "manager": "Outside people you share with prove who they are, the same as staff. Without this, a partner's stolen password is a way into your files.",
         "waits": null
@@ -4738,7 +4692,8 @@
         ],
         "helpDesk": [
           "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
-          "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit."
+          "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.",
+          "Partner or provider access: where you chose to exclude service providers, this policy carries that exclusion in its Implementation instructions. Confirm the partner's approved access path still works before treating a block as a fault."
         ],
         "manager": "Sign-ins from countries outside the approved list are blocked, based on the network address the sign-in comes from.",
         "waits": null,

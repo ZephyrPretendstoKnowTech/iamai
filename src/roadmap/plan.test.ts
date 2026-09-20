@@ -109,10 +109,10 @@ test('an older schema upgrades with defaults; a newer one is refused with a plai
 test('saved plan restores scoped workflow evidence without upgrading old confirmations', () => {
   const record = { at: '2026-09-14T12:00:00.000Z', basis: 'test-target', outcome: 'passed' as const, testedAt: '2026-09-14', accountIds: ['u-1'], workflow: 'Vendor portal', reference: 'CHG-123', replacementAccountId: 'u-2', roleIds: ['role-a'], exceptionRemoved: true }
   const old = { at: '2026-09-13T12:00:00.000Z', basis: 'legacy' }
-  const file = buildPlanFile({ planId: 'plan-rt', snapshot, operator: { userId: 'u-1', userPrincipalName: 'alex@example.com' }, baselineSource: { kind: 'upload', fileName: 'synthetic.json' }, mapping: emptyMappingState(snapshot.tenantId), steps: generate(), checkpoints: [], confirmations: { 's-question-partner': { 'manual-review': record }, old: { review: old } } })
+  const file = buildPlanFile({ planId: 'plan-rt', snapshot, operator: { userId: 'u-1', userPrincipalName: 'alex@example.com' }, baselineSource: { kind: 'upload', fileName: 'synthetic.json' }, mapping: emptyMappingState(snapshot.tenantId), steps: generate(), checkpoints: [], confirmations: { 's-goal-guests-mfa': { 'manual-review': record }, old: { review: old } } })
   const restored = parsePlanFile(JSON.stringify(file))
   assert.equal(restored.error, null)
-  assert.deepEqual(restored.plan!.decisions!.confirmations!['s-question-partner']['manual-review'], record)
+  assert.deepEqual(restored.plan!.decisions!.confirmations!['s-goal-guests-mfa']['manual-review'], record)
   assert.deepEqual(restored.plan!.decisions!.confirmations!.old.review, old)
 })
 

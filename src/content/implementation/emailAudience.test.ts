@@ -41,7 +41,6 @@ const REVIEWED: Readonly<Record<string, Readonly<Record<string, readonly [string
   's-prereq-service-accounts-group': { 'email.owners.confirm': ['application-owners', 'Please confirm which listed accounts run unattended jobs, the workload each supports, and its owner. Flag'] },
   's-prereq-trusted-location': { 'email.network.confirm': ['network-owner', 'Please confirm the public IP ranges we may treat as trusted, who controls them, and whether they can chan'] },
   's-question-mail-devices': { 'email.owner': ['device-owner', 'Please send IT the device\'s current mail settings, supported authentication methods, recipient requiremen'], 'email.device-owner': ['device-owner', 'Please provide a test window'] },
-  's-question-partner': { 'email.decision': ['client-contact', 'Please confirm how your team administers this tenant and which access must continue during the rollout. W'] },
   's-shared-devices': { 'email.change': ['help-desk', 'If a room or shared device stops signing in, record'] },
   's-verify-mfa': { 'email.everyone': ['all-users', 'Please complete the sign-in method setup requested by IT, then sign in once using that method. Contact IT'], 'email.admins': ['administrators', 'Admin sign-ins need a stronger method than the general setup request. If IT has asked you to, register a '], 'email.holdout': ['rollout-administrators', 'The enrollment date has passed and some active people still have not shown a successful sign-in with a re'] },
 }
@@ -56,7 +55,6 @@ const NEEDS_AUTHORING: Readonly<Record<string, readonly string[]>> = {
 /** Audiences the package author wrote on the block itself (not assigned by review). */
 const AUTHORED_ON_BLOCK: Readonly<Record<string, readonly string[]>> = {
   's-goal-inforcer-mfa': ['email.rollout', 'email.enforce'],
-  's-question-partner': ['email.change'],
   's-goal-device-registration-mfa': ['email.users.pre-enforcement'],
   's-goal-pim-activation-reauth': ['email.admins.pre-activation-change'],
   's-goal-session-lifetime': ['email.users.pre-enforcement'],
@@ -100,8 +98,9 @@ test('every Email audience is the author’s or established by the Email’s own
   // 52 reviewed: 46 unchanged, 1 corrected (account-owner), 5 withheld for authoring; the guest
   // creation Email was since authored with its reader (content corrections pass): 48. The
   // trip-operations package left with its step and took its three Emails
-  // (docs/plans/step-redundancy-analysis.md finding 4): 45.
-  assert.equal(reviewed, 45, 'the reviewed Email count changed: review the new audience against its text')
+  // (finding 4): 45. The partner follow-up folded into the guests policy and took
+  // its one (finding 5): 44.
+  assert.equal(reviewed, 44, 'the reviewed Email count changed: review the new audience against its text')
 })
 
 test('an Email withheld for authoring is refused by the validator, so it is never shown with a guessed recipient', () => {
