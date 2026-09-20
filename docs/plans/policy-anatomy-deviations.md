@@ -366,3 +366,48 @@ in neither map draws "Tenant settings", which says nothing about the step.
 `impact.fallbackLabel`; `IMPACT_TOPICS` in `rowWho.ts` remains a second place
 where a row's word can live, keyed by goal id rather than step id. Two maps for
 one column is not this group's to collapse.
+
+---
+
+## Respond to Risk and Limit Sessions (group 8, 2026-09-20)
+
+`docs/plans/risk-and-sessions-spec.md`. No component, CSS class, heading, pill
+or tag was added. Three things the anatomy could not say, left alone:
+
+### 11. A step that is Not licensed has no anatomy at all
+
+The group's four risk steps need Entra ID P2, and the demo tenant holds P1. They
+are not steps there: they are one line each in the "Not licensed (6)" footer
+group — «Challenge High-Risk Sign-ins: needs a licence this tenant does not hold:
+Microsoft Entra ID P2» — with no About this Step, no Tasks Remaining and nothing
+to open. Everything the wave corrected in those four steps is therefore invisible
+on the demo, and was read on `mid`, which holds P2.
+
+That is the right behaviour for a plan (nothing waits on them), and it means the
+one tenant shape a reader is most likely to try is the one that cannot show four
+of this group's six steps. Not a deviation to fix; a limit on what a demo proves.
+
+### 12. "Ready to enforce" is a package state and a lane badge, and they can disagree
+
+On the demo's follow-up scan, with the Direction answers approved, Require Token
+Protection on Windows draws its **enforce** procedure — «Turn the policy on», «1
+check remaining · Enforced · Enable the reviewed policy, then verify the result»
+— while its badge reads «Up Next · Report-only», because a prerequisite (Verify
+Emergency Access) is still outstanding. The package has entered `readyToEnforce`;
+the lane has not reached `Ready · Ready to enforce`.
+
+Both readings are correct and neither is wrong on its own. A reader scanning
+badges sees Up Next and a reader following the step sees "turn it on". The
+anatomy has no place to say "the work is ready, the plan is not", and inventing
+one is an anatomy decision, not this group's words.
+
+### 13. A grant the pin holds and the machine channels do not
+
+Reset Passwords for Medium-Risk Users names one grant pair in its Entra
+procedure (the pin's) and writes another in its JSON and PowerShell (Microsoft's
+documented one, section 10.1 of the spec). The step says so in a sentence inside
+the Entra task, because the anatomy has no per-channel note: a channel tab
+carries its artifact and nothing that qualifies it. Saying it in the Entra task
+means a reader who never opens the JSON tab still learns it, and a reader who
+does opens a body the sentence has already explained. A per-channel caveat slot
+would be the proper home; that is an anatomy addition and is not made here.

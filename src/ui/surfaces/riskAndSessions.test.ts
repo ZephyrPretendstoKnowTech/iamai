@@ -29,6 +29,9 @@ import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned
 import { policyFacts } from '../../coverage/facts.ts'
 import { portalLines } from '../../roadmap/portalLines.ts'
 import { buildNameDirectory } from '../../names.ts'
+import { stepExportView } from './stepExport.ts'
+import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
+import type { ExportStep } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
 /** The group's six members, in registry order (roadmap/stepGroups.ts). */
@@ -57,6 +60,28 @@ function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBo
       const lane = laneViewOf(reading, titleOf)
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
       out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+    }
+    return out
+  } finally {
+    setDisplayTimeZone(null)
+  }
+}
+
+/** Every step's export view on a fixture: the one reading the print, the calendar and the prompt pack are built from. */
+function viewsOf(name: FixtureName): Map<string, ExportStep> {
+  setDisplayTimeZone('UTC')
+  try {
+    const f = fixture(name)
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const out = new Map<string, ExportStep>()
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      if (!reading) continue
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+      out.set(step.id, stepExportView(step, ctx, laneViewOf(reading, titleOf)))
     }
     return out
   } finally {
@@ -148,6 +173,27 @@ const TOKEN_PROTECTION = 's-goal-token-protection'
 
 test('the group is the six members the spec takes', () => {
   assert.deepEqual([...membersOf('risk-and-sessions')], RISK_AND_SESSIONS)
+})
+
+test('S1: every member reads the same About sentence on screen, in the export and in the prompt pack', () => {
+  // The screen's sentence, the export view's `why` and the prompt pack's lead
+  // line are one string (roadmap/artifactLines.ts leads with v.why), so this
+  // asserts they are still that one string for each member the fixture carries,
+  // on both the fixture with P2 and the one without.
+  for (const name of ['mid', 'demo'] as const) {
+    const bodies = bodiesOf(name)
+    const views = viewsOf(name)
+    for (const id of RISK_AND_SESSIONS) {
+      const b = bodies.get(id)
+      if (!b) continue
+      const onScreen = aboutOf(b)
+      assert.ok(onScreen.length > 0, `${name}/${id}: About this Step is empty`)
+      const view = views.get(id)!
+      assert.equal(view.why, onScreen, `${name}/${id}: the export view's About sentence is not the screen's`)
+      assert.equal(stepArtifactLines(view)[0], onScreen, `${name}/${id}: the prompt pack's lead line is not the screen's`)
+      assert.ok(!/\{[a-zA-Z]/.test(onScreen), `${name}/${id}: an unfilled variable reached the reader: ${onScreen}`)
+    }
+  }
 })
 
 // ---------------------------------------------------------------------------
