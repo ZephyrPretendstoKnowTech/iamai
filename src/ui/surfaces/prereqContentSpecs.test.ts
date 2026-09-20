@@ -124,7 +124,9 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
   assert.deepEqual(authoredParts(b['entra.create'].text), [
     {
       kind: 'list', ordered: true, start: 1, items: [
-        ['Go to Entra admin center → Authentication methods → Authentication strengths.'],
+        // protect-admins B1: the path Learn gives, and the role it takes; "not under
+        // Conditional Access" because that is where the step used to send people.
+        ['Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.'],
         ['Click + New authentication strength.'],
         ['Name: {{strength.target.displayName}}.'],
         ['Select exactly these methods: {{strength.target.methodNames}}.'],

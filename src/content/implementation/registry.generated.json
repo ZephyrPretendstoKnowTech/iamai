@@ -20103,8 +20103,16 @@
             "id": "ms-strength-custom",
             "authority": "Microsoft Learn",
             "title": "Create and Manage Custom Conditional Access Authentication Strengths",
-            "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strength-advanced-options",
-            "checkedOn": "2026-09-12",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strength-advanced-options",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-strength-overview",
+            "authority": "Microsoft Learn",
+            "title": "Overview of Conditional Access authentication strengths",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -20136,7 +20144,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Authentication methods → Authentication strengths.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
+          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Authentication strengths. It takes the Security Administrator role, and it is not under Conditional Access.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these methods: {{strength.target.methodNames}}.\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {

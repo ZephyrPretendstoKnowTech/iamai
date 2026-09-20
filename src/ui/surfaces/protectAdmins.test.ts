@@ -140,6 +140,41 @@ test('A6: the step shows the date its Microsoft sources were checked', () => {
   assert.equal(bodiesOf('demo').get(PASSKEY)!.sourceLine, 'Source checked Sep 20, 2026')
 })
 
+// ---------------------------------------------------------------------------
+// Create the Baseline's Authentication Strength (spec section 3)
+// ---------------------------------------------------------------------------
+
+const STRENGTH = 's-prereq-auth-strength'
+
+test('B1: the strength is made under Authentication methods, the one place Microsoft puts it', () => {
+  const steps = stepsOf(STRENGTH).join('\n')
+  assert.match(steps, /Authentication methods → Authentication strengths → New authentication strength/)
+  assert.match(steps, /It takes the Security Administrator role, and it is not under Conditional Access\./)
+  assert.doesNotMatch(steps, /Conditional Access → Authentication strengths/)
+  // The step and its package give the same path, so the fact has one source.
+  assert.match(blockText(STRENGTH, 'entra.create'), /Entra admin center → Entra ID → Authentication methods → Authentication strengths/)
+})
+
+test('B2: the baseline strength carries both Temporary Access Pass forms, said once in the evidence', () => {
+  // `who.none` is drawn when no strength in the tenant matches; the demo has
+  // none to match, so the sentence is read from the step it belongs to.
+  const none = String(((stepById[STRENGTH] as unknown as { who?: { none?: string } }).who ?? {}).none ?? '')
+  assert.match(none, /a Temporary Access Pass in both its one-time and its multi-use form/)
+  // And the procedure that creates it still lists the two options separately.
+  assert.match(stepsOf(STRENGTH).join('\n'), /Temporary Access Pass \(one-time\) · Temporary Access Pass \(multi-use\)/)
+})
+
+test('B3: If it goes wrong says when the strength can no longer be deleted', () => {
+  const ifWrong = String((stepById[STRENGTH] as unknown as { ifWrong?: string }).ifWrong ?? '')
+  assert.match(ifWrong, /^Delete the strength; no policy references it yet\./)
+  assert.match(ifWrong, /Once one does, Entra refuses the delete and asks you to confirm every edit\./)
+})
+
+test('B4: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(STRENGTH), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(STRENGTH)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
 // The unused readers below are kept for the sections that follow.
 void risksOf
 void helpDeskOf

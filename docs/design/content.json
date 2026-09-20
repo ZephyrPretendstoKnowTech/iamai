@@ -3508,13 +3508,13 @@
       "who": {
         "lead": "Custom strengths in {tenant} today: {list:strengths}",
         "match": "{matchedStrength} already allows exactly the baseline's combinations; it is used as is.",
-        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass."
+        "none": "None matches the baseline's {strengthName}: Windows Hello for Business, passkeys (FIDO2), certificate (multifactor), and a Temporary Access Pass in both its one-time and its multi-use form."
       },
       "decision": null,
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Conditional Access → Authentication strengths → New authentication strength.",
+          "Entra admin center → Entra ID → Authentication methods → Authentication strengths → New authentication strength. It takes the Security Administrator role, and it is not under Conditional Access.",
           "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
           "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
           "Next → Create. The policies that reference it are created in later steps."
@@ -3525,7 +3525,7 @@
         "An authentication strength named \"{strengthName}\" or an equivalent strength matches the baseline’s required method combinations and restrictions. IAMAI detects the match automatically.",
         "Every policy already using the strength still accepts the methods its users rely on."
       ],
-      "ifWrong": "Delete the strength; no policy references it yet.",
+      "ifWrong": "Delete the strength; no policy references it yet. Once one does, Entra refuses the delete and asks you to confirm every edit.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
