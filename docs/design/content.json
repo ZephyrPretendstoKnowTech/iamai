@@ -2419,13 +2419,14 @@
                 "used": "In use"
               },
               "seen": "{n} people used device code sign-in in the last 30 days.",
-              "notSeen": "No device code sign-ins in the last 30 days."
+              "notSeen": "No device code sign-ins in the last 30 days.",
+              "note": "Answering Not used builds the policy that blocks it. A session that once used device code stays tracked, so later requests in it can be blocked too, and a device can be signed out."
             },
             "partner": {
               "label": "Partner or MSP technicians who sign in to your tenant",
               "options": {
-                "no": "No",
-                "yes": "Yes"
+                "yes": "Yes",
+                "no": "No"
               },
               "seen": "{n} service-provider accounts signed in to this tenant.",
               "notSeen": "No service-provider sign-ins in the last 30 days."
@@ -2433,8 +2434,8 @@
             "externalMethods": {
               "label": "External authentication methods (a third-party MFA provider)",
               "options": {
-                "no": "No",
-                "yes": "Yes"
+                "yes": "Yes",
+                "no": "No"
               },
               "seen": "The authentication methods policy has an external method enabled.",
               "notSeen": "The authentication methods policy has no external method enabled."
@@ -2472,7 +2473,8 @@
                 "blocked": "Blocked from company data"
               },
               "today": "Today: {n} people signed in from phones.",
-              "todayNone": "Today: no phone sign-ins were seen."
+              "todayNone": "Today: no phone sign-ins were seen.",
+              "note": "Blocked from company data adds a policy of its own, Keep Company Data Off Phones, with its own report-only week and two tests from a phone before it is enforced."
             },
             "deviceExceptions": {
               "label": "Devices that can't meet the rule (kiosks, lab machines)",

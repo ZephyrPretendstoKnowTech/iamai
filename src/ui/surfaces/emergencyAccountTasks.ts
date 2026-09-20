@@ -209,7 +209,7 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       instruction = 'Scan again so IAMAI can confirm the account has permanent, active Global Administrator access.'
     } else if (compatible === null) {
       title = 'Passkey check incomplete'
-      instruction = 'IAMAI could not fully check this account. Review the scan coverage details; no account change is established.'
+      instruction = 'IAMAI could not fully check this account. Open MFA Readiness and find it under Emergency access, where Evidence read says what could not be read. No account change is established.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
     const note = notes.get(id.toLowerCase())
@@ -305,6 +305,17 @@ export function emergencyTaskFacts(task: EmergencyAccountTask, variantId?: strin
   return selected?.facts ?? task.facts ?? []
 }
 
+/**
+ * A procedure line that heads a section rather than instructing: `## `, the
+ * convention the portal artifact is already read back with (policyTasks.ts
+ * portalProcedureOf). Two of them number an Emergency Access procedure's
+ * sections, and numbering them made steps that instruct nothing.
+ */
+export const PROCEDURE_HEADING = /^#{1,6}\s+/
+export const isProcedureHeading = (line: string): boolean => PROCEDURE_HEADING.test(line)
+/** A heading line without its marker. */
+export const procedureHeadingText = (line: string): string => line.replace(PROCEDURE_HEADING, '')
+
 export function emergencyTaskSteps(task: EmergencyAccountTask, variantId?: string | null): string[] {
   if (!task.variants?.length) return task.steps
   const selected = task.variants.find(variant => variant.id === variantId) ?? task.variants.find(variant => variant.id === task.defaultVariantId) ?? task.variants[0]
@@ -317,7 +328,11 @@ export function emergencyTaskText(task: EmergencyAccountTask, variantId?: string
   const heading = `**${task.title}**${task.targetUpn ? `\n\nTarget: ${task.targetUpn}` : ''}`
   const taskFacts = emergencyTaskFacts(task, variantId)
   const facts = taskFacts.length ? `\n\n${taskFacts.map(row => `- **${row.label}:** ${row.value}`).join('\n')}` : ''
-  return `${heading}${facts}\n\n${emergencyTaskSteps(task, variantId).map((line, index) => `${index + 1}. ${line}`).join('\n')}`
+  // A heading numbers nothing: the count runs over the instructions only, so
+  // the copied text and the screen read the same procedure.
+  let n = 0
+  const lines = emergencyTaskSteps(task, variantId).map((line) => (isProcedureHeading(line) ? `**${procedureHeadingText(line)}**` : `${++n}. ${line}`))
+  return `${heading}${facts}\n\n${lines.join('\n')}`
 }
 
 /** Deterministic flattened output for exports and the Entra artifact. */

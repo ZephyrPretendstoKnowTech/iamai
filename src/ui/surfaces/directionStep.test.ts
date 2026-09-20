@@ -12,6 +12,8 @@ import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionWords } from '../../content/content.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
+import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
+import { emergencyTaskSteps, emergencyTaskText, isProcedureHeading, procedureHeadingText } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const W = directionWords
@@ -119,4 +121,65 @@ test('the Trusted Network step does not ask what Decide Where People Sign In Fro
     assert.doesNotMatch(String(finding.value), /Choose your office networks/)
     assert.doesNotMatch(String(finding.detail ?? ''), /Select your office networks or confirm that everyone is remote/)
   }
+})
+
+test('the six text fixes the owner approved on the frozen steps, 2026-09-20', () => {
+  // Frozen means frozen; these six are the owner's named exceptions, text only.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const questionsOf = (id: string) => r.steps.find((s) => s.id === id)!.directionQuestions ?? []
+  const use = questionsOf(DIRECTION_STEP.use)
+  const devices = questionsOf(DIRECTION_STEP.devices)
+
+  // 1. Device code sign-in never said what answering it does: a session that
+  //    used the flow stays tracked, so later requests in it can be blocked and
+  //    a device can be signed out (close-doors-spec.md section 4, ms-auth-flows).
+  const code = use.find((q) => q.key === 'deviceCode')!
+  assert.match(code.note ?? '', /stays tracked/)
+  assert.match(code.note ?? '', /signed out/)
+
+  // 2. Blocked from company data adds a policy step of its own, which the
+  //    question never said.
+  const phones = devices.find((q) => q.key === 'phones')!
+  assert.match(phones.note ?? '', /Keep Company Data Off Phones/)
+  assert.match(phones.note ?? '', /report-only/)
+
+  // 3. The same dropdown position means the same thing: the service questions
+  //    read Yes/No, and these two read No/Yes beside them on one screen.
+  const pair = (key: string) => use.find((q) => q.key === key)!.options.map((o) => o.value)
+  const service = use.find((q) => q.key.startsWith('service:'))
+  if (service) assert.deepEqual(service.options.map((o) => o.value), ['yes', 'no'], 'the premise: a service question reads Yes/No')
+  assert.deepEqual(pair('partner'), ['yes', 'no'])
+  assert.deepEqual(pair('externalMethods'), ['yes', 'no'])
+
+  // 4. A Direction step's Next milestone was a bare date where every other step
+  //    has a sentence. Its own contract already carried one.
+  for (const id of DIRECTION_STEP_IDS) {
+    const step = r.steps.find((s) => s.id === id)!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[id] ?? null }
+    assert.notEqual(stepBodyOf(step, ctx).rail.sub, '', `${id}: a bare date under Next milestone`)
+  }
+})
+
+test('a procedure heading heads a section instead of numbering an instruction', () => {
+  // Two lines of the passkey preparation were section headings numbered as if
+  // they were instructions, and the second's section held nothing because the
+  // chosen variant carries its steps (owner, 2026-09-20).
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'prepare-affected-passkeys')!
+  const lines = emergencyTaskSteps(task, task.defaultVariantId)
+  const headings = lines.filter(isProcedureHeading).map(procedureHeadingText)
+  assert.deepEqual(headings, ['Compatible alternative', 'Replacement registration — only if needed'])
+  // The copied text numbers the instructions only, and bolds the headings.
+  const text = emergencyTaskText(task, task.defaultVariantId)
+  assert.match(text, /\n\*\*Compatible alternative\*\*\n/)
+  assert.doesNotMatch(text, /\d+\. \*\*Compatible alternative/)
+  const numbers = [...text.matchAll(/^(\d+)\. /gm)].map((m) => Number(m[1]))
+  assert.deepEqual(numbers, numbers.map((_, i) => i + 1), 'the numbering skips or repeats')
+  // The screen draws the headings outside the list, and the list carries on counting.
+  assert.match(CONTENT_STEP, /<ProcedureSteps lines=\{emergencyTaskSteps\(item, variant\)\} \/>/)
+  assert.match(CONTENT_STEP, /<ol start=\{block\.start\}>/)
 })

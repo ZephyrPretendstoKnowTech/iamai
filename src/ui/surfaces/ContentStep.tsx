@@ -71,7 +71,7 @@ import { prerequisiteBasis } from '../../content/implementation/project.ts'
 import type { OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
+import { emergencyTaskFacts, emergencyTaskSteps, emergencyTaskText, isProcedureHeading, procedureHeadingText } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyReadiness.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
@@ -718,6 +718,34 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
+/**
+ * A task's numbered procedure, where a line can head a section rather than
+ * instruct (`## `, emergencyAccountTasks.ts isProcedureHeading).
+ *
+ * Two lines of the passkey preparation were section headings numbered as if
+ * they were instructions, and the second's section then held nothing, because
+ * the chosen variant carries its steps (owner, 2026-09-20). A heading closes the
+ * list and the next list carries on counting, so the procedure still numbers
+ * one to N over the things there are to do.
+ */
+function ProcedureSteps({ lines }: { lines: string[] }) {
+  const blocks: { heading: string | null; start: number; items: string[] }[] = []
+  let n = 0
+  for (const line of lines) {
+    if (isProcedureHeading(line)) {
+      blocks.push({ heading: procedureHeadingText(line), start: n + 1, items: [] })
+      continue
+    }
+    if (blocks.length === 0) blocks.push({ heading: null, start: 1, items: [] })
+    blocks[blocks.length - 1].items.push(line)
+    n += 1
+  }
+  return <>{blocks.map((block, index) => <Fragment key={index}>
+    {block.heading && <p className="emergency-task-target">{block.heading}</p>}
+    {block.items.length > 0 && <ol start={block.start}>{block.items.map((line, i) => <li key={i}><AuthoredText text={line} /></li>)}</ol>}
+  </Fragment>)}</>
+}
+
 export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
@@ -776,7 +804,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       <h5 className={printing ? undefined : 'sr-only'}>{item.title}</h5>
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
       {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
-      <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
+      <ProcedureSteps lines={emergencyTaskSteps(item, variant)} />
       {/* The resolved settings this procedure was written against, on the one
           policy the owner is judging them on (owner, 2026-09-19). They are the
           task's own facts — printed and copied already — under the heading the
