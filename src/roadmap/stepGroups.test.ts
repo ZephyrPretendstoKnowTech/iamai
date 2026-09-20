@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, groupPositions, isGroupMember, membersOf, pinnedGroups, positionInGroup, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
+import { DIRECTION_GROUP, EMERGENCY_ACCESS_GROUP, STEP_GROUPS, anatomyOf, groupOf, groupPositions, groupTotals, isGroupMember, membersOf, pinnedGroups, positionInGroup, usesDecisionAnatomy, usesTaskAnatomy } from './stepGroups.ts'
 import type { StepGroup } from './stepGroups.ts'
 import { EMERGENCY_STEP_IDS, groupTitleOf, openInActivePinnedGroup, partitionPinnedGroups, pinnedBoardGroups } from '../ui/surfaces/planBoard.ts'
 import type { BoardItem } from '../ui/surfaces/planBoard.ts'
@@ -80,23 +80,22 @@ test('every step is in exactly one group: a listed id beats a prefix, a prefix b
   for (const g of STEP_GROUPS) assert.equal(g.anatomy !== null, g.pinned, `${g.key}: anatomy and pinning disagree`)
 })
 
-test('a number is a place in the group, not a place in the list: it comes from the registry and survives a filter', () => {
+test('a number is a place among the group’s own rows, in registry order, and the whole row set decides it', () => {
   const ids = ['s-goal-block-auth-transfer', 's-goal-block-legacy-auth', 's-review-baseline-one', 's-review-baseline-two', 's-goal-mfa-all-users']
   const all = groupPositions(ids)
-  // Listed members take their registry positions, whatever order they arrive in.
+  // Registry order, whatever order they arrive in — and no gap for a member this
+  // set does not carry, because the board would draw no row there.
   assert.equal(all.get('s-goal-block-legacy-auth'), 1)
-  assert.equal(all.get('s-goal-block-auth-transfer'), 4)
-  assert.equal(positionInGroup('s-goal-block-auth-transfer'), 4)
-  assert.equal(all.get('s-goal-mfa-all-users'), 5)
-  // A prefix member has no registry position: it numbers after every listed one, in the order handed over.
-  const ongoing = STEP_GROUPS.at(-1)!
+  assert.equal(all.get('s-goal-block-auth-transfer'), 2)
+  assert.equal(positionInGroup('s-goal-block-auth-transfer'), 4, 'the registry position is still the registry’s')
+  assert.equal(all.get('s-goal-mfa-all-users'), 1)
+  // A prefix member has no registry position: it numbers after every listed one, by id.
   assert.equal(positionInGroup('s-review-baseline-one'), null)
-  assert.equal(all.get('s-review-baseline-one'), ongoing.members.length + 1)
-  assert.equal(all.get('s-review-baseline-two'), ongoing.members.length + 2)
-  // The gaps are honest: a filtered set gives the same numbers, not 1, 2, 3.
-  const filtered = groupPositions(['s-goal-block-legacy-auth', 's-goal-block-auth-transfer'])
-  assert.equal(filtered.get('s-goal-block-legacy-auth'), 1)
-  assert.equal(filtered.get('s-goal-block-auth-transfer'), 4)
+  assert.equal(all.get('s-review-baseline-one'), 1)
+  assert.equal(all.get('s-review-baseline-two'), 2)
+  // The set handed in is the WHOLE board, so a tab filtering afterwards keeps
+  // these numbers and its gaps are rows on another tab.
+  assert.deepEqual([...groupTotals(ids)].sort(), [['close-doors', 2], ['mfa-everyone', 1], ['ongoing', 2]].sort())
   assert.equal(positionInGroup('s-goal-nobody-placed-this'), null, 'a catch-all member has no registry position either')
 })
 

@@ -31,7 +31,9 @@ import {
   asideGroupsFor,
   boardWhen,
   focusCounts,
+  groupKeyOf,
   groupSummary,
+  groupTotalsOf,
   groupsFor,
   holdGroupOf,
   laneLabelOf,
@@ -219,11 +221,15 @@ test('a row is numbered by its place in its group and keeps that number when a t
       byGroup.set(key, [...(byGroup.get(key) ?? []), n!])
     }
     for (const [key, ns] of byGroup) assert.equal(new Set(ns).size, ns.length, `${name}/${key}: two rows share a number`)
-    // A listed member's number is its registry position, whatever the board holds.
+    // The registry decides the ORDER; the board's own rows decide the numbers,
+    // so a group's numbers run 1..n over the rows it has and the highest is its
+    // row count. A registry member this tenant does not carry leaves no gap:
+    // "1 step" under a row numbered 5 was a promise of four rows that were not
+    // anywhere in the plan.
+    for (const [key, ns] of byGroup) assert.deepEqual([...ns].sort((a, b) => a - b), ns.map((_, i) => i + 1), `${name}/${key}: the numbers do not run 1..n over the group's rows`)
     for (const g of STEP_GROUPS) {
-      g.members.forEach((id, at) => {
-        if (items.some((i) => i.id === id)) assert.equal(numbers.get(id), at + 1, `${name}/${id}: not its registry position`)
-      })
+      const present = g.members.filter((id) => items.some((i) => i.id === id))
+      present.forEach((id, at) => assert.equal(numbers.get(id), at + 1, `${name}/${id}: not its place among the group's rows`))
     }
     // And a filtered tab does not renumber: the gaps are the rows the tab left out.
     for (const tab of LANES) {
@@ -464,18 +470,25 @@ test('the board reads the timing value and never writes it: no date is recalcula
 
 // ------------------------------------------------------------------ the groups
 
-test('a group summary counts the rows under it, so the heading cannot disagree with the group', () => {
+test('a group summary counts the rows under it, and says so when a tab left some of the group elsewhere', () => {
+  let filtered = 0
   for (const name of FIXTURES) {
     const items = itemsFor(name)
+    const totals = groupTotalsOf(items)
     for (const tab of LANES) {
       const shown = applyFocus(items, tab, ALL)
       for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
         const n = g.items.length
-        assert.equal(groupSummary(g), `${n} step${n === 1 ? '' : 's'}`, `${tab}/${g.key}: the summary says more than its own row count (A1b: no attention count)`)
+        const total = groupKeyOf(g) !== null ? totals.get(groupKeyOf(g)!) ?? null : null
+        // Never a count of anything but rows (A1b: no attention count), and
+        // never its own selection presented as the whole run.
+        assert.equal(groupSummary(g, total), total !== null && total > n ? `${n} of ${total} steps` : `${n} step${n === 1 ? '' : 's'}`, `${tab}/${g.key}`)
         assert.ok(g.items.length > 0, `${tab}/${g.key}: an empty group is drawn`)
+        if (total !== null && total > n) filtered += 1
       }
     }
   }
+  assert.ok(filtered > 0, 'no tab showed part of a group, so this proves nothing')
 })
 
 test('the board vocabulary is one record, and Ready is the default tab', () => {
