@@ -43,7 +43,9 @@ test('Dormant Accounts: the briefing carries every account IAMAI observed, with 
     const o = opened(name, 's-check-dormant-accounts')
     assert.equal(o.unavailable, false, `${name}: AI Info is not drawn`)
     const { own, facts } = split(o.ai)
-    assert.match(own, /IAMAI lists enabled accounts with no sign-in recorded/, `${name}: the package's own words lead`)
+    // The package's own words lead; "successful" is the reading corrected in
+    // docs/plans/ongoing-spec.md §2 (IAMAI reads lastSuccessfulSignInDateTime).
+    assert.match(own, /IAMAI lists enabled accounts with no successful sign-in recorded/, `${name}: the package's own words lead`)
     assert.ok(facts.startsWith(`${F.heading}\n\n${F.boundary}`), `${name}: no facts heading and boundary`)
     const ex = stepVars(o.step, o.ctx) as Record<string, unknown>
     const words = ex.accountsWithState as string[]
