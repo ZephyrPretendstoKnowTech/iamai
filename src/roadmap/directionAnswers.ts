@@ -110,6 +110,16 @@ const OWN: Readonly<Partial<Record<DirectionQuestionKey, readonly string[]>>> = 
   deviceExceptions: ['none', 'some'],
   travel: ['allowed', 'never'],
 }
+/**
+ * The office network's three answers, persisted under the Direction step's own
+ * id *as well as* the trusted-location decision (owner, 2026-09-20). It is not
+ * in OWN, because OWN means "only Direction asks this" and reads nothing else:
+ * an answer saved before Direction existed still has to read. The legacy
+ * decision cannot tell "we have an office, it is not in Entra yet" from "nobody
+ * has answered" — both are the office-network option with nothing picked — so
+ * the own key carries the answer and the legacy reading remains the fallback.
+ */
+const OFFICE_NETWORK = ['office', 'notInEntra', 'remote'] as const
 
 type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'allowedCountries' | 'workCountriesConfirmed'>
 
@@ -171,8 +181,11 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
       const p = phonesOf(m)
       return p === null ? null : answer(p)
     }
-    case 'officeNetwork':
+    case 'officeNetwork': {
+      const own = m.questionAnswers?.[answerKey(DIRECTION_STEP.locations, 'officeNetwork')]
+      if (typeof own === 'string' && (OFFICE_NETWORK as readonly string[]).includes(own)) return own === 'office' ? answer('office', m.trustedLocationIds) : answer(own)
       return confirmed(m, 'trustedLocations') ? (m.trustedLocationIds.length > 0 ? answer('office', m.trustedLocationIds) : answer('remote')) : null
+    }
     case 'workCountries':
       return (m.workCountriesConfirmed === true || confirmed(m, 'countries')) && m.allowedCountries.length > 0 ? answer('some', m.allowedCountries.map((c) => c.toUpperCase())) : null
     default:
@@ -264,9 +277,14 @@ export function legacyDecisionsOf(stepId: DirectionStepId, d: StepDecision, prev
   }
   const network = answers.officeNetwork
   if (network) {
-    const remote = network.value !== 'office'
+    // Three answers, two legacy shapes. "Everyone works remotely" sets the step
+    // aside; both "we have one" answers keep it, and the one with nothing picked
+    // is the tenant whose office is not a named location yet (decisions.ts:
+    // office-network with an empty pick leaves its own question unanswered).
+    const remote = network.value === 'remote'
+    if ((OFFICE_NETWORK as readonly string[]).includes(network.value)) own.officeNetwork = network.value
     const kept = previous[PREREQ_STEP_ID.trustedLocation]?.answers
-    out.push([PREREQ_STEP_ID.trustedLocation, { picked: remote ? [] : network.picked, option: remote ? 'remote' : 'office-network', ...(kept ? { answers: kept } : {}), at }])
+    out.push([PREREQ_STEP_ID.trustedLocation, { picked: network.value === 'office' ? network.picked : [], option: remote ? 'remote' : 'office-network', ...(kept ? { answers: kept } : {}), at }])
   }
   const countries = answers.workCountries
   if (countries && countries.picked.length > 0) {

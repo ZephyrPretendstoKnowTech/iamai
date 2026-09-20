@@ -2491,10 +2491,12 @@
               "label": "The office network",
               "options": {
                 "office": "Trusted locations",
+                "notInEntra": "We have an office network, but it is not in Entra yet",
                 "remote": "Everyone works remotely"
               },
               "seen": "{n} named locations are marked trusted.",
-              "notSeen": "No named location is marked trusted."
+              "notSeen": "No named location is marked trusted.",
+              "note": "Answering that it is not in Entra yet keeps Define the Trusted Network on your plan, where you name the office and its approved public ranges. IAMAI does not read sign-in addresses, so it cannot suggest them."
             },
             "workCountries": {
               "label": "Work countries",

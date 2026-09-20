@@ -186,8 +186,14 @@ function locationQuestions(ctx: Context): DirectionQuestion[] {
   return [
     question('officeNetwork', ctx, {
       label: Q.officeNetwork.label, control: 'locations', options: optionsOf(Q.officeNetwork.options), pickedWith: 'office',
-      suggested: trusted.length > 0 ? answer('office', trusted) : answer('remote'),
+      // A tenant with no trusted named location is not thereby all-remote, and
+      // the scan reads nothing either way. Suggesting "Everyone works remotely"
+      // switched off the step that would have defined the office network in the
+      // first place, on no evidence; the suggestion that keeps the work on the
+      // plan is the conservative one (owner, 2026-09-20).
+      suggested: trusted.length > 0 ? answer('office', trusted) : answer('notInEntra'),
       evidence: !read ? W.defaultEvidence : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length }) : Q.officeNetwork.notSeen,
+      note: Q.officeNetwork.note,
     }),
     question('workCountries', ctx, {
       label: Q.workCountries.label, control: 'countries', options: [], pickedWith: 'some',
