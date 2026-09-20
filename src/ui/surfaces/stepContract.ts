@@ -40,7 +40,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
-import { BLOCKED_REASON, READINESS_MEASURE } from '../../copy/reasons.ts'
+import { BLOCKED_REASON, BLOCKED_SUBJECT, READINESS_MEASURE } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
@@ -1374,15 +1374,20 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
   const t = R().tiles
   return c.fix.map((f): ReadinessTile => {
     const [kind, ...rest] = f.key.split(':')
+    // The card is headed by what is being waited on, and checked by its state
+    // (owner, 2026-09-20). A step that waits on four others drew four cards all
+    // headed "Prerequisite · To do", each naming a different step underneath —
+    // the inverse of an Emergency Access card, where the subject heads it and
+    // the check is beneath (quality audit 2.4).
     if (kind === 'step' || kind === 'missing') {
       const id = rest.join(':')
       const title = stepById[id]?.title ?? cleanupTitleOf(id) ?? id
-      if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: t.mapping, tone: 'warn', value: title, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
-      return { key: f.key, label: prerequisiteLabel(id) ?? t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
+      if (kind === 'missing' && prerequisiteLabel(id) === 'Prerequisite · Completed') return { key: f.key, label: title, tone: 'warn', value: t.mapping, note: fillText((CONTRACT as unknown as { fixCompletedReference: string }).fixCompletedReference, { step: title }), link: mappingsLink() }
+      return { key: f.key, label: title, tone: 'warn', value: prerequisiteLabel(id) ?? t.prerequisite, note: f.text, link: stepLink(id, title) }
     }
     if (kind === 'direction' && isDirectionStep(rest.join(':'))) {
       const id = rest.join(':') as Parameters<typeof directionTitleOf>[0]
-      return { key: f.key, label: directionWords.waiting, tone: 'warn', value: directionTitleOf(id), note: f.text, link: stepLink(id, directionTitleOf(id)) }
+      return { key: f.key, label: directionTitleOf(id), tone: 'warn', value: directionWords.waiting, note: f.text, link: stepLink(id, directionTitleOf(id)) }
     }
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
@@ -1393,7 +1398,12 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
     // words the step's own action already uses — is the heading, and the
     // paragraph is the explanation under it.
     if (f.key === 'readiness:session-loop') return { key: f.key, label: t.blockers, tone: 'warn', value: shared.sessionLoopHold as string, note: f.text }
-    return { key: f.key, label: t.blockers, tone: 'warn', value: f.text, note: null }
+    // Every other blocker reads the same way: its subject is the check, and the
+    // binding — written to follow "Blocked · ", so lowercase and mid-clause — is
+    // the sentence beneath it (quality audit 2.3). A blocker with no subject
+    // written for it keeps the binding as its check rather than losing the fact.
+    const subject = BLOCKED_SUBJECT[rest.join(':')]
+    return { key: f.key, label: t.blockers, tone: 'warn', value: subject ?? f.text, note: subject ? f.text : null }
   })
 }
 
@@ -1430,7 +1440,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: prerequisiteLabel(b.id) ?? b.label, tone, value: title, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {
@@ -1443,7 +1453,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     if (b.kind === 'decision' && isDirectionStep(b.id)) {
       if (present.has(`direction:${b.id}`)) continue
       const title = directionTitleOf(b.id)
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: title, note: fillText(directionWords.waitingNote, { step: title }), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: b.label, note: fillText(directionWords.waitingNote, { step: title }), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
@@ -1495,8 +1505,17 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
       const topic = configuredTiles.find(t => t.key === 'configuration:' + key) ?? configuredTiles[0]
       if (extra.key.startsWith('engine:evidence:passkey-settings-')) continue
       // State the prerequisite once: "Finish X first." already names X.
-      const value = extra.note && extra.note.includes(extra.value) ? extra.note : [extra.value, extra.note].filter(Boolean).join('. ')
-      topic.items = [...(topic.items ?? []), { label: extra.label, value }]
+      //
+      // A folded prerequisite is a finding inside a topic, not a card of its
+      // own: its label is the check ("Prerequisite · To do") and its value is
+      // what is wrong. The card head swap (quality audit 2.4) heads the tile
+      // with the step and states its lane beneath, which is the opposite
+      // orientation, so the fold reads the tile's parts by what they are. The
+      // three steps this runs on are frozen, and their reading is unchanged.
+      const state = extra.value
+      const subject = extra.label
+      const value = extra.note && extra.note.includes(subject) ? extra.note : [subject, extra.note].filter(Boolean).join('. ')
+      topic.items = [...(topic.items ?? []), { label: state, value }]
       if (topic.tone === 'good') { topic.tone = extra.tone; topic.value = 'Review required' }
     }
     const tiles = configuredTiles.filter(t => t.tone !== 'good')
@@ -1506,7 +1525,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const facts = [...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(t.value)))
+  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers

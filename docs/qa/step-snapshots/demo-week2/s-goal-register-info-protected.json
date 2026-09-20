@@ -19,19 +19,19 @@
     },
     {
       "label": "Prerequisites",
-      "state": "when 1 Temporary Access Pass policy exist (now 0)"
+      "state": "Temporary Access Pass"
     },
     {
       "label": "Prerequisites",
-      "state": "when people without a method reaches 0 (now 7)"
+      "state": "People without a method"
     },
     {
       "label": "Prerequisites",
-      "state": "when 1 trusted location exist (now 0)"
+      "state": "Trusted location"
     },
     {
-      "label": "Waiting on your direction",
-      "state": "Confirm What You Use"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your direction"
     }
   ],
   "channels": [

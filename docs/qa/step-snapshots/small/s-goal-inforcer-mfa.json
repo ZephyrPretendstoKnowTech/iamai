@@ -19,11 +19,11 @@
     },
     {
       "label": "Prerequisites",
-      "state": "after: Identify the Inforcer application"
+      "state": "The Inforcer application"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Prepare Emergency Access Accounts"
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

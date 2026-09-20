@@ -19,7 +19,7 @@
     },
     {
       "label": "Prerequisites",
-      "state": "after: Identify the Inforcer application"
+      "state": "The Inforcer application"
     }
   ],
   "channels": [

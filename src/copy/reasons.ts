@@ -98,6 +98,16 @@ export const BLOCKED_REASON = {
   emergency: BLOCKED.emergency,
 }
 
+/**
+ * The subject a Tasks Remaining card is headed by where a step waits on a
+ * blocker, keyed by the blocker's own label (roadmap/generate.ts). The
+ * `blocked.*` sentences above are badge suffixes, written to follow
+ * "Blocked · ": as card headings they read lowercase and mid-clause. The
+ * heading is what is being waited on, and the sentence is its state, beneath
+ * (owner, 2026-09-20; quality audit 2.3).
+ */
+export const BLOCKED_SUBJECT: Record<string, string> = (pages.plan as { blockedSubject: Record<string, string> }).blockedSubject
+
 /** The measure a readiness threshold is stated against, by family. */
 export const READINESS_MEASURE: Record<string, string> = {
   mfa: 'MFA readiness',

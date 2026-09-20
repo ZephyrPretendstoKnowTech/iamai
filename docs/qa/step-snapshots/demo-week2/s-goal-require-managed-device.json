@@ -18,12 +18,12 @@
       "state": "30% of people on a compliant device"
     },
     {
-      "label": "Waiting on your direction",
-      "state": "Decide How People and Devices Sign In"
+      "label": "Decide How People and Devices Sign In",
+      "state": "Waiting on your direction"
     },
     {
-      "label": "Waiting on your direction",
-      "state": "Confirm What You Use"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your direction"
     }
   ],
   "channels": [

@@ -18,8 +18,8 @@
       "state": "Not confirmed"
     },
     {
-      "label": "Prerequisite · Waiting",
-      "state": "Register Your Own Passkey"
+      "label": "Register Your Own Passkey",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [

@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · To do",
-      "state": "Define the Trusted Network"
+      "label": "Define the Trusted Network",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

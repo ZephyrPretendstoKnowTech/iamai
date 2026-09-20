@@ -18,20 +18,20 @@
       "state": "30% of people on a compliant device"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Prepare Emergency Access Accounts"
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     },
     {
-      "label": "Waiting on your direction",
-      "state": "Decide How People and Devices Sign In"
+      "label": "Decide How People and Devices Sign In",
+      "state": "Waiting on your direction"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Configure Emergency Exclusions"
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Define the Trusted Network"
+      "label": "Define the Trusted Network",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

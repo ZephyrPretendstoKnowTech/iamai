@@ -22,24 +22,24 @@
       "state": "Not established"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Configure Emergency Exclusions"
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
     },
     {
       "label": "Prerequisites",
-      "state": "when 1 Temporary Access Pass policy exist (now 0)"
+      "state": "Temporary Access Pass"
     },
     {
       "label": "Prerequisites",
-      "state": "when people without a method reaches 0 (now 14)"
+      "state": "People without a method"
     },
     {
       "label": "Prerequisites",
-      "state": "when 1 trusted location exist (now 0)"
+      "state": "Trusted location"
     },
     {
-      "label": "Prerequisite · To do",
-      "state": "Prepare Emergency Access Accounts"
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
