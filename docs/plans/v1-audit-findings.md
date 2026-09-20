@@ -437,23 +437,41 @@ are in `docs/plans/v1-audit/`. Their severity-4 material, merged into the rankin
 above, is below. Two of their findings did not survive verification and are recorded
 as such rather than deleted.
 
-### S4-19 · The plan has one date — **verified independently**
+### S4-19 · WITHDRAWN — the plan's one date is deliberate, and I ranked it wrong
 
-Every fixture's schedule produces **one wave and one day**. Every `createReportOnly`
-transition lands on `2026-08-31`, including four scheduled for the same day as the
-prepare step they wait on. The step snapshots agree: the only future date in any
-fixture is `Aug 31, 2026`; everything else reads `After prerequisites`,
-`Not scheduled`, `Review now` or `Already in place`.
+**This finding does not stand. I raised its severity on my own judgement and was
+wrong; the correction matters more than the finding did.**
 
-Meanwhile Connect advertises **"3 weeks · estimated rollout"**, the Export card is
-headed **"Timing"**, and the ICS writes 11–13 events all on one day.
+What the pass observed is true: every `createReportOnly` in every fixture lands on
+`2026-08-31`, and the only future date in the step snapshots is that day. What it
+concluded from that is not.
 
-The product's headline claim is a *dated* rollout plan. Pass 3 rated this 3; it is
-ranked **4** here under the overstatement override, because the claim is the product's
-own and the artifact does not support it. `planFinish` reports `held: true` on 8 of 8
-fixtures, so the three-week figure is not merely wrong, it is unreachable.
+**Creating every report-only policy on one day is the design, and the reasoning is
+recorded in `schedule.ts` with its own history:** a report-only policy affects nobody,
+so it consumes no enforcement window and is not subject to the weekly cap. Because
+every policy exists from that day, **every observation window runs concurrently** — the
+enforcement tail does not pay for observation N times over. It used to create them a
+day later and that was corrected precisely because it credited each window with a day
+its policy did not yet exist.
 
-*Found by 3 (J-schedule). Reranked here; the owner should confirm or reverse that.*
+**The plan's length is not one day and does scale**: `schedule.weeks` is 1 on `demo`,
+2 on `mid`, 4 on `large`. The pass read `reportOnlyAt`, which is one day by design, and
+the step snapshots' rail, where a *held* step reads "After prerequisites" rather than a
+date — so the sample looked flat because the foundation gate holds most steps, which is
+the owner's own rule working.
+
+**"3 weeks · estimated rollout" is honest.** It is `planWeeks` (`derive/finish.ts`) —
+the plan's own computed length — and the word *estimated* is applied by the code
+exactly when the plan cannot yet commit to a finish. It is not a marketing figure over
+a one-day plan.
+
+**What remains, and it is small:** `schedule.weeks` and `planWeeks` are two numbers
+measuring different things (the band preset, and the derived finish) and can differ on
+one screen. Severity 1, and only if a reader ever sees both.
+
+**The lesson for the rest of this list:** I promoted this to a 4 on the strength of a
+strong-sounding pass summary without reading the producer. Every other rerank in this
+document is the pass's own severity, not mine.
 
 ### S4-20 · Security defaults block the plan's own first move, and nothing says so
 
