@@ -2256,7 +2256,8 @@
           "s-prereq-service-accounts-group": "Service accounts",
           "s-prereq-device-plan": "Phones and computers",
           "s-check-separate-admin-accounts": "Administrator accounts",
-          "s-shared-devices": "Shared-device accounts"
+          "s-shared-devices": "Shared-device accounts",
+          "s-goal-admin-portals-protected": "Administrator portals"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -4073,7 +4074,7 @@
       "kind": "policy",
       "title": "Block the Admin Portals for Non-Admins",
       "changeLine": null,
-      "why": "Restricting administrative portals can reduce unnecessary access. The rule must still allow the administrators and approved workflows that need those portals.",
+      "why": "This policy blocks the Microsoft admin portals and the Azure management resource for everyone the baseline names. Its definition spares no administrator, so who it must spare has to be settled before anyone deploys it.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
@@ -4107,6 +4108,18 @@
           },
           {
             "text": "Anyone with an Azure RBAC role but no directory role is blocked from the Azure portal and CLI.",
+            "applies": "always"
+          },
+          {
+            "text": "That Azure management resource also reaches Azure PowerShell, the Azure CLI and the Microsoft 365 admin center. It no longer reaches Azure DevOps.",
+            "applies": "always"
+          },
+          {
+            "text": "The admin-portals resource covers the portals, not the services behind them, so Microsoft Graph and its PowerShell stay open to whoever holds the role.",
+            "applies": "always"
+          },
+          {
+            "text": "A block here also stops everyone from the Microsoft 365 install page, because that page lives inside the admin center.",
             "applies": "always"
           }
         ],
