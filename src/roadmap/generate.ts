@@ -93,6 +93,7 @@ import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { namedEmergencyExclusions } from './cleanup.ts'
+import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
 import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, recoveryEvidenceSource } from './cleanupDone.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
@@ -617,6 +618,7 @@ export function buildCreateAction(
       const removes = current ? removedExclusions(current, patch) : undefined
       operations.push({
         ...(removes ? { removes } : {}),
+        ...(!removes && addsExclusionsOnly(patch, current) ? { addsExclusionsOnly: true as const } : {}),
         sourceName: p.sourceName,
         memberKey,
         mode: 'update',

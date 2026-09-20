@@ -1123,9 +1123,30 @@ export function awaitsWorkflowRecord(step: PolicyStep): boolean {
  * preparation is still offered beside it. The date is the promise that the
  * change lands, and there is no such promise while the number the plan itself
  * says to wait for has not been reached.
+ *
+ * A bounded correction to a policy the tenant already enforces is not held by it
+ * (owner, 2026-09-19): where every operation the step runs only adds exclusions
+ * to a policy that is already on (`PolicyOperation.addsExclusionsOnly`), it can
+ * stop nobody and only makes the way back in safer. The enforcement has already
+ * happened and the change reaches nobody new, so the threshold is informational,
+ * never a gate, and the correction is offered and dated like any other change.
+ * Any other change to an enforced policy — a grant, a wider scope, an exclusion
+ * taken away — asks something of people the moment it lands, and the threshold
+ * still holds it. The operations say so from the scan itself, so the generator's
+ * rings and schedule read the same answer the finished plan does.
+ *
+ * The plan's foundation is a separate wait and is untouched by this: no policy
+ * step is Ready until Establish Emergency Access and Decide Your Tenant's
+ * Direction are settled (roadmap/foundations.ts).
  */
 export function enforcementHeld(step: PolicyStep): boolean {
-  return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped'
+  return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step)
+}
+
+/** True when the step runs operations and each one only adds exclusions to a policy the tenant already has on, submitting no enforcement of its own. */
+export function addsExclusionsToEnforced(step: PolicyStep): boolean {
+  const ops = validOperations(step.action)
+  return ops.length > 0 && ops.every((op) => op.mode === 'update' && op.addsExclusionsOnly === true && !submitsEnforcement(op) && isObject(op.target) && op.target.state === 'enabled')
 }
 
 /**
@@ -1211,7 +1232,11 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // they are how readiness reaches the threshold, so withholding them would slow
   // the tenant down without making anybody safer. A goal already in place has
   // nothing to run and stays what it is.
-  if (step.action.readinessGate && step.status !== 'done' && validOperations(step.action).some(enforcesOnRun)) {
+  // A correction that only adds exclusions to a policy already on is not one of
+  // them (`enforcementHeld`; owner, 2026-09-19): it enforces on run in the sense
+  // that it lands live, but it can stop nobody, so there is nothing for the
+  // threshold to withhold.
+  if (enforcementHeld(step) && validOperations(step.action).some(enforcesOnRun)) {
     return { kind: 'unavailable', reason: 'readiness-unmet' }
   }
   const declared = step.action.resolution?.policies ?? []
