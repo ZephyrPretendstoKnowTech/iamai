@@ -8,8 +8,8 @@ not be made identical, is written here instead of built.
 Scope now: every step whose content kind is `policy` — the `s-goal-*` steps and
 `s-shared-devices` — draws the anatomy. The gate is the content kind itself
 (`usesPolicyTaskAnatomy` in `src/ui/surfaces/policyTasks.ts`), so there is no
-list of ids to keep in step with the content. One deviation below is approved on
-one policy only and keeps its own one-id set.
+list of ids to keep in step with the content. The one deviation below that was
+approved on a single policy first (the settings fold) now runs on the same gate.
 
 ## Cut, and not rebuilt
 
@@ -41,20 +41,23 @@ not: the four stages are the policy card's checks — the ones already reached
 fold under **Completed checks · N**, the next one is the card's heading, and the
 rest are its "N checks remaining". The picture is gone; the position is not.
 
-### 3. The resolved settings list on the Entra tab — restored on one policy
+### 3. The resolved settings list on the Entra tab — restored on every policy step
 
 **What.** Below the numbered Entra procedure, a policy step used to draw
 "Settings for This Action": the resolved policy name, the description tag IAMAI
 recognises the policy by, the full resolved role list, the target resources, the
 conditions and the session controls (`stepPackage.ts entraWithSettings`).
 
-**Status: approved by the owner on one policy** (`s-goal-admin-session`, the set
-`POLICY_SETTINGS_STEP_IDS`). It is back under the procedure, collapsed, in the
-disclosure ContentStep.tsx already draws a resolved list in (the one Configure
-Passkey Authentication draws its approved models in) and under the heading the
-artifact itself gave the list. No class, component or word was added. On every
-other policy step the settings remain off screen and are still carried in full
-by **Copy task**, the printed plan, and the JSON and PowerShell tabs.
+**Status: approved by the owner on every policy step** (2026-09-19, after the
+one-step pilot on `s-goal-admin-session`; `drawsPolicySettings` now reads the
+step's own content kind, so the one-id set is gone). It is back under the
+procedure, collapsed, in the disclosure ContentStep.tsx already draws a resolved
+list in (the one Configure Passkey Authentication draws its approved models in)
+and under the heading the artifact itself gave the list. No class, component or
+word was added. A policy step whose procedure lists no settings folds nothing —
+the guard is the task's own facts — so those steps read exactly as before. The
+settings are still carried in full by **Copy task**, the printed plan, and the
+JSON and PowerShell tabs.
 
 ## Changed to make one thing read one way
 
@@ -149,3 +152,26 @@ member ("Protect Your Administrators — 1 step", numbered 4).
 The number is a stable handle, which is worth keeping; the heading counts the
 rows drawn, which is also worth keeping. They simply disagree in front of the
 reader. No change was made.
+
+## Found rolling the settings fold out to every policy step (2026-09-19)
+
+### 7. Four procedures end in a "Verify the workflow" block, and the fold swallows it
+
+`portalProcedureOf` (`src/ui/surfaces/policyTasks.ts`) splits the Entra artifact
+at its first Markdown heading: everything above is the numbered procedure,
+everything below is the task's facts. Four procedures carry a second block after
+the settings heading — "Verify the workflow:" and its numbered checks — on
+`s-goal-register-info-protected`, `s-goal-pim-activation-reauth`,
+`s-goal-user-risk-medium` and `s-goal-block-device-code`. Those lines therefore
+become fact rows labelled "Setting", under **Settings for This Action**, where
+they are not settings; and they are missing from the numbered procedure above,
+where they are the last thing the admin is asked to do.
+
+This is not new — the parser has behaved this way since the pilot, and the
+printed plan already lists those rows on every policy step. The settings fold
+only puts it on screen, on four steps.
+
+**No change was made**: the fix is either to the parser (a second heading ends
+the facts, and its lines return to the procedure) or to the four content
+packages (the verification block moves above the settings heading). Both are
+outside "roll the approved fold out", and the second touches the registry.

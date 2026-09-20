@@ -40,15 +40,13 @@ export function usesPolicyTaskAnatomy(stepId: string): boolean {
 }
 
 /**
- * The one policy whose resolved settings stand under its Entra procedure, folded
- * (owner, 2026-09-19: the deviation is approved on one policy before it goes
- * wider). Adding a step is adding an id here.
+ * Whether this step's Entra task offers its resolved settings on screen, folded
+ * under the procedure. Every policy step does (owner, 2026-09-19, after the
+ * one-step pilot on s-goal-admin-session): the gate is the step's own content
+ * kind, the same one the anatomy uses, so there is no second list of ids.
  */
-export const POLICY_SETTINGS_STEP_IDS: readonly string[] = ['s-goal-admin-session']
-
-/** Whether this step's Entra task offers its resolved settings on screen. */
 export function drawsPolicySettings(stepId: string): boolean {
-  return POLICY_SETTINGS_STEP_IDS.includes(stepId)
+  return usesPolicyTaskAnatomy(stepId)
 }
 
 /** A step's portal channel, as stepBody.ts built it; only its text is read. */
