@@ -5,6 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { stepById } from '../../content/content.ts'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -23,6 +24,11 @@ import type { Step } from '../../roadmap/types.ts'
 const CONTRACT_SRC = readFileSync(new URL('./stepContract.ts', import.meta.url), 'utf8')
 const T = CONTRACT.readiness.tiles
 const EXCLUSIONS = 's-prereq-exclusion-group'
+// The confirmation names the exclusions step by its real title. "the Exclusions Group
+// step" named no step (quality audit 2026-09-20 §3, `fixConfirmExclusions`), so the
+// sentence now carries a {step} slot the contract fills with the step's own title.
+const EXCLUSIONS_TITLE = 'Configure Emergency Exclusions'
+const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`
 const EMERGENCY = 's-prereq-break-glass'
 const LEGACY = 's-goal-block-legacy-auth'
 
@@ -129,13 +135,15 @@ test('P1-6: a policy waiting on an exclusions group the scan found asks to confi
   const legacy = bodiesOf(noExclusionsAnswer(fixture('mid'))).get(LEGACY)!
   const group = legacy.readiness.tiles.filter((t) => t.key.endsWith(`:${EXCLUSIONS}`))
   assert.equal(group.length, 1, group.map((t) => t.key).join(', '))
-  assert.equal(group[0].note, `Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`)
+  // The title in the sentence is that step's own, not a phrase written beside it.
+  assert.equal(stepById[EXCLUSIONS].title, EXCLUSIONS_TITLE)
+  assert.equal(group[0].note, CONFIRM)
   // Where the group is confirmed, nothing says so.
   for (const b of bodiesOf(fixture('mid')).values()) for (const t of allTiles(b)) assert.doesNotMatch(t.note ?? '', /IAMAI found a matching group/)
 })
 
 test('P1-6 (B11): the readiness bar and the Implementation reason ask to confirm the group too; no line calls it a missing object', () => {
-  const confirm = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+  const confirm = CONFIRM
   const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
   for (const id of [LEGACY, 's-goal-admins-phishing-resistant', 's-goal-guests-mfa']) {
     const b = bodies.get(id)!
@@ -158,9 +166,9 @@ test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions g
     { token: '{authStrength}', stepId: 's-prereq-auth-strength' },
   ] } } as unknown as Step
   const line = waitingLine(step, 'Contoso', true)
-  assert.match(line, /^Complete the Exclusions Group step first\. IAMAI found a matching group, but needs your confirmation before this policy can reference it\. /)
+  assert.equal(line.startsWith(`${CONFIRM} `), true, line)
   assert.match(line, /Create the Baseline's Authentication Strength first: this policy names an object Contoso does not have yet\.$/)
-  assert.doesNotMatch(line, /Exclusions Group and /)
+  assert.doesNotMatch(line, new RegExp(`${EXCLUSIONS_TITLE} and `))
   // Answered, the group is an object like any other.
   assert.match(waitingLine(step, 'Contoso', false), /^Configure Emergency Exclusions and Create the Baseline's Authentication Strength first: /)
 })
