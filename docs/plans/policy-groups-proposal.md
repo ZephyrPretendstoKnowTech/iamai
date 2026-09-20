@@ -44,9 +44,10 @@ listed five that it cannot — `s-prereq-device-plan` (replaced by D3),
 floor does not force), and `s-goal-unmanaged-browser` (never an id at all: it is
 the content entry two goals merge into, so only `s-goal-byod-session-controls`
 can be built) — and so overstated three of the group sizes. They are gone from
-the registry and from the lists here: Protect Your Administrators is 5, Control
-Where People Sign In From is 6, and Require Healthy Devices is 4, which is what
-it already drew. See `docs/plans/step-redundancy-analysis.md` finding 4.
+the registry and from the lists here: Protect Your Administrators is 5, the
+sign-in-location work is 6 (3 objects and 3 policies since the 2026-09-20 split
+below), and Require Healthy Devices is 4, which is what it already drew. See
+`docs/plans/step-redundancy-analysis.md` finding 4.
 
 A tenth was a duplicate rather than a phantom: `cleanup-notAssessed` said the
 same list of unassessed baseline policies the `s-review-baseline-…` rows say one
@@ -91,7 +92,27 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 3 | Decide How People and Devices Sign In | `s-direction-devices` |
 | 4 | Decide Where People Sign In From | `s-direction-locations` |
 
-### 3. Close the Doors Nobody Should Use — new (§3 wave 1)
+### 3. Prepare the Groups and Locations — new (owner, 2026-09-20)
+
+An object step is here because a Direction answer says it should exist: each of
+these three is the **doing** of an answer saved in the group above. They used to
+sit among the policies that reference them, so a policy group held objects and
+the reader met "create this location" in the middle of a run of policies. Placed
+straight after Direction the plan reads decide → make the things → roll out the
+policies.
+
+Only objects an answer creates move here. `s-prereq-per-user-mfa` and
+`s-prereq-security-defaults` are tenant settings to retire, not objects to build;
+`s-prereq-auth-strength` is the pinned baseline's demand and stays with the admin
+policies that require it; the emergency prerequisites stay in group 1.
+
+| # | Step | Id |
+|---|---|---|
+| 1 | Define the Trusted Network | `s-prereq-trusted-location` |
+| 2 | Create or Correct Allowed Countries Location | `s-prereq-allowed-countries` |
+| 3 | Create or Correct Service Accounts Group | `s-prereq-service-accounts-group` |
+
+### 4. Close the Doors Nobody Should Use — new (§3 wave 1)
 
 | # | Step | Id |
 |---|---|---|
@@ -100,7 +121,7 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 3 | Block Authentication Transfer | `s-goal-block-auth-transfer` |
 | 4 | Block Unsupported Device Platforms | `s-goal-block-unsupported-platforms` |
 
-### 4. Protect Your Administrators — new (§3 wave 2)
+### 5. Protect Your Administrators — new (§3 wave 2)
 
 | # | Step | Id |
 |---|---|---|
@@ -110,7 +131,7 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 4 | Shorten Admin Sessions | `s-goal-admin-session` |
 | 5 | Require MFA at Every Role Activation | `s-goal-pim-activation-reauth` |
 
-### 5. Turn On MFA for Everyone — new (§3 waves 3 and 4)
+### 6. Turn On MFA for Everyone — new (§3 waves 3 and 4)
 
 | # | Step | Id |
 |---|---|---|
@@ -122,18 +143,18 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 6 | Require MFA for Guests | `s-goal-guests-mfa` |
 | 7 | Finish Moving Off Per-User MFA | `s-prereq-per-user-mfa` |
 
-### 6. Control Where People Sign In From — new (§3 wave 5)
+### 7. Control Where People Sign In From — new (§3 wave 5)
+
+The three objects this group used to open with are group 3; what is left is the
+run of policies that reference them.
 
 | # | Step | Id |
 |---|---|---|
-| 1 | Define the Trusted Network | `s-prereq-trusted-location` |
-| 2 | Create or Correct Allowed Countries Location | `s-prereq-allowed-countries` |
-| 3 | Block Sign-ins From Countries Not Allowed | `s-goal-geo-restriction` |
-| 4 | Create or Correct Service Accounts Group | `s-prereq-service-accounts-group` |
-| 5 | Restrict Service Accounts to the Trusted Network | `s-goal-service-accounts-trusted-network` |
-| 6 | Restrict the Entra Connect Sync Account to Its Address | `s-goal-workload-identity-block` |
+| 1 | Block Sign-ins From Countries Not Allowed | `s-goal-geo-restriction` |
+| 2 | Restrict Service Accounts to the Trusted Network | `s-goal-service-accounts-trusted-network` |
+| 3 | Restrict the Entra Connect Sync Account to Its Address | `s-goal-workload-identity-block` |
 
-### 7. Require Healthy Devices — new (§3 wave 6)
+### 8. Require Healthy Devices — new (§3 wave 6)
 
 | # | Step | Id |
 |---|---|---|
@@ -142,7 +163,7 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 3 | Keep Company Data Off Phones | `s-ladder-phone-access-restriction` |
 | 4 | Give Shared Devices Their Own Policy | `s-shared-devices` |
 
-### 8. Respond to Risk and Limit Sessions — new (§3 waves 7 and 8)
+### 9. Respond to Risk and Limit Sessions — new (§3 waves 7 and 8)
 
 | # | Step | Id |
 |---|---|---|
@@ -153,7 +174,7 @@ Frozen. Drawn above the lanes until all four are Completed.
 | 5 | Limit How Long Sessions Last | `s-goal-all-users-no-persistence` |
 | 6 | Require Token Protection on Windows | `s-goal-token-protection` |
 
-### 9. Ongoing Checks and Cleanup — new, the catch-all (§3 wave 9 and §4)
+### 10. Ongoing Checks and Cleanup — new, the catch-all (§3 wave 9 and §4)
 
 The last entry, and the only one that also takes **every step no other group
 claims**. That is what makes it impossible for the board to draw an unheaded
