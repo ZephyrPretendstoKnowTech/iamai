@@ -1,10 +1,10 @@
 @@IAMAI-BEGIN {"id":"entra.prerequisites","channel":"entra","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
 Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.
-- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}.
-- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change.
-- Guest/external users: Require risk remediation is not supported. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.
+- MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}. A user who is not registered is blocked and needs an administrator to reset the account; they cannot remediate.
+- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change. Where the password is changed on-premises instead, password hash synchronization and the on-premises password-change setting that clears user risk both have to be on.
+- Guest/external users: Require risk remediation is not supported for them, and a guest this policy reaches is blocked rather than remediated, because the password and the risk both live in the account's home directory. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.
 - Active risk: investigate/remediate current risky users before turning on a new broad policy.
-SSPR may remain available for recovery, but do not treat SSPR enablement as the CA remediation prerequisite by itself.
+The remediation password change is not the self-service password reset flow: SSPR may remain available for recovery, but do not treat SSPR enablement as the Conditional Access remediation prerequisite.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
@@ -14,7 +14,7 @@ In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policie
 1. Name: {{policy.target.displayName}}.
 2. Users: Include **All users**. Add only the resolved exclusions.
 3. Target resources: **All resources**; do not exclude applications.
-4. Conditions > User risk: **High** only.
+4. Conditions > User risk: set **Configure** to **Yes**, then **High** only. Left at **No** the policy has no risk condition, and its remediation requirement reaches every sign-in.
 5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.
 6. Session: confirm **Sign-in frequency = Every time**.
 7. Enable policy: **Report-only**.
@@ -36,11 +36,11 @@ Target resources: set **All resources** and remove application exclusions. Risk 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.risk","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Conditions > User risk: set **High** only. Do not add Sign-in risk to this policy.
+Conditions > User risk: set **Configure** to **Yes**, then **High** only, because at **No** the policy has no risk condition and its requirement reaches every sign-in. Do not add Sign-in risk to this policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope.
+Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope. Leave **Client apps** unconfigured: the target is every client app, and that is what an unconfigured condition reaches; ticking every box writes the four named client types instead, which IAMAI then reads as a difference that never resolves.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -63,7 +63,7 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus password-writeback readiness for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. High user risk can require remediation. The required action can differ for password-based and passwordless users. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.
+Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus the working password route for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. Require risk remediation lets Microsoft pick the remediation each person's registered methods allow, so the required action differs between password-based and passwordless users. Most user risk is worked out after a sign-in rather than during it, so a report-only window can gain results later. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}

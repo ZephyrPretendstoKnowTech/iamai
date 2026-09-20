@@ -5915,16 +5915,19 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Remediate High-Risk Users",
       "changeLine": null,
-      "why": "Account risk can indicate that an identity needs attention even outside a single suspicious sign-in. This control requires remediation while keeping recovery practical for the users it covers.",
+      "why": "User risk is Microsoft's reading of the account rather than one sign-in: how likely it is that the account itself is compromised. Most of that reading is worked out after a sign-in, so this policy is what stops a compromised account the next time it is used.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people are rated at risk today: {list:atRiskUsers}",
-          "High user risk can require remediation. The required action can differ for password-based and passwordless users; synchronized users who change a password need password writeback.",
-          "Check how the policy treats guests rated high risk: they cannot remediate in this tenant.",
+          "{n} people had a sign-in rated high risk since {from}: {list:riskyUsers}",
+          "Identity Protection's risky users report is a separate surface this plan does not read, so the people it holds may not be the people named here.",
+          "The baseline asks for risk remediation with {strengthName}, which lets Microsoft pick the remediation each person's registered methods allow.",
+          "A person has to be registered for multifactor authentication before this policy reaches them; without it they are blocked and somebody has to reset the account by hand.",
+          "A synchronized account needs the on-premises password route enabled before its owner can remediate.",
+          "Check how the policy treats guests rated high risk: they cannot remediate in this tenant, because their risk is held in their home directory.",
           "{existingCoverage}"
         ]
       },
@@ -5933,14 +5936,15 @@
         "lead": null,
         "before": [
           "Synchronized users who remediate with a password change need password writeback in Entra Connect.",
-          "Check that people in scope have an accepted authentication method; remediation asks for it."
+          "A synchronized user who changes the password on-premises instead needs password hash synchronization and the on-premises password-change setting that clears user risk.",
+          "Check that people in scope have a registered multifactor authentication method; remediation asks for it first, and this is not the self-service password reset flow."
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "A scan confirms the high-risk user policy is On with the intended risk conditions, recovery requirements and exclusions. Users can complete the required secure password change; hybrid accounts have the required password writeback.",
+      "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation {strengthName} accepts, and the exclusions group is applied.",
       "doneWhen": [
         "A scan confirms the high-risk user policy is On with the intended recovery controls and exclusions.",
-        "People rated at risk were reviewed. Affected users can complete the required password change, including writeback where required."
+        "People rated at risk were reviewed. Affected users can complete the required remediation, including the on-premises password route where their account is synchronized."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5950,12 +5954,17 @@
       "more": {
         "risks": [
           {
-            "text": "A person without an accepted authentication method cannot complete remediation and needs help.",
-            "applies": "ssprOff"
+            "text": "A person with no registered multifactor authentication method cannot complete remediation at all and needs an administrator to reset the account.",
+            "applies": "always"
+          },
+          {
+            "text": "A guest or external account this policy reaches is blocked rather than remediated: the password it would have to change is held in the account's home directory, and nobody here can clear the risk for it.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "Someone stuck in a password-change loop: reset it for them, then confirm the risk is dismissed."
+          "Someone stuck in a password-change loop: reset the account for them. Completing the remediation clears the risk by itself, so nothing has to be dismissed by hand afterwards.",
+          "A guest reporting a block: their risk and their password both live in their home directory. There is nothing to reset or dismiss in this tenant."
         ],
         "manager": "When Microsoft rates an account high risk, the person is asked to complete remediation at the next sign-in instead of waiting for someone to read a report.",
         "waits": null
@@ -5964,8 +5973,9 @@
         "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
-        "atRiskUsers": [],
+        "riskyUsers": [],
         "sspr": "it is enabled for all users",
+        "strengthName": "Modern MFA + TAP",
         "emergencyAccounts": [
           "Breakglass",
           "Emergency Access 2"
@@ -5981,12 +5991,12 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → User risk → High",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "Conditions → User risk → Configure: Yes, then High",
+          "Grant → Require risk remediation with Require authentication strength: {strengthName}; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
       },
-      "aiFocus": "Explain adaptive remediation rather than a universal password reset. Separate SSPR recovery, MFA readiness, hybrid writeback and external-user support."
+      "aiFocus": "Explain adaptive remediation rather than a universal password reset. Separate SSPR recovery, MFA readiness, the hybrid password routes and external-user support."
     },
     {
       "id": "sign-in-risk-medium",

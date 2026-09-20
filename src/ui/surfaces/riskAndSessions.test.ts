@@ -251,3 +251,79 @@ test('A8: the package cites the page the step links, and its checked date is 202
   assert.equal(String((stepById['sign-in-risk'] as unknown as { learn: { url: string } }).learn.url), 'https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in')
 })
 
+// ---------------------------------------------------------------------------
+// Section 4: s-goal-user-risk — Remediate High-Risk Users
+// ---------------------------------------------------------------------------
+
+test('B1: About this Step says user risk is about the account, and mostly read after a sign-in', () => {
+  // concept-risk-detection-types (ms.date 2026-06-10), checked 2026-09-20: every
+  // user-risk detection but three is "Calculated offline"; "User is deemed risky
+  // after sign-in."
+  const why = whyOf('user-risk')
+  assert.match(why, /the account itself is compromised/)
+  assert.match(why, /worked out after a sign-in/)
+  assert.ok(!/outside a single suspicious sign-in/.test(why), why)
+  assert.match(aboutOf(bodiesOf('mid').get(USER_RISK)!), /the account itself is compromised/)
+})
+
+test('B2: the step and its reference describe the grant the pin actually carries', () => {
+  // The pinned member carries builtInControls ["riskRemediation"] with the custom
+  // authentication strength, not "Require multifactor authentication and Require
+  // password change". policy-risk-based-user (ms.date 2026-03-24), checked
+  // 2026-09-20: "Select Require risk remediation. The Require authentication
+  // strength grant control is automatically selected."
+  const text = allText('user-risk')
+  assert.match(text, /risk remediation with \{strengthName\}/)
+  assert.ok(!/Require multifactor authentication and Require password change/.test(text), text)
+  assert.ok(referenceOf('user-risk').includes('Grant → Require risk remediation with Require authentication strength: {strengthName}'), referenceOf('user-risk'))
+  // And it is what the pinned policy holds.
+  const p = (pinned.policies as unknown as { id: string; grantControls: { builtInControls?: string[] } }[]).find((x) => x.id === '544cd9ef-5e37-4568-9ad8-b8e151be1814')!
+  assert.deepEqual(p.grantControls.builtInControls, ['riskRemediation'])
+})
+
+test('B3: remediation needs a registered method, and is not the self-service reset flow', () => {
+  // howto-identity-protection-configure-risk-policies, checked 2026-09-20: "Users
+  // must register for Microsoft Entra multifactor authentication before they face
+  // a situation requiring remediation… Users not registered are blocked and
+  // require administrator intervention." howto-identity-protection-remediate-unblock:
+  // "This flow doesn't use self-service password reset (SSPR)."
+  const text = allText('user-risk')
+  assert.match(text, /registered for multifactor authentication before this policy reaches them/)
+  assert.match(text, /this is not the self-service password reset flow/)
+  assert.ok(risksOf('user-risk').some((r) => /no registered multifactor authentication method cannot complete remediation at all/.test(r)), risksOf('user-risk').join('\n'))
+})
+
+test('B4: both hybrid password routes are named, not only writeback', () => {
+  // The two Learn pages disagree on the prerequisite word, so both routes are
+  // stated: howto-identity-protection-configure-risk-policies says "password
+  // writeback must be enabled"; howto-identity-protection-remediate-unblock says
+  // hybrid users remediate on-premises "when password hash synchronization and
+  // the Allow on-premises password change to reset user risk setting is enabled".
+  const before = ((stepById['user-risk'] as unknown as { whatToDo?: { before?: string[] } }).whatToDo?.before ?? []).join('\n')
+  assert.match(before, /need password writeback in Entra Connect/)
+  assert.match(before, /password hash synchronization and the on-premises password-change setting that clears user risk/)
+})
+
+test('B5: a guest this policy reaches is blocked, and nobody here can clear it', () => {
+  // concept-identity-protection-b2b, checked 2026-09-20: a guest forced to reset
+  // "will be blocked"; "Administrators cannot dismiss or remediate a risky B2B
+  // collaboration user in their resource directory."
+  const text = allText('user-risk')
+  assert.match(text, /guests rated high risk: they cannot remediate in this tenant/)
+  assert.ok(risksOf('user-risk').some((r) => /blocked rather than remediated/.test(r)), risksOf('user-risk').join('\n'))
+  assert.ok(helpDeskOf('user-risk').some((l) => /home directory/.test(l)), helpDeskOf('user-risk').join('\n'))
+})
+
+test('B6: the risk condition is set through Configure: Yes, and Client apps is left alone', () => {
+  assert.match(blockText(USER_RISK, 'entra.create'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*High\*\* only/)
+  assert.match(blockText(USER_RISK, 'entra.correct.risk'), /set \*\*Configure\*\* to \*\*Yes\*\*, then \*\*High\*\* only/)
+  assert.match(blockText(USER_RISK, 'entra.correct.conditions'), /Leave \*\*Client apps\*\* unconfigured/)
+  assert.ok(referenceOf('user-risk').includes('Conditions → User risk → Configure: Yes, then High'), referenceOf('user-risk'))
+})
+
+test('B7: Completion Criteria is this step’s outcome, and the package date is 2026-09-20', () => {
+  assert.match(String((stepById['user-risk'] as unknown as { doneEnd?: string }).doneEnd ?? ''), /cannot be used again until its owner has completed the remediation \{strengthName\} accepts/)
+  assert.match(doneWhenOf('user-risk').join('\n'), /People rated at risk were reviewed/)
+  assert.equal(sourceCheckedOn(USER_RISK), '2026-09-20')
+})
+

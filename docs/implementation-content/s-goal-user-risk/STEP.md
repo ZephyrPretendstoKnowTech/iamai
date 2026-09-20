@@ -29,8 +29,8 @@ Current matching policy and stable tenant policy ID; semantic mismatches; exact 
 ## Target state
 - Users: All users, with the exact IAMAI-resolved exclusions required by the retained baseline member.
 - Target resources: All resources; no application exclusions.
-- Client apps: All.
-- User risk: High only.
+- Client apps: left unconfigured, which is every client app; the four named client types are not the same value.
+- User risk: High only, set through Configure = Yes.
 - No sign-in-risk, location, platform, device/filter, authentication-flow, or workload-risk condition.
 - Grant: Grant access; Require risk remediation; Require the IAMAI-resolved retained-baseline authentication strength; operator AND.
 - Do not combine `riskRemediation` with `passwordChange` or a separate built-in `mfa` grant.
