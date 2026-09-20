@@ -3792,7 +3792,7 @@
       "kind": "check",
       "title": "Update How Devices Send Email",
       "changeLine": null,
-      "why": "Printers and applications may depend on a mail-sending method that will stop working under stronger sign-in controls. Check each device's capabilities and test its replacement route first.",
+      "why": "Exchange Online already refuses a password for POP, IMAP and ActiveSync, and SMTP AUTH is the last route that accepts one. Microsoft is retiring that route too, so check each device's capabilities and test its replacement first.",
       "learn": {
         "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
       },
@@ -3806,7 +3806,7 @@
         "steps": [
           "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
           "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of Block Legacy Authentication. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
-          "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
+          "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. A device that cannot do any of them sends through an application that can, such as the Graph sendMail API. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
         ]
       },
       "dates": null,

@@ -138,6 +138,13 @@ export const ACCEPTANCE = [
   { item: '19', step: 'block-legacy-auth', path: 'decision.help', must: 'SMTP AUTH is the last route that does', mustNot: 'use different authentication paths' },
   { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.', mustNot: 'by IMAP or ActiveSync stops syncing' },
   { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'the tool\'s supported browser-based sign-in' },
+  // Close the Doors B1-B3 (docs/plans/close-doors-spec.md section 3, Microsoft
+  // Learn checked 2026-09-19): basic authentication is already gone for the mail
+  // protocols and SMTP AUTH is the one still standing. The retirement's dates
+  // stay in the spec, because no content string carries a hard date (C3).
+  { item: '20b', step: 's-question-mail-devices', path: 'why', must: 'Exchange Online already refuses a password for POP, IMAP and ActiveSync', mustNot: 'may depend on a mail-sending method' },
+  { item: '20b', step: 's-question-mail-devices', path: 'why', must: 'Microsoft is retiring that route too' },
+  { item: '20b', step: 's-question-mail-devices', path: 'whatToDo', must: 'SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only' },
   // Per step, 21–30.
   { item: '21', step: 'block-auth-transfer', path: 'why', must: 'Blocking it removes a transfer path the business may not need', mustNot: 'an attacker with a screenshot' },
   { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.", mustNot: 'egress address to the trusted location' },

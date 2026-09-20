@@ -193,5 +193,23 @@
     "boundJson": "passed",
     "staticSafety": "passed"
   },
-  "unresolvedIssues": []
+  "unresolvedIssues": [],
+  "verifiedSources": [
+    {
+      "id": "ms-basic-auth",
+      "authority": "Microsoft Learn",
+      "title": "Deprecation of Basic authentication in Exchange Online",
+      "url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online",
+      "checkedOn": "2026-09-19",
+      "userFacing": true
+    },
+    {
+      "id": "ms-mfd",
+      "authority": "Microsoft Learn",
+      "title": "How to set up a multifunction device or application to send email",
+      "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365",
+      "checkedOn": "2026-09-19",
+      "userFacing": true
+    }
+  ]
 }
