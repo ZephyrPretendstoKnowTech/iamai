@@ -40,6 +40,7 @@
 import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
 import { enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
+import { directionBlockerStep } from './directionAnswers.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
 export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision' | 'conflict' | 'review' | 'evidence'
@@ -56,6 +57,28 @@ export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision'
  * them. Every other wait on a step stays sequencing (Step 4).
  */
 export const FOUNDATION_WAIT = 'foundation-gate'
+
+/**
+ * Whether the step is waiting on a Direction answer nobody has approved — the
+ * `decision` blocker direction.ts writes per answer and foundations.ts writes
+ * for the gate.
+ *
+ * The one reading of "this policy is not written yet because the answer it
+ * would be written from has not been given". A policy held this way offers no
+ * creation (owner, 2026-09-19: "a not-deployed policy waiting on Direction says
+ * 'Answer {Direction step} first' and offers no creation"), because what the
+ * answer decides is what the policy would say. Everything that draws the step
+ * reads it through `implementationIsCurrent` (roadmap/nextSafeAction.ts), so the
+ * screen, the export, the print and the prompt pack withdraw the create
+ * together.
+ *
+ * A wait on Establish Emergency Access is NOT this: that policy is fully
+ * resolved and a report-only create denies nobody, so it is still handed over
+ * (Step 5, and roadmap/foundations.ts).
+ */
+export function waitsOnDirection(step: Step): boolean {
+  return step.blockers.some((b) => directionBlockerStep(b) !== null)
+}
 
 export type Hold = { kind: HoldKind }
 

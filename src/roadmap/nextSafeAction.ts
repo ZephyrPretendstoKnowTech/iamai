@@ -20,6 +20,7 @@
 import type { Step } from './types.ts'
 import type { Condition } from './lifecycle.ts'
 import { nextMilestone, workflowReviewIsCurrent } from './lifecycle.ts'
+import { waitsOnDirection } from './holds.ts'
 import type { PolicyHold, UnavailableReason } from './operations.ts'
 import { enforcesOnRun, implementationOffered, operationsOf, policyResult, submitsEnforcement, submitsEnforcementOnly, validOperations } from './operations.ts'
 
@@ -53,6 +54,14 @@ export function implementationIsCurrent(step: Step): boolean {
   // only before deployment, only where the next thing IS that deployment, and
   // only where nothing submitted enforces the moment it lands.
   if (step.state.condition !== 'blocked' || step.state.lifecycle !== 'not-deployed') return false
+  // Not while a Direction answer it would be written from is unapproved (owner,
+  // 2026-09-19: "a not-deployed policy waiting on Direction says 'Answer
+  // {Direction step} first' and offers no creation"). The exception above is for
+  // a policy the plan has fully resolved; a policy whose scope or controls the
+  // unanswered question decides is not resolved, so there is nothing safe to
+  // hand over yet. A wait on Establish Emergency Access is not this, and keeps
+  // the exception (roadmap/holds.ts waitsOnDirection).
+  if (waitsOnDirection(step)) return false
   if (!implementationOffered(step) || nextMilestone(step).kind !== 'deploy') return false
   return operationsOf(step).every((op) => !enforcesOnRun(op))
 }

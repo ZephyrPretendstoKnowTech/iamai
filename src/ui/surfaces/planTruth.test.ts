@@ -15,7 +15,7 @@ import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
-import { isHeld } from '../../roadmap/holds.ts'
+import { isHeld, waitsOnDirection } from '../../roadmap/holds.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
@@ -24,6 +24,7 @@ import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { content, engine } from '../../content/content.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
+import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -71,7 +72,16 @@ test('Step 5: a held step still handing over its report-only create says to crea
       const lines = stepLines(s, ctx)
       const ex = stepVars(s, ctx) as Record<string, unknown>
       const portal = stepPortalLines(s, portalNamesFor(ctx, ex, s.title))
-      if (c.implementation.offered && s.state.lifecycle === 'not-deployed') {
+      if (c.implementation.offered && s.state.lifecycle === 'not-deployed' && waitsOnDirection(s)) {
+        // A Direction answer nobody has approved is what the policy would be
+        // written from, so there is no safe preparation to offer yet (owner,
+        // 2026-09-19: such a step "offers no creation"). The action is the wait,
+        // and the answer's own card says which step asks it.
+        assert.equal(c.whatToDo.text, engine.milestone.resolve, `${where}: "${c.whatToDo.text}" over an unapproved Direction answer`)
+        assert.equal(nextMilestone(s).at, null, `${where}: still no date`)
+        assert.equal(implementationIsCurrent(s), false, `${where}: the create is still the step's current action`)
+        nothing += 1
+      } else if (c.implementation.offered && s.state.lifecycle === 'not-deployed') {
         // Foundation A's safe preparation, kept (owner decision): the walk-through and the action agree.
         assert.ok(portal !== null && portal.some((l) => CREATE_WALKTHROUGH.test(l)), `${where}: the create it offers`)
         assert.notEqual(c.whatToDo.text, engine.milestone.resolve, `${where}: "Clear what this step is waiting on" above a create walk-through`)

@@ -30,7 +30,7 @@ import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
-import { holdOf } from './holds.ts'
+import { holdOf, waitsOnDirection } from './holds.ts'
 import { awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
@@ -325,7 +325,16 @@ export function nextMilestone(step: Step): Milestone {
   // that, and what the hold keeps back is turning it on — said in the same line,
   // because "Clear what this step is waiting on" above a create walk-through was
   // two instructions pulling apart. Still no date: nothing schedules the hold clearing.
-  if (hold !== null && s.lifecycle === 'not-deployed' && implementationOffered(step)) {
+  //
+  // A Direction answer is the exception to that exception (owner, 2026-09-19: a
+  // not-deployed policy waiting on Direction "offers no creation"). What the
+  // unapproved answer decides is what the policy would say, so creating it now
+  // is not safe preparation, and "Create the policy in report-only now" would
+  // read against the card beside it that says to answer the question first. It
+  // falls through to "Clear what this step is waiting on", with the wait named.
+  // A wait on Establish Emergency Access keeps the exception: that policy is
+  // resolved, and report-only denies nobody.
+  if (hold !== null && s.lifecycle === 'not-deployed' && implementationOffered(step) && !waitsOnDirection(step)) {
     const gate = step.action.readinessGate
     // Readiness gates enforcement, not creation (owner decision, 2026-09-11): where
     // the plan still schedules the create (roadmap/stepSchedule.ts), that day is

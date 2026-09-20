@@ -21,6 +21,7 @@
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
+import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepForPackage } from '../../content/stepTitle.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
@@ -124,7 +125,13 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
     facts,
     steps,
   }
-  return { tasks: [task], recommendedTaskId: task.id, printAll: true }
+  // Recommended only where writing the policy is what the step is doing now
+  // (roadmap/nextSafeAction.ts implementationIsCurrent). A step the plan's
+  // foundation holds keeps the procedure — it is the persistent reference the
+  // anatomy asks for — but nothing on the step directs the operator into it,
+  // because the card beside it says to finish Establish Emergency Access or
+  // approve the Direction answer first, and two directions is none.
+  return { tasks: [task], recommendedTaskId: implementationIsCurrent(step) ? task.id : null, printAll: true }
 }
 
 /** The subject a card names where the step delivers one policy; a step that delivers two labels each member ("Policy A") itself. */
@@ -182,6 +189,10 @@ function stagesOf(track: readonly ContractStage[], lifecycle: Lifecycle | null):
  */
 export function policyCardsOf(contract: StepContract, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
   const task = projected?.tasks.find((item) => item.required) ?? projected?.tasks[0] ?? null
+  // The task the card sends the operator to: the one this step is recommending
+  // now. A projection that recommends none is a step whose next thing is not the
+  // procedure (policyTasksOf), so the card states the check and stops there.
+  const directed = projected && (projected.recommendedTaskId ?? null) !== null ? task : null
   const subjects = contract.members.length > 0
     ? contract.members.map((member) => ({ key: `policy:${member.key}`, heading: member.label ?? POLICY_SUBJECT, name: member.name, lifecycle: member.lifecycle ?? contract.state.lifecycle }))
     : [{ key: 'policy', heading: POLICY_SUBJECT, name: contract.existing?.names.join(', ') ?? null, lifecycle: contract.state.lifecycle }]
@@ -207,7 +218,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       // specific sentence where something does — "this policy names an object
       // Contoso does not have yet", "in place already: nothing to create").
       detail: contract.whatToDo.text,
-      instruction: satisfied || task === null ? '' : `Follow ${task.title} in Implementation Tasks.`,
+      instruction: satisfied || directed === null ? '' : `Follow ${directed.title} in Implementation Tasks.`,
       completed: stages.completed,
       remainingCount: stages.remaining !== null && stages.remaining > 0 ? stages.remaining : null,
       satisfied,
