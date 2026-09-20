@@ -4137,7 +4137,7 @@
       "changeLine": null,
       "why": "External accounts can authenticate differently depending on their home organization and account type. Reviewing those differences helps require MFA without cutting off legitimate collaboration.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
+        "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access"
       },
       "who": {
         "lead": "{guests} guests and external users signed in during the last 30 days",
@@ -4145,6 +4145,8 @@
           "{list:guestsWithState}",
           "{n} service-provider accounts from {partners} partner tenants signed in since {from}; review their access path separately from ordinary guest collaboration.",
           "Guest directory membership does not establish the external-user type or home-tenant trust that applies to a particular sign-in.",
+          "In this tenant a guest can only answer with a text message, a voice call, an Authenticator push or a software token code. A passkey, Windows Hello for Business or a certificate counts only as a claim their own tenant makes.",
+          "Trusting a partner's MFA does not exempt them from the policy; it decides where they answer it. Without that trust they answer here, and have to register a method here first.",
           "{existingCoverage}"
         ]
       },
@@ -4190,6 +4192,18 @@
           {
             "text": "A phishing-resistant requirement needs a compatible method and, where relied on, verified inbound partner trust. A guest count alone cannot establish that compatibility.",
             "applies": "always"
+          },
+          {
+            "text": "A Temporary Access Pass cannot be issued to a guest, so a strength that relies on one is met only by a claim from their own tenant.",
+            "applies": "always"
+          },
+          {
+            "text": "With no inbound trust configured, a B2B direct connect user is blocked outright rather than prompted, because there is nowhere for them to answer.",
+            "applies": "always"
+          },
+          {
+            "text": "An authentication strength reaches only guests who sign in with Entra ID; a one-time passcode, SAML or Google account needs the plain MFA requirement instead.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
@@ -4228,18 +4242,18 @@
         "from": "Aug 1"
       },
       "whatToDoReference": {
-        "lead": "Policy A, every guest: and Policy B only for the partner tenants chosen above.",
+        "lead": "Two policies, split by external-user type, not by partner: A asks for plain MFA, B asks for a strength.",
         "steps": [
           "Cross-tenant trust first, if you chose a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
           "Policy A: {policyNameA}: {portalRoot}",
-          "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
+          "Users → Include: Guest or external users → B2B collaboration guest users, Other external users{serviceProviderClause}. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Grant → Require multifactor authentication",
           "{reportOnlyLine}",
-          "Policy B: {policyNameB} (only if a partner is chosen): {portalRoot}",
-          "Users → Include: Guest or external users → B2B collaboration guest users, B2B collaboration member users → Selected external tenants: {list:partnerTenantsList}. {exclusionsLine}",
+          "Policy B: {policyNameB}: {portalRoot}",
+          "Users → Include: Guest or external users → Internal guest users, B2B collaboration member users, B2B direct connect users, Service provider users → all external tenants. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: {strengthName}",
+          "Grant → Require authentication strength: {strengthName}. These accounts can meet it only from their own tenant, so confirm the inbound trust is in place before enforcing.",
           "{reportOnlyLine}"
         ]
       },

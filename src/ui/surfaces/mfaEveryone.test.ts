@@ -423,6 +423,61 @@ test('D6: the SMS retirement carries no date on the step; it stays in the spec',
   }
 })
 
+// ---------------------------------------------------------------------------
+// Require MFA for Guests (spec section 6)
+// ---------------------------------------------------------------------------
+
+const GUESTS = 's-goal-guests-mfa'
+
+test('E1: the reference names the pin\'s two policies, by external-user type', () => {
+  const ref = referenceOf('guests-mfa').join('\n')
+  // Policy A is the pin's Mixed-Guests: ordinary guests and other external users.
+  assert.match(ref, /B2B collaboration guest users, Other external users/)
+  // Policy B is the pin's B2B-Guest: the four types it includes, all tenants.
+  assert.match(ref, /Internal guest users, B2B collaboration member users, B2B direct connect users, Service provider users → all external tenants/)
+  // Not the partner-tenant split the step used to describe.
+  assert.doesNotMatch(ref, /Selected external tenants/)
+  assert.doesNotMatch(ref, /all types\{serviceProviderClause\}/)
+})
+
+test('E2: a guest can only use four methods here, and the step says which', () => {
+  const evidence = everyString((stepById['guests-mfa'] as unknown as { who?: unknown }).who).join('\n')
+  assert.match(evidence, /a text message, a voice call, an Authenticator push or a software token code/)
+  assert.match(evidence, /counts only as a claim their own tenant makes/)
+})
+
+test('E3: a risk says a Temporary Access Pass is not available to a guest', () => {
+  const risks = risksOf('guests-mfa')
+  assert.ok(risks.some((r) => /A Temporary Access Pass cannot be issued to a guest, so a strength that relies on one is met only by a claim from their own tenant/.test(r)), risks.join('\n'))
+})
+
+test('E4: the step says trust decides where MFA is answered, not whether the policy applies', () => {
+  const evidence = everyString((stepById['guests-mfa'] as unknown as { who?: unknown }).who).join('\n')
+  assert.match(evidence, /does not exempt them from the policy; it decides where they answer it/)
+})
+
+test('E5: a risk says a direct connect user is blocked when no trust is configured', () => {
+  const risks = risksOf('guests-mfa')
+  assert.ok(risks.some((r) => /B2B direct connect user is blocked outright rather than prompted/.test(r)), risks.join('\n'))
+})
+
+test('E6: a risk says a strength does not reach every external identity', () => {
+  const risks = risksOf('guests-mfa')
+  assert.ok(risks.some((r) => /one-time passcode, SAML or Google account needs the plain MFA requirement instead/.test(r)), risks.join('\n'))
+})
+
+test('E7: the step and its package cite the page the facts come from', () => {
+  const b = bodiesOf('demo').get(GUESTS)!
+  assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/external-id/authentication-conditional-access')
+  const meta = (registry.packages as Record<string, { meta?: { verifiedSources?: { url: string }[] } }>)[GUESTS]?.meta
+  assert.ok((meta?.verifiedSources ?? []).some((s) => s.url === b.learnUrl), 'the package cites a different page from the step')
+})
+
+test('E8: the step shows the date its Microsoft sources were checked', () => {
+  assert.equal(checkedOn(GUESTS), '2026-09-20')
+  assert.equal(bodiesOf('demo').get(GUESTS)!.sourceLine, 'Source checked Sep 20, 2026')
+})
+
 test('A8: no content string of this step carries a hard date', () => {
   // The July 2026 Windows Hello milestone stays in the spec (walkContent C3).
   // `example` is the sample tenant's filled values, not an authored sentence.
