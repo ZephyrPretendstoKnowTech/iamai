@@ -60,7 +60,7 @@ test('a step with no policy of its own heads its card with the thing the card is
   // and the step's own title is not a check — three of the card's four lines
   // used to be the step's name (quality audit 2.1).
   for (const [id, subject, check] of [
-    ['s-prereq-trusted-location', 'Trusted network', 'Not created yet'],
+    ['s-prereq-trusted-location', 'Trusted network', 'Not in place'],
     ['s-check-dormant-accounts', 'Dormant accounts', 'Not reviewed yet'],
     ['s-verify-mfa', 'Sign-in method setup', 'Not prepared yet'],
     ['s-ladder-operator-passkey', 'Your passkey', 'Not registered yet'],
@@ -82,10 +82,10 @@ test('a step with no policy of its own heads its card with the thing the card is
 
 test('an object step, the campaign and a check each project their own portal procedure as the Implementation Task', () => {
   for (const [id, title, first] of [
-    ['s-prereq-trusted-location', 'Create the trusted location', /Named locations/],
-    ['s-prereq-allowed-countries', 'Create the countries location', /Named locations/],
-    ['s-prereq-service-accounts-group', 'Create the group', /Groups/],
-    ['s-verify-mfa', 'Run the preparation', /aka\.ms\/mfasetup/],
+    ['s-prereq-trusted-location', 'Set up the trusted network', /Named locations/],
+    ['s-prereq-allowed-countries', 'Set up the allowed countries location', /Named locations/],
+    ['s-prereq-service-accounts-group', 'Set up the service accounts group', /Groups/],
+    ['s-verify-mfa', 'Help each person set up their method', /aka\.ms\/mfasetup/],
     ['s-check-dormant-accounts', 'Review each account', /Review each account/],
   ] as const) {
     const { step, body } = bodyOf(id)
@@ -109,7 +109,7 @@ test('an object step, the campaign and a check each project their own portal pro
 
 test('a baseline-review step reads its reference, and what it waits on is a card of its own', () => {
   const { step, body } = bodyOf('s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9')
-  assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Read the baseline definition')
+  assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Review this baseline policy')
   assert.match(body.emergencyAccountTasks!.tasks[0].steps[0], /Baseline reference:/)
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
   assert.equal(cards[0].heading, 'Baseline policy')

@@ -25,6 +25,7 @@ import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { DIRECTION_STEP_IDS } from './stepGroups.ts'
+import { directionWords } from '../content/content.ts'
 
 export const DIRECTION_STEP = {
   use: DIRECTION_STEP_IDS[0],
@@ -89,6 +90,13 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   officeNetwork: { step: DIRECTION_STEP.locations, storedAs: 'trustedLocationIds, wizardAnswered.trustedLocations' },
   workCountries: { step: DIRECTION_STEP.locations, storedAs: 'allowedCountries, workCountriesConfirmed' },
   travel: { step: DIRECTION_STEP.locations, storedAs: `questionAnswers['${DIRECTION_STEP.locations}:travel']` },
+}
+
+/** What approving a Direction step's answers does, in its own written words (pages.app.plan.direction.steps.<key>.milestoneAction); null for any other step. */
+export function directionMilestoneAction(stepId: string): string | null {
+  const key = (Object.entries(DIRECTION_STEP) as [string, string][]).find(([, id]) => id === stepId)?.[0]
+  const text = key ? (directionWords.steps as Record<string, { milestoneAction?: unknown }>)[key]?.milestoneAction : undefined
+  return typeof text === 'string' && text.trim() !== '' ? text : null
 }
 
 /** The Direction step that asks a question. */

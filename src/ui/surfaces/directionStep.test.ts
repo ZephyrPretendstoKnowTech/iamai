@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { answeredInOf, ANSWERED_IN } from '../../roadmap/direction.ts'
-import { DIRECTION_STEP, directionDecisionOf } from '../../roadmap/directionAnswers.ts'
+import { DIRECTION_STEP, directionDecisionOf, directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionWords } from '../../content/content.ts'
@@ -152,14 +152,18 @@ test('the six text fixes the owner approved on the frozen steps, 2026-09-20', ()
   assert.deepEqual(pair('partner'), ['yes', 'no'])
   assert.deepEqual(pair('externalMethods'), ['yes', 'no'])
 
-  // 4. The bare date under NEXT MILESTONE is NOT fixed here. The sub-line is the
-  //    package's actionText or nothing, never generated (stepLayout.test.ts U3),
-  //    and a Direction step has no package. It is an owner question, in
-  //    docs/plans/owner-questions-2026-09-20.md, not a sentence written in code.
+  // 4. The bare date under NEXT MILESTONE now carries the step's own written
+  //    sentence, saying what approving its answers does — the one thing the
+  //    step does not say anywhere else. Written in content, never composed from
+  //    the contract (stepLayout.test.ts U3).
   for (const id of DIRECTION_STEP_IDS) {
     const step = r.steps.find((s) => s.id === id)!
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[id] ?? null }
-    assert.equal(stepBodyOf(step, ctx).rail.sub, '', `${id}: a generated milestone sub-line`)
+    const sub = stepBodyOf(step, ctx).rail.sub
+    if (stepBodyOf(step, ctx).contract.state.lane?.lane !== 'Completed') {
+      assert.equal(sub, directionMilestoneAction(id), `${id}: the rail does not read the written sentence`)
+      assert.notEqual(sub, '', `${id}: a bare date under Next milestone`)
+    }
   }
 })
 
