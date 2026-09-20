@@ -248,7 +248,7 @@ test('G4: a risk says when the rule bites, not just that it is not instant', () 
 test('G5: help desk says this policy does not reach a service principal, and names the step that does', () => {
   const lines = helpDeskOf('geo-restriction')
   assert.ok(lines.some((l) => /a call made by a service principal is not blocked by a policy scoped to users/.test(l)), lines.join('\n'))
-  assert.ok(lines.some((l) => /Restrict the Entra Connect Sync Account to Its Address/.test(l)), lines.join('\n'))
+  assert.ok(lines.some((l) => /Restrict the Directory Sync Service Principal to Its Address/.test(l)), lines.join('\n'))
   assert.ok(lines.some((l) => /Directory Synchronization Accounts directory role/.test(l)), lines.join('\n'))
 })
 
@@ -350,7 +350,7 @@ test('N4: the step’s Learn link is the page that documents the condition it us
 test('N5: the manager line names where a service principal is covered instead', () => {
   const manager = String((stepById['service-accounts-trusted-network'] as unknown as { more?: { manager?: string } }).more?.manager ?? '')
   assert.match(manager, /not blocked by a policy scoped to users/)
-  assert.match(manager, /Restrict the Entra Connect Sync Account to Its Address/)
+  assert.match(manager, /Restrict the Directory Sync Service Principal to Its Address/)
   assert.match(blockText('s-goal-service-accounts-trusted-network', 'entra.prerequisites'), /not enforced for a service principal inside it/)
 })
 
@@ -362,7 +362,7 @@ test('N6: the step shows the date its Microsoft sources were checked, on both sc
 })
 
 // ---------------------------------------------------------------------------
-// Restrict the Entra Connect Sync Account to Its Address (spec section 8)
+// Restrict the Directory Sync Service Principal to Its Address (spec section 8)
 //
 // No fixture generates this step (spec section 9.5: it needs the Workload ID
 // Premium licence beside D1's Entra Connect answer, and no fixture supplies

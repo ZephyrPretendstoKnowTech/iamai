@@ -905,7 +905,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 35,
+      "contentBlocks": 24,
       "outputs": {
         "entra": true,
         "json": true,
@@ -926,9 +926,9 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 8,
+      "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 16,
+      "optionalBindings": 11,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
@@ -1197,7 +1197,7 @@
     },
     {
       "stepId": "s-goal-workload-identity-block",
-      "title": "Restrict the Entra Connect Sync Account to Its Address",
+      "title": "Restrict the Directory Sync Service Principal to Its Address",
       "packagePath": "docs/implementation-content/s-goal-workload-identity-block/",
       "relationship": "baseline-goal-composite",
       "status": "SELF-VERIFIED",
@@ -4323,6 +4323,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.session.browser.target.sessionControls",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.semanticMismatches",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4333,87 +4345,6 @@
       ],
       "type": "string[]",
       "meaning": "IAMAI-classified mismatch IDs across the two session-lifetime component policies",
-      "sensitivity": "tenant-context",
-      "knownIAMAIInput": true,
-      "definitionStatus": "CARRIED-FORWARD"
-    },
-    {
-      "binding": "policies.session.unmanaged.current.displayName",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-goal-session-lifetime"
-      ],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "policies.session.unmanaged.current.id",
-      "requiredBy": [
-        "s-goal-session-lifetime"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "type": "string",
-      "meaning": "Stable tenant ID of the IAMAI-resolved unmanaged-device session component policy",
-      "sensitivity": "tenant-context",
-      "knownIAMAIInput": true,
-      "definitionStatus": "CARRIED-FORWARD"
-    },
-    {
-      "binding": "policies.session.unmanaged.current.removedExclusions",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-goal-session-lifetime"
-      ],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "policies.session.unmanaged.current.state",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-goal-session-lifetime"
-      ],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "type": "string",
-      "meaning": "Current lifecycle state of the unmanaged-device session component policy",
-      "sensitivity": "tenant-context",
-      "knownIAMAIInput": true,
-      "definitionStatus": "CARRIED-FORWARD"
-    },
-    {
-      "binding": "policies.session.unmanaged.operation",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-goal-session-lifetime"
-      ],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "policies.session.unmanaged.target.displayName",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-goal-session-lifetime"
-      ],
-      "packages": [
-        "s-goal-session-lifetime"
-      ],
-      "type": "string",
-      "meaning": "Canonical display name for the unmanaged-device session component policy",
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
@@ -6064,15 +5995,15 @@
     "packageCount": 43,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 947,
-    "uniqueBindings": 264,
+    "contentBlocks": 936,
+    "uniqueBindings": 259,
     "bindingsRequiredByAtLeastOneProjection": 87,
-    "bindingsOptionalInAtLeastOnePackage": 181,
-    "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 219,
-    "knownIAMAIInputTrue": 43,
+    "bindingsOptionalInAtLeastOnePackage": 176,
+    "bindingDefinitionsCarriedForward": 42,
+    "bindingDefinitionsPendingHolisticReview": 217,
+    "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 219,
+    "knownIAMAIInputUnreviewed": 217,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

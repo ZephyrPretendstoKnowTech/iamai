@@ -15,7 +15,7 @@ In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policie
 2. Users: Include **All users**. Add only the resolved exclusions.
 3. Target resources: **All resources**; do not exclude applications.
 4. Conditions > User risk: set **Configure** to **Yes**, then **High** only. Left at **No** the policy has no risk condition, and its remediation requirement reaches every sign-in.
-5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.
+5. Grant: **Grant access > Require risk remediation** with authentication strength **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.
 6. Session: confirm **Sign-in frequency = Every time**.
 7. Enable policy: **Report-only**.
 8. Create, then rescan IAMAI. Do not turn it On in this create action.

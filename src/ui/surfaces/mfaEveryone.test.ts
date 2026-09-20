@@ -9,6 +9,7 @@
 // draw no Implementation Task at all on either demo snapshot, because they are
 // not policy steps — the compiled package block is read instead, since that is
 // the text the state would draw.
+import { execSync } from 'node:child_process'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { shared, stepById } from '../../content/content.ts'
@@ -290,6 +291,26 @@ test('C6: the snooze fields are named as the blade names them, and say three', (
     assert.match(text, /three times/, id)
   }
   assert.match(genericOf(CAMPAIGN).join('\n'), /Days allowed to snooze and Limited number of snoozes/)
+})
+
+// V1 audit S4-13: `entra.campaign` said the snooze days are "the value your organization
+// approved … IAMAI does not hold one" while `entra.configure` told the reader to set the
+// "IAMAI-resolved {{campaign.snoozeDurationInDays}} day(s)". Nothing in the product binds
+// `campaign.*`, so the second was false: it named a value IAMAI does not hold and, where it
+// was ever projected, would have rendered a placeholder or withheld the channel. Both
+// procedures now say the same true thing.
+test('C6a: both campaign procedures say the snooze days are the organization’s, because IAMAI holds no such value', () => {
+  const SAYS = 'the value your organization approved, between 0 and 14; IAMAI does not hold one'
+  for (const id of ['entra.campaign', 'entra.configure']) {
+    const text = blockText(CAMPAIGN, id)
+    assert.ok(text.includes(SAYS), `${id}: ${text}`)
+    assert.doesNotMatch(text, /IAMAI-resolved \*\*\{\{campaign\.snoozeDurationInDays\}\}|IAMAI-resolved [^\n]*day\(s\)/, id)
+  }
+  // The premise: the package declares the value, and nothing in the product produces it.
+  const pkg = (registry as unknown as { packages: Record<string, { meta: { requiredBindings?: string[] } }> }).packages[CAMPAIGN]
+  assert.ok(pkg.meta.requiredBindings?.includes('campaign.snoozeDurationInDays'), 'the package no longer declares the value')
+  const producers = execSync('git grep -lE "campaign\\.snoozeDurationInDays" -- src', { encoding: 'utf8' }).split('\n').filter((l) => l !== '' && !l.endsWith('.test.ts') && !l.endsWith('registry.generated.json'))
+  assert.deepEqual(producers, [], `something binds the snooze value now: ${producers.join(', ')}`)
 })
 
 test('C7: the configure procedure says what Microsoft managed does now', () => {

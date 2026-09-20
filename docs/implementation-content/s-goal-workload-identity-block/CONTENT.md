@@ -1,4 +1,4 @@
-# IAMAI renderable content — Restrict the Entra Connect Sync Account to Its Address
+# IAMAI renderable content — Restrict the Directory Sync Service Principal to Its Address
 
 @@IAMAI-BEGIN {"id":"entra.location.create","channel":"entra","states":["locationMissing"],"format":"markdown","kind":"template"}
 Create only the prerequisite named location in this state.
@@ -211,7 +211,7 @@ IAMAI has reached the enforcement state; do not rebuild the location or policy.
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["locationMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["CreatePolicy"]},"LocationId":{"binding":"location.syncServer.id","modes":["CreatePolicy","Correct","Verify"]},"ServicePrincipalId":{"binding":"workload.cloudSync.servicePrincipalId","modes":["CreatePolicy","Correct","Verify"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify"]}},"withheldModes":{"CreateLocation":"-IpRanges takes Graph ipRange objects (@odata.type and cidrAddress); IAMAI binds the approved ranges as CIDR text, so the call cannot be built","Enforce":"the script enforces only with -CurrentEgressAddressConfirmed and -ReportOnlyEvidenceReviewed, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
-# IAMAI compact implementation script — Restrict the Entra Connect Sync Account to Its Address
+# IAMAI compact implementation script — Restrict the Directory Sync Service Principal to Its Address
 # Required module: Microsoft.Graph.Authentication
 # Create/Correct/Enforce delegated scopes: Policy.Read.All, Policy.ReadWrite.ConditionalAccess
 # Verify delegated scope: Policy.Read.All

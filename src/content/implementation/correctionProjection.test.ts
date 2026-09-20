@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING, mismatchBindingOf } from './protocol.ts'
-import { UNRESOLVED, present, projectImplementation, projectSafely } from './project.ts'
+import { UNRESOLVED, present, projectImplementation, projectSafely, selectMismatches } from './project.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
 import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from '../../roadmap/sourceMappings.ts'
@@ -159,54 +159,75 @@ test('an omitted source exception preserves the tenant’s existing excluded per
 
 })
 
-test('a two-policy set corrects only the member that differs, creates only the member that is missing, and never touches the sibling that is right (correction batch 2)', () => {
+// Correction batch 2's member scoping is the engine's rule, and since V1 audit S4-10
+// removed Limit How Long Sessions Last's unmanaged-device companion (the pin maps that
+// goal to one member) no shipped package has two members whose modules differ, so the
+// rule is read where it lives: selectMismatches, on a table of its own.
+test('a module scoped to a member reads that member’s changed fields, never the set’s, so the sibling that is right is not touched (correction batch 2)', () => {
+  const table = {
+    mode: 'composeByMismatch',
+    mismatches: {
+      'a.missing': { member: 'a', select: { equals: ['policies.pair.a.operation', 'create'] } },
+      'a.session': { member: 'a', facts: ['sessionControls'] },
+      'b.conditions': { member: 'b', facts: ['conditions'] },
+      'b.session': { member: 'b', facts: ['sessionControls'] },
+    },
+  }
+  const select = (bindings: Record<string, unknown>) => selectMismatches(table, { state: 'partial', bindings, satisfied: new Set<string>(), baselineCommit: null })
+  const CHANGED_A = 'policies.pair.a.current.changedFields'
+  const CHANGED_B = 'policies.pair.b.current.changedFields'
+  // One member wrong, the other right: only the wrong member's correction, although the set reports the field.
+  assert.deepEqual(select({ [CHANGED_FIELDS_BINDING]: ['sessionControls.signInFrequency.value'], [CHANGED_A]: ['sessionControls.signInFrequency.value'], [CHANGED_B]: [] }), { selected: ['a.session'], unknown: [] })
+  // Both wrong, in different fields: each member's own module, and neither the other's.
+  assert.deepEqual(select({ [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups', 'sessionControls.signInFrequency.value'], [CHANGED_A]: ['sessionControls.signInFrequency.value'], [CHANGED_B]: ['conditions.users.excludeGroups'] }), { selected: ['a.session', 'b.conditions'], unknown: [] })
+  // One member missing beside a healthy one: that member's create alone.
+  assert.deepEqual(select({ 'policies.pair.a.operation': 'create', [CHANGED_A]: [], [CHANGED_B]: [] }), { selected: ['a.missing'], unknown: [] })
+  // Both right: nothing is selected.
+  assert.deepEqual(select({ [CHANGED_A]: [], [CHANGED_B]: [] }), { selected: [], unknown: [] })
+  // A change the set reports that no member's own changes account for belongs to nobody IAMAI can name.
+  assert.deepEqual(select({ [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'], [CHANGED_A]: [], [CHANGED_B]: [] }), { selected: [], unknown: ['grantControls.builtInControls'] })
+})
+
+test('Limit How Long Sessions Last corrects the one pinned policy, field by field, and has no second member to correct (S4-10)', () => {
   const pkg = PACKAGES['s-goal-session-lifetime']
   const partial = pkg.meta.projection.partial as { mismatches: Record<string, { member?: string }> } | undefined
   assert.ok(partial, 'the Session Lifetime Partial was withheld at compile time')
-  assert.ok(Object.values(partial.mismatches).every((m) => m.member === 'browser' || m.member === 'unmanaged'), 'a module is not scoped to its member')
+  // The pin maps all-users-no-persistence to one member, so every module is the browser policy's.
+  assert.deepEqual([...new Set(Object.values(partial.mismatches).map((m) => m.member))], ['browser'])
   const REPORT_ONLY = 'enabledForReportingButNotEnforced'
   const set = {
     'tenant.displayName': 'Contoso',
     'policy.target.excludeGroups': ['group-1'],
     'policy.target.excludeUsers': ['user-1'],
     'policies.session.browser.target.displayName': 'Browser sessions',
-    'policies.session.unmanaged.target.displayName': 'Unmanaged sessions',
+    'policies.session.browser.target.sessionControls': { signInFrequency: { isEnabled: true, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication', type: 'hours', value: 12 }, persistentBrowser: { isEnabled: true, mode: 'never' }, applicationEnforcedRestrictions: null, cloudAppSecurity: null, disableResilienceDefaults: null },
     'policies.session.browser.operation': 'update',
-    'policies.session.unmanaged.operation': 'update',
     'policies.session.browser.current.id': 'policy-browser',
-    'policies.session.unmanaged.current.id': 'policy-unmanaged',
     'policies.session.browser.current.state': REPORT_ONLY,
-    'policies.session.unmanaged.current.state': REPORT_ONLY,
   }
   const runtime = { satisfied: new Set<string>(), baselineCommit: null }
   const blocksOf = (bindings: Record<string, unknown>) => {
     const p = projectSafely(pkg, 'partial', bindings, runtime)
     return { p, blocks: new Set([...p.channels.flatMap((c) => c.blocks), ...(p.channels.find((c) => c.channel === 'powershell')?.runs ?? []).map((r) => `mode:${r.mode}`)]) }
   }
-  // One member wrong, the other right: only the wrong member's correction.
+  // One field wrong: only that field's correction, and no companion anywhere.
   const one = blocksOf({ ...set, [CHANGED_FIELDS_BINDING]: ['sessionControls.signInFrequency.value'], 'policies.session.browser.current.changedFields': ['sessionControls.signInFrequency.value'] })
   assert.deepEqual(one.p.hold, null, JSON.stringify(one.p.hold))
   assert.ok(one.blocks.has('json.browser.session') && one.blocks.has('mode:CorrectBrowserSession'), [...one.blocks].join(', '))
-  assert.equal([...one.blocks].some((b) => /unmanaged|Unmanaged|conditions|create|report-only/.test(b)), false, `a healthy sibling or an unchanged field was corrected: ${[...one.blocks].join(', ')}`)
-  // Both wrong, in different fields: each member's own correction, and nothing else.
-  const both = blocksOf({ ...set, [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups', 'sessionControls.signInFrequency.value'], 'policies.session.browser.current.changedFields': ['sessionControls.signInFrequency.value'], 'policies.session.unmanaged.current.changedFields': ['conditions.users.excludeGroups'] })
-  assert.ok(both.blocks.has('entra.correct.browser.session') && both.blocks.has('entra.correct.unmanaged.conditions'), [...both.blocks].join(', '))
-  assert.equal(both.blocks.has('entra.correct.browser.conditions') || both.blocks.has('entra.correct.unmanaged.session'), false, [...both.blocks].join(', '))
-  assert.ok(both.p.degraded?.some((d) => d.channel === 'json'), 'two policies’ bodies were merged into one request')
-  // Both right: nothing is selected, and nothing is offered.
-  const none = projectSafely(pkg, 'partial', set, runtime)
-  assert.deepEqual(none.channels, [])
-  // One member missing beside a healthy one: create that member only.
-  const missing = blocksOf({ ...set, 'policies.session.unmanaged.operation': 'create', 'policies.session.unmanaged.current.id': undefined, 'policies.session.unmanaged.current.state': undefined })
-  assert.ok(missing.blocks.has('json.unmanaged.create') && missing.blocks.has('mode:CreateUnmanaged'), [...missing.blocks].join(', '))
-  assert.equal([...missing.blocks].some((b) => /browser\.create|CreateBrowser|mode:Create$|entra\.create-set/.test(b)), false, `the healthy member was created again: ${[...missing.blocks].join(', ')}`)
+  assert.equal([...one.blocks].some((b) => /unmanaged|Unmanaged|conditions|create|report-only/.test(b)), false, `an unchanged field was corrected: ${[...one.blocks].join(', ')}`)
+  // Nothing wrong: nothing is offered.
+  assert.deepEqual(projectSafely(pkg, 'partial', set, runtime).channels, [])
+  // The policy missing: the browser create alone, and it is the only create the package has.
+  const missing = blocksOf({ ...set, 'policies.session.browser.operation': 'create', 'policies.session.browser.current.id': undefined, 'policies.session.browser.current.state': undefined })
+  assert.ok(missing.blocks.has('json.browser.create') && missing.blocks.has('mode:CreateBrowser'), [...missing.blocks].join(', '))
+  assert.equal([...missing.blocks].some((b) => /unmanaged|Unmanaged|mode:Create$/.test(b)), false, `a second policy was created: ${[...missing.blocks].join(', ')}`)
   // Cycle 3 (C02, RUN-CONTEXT): a live member that differs keeps its state. It used to go back to
   // report-only beside its correction; now only its correction is drawn, and saving it is described.
   const live = blocksOf({ ...set, 'policies.session.browser.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.session.browser.current.changedFields': ['conditions.users.excludeGroups'] })
   assert.ok(live.blocks.has('entra.correct.browser.conditions'), [...live.blocks].join(', '))
   assert.equal([...live.blocks].some((b) => /lifecycle|report-only|ReportOnly/.test(b)), false, `a correction moved a live policy to report-only: ${[...live.blocks].join(', ')}`)
   assert.match(live.p.channels.find((c) => c.channel === 'entra')?.text ?? '', /If it is On, the changed rule can affect access after you save\./)
-  // A change the set reports that no member accounts for belongs to nobody IAMAI can name: it holds.
+  // A change no module accounts for belongs to nobody IAMAI can name: it holds.
   const stray = projectSafely(pkg, 'partial', { ...set, [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] }, runtime)
   assert.deepEqual(stray.hold?.unknownMismatches, ['grantControls.builtInControls'])
   assert.deepEqual(stray.channels, [])

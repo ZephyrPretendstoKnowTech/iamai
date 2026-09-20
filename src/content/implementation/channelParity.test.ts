@@ -190,3 +190,31 @@ test(`${MEDIUM_RISK}: no channel and no baseline note says a machine channel bui
     assert.doesNotMatch(block.text, /outputs write|documented pair(ing)?/, `${id}: a caveat still explains a divergence`)
   }
 })
+
+// V1 audit S4-11: on Remediate High-Risk Users the Entra tab hedged a grant the other two
+// always write — "When Entra adds authentication strength, select …" — while the JSON and the
+// script wrote `riskRemediation` + the resolved strength under AND unconditionally, and the
+// script's Assert-Canonical threw without the strength. The package's own correction stated
+// it flatly, so the create and the correction disagreed too. The pin holds the pair, and the
+// pinned baseline wins (CLAUDE.md), so the Entra create states it as its correction does.
+const HIGH_RISK = 's-goal-user-risk'
+const RISK_GRANT = { operator: 'AND', builtInControls: ['riskRemediation'], authenticationStrength: { id: ID(2) }, customAuthenticationFactors: [], termsOfUse: [] }
+
+test(`${HIGH_RISK}: the create names the strength as the grant it is, in the same words as the correction, and all three channels write the pin's pair`, () => {
+  const created = projectImplementation(PACKAGES[HIGH_RISK], 'missing', bindings({}))
+  assert.equal(created.hold, null, JSON.stringify(created.hold))
+  const entra = created.channels.find((c) => c.channel === 'entra')!
+  const json = created.channels.find((c) => c.channel === 'json')!
+  const ps = created.channels.find((c) => c.channel === 'powershell')!
+  assert.deepEqual((JSON.parse(json.text) as { grantControls: unknown }).grantControls, RISK_GRANT)
+  assert.match(ps.text, /builtInControls=@\('riskRemediation'\)/)
+  assert.ok(ps.text.includes(`-AuthenticationStrengthId '${ID(2)}'`), ps.text)
+  // The create states the strength, and no channel makes it a future capability of the portal.
+  assert.match(entra.text, /Grant access > Require risk remediation\*\* with authentication strength \*\*Sample strength\*\*/)
+  for (const c of created.channels) assert.doesNotMatch(c.text, /When Entra adds authentication strength/, c.channel)
+  // And the correction says the same thing, so create and correct cannot disagree.
+  const corrected = projectImplementation(PACKAGES[HIGH_RISK], 'partial', bindings({ [CHANGED_FIELDS_BINDING]: ['grantControls'] }))
+  assert.equal(corrected.hold, null, JSON.stringify(corrected.hold))
+  assert.match(corrected.channels.find((c) => c.channel === 'entra')!.text, /Require risk remediation\*\* with authentication strength \*\*Sample strength\*\*/)
+  for (const [id, block] of Object.entries(PACKAGES[HIGH_RISK].blocks)) assert.doesNotMatch(block.text, /When Entra adds/, `${id}: a channel still hedges the grant`)
+})
