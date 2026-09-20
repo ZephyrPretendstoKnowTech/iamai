@@ -7,7 +7,7 @@ This file is authored source. Render/extract only blocks selected by `META.json`
 
 Create this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.
 
-Leave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.
+Leave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on. Until it reads **No**, Microsoft does not properly enforce a Conditional Access policy that uses this User Action, so what people meet at the join is still the old setting.
 
 1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.
 2. Select **New policy** and enter the IAMAI-resolved policy name.
