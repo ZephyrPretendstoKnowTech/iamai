@@ -1435,15 +1435,14 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)])
-  if (step.state.lifecycle === 'not-deployed' && c.implementation.offered && operationsOf(step).length > 0 && operationsOf(step).every(op => op.mode === 'create' && !enforcesOnRun(op))) {
-    for (const tile of tiles) {
-      const prerequisite = tileStepOf(tile)
-      if (prerequisite && Object.values(GATE_STEP).includes(prerequisite) && !blockers.some(b => b.id === prerequisite)) {
-        tile.label = 'Before enforcement'
-        tile.note = `Ready for report-only deployment. Complete ${tile.value} before enforcement. Creating this policy in Report-only does not enforce access restrictions.`
-      }
-    }
-  }
+  // A "Before enforcement" tile used to be relabelled here, with a sentence
+  // composed in code — "Ready for report-only deployment. Complete X before
+  // enforcement. Creating this policy in Report-only does not enforce access
+  // restrictions." — beside a policy card already saying the same thing (owner,
+  // 2026-09-19: "both tasks basically say the same thing"). It is gone: a
+  // prerequisite tile states what is waited on and links to it, the policy card
+  // states the policy's own next stage, and what Report-only does not do is the
+  // Entra procedure's own line, once.
   const satisfied = facts.filter((t) => !unresolved(t))
   return { tiles, satisfied, bar: barOf(c) }
 }
