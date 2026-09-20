@@ -121,8 +121,17 @@ export function packageDrawsImplementation(pkg: CompiledPackage | null, projecti
  * package records none — never a fabricated date, and never a baseline pin (S6).
  */
 export function packageSourceLine(pkg: CompiledPackage, words: { sourceChecked: string }): string | null {
-  const on = sourceUpdatedOn(pkg)
-  return on ? fillText(words.sourceChecked, { date: absoluteDate(`${on}T12:00:00Z`) }) : null
+  return sourceCheckedLine(sourceUpdatedOn(pkg), words)
+}
+
+/**
+ * The one producer of the "Source checked <date>" line, from a date something in
+ * the repository recorded a Microsoft page as checked on — a package's
+ * `verifiedSources[].checkedOn`, or a step whose Learn page a wave spec dated
+ * (`learn.checkedOn`). No date, no line: never a fabricated one, never a pin (S6).
+ */
+export function sourceCheckedLine(on: string | null, words: { sourceChecked: string }): string | null {
+  return on && /^\d{4}-\d{2}-\d{2}$/.test(on) ? fillText(words.sourceChecked, { date: absoluteDate(`${on}T12:00:00Z`) }) : null
 }
 
 /**

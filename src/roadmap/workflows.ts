@@ -1,5 +1,6 @@
 import goals from '../../data/goals.json' with { type: 'json' }
 import { workflowWords } from '../content/content.ts'
+import type { Learn } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { detectFacets } from '../coverage/applicability.ts'
 import type { Facet } from '../coverage/applicability.ts'
@@ -15,6 +16,14 @@ import { MANUAL_REVIEW_ID } from './manualWork.ts'
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
 const W = workflowWords
+/**
+ * The one Microsoft page every generated review row cites, and the day the
+ * repository records it as read: `ms-plan-ca` in the source table of
+ * docs/plans/ongoing-spec.md section 1, checked 2026-09-20. The row shows that
+ * date beside the link (stepBody.ts sourceCheckedLine), which is why the date
+ * lives here with the URL and is moved only by re-reading the page.
+ */
+const PLAN_CA: Learn = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', checkedOn: '2026-09-20' }
 const services: [string, RegExp][] = [['sharepoint', /sharepoint|onedrive/i], ['avd', /\bAVD\b|virtual.desktop/i], ['inforcer', /inforcer/i], ['agents', /agent/i], ['azureManagement', /WindowsAzureAD|BaselineScopes/i]]
 /** The service a baseline policy IAMAI does not assess protects, by its name; null for none. */
 export function serviceOf(policy: Pick<NotAssessed, 'name'>): string | null { return services.find(([, re]) => re.test(policy.name))?.[0] ?? null }
@@ -86,7 +95,7 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     // The Tasks Remaining card's subject is the baseline policy under review and
     // its check is the state of that review, not the row's own title read back
     // three times (quality audit 2.1).
-    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' } }
+    step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
     if (applicable === 'no') { step.doesntApply = fillText(W.notUsed, { service: name }); setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
     // The pinned AVD block relies on four source exclusions whose allowed-user

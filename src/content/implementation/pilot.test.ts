@@ -275,7 +275,10 @@ test('the source date comes from the package’s verified sources, never a clock
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation
   assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-20T12:00:00Z') }))
-  assert.match(read('src/ui/surfaces/stepBody.ts'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : null/)
+  // The line has two recorded origins and no third: the package's verified
+  // sources, or the step's own dated Learn entry (quality audit section 2.5).
+  // Neither is a clock, and nothing else may produce it.
+  assert.match(read('src/ui/surfaces/stepBody.ts'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : sourceCheckedLine\(typeof learn\.checkedOn === 'string' \? learn\.checkedOn : null, W\)/)
 })
 
 // --------------------------------------------------------------- troubleshooting

@@ -170,7 +170,7 @@ type ContractWords = {
     close: string
     /** A channel with no content to show (content review D2): its tab still draws, with this line; `{address}` is the feedback address. */
     channelUnavailable: string
-    /** "Source checked <date>", from the package's verified sources (S6); the line is omitted where there is no date. */
+    /** "Source checked <date>", from the package's verified sources or the step's own dated Learn entry (S6); the line is omitted where nothing recorded a check. */
     sourceChecked: string
     /** The Microsoft Learn link under Implementation, label exactly "Microsoft Learn" (S6). */
     learn: string
