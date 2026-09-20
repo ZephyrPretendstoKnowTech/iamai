@@ -352,3 +352,77 @@ test('N6: the step shows the date its Microsoft sources were checked, on both sc
     assert.equal(bodiesOf(f).get('s-goal-service-accounts-trusted-network')!.sourceLine, 'Source checked Sep 20, 2026')
   }
 })
+
+// ---------------------------------------------------------------------------
+// Restrict the Entra Connect Sync Account to Its Address (spec section 8)
+//
+// No fixture generates this step (spec section 9.5: it needs the Workload ID
+// Premium licence beside D1's Entra Connect answer, and no fixture supplies
+// both). Every claim below is therefore read from the content entry and the
+// compiled package — the text the printed plan, the export and the prompt pack
+// carry, and the text the step would draw wherever it is reached.
+// ---------------------------------------------------------------------------
+
+test('W0: the premise — no fixture draws this step, so its words are read where they are carried', () => {
+  for (const f of ['demo', 'demo-week2', 'mid', 'messy', 'large'] as const) {
+    assert.equal(bodiesOf(f).get('s-goal-workload-identity-block'), undefined, `${f} generates it after all; read the rendered body instead`)
+  }
+})
+
+test('W1: the step states which identities a workload policy covers, and which it never does', () => {
+  const why = whyOf('workload-identity-block')
+  assert.match(why, /covers a single-tenant service principal registered in this tenant/)
+  assert.match(why, /no Microsoft or multitenant application and no managed identity/)
+  assert.match(blockText('s-goal-workload-identity-block', 'entra.policy.create'), /\*\*single-tenant service principal registered in this tenant\*\*/)
+  assert.ok(
+    helpDeskOf('workload-identity-block').some((l) => /A Microsoft or multitenant application, and any managed identity, is outside what this policy can cover/.test(l)),
+    helpDeskOf('workload-identity-block').join('\n'),
+  )
+})
+
+test('W2: a risk says a policy assigned to a group is not enforced for a service principal in it', () => {
+  assert.ok(
+    risksOf('workload-identity-block').some((t) => /assigned to a group that holds one is not enforced for it/.test(t)),
+    risksOf('workload-identity-block').join('\n'),
+  )
+  assert.match(blockText('s-goal-workload-identity-block', 'entra.policy.create'), /a policy assigned to a group that holds a service principal is not enforced for that service principal/)
+})
+
+test('W3: the procedure says Block access is the only grant this policy offers', () => {
+  assert.match(blockText('s-goal-workload-identity-block', 'entra.policy.create'), /It is the only grant control a workload identity policy offers\./)
+  assert.match(allText('workload-identity-block'), /which is the only grant a workload identity policy offers/)
+})
+
+test('W4: the network condition is set through Configure: Yes, and is named by both its names', () => {
+  const create = blockText('s-goal-workload-identity-block', 'entra.policy.create')
+  assert.match(create, /\*\*Network\*\* \(this page still calls it \*\*Conditions > Locations\*\*\)/)
+  assert.match(create, /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(blockText('s-goal-workload-identity-block', 'entra.correct.policy.location-boundary'), /set \*\*Configure\*\* to \*\*Yes\*\*/)
+  assert.match(allText('workload-identity-block'), /Network \(formerly Conditions → Locations\) → Configure: Yes, then Include: Any network or location/)
+})
+
+test('W5: the step says the Connect Sync account and the Cloud Sync service principal are two identities', () => {
+  assert.match(whyOf('workload-identity-block'), /Entra Connect Sync signs in as a user account, while Cloud Sync uses a provisioning service principal/)
+  assert.match(blockText('s-goal-workload-identity-block', 'entra.policy.create'), /user account with the Directory Synchronization Accounts role, while Cloud Sync uses a provisioning service principal/)
+  // The Who line still carries the two sentences walkContent C6 reads off the pinned baseline.
+  const who = allText('workload-identity-block')
+  assert.match(who, /Cloud Sync's provisioning service principal/)
+  assert.match(who, /does not establish support for workload Conditional Access/)
+})
+
+test('W6: the row’s Impact is about this step, not the placeholder', () => {
+  const meta = (registry.packages as Record<string, { meta?: { impact?: { fallbackLabel?: string } } }>)['s-goal-workload-identity-block']?.meta
+  assert.equal(meta?.impact?.fallbackLabel, 'Directory synchronisation')
+  assert.notEqual(meta?.impact?.fallbackLabel, 'Tenant settings')
+})
+
+test('W7: the held step’s end state is this step’s outcome, and the caveat is said once', () => {
+  const end = String((stepById['workload-identity-block'] as unknown as { doneEnd?: string }).doneEnd ?? '')
+  assert.match(end, /^The identity that requests tokens for directory synchronisation in \{tenant\} is one Conditional Access can cover/)
+  // "Creating the policy alone does not establish protection" used to be in both
+  // doneEnd and doneWhen; it is one sentence in one place now.
+  const done = ((stepById['workload-identity-block'] as unknown as { doneWhen?: string[] }).doneWhen ?? []).join('\n')
+  assert.doesNotMatch(end, /Creating the policy alone/)
+  assert.match(done, /Creating the policy alone does not establish protection\./)
+  assert.equal(checkedOn('s-goal-workload-identity-block'), '2026-09-20')
+})
