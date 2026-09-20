@@ -136,6 +136,18 @@
     {
       "id": "ms-entra-ps",
       "url": "https://learn.microsoft.com/en-us/powershell/entra-powershell/how-to-manage-per-user-mfa?view=entra-powershell"
+    },
+    {
+      "id": "ms-turn-off-per-user",
+      "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa"
+    },
+    {
+      "id": "ms-user-states",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates"
+    },
+    {
+      "id": "ms-mfa-settings",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings"
     }
   ],
   "schemaVersion": "2.5-compact",
@@ -156,5 +168,31 @@
     "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
     "status": "SELF-VERIFIED"
   },
-  "unresolvedIssues": []
+  "unresolvedIssues": [],
+  "verifiedSources": [
+    {
+      "id": "ms-turn-off-per-user",
+      "authority": "Microsoft Learn",
+      "title": "Microsoft Entra recommendation: Turn off per-user MFA",
+      "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-user-states",
+      "authority": "Microsoft Learn",
+      "title": "Enable per-user Microsoft Entra multifactor authentication",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    },
+    {
+      "id": "ms-mfa-settings",
+      "authority": "Microsoft Learn",
+      "title": "Configure Microsoft Entra multifactor authentication settings",
+      "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings",
+      "checkedOn": "2026-09-20",
+      "userFacing": true
+    }
+  ]
 }

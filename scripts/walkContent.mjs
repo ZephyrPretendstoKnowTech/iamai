@@ -52,7 +52,11 @@ export const ACCEPTANCE = [
   { item: 'C2', step: 's-prereq-exclusion-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations', mustNot: 'plan-conditional-access' },
   { item: 'C2', step: 's-prereq-service-accounts-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/architecture/secure-service-accounts', mustNot: 'conditional-access/workload-identity' },
   { item: 'C2', step: 'admin-portals-protected', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals', mustNot: 'policy-old-require-mfa-admin' },
-  { item: 'C2', step: 'guests-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa', mustNot: 'policy-all-users-mfa-strength' },
+  // MFA for Everyone E7 (docs/plans/mfa-everyone-spec.md section 6, checked
+  // 2026-09-20): the tutorial does not carry the facts this step now states —
+  // which methods an external user can use in the resource tenant, and what the
+  // home tenant's MFA claim covers. The page that does is the step's link.
+  { item: 'C2', step: 'guests-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/external-id/authentication-conditional-access', mustNot: 'policy-all-users-mfa-strength' },
   { item: 'C2', step: 'intune-enrollment-reauth', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime' },
   { item: 'C2', cleanup: 'alerting', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs' },
   { item: 'C2', cleanup: 'drill', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs' },
@@ -64,12 +68,19 @@ export const ACCEPTANCE = [
   { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Signing in by transferring a session from another device is turned off', mustNot: /nobody here/i },
   { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Sign-ins from countries outside the approved list are blocked', mustNot: /nobody signed in/i },
   // C7: the security-defaults switch is dated to the day Require MFA for Everyone
-  // enforces, with the legacy block and the admin MFA policy the same day, and
-  // the step says so (report-only policies can exist with security defaults on).
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.' },
+  // enforces, with the other three replacement policies the same day.
+  // MFA for Everyone F1-F6 (docs/plans/mfa-everyone-spec.md section 7, Microsoft
+  // Learn checked 2026-09-20): security defaults now block device code flow too,
+  // so the replacement list is four policies, not three; and no Learn page says
+  // a report-only policy may coexist with security defaults — what Learn says is
+  // that creating Conditional Access policies prevents enabling them.
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', mustNot: 'Report-only policies can exist while security defaults are on' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'more.risks', must: 'Security defaults also block device code sign-in' },
   // Per step, 1–10.
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.mfa-method', must: 'register a passkey from the approved model list', mustNot: /hardware security key \(FIDO2\).*not a passkey in Authenticator/i },
   { item: '1', step: 's-prereq-break-glass', path: 'whatToDo.checkFixes.recent-sign-in', must: '{name} signed in {ago}, not a recorded drill: confirm who signed in and why.', mustNot: 'run the drill' },
@@ -90,7 +101,14 @@ export const ACCEPTANCE = [
   { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'Each shared device completes its required work tasks from the approved network', mustNot: 'requires a compliant device' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Manage migration → Migration complete.' },
+  // MFA for Everyone G1-G7 (docs/plans/mfa-everyone-spec.md section 8, Microsoft
+  // Learn checked 2026-09-20): the step's outcome is the per-user state, not the
+  // methods-policy migration, which its own Completion Criteria already said.
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Per-user MFA → select the accounts above → Disable MFA', mustNot: 'Manage migration → Migration complete.' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'it never requires MFA, so finishing its migration is not what finishes this step' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'why', must: 'asked for MFA at every sign-in whatever the policy decides' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'skip for federated requests from your intranet' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa', mustNot: 'how-to-authentication-methods-manage' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Enforce attestation: Yes; it applies to new registrations only.' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Microsoft Authenticator → Enable: On, All users, for push and codes', mustNot: 'so passkeys in the app can be registered' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'more.risks', must: 'Synced passkeys (iCloud Keychain, Google Password Manager) fail attestation and cannot register under these settings.' },
@@ -108,9 +126,23 @@ export const ACCEPTANCE = [
   { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'Over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Registration campaign' },
-  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Administrators have a phishing-resistant method', mustNot: 'a passkey and a security key' },
+  // MFA for Everyone C1-C9 (docs/plans/mfa-everyone-spec.md section 4, Microsoft
+  // Learn checked 2026-09-20): the campaign nudges passkeys as well as the
+  // Authenticator app, one method at a time, and a passkey campaign reaches no
+  // guest. Completion Criteria is one thing per line.
+  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every administrator has a phishing-resistant method.', mustNot: 'a passkey and a security key' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'either Passkey (FIDO2) or Microsoft Authenticator', mustNot: 'Check the separate passkey registration instructions for passkeys' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'A passkey campaign does not nudge guests' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Days allowed to snooze and Limited number of snoozes' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'This policy uses Require multifactor authentication.', mustNot: 'requires one the moment a sign-in looks wrong' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'Stronger method requirements belong to the separate policies that select an authentication strength.' },
+  // MFA for Everyone D1-D3 (docs/plans/mfa-everyone-spec.md section 5, Microsoft
+  // Learn checked 2026-09-20): the reference procedure named an authentication
+  // strength where the pin is builtInControls ["mfa"], and Learn says a policy
+  // cannot carry both controls. One fact, one source: the pin's.
+  { item: '14', step: 'mfa-all-users', path: 'whatToDoReference.steps', must: 'Grant → Require multifactor authentication.', mustNot: 'Grant → Require authentication strength: Multifactor authentication' },
+  { item: '14', step: 'mfa-all-users', path: 'more.risks', must: 'Microsoft is retiring both, and a person left with nothing else is made to register a passkey', mustNot: 'waiting on a text that does not arrive' },
+  { item: '14', step: 'mfa-all-users', path: 'more.helpDesk', must: "cannot rename or delete is Microsoft's own managed one" },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', mustNot: '{list:adminsWith}' },
   { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} will need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },
@@ -187,9 +219,15 @@ export const ACCEPTANCE = [
   // 29's device-settings toggle, 36's and 38's password writeback and 24's SharePoint
   // line are the content's own "before" lines (whatToDo.before), which the product
   // keeps above the translator's portal lines; the reference no longer carries them.
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'After it is enforced for the intended registration or join scope' },
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Require Multifactor Authentication to register or join devices' },
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
+  // MFA for Everyone B3-B5 (docs/plans/mfa-everyone-spec.md section 3, Microsoft
+  // Learn checked 2026-09-20): the tenant-wide setting is not hygiene — while it
+  // is Yes, "Conditional Access policies with this user action aren't properly
+  // enforced" — and the three conditions are unavailable, not unwise.
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'this policy is not properly enforced', mustNot: 'After it is enforced for the intended registration or join scope' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'on the day it is enforced for the intended registration or join scope' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Client apps, Filters for devices and Device state are not available for this user action' },
+  { item: '29', step: 'device-registration-mfa', path: 'more.risks', must: 'Windows Hello for Business and a device-bound passkey cannot answer this policy' },
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'An unsupported client or device path can be blocked.' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.

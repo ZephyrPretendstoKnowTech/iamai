@@ -5376,7 +5376,7 @@
             "title": "Require multifactor authentication for device registration",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
             "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "primary",
             "audience": [
@@ -5392,7 +5392,7 @@
             "title": "Conditional Access: Target resources",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
             "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": true,
             "priority": "technical",
             "audience": [
@@ -5423,7 +5423,7 @@
             "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
             "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
             "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
-            "checkedOn": "2026-09-10",
+            "checkedOn": "2026-09-20",
             "userFacing": false,
             "priority": "technical",
             "audience": [
@@ -5683,7 +5683,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\nLeave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
+          "text": "# Create the policy in Report-only\n\nCreate this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.\n\nLeave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on. Until it reads **No**, Microsoft does not properly enforce a Conditional Access policy that uses this User Action, so what people meet at the join is still the old setting.\n\n1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.\n2. Select **New policy** and enter the IAMAI-resolved policy name.\n3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.\n4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.\n5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place. **Require multifactor authentication** and **Require authentication strength** are the only controls this User Action offers; the rest are greyed out.\n   Whatever the strength allows, **Windows Hello for Business** and a **device-bound passkey** cannot answer this policy: both need the device to be registered already, and at this moment it is not. Check that the people who register devices hold something else the strength accepts.\n6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.\n7. Set **Enable policy** to **Report-only**.\n8. Create the policy.\n9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.\n\nDone when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -6863,12 +6863,28 @@
         },
         "verifiedSources": [
           {
+            "id": "ms-external-ca",
+            "authority": "Microsoft Learn",
+            "title": "Authentication and Conditional Access for External ID",
+            "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-cross-tenant-b2b",
+            "authority": "Microsoft Learn",
+            "title": "Configure cross-tenant access settings for B2B collaboration",
+            "url": "https://learn.microsoft.com/entra/external-id/cross-tenant-access-settings-b2b-collaboration",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
             "id": "ms-b2b-mfa",
             "authority": "Microsoft Learn",
-            "title": "Tutorial: Multifactor authentication for B2B",
-            "url": "https://learn.microsoft.com/en-us/entra/external-id/b2b-tutorial-require-mfa",
-            "checkedOn": "2026-09-12",
-            "userFacing": true
+            "title": "Require multifactor authentication for B2B collaboration users",
+            "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa",
+            "checkedOn": "2026-09-20",
+            "userFacing": false
           }
         ],
         "baselineAuthority": {
@@ -8847,7 +8863,31 @@
             "authority": "Microsoft Learn",
             "title": "Require MFA for all users with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-strengths",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access authentication strength",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-managed-policies",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft-managed policies in Conditional Access",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/managed-policies",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-sms-retirement",
+            "authority": "Microsoft Learn",
+            "title": "Passkeys by default and retirement of Microsoft-provided SMS and voice authentication",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/concept-sms-voice-retirement",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -8888,7 +8928,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments from the target: **Users → Include: All users**, excluding the resolved exclusions. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
         },
         "entra.correct-open": {
           "meta": {
@@ -8912,7 +8952,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
+          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -11121,7 +11161,15 @@
             "authority": "Microsoft Learn",
             "title": "Control security information registration with Conditional Access",
             "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Network condition in Conditional Access policy",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -11156,7 +11204,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure this intended scope: **Target resources > User actions > Register security information**. Apply the IAMAI-resolved users and exclusions, and set Conditions only as IAMAI resolved them.\n   Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]\n4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure this intended scope: **Target resources > User actions > Register security information**. Apply the IAMAI-resolved users and exclusions, and set Conditions only as IAMAI resolved them.\n   Conditions > Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. Left at **No**, the condition matches every location, including the network you meant to leave out. [omit this line when unavailable]\n4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.\n5. Leave session controls unconfigured; the intended target has none.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -11168,7 +11216,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: **Target resources > User actions > Register security information**, the IAMAI-resolved users and exclusions, and the location rule below. Correct this policy rather than creating a replacement.\nConditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]\n"
+          "text": "Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: **Target resources > User actions > Register security information**, the IAMAI-resolved users and exclusions, and the location rule below. Correct this policy rather than creating a replacement.\nConditions > Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. Left at **No**, the condition matches every location, including the network you meant to leave out. [omit this line when unavailable]\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -21795,7 +21843,33 @@
           "troubleshooting": [
             "troubleshooting.model"
           ]
-        }
+        },
+        "verifiedSources": [
+          {
+            "id": "ms-turn-off-per-user",
+            "authority": "Microsoft Learn",
+            "title": "Microsoft Entra recommendation: Turn off per-user MFA",
+            "url": "https://learn.microsoft.com/entra/identity/monitoring-health/recommendation-turn-off-per-user-mfa",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-user-states",
+            "authority": "Microsoft Learn",
+            "title": "Enable per-user Microsoft Entra multifactor authentication",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-mfa-settings",
+            "authority": "Microsoft Learn",
+            "title": "Configure Microsoft Entra multifactor authentication settings",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-mfa-mfasettings",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ]
       },
       "blocks": {
         "entra.migrate": {
@@ -21808,7 +21882,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra ID > Authentication methods > Policies** and open the migration guidance/status.\n2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups.\n3. Move the migration state through Microsoft's supported migration workflow only after method coverage is preserved.\n4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.\n"
+          "text": "1. Go to **Entra ID > Authentication methods > Policies** and open the migration guidance/status.\n2. Audit the methods currently allowed by legacy MFA/SSPR settings and enable the required equivalents in the unified Authentication methods policy for the intended users/groups. Methods can no longer be managed in the legacy MFA and SSPR policies, so the unified policy is where the coverage has to exist.\n3. Move the migration state through Microsoft's supported migration workflow only after method coverage is preserved.\n4. Method migration controls which methods people can use; it does not replace the per-user MFA requirement, and marking it complete does not disable anybody's per-user state. Do not disable per-user MFA until a replacement Conditional Access policy that requires MFA is enabled and covers these accounts.\n"
         },
         "entra.disable": {
           "meta": {
@@ -21820,7 +21894,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Verify the replacement Conditional Access policy is enabled and covers these accounts: {{dependencies.replacementMfaSummary}}.\n2. Open the per-user MFA management experience and select only these accounts: {{mfa.perUser.accounts}}.\n3. Set their per-user MFA state to **Disabled**.\n4. This does **not** remove MFA; the enabled Conditional Access policy now requires it.\n5. Read the states back and rescan IAMAI.\n"
+          "text": "1. Verify the replacement Conditional Access policy is enabled and covers these accounts: {{dependencies.replacementMfaSummary}}.\n2. Go to **Entra ID > Users > All users > Per-user MFA** and select only these accounts: {{mfa.perUser.accounts}}. You need at least the **Authentication Policy Administrator** role.\n3. Select **Disable MFA**, so each state reads **Disabled**. An account left on **Enforced** is asked for MFA at every sign-in whatever the access policy decides.\n4. This does **not** remove MFA; the enabled Conditional Access policy now requires it. Turning MFA on through an access policy never changes the per-user state, so Disabled is the state to expect afterwards.\n5. Delete any app password these accounts hold, under **Manage user settings**: an app password created under per-user MFA keeps working and answers no prompt.\n6. Read the states back and rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {
@@ -22018,6 +22092,24 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-sd",
+            "authority": "Microsoft Learn",
+            "title": "Security defaults in Microsoft Entra ID",
+            "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-plan-ca",
+            "authority": "Microsoft Learn",
+            "title": "Plan a Conditional Access deployment",
+            "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Disable Security Defaults only as a coordinated cutover to already validated replacement Conditional Access protection.",
@@ -22035,7 +22127,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.\n2. Go to **Entra ID > Overview > Properties > Manage security defaults**.\n3. Set **Security defaults** to **Disabled** and Save.\n4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models.\n5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.\n6. Rescan IAMAI.\n"
+          "text": "1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.\n2. Go to **Entra ID > Overview > Properties > Manage security defaults**. You need at least the **Conditional Access Administrator** role.\n3. Set **Security defaults** to **Disabled (not recommended)** and Save. Once Conditional Access policies exist you cannot turn security defaults back on.\n4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models: security defaults required MFA, blocked legacy authentication and blocked device code sign-in, and each of those needs its own policy On.\n5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.\n6. Rescan IAMAI.\n"
         },
         "entra.verify": {
           "meta": {
@@ -22047,7 +22139,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open **Manage security defaults** and confirm it is Disabled. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.\n"
+          "text": "Re-open **Manage security defaults** and confirm it reads **Disabled (not recommended)**. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.\n"
         },
         "json.disable": {
           "meta": {
@@ -23685,7 +23777,15 @@
             "authority": "Microsoft Learn",
             "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
             "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
-            "checkedOn": "2026-09-12",
+            "checkedOn": "2026-09-20",
+            "userFacing": true
+          },
+          {
+            "id": "ms-passkeys",
+            "authority": "Microsoft Learn",
+            "title": "Enable passkeys (FIDO2) for your organization",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2",
+            "checkedOn": "2026-09-20",
             "userFacing": true
           }
         ],
@@ -23713,7 +23813,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.\n2. State: Enabled.\n3. Target: All users, keeping any existing exclusions.\n4. Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets.\n5. Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.\n6. Save, reopen the settings and rescan.\n\nWhether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.\n"
+          "text": "1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.\n2. State: Enabled.\n3. Target: All users, keeping any existing exclusions.\n4. Authentication method: **Passkey (FIDO2)** or **Microsoft Authenticator**. A campaign nudges one of them at a time. A passkey campaign does not reach guests, who cannot register a passkey in this tenant; an Authenticator campaign does.\n5. **Days allowed to snooze**: the value your organization approved, between 0 and 14; IAMAI does not hold one. With **Limited number of snoozes** enabled, a person may skip the prompt three times and must then register.\n6. Save, reopen the settings and rescan.\n\nA person sees the prompt after an interactive sign-in that completed MFA here. It is skipped where they arrive by single sign-on, and an Authenticator campaign does not prompt on a mobile device.\n"
         },
         "ai.walkthrough": {
           "meta": {
@@ -23737,7 +23837,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** (not Microsoft managed, because the plan keeps an explicit Microsoft Authenticator campaign).\n3. Authentication method: **Microsoft Authenticator**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. Set the IAMAI-resolved snooze duration to **{{campaign.snoozeDurationInDays}} day(s)**.\n6. Keep **Limited number of snoozes** enabled so registration is required after the allowed snoozes, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
+          "text": "1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.\n2. Set State to **Enabled** to choose the method yourself. Left at **Microsoft managed**, Microsoft runs the campaign: it targets passkeys where the included people are enabled for them, Microsoft Authenticator where they are not, and it reaches everyone who can do MFA rather than only the people on a text message or a voice call.\n3. Authentication method: **Microsoft Authenticator**, or **Passkey (FIDO2)** where this tenant's people can register one. Only one at a time.\n   For an Authenticator campaign, check **Entra ID > Authentication methods > Policies > Microsoft Authenticator** first: with **Authentication mode** set to **Passwordless**, nobody is eligible and the campaign nudges no one. It must be **Any** or **Push**.\n4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.\n5. Set **Days allowed to snooze** to the IAMAI-resolved **{{campaign.snoozeDurationInDays}} day(s)**.\n6. Keep **Limited number of snoozes** enabled, so a person may skip the prompt three times and must then register, where the tenant's current rollout exposes that control.\n7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.\n"
         },
         "entra.run-workflow": {
           "meta": {
@@ -23773,7 +23873,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Reopen the campaign and confirm it still targets Microsoft Authenticator with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.\n"
+          "text": "Reopen the campaign and confirm it still targets the intended method with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.\n"
         },
         "json.configure": {
           "meta": {
