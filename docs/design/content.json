@@ -411,6 +411,7 @@
     },
     "csvNotice": "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
     "planPromptTitle": "Explain this plan",
+    "noTemporaryAccessPass": "Turn on a Temporary Access Pass first: Entra ID → Authentication methods → Policies → Temporary Access Pass, enabled and scoped to the people who need one. This policy asks for MFA in order to register MFA, so somebody who has no method yet has no way in without a pass. No step of this plan creates it for you.",
     "sessionLoopReview": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue.",
     "sessionLoopHold": "Review MFA before enabling Every time"
   },
@@ -1630,6 +1631,7 @@
             "in-place": "Existing coverage",
             "observation": "New evidence",
         "differs": "Not as asked",
+        "shortfall": "Who it misses",
             "guestDirectory": "Guest Directory",
             "directory-inventory": "Guest Directory"
           },
@@ -1675,6 +1677,8 @@
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
+    "$commentFoundShortfall": "A goal can be delivered and still miss most of the directory. coverage.ts records who it does not reach and why, for every goal, and the sentence never reached a surface: a policy excluding a group that holds 116 of 122 accounts read \"already delivered, so there is nothing to create\" beside \"6 active people\", with nothing naming the gap.",
+    "foundShortfall": "This goal is written for {active} people in this tenant; {n} of them are excluded from the policy that delivers it, so it reaches {reached}.",
     "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
     "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
     "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",

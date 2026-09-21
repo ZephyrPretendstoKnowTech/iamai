@@ -14,7 +14,7 @@ import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
-import { requiredMembers } from '../../roadmap/tracking.ts'
+import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
 import { implementationOffered, isPreserved } from '../../roadmap/operations.ts'
@@ -24,7 +24,9 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { readinessOf, readinessSentence, stepContract } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
+import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { watchedArrive } from '../../roadmap/observation.ts'
 
 type Run = ReturnType<typeof runFixture>
 
@@ -392,7 +394,10 @@ test('a readiness gate with no number says what could not be measured', () => {
 // step's own words say not to do yet, and it costs the tenant its MFA.
 test('a prerequisite waited on short of completion says which milestone, not "finish it"', () => {
   const { f, r, all } = contracts('small')
-  const { step, c } = all.find((x) => x.step.kind === 'create' || x.step.kind === 'adjust')!
+  // A step whose own fixes name no prerequisite, so the injected blocker is the
+  // only one in play: with others present the tile is filtered by which of them
+  // can be acted on first, which is a different rule and tested below.
+  const { step, c } = all.find((x) => (x.step.kind === 'create' || x.step.kind === 'adjust') && !x.c.fix.some((fx) => /^(?:step|missing):/.test(fx.key)))!
   const title = 'Require MFA for Everyone'
   const noteFor = (milestone?: string): string | null => {
     const blockers = [{ kind: 'step' as const, id: 's-goal-mfa-all-users', abnormal: false, label: 'Prerequisite', title, ...(milestone ? { milestone } : {}) }]
@@ -407,5 +412,106 @@ test('a prerequisite waited on short of completion says which milestone, not "fi
   // blocker carrying no milestone is read as one (callers that never had it).
   for (const milestone of ['complete', undefined]) {
     assert.equal(noteFor(milestone), `Finish ${title} first.`, `${String(milestone)}`)
+  }
+})
+
+// Where a step waits on two prerequisites and one of them waits on the other,
+// the tile drawn is the one that is NOT waiting — the step somebody can go and
+// do today. It used to be the other way round: the prerequisite others waited on
+// was dropped as "that tile's to finish first", which holds only if the tile
+// that survives leads somewhere. Block Legacy Authentication waits on both
+// Create or Correct Service Accounts Group and Turn Off Security Defaults, and
+// Turn Off Security Defaults waits on Block Legacy Authentication — so the tile
+// that survived was the reciprocal half that cannot move, and the one step that
+// would have released the chain was named on no surface. Two simulated
+// administrators sat in front of that; one never unlocked the plan at all.
+test('of two prerequisites where one waits on the other, the tile names the one that can be done now', () => {
+  const { f, r, all } = contracts('demo')
+  const { step, c } = all.find((x) => (x.step.kind === 'create' || x.step.kind === 'adjust') && !x.c.fix.some((fx) => /^(?:step|missing):/.test(fx.key)))!
+  assert.ok(f && r, 'the fixture ran')
+  // A real one-way pair from the shipped dependency graph: s-verify-mfa waits on
+  // s-prereq-passkey-settings, and the passkey step does not wait on it.
+  const FIRST = 's-prereq-passkey-settings'
+  const LATER = 's-verify-mfa'
+  const blockers = [FIRST, LATER].map((id) => ({ kind: 'step' as const, id, abnormal: false, label: 'Prerequisite', title: id }))
+  const keys = readinessOf(step, c, blockers, () => null)
+  const drawn = [...keys.tiles, ...keys.satisfied].map((t) => t.key)
+  assert.ok(drawn.includes(`engine:step:${FIRST}`), `the actionable prerequisite is not drawn: ${JSON.stringify(drawn)}`)
+  assert.equal(drawn.includes(`engine:step:${LATER}`), false, `the prerequisite that waits on it is drawn too: ${JSON.stringify(drawn)}`)
+
+  // The reciprocal cutover pair is neither's ancestor, so both survive: that is
+  // the case the milestone wording exists for, and dropping half of it would put
+  // the reader back in a loop with no way through.
+  const PAIR = ['s-prereq-security-defaults', 's-goal-block-legacy-auth']
+  const pairTiles = readinessOf(step, c, PAIR.map((id) => ({ kind: 'step' as const, id, abnormal: false, label: 'Prerequisite', title: id })), () => null)
+  const pairDrawn = [...pairTiles.tiles, ...pairTiles.satisfied].map((t) => t.key)
+  for (const id of PAIR) assert.ok(pairDrawn.includes(`engine:step:${id}`), `${id}: half the cutover pair is missing — ${JSON.stringify(pairDrawn)}`)
+})
+
+// "Require MFA for Everyone", Completed, beside a card reading "6 active
+// people" on a 122-person tenant. The policy delivering it excludes a group
+// holding 116 of 122 accounts, and nothing on the step named the other 116.
+//
+// The cause is not a missing check. generate.ts subtracts the excluded from the
+// goal's own population, so the goal becomes six people and is then delivered
+// for all of them — true of the goal as redefined, and silent about the number a
+// reader needs. The exclusion is marked EXPECTED, because the exclusions group
+// is what the plan asks for, so nothing in the coverage reasons marks it wrong
+// either. What is worth saying is the size, which needs no judgement at all.
+test('a goal delivered for a fraction of the people it is written for says so', () => {
+  const f = structuredClone(fixture('messy'))
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.goalId === 'mfa-all-users')!
+  assert.equal(step.state.satisfied, true, 'the premise: the classifier calls it delivered')
+  const line = stepContract(step, ctxFor(f, r, step)).found.find((x) => x.key === 'shortfall')?.text ?? ''
+  assert.match(line, /written for 122 people/, line)
+  assert.match(line, /116 of them are excluded/, line)
+  assert.match(line, /reaches 6/, line)
+
+  // The emergency accounts are excluded from every policy by design. Saying so
+  // on every step would put a line about two people under thirty rows, so the
+  // sentence appears only where the exclusions take out somebody else as well.
+  const clean = runFixture(structuredClone(fixture('mid')))
+  const byDesign = clean.steps.filter((s) => {
+    const sf = s.coverageShortfall
+    return sf !== undefined && sf.people <= fixture('mid').mapping.breakGlassUserIds.length
+  })
+  assert.deepEqual(byDesign.map((s) => s.id), [], 'a step states an exclusion that is only the emergency accounts')
+
+  // And a scoped goal counts its own people, never the whole directory: an
+  // admins policy that reaches every admin is not missing the other 230.
+  for (const name of ['mid', 'large', 'demo-week2'] as const) {
+    for (const s of runFixture(structuredClone(fixture(name))).steps) {
+      const sf = s.coverageShortfall
+      if (!sf) continue
+      assert.equal(sf.reached + sf.people, sf.active, `${name}/${s.id}: the denominator is not the goal's own population`)
+    }
+  }
+})
+
+// One step said both things about one policy: What IAMAI found reported "is in
+// place. IAMAI watched it get there", and the who-line above it said "{tenant}
+// already covers this with X". The first had been corrected and the second had
+// not, which is worse than leaving both wrong: a reader cannot tell which row to
+// believe. Both read one predicate now (roadmap/observation.ts watchedArrive).
+test('a policy IAMAI watched arrive is never also reported as coverage the tenant already had', () => {
+  const f = structuredClone(fixture('demo'))
+  const first = runFixture(f)
+  const prior = observationsOf(first.steps)
+  assert.ok(Object.keys(prior).length > 0, 'the premise: the first scan recorded observations')
+  const second = runFixture(f, {}, prior)
+  const watched = second.steps.filter((s) => watchedArrive(s))
+  for (const step of watched) {
+    const ex = stepVars(step, ctxFor(f, second, step)) as Record<string, unknown>
+    const claims = Array.isArray(ex.existingPolicies) ? (ex.existingPolicies as unknown[]).length : 0
+    assert.equal(claims, 0, `${step.id}: says the tenant already covers a policy IAMAI watched arrive`)
+  }
+  // And the predicate has one definition: both readers call it rather than
+  // re-deriving it, which is how the two rows came to disagree.
+  const contract = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
+  const vars = readFileSync('src/ui/surfaces/stepVars.ts', 'utf8')
+  for (const [where, src] of [['stepContract.ts', contract], ['stepVars.ts', vars]] as const) {
+    assert.match(src, /watchedArrive\(/, `${where}: does not use the shared predicate`)
+    assert.equal(/since === 'observed-change'/.test(src), false, `${where}: re-derives "watched" instead of calling it`)
   }
 })

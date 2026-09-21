@@ -21,6 +21,7 @@ import { hoursInWords } from '../../coverage/verdict.ts'
 import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
+import { watchedArrive } from '../../roadmap/observation.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
@@ -286,7 +287,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // {existingCoverage} line's presence). A done step's policies are what makes
   // it In place, not coverage this step's version supersedes; the line names
   // what the consolidation row retires (generate.ts supersededPolicies).
-  v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 ? step.deliveredBy : []
+  // Nor where IAMAI watched the policy arrive (roadmap/observation.ts
+  // watchedArrive): "{tenant} already covers this with X" is a report about
+  // coverage that predates the plan, and What IAMAI found says of the same
+  // policy, on the same step, that IAMAI watched it get there. One of the two is
+  // always wrong; this is the one that is.
+  v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 && !watchedArrive(step) ? step.deliveredBy : []
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true
 

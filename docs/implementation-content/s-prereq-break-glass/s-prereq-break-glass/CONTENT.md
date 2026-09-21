@@ -1,16 +1,17 @@
 @@IAMAI-BEGIN {"id":"entra.create-or-correct","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 Use the emergency accounts you selected.
 
-1. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.
-2. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.
-3. Confirm the account is enabled and used only for emergency access, not for normal daily work.
-4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.
-5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.
-6. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member.
-7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.
-8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.
-9. Confirm monitoring exists for emergency-account use.
-10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.
+1. **Get the security keys before you start.** Each emergency account needs its own, and Microsoft recommends keeping at least two accounts — so at least two keys. They are bought hardware and usually take a few days to arrive, so order them now and come back to this step: everything below waits on them. The models this tenant accepts are listed on Configure Passkey Authentication; a YubiKey 5 Series, with or without NFC, is the usual choice. A passkey in Microsoft Authenticator is not a substitute here — it lives on one person's phone and syncs with their personal account, and a break-glass credential is the way back in when everything else has failed.
+2. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.
+3. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.
+4. Confirm the account is enabled and used only for emergency access, not for normal daily work.
+5. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.
+6. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.
+7. Add the account to the exclusions group you chose in the Configure Emergency Exclusions step, and verify that it is a member.
+8. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.
+9. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.
+10. Confirm monitoring exists for emergency-account use.
+11. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.
 
 Complete account creation, method registration and credential storage in the appropriate Microsoft tools. IAMAI does not make these changes or store the credentials.
 @@IAMAI-END

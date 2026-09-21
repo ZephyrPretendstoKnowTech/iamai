@@ -1264,5 +1264,19 @@ export function driftOutcomeOf(step: Step): DriftOutcome | null {
   // already blocked on something else keeps that condition (lifecycle.ts
   // raiseCondition ranks it harder), and the drift still needs a person.
   if (step.state.condition === 'review-required' || members.some((m) => m.reviewRequired || m.correction?.safe === false)) return 'review-required'
+  // A correction that would change nothing is not a drift: the step was offering
+  // an update whose one task told the reader to set values the policy already
+  // holds, forever, on a policy they had built and enforced exactly as asked.
+  //
+  // THREE conditions, not one. `differsIn` says only that none of the dimensions
+  // THIS OPERATION submits differ — a drift in a dimension the operation does not
+  // touch leaves it empty, so reading it alone as "nothing differs" suppressed
+  // real drift on eleven cases: a dropped carve-out, a location condition that
+  // appeared, an enforced policy moved back to report-only. The observation must
+  // also have seen nothing move, and nothing may be outstanding in the parts
+  // IAMAI does not write. Absent `differsIn` is unknown and never counts.
+  const obs = step.state.observation
+  const nothingMoved = obs?.changed === 'none' && (obs?.unwritten.length ?? 0) === 0
+  if (nothingMoved && members.every((m) => Array.isArray(m.differsIn) && m.differsIn.length === 0)) return null
   return holdOf(step) !== null ? 'on-hold' : 'correctable'
 }

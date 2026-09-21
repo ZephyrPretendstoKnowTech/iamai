@@ -67,6 +67,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.portalOpen',
   '.shared.sessionLoopHold', // Runtime-only next action for the same guard.
   '.shared.sessionLoopReview', // Runtime-only configuration guard; exercised by usability100.test.ts.
+  '.shared.noTemporaryAccessPass', // Runtime-only: drawn only where the registration step waits on a pass that no step creates.
   // The two lines a change to an existing policy adds under portalOpen: the
   // "only these fields" note and the enable-and-save line. Every mapped policy
   // in the example is created new, so neither is emitted here.
