@@ -293,6 +293,46 @@ test('a readiness the scan could read names no blind source', () => {
   }
 })
 
+// A step named for one group, offering to create a policy that reaches every
+// user in the tenant. "Require MFA for Guests", on a tenant with one guest,
+// offered the baseline's all-users MFA policy under the name "MFA for guests and
+// external users"; `mid` has the same shape one goal along, where a step named
+// for service accounts would create the baseline's global country block applied
+// to all 285 people. A signature reads the control a policy asks for and never
+// who it asks it of, and until now nothing said so.
+test('a step whose create reaches further than its own name says so before it is created', () => {
+  const f = fixture('mid')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-service-accounts-trusted-network')!
+  assert.equal(step.action.widerThan, 'serviceAccounts', 'the premise: this step creates an all-users policy')
+  const found = bodiesOf(f).get(step.id)!.contract.found
+  const said = found.find((x) => x.key === 'wider')
+  assert.ok(said, `no wider finding on the step: ${found.map((x) => x.key).join(', ')}`)
+  assert.equal(said.label, CONTRACT.foundLabel.wider)
+  assert.ok(said.text.includes(CONTRACT.foundWiderCohort.serviceAccounts), said.text)
+  assert.match(said.text, /every user in the tenant/, said.text)
+  // Before creation, not after: the dimension comparison can only speak once
+  // the policy is deployed, and by then the reader has built it.
+  assert.notEqual(step.status, 'done')
+})
+
+// And it is disclosure, never substitution. Two Foundation A invariants say the
+// goal's population must not decide which policy is built; a tool that quietly
+// swapped in a narrower policy than the baseline author specified would be worse
+// than one that says what this one reaches.
+test('naming a wider create changes no operation', () => {
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    for (const step of r.steps) {
+      if (step.action.widerThan === undefined) continue
+      const ops = step.action.resolution?.policies ?? []
+      assert.ok(ops.length > 0, `${name}/${step.id}: the disclosure removed the operation`)
+      assert.ok(ops.some((op) => op.mode === 'create'), `${name}/${step.id}: the create it discloses is gone`)
+    }
+  }
+})
+
 // An engine blocker with no tile of its own said its own label twice and nothing
 // else — "Not supported · Not supported ·" — while the reason sat on the contract.
 test('every readiness tile says something its label has not already said', () => {

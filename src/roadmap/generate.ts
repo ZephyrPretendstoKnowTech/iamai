@@ -2155,6 +2155,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // the step offers no operation that would enforce the moment it is run, and
     // nothing about it is dated (roadmap/operations.ts policyResult,
     // enforcementHeld).
+    // What this step would CREATE, against the cohort its name promises. The
+    // goal declares who it is for (`expectedWho`); the policy resolved for it
+    // can reach everybody, because a signature reads the control and not the
+    // scope, and nothing checked. Reading expectedWho to SAY this is allowed
+    // where reading it to pick a policy is not: it moves no operation.
+    //
+    // Only a create — an update to a policy that is already there reaches whom
+    // it already reaches, and the reader is not about to build anything. And
+    // only for a cohort where "all users" is a real widening: `members` is
+    // mapped to an all-users policy by the baseline author on purpose, so
+    // saying it there would be noise over a deliberate decision.
+    const WIDENING = new Set(['guests', 'coreAdmins', 'serviceAccounts', 'workload'])
+    if (WIDENING.has(impl.expectedWho.kind) && validOperations(action).some((op) => op.mode === 'create' && effectOf(op.body).scope.allUsers)) {
+      action = { ...action, widerThan: impl.expectedWho.kind }
+    }
     if (readinessGate) action = { ...action, readinessGate }
 
     steps.push({

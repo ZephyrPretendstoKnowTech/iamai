@@ -1638,6 +1638,7 @@
             "in-place": "Existing coverage",
             "observation": "New evidence",
         "differs": "Not as asked",
+        "wider": "Wider than this step",
         "shortfall": "Who it misses",
             "guestDirectory": "Guest Directory",
             "directory-inventory": "Guest Directory"
@@ -1695,6 +1696,15 @@
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
     "$commentFoundShortfall": "A goal can be delivered and still miss most of the directory. coverage.ts records who it does not reach and why, for every goal, and the sentence never reached a surface: a policy excluding a group that holds 116 of 122 accounts read \"already delivered, so there is nothing to create\" beside \"6 active people\", with nothing naming the gap.",
     "foundShortfall": "This goal is written for {active} people in this tenant; {n} of them are excluded from the policy that delivers it, so it reaches {reached}.",
+    "$commentFoundWider": "A step named for one group offering to create a policy that reaches everybody. \"Require MFA for Guests\", on a tenant with one guest, offered the baseline's all-users MFA policy under the name \"MFA for guests and external users\": follow it and you apply MFA to the whole company from a step named for a guest. Disclosure, not substitution — two Foundation A invariants say the goal's population must never decide which policy is built, and they are right.",
+    "foundWider": "This step is named for {cohort}, and the policy it would create applies to every user in the tenant. That is the baseline source IAMAI matched to this goal, and it is not narrowed to {cohort}. Read its assignments before you create it.",
+    "foundWiderCohort": {
+      "$comment": "The cohort a step is named for, by the goal's expectedWho kind (data/goals.json). Only the kinds for which all-users is a real widening appear: members is mapped to an all-users policy by the baseline author on purpose.",
+      "guests": "guests and external users",
+      "coreAdmins": "administrators",
+      "serviceAccounts": "service accounts",
+      "workload": "workload identities"
+    },
     "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
     "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
     "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",

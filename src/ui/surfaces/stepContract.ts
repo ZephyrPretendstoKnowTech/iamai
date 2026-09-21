@@ -125,6 +125,8 @@ type ContractWords = {
   foundInPlace: string
   foundInPlaceNamed: string
   foundShortfall: string
+  foundWider: string
+  foundWiderCohort: Record<string, string>
   foundDiffers: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
@@ -599,6 +601,13 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   const shortfall = step.coverageShortfall
   if (shortfall && shortfall.people > 0 && step.state.satisfied) {
     out.push(found('shortfall', fillText(CONTRACT.foundShortfall, { reached: String(shortfall.reached), active: String(shortfall.active), n: String(shortfall.people) })))
+  }
+  // A create that reaches further than the step's own name (roadmap/generate.ts
+  // `widerThan`). The reader is about to build this policy; afterwards is too
+  // late, which is when the dimension comparison below can first speak.
+  const wider = step.action.widerThan
+  if (wider !== undefined && CONTRACT.foundWiderCohort[wider]) {
+    out.push(found('wider', fillText(CONTRACT.foundWider, { cohort: CONTRACT.foundWiderCohort[wider] })))
   }
   // The deployed policy against what this step asked for, dimension by dimension
   // (tracking.ts `differsIn`). A policy built wider than the plan asked — a
