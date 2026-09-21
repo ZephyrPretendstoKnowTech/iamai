@@ -54,7 +54,11 @@ for (const f of fixtures) {
   }
 
   test(`${f.name}: builds a plan without crashing and every step has content`, () => {
-    assert.ok(steps.length > 0)
+    // Owner, 2026-09-20: a tenant that cannot use Conditional Access gets no
+    // plan rather than a partial one, so `micro` is the one fixture that builds
+    // nothing. Every property below then holds vacuously for it, which is right.
+    if (f.name === 'micro') assert.equal(steps.length, 0, 'no Conditional Access licence, no plan')
+    else assert.ok(steps.length > 0)
     for (const s of steps) {
       assert.ok(s.title.length > 0, `${s.id} has a title`)
     }
@@ -352,9 +356,9 @@ for (const f of fixtures) {
 
 const byName = (name: string) => fixtures.find((x) => x.name === name)!
 
-test('micro: free-tier ladder, no Conditional Access steps offered as ready', () => {
+test('micro: no Conditional Access licence, no plan', () => {
   const { steps } = runFixture(byName('micro'))
-  assert.ok(steps.every((s) => s.action.json === null || s.status === 'blocked'), 'no ready CA policy creation without P1')
+  assert.deepEqual(steps, [], 'the whole plan is withheld, not the policy steps only')
 })
 
 test('mid: service accounts surface before the legacy-auth block', () => {

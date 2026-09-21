@@ -216,6 +216,14 @@ import { proposedName, proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
+
+/**
+ * Whether a tenant without Entra ID P1 is offered the free-tier ladder instead
+ * of a plan. Off since 2026-09-20 (owner): P1 is the real minimum, and such a
+ * tenant is told so rather than walked through steps that are not the thing it
+ * came for. The ladder itself is untouched and this is the only switch.
+ */
+const FREE_TIER_LADDER = false
 import { EMERGENCY_ACCESS_STEP_IDS, attachConfigurationFindings, blockerStepId, canonicalBlockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
@@ -1232,7 +1240,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // is what this tenant can actually do; a phase 0 step that already covers a
   // ladder item keeps the item's place rather than being duplicated.
   const ladderOrder = new Map<string, number>()
-  if (!canUseConditionalAccess) {
+  // Entra ID P1 is the minimum this tool works at (owner, 2026-09-20). Without it
+  // no Conditional Access policy can exist, so no plan is offered: a half-baked
+  // opinion is worse than none, and ten hardening steps presented as "the plan"
+  // read as the product's answer to a question it cannot answer here.
+  //
+  // The free-tier ladder is kept, dormant, behind this one constant — the owner
+  // wants to compare it later, not delete it now. Re-enabling is this line.
+  if (!canUseConditionalAccess && FREE_TIER_LADDER) {
     const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id), { groupMembers: knownGroupMembers })
     steps.push(...ladder.steps)
     for (const [id, index] of ladder.order) ladderOrder.set(id, index)
@@ -2519,6 +2534,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     setState(s, { satisfied: complete, inPlace: complete })
     if (complete) s.deliveredBy = [accounts.length === 0 ? 'The scanned directory has no outstanding dormant accounts.' : 'Every listed dormant account is disabled, active again, or retained with a recorded reason.']
   }
+  // No Entra ID P1, no plan (owner, 2026-09-20). Three non-policy steps survive
+  // the gates above — dormant accounts, administrator separation, the MFA
+  // campaign — and each is real advice. Presented as "the plan" to a tenant that
+  // came for Conditional Access and cannot have it, they are the half-baked
+  // opinion the owner would rather not give: the board, the lanes and the dates
+  // all render around three steps that are not the thing being asked for. The
+  // surfaces say what is needed instead (derive/notLicensed.ts).
+  //
+  // One rule in one place, and it is the whole switch.
+  if (!canUseConditionalAccess) steps.length = 0
   // Per-answer gating (roadmap/direction.ts gateOnDirection) runs once tracking
   // has settled each policy's lifecycle (roadmap/progress.ts applyProgress): an
   // enforced policy is never held by it, and the schedule never reads it.

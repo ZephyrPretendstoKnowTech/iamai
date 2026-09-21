@@ -33,6 +33,15 @@ import { stepExportView } from './stepExport.ts'
 import { promptPack } from '../../roadmap/prompts.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { readFileSync } from 'node:fs'
+
+// The no-P1 renderings below are dormant, not deleted. Since 2026-09-20 a tenant
+// without Entra ID P1 gets no plan at all, so no step is composed for it and the
+// two licence who-lines cannot be reached on screen. The owner asked for the
+// free-tier path to stay in the tree for a later comparison, so these two tests
+// stay with it and come back the moment the flag does.
+const FREE_TIER = /const FREE_TIER_LADDER = true/.test(readFileSync('src/roadmap/generate.ts', 'utf8'))
+const dormant = { skip: FREE_TIER ? false : 'dormant with FREE_TIER_LADDER (src/roadmap/generate.ts)' }
 
 /** The group's eight listed members, in registry order (roadmap/stepGroups.ts). */
 const ONGOING = [
@@ -191,7 +200,7 @@ test('A1–A7 on screen: the demo draws the corrected About and the corrected pr
 // listed under "Disable it … Account enabled: No". Absence of a date the licence
 // withheld is not absence of sign-in, so the step now lists nobody and the note
 // beside it says why.
-test('A1–A7 on a free tenant: nobody is called dormant, and the licence note says why', () => {
+test('A1–A7 on a free tenant: nobody is called dormant, and the licence note says why', dormant, () => {
   const b = bodiesOf('micro').get(DORMANT)
   assert.ok(b, 'the micro plan has no dormant-accounts step')
   const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')
@@ -247,7 +256,7 @@ test('B7: the package carries the checked date, and the step shows it', () => {
   assert.equal(b.sourceLine, 'Source checked Sep 20, 2026')
 })
 
-test('B8: on a free tenant the step says it cannot see everyday use, and still asks for the review', () => {
+test('B8: on a free tenant the step says it cannot see everyday use, and still asks for the review', dormant, () => {
   const b = bodiesOf('micro').get(SEPARATE)
   assert.ok(b, 'the micro plan has no separate-admin-accounts step')
   const who = (b.whoFull ?? []).map((w) => w.lead).join('\n')

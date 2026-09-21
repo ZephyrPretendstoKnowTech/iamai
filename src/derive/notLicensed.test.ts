@@ -82,10 +82,15 @@ test('without Entra ID P1 the Plan says first that Conditional Access needs it; 
   assert.equal(line, (pages.plan as { conditionalAccessNeedsP1: string }).conditionalAccessNeedsP1, 'the words are the content key')
   assert.match(line ?? '', /^Conditional Access needs Entra ID P1\b/)
   for (const name of ['small', 'demo'] as const) assert.equal(conditionalAccessLicenceLine(fixture(name).snapshot), null, `${name} holds P1`)
-  // The Plan draws it under its heading, ahead of the progress tiles and the board.
+  // Since 2026-09-20 the line is not the Plan's first sentence, it is the Plan's
+  // ONLY content: the engine builds no steps for this tenant, and an empty board
+  // of tiles, tabs and waves would read as a plan. So the page returns early.
   const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
-  const h1 = src.indexOf('<h1>{P.h1}</h1>')
-  const drawn = src.indexOf('{licenceLine && <Callout kind="info">{licenceLine}</Callout>}')
-  assert.ok(h1 > 0 && drawn > h1 && drawn < src.indexOf('className="plan-progress"'), 'the licence line sits directly under the Plan heading')
+  const early = src.indexOf('if (licenceLine) return (')
+  const drawn = src.indexOf('<Callout kind="info">{licenceLine}</Callout>')
+  assert.ok(early > 0 && drawn > early, 'the licence line is drawn from the early return')
+  assert.ok(drawn < src.indexOf('className="plan-progress"'), 'and the progress tiles are never reached')
+  assert.equal(src.split('<Callout kind="info">{licenceLine}</Callout>').length - 1, 1, 'one place draws it')
+  assert.equal(runFixture(free).steps.length, 0, 'and there is nothing else to draw')
   assert.match(src, /const licenceLine = conditionalAccessLicenceLine\(scan\.snapshot\)/)
 })

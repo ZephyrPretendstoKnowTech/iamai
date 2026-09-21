@@ -183,14 +183,14 @@ test('a row the graph does not know takes the Plan’s own state, after the engi
   // A1a (decision 8): the graph carries the runtime's own ids, so Limit How Long Sessions Last is an engine row.
   const persistence = readings.get('s-goal-all-users-no-persistence')
   assert.ok(persistence && persistence.fromEngine, 'the no-persistence row is read by the engine')
-  // The free-tier ladder rows are runtime-only and take the Plan's own state.
-  const micro = runFixture(fixture('micro'))
-  const ladder = micro.steps.filter((s) => s.id.startsWith('s-ladder-') && !readings.has(s.id))
-  assert.ok(ladder.length > 0, 'the premise: micro carries ladder rows the graph does not know')
-  const microReadings = laneReadings(micro.steps)
-  for (const step of ladder) {
-    const v = microReadings.get(step.id)
-    assert.ok(v && !v.fromEngine, `${step.id}: a ladder row is runtime-only`)
+  // The Direction steps and the tenant's own baseline reviews are runtime-only
+  // rows: the dependency graph has no id for them, so they take the Plan's own
+  // state. (This used to read the free-tier ladder's rows; since 2026-09-20 a
+  // tenant with no Conditional Access licence builds no rows at all.)
+  const runtimeOnly = r.steps.filter((s) => readings.get(s.id)?.fromEngine === false)
+  assert.ok(runtimeOnly.length > 0, 'the premise: the demo carries rows the graph does not know')
+  for (const step of runtimeOnly) {
+    const v = readings.get(step.id)!
     const state = planStateOf(step, isHeld(step))
     assert.equal(v.lane, state.complete ? 'Completed' : state.kind === 'skipped' ? 'Deferred' : v.lane)
   }
