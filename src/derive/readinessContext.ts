@@ -116,6 +116,17 @@ export function signInsNeedP1(snapshot: Pick<TenantSnapshot, 'sources'>): boolea
   return source?.status === 'disabled' && /needs Entra ID P1|premium licen[cs]e/i.test(source.reason ?? '')
 }
 
+/**
+ * Security defaults as the scan read them: on, off, or null where the section
+ * was not read. Three states, never two — a step that says what security
+ * defaults do "today" has to know which of them it is before it says it (R4).
+ */
+export function securityDefaultsState(snapshot: Pick<TenantSnapshot, 'config'>): boolean | null {
+  const section = snapshot.config?.securityDefaults
+  const row = (section?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
+  return section?.status === 'ok' && typeof row?.isEnabled === 'boolean' ? row.isEnabled : null
+}
+
 /** The tenant's readiness context from the snapshot and the mapping (Step 3's additional models). */
 export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<MappingState> | null, now: string = snapshot.asOf, groups: GroupMembers = new Map()): ReadinessContext {
   const windowStart = new Date(Date.parse(now) - READINESS_WINDOW_DAYS * DAY).toISOString()

@@ -121,7 +121,12 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap'])
+/**
+ * The names that resolve to the product's own standing text rather than to
+ * anything this tenant was read for. A line whose only variables are these says
+ * nothing about the tenant (stepExport.ts readsTenant).
+ */
+export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap'])
 
 /**
  * The string behind a shared reference. Most are a key of `shared`; the three
@@ -374,12 +379,16 @@ export function renderStep(st: Record<string, any>, title?: string): string {
   const who = st.who || {}
   parts.push(h(HEAD.who))
   if (who.lead) parts.push(p(who.lead, ex))
+  // A lead per read state (who.leadWhen, stepExport.ts whoLeadTemplate): the one
+  // whose fact the example carries. The product draws no lead at all where it
+  // read none of them, rather than the sentence for a state nobody confirmed.
+  if (who.leadWhen) for (const [fact, line] of Object.entries(who.leadWhen as Record<string, string>)) if (truthy(ex[fact])) parts.push(p(line, ex))
   if (who.timeline) parts.push(p(who.timeline, ex, 'evidence'))
   // The none branch stands in when no evidence line renders (the existing-coverage line does not count), as the product renders it.
   let rendered = 0
   let none: string | null = null
   for (const [k, v] of Object.entries(who)) {
-    if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    if (['$comment', 'lead', 'leadWhen', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
     if (Array.isArray(v)) {
       for (let line of v as string[]) {
         if (line === '{existingCoverage}') {

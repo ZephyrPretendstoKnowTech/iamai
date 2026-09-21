@@ -80,6 +80,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.commsForecastNote',
   '.shared.enableLine',
   '.shared.syncRoleNote',
+  // What a claim leaves behind when the tenant's values cannot complete it (R4,
+  // stepExport.ts WHO_UNRESOLVED). Every example fills its own step's
+  // variables, so no example line is ever left unfinished here.
+  '.shared.whoUnresolved',
   // The two gates with today's numbers render only on a step whose policy the
   // scan found in report-only (doneWhen.ts); the review's example steps are all new.
   '.shared.policyDoneWhenTracked[0]',
@@ -197,6 +201,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[5].who.none',
   '.steps[5].whatToDo.steps[4]',
   '.steps[6].who.none',
+  // The lead for a tenant whose security defaults the scan read as already off
+  // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
+  // renders. The review page draws the one the example's facts earn, as the
+  // product does.
+  '.steps[7].who.leadWhen.securityDefaultsOff',
   '.steps[10].who.match',
   '.steps[13].who.groups.noMethod',
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
@@ -219,6 +228,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
   '.steps[22].who.evidence[0]',
   '.steps[22].who.evidence[1]',
+  // The negation branches of the legacy-authentication and token-protection
+  // blocks (R4: each was an ungated evidence line and is now the block's none).
+  // Both examples name the accounts the claim is about, so the negation is
+  // suppressed — which is the whole of the rule.
+  '.steps[30].who.none',
+  '.steps[35].who.none',
   // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
   '.steps[33].who.evidence[0]',
   '.steps[34].who.evidence[0]',
