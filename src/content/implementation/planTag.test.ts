@@ -15,6 +15,10 @@ import assert from 'node:assert/strict'
 import { compileLibrary } from './library.ts'
 import type { LibraryPackage } from './library.ts'
 import type { Block, CompiledPackage } from './protocol.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { stepBodyOf } from '../../ui/surfaces/stepBody.ts'
+import { stepOperations } from '../../ui/surfaces/stepJson.ts'
 
 const LIBRARY = compileLibrary()
 const ALL: LibraryPackage[] = [...LIBRARY.registered, ...LIBRARY.notSteps]
@@ -43,24 +47,46 @@ const WITHOUT_TAG: Readonly<Record<string, string>> = {
 // channel's create bodies name their fields one at a time, so carrying the tag
 // there needs `policy.target.description` as a declared binding — which changes
 // every package's binding inventory and the ~30 assertions that enumerate it.
-// That is a bigger change than the one this test guards, and it is the work that
-// closes the identity-consultant's severity 4 in full. The count below is the
-// size of the gap; it fails if the gap grows.
-test('the JSON create bodies that still carry no plan tag are counted, and do not grow', () => {
-  const without: string[] = []
-  let checked = 0
-  for (const p of ALL) {
-    for (const b of createBodies(p.source, 'json')) {
-      checked += 1
-      if (!/description/.test(b.text)) without.push(`${p.stepId} ${b.meta.id}`)
+//
+// This test reads the RENDERED channel, not the library block. The first version
+// walked library blocks only and so could not see the case it exists to prevent:
+// a step with no library JSON block has its tab generated from the resolved
+// operation, whose body already carries the tag, so the library was UNIFORM and
+// the product was not. An identity consultant found that in a re-run; the guard
+// passed the whole time.
+test('the JSON create bodies that carry no plan tag are counted from what a person actually copies', () => {
+  const tagged: string[] = []
+  const untagged: string[] = []
+  for (const name of ['demo', 'demo-week2', 'large'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    for (const step of r.steps) {
+      const ops = stepOperations(step)
+      if (ops.length === 0 || (ops[0] as { mode?: string }).mode !== 'create') continue
+      const json = stepBodyOf(step, ctx as never).artifacts.find((a) => a.id === 'json')?.text() ?? ''
+      // A withheld channel renders a read-only batch, not a create body.
+      if (json.length === 0 || json.includes('"method": "GET"')) continue
+      ;(json.includes(`[IAMAI:${r.input.planId}:${step.id}`) ? tagged : untagged).push(`${name}/${step.id}`)
     }
   }
-  assert.ok(checked >= 15, `JSON create bodies found: ${checked}`)
-  assert.ok(without.length <= checked, 'sanity')
-  assert.equal(without.length, checked, [
-    'Some JSON create bodies now carry the tag and some do not, which is worse than neither:',
-    'a reader cannot tell which channel produces a policy IAMAI will recognise.',
-    ...without,
+  assert.ok(tagged.length + untagged.length >= 10, `JSON create tabs rendered: ${tagged.length + untagged.length}`)
+  // Uniformly untagged is the state to hold until the binding lands. The state
+  // that is worse than either is MIXED: some tabs produce a policy IAMAI will
+  // recognise and some do not, with nothing on any surface saying which, so a
+  // reader who spot-checks one step draws the wrong conclusion about the rest.
+  //
+  // Known and not reproducible from a fixture: a step with no library JSON block
+  // has its tab generated from the resolved operation, whose body already carries
+  // the tag — so once such a step is unblocked it renders TAGGED while the
+  // template-driven ones do not. An identity consultant saw exactly that on a
+  // tenant settled through the persona harness, which no shipped fixture reaches.
+  // This count is therefore a floor, not a proof of uniformity.
+  assert.equal(tagged.length, 0, [
+    'The JSON tabs that carry the plan tag changed. Tagged:',
+    ...tagged,
+    'Untagged:',
+    ...untagged,
   ].join(String.fromCharCode(10)))
 })
 
