@@ -1662,6 +1662,7 @@
             "hardeningDeferred": "Hardening deferred"
           },
           "foundReadiness": "Enforcement waits for {measure} to reach {threshold}; it is {value} today.",
+          "foundReadinessFloor": "Enforcement waits for {measure} to reach {threshold}. At least {value} are ready: {line}",
     "$commentFoundReadinessUnmeasured": "A threshold against a non-number is a dead end: \"waits for MFA readiness to reach 90%; it is not measured today\" told three times on one step, with nothing saying WHAT could not be measured or what would move it. The count is computed (roadmap/methodReadiness.ts) and was rendered nowhere.",
     "foundReadinessUnmeasured": "Enforcement waits for {measure} to reach {threshold}. It is not measured yet: {line}",
           "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
@@ -1677,6 +1678,7 @@
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
             "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
           },
+          "readinessAtLeast": "At least {value}",
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
             "mfa": "{value} MFA-ready",

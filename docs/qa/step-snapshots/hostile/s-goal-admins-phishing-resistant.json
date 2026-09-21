@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when admin readiness reaches 100% (now not measured)",
+  "reason": "when admin readiness reaches 100% (now 0%)",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "not measured"
+      "state": "At least 0% of admins phishing-resistant"
     },
     {
       "label": "Prepare Emergency Access Accounts",

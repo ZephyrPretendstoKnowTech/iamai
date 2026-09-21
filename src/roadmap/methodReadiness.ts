@@ -183,7 +183,12 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
 export function methodReadiness(family: Readiness['family'], preparation: MethodPreparation): Readiness {
   const { ids, readyIds, unknownIds, completeScope } = preparation
   const unreadable = !completeScope || unknownIds.length > 0
+  // The floor, where the people were counted and only their methods could not be
+  // judged (types.ts `atLeast`). An incomplete scope has no real denominator, so
+  // it has no floor either.
+  const atLeast = completeScope && ids.length > 0 && unknownIds.length > 0 ? Math.round(readyIds.length / ids.length * 100) : undefined
   return { family, percent: unreadable || ids.length === 0 ? null : Math.round(readyIds.length / ids.length * 100),
+    ...(atLeast !== undefined ? { atLeast } : {}),
     ...(unreadable ? { unmeasured: 'unreadable' as const } : ids.length === 0 ? { unmeasured: 'no-population' as const } : {}),
     lines: completeScope ? [`${readyIds.length} of ${ids.length} people have a registered method allowed by the target policies.${unknownIds.length > 0 ? ` Method compatibility is not yet established for ${unknownIds.length}.` : ''}`] : ['The target policy scope must be resolved before method readiness can be measured.'] }
 }

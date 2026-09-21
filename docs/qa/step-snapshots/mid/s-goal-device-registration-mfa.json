@@ -1,7 +1,7 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": "when MFA readiness reaches 90% (now 75%)",
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "not measured"
+      "state": "At least 75% MFA-ready"
     },
     {
       "label": "Prepare Emergency Access Accounts",

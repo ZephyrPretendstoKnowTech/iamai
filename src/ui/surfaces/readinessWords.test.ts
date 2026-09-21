@@ -16,7 +16,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { CONTRACT, readinessOf, readinessSentence } from './stepContract.ts'
+import { CONTRACT, readinessOf, readinessSentence, readinessValueOf } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import { waitingLine } from './stepJson.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -191,7 +191,9 @@ test('a readiness threshold stated as a percentage also states the reading behin
       checked++
       const said = readinessSentence(step, gate)
       assert.ok(said.includes(gate.value), `${name}/${step.id}: ${said}`)
-      assert.ok(said.includes(line), `${name}/${step.id}: the reading is not said — ${said}`)
+      // An enforced policy is not waiting for the number, so it states the floor
+      // alone; the count is the finished-rollout card's (enforced-readiness).
+      assert.ok(said.includes(line), `${name}/${step.id}: the reading is not said`)
     }
   }
   assert.ok(checked > 3, `only ${checked} percentage gates carried a reading`)
@@ -222,4 +224,36 @@ test('every readiness tile says something its label has not already said', () =>
       }
     }
   }
+})
+
+// Two steps in one scan, measuring the same people: one read "68% MFA-ready" and
+// the other "not measured", because the second's target accepts a method set the
+// scan cannot judge for nine of them. Both were true and together they read as the
+// tool contradicting itself. A floor is strictly more than "not measured" and
+// never wrong (roadmap/readiness.ts `atLeast`).
+test('a readiness the scan could only put a floor under says the floor, and says it is a floor', () => {
+  let floors = 0
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate || step.status === 'done' || step.status === 'skipped') continue
+      const said = readinessSentence(step, gate)
+      if (gate.floor !== true) { assert.doesNotMatch(readinessValueOf(gate), /At least/, `${name}/${step.id}`); continue }
+      floors += 1
+      // The floor is a real share of a real denominator, and the reading behind it.
+      assert.match(readinessValueOf(gate), /^At least [0-9]+%/, `${name}/${step.id}`)
+      assert.match(said, /At least [0-9]+%/, `${name}/${step.id}: ${said}`)
+      assert.doesNotMatch(said, /not measured/, `${name}/${step.id}: ${said}`)
+      // An enforced policy is not waiting for the number, so it states the floor
+      // alone; the count is the finished-rollout card's (enforced-readiness).
+      if (step.state.lifecycle !== 'enforced') assert.ok(said.includes(step.readiness.lines[0] ?? '#'), `${name}/${step.id}: the reading is not said`)
+      // And it changes no gate: the number is still unknown, which is what holds
+      // enforcement, so the step is no nearer being allowed to enforce.
+      assert.equal(step.readiness.percent, null, `${name}/${step.id}`)
+      assert.equal(step.readiness.unmeasured, 'unreadable', `${name}/${step.id}`)
+    }
+  }
+  assert.ok(floors > 3, `steps reading a floor: ${floors}`)
 })
