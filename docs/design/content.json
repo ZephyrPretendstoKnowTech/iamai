@@ -1696,6 +1696,16 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
+    "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
+    "fixStepAt": {
+      "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",
+      "created": "{step} needs to exist first.",
+      "enforced": "{step} needs to be enforced first.",
+      "resolved": "{step} needs to be resolved first.",
+      "minimum-satisfied": "{step} needs its minimum safety checks passed first.",
+      "hardening-complete": "{step} needs its hardening cleared or deferred first.",
+      "recovery-verified": "{step} needs a verified recovery test first."
+    },
           "fixConfirmExclusions": "Complete {step} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",

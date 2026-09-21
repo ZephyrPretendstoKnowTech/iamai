@@ -138,6 +138,7 @@ type ContractWords = {
   doneSetAside: string
   setAsideAction: string
   fixStep: string
+  fixStepAt: Record<string, string>
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -1254,7 +1255,14 @@ export type ReadinessTile = {
  * prerequisite by its content title; `abnormal` is a §15 hold, the rest healthy
  * queued work.
  */
-export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null }
+/**
+ * `milestone` is what the prerequisite has to REACH, not always 'complete'
+ * (src/actionability/dependency-data.json). Dropping it made every wait read
+ * "Finish X first", which turned one legitimate pair of edges — security
+ * defaults waits for the replacements to be ready to enforce, they wait for it
+ * to be complete — into an apparent deadlock with no way out.
+ */
+export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null }
 
 export type ContractReadiness = {
   /**
@@ -1384,6 +1392,18 @@ function peopleTile(c: StepContract): ReadinessTile | null {
   return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
 }
 
+/**
+ * What a prerequisite has to reach, in words. 'complete' is the common case and
+ * keeps the plain sentence; anything else says which milestone, because a step
+ * waiting for another to be READY is not waiting for it to be finished, and a
+ * reader told to "finish" both halves of a reciprocal pair has been handed a
+ * deadlock that the dependency data does not contain.
+ */
+function fixStepNote(title: string, milestone: string | null | undefined): string {
+  const at = milestone && milestone !== 'complete' ? (CONTRACT.fixStepAt as Record<string, string>)[milestone] : undefined
+  return fillText(at ?? CONTRACT.fixStep, { step: title })
+}
+
 /** A step prerequisite's link: the step it names, opened on the Plan. */
 const stepLink = (id: string, title: string): ReadinessTile['link'] => ({ label: fillText(R().tiles.openStep, { step: title }), href: returnToStep(id) })
 
@@ -1473,7 +1493,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {

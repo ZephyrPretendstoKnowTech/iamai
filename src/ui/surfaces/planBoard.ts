@@ -306,7 +306,7 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
   if (!r) return []
   return r.blockers.map((b) => {
     const direction = b.kind === 'decision' && isDirectionStep(b.id)
-    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null }
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null }
   })
 }
 

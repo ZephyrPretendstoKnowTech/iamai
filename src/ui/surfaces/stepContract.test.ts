@@ -22,7 +22,7 @@ import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../map
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { readinessSentence, stepContract } from './stepContract.ts'
+import { readinessOf, readinessSentence, stepContract } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -379,5 +379,33 @@ test('a readiness gate with no number says what could not be measured', () => {
   for (const s of r.steps.filter((x) => x.action.readinessGate?.value.endsWith('%'))) {
     const g = s.action.readinessGate!
     assert.match(readinessSentence(s, g), new RegExp(g.value.replace('%', '%')), `${s.id}: a measured gate lost its number`)
+  }
+})
+
+// A prerequisite is not always waited on until it is FINISHED. The dependency
+// data carries a milestone on every edge, and dropping it made every wait read
+// "Finish X first" — which turned one legitimate pair of edges into an apparent
+// deadlock: Turn Off Security Defaults waits for the replacement policies to be
+// READY TO ENFORCE, and those policies wait for it to be COMPLETE. Both tiles
+// told the reader to finish the other one first. The way out of an apparent
+// deadlock is to turn security defaults off, which is the single thing that
+// step's own words say not to do yet, and it costs the tenant its MFA.
+test('a prerequisite waited on short of completion says which milestone, not "finish it"', () => {
+  const { f, r, all } = contracts('small')
+  const { step, c } = all.find((x) => x.step.kind === 'create' || x.step.kind === 'adjust')!
+  const title = 'Require MFA for Everyone'
+  const noteFor = (milestone?: string): string | null => {
+    const blockers = [{ kind: 'step' as const, id: 's-goal-mfa-all-users', abnormal: false, label: 'Prerequisite', title, ...(milestone ? { milestone } : {}) }]
+    const ready = readinessOf(step, c, blockers, () => null)
+    return [...ready.tiles, ...ready.satisfied].find((t) => t.key === 'engine:step:s-goal-mfa-all-users')?.note ?? null
+  }
+  assert.ok(f && r, 'the fixture ran')
+  const short = noteFor('ready-to-enforce')
+  assert.match(short ?? '', /ready to enforce first/, String(short))
+  assert.equal(/Finish .* first\./.test(short ?? ''), false, String(short))
+  // A wait that really is until completion keeps the plain sentence, and a
+  // blocker carrying no milestone is read as one (callers that never had it).
+  for (const milestone of ['complete', undefined]) {
+    assert.equal(noteFor(milestone), `Finish ${title} first.`, `${String(milestone)}`)
   }
 })
