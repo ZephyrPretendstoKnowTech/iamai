@@ -104,6 +104,13 @@ import { WORKLOAD_IDENTITY_BLOCKER } from './workloadIdentity.ts'
 
 function advance(step: Step, to: Partial<StepState>, note: string, at: string): void {
   if (step.state.setAside) return
+  // A goal the tenant delivers is not blocked. The two used to coexist — done,
+  // in place, and `condition: blocked` carrying "after: Sort out emergency access
+  // before anything else" — which is a step saying at once that the work is
+  // finished and that it cannot start. Nothing waits on a delivered goal: the
+  // hold reader already ignores a done step (holds.ts), so the condition was the
+  // only place the contradiction still showed, and it showed on the card.
+  if (to.satisfied === true && step.state.condition === 'blocked') to = { ...to, condition: 'healthy' }
   // A workload step whose sync identity is not established as supported is never
   // completed by a policy that looks like its target (roadmap/workloadIdentity.ts):
   // the policy is observed and kept as it is, and the step stays on its hold. What
@@ -114,6 +121,21 @@ function advance(step: Step, to: Partial<StepState>, note: string, at: string): 
   if (to.satisfied === true && step.manualReview && !step.manualReview.confirmedAt) return
   const from = step.status
   if (!advanceState(step, to)) return
+  // The step HAS advanced, so its waits are spent. A `step` blocker is a
+  // prerequisite somewhere else in the plan — an ordering rule for work still to
+  // do — and once the goal is delivered there is no work left to order: a step
+  // finished with a prerequisite still listed says at once that it is done and
+  // that it cannot start, and every surface reading those blockers repeated it.
+  //
+  // After the advance, never before it. The guards above return without
+  // finishing the step — an unrecorded workflow test, an unestablished sync
+  // identity — and clearing a prerequisite there would release a step from the
+  // thing it is waiting for while leaving it unfinished.
+  if (step.state.satisfied && step.blockers.some((b) => b.kind === 'step')) {
+    const spent = new Set(step.blockers.filter((b) => b.kind === 'step').map((b) => b.stepId))
+    step.blockers = step.blockers.filter((b) => b.kind !== 'step')
+    step.blockedBy = step.blockedBy.filter((id) => !spent.has(id))
+  }
   // A step generated already at this status (coverage saw it enforced) still
   // records the evidence once, so the history says why it is where it is.
   if (step.status === from) {
@@ -228,8 +250,16 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     m.matchedBy = by
     claimed.add(policy.id as string)
   }
-  const tagged = findTaggedPolicies(snapshot, planId, step.id)
   const sole = out.length === 1
+  // A step with ONE required policy has one member, so a tag naming this step
+  // names that member whatever key it carries. Generation writes the key as a
+  // hash of the baseline source (generate.ts memberKeyOf, tagFor) while the
+  // reader below is SOLE_MEMBER, so on every single-policy step the two could
+  // never match: stage 2 wanted the member's key, stage 3 wanted no key at all,
+  // and a hashed key satisfied neither. The policy IAMAI had just told somebody
+  // to create was invisible to its own step, which went on asking them to create
+  // it. A pair keeps its keys, where the distinction is the whole point.
+  const tagged = findTaggedPolicies(snapshot, planId, step.id).map((t) => (sole ? { ...t, memberKey: out[0].key } : t))
 
   // 0. the member's own record of the last scan: the object it was delivered
   // by, kept while that object is on the tenant. A pre-member record is the

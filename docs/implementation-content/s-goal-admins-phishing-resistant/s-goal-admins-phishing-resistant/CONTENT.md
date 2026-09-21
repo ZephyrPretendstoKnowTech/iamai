@@ -118,7 +118,7 @@ function Same($actual,$target){
 $target=$TargetPolicyJson|ConvertFrom-Json
 if(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}
 if($Mode -eq 'Create'){
- $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}
+ $body=[ordered]@{displayName=$target.displayName;description=$target.description;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}
  $created=IG POST "$G/identity/conditionalAccess/policies" $body
  $PolicyId=[string]$created.id
  Write-Host "Created $PolicyId in Report-only."

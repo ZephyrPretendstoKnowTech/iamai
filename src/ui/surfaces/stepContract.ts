@@ -1285,6 +1285,9 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // its own reason now, in that sentence's own words.
   const line = step.readiness.lines[0]
   if (!gate.value.endsWith('%') && typeof line === 'string' && line.length > 0) {
+    // An already-enforced policy is not waiting for anything: the threshold is
+    // moot and the count is the whole of the fact, so it is stated alone.
+    if (step.state.lifecycle === 'enforced') return line
     return fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line })
   }
   if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) return fillText(CONTRACT.foundReadiness, { ...gate })

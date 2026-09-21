@@ -952,7 +952,18 @@ test('a stale saved pass on the emergency-access gate cannot let a rollout step 
   for (const id of gatedAfter) {
     const held = now.find((x) => x.id === id) as Step
     assert.notEqual(held.state.lifecycle, 'ready-to-enforce', `${id} did not advance on a stale pass`)
-    assert.equal(held.state.satisfied, false, `${id} is not finished by one either`)
+    // Nothing behind the gate is offered for submission. This is the property
+    // that matters: a stale pass must not hand anybody a policy to run.
+    assert.equal(held.action.json, null, `${id} is offered an implementation on a stale pass`)
+    // A step may still report the goal as delivered — but only where the TENANT
+    // already delivers it, which is a fact about the tenant and not the gate
+    // opening. Asserting `satisfied === false` outright would have IAMAI deny a
+    // policy the tenant demonstrably holds in order to keep a gate shut, and a
+    // tool that misreports the estate to protect a rule is the thing this whole
+    // audit exists to prevent.
+    if (held.state.satisfied) {
+      assert.ok((held.satisfiedBy?.policies.length ?? 0) > 0, `${id} is finished without a tenant policy delivering it`)
+    }
   }
 })
 

@@ -487,7 +487,7 @@ export function incompleteFieldsOf(step: Step, op: PolicyOperation | null): Read
 /** Whether an open field (`incompleteFieldsOf`) is this field, inside it, or contains it. */
 export const touches = (open: ReadonlySet<string>, field: string): boolean => [...open].some((f) => f === field || f.startsWith(`${field}.`) || field.startsWith(`${f}.`))
 
-type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown; excludeUsers?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
+type PolicyShape = { displayName?: unknown; description?: unknown; conditions?: { users?: { excludeGroups?: unknown; excludeUsers?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
 
 /**
  * The package bindings IAMAI actually holds for a step, and only those, from the
@@ -553,6 +553,19 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const exclusionsGroupId = actionableExclusionsGroupId({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups ?? null, directory: ctx.directory })
   const name = typeof body?.displayName === 'string' ? body.displayName : target?.displayName
   put('policy.target.displayName', typeof name === 'string' ? name : step.naming?.proposed)
+  // The plan tag the created policy carries (generate.ts tagFor). The Entra
+  // procedure tells the reader to paste it "exactly; it is how IAMAI recognises
+  // the policy it planned when it next reads the tenant", and the script's own
+  // create body left it out — so a policy built through PowerShell came back
+  // unrecognised and its step asked for it to be created again, in a live
+  // tenant, where a second enforcing policy is a lockout path.
+  //
+  // It rides inside `policy.target.json`, which the script already takes whole,
+  // rather than as a binding of its own: a new binding is a change to every
+  // package's declared inventory, and this is one value in an object that is
+  // already there. The JSON channel still needs it and still does not have it;
+  // that one does need the binding (src/content/implementation/planTag.test.ts).
+  const description = typeof body?.description === 'string' ? body.description : undefined
   const users = settled('conditions.users')?.conditions?.users
   const excl = users?.excludeGroups
   if (Array.isArray(excl)) put('policy.target.excludeGroups', excl.map(String))
@@ -584,7 +597,10 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // is bound — a target short of a field still waiting on a reference is not the target.
   const roots = ['policy.target.conditions', 'policy.target.grantControls', 'policy.target.sessionControls']
   if (whole && typeof out['policy.target.displayName'] === 'string' && roots.every((k) => Object.hasOwn(out, k))) {
-    out['policy.target.json'] = JSON.stringify({ displayName: out['policy.target.displayName'], conditions: out['policy.target.conditions'], grantControls: out['policy.target.grantControls'], sessionControls: out['policy.target.sessionControls'] })
+    // `description` carries the plan tag: the script builds its create body from
+    // this object, so leaving it out here is what made the PowerShell channel
+    // submit a policy IAMAI could not recognise as its own.
+    out['policy.target.json'] = JSON.stringify({ displayName: out['policy.target.displayName'], description, conditions: out['policy.target.conditions'], grantControls: out['policy.target.grantControls'], sessionControls: out['policy.target.sessionControls'] })
   }
   // The location scope and grant as the step's portal lines (the screen's, print's
   // and export's) word them, for a package that declares them: one source, so the
