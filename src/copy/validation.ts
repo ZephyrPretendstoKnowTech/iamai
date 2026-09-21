@@ -54,6 +54,16 @@ export const NEED_LABEL: Record<string, string> = {
   users: 'the user list',
   roles: 'role assignments',
   authMethods: 'registered sign-in methods',
+  // Narrower than `authMethods` on purpose, and the distinction is not
+  // cosmetic. A rule that has READ an account's keys and cannot tell a
+  // device-bound one from a synced one was saying "Missing scan evidence:
+  // registered sign-in methods" — over two emergency accounts whose methods the
+  // scan held, on a tenant whose registration source read `ok`. The reader
+  // checked, found `methodsRegistered: ["fido2SecurityKey"]` on both, and
+  // stopped believing the tile; the step behind it was the one gate holding
+  // thirteen others. On a tenant where the source really is unreadable the
+  // original label is the true one, so both have to exist.
+  passkeyType: 'whether the registered keys are device-bound or synced',
   caPolicies: 'Conditional Access policies',
   organization: 'the tenant domains',
   authMethodsPolicy: 'the authentication methods policy',

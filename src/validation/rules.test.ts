@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { REGISTRY, citationFor, evaluateSubject, ruleText } from './rules.ts'
+import { NEED_LABEL } from '../copy/validation.ts'
 import type { GroupFacts, NeedKey, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
 import { buildContext, breakGlassReport } from './report.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -690,4 +691,34 @@ test('a single-department tenant does not manufacture a pilot diversity defect',
   const b = base()
   b.snapshot.users.forEach(u => { u.department = 'Operations' })
   assert.equal(run('pilot.spread', b.groups[0], b).outcome, 'pass')
+})
+
+test('bg.hardwareCredential: keys it could not read and a key TYPE it could not read are different unknowns', () => {
+  // Both are "could not verify" and both are the same conservative verdict.
+  // What they may not say is the same thing about what the scan is holding.
+  //
+  // This rule had one sentence for both: "Missing scan evidence: registered
+  // sign-in methods" — said over two emergency accounts whose methods the scan
+  // HAD, on a tenant whose registration source read `ok`. A reader who checked
+  // found `methodsRegistered: ["fido2SecurityKey"]` on both and stopped
+  // believing the tile; the step behind it is the one gate holding thirteen
+  // others on that plan.
+  const withMethods = (methods: unknown): Base => {
+    const b = base()
+    for (const id of b.state.breakGlassUserIds) b.snapshot.authMethods[id] = methods as never
+    return b
+  }
+
+  // The methods themselves were unreadable. The original sentence is the true
+  // one here, and must survive.
+  const blind = run('bg.hardwareCredential', bgId(base()), withMethods('unknown'))
+  assert.equal(blind.outcome, 'unknown')
+  assert.ok(blind.finding?.includes(NEED_LABEL.authMethods), `an unreadable source stopped naming the methods: ${blind.finding}`)
+
+  // A key was read and its type could not be told. Same verdict; it must not
+  // claim the methods are missing while it is holding them.
+  const typeUnknown = run('bg.hardwareCredential', bgId(base()), withMethods([{ kind: 'fido2' }]))
+  assert.equal(typeUnknown.outcome, 'unknown', 'an unreadable key type stopped being conservative')
+  assert.ok(typeUnknown.finding?.includes(NEED_LABEL.passkeyType), `the key type is not what it names: ${typeUnknown.finding}`)
+  assert.equal(typeUnknown.finding?.includes(NEED_LABEL.authMethods), false, 'still claims the methods are missing while holding them')
 })
