@@ -15,7 +15,7 @@ import { applySkips } from '../../roadmap/progress.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, shared } from '../../content/content.ts'
-import { BOARD, SUBSTATUS_WORD, WHEN, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, holdGroupOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, WHEN, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -69,7 +69,7 @@ function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<str
   for (const [id, reading] of readings) {
     const view = laneViewOf(reading, titleOf)
     views.set(id, view)
-    items.push({ id, title: titleOf(id) ?? id, lane: reading.lane, laneLabel: view.label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', order: reading.order })
+    items.push({ id, title: titleOf(id) ?? id, lane: reading.lane, laneLabel: view.label, workType: 'ca', order: reading.order })
   }
   return { readings, views, items, titleOf }
 }

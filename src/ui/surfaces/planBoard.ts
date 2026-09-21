@@ -13,8 +13,9 @@ import { schedulingWords } from '../../content/content.ts'
 // So everything here is pure and everything here is a READING. Each field on a
 // `BoardItem` is copied from a fact production already computed:
 //
-//   * `lane`, `laneLabel`, `hold` are the engine's lane, the row's label for
-//     it and the primary blocker's label (planLanes.ts).
+//   * `lane` and `laneLabel` are the engine's lane and the row's label for it
+//     (planLanes.ts). What a held row waits for is `LaneView.waitingFor`, which
+//     is `holdLabelOf` — the row reads it, so there is no second copy here.
 //   * `workType` is a projection of the content file's own `kind`, plus the
 //     small explicit id list documented on WORK_TYPE_IDS below.
 //
@@ -317,14 +318,6 @@ export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | n
 /** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */
 const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decision' && isDirectionStep(r.reason.id)
 
-/** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
-export function holdGroupOf(r: LaneReading): string {
-  if (r.reason?.id === 'after-security-rollout') return 'After Security Rollout'
-  if (waitsOnDirection(r)) return directionWords.waiting
-  if (r.reason?.kind === 'step' && !r.reason.abnormal) return WHEN.afterPrerequisites
-  return r.reason === null ? BOARD.lanes.onHold : BOARD.blockers[r.reason.kind]
-}
-
 /**
  * The engine's unresolved prerequisites of the row's next action, labelled the
  * way the board labels them, for the opened step's Readiness tiles (A1 §16.1:
@@ -473,8 +466,6 @@ export type BoardItem = {
   lane: Lane
   /** `Lane · substatus/reason`, the row's own label for where it is (laneLabelOf). */
   laneLabel: string
-  /** On Hold: the primary blocker's group label (holdGroupOf). Null elsewhere. */
-  hold: string | null
   workType: WorkType
   /** Position within its lane (planLanes.ts order), so the board never re-sequences the engine. */
   order: number

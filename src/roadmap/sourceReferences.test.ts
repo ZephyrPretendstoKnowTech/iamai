@@ -28,7 +28,7 @@ import { holdWaitsOn } from './stateReason.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { BASELINE_MAPPINGS_KEY, sourceMappingsOf, unresolvedSourceMappings } from './sourceMappings.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
-import { holdGroupOf, holdLabelOf, laneLabelOf } from '../ui/surfaces/planBoard.ts'
+import { holdLabelOf, laneLabelOf } from '../ui/surfaces/planBoard.ts'
 import { MAPPING_WORDS, mappingRowsOf, shortId } from '../ui/surfaces/baselineMappings.ts'
 import type { Step } from './types.ts'
 
@@ -140,7 +140,6 @@ test('S4: each policy naming an unmapped reference is On Hold with the reason, a
         assert.ok(['include', 'exclude', 'both'].includes(reading.reason?.role ?? ''), `${name}/${id}: the blocker states no role`)
         assert.equal(reading.reason?.role, named.role, `${name}/${id}: the blocker's role is the reference's`)
         assert.equal(holdLabelOf(reading, titleOf), BLOCKED_REASON.sourceMapping)
-        assert.equal(holdGroupOf(reading), BLOCKED_REASON.sourceMapping)
         assert.equal(laneLabelOf(reading, titleOf), 'On Hold', 'compact state labels keep the cause in the expanded step')
         assert.equal(step.blockedReason, BLOCKED_REASON.sourceMapping, `${name}/${id}: the row's own reason`)
         assert.equal(holdWaitsOn(step).includes(REMOVED_ROW), false, `${name}/${id}: the hold names the removed row`)
