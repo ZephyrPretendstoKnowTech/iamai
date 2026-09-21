@@ -36,7 +36,7 @@ import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
-import { curatedFixture as fixture } from './fixtures/index.ts'
+import { curatedFixture as fixture, withSyntheticBaseline } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
@@ -377,8 +377,11 @@ test('a tenant planning against a package without the reviewed source plans the 
   // There is no source there to define the goal twice, so there is nothing to
   // report about it — the goal is planned from its own template like any other,
   // and what holds it is the tenant's own readiness, said in the tenant's words.
+  // Asked for by name. These two used to carry a synthetic baseline because every
+  // fixture but the demo did; every fixture is on the pin now, so the premise
+  // this test needs is stated rather than inherited.
   for (const name of ['small', 'hostile'] as const) {
-    const f = fixture(name)
+    const f = withSyntheticBaseline(fixture(name))
     assert.equal(
       f.baseline.policies.some((p) => String((p as { id?: unknown }).id ?? '').toLowerCase() === SOURCE),
       false,
