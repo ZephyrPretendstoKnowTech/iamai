@@ -15,7 +15,7 @@ Entra admin center → Entra ID → Conditional Access → Policies → New poli
 4. Conditions → Client apps: set **Configure** to **Yes**, then **Browser** only. Left at **No** the condition reaches every client app, and the interval would apply to desktop and mobile apps as well.
 5. Grant: no grant requirement.
 6. Session: Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step; Persistent browser session → **Never persistent**.
-7. Enable policy: **Report-only**.
+7. Enable policy: **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 
 Save once. Rescan IAMAI so it records the new policy ID.
 @@IAMAI-END
@@ -52,7 +52,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
-Open the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.
+Open the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change it from Report-only to **On** in a controlled change window.
 
 Verify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the intended target's frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.
 @@IAMAI-END

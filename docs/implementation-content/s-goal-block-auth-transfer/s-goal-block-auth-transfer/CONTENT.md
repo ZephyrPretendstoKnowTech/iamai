@@ -5,7 +5,7 @@
    One consequence to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out.
 4. Grant: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
-6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 7. Re-open the created policy, compare it with the IAMAI target, then rescan.
 @@IAMAI-END
 
@@ -41,7 +41,7 @@ Keep the policy in **Report-only** while you review the evidence listed for this
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the step's evidence has been reviewed. Change **Enable policy** to **On** and save. Verify after the change: affected users can sign in directly on the destination device, and emergency access still works. Then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the step's evidence has been reviewed. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** to **On** and save. Verify after the change: affected users can sign in directly on the destination device, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

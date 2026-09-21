@@ -5,7 +5,7 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create-set","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-After the SharePoint setting has changed **and IAMAI has rescanned**, create each policy in Report-only. It will not enforce its access rule until you enable it. Leave Grant unconfigured on both.
+After the SharePoint setting has changed **and IAMAI has rescanned**, create each policy in Report-only. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only. Leave Grant unconfigured on both.
 
 - **{{policies.unmanagedBrowser.a.target.displayName}}** (Policy A): Target resources: Office 365; Client apps: set **Configure** to **Yes**, then Browser — left at **No** it reaches every client app; apply the device condition shown in the intended target; Session: **Use app enforced restrictions**.
 - **{{policies.unmanagedBrowser.b.target.displayName}}** (Policy B), only when Defender for Cloud Apps is licensed (`license.defenderCloudApps` is true): Target resources: Office 365; apply the device filter and the other conditions shown in the intended target; Session: **Use Conditional Access App Control** with **Block downloads**.
@@ -27,6 +27,7 @@ Keep both applicable policies in Report-only while you review the evidence liste
 Verify each policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen each applicable policy using its ID from the latest scan. Confirm it is still **Report-only**, its conditions and session controls match the intended target, Grant is unconfigured, the SharePoint setting is in place and, for Policy B, Defender for Cloud Apps is licensed.
+- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
 - Set one policy to **On** at a time.
 - Verify after each change: from an unmanaged test device, open SharePoint and Outlook on the web in a browser and confirm the intended download, print and sync limits. Test each service separately; the SharePoint setting does not configure Exchange mailbox restrictions.
 - Rescan in IAMAI after the changes.

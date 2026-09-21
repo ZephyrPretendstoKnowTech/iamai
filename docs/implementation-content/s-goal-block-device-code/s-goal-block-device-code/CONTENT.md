@@ -5,7 +5,7 @@
    Two consequences to know before you create it: a session that used this flow stays tracked, so later requests in it are blocked too and a device can be signed out; and because the target is **All resources**, the policy also reaches **Device Registration Service**, which you exclude if this tenant registers devices by device code.
 4. Grant/access control: **Block access**.
 5. Leave session controls unconfigured; the intended target has none.
-6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.
 @@IAMAI-END
 
@@ -44,6 +44,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and required device-code workflows have a tested alternative or separately approved handling.
+- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
 - Change **Enable policy** to **On** and save.
 - Verify after the change: required tools and devices sign in through their alternative path, and emergency access still works.
 - Rescan in IAMAI.

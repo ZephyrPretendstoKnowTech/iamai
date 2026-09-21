@@ -7,7 +7,7 @@
 6. Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.
 7. Grant: {{policy.target.grantWords}}. Use only the controls listed here.
 8. Session → Sign-in frequency: Every time.
-9. Enable policy: Report-only.
+9. Enable policy: Report-only. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 10. Create. Rescan in IAMAI.
 @@IAMAI-END
 
@@ -57,7 +57,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Verify the same policy and its prerequisites: High sign-in risk only, All users with the intended exclusions, All resources, the selected grant ({{policy.target.grantWords}}), Every time sign-in frequency, and reviewed method readiness. Change only **Enable policy** from Report-only to **On**, then reopen the policy to check the state. Verify after the change: review legitimate sign-ins that cannot satisfy the selected grant. If legitimate users are blocked, set the same policy back to Report-only while method readiness is fixed. Rescan in IAMAI.
+Verify the same policy and its prerequisites: High sign-in risk only, All users with the intended exclusions, All resources, the selected grant ({{policy.target.grantWords}}), Every time sign-in frequency, and reviewed method readiness. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change only **Enable policy** from Report-only to **On**, then reopen the policy to check the state. Verify after the change: review legitimate sign-ins that cannot satisfy the selected grant. If legitimate users are blocked, set the same policy back to Report-only while method readiness is fixed. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

@@ -27,7 +27,7 @@ The approved sync-server named location is already resolved. Create only the wor
 5. Under **Target resources > Resources**, include **All resources**.
 6. Under **Network** (this page still calls it **Conditions > Locations**), set **Configure** to **Yes**, then include **Any network or location** and exclude the IAMAI-resolved sync-server named location. Left at **No** the network condition is not configured, and Microsoft's rule is that a policy applies to all locations by default.
 7. Under **Grant**, select **Block access**. It is the only grant control a workload identity policy offers.
-8. Set **Enable policy** to **Report-only**, then create it.
+8. Set **Enable policy** to **Report-only**, then create it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 9. Rescan IAMAI and proceed to service-principal sign-in validation before enforcement.
 
 Microsoft reference: https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity
@@ -102,7 +102,7 @@ IAMAI has reached the enforcement state; do not rebuild the location or policy.
 
 1. Confirm the Cloud Sync server's current public egress address still matches the approved named location.
 2. Open the exact IAMAI-resolved workload policy.
-3. Change **Enable policy** from **Report-only** to **On** and save.
+3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from **Report-only** to **On** and save.
 4. Trigger or observe a fresh Cloud Sync operation from the approved server and verify it succeeds.
 5. If synchronization fails, return this same policy to Report-only before changing the named location.
 6. Rescan IAMAI.
