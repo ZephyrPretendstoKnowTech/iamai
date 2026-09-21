@@ -114,6 +114,8 @@ type ContractWords = {
   readinessValue: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
+  foundInPlaceWatched: string
+  foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
   doneSatisfied: string
   doneBlocked: string
@@ -550,12 +552,19 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // rather than an invented one.
   if (isPreserved(step)) {
     const by = existingOf(step)
+    // Whether IAMAI watched this object move, or found it already as it is
+    // (observation.ts `since`). The difference matters in words: "already
+    // delivered ... so there is nothing to create" is a report about coverage
+    // that was there before IAMAI looked, and on a step somebody has just
+    // created, watched through its window and enforced it reads as though the
+    // work had been unnecessary. A watched policy is stated, not explained away.
+    const watched = step.state.observation?.latest.since === 'observed-change'
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
         : by.together
-          ? fillText(CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
-          : fillText(CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
+          ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
+          : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
     out.push(found('in-place', text))
   }
   // The step's one observation is Foundation B's own aggregate over its members
