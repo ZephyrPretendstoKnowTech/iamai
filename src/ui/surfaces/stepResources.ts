@@ -8,6 +8,7 @@ import { contentTitle, contentStepFor } from '../../content/stepTitle.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { devicePlanOf, travelCountriesOf } from '../../roadmap/answers.ts'
+import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 
 /** The same resource remains useful when a task moves from preparation to verification. */
 export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, label: (key: string) => string): ChannelArtifact[] {
@@ -102,10 +103,19 @@ export function policyInspectionLines(step: Step): string[] {
     'Open Conditional Access → Policies and review policies targeting this application, including broader policies that apply to all resources. Check user assignments, exclusions, MFA access controls and policy state.',
     'After a representative Inforcer sign-in, scan again to update the application evidence and policy findings.',
   ]
-  return [
-    'Open Entra admin center → Entra ID → Conditional Access → Policies.',
-    `Find the policies for ${contentTitle(step)}; compare their assignments, conditions, access controls and current state with the configuration listed on this step.`,
-  ]
+  const open = 'Open Entra admin center → Entra ID → Conditional Access → Policies.'
+  // The policies IAMAI matched to this step, by name and object id
+  // (roadmap/tracking.ts `members`). A step reaches these lines only when it has
+  // no operation to hand over — it is already enforced, or its target cannot be
+  // resolved — and such a step lists no configuration. The instruction used to
+  // send the operator to compare "with the configuration listed on this step",
+  // which listed none, so the comparison could not be made and the step was put
+  // down. The match is a fact the engine already holds; the criteria it is
+  // checked against are this step's own, under its last heading.
+  const matched = (step.tracking?.members ?? []).filter((m) => m.policyName)
+  const criteria = taskHeadingsOf(step.id)?.doneWhen ?? HEAD.doneWhen
+  if (matched.length === 0) return [open, `Review the policies that affect ${contentTitle(step)}: their assignments, conditions, access controls and current state.`]
+  return [open, ...matched.map((m) => `Open “${m.policyName}”${m.policyId ? ` (${m.policyId})` : ''} — the policy IAMAI matched to this step — and check its assignments, conditions, access controls and state against ${criteria} on this step.`)]
 }
 
 /** Essential setup belongs beside the decision, not exclusively in the AI prompt. */
