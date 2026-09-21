@@ -3476,7 +3476,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. Turn them off on the day Require MFA for Everyone enforces, and not before.",
+        "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. One order works, and it is the one this plan follows: create all four replacements in Report-only while security defaults are still on, watch them there, then turn security defaults off and enable all four in the same change window. Turn them off on that day and not before.",
         "steps": [
           "Check each policy that takes over: Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins. Any one of them not enforced already must have run in report-only with no failures before you turn it on today.",
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",

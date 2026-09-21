@@ -383,7 +383,10 @@ test('a readiness gate with no number states its threshold and claims no number'
       if (!gate.value.endsWith('%')) {
         bare += 1
         assert.match(text, /reach [0-9]+%/, `${name}/${step.id}: the gate no longer states its threshold — ${text}`)
-        assert.equal(typeof line === 'string' && /[0-9]+ of [0-9]+/.test(line), false, `${name}/${step.id}: a counted reading with no number to state it as`)
+        // A counted reading may still sit under a gate with no number, where the
+        // count is zero because nobody could be judged: that is a reading of what
+        // the scan could not see, and a floor of zero is not a floor.
+        if (typeof line === 'string') assert.doesNotMatch(line, /^[1-9][0-9]* of /, `${name}/${step.id}: somebody was judged ready and no number is stated`)
         continue
       }
       if (gate.floor !== true) continue
