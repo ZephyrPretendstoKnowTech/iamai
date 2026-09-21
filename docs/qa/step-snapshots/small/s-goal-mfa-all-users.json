@@ -12,7 +12,12 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Readiness",
+      "state": "19 of 28 people in scope"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",

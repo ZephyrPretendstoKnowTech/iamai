@@ -107,6 +107,8 @@ type ContractWords = {
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
   foundReadinessUnmeasured: string
+  /** What a finished rollout left behind, where it finished short of its own readiness. */
+  foundEnforcedShort: string
   /** The threshold on an enforced policy: the fact, never a wait (U22). */
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
@@ -541,6 +543,8 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   const out: ContractFound[] = []
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
+  // And on a step that has finished short of it, where the gate is already gone.
+  else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', fillText(CONTRACT.foundEnforcedShort, { line: short.line }))) }
   // A goal the tenant already delivers, and *which* policy delivers it. The
   // line used to say only that the tenant "already has a policy doing this",
   // which is the one fact an operator cannot act on: to check that IAMAI
@@ -893,7 +897,19 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   // A generic policy hold must not replace, for example, proof of a passkey sign-in.
   if (cs?.kind !== 'policy' && own.length > 0) return own
   if (step.state.satisfied && step.state.condition !== 'needs-decision') {
-    if (cs?.kind === 'policy' && !step.manualReview) return [fillText(CONTRACT.doneSatisfied, { tenant })]
+    // A rollout that finished short of its own readiness keeps the step's own end
+    // state, because that is the half of it that is not true yet: the admin policy
+    // read "the scan found the assessed configuration in place" while one admin of
+    // six held a method it accepts, and its own criterion - every admin in scope has
+    // one registered - is precisely what nobody had checked (shortReadingOf).
+    if (cs?.kind === 'policy' && !step.manualReview) {
+      const short = shortReadingOf(step)
+      // Its END state (steps[].doneEnd, B8), not its rollout gates: a finished
+      // policy is not waiting out a report-only window, and listing that beside
+      // the scan's sentence would be a second copy of work already done.
+      const end = short !== null && typeof cs?.doneEnd === 'string' && whole(cs.doneEnd, ex) ? fillText(cs.doneEnd, ex) : null
+      return end !== null ? [end, fillText(CONTRACT.doneSatisfied, { tenant })] : [fillText(CONTRACT.doneSatisfied, { tenant })]
+    }
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
   }
   if (step.state.condition === 'needs-decision') return cs?.kind !== 'policy' && own.length > 0 ? own : [CONTRACT.doneDecision]
@@ -1367,6 +1383,40 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
 }
 
+/**
+ * What a FINISHED rollout left behind, where it finished short of its own
+ * readiness. Enforce the admin policy while one admin of six holds a method it
+ * accepts and the threshold card is deleted: `action.readinessGate` is set only
+ * while the gate is unmet AND the step is still unfinished, so the moment the
+ * policy goes on it is gone, the coverage tile takes the card, and the step
+ * reads Completed over a tenant that is locked out (Sam, severity 4).
+ *
+ * Three attempts at this failed by trying to keep the gate alive; each broke a
+ * different invariant, because `readinessGate` is machinery for HOLDING an
+ * unfinished rollout and this is a fact about a finished one. So it reads
+ * `step.readiness` — the measurement, which survives — and holds nothing: the
+ * step stays Completed, and says what it left behind.
+ *
+ * Only where the reading is a count short of its own denominator. "6 of 6" is
+ * not a finding, and a reading that is not a count cannot be compared.
+ */
+function shortReadingOf(step: Step): { value: string; line: string } | null {
+  if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
+  const line = step.readiness.lines[0]
+  if (typeof line !== 'string') return null
+  const m = /([0-9]+) of ([0-9]+)/.exec(line)
+  if (m === null || Number(m[1]) >= Number(m[2])) return null
+  const scope = CONTRACT.readinessScope[step.readiness.family] ?? CONTRACT.readinessScope.mfa
+  return { value: `${m[1]} of ${m[2]} ${scope}`, line }
+}
+
+/** The tile that reading draws: a warning on a finished step, never a hold. */
+function enforcedReadingTile(step: Step): ReadinessTile | null {
+  const short = shortReadingOf(step)
+  if (short === null) return null
+  return { key: 'enforced-readiness', label: R().tiles.reading, tone: 'warn', value: short.value, note: fillText(CONTRACT.foundEnforcedShort, { line: short.line }) }
+}
+
 /** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
 const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
 
@@ -1645,7 +1695,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
-  const facts = [...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

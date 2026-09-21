@@ -235,3 +235,32 @@ test('U11: the demo Devices step (Direction D3) reads Ready · Decision; the bar
   assert.equal(s.badge, 'Ready · Decision')
   assert.equal(s.bar, 'Needs a decision')
 })
+
+// Sam, severity 4: "the tenant locked out with a green tick". Turn the admin
+// policy on while one admin of six holds a method it accepts and the threshold
+// card is deleted - `action.readinessGate` exists only while the gate is unmet
+// AND the step is unfinished - so the step reads Completed over a tenant that
+// cannot sign in. Three attempts to keep the gate alive each broke a different
+// invariant; this holds nothing and reads `step.readiness`, which survives.
+test('a rollout that finished short of its own readiness says so, and keeps the criterion it did not meet', () => {
+  const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
+  const line = admins.readiness.lines[0]
+  assert.ok(typeof line === 'string' && /[0-9]+ of [0-9]+/.test(line), `the premise: its readiness is a count (${line})`)
+  const ctx = ctxOf(demo, demoRun, demo.snapshot)
+  const finished = { ...admins, status: 'done', state: { ...admins.state, lifecycle: 'enforced', satisfied: true, inPlace: true }, action: { ...admins.action, readinessGate: undefined } } as Step
+  const c = stepContract(finished, ctx)
+  const tile = readinessOf(finished, c).tiles.find((x) => x.key === 'enforced-readiness')
+  assert.ok(tile, 'a finished step short of its readiness draws no reading')
+  assert.equal(tile.tone, 'warn', 'the reading is filed as satisfied evidence')
+  assert.ok(tile.value.includes('of'), tile.value)
+  assert.match(tile.note ?? '', /This policy is enforced, and/)
+  assert.ok(c.found.some((f) => /This policy is enforced, and/.test(f.text)), 'What IAMAI found does not carry it')
+  // Its own end state is the half that is not true yet, so it is stated first.
+  assert.equal(c.doneWhen.length, 2, JSON.stringify(c.doneWhen))
+  assert.match(c.doneWhen[0], /every admin in scope has one registered/)
+  // A rollout that finished with everybody ready is not a finding.
+  const ready = { ...finished, readiness: { ...finished.readiness, lines: ['6 of 6 people have a registered method allowed by the target policies.'] } } as Step
+  assert.equal(readinessOf(ready, stepContract(ready, ctx)).tiles.some((x) => x.key === 'enforced-readiness'), false)
+  // And an unfinished one still reads its gate, not this.
+  assert.equal(readinessOf(admins, stepContract(admins, ctx)).tiles.some((x) => x.key === 'enforced-readiness'), false)
+})
