@@ -5,7 +5,7 @@
 4. Target **All resources**. Leave **Conditions > Client apps** unconfigured, with **Configure** at **No**: that is what reaches all client apps. Ticking every box instead sets a narrower list than the target, and IAMAI reads it as a difference for good. Configure no other condition.
 5. Grant **Require authentication strength** and select the custom authentication strength resolved for this tenant.
 6. Leave session controls unconfigured.
-7. Set **Enable policy: Report-only**, create, re-open, verify, and rescan.
+7. Set **Enable policy: Report-only**, create, re-open, verify, and rescan. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -45,7 +45,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Verify the same policy and its prerequisites: it is still Report-only, its roles, exclusions, grant and session settings match the intended target, and affected admins have working accepted methods. Then set **Enable policy: On**. Verify after the change: an affected admin can sign in with an accepted method, and an emergency access account can still sign in. Rescan in IAMAI.
+Verify the same policy and its prerequisites: it is still Report-only, its roles, exclusions, grant and session settings match the intended target, and affected admins have working accepted methods. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Then set **Enable policy: On**. Verify after the change: an affected admin can sign in with an accepted method, and an emergency access account can still sign in. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

@@ -4,7 +4,7 @@
 3. Before you start, check **Entra ID > Multifactor authentication > Additional cloud-based MFA settings** and turn **Remember multifactor authentication on trusted devices** off. Microsoft documents that leaving it on alongside sign-in frequency prompts people unexpectedly.
 4. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps**: set **Configure** to **Yes**, then select **Browser** only. Left at **No**, the condition reaches every client app, and the interval applies to desktop and mobile apps too. Do not use IDs from another tenant, and do not widen or narrow the role list.
 5. Session → Sign-in frequency → Periodic reauthentication, set to the interval in the intended target shown on this step. Persistent browser session: Never persistent. Leave Grant unconfigured.
-6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 7. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
@@ -47,6 +47,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.
+- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
 - Change **Enable policy** to **On** and save.
 - Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the target's interval. Check that normal admin work remains practical and emergency access still works.
 - Rescan in IAMAI.
