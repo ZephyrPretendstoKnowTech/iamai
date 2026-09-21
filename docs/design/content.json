@@ -71,6 +71,7 @@
     "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}. Never exclude the emergency accounts directly; they are members of this group.",
     "reportOnlyLine": "Enable policy: Report-only → Create",
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
+    "whoUnresolved": "IAMAI could not finish this line from what it read, so it is not saying either way. Check this one in Entra yourself.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
     "certificatePrompt": "In report-only, a policy with a device condition can prompt iOS and macOS users to pick a certificate from the day it is created.",
     "strengthName": "Modern MFA + TAP",
@@ -3431,7 +3432,11 @@
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
-        "lead": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it."
+        "$comment": "A lead per read state: the scan read security defaults on, or read them off. Where it read neither, the lead is unresolved rather than the sentence for a state nobody confirmed.",
+        "leadWhen": {
+          "securityDefaultsOn": "Everyone in {tenant}: security defaults require MFA, block legacy authentication and block device code sign-in today, and four policies of this plan take over all of it.",
+          "securityDefaultsOff": "Everyone in {tenant}: security defaults are already off, so nothing requires MFA, blocks legacy authentication or blocks device code sign-in tenant-wide until the four policies of this plan that replace them are enforced."
+        }
       },
       "decision": null,
       "whatToDo": {
@@ -3473,7 +3478,8 @@
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "securityDefaultsOn": true
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
       "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified.",
@@ -4533,9 +4539,9 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
-          "Nobody used a legacy protocol since {from}.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "Nobody used a legacy protocol since {from}."
       },
       "decision": {
         "label": "Mail-sending devices",
@@ -5543,10 +5549,10 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
-          "Everyone on Windows signs in from a joined or registered device.",
           "What this policy does not reach is covered elsewhere or not at all: Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "Every Windows sign-in in the records since {from} came from a joined or registered device."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -5984,13 +5990,13 @@
         "evidence": [
           "The baseline requires {strengthName} on a high-risk sign-in; it accepts the methods that strength lists, including a Temporary Access Pass where it allows one. Your saved first-enforcement choice decides the grant used now.",
           "{n} sign-ins were rated high risk since {from}: {list:riskyUsers}",
-          "No sign-in in the records was rated high risk since {from}.",
           "That rating is read from the sign-in records; a record without one counts as unknown, never as no risk. Identity Protection's own risk reports are a separate surface this plan does not read.",
           "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
           "{pushOnlyCount} people with only Authenticator approval would be stopped by a risky sign-in.",
           "Somebody with no registered method that meets the requirement is stopped rather than prompted, and cannot register one during the risky sign-in; the error is AADSTS53004.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "No sign-in in the records was rated high risk since {from}."
       },
       "decision": {
         "label": "First enforcement",

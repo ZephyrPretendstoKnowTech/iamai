@@ -56,6 +56,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const active = READINESS_STATES.flatMap((s) => l.states[s].map((p) => p.viability))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
+  /** The accounts this directory holds as guests: the population a guest policy is written against. */
+  const guestIds = new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
 
   // The registration campaign's groups are MFA Readiness's states: each person
   // once. Needs setup splits in two, because somebody with no method at all
@@ -146,7 +148,19 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     ropcAccounts: names(people(scen?.ropcAutomation)),
     unmanagedUsers: names(people(scen?.browserWithoutClaims)),
     browserUsers: names(people(scen?.browserWithoutClaims)),
-    guestsWithState: names(people(scen?.guestsSeen)),
+    // Who a guest policy reaches: the accounts the directory holds as guests,
+    // and no others. A cross-tenant sign-in is evidence of a route, not of an
+    // account's type, and on a tenant with no guests at all it named a member of
+    // staff as a guest the policy would reach (R4). Where the two disagree the
+    // directory decides, because that is what the policy is written against.
+    guestsWithState: names(people(scen?.guestsSeen).filter((id) => guestIds.has(id))),
+    // Outlook, Teams or SharePoint from Windows devices that are neither joined
+    // nor registered (derive/evidence.ts unregisteredWindows): the people the
+    // token-protection step's claim is about. Until this was read from the
+    // evidence the list was never produced at all, so the step's other branch —
+    // "Everyone on Windows signs in from a joined or registered device" — stood
+    // on every tenant, whatever its records said.
+    unboundUsers: names(people(scen?.unregisteredWindows)),
     sharedDevices: names(sharedDeviceIds(snapshot)),
     // Emergency, service and admin id sets (mapping, roles).
     emergencyAccounts: names(mapping.breakGlassUserIds),

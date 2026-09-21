@@ -22,7 +22,7 @@ import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
-import { signInsNeedP1 } from '../../derive/readinessContext.ts'
+import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
@@ -123,6 +123,13 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // `who.licenceNote` is drawn only where the licence actually withheld the
     // sign-in records (stepExport.ts whoEvidenceLines).
     signInsNeedP1: signInsNeedP1(ctx.snapshot),
+    // Which state the scan read security defaults in, as two facts rather than
+    // one flag: on, off, or neither where the section was not read. The
+    // security-defaults step has a lead per state (content who.leadWhen) and no
+    // lead for a state nobody confirmed — it used to describe the protections as
+    // present tense on a tenant that had already turned them off (R4).
+    securityDefaultsOn: securityDefaultsState(ctx.snapshot) === true || undefined,
+    securityDefaultsOff: securityDefaultsState(ctx.snapshot) === false || undefined,
     active: view?.active,
     admins: view?.admins,
     guests: view?.guests,
