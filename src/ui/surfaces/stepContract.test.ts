@@ -22,7 +22,7 @@ import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../map
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { stepContract } from './stepContract.ts'
+import { readinessSentence, stepContract } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -355,5 +355,29 @@ test('a policy IAMAI watched get into place is not reported as coverage the tena
     const text = stepContract(s, ctxFor(first, fr, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(' ')
     if (text.length === 0) continue
     assert.equal(/IAMAI watched/.test(text), false, `${s.id}: claims to have watched a policy it found in place — ${text}`)
+  }
+})
+
+// A threshold stated against a non-number is a dead end. "Enforcement waits for
+// MFA readiness to reach 90%; it is not measured today" appeared three times on
+// one step — the finding, the Threshold tile and its note — and named nothing
+// the reader could go and change. methodReadiness.ts had already counted who is
+// ready and who could not be read, and that sentence was rendered nowhere.
+test('a readiness gate with no number says what could not be measured', () => {
+  const f = structuredClone(fixture('mid'))
+  const r = runFixture(f)
+  const gated = r.steps.filter((s) => s.action.readinessGate && !s.action.readinessGate.value.endsWith('%'))
+  assert.ok(gated.length > 0, 'the premise: this tenant has a gate with no number')
+  for (const s of gated) {
+    const text = readinessSentence(s, s.action.readinessGate!)
+    const line = s.readiness.lines[0]
+    if (typeof line !== 'string' || line.length === 0) continue
+    assert.ok(text.includes(line), `${s.id}: the gate does not say what could not be measured — ${text}`)
+    assert.match(text, /reach 90%|reach \d+%/, `${s.id}: the gate no longer states its threshold — ${text}`)
+  }
+  // A measured gate is unchanged: it has a number, and the number is the point.
+  for (const s of r.steps.filter((x) => x.action.readinessGate?.value.endsWith('%'))) {
+    const g = s.action.readinessGate!
+    assert.match(readinessSentence(s, g), new RegExp(g.value.replace('%', '%')), `${s.id}: a measured gate lost its number`)
   }
 })

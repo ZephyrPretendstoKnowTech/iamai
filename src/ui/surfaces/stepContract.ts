@@ -106,6 +106,7 @@ type ContractWords = {
   /** The words the Plan's one presentation state adds (planState.ts). */
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
+  foundReadinessUnmeasured: string
   /** The threshold on an enforced policy: the fact, never a wait (U22). */
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
@@ -1266,6 +1267,16 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * for the number. A value never measured keeps the gate's own words.
  */
 export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string {
+  // A threshold stated against a non-number is a dead end. "It is not measured
+  // today" is true and unactionable: it names nothing the reader could go and
+  // change, and the step said it three times while the one sentence that DOES
+  // name it — how many people are ready and how many could not be read — was
+  // computed by roadmap/methodReadiness.ts and rendered nowhere. The gate states
+  // its own reason now, in that sentence's own words.
+  const line = step.readiness.lines[0]
+  if (!gate.value.endsWith('%') && typeof line === 'string' && line.length > 0) {
+    return fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line })
+  }
   if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) return fillText(CONTRACT.foundReadiness, { ...gate })
   const family = familyOf(gate) ?? 'mfa'
   return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })

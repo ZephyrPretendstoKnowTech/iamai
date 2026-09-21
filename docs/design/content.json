@@ -1653,6 +1653,8 @@
             "hardeningDeferred": "Hardening deferred"
           },
           "foundReadiness": "Enforcement waits for {measure} to reach {threshold}; it is {value} today.",
+    "$commentFoundReadinessUnmeasured": "A threshold against a non-number is a dead end: \"waits for MFA readiness to reach 90%; it is not measured today\" told three times on one step, with nothing saying WHAT could not be measured or what would move it. The count is computed (roadmap/methodReadiness.ts) and was rendered nowhere.",
+    "foundReadinessUnmeasured": "Enforcement waits for {measure} to reach {threshold}. It is not measured yet: {line}",
           "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
           "readinessScope": {
             "$comment": "Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE), in the enforced policy's informational threshold sentence (U22).",
