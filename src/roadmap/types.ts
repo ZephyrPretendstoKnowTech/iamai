@@ -42,6 +42,19 @@ export type Readiness = {
    * Absent where `percent` is a number.
    */
   unmeasured?: 'no-population' | 'unreadable'
+  /**
+   * The share already proven ready, where the number itself could not be worked
+   * out but the people were counted: a FLOOR, never a measurement. Readiness is
+   * unreadable when some of the scope's methods cannot be judged, and refusing to
+   * say anything then put "not measured" beside a sibling step reading a
+   * percentage off the same people, in the same scan, which reads as the tool
+   * contradicting itself.
+   *
+   * Set only where the scope is complete, so the denominator is real. It is for
+   * display: nothing gates on it, and `unmeasured` still says the number is
+   * unknown, which is what holds enforcement.
+   */
+  atLeast?: number
   lines: string[] // plain-language numbers per §4
 }
 
@@ -258,7 +271,7 @@ export type Action = {
    * strictness rather than helping with it, and they are how readiness gets to
    * the threshold in the first place.
    */
-  readinessGate?: { measure: string; threshold: string; value: string }
+  readinessGate?: { measure: string; threshold: string; value: string; /** `value` is a floor the scan could prove, not the measurement (readiness.atLeast). */ floor?: true }
   /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the

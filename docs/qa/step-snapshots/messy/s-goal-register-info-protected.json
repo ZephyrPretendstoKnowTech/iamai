@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "not measured"
+      "state": "At least 77% MFA-ready"
     },
     {
       "label": "Affected people",

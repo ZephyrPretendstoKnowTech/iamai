@@ -109,6 +109,10 @@ type ContractWords = {
   foundReadinessUnmeasured: string
   /** What a finished rollout left behind, where it finished short of its own readiness. */
   foundEnforcedShort: string
+  /** The threshold where the scan could prove only a floor under the value. */
+  foundReadinessFloor: string
+  /** That floor, wrapped before the family template. */
+  readinessAtLeast: string
   /** The threshold on an enforced policy: the fact, never a wait (U22). */
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
@@ -1357,6 +1361,11 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // reader to do work the same screen showed already done.
   const line = step.readiness.lines[0]
   const counted = typeof line === 'string' && /\d+ of \d+/.test(line)
+  // A floor the scan could prove, stated as a floor (roadmap/readiness.ts
+  // `atLeast`). "Not measured" beside a sibling reading a percentage off the same
+  // people, in the same scan, reads as the tool contradicting itself; this says
+  // the same thing the sibling does, and marks what is still unknown.
+  if (gate.floor === true && counted && step.state.lifecycle !== 'enforced') return fillText(CONTRACT.foundReadinessFloor, { measure: gate.measure, threshold: gate.threshold, value: gate.value, line })
   if (!gate.value.endsWith('%') && counted) {
     // An already-enforced policy is not waiting for anything: the threshold is
     // moot and the count is the whole of the fact, so it is stated alone.
@@ -1380,7 +1389,10 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     return counted && !waits.includes(line) ? `${waits} ${line}` : waits
   }
   const family = familyOf(gate) ?? 'mfa'
-  return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
+  // A floor stays a floor once the policy is on: the number is still not the
+  // measurement, and the tile beside it says so.
+  const said = gate.floor === true ? fillText(CONTRACT.readinessAtLeast, { value: gate.value }) : gate.value
+  return fillText(CONTRACT.foundReadinessEnforced, { value: said, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
 }
 
 /**
@@ -1428,7 +1440,10 @@ const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | 
 export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate']>): string {
   const family = familyOf(gate)
   const template = family === undefined ? undefined : CONTRACT.readinessValue[family]
-  return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value: gate.value }) : gate.value
+  // A floor is wrapped before the family template, so "At least 68% MFA-ready"
+  // reads beside a sibling's "68% MFA-ready" as the weaker claim it is.
+  const value = gate.floor === true ? fillText(CONTRACT.readinessAtLeast, { value: gate.value }) : gate.value
+  return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value }) : value
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */

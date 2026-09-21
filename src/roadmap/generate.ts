@@ -1872,10 +1872,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // never arrive (roadmap/readiness.ts `unmeasured`).
       const unmet = threshold !== null && (readiness.percent === null ? readiness.unmeasured === 'unreadable' : readiness.percent < threshold)
       if (unmet) {
+        // A floor where the scan proved one (roadmap/readiness.ts `atLeast`):
+        // "at least 68%" is strictly more than "not measured" and never wrong,
+        // and it is what stopped this step reading as a contradiction of the
+        // sibling measuring the same people. It changes no gate: `unmet` above
+        // is computed from the percentage and the unmeasured reason, both
+        // untouched, so unknown still holds enforcement exactly as before.
+        const floor = readiness.percent === null && readiness.atLeast !== undefined
         readinessGate = {
           measure: READINESS_MEASURE[readiness.family] ?? 'readiness',
           threshold: `${threshold}%`,
-          value: readiness.percent === null ? engine.readiness.notMeasured : `${readiness.percent}%`,
+          value: readiness.percent !== null ? `${readiness.percent}%` : floor ? `${readiness.atLeast}%` : engine.readiness.notMeasured,
+          ...(floor ? { floor: true as const } : {}),
         }
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }
