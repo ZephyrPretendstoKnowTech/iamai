@@ -5,6 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { evidenceStrategyOf, stepEvidenceStrategy, userActionsOf } from './evidenceStrategy.ts'
+import { evidenceFor } from './evidence.ts'
 import { gates } from './tracking.ts'
 import { readyBasis } from '../derive/readyWhen.ts'
 import type { ReadyWhen } from '../derive/readyWhen.ts'
@@ -69,4 +70,42 @@ test('the readiness basis and the Done-when say configuration, and never a recor
   const ordinary = small.steps.find((s) => (s.action.resolution?.policies ?? []).length > 0 && stepEvidenceStrategy(s) === 'sign-in-records')
   assert.ok(ordinary, 'no ordinary policy step in the small fixture to compare against')
   assert.deepEqual(doneWhenTemplates(ordinary, ['{policyDoneWhen}']).map(String).slice(0, 2), shared.policyDoneWhen.slice(0, 2))
+})
+
+test('an open observation says why it has not completed: the people it stopped, or the records it could not read', () => {
+  // `Evidence.lines` is this type's own field for the reason and was never
+  // written, on any goal, on any tenant — while `affectedUserIds` beside it
+  // held the four hundred people a report-only policy had stopped. The tile
+  // read neither, so it said "Review the available records and the remaining
+  // evidence requirements" over both of the cases below: over a tenant whose
+  // sign-in source refused every read, where the window can NEVER complete,
+  // and over a tenant where the records were read and were the refusal.
+  const snapshotWith = (over: Partial<TenantSnapshot>): TenantSnapshot => ({ ...fixture('large').snapshot, ...over } as TenantSnapshot)
+
+  // 1. The source refused. Nothing about waiting longer changes this, and the
+  //    sentence says so rather than asking for a review of records that do not exist.
+  const blind = evidenceFor('block-auth-transfer', snapshotWith({
+    sources: { ...fixture('large').snapshot.sources, signInEvidence: { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: '2026-08-28T09:00:00.000Z' } },
+  }), [])
+  assert.equal(blind.status, 'insufficient')
+  assert.equal(blind.lines.length, 1, 'an unreadable source says nothing about itself')
+  assert.ok(blind.lines[0].includes('no sign-in records could be read'), `the recorded reason is not in the line: ${blind.lines[0]}`)
+  assert.ok(blind.lines[0].includes('cannot complete'), 'the line does not say the window cannot complete')
+
+  // 2. The records were read, and they are what holds the gate shut. The count
+  //    is the one number the reader needs; it was on the step and said nowhere.
+  const base = fixture('large').snapshot
+  const stopped = ['u-1', 'u-2', 'u-3']
+  const withFailures = evidenceFor('block-auth-transfer', snapshotWith({
+    evidencePolicyResults: [{ policyId: 'p-1', displayName: 'CA - Block - Auth transfer', counts: { total: 3, success: 0, failure: 3, interrupted: 0 }, affectedUserIds: { reportOnlyFailure: stopped, reportOnlyInterrupted: [] } }] as unknown as TenantSnapshot['evidencePolicyResults'],
+  }), ['p-1'])
+  assert.deepEqual(withFailures.affectedUserIds, stopped, 'the premise: the results name who was stopped')
+  assert.equal(withFailures.lines.length, 1)
+  assert.ok(withFailures.lines[0].includes('3 people'), `the count is not in the line: ${withFailures.lines[0]}`)
+
+  // 3. A window simply still running says neither: it is not stuck, and a
+  //    reason invented for it would be noise on every ordinary rollout.
+  const clean = evidenceFor('block-auth-transfer', base, [])
+  assert.equal(clean.status, 'ok')
+  assert.deepEqual(clean.lines, [], 'an ordinary open window states a reason it does not have')
 })
