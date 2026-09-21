@@ -1627,3 +1627,31 @@ test('the pair’s members are matched one object each, and never one object twi
   assert.equal(matched.filter((m) => m.policy !== null).length, 1, 'one object satisfies one member')
   assert.equal(new Set(matched.map((m) => m.policy?.id).filter(Boolean)).size, 1)
 })
+
+// A policy the previous scan recorded as NOT DEPLOYED is the one history IAMAI
+// can speak to without qualification: it was not there, and it is here now.
+// The note read "this plan does not record which policy it watched before
+// {date}" — because the prior sighting names no artifact, which is true of a
+// policy that never existed and is the opposite of what the record says. Where
+// such a policy arrives already enforced, nobody watched it in report-only, and
+// that is the only fact distinguishing a rollout done in one afternoon from one
+// that was observed. It is now the sentence the step carries.
+test('a policy that was not there at the last scan says so, and says whether anybody watched it', () => {
+  const at = '2026-09-05T00:00:00.000Z'
+  const absent = observe(null, { artifact: null, state: 'absent', semantics: '', at: '2026-08-28T00:00:00.000Z', evidenceAt: null })
+  const prior = absent.latest
+
+  const cold = observe(prior, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at, evidenceAt: null })
+  assert.match(cold.note, /not deployed at the last scan and enforced by/, cold.note)
+  assert.match(cold.note, /without a report-only period IAMAI could watch/, cold.note)
+  assert.equal(/does not record which policy it watched/.test(cold.note), false, cold.note)
+
+  const watched = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'aaaa', at, evidenceAt: null })
+  assert.match(watched.note, /created in report-only by/, watched.note)
+  assert.equal(/without a report-only period/.test(watched.note), false, watched.note)
+
+  // A policy IAMAI genuinely cannot place is still reported as unknown: the new
+  // sentence is about a recorded absence, never about a gap in the record.
+  const gap = observe({ ...prior, state: 'report-only' }, { artifact: 'B', state: 'enforced', semantics: 'bbbb', at, evidenceAt: null })
+  assert.equal(/not deployed at the last scan/.test(gap.note), false, gap.note)
+})

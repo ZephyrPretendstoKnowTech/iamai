@@ -464,7 +464,17 @@ const STATE_WORD: Record<ObservedState, string> = {
  * to. The continuity itself is unchanged: unknown either way, and the window
  * starts again either way.
  */
-function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean): string {
+function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean, priorState: ObservedState | null = null): string {
+  // A policy the last scan recorded as NOT DEPLOYED is the one history IAMAI can
+  // speak to without qualification: it was not there, and it is here now.
+  // `continuityUnknown` below would call that "no record", because the prior
+  // sighting names no artifact — true of a policy that never existed, and the
+  // opposite of what the record says. Where it arrives already enforced, nobody
+  // watched it in report-only and the step states that, which is the only place
+  // a rollout done in one afternoon is distinguishable from one that was watched.
+  if (priorState === 'absent' && (state === 'enforced' || state === 'report-only')) {
+    return fillText(state === 'enforced' ? OBS.appearedEnforced : OBS.appearedReportOnly, { date })
+  }
   // What happened to the object comes first: a different policy delivering this
   // now, or a record that cannot say which one it watched, is the fact about the
   // history, whatever else moved with it.
@@ -603,7 +613,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     continuity,
     reviewRequired,
     unwritten,
-    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null),
+    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state),
   }
 }
 
