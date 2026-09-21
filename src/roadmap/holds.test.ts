@@ -363,7 +363,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   for (const q of plans()) {
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
-      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review'].includes(board) || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
+      assert.ok(['Not scheduled', 'Review now', 'Decide now', 'After prerequisites', 'After review'].includes(board) || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
       if (waiting(s)) assert.doesNotMatch(board, /\d{4}/, `${q.f.name}/${s.id}: a step the schedule cannot date reads a day`)
       else if (!rowWhenWraps(s) && rowWhen(s) !== '' && rowWhen(s) !== 'now') assert.match(board, YEAR, `${q.f.name}/${s.id}: a dated row reads the placeholder`)
     }

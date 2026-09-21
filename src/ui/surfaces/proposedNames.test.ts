@@ -74,3 +74,34 @@ test('the names come from the plan, not from the context\'s convention', () => {
   assert.equal(bare.exclusionsGroup, proposedObjectNames(null).exclusionsGroup.name)
   assert.equal(proposedNamesFor({ ...base, naming: undefined }).exclusionsGroup, bare.exclusionsGroup)
 })
+
+// A retired policy's name is not the convention a tenant writes new policies in.
+// Twenty-four switched-off "Old - Disabled N" alongside twelve live ones read a
+// two-thirds agreement on the prefix "Old", and sixteen steps then instructed the
+// administrator to name new objects "Old - Trusted Head Office".
+test('a disabled policy does not set the convention new objects are named in', () => {
+  const f = fixture('messy')
+  const r = runFixture(f, { mapping: f.mapping })
+  const rows = f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]
+  const off = rows.filter((x) => x.state === 'disabled')
+  assert.ok(off.length > rows.length / 3, `the premise: most of this tenant's policies are switched off (${off.length} of ${rows.length})`)
+  assert.ok(off.some((x) => (x.displayName ?? '').startsWith('Old')), 'the premise: the switched-off ones share a prefix')
+  const naming = r.coverage.organisation.naming
+  assert.notEqual(naming.prefix, 'Old', 'a retired prefix became the convention')
+  const names = Object.values(planProposedNames(r.steps, naming))
+  assert.ok(names.length > 0)
+  for (const name of names) assert.doesNotMatch(name, /^Old/, `${name} is named after the retired policies`)
+})
+
+// And the sentence beside the name says which of the two it is.
+test(`the name line claims the tenant's convention only where the tenant has one`, () => {
+  const said = (name: 'demo' | 'messy'): string => {
+    const f = fixture(name)
+    const r = runFixture(f, { mapping: f.mapping })
+    const step = r.steps.find((x) => x.id === PREREQ_STEP_ID.trustedLocation)!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
+    return String((stepVars(step, ctx) as Record<string, unknown>).proposedNameNote ?? '')
+  }
+  assert.match(said('demo'), /follows the convention/)
+  assert.match(said('messy'), /do not agree on one shape/)
+})

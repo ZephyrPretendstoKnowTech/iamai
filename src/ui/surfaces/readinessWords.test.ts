@@ -16,7 +16,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
-import { CONTRACT, readinessOf } from './stepContract.ts'
+import { CONTRACT, readinessOf, readinessSentence } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import { waitingLine } from './stepJson.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -171,4 +171,55 @@ test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions g
   assert.doesNotMatch(line, new RegExp(`${EXCLUSIONS_TITLE} and `))
   // Answered, the group is an object like any other.
   assert.match(waitingLine(step, 'Contoso', false), /^Configure Emergency Exclusions and Create the Baseline's Authentication Strength first: /)
+})
+
+// "67% MFA-ready" says how far off the gate is and nothing about who. The
+// reading behind it is computed by roadmap/methodReadiness.ts and reached the
+// screen only when the percentage could not be worked out at all, so the number
+// a person can act on was withheld exactly when there was one.
+test('a readiness threshold stated as a percentage also states the reading behind it', () => {
+  let checked = 0
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate || !gate.value.endsWith('%') || step.status === 'done' || step.status === 'skipped') continue
+      const line = step.readiness.lines[0]
+      if (typeof line !== 'string' || !/[0-9]+ of [0-9]+/.test(line)) continue
+      if (step.state.lifecycle === 'enforced') continue
+      checked++
+      const said = readinessSentence(step, gate)
+      assert.ok(said.includes(gate.value), `${name}/${step.id}: ${said}`)
+      assert.ok(said.includes(line), `${name}/${step.id}: the reading is not said — ${said}`)
+    }
+  }
+  assert.ok(checked > 3, `only ${checked} percentage gates carried a reading`)
+})
+
+// A threshold with no route is the Temporary Access Pass dead end in another
+// family: device readiness held the managed-device step at 30% of 80% with
+// nothing on the plan that enrols a device.
+test('a readiness measure this plan runs no step for says where the number is moved', () => {
+  const f = fixture('demo')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-require-managed-device')!
+  const gate = step.action.readinessGate!
+  assert.ok(gate, 'the premise: the managed-device step carries a device-readiness gate')
+  const said = readinessSentence(step, gate)
+  assert.ok(said.includes(CONTRACT.readinessRoute.device), said)
+  assert.match(CONTRACT.readinessRoute.device, /Intune/)
+})
+
+// An engine blocker with no tile of its own said its own label twice and nothing
+// else — "Not supported · Not supported ·" — while the reason sat on the contract.
+test('every readiness tile says something its label has not already said', () => {
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    for (const [id, body] of bodiesOf(fixture(name))) {
+      for (const tile of body.readiness.tiles) {
+        if (tile.label !== tile.value) continue
+        assert.ok((tile.note ?? '').trim().length > 0, `${name}/${id}: ${tile.label} says only its own label`)
+      }
+    }
+  }
 })

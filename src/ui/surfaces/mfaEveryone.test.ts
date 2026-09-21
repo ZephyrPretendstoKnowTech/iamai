@@ -543,7 +543,12 @@ test('G2: help desk says Conditional Access does not change the per-user state',
 
 test('G3: the portal step reads Per-user MFA and Disable MFA', () => {
   const w = whatToDoOf(PER_USER)
-  assert.match(w, /Users → All users → Per-user MFA → select the accounts above → Disable MFA/)
+  // "select the accounts above" pointed at a list this step does not draw: IAMAI
+  // cannot read a legacy per-user state, which is why the step exists. The
+  // instruction now sends the reader to the page that does hold them.
+  assert.match(w, /Users → All users → Per-user MFA./)
+  assert.match(w, /Enabled and Enforced views, select every account they list, and choose Disable MFA/)
+  assert.doesNotMatch(w, /accounts above|accounts listed here/)
   assert.match(w, /Authentication Policy Administrator role/)
   assert.match(blockText(PER_USER, 'entra.disable'), /Select \*\*Disable MFA\*\*/)
 })
@@ -556,7 +561,7 @@ test('G4: a risk names the intranet skip that reads as a trusted location', () =
 test('G5: a risk says an app password survives the change, and the procedure deletes it', () => {
   const risks = risksOf(PER_USER)
   assert.ok(risks.some((r) => /app password created under per-user MFA keeps working after the state is Disabled/.test(r)), risks.join('\n'))
-  assert.match(whatToDoOf(PER_USER), /delete any app password these accounts still hold/)
+  assert.match(whatToDoOf(PER_USER), /delete any app password those accounts still hold/)
   assert.match(blockText(PER_USER, 'entra.disable'), /Delete any app password these accounts hold/)
 })
 

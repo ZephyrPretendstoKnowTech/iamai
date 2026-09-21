@@ -104,7 +104,10 @@ test('a check that passes keeps the qualifier that made the pass honest (S4-6)',
   const tile = subjectsOf(value, 's-prereq-trusted-location').find(row => row.key === 'configuration:trusted-network-choice')!
   assert.equal(tile.satisfied, true, 'the premise: the check passes')
   assert.equal(tile.title, 'Everyone is remote')
-  assert.equal(tile.detail, 'No office network is selected; location-based exceptions are not applied.')
+  // And the evidence the answer leaves out, where the scan read any: "no office
+  // network is selected" is a reading of the answer, and on a tenant that holds a
+  // trusted named location it sounded like a reading of the tenant.
+  assert.equal(tile.detail, 'No office network is selected; location-based exceptions are not applied. The scan read a trusted named location this answer leaves out: Head office.')
   // The sentence, not the action: a check that has passed has nothing to do.
   assert.equal(tile.instruction, '')
   // And the other caveat the audit named, on the admin review.

@@ -371,9 +371,21 @@ const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
  * keeps its date; a held step has no scheduled day and reads the placeholder.
  * The board infers nothing about holds from a step's lane or the group it sits in.
  */
-export function boardWhenOf(step: Step, waveStart: string | null = null, lane: LaneView = laneViewFor(step)): string {
+/** `read`: the board's own reading, or null where the caller has none and the
+ *  single-step fallback stands in. The fallback runs the engine over one step, so
+ *  every cross-step edge is missing and it can only say On Hold; the hold rule
+ *  below therefore asks for the board's reading and never the guess. */
+export function boardWhenOf(step: Step, waveStart: string | null = null, read: LaneView | null = null): string {
+  const lane = read ?? laneViewFor(step)
   if (step.status === 'skipped') return schedulingWords.deferred
-  if (step.status === 'done') {
+  // The finished wording belongs to a row the board reads Completed. A step
+  // whose own status is `done` while the lane still has work for it read the
+  // day it was finished, or "Already in place", in the When column of a row
+  // that is not finished: Prepare Your Team for MFA said "Already in place"
+  // beside a Needs a decision bar while its unconfirmed list held thirteen
+  // policies. Where the two disagree the lane decides, as it does everywhere
+  // else on the board, and the row is dated like the live row it is.
+  if (step.status === 'done' && lane.lane === 'Completed') {
     const at = step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at
     return at ? dayLabel(at) : schedulingWords.done
   }
@@ -392,8 +404,22 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, lane: L
   })
   if (result === WHEN.none || result === '—' || result === '–') {
     if (lane.lane === 'Ready' && lane.substatus === 'Review') return schedulingWords.reviewNow
+    // A Ready row the scheduler gave no day — a step whose own status is already
+    // `done` while a decision on it is still open — says the action rather than
+    // "Not scheduled", which is the word for work outside the rollout.
+    if (lane.lane === 'Ready' && lane.substatus === 'Decision') return schedulingWords.decideNow
     return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
   }
+  // One authority for "is this step held": the lane engine (planLanes.ts),
+  // which reads the dependency graph. A step's own `blockedBy` is the narrower
+  // reading — the waits the roadmap engine records on the step itself — and
+  // Turn Off Security Defaults carries none of them while the graph holds it
+  // behind another step's milestone. The row therefore read a near, ordinary
+  // day: follow it on the day it names and the tenant's own protection comes
+  // off before its replacements are ready. A row the board holds has no day.
+  // Not On Hold · Observing, which is a healthy wait with a day of its own: the
+  // report-only window closes on a date and the column says which.
+  if (read !== null && read.lane === 'On Hold' && read.substatus === null && step.blockedBy.length === 0) return schedulingWords.waiting
   return step.manualReview || step.directionQuestions ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 

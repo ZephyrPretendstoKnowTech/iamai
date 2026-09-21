@@ -185,16 +185,30 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
   const missing = memberRows && !memberRows.sampled && memberRows.memberIds.length >= memberRows.memberCount ? mapping.breakGlassUserIds.filter(id => !memberRows.memberIds.includes(id)) : []
   const extra = memberRows && !memberRows.sampled ? memberRows.memberIds.filter(id => !mapping.breakGlassUserIds.includes(id)) : []
   // Each policy is two items (Mode, Group exclusion) named in subjectLabel: list the policies whose exclusion is missing.
-  const policies = (step.configurationFindings ?? []).find(f => f.key === 'group-policies')?.items?.filter(i => i.label === 'Group exclusion' && i.outcome !== 'pass') ?? []
+  const policyItems = (step.configurationFindings ?? []).find(f => f.key === 'group-policies')?.items ?? []
+  const policies = policyItems.filter(i => i.label === 'Group exclusion' && i.outcome !== 'pass')
+  // What removing a member from this group actually does. The group is excluded
+  // from these policies, so a member taken out of it is covered by every one of
+  // them from the moment the removal saves, and the ones already On take effect
+  // at that person's next sign-in. A tenant with a hundred and fourteen people
+  // parked in its exclusions group read one clause about that, with no count, no
+  // policy named and nothing said about doing it in stages.
+  const modeOf = new Map(policyItems.filter(i => i.label === 'Mode').map(i => [oneLine(i.subjectLabel ?? ''), String(i.value)]))
+  const coverAgain = policyItems
+    .filter(i => i.label === 'Group exclusion' && i.outcome === 'pass')
+    .map(i => oneLine(i.subjectLabel ?? i.label))
+    .filter(n => n.length > 0)
+  const liveAgain = coverAgain.filter(n => modeOf.get(n) === 'On')
   return [
     numbered([
       groupName ? `Open the saved group ${group} in Entra ID → Groups → All groups. Verify the object ID ${choice.actionableId} before editing.` : `Review the suggested group ${group} and search for an existing dedicated group before creating another. Save the intended Exclusions Group in this step; that saves the identity the plan will use in its instructions.`,
       `If no suitable group exists, create a Security group with Assigned membership, using ${group} or your agreed name. Add only the emergency accounts selected in ${accountLink}. Rescan to discover its object ID and save the group choice before editing policy references.`,
       accountNames.length ? `Check that the group contains every selected emergency account: ${accounts}. Membership must be assigned, and the group must not be mail-enabled. If its type is unsuitable, create/select the correct group and retain the existing recovery route until the replacement is verified.` : `Select the emergency accounts in ${accountLink} before changing membership. IAMAI will then list missing and unexpected members here.`,
       ...(missing.length ? [`Under Members → Add members, add ${missing.map(name).join(', ')}. Verify their object IDs and save.`] : []),
-      ...(extra.length ? [`Review these members outside the saved emergency selection: ${extra.map(name).join(', ')}. Confirm any genuinely dedicated emergency account in Emergency Access Accounts first. Otherwise remove only the reviewed extra members; removal restores policy coverage for them.`] : []),
+      ...(extra.length ? [`Review the ${extra.length} ${extra.length === 1 ? 'member' : 'members'} listed below, outside the saved emergency selection. Confirm any genuinely dedicated emergency account in ${accountLink} first. Removing the rest puts each of them back inside every policy this group is excluded from${liveAgain.length ? `, and ${liveAgain.length === 1 ? 'one of those is' : `${liveAgain.length} of those are`} On today: ${liveAgain.join(', ')}` : ''}. Remove a few at a time and check their next sign-in before the next few.`] : []),
       ...(memberRows?.sampled ? ['The membership read is incomplete. Resolve that finding and rescan before concluding that members are missing or removing members.'] : []),
     ]),
+    ...(extra.length ? ['**Members outside the saved emergency selection**\n\n' + bullets(extra.map(name))] : []),
     ...(policies.length ? ['**Policies missing the group exclusion**\n\n' + bullets(policies.map(p => `${oneLine(p.subjectLabel ?? p.label)} — ${p.value}`))] : []),
     numbered([
       `For each policy listed as missing the group exclusion, open Entra ID → Conditional Access → Policies → the named policy → Users → Exclude → Users and groups. Add ${group}. Preserve all other exclusions and settings; use the group rather than new direct account exclusions.`,

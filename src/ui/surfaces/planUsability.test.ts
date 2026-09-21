@@ -128,10 +128,18 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
     for (const s of r.steps as Step[]) {
       const wi = r.schedule.waveOf?.[s.id]
       const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null)
-      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
+      assert.ok(['Not scheduled', 'Review now', 'Decide now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
+      // The finished wording belongs to a row the board reads Completed: a step
+      // whose own status is `done` while the lane still has work for it is not a
+      // finished row and is not dated like one (planBoard.ts boardWhenOf).
       if (s.status === 'done') {
-        assert.ok(when === 'Already in place' || DAY.test(when), `${name}/${s.id}`)
-        complete += 1
+        if (laneViewFor(s, r.steps).lane === 'Completed') {
+          assert.ok(when === 'Already in place' || DAY.test(when), `${name}/${s.id}`)
+          complete += 1
+        } else {
+          assert.notEqual(when, 'Already in place', `${name}/${s.id}: an unfinished row reads as finished`)
+          assert.doesNotMatch(when, DAY, `${name}/${s.id}: an unfinished row is dated as finished`)
+        }
       }
       if (isHeld(s) && holdWaitsOn(s).length > 0 && !(s.scheduled && scheduleOf(s).at)) {
         assert.equal(when, 'After prerequisites', `${name}/${s.id}: a hold that names the step it waits on reads "${when}"; the lane label names it`)
