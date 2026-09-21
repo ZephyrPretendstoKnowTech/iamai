@@ -4,7 +4,17 @@ dist/
 dist-smoke/
 .DS_Store
 docs/spikes/raw/
-docs/qa/night/
+docs/qa/night/*
+!docs/qa/night/personas/
+docs/qa/night/personas/*
+# The persona harness core: the driving mechanism for the ground-zero persona
+# audit, committed so the loop survives a clone. The fixtures are synthetic and
+# contain no tenant data. Scratch probes and round reports stay ignored, so a
+# future ground-zero agent cannot read what an earlier round concluded.
+!docs/qa/night/personas/HARNESS.md
+!docs/qa/night/personas/harness.ts
+!docs/qa/night/personas/r3-tenants.ts
+!docs/qa/night/personas/r3-journey.ts
 
 fixtures/private/
 # The overnight walk harness output (prompt 53 Unit 0): captures and screenshots, never committed.
