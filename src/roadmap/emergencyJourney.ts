@@ -5,6 +5,8 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { SET_LEVEL } from '../validation/report.ts'
+import { emergencyTierOf } from '../validation/emergencyTiers.ts'
+import content from '../../docs/design/content.json' with { type: 'json' }
 import { ruleText } from '../validation/rules.ts'
 import type { RuleResult } from '../validation/rules.ts'
 import type { ConfigurationFinding, ConfigurationFindingItem } from './types.ts'
@@ -79,6 +81,9 @@ const METHOD_REASON: Record<string, string> = {
   profileOrPartial: 'The assigned passkey profiles were not fully read.',
   policyUnread: 'Passkey configuration was not read.',
 }
+
+/** The hardening tile's own words (pages.app.plan.stepContract.hardening.tiles), so this states the tier in the vocabulary the step already uses. */
+const HARDENING_TILES = (content as { pages: { app: { plan: { stepContract: { hardening: { tiles: Record<string, string> } } } } } }).pages.app.plan.stepContract.hardening.tiles
 
 export const emergencyValidationIssueKey = (ruleId: string, target: string | null): string => `validation:${ruleId}:${target?.toLowerCase() ?? 'set'}`
 export const emergencyMethodIssueKey = (accountId: string, phase: 'current' | 'planned', reason: string): string => `method:${accountId.toLowerCase()}:${phase}:${reason}`
@@ -285,7 +290,20 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   const authProblems = report.targets.flatMap(t => t.results).filter(r => AUTH.has(r.id) && r.outcome !== 'pass')
   if (authProblems.length) {
     authentication.items = [...(authentication.items ?? []), ...(authChecks.items ?? [])]
-    if (authentication.outcome === 'pass') { authentication.outcome = authChecks.outcome; authentication.value = 'Recovery method correction required' }
+    if (authentication.outcome === 'pass') {
+      // The tier decides the word (validation/emergencyTiers.ts), because the
+      // tier is what decides whether the step completes. A minimum check is a
+      // correction: without it there is no way back in, and Establish Emergency
+      // Access does not finish. Hardening is a recommendation the step finishes
+      // over, by the owner's own two-tier rule — so "Recovery method correction
+      // required" beside a Completed step made the plan's one gate contradict the
+      // evidence on its own card, which is the fault that gate can least afford.
+      // Two accounts sharing an authenticator is the example: real, worth fixing,
+      // and not the absence of a way back in.
+      const minimum = authProblems.some(r => emergencyTierOf(r, mapping.breakGlassUserIds.length) === 'minimum')
+      authentication.outcome = minimum ? authChecks.outcome : 'unknown'
+      authentication.value = minimum ? 'Recovery method correction required' : HARDENING_TILES.hardeningOpen
+    }
   }
   const identityResults = report.targets.flatMap(target => target.results.filter(result => IDENTITY.has(result.id)).map(result => ({ target, result })))
   const primaryLabels: Record<string, string> = { 'bg.role.permanentGa': 'Global Administrator', 'bg.cloudOnly': 'Identity', 'bg.initialDomain': 'Sign-in domain', 'bg.enabled': 'Account' }
