@@ -1,4 +1,4 @@
-# Six things I did not fix, and why
+# Seven things I did not fix, and why
 
 Written 2026-09-21, alongside the batch that closed the rest of the second
 gauntlet (`docs/qa/night/personas/SYNTHESIS.md`). Each of these is a real
@@ -6,27 +6,47 @@ finding with a diagnosis; none of them is mine to decide.
 
 ---
 
-## 1. The cutover names four replacement policies; the graph carries three
+## 1. The cutover's fourth policy is not the one the authority names
 
-`pages.plan` names **Require MFA for Everyone, Block Legacy Authentication,
-Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins** as the
-policies that take over from security defaults.
-`src/actionability/dependency-data.json` carries `ready-to-enforce` edges from
-`s-prereq-security-defaults` to **three** of them — `s-goal-block-device-code`
-is not there — sourced `ms-doc`, table 10.1.
+Three answers to "which policies take over from security defaults", in one repo:
 
-So the plan tells the administrator to check four policies and holds the cutover
-on three. One of the two is wrong and I will not guess which: the answer is a
-statement about what Microsoft's security defaults actually do, and the pinned
-sources are the authority.
+| source | the policies |
+|---|---|
+| `pages.plan` (the step's procedure and its who-line) | MFA for Everyone, Block Legacy Authentication, **Block Device Code Sign-in**, Admins phishing-resistant |
+| `IAMAI-Actionability-Dependency-Playbook.md` §10.1, the authority | MFA for Everyone, Admins phishing-resistant, Block Legacy Authentication, **Azure Management MFA** |
+| `src/actionability/dependency-data.json`, generated from it | the first three only |
+
+The graph dropping the fourth is **correct**: §10.0 marks
+`s-goal-azure-management-mfa` "not in pinned baseline", so no such step exists in
+a plan and no edge can point at it. That is the generator doing its job.
+
+What is not explained is the content's fourth. **Block Device Code Sign-in
+appears nowhere in §10.1.** It is in the playbook only as a goal of its own,
+gated on `device-code-workflows-exist` — someone uses device code for CLI tools
+or display-limited devices — which is a reason to have the policy, not a reason
+the cutover waits on it.
+
+The claim underneath it is the who-line's: "security defaults require MFA, block
+legacy authentication **and block device code sign-in** today, and four policies
+of this plan take over all of it." The step's only citation is
+`learn.microsoft.com/entra/fundamentals/security-defaults`, and nothing in the
+repo records that page as the source of the device-code half.
+
+So one of two things is true. Either security defaults do block device code, the
+playbook is missing a row, and the cutover should hold on four; or they do not,
+and the content is naming a policy the cutover has no reason to wait for — on
+the step where getting the order wrong is how a tenant loses its protection.
 
 **What I did instead:** the procedure's first line asserted that all four "have
-been in report-only with no failures", which is false on any tenant where one of
-them is already enforced — Sam's had three enforced since May. It now says to
-check each one, and that any one *not already enforced* must have run in
-report-only with no failures first. True in every state, and it decides nothing.
+been in report-only with no failures", which is false on any tenant where one is
+already enforced — Sam's had three enforced since May. It now says to check each
+one, and that any one *not already enforced* must have run in report-only with no
+failures first. True in every state, and it decides nothing.
 
-**Decision needed:** is device-code blocking part of what security defaults do?
+**Decision needed:** do security defaults block device code sign-in? If yes, §10.1
+gains a row and the graph gains an edge. If no, the who-line and the procedure
+lose a policy. Either way the answer belongs in the playbook first, because that
+is where the cutover reads it from.
 
 ---
 
