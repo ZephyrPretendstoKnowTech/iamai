@@ -16,7 +16,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
-import { CONTRACT } from './stepContract.ts'
+import { CONTRACT, FINISHED_READING } from './stepContract.ts'
 import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
 import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 
@@ -172,14 +172,18 @@ test('a goal the tenant already delivers has a satisfied policy card and no task
   const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
   assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
-  assert.equal(cards.every((item) => item.satisfied), true)
+  // Every card but one: this policy is enforced over a tenant where eleven of
+  // thirty-three cannot satisfy it, and that reading is a finding rather than a
+  // task, because nothing on this step moves the number (stepContract.ts
+  // shortReadingOf). The bar says both halves.
+  assert.equal(cards.filter((item) => !item.satisfied).map((item) => item.key).join(), FINISHED_READING)
   assert.equal(cards[0].title, 'In place')
   assert.equal(cards[0].instruction, '')
   // The stages it passed through are not checks anybody completed (S4-5): this
   // policy was found in place, on a scan that recorded no date, no evidence and
   // no actor for any stage of it.
   assert.deepEqual(cards[0].completed, [])
-  assert.equal(policyBarOf(cards), 'Every task on this step is complete.')
+  assert.equal(policyBarOf(cards), 'Every task on this step is complete, and it left something behind.')
 })
 
 test('a policy in report-only is checked by what it must do next, not by a stage', () => {

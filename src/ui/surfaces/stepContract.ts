@@ -1422,11 +1422,14 @@ function shortReadingOf(step: Step): { value: string; line: string } | null {
   return { value: `${m[1]} of ${m[2]} ${scope}`, line }
 }
 
+/** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
+export const FINISHED_READING = 'enforced-readiness'
+
 /** The tile that reading draws: a warning on a finished step, never a hold. */
 function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
   if (short === null) return null
-  return { key: 'enforced-readiness', label: R().tiles.reading, tone: 'warn', value: short.value, note: fillText(CONTRACT.foundEnforcedShort, { line: short.line }) }
+  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: fillText(CONTRACT.foundEnforcedShort, { line: short.line }) }
 }
 
 /** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */

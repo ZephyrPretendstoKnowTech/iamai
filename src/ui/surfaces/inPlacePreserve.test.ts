@@ -274,8 +274,12 @@ test('the contract asks for nothing: the action is to keep the policy, and the c
   assert.equal(c.implementation.reason, null, 'not offered because there is nothing to offer, not because something is wrong')
   assert.equal(c.implementation.hold, null)
   assert.equal(c.fix.length, 0, 'nothing to fix before continuing')
-  assert.equal(c.doneWhen.length, 1)
-  assert.match(c.doneWhen[0], /assessed configuration in place/i)
+  // Two, because this rollout finished short of its own readiness: its own end
+  // state is the half that is not true yet, and the scan's sentence follows it
+  // (stepContract.ts shortReadingOf). A rollout that finished with everybody
+  // ready reads the scan's sentence alone.
+  assert.equal(c.doneWhen.length, 2, JSON.stringify(c.doneWhen))
+  assert.match(c.doneWhen.at(-1) ?? '', /assessed configuration in place/i)
 })
 
 // ---- 5 and 6: no operation, and no channel that would make or change a policy ----

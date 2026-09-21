@@ -27,7 +27,7 @@ import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
-import { CONTRACT } from './stepContract.ts'
+import { CONTRACT, FINISHED_READING } from './stepContract.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
@@ -235,9 +235,14 @@ export function taskSubjectOf(step: CardStep, eyebrow: string | null, title: str
  * cards' ("task", "complete"), not new vocabulary.
  */
 export function policyBarOf(subjects: readonly EmergencySubjectTile[]): string {
-  return subjects.some((subject) => !subject.satisfied)
-    ? 'Complete the next task shown for each item.'
-    : 'Every task on this step is complete.'
+  const open = subjects.filter((subject) => !subject.satisfied)
+  if (open.length === 0) return 'Every task on this step is complete.'
+  // What a finished rollout left behind is a finding, not a task: the policy is
+  // on, and nothing on this step moves the number (stepContract.ts
+  // `shortReadingOf`). "Complete the next task shown for each item" promised an
+  // action no card on the step offers.
+  if (open.every((subject) => subject.key === FINISHED_READING)) return 'Every task on this step is complete, and it left something behind.'
+  return 'Complete the next task shown for each item.'
 }
 
 /**

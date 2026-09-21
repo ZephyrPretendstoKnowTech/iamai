@@ -58,13 +58,16 @@ test('the session create is the pinned browser policy alone, and the unmanaged c
   assert.match(calls[0], /^Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Core - Session - Non-persistent browser sessions' /)
   assert.doesNotMatch(calls[0], /Unmanaged/)
   const json = tab('json')
-  assert.match(json, /"displayName":"Core - Session - Non-persistent browser sessions"/)
+  // Content, not whitespace: a template-driven create body is laid out like the
+  // generated ones now that the plan tag is put on it (stepPackage.ts
+  // jsonWithPlanTag), which is the same JSON either way.
+  assert.match(json, /"displayName": ?"Core - Session - Non-persistent browser sessions"/)
   assert.doesNotMatch(json, /device\.isCompliant|unmanaged/i)
   // The target's excluded accounts are an empty list, and that is the target's own "none" (consolidated
   // batch): the create used to preview on it as a missing value; it is now handed over carrying the empty list.
   assert.equal(body.previewNote, null, JSON.stringify(body.previewNote))
   assert.match(calls[0], /-ExcludeUserIds @\(\)$/)
-  assert.match(json, /"excludeUsers":\[\]/)
+  assert.match(json, new RegExp('"excludeUsers": ?\\[\\]'))
 })
 
 test('with the excluded accounts held, the browser create is handed over in every channel', () => {
