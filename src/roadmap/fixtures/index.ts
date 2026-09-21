@@ -655,6 +655,25 @@ export function buildFixture(spec: Spec): Fixture {
   const section = (rows: unknown[], status: 'ok' | 'disabled' | 'error' = 'ok', reason: string | null = null) => ({ status, reason, rows })
   const ok = (extra: Partial<TenantSnapshot['sources'][keyof TenantSnapshot['sources']]> = {}) => ({ status: 'ok' as const, coveredWindow: null, reason: null, asOf: NOW, ...extra })
   const hostile = spec.hostile === true
+  // The country aggregates, derived from the same sign-in evidence the product
+  // derives them from (graph/collect/laneBCore.ts builds both from one row set).
+  // They were hard-coded to AU for everybody while `signInEvidence` gave four per
+  // cent of people ['AU','NZ'], so a fixture contradicted itself: its own tiles
+  // reported admins signing in from a country its aggregates said nobody used,
+  // and the multi-country case could not be reached by any test.
+  const countryUsers: Record<string, number> = {}
+  const countrySignIns: Record<string, number> = {}
+  for (const ev of Object.values(signInEvidence) as { signInCount?: number; countries?: string[] }[]) {
+    const seen = [...new Set(ev.countries ?? [])]
+    if (seen.length === 0) continue
+    // A person's sign-ins split across the countries they were seen in, as rows do.
+    const each = Math.max(1, Math.round((ev.signInCount ?? 0) / seen.length))
+    for (const code of seen) {
+      countryUsers[code] = (countryUsers[code] ?? 0) + 1
+      countrySignIns[code] = (countrySignIns[code] ?? 0) + each
+    }
+  }
+
   const snapshot: TenantSnapshot = {
     schemaVersion: 1,
     tenantId,
@@ -707,7 +726,7 @@ export function buildFixture(spec: Spec): Fixture {
     evidencePolicyResults: week2Results,
     blockedToday: [],
     evidenceUsage: hostile || !p1 ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} } },
-    evidenceAggregates: hostile || !p1 ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users }, signInsByCountry: { AU: spec.users * 8 }, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
+    evidenceAggregates: hostile || !p1 ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: countryUsers, signInsByCountry: countrySignIns, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
     capabilities: caps,
     microsoftManagedPolicyIds: [],
     roles: { active: rolesActive, eligible: {} },
@@ -752,9 +771,17 @@ export function buildFixture(spec: Spec): Fixture {
   groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, directMembers: 'complete', directMemberIds: [...exclusionMembers], displayName: 'Core - Exclusions', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] })
   // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
   const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
-  // The demo derives through the same baseline as the product (walk-51 item 9):
-  // the pinned package, never a synthetic one of its own. Every other fixture
-  // keeps the synthetic baseline as a stand-in, filtered by the pinned goal map.
+  // EVERY fixture derives through the same baseline as the product (walk-51 item
+  // 9): the pinned package. The demo always did; the rest ran an eight-policy
+  // synthetic stand-in, so nine of eleven fixtures - and four of the five
+  // simulated administrators - exercised a baseline that never ships.
+  //
+  // Findings about mechanics held either way. Findings about policy content did
+  // not, and three of one persona's severity 4s were withdrawn for it; a name
+  // that read as its own gloss survived six fixtures because the pin resolves it.
+  // A test whose subject IS a baseline that is not the pin asks for
+  // `syntheticBaseline` by name (withSyntheticBaseline), which states the premise
+  // those tests used to rely on without saying.
   const baseline = spec.demo ? pinnedPackage() : syntheticBaseline(seed)
   // The demo's week two carries the answers its technician gave in week one
   // (E1): the travellers question (New Zealand added), the partner question
@@ -975,6 +1002,16 @@ export function withBreakGlassCarveOut(f: Fixture): Fixture {
     if (users?.excludeGroups) users.excludeGroups = users.excludeGroups.map((g) => (g.toLowerCase() === chosen ? breakGlass : g))
   }
   return { ...f, snapshot }
+}
+
+/**
+ * A fixture on the eight-policy synthetic baseline, for a test whose subject is a
+ * baseline that is NOT the pin: a custom package with no reviewed source, a goal
+ * the pinned map holds that the package does not. Every fixture ships on the pin
+ * now, so a test that needs the other case says so here.
+ */
+export function withSyntheticBaseline(f: Fixture): Fixture {
+  return { ...f, baseline: syntheticBaseline(f.name) }
 }
 
 /** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */

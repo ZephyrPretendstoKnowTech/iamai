@@ -5,7 +5,7 @@
 // through the same translator as a baseline policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture } from './fixtures/index.ts'
+import { allFixtures, fixture, withSyntheticBaseline } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { readFileSync } from 'node:fs'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
@@ -328,7 +328,10 @@ test('a goal map that resolves nowhere in the active package still cannot lend a
 })
 
 test('the same for the legacy block, and a goal the map does hold keeps the fallback', () => {
-  const r = runFixture(fixture('getiamai'), { goalMap: NON_RESOLVING })
+  // Asked for by name: this case reads a policy out of the synthetic package, as
+  // its last assertion says. Every fixture is on the pinned baseline now, so the
+  // premise is stated rather than inherited from which fixture was chosen.
+  const r = runFixture(withSyntheticBaseline(fixture('getiamai')), { goalMap: NON_RESOLVING })
   const legacy = r.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!
   assert.equal(legacy.floor, true)
   assert.equal(legacy.naming?.fromBaseline ?? null, null, 'not attributed to the package\'s own legacy policy')

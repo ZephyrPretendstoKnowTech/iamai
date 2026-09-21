@@ -68,23 +68,60 @@ they were rather than assert either side.
 
 ---
 
-## 2. Nine of eleven fixtures run a baseline that never ships
+## 2. Nine of eleven fixtures run a baseline that never ships — HALF DONE, MEASURED
 
-Only `demo` and `demo-week2` use the pinned 38-policy baseline. The rest use an
-8-policy synthetic one. Findings about mechanics hold; findings about policy
-content do not, and three of Marcus's severity 4s were withdrawn for this.
+Only `demo` and `demo-week2` derive through the pinned 38-policy baseline. The
+rest run an eight-policy synthetic stand-in, so four of the five simulated
+administrators exercised a baseline that is not what ships. Findings about
+mechanics held either way; findings about policy content did not, and three of
+Marcus's severity 4s were withdrawn for it. Item 7's gloss survived on six
+fixtures for the same reason: the pin resolves the name, so nothing caught it.
 
-Related and separate: `evidenceAggregates.byCountry` is hard-coded to
-`{ AU: <everyone> }` in `src/roadmap/fixtures/index.ts` while `signInEvidence`
-gives four per cent of people `['AU', 'NZ']`. The **product** derives both from
-one set of sign-in rows (`graph/collect/laneBCore.ts`), so they always agree on a
-real tenant — but it means the multi-country case is never exercised, and
-Priya's "the basis says AU while the tile says NZ" reproduces only in fixtures.
+### Done: the fixtures no longer contradict themselves
 
-**Not fixed because:** making the aggregate honest changes the allowed-countries
-reading on every synthetic fixture, two days before a beta.
+`evidenceAggregates.byCountry` was hard-coded to `{ AU: <everyone> }` while
+`signInEvidence` gave four per cent of people `['AU','NZ']`. A fixture's own
+tiles reported admins signing in from a country its aggregates said nobody used,
+and no test could reach the multi-country case at all. Both aggregates are
+derived from the sign-in evidence now, the way `graph/collect/laneBCore.ts`
+derives them in the product — from one row set, so they cannot disagree:
 
-**Decision needed:** is this worth doing before or after launch?
+```
+small {"AU":22,"NZ":1}   mid {"AU":246,"NZ":5}   large {"AU":4167,"NZ":161}
+messy {"AU":106,"NZ":5}  demo {"AU":32}   (unchanged: its evidence is AU-only)
+```
+
+Zero test changes. The demo, which is the one users see, is untouched.
+
+### Not done: putting every fixture on the pin, and what it costs
+
+Measured rather than estimated, 2026-09-21. `const baseline = pinnedPackage()`
+for every fixture:
+
+- **roadmap + coverage: 6 failures of 976.**
+- **ui/surfaces: 12 failures of 1133.**
+- **274 step snapshots regenerate**, every fixture gaining about five steps and
+  different policy content.
+
+The test count is small. The difficulty is that these are **premises that stop
+existing**, not values that drift:
+
+| test | the premise the pin removes |
+| --- | --- |
+| `readinessGate.test.ts:182` | "this policy targets all users despite its guest goal label" — a deliberate test of a MISLABELLED goal. The pin's guests policy targets guests |
+| `foundationA.test.ts:109` | the same shape, "and its policy names all users" |
+| `holds.test.ts:232` | a readiness-gated create's canonical event, `createReportOnly`, is now null |
+| `tracking.test.ts:135` | `s-prereq-auth-strength` is no longer in midflight's re-plan |
+| `baselineConflictPlan.test.ts`, `floor.test.ts` | **already fixed**: they ask for `withSyntheticBaseline` by name, which states a premise they used to inherit from whichever fixture was chosen |
+
+Each remaining one is a judgement: construct the case deliberately, or delete a
+guard. Deleting guards is how a regression ships, and the snapshot diff is too
+large to review, so this wants a session of its own rather than the tail of one.
+`withSyntheticBaseline(f)` is exported and ready for the tests whose subject is a
+baseline that is not the pin.
+
+**Decision needed:** schedule it. It buys nothing a beta reader sees; it buys
+every later session a corpus that tests what ships.
 
 ---
 
