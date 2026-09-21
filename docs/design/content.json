@@ -328,6 +328,11 @@
         "routeShortfallNone": "“{step}” will not move this number: none of the {short} people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach {threshold}.",
         "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out."
       },
+      "evidence": {
+        "$comment": "Why a report-only observation has not completed, in the two cases where the reason is known and was said nowhere. The tile read \"Review the available records and the remaining evidence requirements\" over both: over a tenant whose records refused every read, and over a tenant where four hundred people had been stopped in report-only. Both numbers were on the step already — Evidence.affectedUserIds had the four hundred and Evidence.lines was empty — and no surface read either. Said only while the observation is still open.",
+        "failures": "The records show {n} people this policy stopped while it was in report-only. Review them before enforcing: time elapsed alone does not complete this check.",
+        "unreadable": "This check reads the sign-in records, which IAMAI could not read in this tenant — {reason}. Time in report-only cannot complete it until they can be read."
+      },
       "cohort": {
         "$comment": "One cohort, one set of words wherever it is counted (owner, 2026-09-19): guests stay in the MFA campaign and are named beside the people, never dropped from one count and kept in another. derive/whoLine.ts cohortWords is the one caller.",
         "people": "{n} people",

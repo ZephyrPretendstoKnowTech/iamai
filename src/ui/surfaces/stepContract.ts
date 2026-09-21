@@ -1514,7 +1514,16 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate) }
-  if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: c.milestone.at ? notes.observationDateNote : notes.observationNote }
+  // An observation with no date says WHY it has no date, where the step knows:
+  // the people the policy stopped in report-only, or the records that could not
+  // be read at all (roadmap/evidence.ts). Both were computed onto the step and
+  // read by nothing, so twelve steps of one tenant sat behind "Review the
+  // available records and the remaining evidence requirements" for ten days,
+  // and a tenant where four hundred people had been stopped said the same.
+  if (c.milestone.kind === 'observe') {
+    const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
+    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: why }
+  }
   return null
 }
 

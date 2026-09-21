@@ -5,6 +5,11 @@
 // module's. Pure.
 import type { TenantSnapshot, UsageSignal } from '../graph/collect/types.ts'
 import type { Evidence } from './types.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+/** Why an observation has not completed, where the reason is known (shared.engine.evidence). */
+const W = engine.evidence
 
 const RISK_HIGH_GOALS = new Set(['sign-in-risk', 'user-risk'])
 const RISK_MEDIUM_GOALS = new Set(['sign-in-risk-medium', 'user-risk-medium'])
@@ -40,7 +45,20 @@ export function evidenceFor(
   const usable = status === 'ok' || status === 'partial'
 
   const base: Evidence = { status, lines: [], affectedUserIds: [] }
-  if (!usable) return base
+  // Why the observation has not completed, where the reason is known.
+  //
+  // `lines` is this type's own field for it — "plain-language numbers", per the
+  // shape — and it was never written, on any goal, on any tenant. The
+  // observation tile therefore said "Review the available records and the
+  // remaining evidence requirements" over both of the cases below: over a
+  // tenant whose sign-in source refused every read, where the window can never
+  // complete, and over a tenant where the policy had stopped four hundred
+  // people in report-only, which is precisely what refused the gate. Twelve
+  // steps sat behind the first for ten days naming nothing.
+  if (!usable) {
+    const reason = src?.reason ?? status
+    return { ...base, lines: [fillText(W.unreadable, { reason })] }
+  }
 
   const usage = snapshot.evidenceUsage
   if (goalId === 'block-legacy-auth') base.affectedUserIds = usage?.legacyAuth.userIds ?? []
@@ -56,7 +74,14 @@ export function evidenceFor(
     const failedUsers = [
       ...new Set(results.flatMap((pr) => [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted])),
     ]
-    if (failedUsers.length > 0) base.affectedUserIds = failedUsers
+    // The people a report-only run actually stopped. These are what holds the
+    // enforcement gate shut (tracking.ts), so this is the one number the
+    // reader needs and the tile said none of it. Not said for the usage
+    // signals above: those are people a block is FOR, not a result it produced.
+    if (failedUsers.length > 0) {
+      base.affectedUserIds = failedUsers
+      base.lines = [fillText(W.failures, { n: failedUsers.length })]
+    }
   }
   return base
 }
