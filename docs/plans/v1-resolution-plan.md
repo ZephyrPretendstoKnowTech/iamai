@@ -136,6 +136,39 @@ Deleting serves the no-new-stuff constraint rather than fighting it.
 71% of cards carry no sentence; the subject is a category not a thing; the action slot
 holds caveats instead of actions; the step bar does not read the lane. One commit per class.
 
+### R15 · A tenant that cannot use Conditional Access is told so, and gets no plan
+**Owner, 2026-09-20: Entra ID P1 is the real minimum, and a half-baked opinion is worse
+than none.** Today a tenant with no P1 still builds a plan — `coreGaps` returns empty and
+ten steps are generated for a tenant that cannot create a Conditional Access policy at all.
+
+**Rule:** a scan has three outcomes, not two. **Complete** → plan. **Gaps** → no plan,
+"these sections could not be read with this account". **Not licensed** → no plan, and a
+different message, because telling somebody to go and get more permissions when the real
+problem is their licence sends them down the wrong road.
+
+The free-tier ladder stays in the tree, dormant and reversible — the owner wants to
+compare later, not delete now.
+*Closes: a commitment made on 2026-09-20 and not kept.*
+
+### R16 · The security review
+Step 6 of `v1-audit-plan.md`, and the only pass that has never run. Its own session,
+against the final tree, with an adversarial frame rather than a quality one: what a hostile
+baseline file, a hostile tenant response or a malicious link in content could do; what the
+export and the prompt pack leak; the Graph scopes actually requested; the CSP and the
+absence of a server; what a stranger's tenant data touches on this machine.
+**It runs last, against what ships, and it gates the public link.**
+
+### R17 · Triage the persona defects one at a time
+The five persona files hold **104 defects**; the rules above name about twenty. Most of the
+remainder fold into a rule, but nobody has checked which. Walk `*-defects.md` and mark each
+row: closed by rule N, still open, or not reproducible. **A rule that closes nothing is a
+rule written for a defect that was never there.**
+
+Also outstanding and unowned: 40 of 42 package `META.json` files record a stale
+`baselineAuthority.pinCommit` (a second source for the pin); two registry steps build in no
+fixture, so nothing verifies how they render; and `micro`, `getiamai` and `huge` are absent
+from the card dump.
+
 ---
 
 ## How we know it worked
@@ -149,12 +182,14 @@ The harness is the acceptance test, and it is repeatable:
    erase the emergency-access hold, and cannot produce a tenant-wide block from a default
    toggle. His rating should fall, and that is the success condition.
 4. **No new tab or section** exists that did not exist before.
+5. **Smoke and the walk run against the no-P1 fixture**, which neither has seen.
+6. **The security review has run** against the tree that ships.
 
 ---
 
 ## Sequencing
 
-Phase 1 is the safety claim and gates a public link. Phase 2 is the completion rate and is
+Phase 1 is the safety claim and, with R15 and R16, gates a public link. Phase 2 is the completion rate and is
 what makes the tool worth using twice. Phase 3 is accuracy and subtraction, and can follow
 the launch.
 
