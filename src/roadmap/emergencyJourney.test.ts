@@ -278,3 +278,27 @@ test('a hardening warning reads as hardening on the card, and only a minimum che
   assert.equal(/correction/i.test(broken.value), true, broken.value)
   assert.notEqual(runFixture(none).steps.find((s) => s.id === 's-prereq-break-glass')?.status, 'done')
 })
+
+// The one gate the whole plan stands behind read "Authenticator model:
+// a25342c0-3cdc-4414-8e46-f4807fca511c" on the shipped demo, twice, while that
+// AAGUID is the pinned list's own "YubiKey 5 Series with NFC" and the
+// passkey-settings step a few rows away was already resolving names from it.
+test(`an emergency account's passkey is named by its model, never by its identifier alone`, () => {
+  const f = fixture('demo-week2')
+  const finding = emergencyMethodFinding(f.snapshot, f.mapping, f.groups)
+  const models = (finding.items ?? []).filter((i) => i.label === 'Authenticator model')
+  assert.ok(models.length > 0, 'the premise: this tenant has a registered passkey with an AAGUID')
+  let named = 0
+  for (const item of models) {
+    const value = String(item.value)
+    if (value === 'Could not verify') continue
+    named += 1
+    assert.doesNotMatch(value, /^[0-9a-f-]+$/i, `the model reads as its identifier alone: ${value}`)
+    const known = PASSKEY_DEFAULT_MODELS.find((m) => value.toLowerCase().includes(m.aaguid))
+    assert.ok(known, `an AAGUID outside the approved list: ${value}`)
+    // The name first, and the identifier kept so it can still be checked by hand.
+    assert.ok(value.startsWith(known.name), value)
+    assert.ok(value.includes(known.aaguid), value)
+  }
+  assert.ok(named > 0, 'no model resolved on a tenant whose keys are approved ones')
+})
