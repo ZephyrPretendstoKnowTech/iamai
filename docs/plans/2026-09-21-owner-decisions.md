@@ -112,3 +112,27 @@ agree even when the headline words do not.
 
 **Decision needed:** should an unresolvable method set state a floor ("at least
 68%, and nine people's compatibility is unknown") instead of "not measured"?
+
+---
+
+## 7. A policy name that resolves on the pin and reads as a gloss without it
+
+`s-goal-all-users-no-persistence` renders `1. Name: ` + the literal sentence
+"the browser-session policy named in this step" on six of the eight snapshotted
+fixtures. On `demo` and `demo-week2` — the only two that run the pinned baseline
+— it renders the actual name, `Core - Session - Non-persistent browser sessions`.
+
+The cause is `memberBindings` in `src/ui/surfaces/stepPackage.ts`: a member's
+`target.displayName` comes from the resolved operation's body, and where that
+body carries no name the binding is unset and `stepResources.ts` substitutes the
+reference's gloss. The step's own proposed name is on `step.naming.proposed` the
+whole time — `policy.target.displayName` already falls back to it one function
+away.
+
+**Not fixed because:** the fallback is safe for a one-member step and wrong for a
+pair, where the second member's name is `policyPairNames`', and the binding layer
+is what forty-four packages and the pin guard stand on. It is also invisible on
+the baseline that ships, which is why it survived this long.
+
+**This is a fix, not a decision** — it is here so it is not lost. It belongs with
+item 2: a synthetic baseline hid it.
