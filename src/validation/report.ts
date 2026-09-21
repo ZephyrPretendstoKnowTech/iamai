@@ -197,7 +197,7 @@ export function breakGlassReport(ctx: ValidationContext): SubjectReport {
 }
 
 /** Rules about the set of accounts rather than one account. */
-export const SET_LEVEL = new Set(['bg.count', 'bg.methodDiversity', 'bg.credentialStorage', 'bg.signInMonitoring'])
+export const SET_LEVEL = new Set(['bg.count', 'bg.methodDiversity', 'bg.hardwareCredential', 'bg.credentialStorage', 'bg.signInMonitoring'])
 
 // ---- what Setup renders ----------------------------------------------------
 

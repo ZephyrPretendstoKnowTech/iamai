@@ -111,6 +111,7 @@ export const RULE_CITATION: Record<string, Citation> = {
   'bg.notPersonal': EMERGENCY_ACCESS,
   'bg.phishingResistant': EMERGENCY_ACCESS,
   'bg.methodDiversity': EMERGENCY_ACCESS,
+  'bg.hardwareCredential': EMERGENCY_ACCESS,
   'bg.perUserMfaOff': PER_USER_MFA,
   'bg.noLicenceNeeded': EMERGENCY_ACCESS,
   'bg.drilled': EMERGENCY_ACCESS,
@@ -216,6 +217,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   'bg.methodDiversity': {
     what: 'The emergency accounts do not all depend on the same single kind of method.',
     why: 'One failing method type then takes out every emergency account at once.',
+  },
+  'bg.hardwareCredential': {
+    what: 'At least one emergency account holds its recovery credential on a security key, not only on a phone.',
+    why: 'A passkey in Microsoft Authenticator lives on somebody’s phone and syncs with their personal account. A break-glass credential is the way back in when everything else has failed — including that person being reachable, that phone working, and that account being under your control — so it belongs on a hardware key kept in a safe. This is the one credential whose whole purpose is to depend on nothing else.',
   },
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
@@ -339,6 +344,7 @@ export const FINDING = {
   bgSmsOnly: 'a code by text or call is the only method registered',
   bgNoPhishingResistant: 'no phishing-resistant method registered: a security key or passkey is the stronger choice',
   bgSameMethodType: (kind: string): string => `every emergency account relies on ${kind} alone`,
+  bgSyncedOnly: 'the only recovery credential on every emergency account is a passkey synced to a personal device, not a security key kept apart from it',
   bgPerUserMfa: 'the tenant has not finished migrating to the authentication methods policy, so the legacy per-user settings still decide which methods are offered',
   bgLicensed: (plans: number): string => `${count(plans, 'licence plan')} assigned, including a mailbox`,
   bgDrillDue: (date: string, days: number): string => `last recovery test recorded ${date}, over ${days} days ago: another test is due`,
