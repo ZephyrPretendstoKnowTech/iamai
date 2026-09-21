@@ -36,7 +36,15 @@ Review this policy's Report-only results for sign-ins to Inforcer (application I
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 1. Open **{{policy.current.displayName}}** (ID: **{{policy.current.id}}**) and confirm its target and exclusions still match Settings for This Action.
 2. Review the observation evidence and test the intended Inforcer sign-in workflow with an account in scope.
-3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Set **Enable policy: On** and save.
+3.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Set **Enable policy: On** and save.
 4. Confirm the user can access Inforcer with MFA and emergency access still works, then rescan.
 @@IAMAI-END
 

@@ -41,7 +41,15 @@ Keep the policy in **Report-only** while you review the evidence listed for this
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the step's evidence has been reviewed. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** to **On** and save. Verify after the change: affected users can sign in directly on the destination device, and emergency access still works. Then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the step's evidence has been reviewed.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Change **Enable policy** to **On** and save. Verify after the change: affected users can sign in directly on the destination device, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

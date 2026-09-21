@@ -47,7 +47,11 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.
-- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
+- Do not turn it on unless all of these are true now:
+  The required report-only period is complete, with no failures on this policy in the sign-in records.
+  The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+  Emergency access is prepared and tested.
+  If any one of them is not true, leave the policy in Report-only.
 - Change **Enable policy** to **On** and save.
 - Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the target's interval. Check that normal admin work remains practical and emergency access still works.
 - Rescan in IAMAI.

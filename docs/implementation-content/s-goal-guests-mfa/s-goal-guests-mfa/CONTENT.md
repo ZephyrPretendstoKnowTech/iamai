@@ -47,7 +47,15 @@ Keep both policies in Report-only while you review the evidence listed for this 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce-pair","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Reopen both policies by their policy IDs. Verify each still matches its intended target, both are Report-only, and any approved partner trust is already in place. Do not turn either on unless all of this is true now. The required report-only period is complete, with no failures on these policies in the sign-in records. Each policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave both in Report-only. Enable both in the same planned change window. Verify after the change: representative guests on both policy paths can sign in. Then rescan in IAMAI.
+Reopen both policies by their policy IDs. Verify each still matches its intended target, both are Report-only, and any approved partner trust is already in place.
+
+Do not turn either on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on these policies in the sign-in records.
+- Each policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave both in Report-only. Enable both in the same planned change window. Verify after the change: representative guests on both policy paths can sign in. Then rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create-pair","channel":"json","states":["missing"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/$batch"}

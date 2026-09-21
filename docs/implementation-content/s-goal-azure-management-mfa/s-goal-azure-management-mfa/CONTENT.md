@@ -37,7 +37,11 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, its settings match the intended target, and required automation has a supported path.
-- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
+- Do not turn it on unless all of these are true now:
+  The required report-only period is complete, with no failures on this policy in the sign-in records.
+  The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+  Emergency access is prepared and tested.
+  If any one of them is not true, leave the policy in Report-only.
 - Change **Enable policy** to **On** and save.
 - Verify after the change: a person can complete MFA when opening the Azure portal, required automation still runs, and emergency access still works.
 - Rescan in IAMAI.

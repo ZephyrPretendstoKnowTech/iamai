@@ -102,7 +102,14 @@ IAMAI has reached the enforcement state; do not rebuild the location or policy.
 
 1. Confirm the Cloud Sync server's current public egress address still matches the approved named location.
 2. Open the exact IAMAI-resolved workload policy.
-3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from **Report-only** to **On** and save.
+3.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+
+If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from **Report-only** to **On** and save.
 4. Trigger or observe a fresh Cloud Sync operation from the approved server and verify it succeeds.
 5. If synchronization fails, return this same policy to Report-only before changing the named location.
 6. Rescan IAMAI.

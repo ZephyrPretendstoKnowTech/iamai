@@ -50,7 +50,15 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 1. Open the same policy ID and confirm it still matches the intended settings and is Report-only.
 2. Confirm the required user-driven and userless/self-deploying enrollment workflows have been reviewed.
-3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change Enable policy to On and save.
+3.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Change Enable policy to On and save.
 4. Verify after the change: complete a controlled user-driven Intune enrollment and confirm it asks for fresh authentication.
 5. Verify required userless/self-deploying flows still work, then rescan IAMAI.
 6. If enrollment fails unexpectedly, return this same policy to Report-only.
