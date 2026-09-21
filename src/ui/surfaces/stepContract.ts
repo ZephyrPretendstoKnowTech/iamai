@@ -115,6 +115,7 @@ type ContractWords = {
   readinessValue: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
+  foundDiffers: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
@@ -578,6 +579,15 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
           ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
           : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
     out.push(found('in-place', text))
+  }
+  // The deployed policy against what this step asked for, dimension by dimension
+  // (tracking.ts `differsIn`). A policy built wider than the plan asked — a
+  // narrowing condition left at its portal default — read exactly like one built
+  // right: the step's procedure warned about it and nothing afterwards checked.
+  for (const m of step.tracking?.members ?? []) {
+    const fields = m.differsIn ?? []
+    if (fields.length === 0 || !m.policyName) continue
+    out.push(found('differs', fillText(CONTRACT.foundDiffers, { policy: m.policyName, fields: dimensionWords([...fields]) })))
   }
   // The step's one observation is Foundation B's own aggregate over its members
   // (lifecycle.ts aggregateObservation); this reports it and never re-derives it.

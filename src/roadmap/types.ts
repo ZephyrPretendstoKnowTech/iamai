@@ -679,6 +679,12 @@ export type MemberTracking = {
   policyId: string | null
   policyName: string | null
   /**
+   * The dimensions the deployed policy differs from this step's own intended
+   * operation in — what IAMAI asked for and did not get. Empty where it matches,
+   * where there is no policy yet, and where the step submits nothing.
+   */
+  differsIn?: readonly string[]
+  /**
    * How the member was tied to that object, strongest first: the operation's own
    * target (Foundation A already settled it), the member's own plan tag, a plan
    * tag from before members were tagged plus the name the plan gives this member,
