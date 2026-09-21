@@ -12,7 +12,7 @@ import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { dimensionWords } from '../../roadmap/observation.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { fillText, listCountVars, whole } from '../../content/render.ts'
+import { SHARED_REF_KEYS, fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
@@ -394,14 +394,21 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
+/**
+ * A sentence reads this tenant when it names a variable the scan fills. One
+ * with no variables at all, or only shared references — the baseline's strength,
+ * the report-only line — is standing guidance, true of every tenant, and says
+ * nothing about what was found here.
+ */
+const readsTenant = (line: string): boolean => [...line.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)].some((m) => !SHARED_REF_KEYS.has(m[1]))
 
 /**
- * The who-line evidence lines that apply to this tenant, as the step renders
- * them (the one gate for the screen and the exports): the existing-coverage
- * line only when a policy delivers the goal; a line with a list only when the
- * list has people; a line with {n} and no list not at zero; the none branch
- * only when no usage line renders (the existing-coverage line does not count).
+ * The sentence a claim leaves behind when it cannot be filled (R4). An unfilled
+ * claim says so; it never empties its slot and lets the opposite claim stand
+ * there instead.
  */
+export const WHO_UNRESOLVED: string = String((content.shared as Record<string, unknown>).whoUnresolved)
+
 /**
  * The Who lead's template, whole: the step's own, or — where the only hole in it
  * is a date the plan does not hold — its undated form. Who a step reaches is not
@@ -409,18 +416,51 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
  * vanished whole while nothing was dated (roadmap/holds.ts), taking the people
  * it counts with it. Null where neither fills. The screen (whoBlocks.ts) and the
  * rendered lines below read this one choice.
+ *
+ * `who.leadWhen` is a lead per read state — the fact the sentence asserts, and
+ * the sentence. The one whose fact this scan read stands; where the scan read
+ * none of them the lead is unresolved, because a sentence written for one state
+ * is not evidence of another (R4: the security-defaults step described
+ * protections that were off).
  */
 export function whoLeadTemplate(who: Record<string, unknown>, ex: Record<string, unknown>): string | null {
+  const when = who.leadWhen as Record<string, string> | undefined
+  if (when) {
+    for (const [fact, line] of Object.entries(when)) if (truthy(ex[fact]) && whole(line, ex)) return line
+    return WHO_UNRESOLVED
+  }
   for (const line of [who.lead, who.leadUndated]) if (typeof line === 'string' && whole(line, ex)) return line
   return null
 }
 
+/**
+ * The who-line evidence sentences this tenant earns — the one gate for the
+ * screen and the exports, and every sentence it returns is whole, so neither
+ * caller has a gate of its own to disagree with. The existing-coverage line only
+ * when a policy delivers the goal; a line with a list only when the list has
+ * people; a line with {n} and no list not at zero; the none branch only when no
+ * reading of this tenant rendered.
+ *
+ * R4, the rule this enforces: **a claim that cannot be filled says so, and never
+ * falls through to its own negation.** A claim whose evidence is present but
+ * whose sentence has a hole used to be dropped by the callers' own `whole`
+ * gate — which emptied the slot and let the step's none branch print the
+ * opposite: "Nobody used a legacy protocol since Jul 29, 2026" two steps after
+ * the product named the three accounts that did. Here such a claim keeps its
+ * slot with WHO_UNRESOLVED, and an unresolved claim holds the none branch back.
+ * The negation stands only where this tenant was read and found clean.
+ */
 export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string, unknown>): string[] {
   const out: string[] = []
   let none: string | null = null
+  // A reading of this tenant rendered / a reading of this tenant could not be
+  // completed. Either one holds the none branch back; only general guidance,
+  // which names no variable this tenant fills, leaves it free.
+  let read = false
+  let unresolved = false
   const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
   for (const [k, v] of Object.entries(who)) {
-    if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    if (['$comment', 'lead', 'leadWhen', 'leadUndated', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
     // A licence caveat has no placeholders, so `whole()` can never gate it: it
     // was drawn on every tenant, seven of eight of which hold Entra ID P1, which
     // made the one honest sentence about the licence carry no information at all
@@ -439,10 +479,29 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
       const lk = listKeys(line)
       if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
       if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) continue
+      // The existing-coverage line reads the plan, not the tenant's people; the
+      // licence caveat is a reading of what the scan was allowed to see.
+      const reading = line !== coverage && (readsTenant(line) || k === 'licenceNote')
+      if (!whole(line, listCountVars(line, ex) as Record<string, unknown>)) {
+        // A claim whose people are already on the page — its list has them — and
+        // whose sentence still cannot be completed is the R4 case: the evidence
+        // is not in doubt, only the wording around it, and the slot says so. A
+        // line with no list of its own is one of a pair the content writes for
+        // the same reading (the names, or the count past NAMES_UP_TO); the one
+        // whose variable this tenant does not fill is simply not its turn.
+        if (reading && lk.length > 0) unresolved = true
+        continue
+      }
+      if (reading) read = true
       out.push(line)
     }
   }
-  if (none !== null && !out.some((line) => line !== coverage && whole(line, ex))) out.push(none)
+  // The slot the negation would have taken. It gets the negation only where this
+  // tenant was read and nothing was found; where a claim about the same subject
+  // could not be completed, or where the negation itself cannot be stated, the
+  // slot says so instead. This is the whole of R4: the step still has one
+  // sentence here, and it is never the opposite of what was read.
+  if (none !== null && !read) out.push(unresolved || !whole(none, listCountVars(none, ex) as Record<string, unknown>) ? WHO_UNRESOLVED : none)
   return out
 }
 

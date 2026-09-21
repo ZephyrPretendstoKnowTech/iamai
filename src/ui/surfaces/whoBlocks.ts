@@ -75,8 +75,12 @@ export function closed(lead: string): string {
  */
 export function whoBlocks(who: Record<string, unknown>, ex: Ex): { inline: WhoBlock[]; held: WhoBlock[] } {
   const all: WhoBlock[] = []
+  // No gate of its own. whoEvidenceLines returns the sentences this tenant
+  // earned, each one whole; a second `whole` filter here is what dropped a claim
+  // whose only hole was a date and left the step's none branch alone in the
+  // slot, saying nobody did the thing three named accounts had just been shown
+  // doing (R4). An unfillable claim now arrives as WHO_UNRESOLVED and is drawn.
   whoEvidenceLines(who, ex)
-    .filter((line) => whole(line, ex))
     .forEach((line, i) => {
       const nl = nameListOf(line, ex)
       all.push(nl ? { key: `who:${i}`, lead: nl.lead, names: nl.names } : { key: `who:${i}`, lead: fillText(line, listCountVars(line, ex) as Ex), names: [] })
