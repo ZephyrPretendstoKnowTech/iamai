@@ -310,7 +310,7 @@ test('a step whose create reaches further than its own name says so before it is
   assert.ok(said, `no wider finding on the step: ${found.map((x) => x.key).join(', ')}`)
   assert.equal(said.label, CONTRACT.foundLabel.wider)
   assert.ok(said.text.includes(CONTRACT.foundWiderCohort.serviceAccounts), said.text)
-  assert.match(said.text, /every user in the tenant/, said.text)
+  assert.match(said.text, /everyone in the tenant/, said.text)
   // Before creation, not after: the dimension comparison can only speak once
   // the policy is deployed, and by then the reader has built it.
   assert.notEqual(step.status, 'done')
