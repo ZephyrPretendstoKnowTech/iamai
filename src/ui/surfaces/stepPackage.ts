@@ -414,6 +414,56 @@ export function policyBodiesOfChannel(json: Pick<ChannelArtifact, 'text' | 'requ
   return out.length > 0 ? out : null
 }
 
+/**
+ * The plan tag on a JSON create body, where the package's template left it out.
+ *
+ * The tag is how IAMAI recognises the policy it planned when it next reads the
+ * tenant, and the Entra procedure tells the reader to paste it by hand. A JSON
+ * body submits without anybody retyping anything, so a policy built from the tab
+ * came back unrecognised and its own step asked for it to be created again — a
+ * second enforcing policy, which is a lockout path.
+ *
+ * It is fixed here rather than in each package's template because the tag is
+ * IAMAI's own identity mechanism and not content: a package author cannot forget
+ * it, no binding has to be declared in forty-four manifests, and the state the
+ * guard fears most — some tabs tagged and some not, with nothing saying which —
+ * is not reachable. The description comes from the resolved operation, which has
+ * carried it all along (roadmap/generate.ts `tagFor`).
+ *
+ * Only a POST that creates a Conditional Access policy, only where the body names
+ * no description of its own, and the text keeps the shape it was written in.
+ */
+export function jsonWithPlanTag(text: string, step: Step): string {
+  const described = plannedOperationsOf(step).filter((o) => o.mode === 'create').map((o) => (o.body as { description?: unknown }).description).filter((d): d is string => typeof d === 'string' && d.length > 0)
+  if (described.length === 0) return text
+  let parsed: unknown
+  try { parsed = JSON.parse(text) } catch { return text }
+  if (parsed === null || typeof parsed !== 'object') return text
+  let used = 0
+  const tagged = (body: unknown): boolean => {
+    if (body === null || typeof body !== 'object') return false
+    const b = body as Record<string, unknown>
+    if (typeof b.description === 'string' && b.description.length > 0) return false
+    const description = described[Math.min(used, described.length - 1)]
+    used += 1
+    b.description = description
+    return true
+  }
+  const requests = (parsed as { requests?: unknown }).requests
+  let changed = false
+  if (Array.isArray(requests)) {
+    for (const raw of requests) {
+      const r = raw as { method?: unknown; url?: unknown; body?: unknown }
+      if (String(r.method ?? '').toUpperCase() !== 'POST' || !CA_POLICY_REQUEST.test(String(r.url ?? ''))) continue
+      if (tagged(r.body)) changed = true
+    }
+  } else if (tagged(parsed)) changed = true
+  if (!changed) return text
+  // The tab keeps the shape its template was written in: a body laid out over
+  // lines stays laid out, and a one-line body stays on one line.
+  return JSON.stringify(parsed, null, text.includes(String.fromCharCode(10)) ? 2 : 0)
+}
+
 /** References to a resolved target need the actual settings beside the directions.
  * Read the same selected request bodies as JSON; never substitute a different policy. */
 export function entraWithSettings(text: string, step: Step, ctx: StepVarContext, c: StepContract, projection: Projection): string {

@@ -42,7 +42,7 @@ import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, sourceCheckedLine, entraWithSettings } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -301,7 +301,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Info shared warning aside) has no content: it is not drawn as a blank tab.
   const produced: Artifact[] = (
     packaged
-      ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a, grounding)).filter((a) => a.text().trim() !== '')
+      ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a.channel === 'json' && machine ? { ...a, text: jsonWithPlanTag(a.text, step) } : a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => resourceChannelAllowed(step, a.id))
   // Keep every substantively supported lifecycle format. Fill missing machine
