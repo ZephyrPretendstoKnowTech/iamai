@@ -271,7 +271,21 @@ export type Action = {
    * strictness rather than helping with it, and they are how readiness gets to
    * the threshold in the first place.
    */
-  readinessGate?: { measure: string; threshold: string; value: string; /** `value` is a floor the scan could prove, not the measurement (readiness.atLeast). */ floor?: true }
+  readinessGate?: {
+    measure: string
+    threshold: string
+    value: string
+    /** `value` is a floor the scan could prove, not the measurement (readiness.atLeast). */
+    floor?: true
+    /**
+     * The title of the step on THIS plan that moves this number, set only where
+     * the generator drew the dependency edge to it (generate.ts, the verify-MFA
+     * loop). A gate stated what it waits for and never what opens it: seven
+     * steps of one plan waited on MFA readiness while the one campaign that
+     * moves it sat Ready on the same board, named by none of them.
+     */
+    route?: string
+  }
   /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the
