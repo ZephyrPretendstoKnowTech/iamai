@@ -50,7 +50,15 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open the dedicated policy by the same policy ID and re-confirm that the trusted-network location still matches the public IP addresses the devices use. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from Report-only to **On** and save. Verify after the change: a real shared device signs in from the approved network. Then rescan IAMAI.
+Open the dedicated policy by the same policy ID and re-confirm that the trusted-network location still matches the public IP addresses the devices use.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from Report-only to **On** and save. Verify after the change: a real shared device signs in from the approved network. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

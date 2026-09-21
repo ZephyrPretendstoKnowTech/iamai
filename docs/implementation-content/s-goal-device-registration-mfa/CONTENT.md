@@ -114,7 +114,15 @@ Verify the same policy and its prerequisites, set it to On, then complete the ch
 1. Go to **Microsoft Entra admin center > Entra ID > Devices > Overview > Device settings**.
 2. Confirm **Require multifactor authentication to register or join devices with Microsoft Entra** is **No**. If it is Yes, set it to No as part of this controlled enforcement change.
 3. Go to **Entra ID > Conditional Access > Policies** and open the exact IAMAI-resolved policy.
-4. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Set **Enable policy** from **Report-only** to **On**. Do not change scope, exclusions, User Action, or grant.
+4.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Set **Enable policy** from **Report-only** to **On**. Do not change scope, exclusions, User Action, or grant.
 5. Save the policy.
 6. Verify after the change: a controlled device registration or join succeeds with the required authentication strength, and the identified enrollment workflows still work. Report-only did not evaluate this User Action, so these tests are the first evidence of the registration experience.
 7. Rescan IAMAI.

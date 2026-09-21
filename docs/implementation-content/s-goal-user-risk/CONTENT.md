@@ -69,7 +69,15 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
-Immediately before the change, read back the policy by its policy ID and confirm: High user risk only, All resources, the resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, password writeback where synchronized password users need it, guest/external handling, and no unresolved active-risk blocker. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Then change only **Enable policy** from **Report-only** to **On**.
+Immediately before the change, read back the policy by its policy ID and confirm: High user risk only, All resources, the resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, password writeback where synchronized password users need it, guest/external handling, and no unresolved active-risk blocker.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Then change only **Enable policy** from **Report-only** to **On**.
 
 Verify after the change: the policy reads back On, and remediation and sign-in failures are reviewed. If legitimate remediation fails, return the same policy to Report-only.
 @@IAMAI-END

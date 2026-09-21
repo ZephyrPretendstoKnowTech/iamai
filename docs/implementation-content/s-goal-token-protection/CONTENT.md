@@ -88,7 +88,15 @@ Verify the same policy and its prerequisites, set it to On, then complete the ch
 
 1. Open the policy IAMAI resolved.
 2. Confirm the compatibility review still reflects the Windows clients and device workflows that matter now.
-3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from **Report-only** to **On** and save.
+3.
+
+Do not turn it on unless all of these are true now:
+
+- The required report-only period is complete, with no failures on this policy in the sign-in records.
+- The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+- Emergency access is prepared and tested.
+
+If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from **Report-only** to **On** and save.
 4. Verify after the change: a supported Windows native client on a registered device still reaches the targeted resources, and any deliberately selected exception path still works.
 5. If a required workflow fails, return this same policy to Report-only before troubleshooting.
 6. Rescan IAMAI.

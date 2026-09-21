@@ -27,7 +27,11 @@ Keep both applicable policies in Report-only while you review the evidence liste
 Verify each policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen each applicable policy using its ID from the latest scan. Confirm it is still **Report-only**, its conditions and session controls match the intended target, Grant is unconfigured, the SharePoint setting is in place and, for Policy B, Defender for Cloud Apps is licensed.
-- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
+- Do not turn it on unless all of these are true now:
+  The required report-only period is complete, with no failures on this policy in the sign-in records.
+  The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not.
+  Emergency access is prepared and tested.
+  If any one of them is not true, leave the policy in Report-only.
 - Set one policy to **On** at a time.
 - Verify after each change: from an unmanaged test device, open SharePoint and Outlook on the web in a browser and confirm the intended download, print and sync limits. Test each service separately; the SharePoint setting does not configure Exchange mailbox restrictions.
 - Rescan in IAMAI after the changes.
