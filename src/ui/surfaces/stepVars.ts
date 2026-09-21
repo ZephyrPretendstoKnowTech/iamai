@@ -264,6 +264,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
       .map((r) => (typeof r.displayName === 'string' ? r.displayName : typeof r.id === 'string' ? r.id : ''))
       .filter((n) => n.length > 0)
     if (customs.length > 0) v.strengths = customs
+    // "None matches the baseline's ..." is a claim about the authentication
+    // strengths this tenant holds. Where that section did not read, IAMAI has
+    // not looked, and the negation would be the R4 fault: a confident no in
+    // place of an unfinished reading. The who-line mechanism draws the
+    // unresolved sentence in that slot instead (stepExport.ts whoEvidenceLines).
+    if (ctx.snapshot.config.authStrengths?.status !== 'ok') v.evidenceNotRead = true
   }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody

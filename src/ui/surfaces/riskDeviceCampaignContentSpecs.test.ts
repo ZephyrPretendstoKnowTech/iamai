@@ -28,6 +28,11 @@ const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('do
 // sentence carries a {step} slot the contract fills with that step's own title.
 const EXCLUSIONS_TITLE = 'Configure Emergency Exclusions'
 const CONFIRM = `Complete ${EXCLUSIONS_TITLE} first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`
+// R3: the create procedure refuses On at the line where the lifecycle is picked,
+// because the guard the script hard-codes was in the one channel a portal-fluent
+// administrator never opens. Every create procedure in the library carries it,
+// so the specs read it from the shared line rather than repeating it nine times.
+const REFUSE_ON = 'Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.'
 
 /** One step's body on a fixture, as the Plan composes it (sessionAdminContentSpecs.test.ts). */
 function bodyOf(name: FixtureName, stepId: string): StepBody {
@@ -79,7 +84,7 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
         ['Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.'],
         ['Grant → Grant access → Require multifactor authentication.'],
         ['Session: leave empty (no session controls).'],
-        ['Enable policy: Report-only.'],
+        [`Enable policy: Report-only. ${REFUSE_ON}`],
         ['Create. Rescan in IAMAI.'],
       ],
     },
@@ -118,7 +123,7 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
         ['Conditions → Client apps: leave **Configure** at **No**. This policy is meant to reach every client app, which is what an unconfigured condition does; ticking every box writes the four named client types instead.'],
         ['Grant: {{policy.target.grantWords}}. Use only the controls listed here.'],
         ['Session → Sign-in frequency: Every time.'],
-        ['Enable policy: Report-only.'],
+        [`Enable policy: Report-only. ${REFUSE_ON}`],
         ['Create. Rescan in IAMAI.'],
       ],
     },
@@ -177,7 +182,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
         ],
         ['Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.'],
         ['Session: leave empty.'],
-        ['Enable policy: Report-only. It will not enforce its access rule until you enable it.'],
+        [`Enable policy: Report-only. It will not enforce its access rule until you enable it. ${REFUSE_ON}`],
         ['Create. Rescan in IAMAI.'],
       ],
     },
@@ -224,7 +229,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
         ['Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.'],
         ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft\'s own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.'],
         ['Session → Sign-in frequency: Every time.'],
-        ['Enable policy: Report-only.'],
+        [`Enable policy: Report-only. ${REFUSE_ON}`],
         ['Create. Rescan in IAMAI.'],
       ],
     },
