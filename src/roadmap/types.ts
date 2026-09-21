@@ -431,6 +431,15 @@ export type Step = {
   /** Named causes (prompt 12 §B): a step, a Setup question, a readiness threshold, or evidence. */
   blockers: Blocker[]
   unblockNotes: string[] // exactly what unblocks it (roadmap.md §6)
+  /**
+   * Who the goal does NOT reach, where the classifier said it is delivered
+   * anyway: the reason in its own words and how many people it names
+   * (coverage/types.ts GoalResult.reasons). A goal can be enforced and still
+   * miss most of the directory — a policy that excludes a group holding 116 of
+   * 122 accounts delivers it for six people — and the step said only "already
+   * delivered, so there is nothing to create". Absent where nothing is short.
+   */
+  coverageShortfall?: { detail: string; people: number; reached: number; active: number }
   population: StepPopulation
   readiness: Readiness
   evidence: Evidence

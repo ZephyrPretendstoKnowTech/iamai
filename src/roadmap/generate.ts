@@ -742,6 +742,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const contentIndexes = ringContextIndexes(snapshot)
   const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
   const expectedCache = new Map<string, string[]>()
+  const excludedCache = new Map<string, number>()
   const populationCache = new Map<string, StepPopulation>()
   const methodTargets = new Map<string, MethodTarget[]>()
   const readinessCache = new Map<string, Readiness>()
@@ -1481,6 +1482,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
     if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...mapping.serviceAccountUserIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
+    // How many of THIS goal's own people the exclusions take out. The line above
+    // subtracts them from the goal's population, so a policy that excludes a
+    // group holding 116 of 122 accounts leaves a goal defined as six people and
+    // reports itself delivered for all of them. That is true of the goal as
+    // redefined and silent about the 116, which is the number a reader needs.
+    if (!excludedCache.has(whoKey)) {
+      const all = whoKey === 'workload' || whoKey === 'serviceAccounts' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
+      excludedCache.set(whoKey, all.filter((id) => excluded.has(id)).length)
+    }
     const popIds = expectedCache.get(whoKey) ?? []
     if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? { total: popIds.length, active: popIds.length, admins: 0, guests: 0, ids: popIds, activeIds: popIds, inScope: popIds.length } : population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
@@ -1929,6 +1939,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // exact cohort is proved or it is not claimed, and never filled in from the
     // goal's population.
     const cohort = isOpenPolicy(asStep) ? cohortFor(stepEffects(asStep)) : null
+    // The denominator. A goal can be delivered and still reach a fraction of the
+    // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
+    // it for six people, and the step said "already delivered, so there is
+    // nothing to create" beside "6 active people" with nothing to compare that
+    // six against. The exclusion itself is EXPECTED — it is the emergency
+    // exclusions group the plan asks for — so nothing in the reasons marks it
+    // wrong; what is worth saying is the size, which needs no judgement at all.
+    const excludedFromGoal = excludedCache.get(whoKey) ?? 0
+    const reached = pop.ids.length
+    // Only where the exclusions take out MORE than the emergency accounts. Those
+    // are excluded by design, on every policy, and saying so on every step would
+    // put a line about two people under thirty rows. Anybody else in that group
+    // is a person the goal was written for and does not reach.
+    const beyondEmergency = excludedFromGoal - mapping.breakGlassUserIds.length
+    const coverageShortfall = beyondEmergency > 0
+      ? { detail: '', people: excludedFromGoal, reached, active: reached + excludedFromGoal }
+      : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && !state.satisfied) {
@@ -2119,6 +2146,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes,
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
+      ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),
       evidence,

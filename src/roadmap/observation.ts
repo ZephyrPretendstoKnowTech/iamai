@@ -44,6 +44,8 @@ import { absoluteDate } from '../copy/dates.ts'
 const OBS = engine.observation
 
 /** The Conditional Access state a scan saw, in the product's words rather than Graph's. */
+import type { Step } from './types.ts'
+
 export type ObservedState = 'absent' | 'disabled' | 'report-only' | 'enforced' | 'unknown'
 
 /** Graph's `state` for a policy the scan matched to a step; a missing policy is not there. */
@@ -483,6 +485,25 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
   if (changed === 'none') return fillText(OBS.unchanged, { state: STATE_WORD[state], date })
   if (changed === 'state') return fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date })
   return fillText(OBS.semanticsChanged, { date })
+}
+
+/**
+ * Whether IAMAI WATCHED this step's policy arrive, rather than finding it as it
+ * is. Two proofs, because one cannot reach the commonest case: `since` is
+ * 'observed-change' only where the artifact id is the same across two scans, so
+ * it catches report-only becoming enforced and never catches absent becoming
+ * present — which is "somebody has just created this". A previous scan that
+ * recorded the policy ABSENT is the other proof, and the stronger one.
+ *
+ * One definition because two surfaces read it: what IAMAI found, and the
+ * who-line's existing-coverage sentence. They disagreed about the same policy on
+ * two rows of one step when only the first had been corrected.
+ */
+export function watchedArrive(step: Pick<Step, 'state'>): boolean {
+  const obs = step.state.observation
+  return obs?.latest.since === 'observed-change'
+    || obs?.prior?.state === 'absent'
+    || step.state.members.some((m) => m.change.prior?.state === 'absent')
 }
 
 /** Microsoft's evidence, where it can still be about the policy that is deployed now. */

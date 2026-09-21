@@ -22,8 +22,8 @@
       "state": "Inforcer application"
     },
     {
-      "label": "Turn Off Security Defaults",
-      "state": "Prerequisite · Waiting"
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

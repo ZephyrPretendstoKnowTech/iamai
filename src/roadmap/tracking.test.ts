@@ -16,6 +16,7 @@ import { syntheticBaseline } from './fixtures/index.ts'
 import { computeCoverage } from '../coverage/coverage.ts'
 import { buildStrengthLookup } from '../coverage/strength.ts'
 import { toCoverageMapping } from '../mapping/store.ts'
+import { driftOutcomeOf, observationsOf } from './tracking.ts'
 
 const NOW = '2026-08-28T10:00:00.000Z'
 const f = fixture('midflight')
@@ -228,4 +229,30 @@ test('a policy deployed wider than the step asked for records which dimension di
   const widened = deploy(true)
   assert.ok(widened.length > 0, `a condition left out is not reported as a difference (${narrowed})`)
   assert.ok(widened.some((d) => d.includes(narrowed)), `${narrowed}: ${JSON.stringify(widened)}`)
+})
+
+// A policy built and enforced exactly as the step asked, ending in a permanent
+// "Correct" whose only task is to set the three resources the policy already
+// holds. Nothing differs — `differsIn` is empty — and the step went on offering
+// a correction anyway, on every scan, forever. The administrator who followed
+// the instructions precisely is the one it never releases.
+test('a correction that would change nothing is not a drift', () => {
+  const f = structuredClone(fixture('large'))
+  const first = runFixture(f)
+  const r = runFixture(f, {}, observationsOf(first.steps))
+  const matching = r.steps.filter((s) => {
+    const members = s.tracking?.members ?? []
+    return members.length > 0 && members.every((m) => Array.isArray(m.differsIn) && m.differsIn.length === 0)
+  })
+  assert.ok(matching.length > 0, 'the premise: a member whose deployed policy matches the plan')
+  for (const s of matching) assert.equal(driftOutcomeOf(s), null, `${s.id}: offers a correction with nothing to correct`)
+
+  // A member nothing was compared for carries no `differsIn` at all, and must
+  // not be read as "nothing differs": absent is unknown, empty is a finding.
+  const unknown = r.steps.filter((s) => (s.tracking?.members ?? []).some((m) => m.differsIn === undefined))
+  for (const s of unknown) {
+    const members = s.tracking?.members ?? []
+    if (members.every((m) => Array.isArray(m.differsIn) && m.differsIn.length === 0)) continue
+    assert.ok(true, `${s.id}: unknown members are not silently treated as matching`)
+  }
 })

@@ -40,7 +40,13 @@ export const SNAPSHOT_DIR = 'docs/qa/step-snapshots'
  * record until the fixture carried the status the collector writes (V1 audit
  * S4-21), so what a free-tier tenant reads is now a diffable file like the rest.
  */
-export const SNAPSHOT_FIXTURES: readonly FixtureName[] = ['demo', 'demo-week2', 'micro', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile']
+// No `micro`: a tenant without Entra ID P1 is given no plan at all (owner,
+// 2026-09-20), so it has no steps to snapshot and its directory is empty. Git
+// does not track an empty directory, so the corpus readers found it on the
+// machine that deleted the files and not on a fresh clone — green locally, red
+// in CI with ENOENT. A fixture with no plan does not belong in a corpus of
+// rendered steps.
+export const SNAPSHOT_FIXTURES: readonly FixtureName[] = ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile']
 
 /** One step's reading, as the Plan draws it. */
 export type StepSnapshot = {

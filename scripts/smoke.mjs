@@ -789,31 +789,25 @@ try {
   check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/MFA Readiness|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
+  //
+  // A tenant without Entra ID P1 is given NO plan (owner, 2026-09-20): Conditional
+  // Access needs P1, so no policy can exist and IAMAI would rather say nothing
+  // than offer half an answer. The Plan is that one sentence and nothing else —
+  // no progress tiles, no lane tabs, no waves — because an empty board reads as a
+  // plan. These checks used to assert the free-tier ladder WAS the plan.
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
-  check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
-  check('Unlicensed tenant: the plan footer names what is not licensed', /Not licensed \(\d+\)/.test(t))
+  check('Unlicensed tenant: the Plan says Conditional Access needs Entra ID P1', /Conditional Access needs Entra ID P1/.test(t), (t.match(new RegExp('[^' + String.fromCharCode(10) + ']*needs Entra ID P1[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
+  check('Unlicensed tenant: it says it would rather say nothing than half an answer', /rather say nothing than give you half an answer/.test(t))
+  check('Unlicensed tenant: no plan is drawn — no step count, no board', !/[0-9]+ steps/.test(t) && !(await evaluate(`document.querySelector('main.page .plan-row') !== null`)), t.replace(/\s+/g, ' ').slice(0, 160))
+  check('Unlicensed tenant: no progress tiles around an empty plan', !(await evaluate(`document.querySelector('main.page .plan-progress') !== null`)))
   await send('Page.navigate', { url: `${BASE}&licence=free#/readiness` })
   await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && /no sign-in records/.test(document.body.innerText)`)
   t = await text()
-  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
+  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(new RegExp('[^' + String.fromCharCode(10) + ']*sign-in records[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
   // Without sign-in records nobody can be confirmed: the legend names no Ready or Seamless people.
-  check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
-  await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
-  await sleep(1500)
-  check('Unlicensed tenant: the plan still generates', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
-  t = await text()
-  // The ladder steps carry the data file's names as their titles (prune C).
-  const ladderNames = JSON.parse(readFileSync('data/free-tier-ladder.json', 'utf8')).items.map((i) => i.name)
-  check('Unlicensed tenant: the ladder steps are the plan', ladderNames.filter((n) => t.includes(n)).length >= 2, ladderNames.filter((n) => t.includes(n)).join(' | '))
-  t = await text()
-  check('Unlicensed tenant: nothing asks for objects a policy would reference', !/Create a trusted named location|Create the exclusions group/.test(t))
-  check(
-    'Unlicensed tenant: a step opens in place',
-    (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) &&
-      (await waitFor(`document.querySelector('main.page .step-body') !== null`)),
-  )
+  check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
   check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))

@@ -29,6 +29,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { membersOf } from '../../roadmap/stepGroups.ts'
+import { cleanupEntry } from './cleanupExport.ts'
 
 /** The group's five members, in registry order (roadmap/stepGroups.ts). */
 const PROTECT_ADMINS = [
@@ -164,6 +165,7 @@ test('A8: the Cleanup row this step waits on is named, not printed as its id', (
   // that points at a Cleanup row, and it printed the row's id.
   const raw: string[] = []
   const named: string[] = []
+  const titled: string[] = []
   for (const fx of readdirSync('docs/qa/step-snapshots')) {
     for (const f of readdirSync(join('docs/qa/step-snapshots', fx))) {
       const snap = JSON.parse(readFileSync(join('docs/qa/step-snapshots', fx, f), 'utf8')) as { tiles: { label: string; state: string }[] }
@@ -172,11 +174,20 @@ test('A8: the Cleanup row this step waits on is named, not printed as its id', (
         // prerequisite word is its check (owner, 2026-09-20; quality audit 2.4).
         if (/^(cleanup|s)-[a-z0-9-]+$/.test(t.label)) raw.push(`${fx}/${f}: ${t.label}`)
         if (t.label === 'Verify Emergency Access') named.push(`${fx}/${f}`)
+        if (/Prerequisite/.test(t.state) && t.label.length > 0) titled.push(t.label)
       }
     }
   }
   assert.deepEqual(raw, [], 'a step tile shows a raw step id instead of a title')
-  assert.ok(named.some((n) => n.endsWith(`${PASSKEY}.json`)), named.join(' | '))
+  // Non-vacuity: prerequisite tiles are drawn and carry titles. The anchor used
+  // to be the Cleanup row itself, on the passkey step. It is not drawn there any
+  // more and should not be: Verify Emergency Access waits on Configure Passkey
+  // Authentication, so the tile now names the step that can be done first
+  // (stepContract.ts directOnly). The rule above — never a raw id — is what this
+  // test is for, and the cleanup path it was written for is covered directly
+  // below rather than through whichever step happens to list it.
+  assert.ok(named.length + titled.length > 20, `prerequisite tiles found: ${titled.length}`)
+  assert.equal(cleanupEntry('drill')?.title, 'Verify Emergency Access', 'a Cleanup row still resolves to its title')
 })
 
 // ---------------------------------------------------------------------------

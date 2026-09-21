@@ -25,7 +25,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
-import { dimensionWords } from '../../roadmap/observation.ts'
+import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
@@ -115,6 +115,7 @@ type ContractWords = {
   readinessValue: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
+  foundShortfall: string
   foundDiffers: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
@@ -568,10 +569,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
     // for. A previous scan that recorded this step's policy as ABSENT is the
     // other proof, and a stronger one: whatever is here now arrived after IAMAI
     // looked, whoever made it and however fast.
-    const obs = step.state.observation
-    const watched = obs?.latest.since === 'observed-change'
-      || obs?.prior?.state === 'absent'
-      || step.state.members.some((m) => m.change.prior?.state === 'absent')
+    const watched = watchedArrive(step)
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
@@ -579,6 +577,17 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
           ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
           : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
     out.push(found('in-place', text))
+  }
+  // Who the goal does not reach, where it is delivered anyway (roadmap/types.ts
+  // coverageShortfall). "Already delivered ... so there is nothing to create" is
+  // true of the goal and says nothing about the people outside it, and a reader
+  // has no way to tell a policy covering everybody from one covering six of a
+  // hundred and twenty-two.
+  // Only where the goal IS delivered: on a step that is not deployed, "it does
+  // not reach 38 people" is the same fact as "not deployed", said twice.
+  const shortfall = step.coverageShortfall
+  if (shortfall && shortfall.people > 0 && step.state.satisfied) {
+    out.push(found('shortfall', fillText(CONTRACT.foundShortfall, { reached: String(shortfall.reached), active: String(shortfall.active), n: String(shortfall.people) })))
   }
   // The deployed policy against what this step asked for, dimension by dimension
   // (tracking.ts `differsIn`). A policy built wider than the plan asked — a
@@ -766,7 +775,16 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     // listing "until phones and computers are decided" under Fix before
     // continuing restated the question the step is asking (owner, 2026-09-11).
     if (b.kind === 'decision') continue
-    if (typeof b.binding === 'string' && b.binding.length > 0) out.push({ key: `${b.kind}:${b.label}`, text: b.kind === 'readiness' && b.label === 'session-loop' ? shared.sessionLoopReview as string : b.binding })
+    // A readiness wait states its own number, except where the number is a dead
+    // end: nothing in the plan creates a Temporary Access Pass, so "when 1
+    // Temporary Access Pass policy exists (now 0)" told the reader a count and
+    // no way to change it, with four steps waiting behind it.
+    if (typeof b.binding === 'string' && b.binding.length > 0) {
+      const written = b.kind === 'readiness' && b.label === 'session-loop' ? shared.sessionLoopReview as string
+        : b.kind === 'readiness' && b.label === 'registration-no-tap' ? shared.noTemporaryAccessPass as string
+        : null
+      out.push({ key: `${b.kind}:${b.label}`, text: written ?? b.binding })
+    }
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3). A
   // fix that names the step which makes what a Direction answer chooses — Define
@@ -808,6 +826,18 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
 function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): Omit<ContractAction, 'gatedBy'> {
   if (step.state.setAside) return { kind: 'restore', text: CONTRACT.setAsideAction }
   if (reason !== null) return { kind: 'resolve', text: reasonLine(step, reason, tenant, exclusionsUnconfirmed) }
+  // A finished step with hardening still open has something to do: it is not
+  // held by it, and the rollout continues, but "No change needed." over an open
+  // recommendation is the step contradicting the card beneath it. The two-tier
+  // rule's own words say it instead — minimum available, less resilient than
+  // recommended, fix or defer. On an emergency account whose only recovery
+  // credential is a passkey on somebody's phone, "No change needed" was the
+  // loudest sentence on the page and the wrongest.
+  // Read from the step's own findings rather than the hardening tally: the tally
+  // counts only the checks EMERGENCY_ACCOUNT_RULES lists, so a recommendation
+  // about the credential itself — the one that matters most here — is not in it.
+  const openHardening = !step.emergency?.deferredAt && (step.configurationFindings ?? []).some((f) => f.outcome !== 'pass')
+  if (openHardening && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: CONTRACT.hardening.leadDefer }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
@@ -1639,22 +1669,33 @@ function tileStepOf(t: ReadinessTile): string | null {
 }
 
 /**
- * Readiness tiles name direct prerequisites only (U7, decision 12, R-READY
- * "Transitive vs direct"): a prerequisite step that another prerequisite tile of
- * this step already waits on, through the dependency graph, is that tile's to
- * finish first, and is not drawn beside it. Two steps that wait on each other
- * (the reciprocal cutover pair) are neither's ancestor, and both stay. A step
- * named twice (a fix for the object it makes and the edge on it) is one tile:
- * the first, which says why.
+ * Readiness tiles name the prerequisites a person can act on (U7, decision 12,
+ * R-READY "Transitive vs direct"). Where this step waits on two prerequisites
+ * and one of them waits on the other, only one tile is drawn — and it is the one
+ * that is NOT waiting, because that is the step somebody can go and do today.
+ *
+ * It used to be the other way round: the prerequisite that others waited on was
+ * treated as "that tile's to finish first" and dropped. The reasoning holds only
+ * if the tile that remains leads anywhere. Block Legacy Authentication waits on
+ * both Create or Correct Service Accounts Group and Turn Off Security Defaults,
+ * and Turn Off Security Defaults waits on Block Legacy Authentication — so the
+ * tile that survived was the reciprocal half that cannot move, and the one step
+ * that would have released the whole chain was not named on any surface. An
+ * administrator sat in front of that for weeks of simulated time; the plan never
+ * unlocked.
+ *
+ * Two steps that wait on each other are neither's ancestor, so the cutover pair
+ * is untouched and still draws both. A step named twice (a fix for the object it
+ * makes and the edge on it) is one tile: the first, which says why.
  */
 function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
   const named = [...new Set(tiles.map(tileStepOf).filter((id): id is string => id !== null))]
-  const ancestors = new Set(named.filter((a) => named.some((b) => b !== a && dependentsOf(a).has(b) && !dependentsOf(b).has(a))))
+  const waitingOnAnother = new Set(named.filter((a) => named.some((b) => b !== a && dependentsOf(b).has(a) && !dependentsOf(a).has(b))))
   const drawn = new Set<string>()
   return tiles.filter((t) => {
     const id = tileStepOf(t)
     if (id === null) return true
-    if (ancestors.has(id) || drawn.has(id)) return false
+    if (waitingOnAnother.has(id) || drawn.has(id)) return false
     drawn.add(id)
     return true
   })
