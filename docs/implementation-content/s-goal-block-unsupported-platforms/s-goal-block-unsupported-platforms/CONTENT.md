@@ -4,7 +4,7 @@
 3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: set **Configure** to **Yes**, then include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.
    **Linux** is a platform Conditional Access supports and this target does not exclude, so Linux sign-ins fall inside the block along with any request that reports no platform.
 4. Grant: **Block access**. Leave session controls unconfigured.
-5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
@@ -38,6 +38,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
 - Reopen the policy by its ID. Confirm it is still **Report-only**, its settings match the intended target, and each required workflow on an affected platform has an approved, tested access path.
+- Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only.
 - Change **Enable policy** to **On** and save.
 - Verify after the change: a sign-in from a supported platform still works, and emergency access still works.
 - Rescan in IAMAI.

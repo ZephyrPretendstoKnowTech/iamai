@@ -12,7 +12,7 @@
 3. Users → Include: All users. Exclude: the IAMAI-resolved exclusions. Do not copy IDs from another tenant or widen or narrow the population.
 4. Target resources: All resources. Conditions → Device platforms → Configure: Yes, then Include: Android and iOS. Left at No it applies to all device platforms.
 5. Grant → Grant access → **Require app protection policy**, with no other control. Leave session controls as the target sets them; the baseline sets none.
-6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 7. Re-open the policy, compare its users, resources, platforms, grant and session settings with IAMAI, and rescan.
 @@IAMAI-END
 
@@ -43,7 +43,7 @@ Keep the policy in **Report-only** while you review the evidence listed for this
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the policy by the same policy ID. Confirm it is still Report-only, its settings match the intended target, and IAMAI shows the Intune App Protection prerequisite as satisfied. Change **Enable policy** to **On** and save. Verify after the change: a test user can open work data in the supported apps on iOS/iPadOS and Android, and emergency access still works. Then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still Report-only, its settings match the intended target, and IAMAI shows the Intune App Protection prerequisite as satisfied. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** to **On** and save. Verify after the change: a test user can open work data in the supported apps on iOS/iPadOS and Android, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

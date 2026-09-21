@@ -18,7 +18,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 6. Do not configure sign-in risk, platform, network/location, device, client-app restriction, authentication-flow, or workload-risk conditions. Microsoft's grant reference allows this policy only the users, applications and user-risk conditions.
 7. Grant: **Grant access** → Require authentication strength: **{{authStrength.target.displayName}}** **and** Require password change → **Require all selected controls**. That is the pair the pinned baseline holds, and it is what IAMAI compares the tenant against.
 8. Session: not configured.
-9. Enable policy: **Report-only**.
+9. Enable policy: **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 10. Create, read back, and rescan IAMAI.
 @@IAMAI-END
 
@@ -74,7 +74,7 @@ This policy covers Medium user risk only. Keep the separate High-risk control un
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 1. Open policy ID `{{policy.current.id}}` and confirm it still matches the intended settings and is Report-only.
-2. Change only Enable policy from Report-only to **On**. Leave users, exclusions, conditions and grant unchanged, and leave the High-risk policy unchanged.
+2. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change only Enable policy from Report-only to **On**. Leave users, exclusions, conditions and grant unchanged, and leave the High-risk policy unchanged.
 3. Read back the policy and rescan IAMAI.
 
 Verify after the change: the policy reads back On with Medium user risk only, All resources, the resolved group exclusions, all guest/external types excluded, and the grant pair this step's create procedure names (all selected). The separate High-risk policy is still enabled. Users in scope have MFA registered, and password writeback works for synchronized users.

@@ -6,7 +6,7 @@
 5. Target resources: **All resources**.
 6. Conditions → Locations: set **Configure** to **Yes**, then Include **Any location** and Exclude the trusted-network location with ID `{{policy.target.trustedLocationId}}`. Left at **No** the policy applies in every location, the office included, and Block access there stops the device completely.
 7. Grant: **Block access**. Do not add an interactive control: a room account has no second device to approve one with.
-8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Create it, then rescan before any enforcement.
+8. Enable policy: **Report-only**. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only. Create it, then rescan before any enforcement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -50,7 +50,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open the dedicated policy by the same policy ID and re-confirm that the trusted-network location still matches the public IP addresses the devices use. Change **Enable policy** from Report-only to **On** and save. Verify after the change: a real shared device signs in from the approved network. Then rescan IAMAI.
+Open the dedicated policy by the same policy ID and re-confirm that the trusted-network location still matches the public IP addresses the devices use. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change **Enable policy** from Report-only to **On** and save. Verify after the change: a real shared device signs in from the approved network. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

@@ -17,7 +17,7 @@ In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policie
 4. Conditions > User risk: set **Configure** to **Yes**, then **High** only. Left at **No** the policy has no risk condition, and its remediation requirement reaches every sign-in.
 5. Grant: **Grant access > Require risk remediation** with authentication strength **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.
 6. Session: confirm **Sign-in frequency = Every time**.
-7. Enable policy: **Report-only**.
+7. Enable policy: **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 8. Create, then rescan IAMAI. Do not turn it On in this create action.
 @@IAMAI-END
 
@@ -69,7 +69,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
-Immediately before the change, read back the policy by its policy ID and confirm: High user risk only, All resources, the resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, password writeback where synchronized password users need it, guest/external handling, and no unresolved active-risk blocker. Then change only **Enable policy** from **Report-only** to **On**.
+Immediately before the change, read back the policy by its policy ID and confirm: High user risk only, All resources, the resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, password writeback where synchronized password users need it, guest/external handling, and no unresolved active-risk blocker. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Then change only **Enable policy** from **Report-only** to **On**.
 
 Verify after the change: the policy reads back On, and remediation and sign-in failures are reviewed. If legitimate remediation fails, return the same policy to Report-only.
 @@IAMAI-END

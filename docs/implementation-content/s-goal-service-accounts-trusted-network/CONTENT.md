@@ -17,7 +17,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 6. Client apps: All. Configure no other conditions.
 7. Grant: Block access.
 8. Session: not configured.
-9. Enable policy: Report-only.
+9. Enable policy: Report-only. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 10. Create, reopen the policy to check the settings, and rescan in IAMAI.
 @@IAMAI-END
 
@@ -67,7 +67,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Verify the same policy and its prerequisites: the targeted members are user-based service accounts, the trusted location IDs are approved, and job owners have confirmed each required job's source network. Change only **Enable policy** from Report-only to **On**, then reopen the policy to check the state. Verify after the change: the service accounts' jobs still run normally. Rescan in IAMAI.
+Verify the same policy and its prerequisites: the targeted members are user-based service accounts, the trusted location IDs are approved, and job owners have confirmed each required job's source network. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change only **Enable policy** from Report-only to **On**, then reopen the policy to check the state. Verify after the change: the service accounts' jobs still run normally. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}

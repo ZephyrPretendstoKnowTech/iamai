@@ -16,7 +16,7 @@ Leave the tenant-wide legacy device-registration MFA setting unchanged while thi
 5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place. **Require multifactor authentication** and **Require authentication strength** are the only controls this User Action offers; the rest are greyed out.
    Whatever the strength allows, **Windows Hello for Business** and a **device-bound passkey** cannot answer this policy: both need the device to be registered already, and at this moment it is not. Check that the people who register devices hold something else the strength accepts.
 6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.
-7. Set **Enable policy** to **Report-only**.
+7. Set **Enable policy** to **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 8. Create the policy.
 9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.
 
@@ -114,7 +114,7 @@ Verify the same policy and its prerequisites, set it to On, then complete the ch
 1. Go to **Microsoft Entra admin center > Entra ID > Devices > Overview > Device settings**.
 2. Confirm **Require multifactor authentication to register or join devices with Microsoft Entra** is **No**. If it is Yes, set it to No as part of this controlled enforcement change.
 3. Go to **Entra ID > Conditional Access > Policies** and open the exact IAMAI-resolved policy.
-4. Set **Enable policy** from **Report-only** to **On**. Do not change scope, exclusions, User Action, or grant.
+4. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Set **Enable policy** from **Report-only** to **On**. Do not change scope, exclusions, User Action, or grant.
 5. Save the policy.
 6. Verify after the change: a controlled device registration or join succeeds with the required authentication strength, and the identified enrollment workflows still work. Report-only did not evaluate this User Action, so these tests are the first evidence of the registration experience.
 7. Rescan IAMAI.
