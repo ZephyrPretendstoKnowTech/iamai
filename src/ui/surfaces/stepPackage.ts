@@ -461,6 +461,7 @@ export function jsonWithPlanTag(text: string, step: Step): string {
   if (described.length === 0) return text
   let parsed: unknown
   try { parsed = JSON.parse(text) } catch { return text }
+  const pristine = JSON.stringify(parsed)
   if (parsed === null || typeof parsed !== 'object') return text
   let used = 0
   const tagged = (body: unknown): boolean => {
@@ -482,9 +483,12 @@ export function jsonWithPlanTag(text: string, step: Step): string {
     }
   } else if (tagged(parsed)) changed = true
   if (!changed) return text
-  // The tab keeps the shape its template was written in: a body laid out over
-  // lines stays laid out, and a one-line body stays on one line.
-  return JSON.stringify(parsed, null, text.includes(String.fromCharCode(10)) ? 2 : 0)
+  // The tab keeps the shape its template was written in, measured rather than
+  // guessed: whichever way the original round-trips is the way this is written
+  // back. A compact body inside a laid-out request wrapper reads as laid out to
+  // any heuristic over the whole text, and was reflowed.
+  const indent = pristine === text.trim() ? 0 : 2
+  return JSON.stringify(parsed, null, indent)
 }
 
 /** References to a resolved target need the actual settings beside the directions.

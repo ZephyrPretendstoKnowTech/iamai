@@ -68,7 +68,10 @@ test('s-goal-mfa-all-users: the bar names Configure Emergency Exclusions, the th
   assert.ok(demo, 'the demo plan has the MFA step')
   const gate = tilesOf(demo).find((t) => t.key === 'gate')
   assert.ok(gate, 'the demo MFA step has no threshold tile')
-  assert.equal(gate.value, 'not measured')
+  // The scan counted the people and could not judge some of their methods, so the
+  // tile states the floor it can prove rather than nothing at all, and marks it as
+  // a floor (roadmap/readiness.ts atLeast).
+  assert.match(gate.value, /^At least [0-9]+% MFA-ready$/)
   assert.ok(gate.note, 'unmeasured readiness explains the missing evidence')
   // Where the scan could not work out who is held: the line, the link, and what follows it.
   const P = app.plan as unknown as Record<string, Record<string, string>>
