@@ -2007,8 +2007,35 @@ footer.app a {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* The title, and under it — on a held row only — the one thing the row is
+   waiting for (planBoard.ts `waitingForOf`): "After Configure Passkey
+   Authentication", or the Direction answer nobody has saved.
+
+   It reads at the same quiet level as the row's other secondary fact, the
+   `Report-only` / `Enforced` chip in the status column, so the row still has
+   one primary line per zone. It cannot go in the badge — `laneLabelOf` appends
+   the lane tail only on Ready and `compactLane` strips it — nor in the When
+   column, which is a fixed 125px. */
 .plan-row-title {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.plan-row-reason {
+  /* The pack's own subtitle slot under the row title: the first of the three
+     selectors it sets to `--muted` at 12px, the ONE quiet level it gives the
+     row's secondary zones. Production reads that level as `--quiet-text` at
+     `--t-1`, the same as `.who` and `.when`, so the row has one secondary
+     reading and not two. */
+  color: var(--quiet-text);
+  font-size: var(--t-1);
+  line-height: 1.3;
+  /* The row is a fixed-height list item at desktop width; a long step title in
+     the phrase truncates rather than growing the row past its siblings. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The group position, in the lane's own tone and nothing else: `--success-text`
    for Ready and Completed, `--attention-text` for Up Next, `--danger-text` for
@@ -4612,9 +4639,19 @@ footer.app a {
   .plan-column-head > span:nth-child(n + 4) {
     display: none;
   }
+  /* The two zones that wrap land in the TITLE track, which is what the column
+     head above says happens to them. Without the explicit column they fall into
+     the next implicit row at columns 1 and 2 — a 28px cell with "2 people" in
+     it, and the date under it in 110px. Measured in the browser; the row has
+     five children and this grid has three tracks, so the wrap is certain. */
   .plan-row .who,
   .plan-row .when {
+    grid-column: 3;
     text-align: left;
+  }
+  /* The reason line can take the space it needs once the row is already tall. */
+  .plan-row-reason {
+    white-space: normal;
   }
   /* A long state word owns its column rather than being clipped by it (task 017). */
   .plan-row .status {

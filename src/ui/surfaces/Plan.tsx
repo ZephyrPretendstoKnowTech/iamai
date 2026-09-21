@@ -610,7 +610,8 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
-      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
+      {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
+      <PlanRow lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} />}
     </>
   )
@@ -670,8 +671,14 @@ function Row({ step, lane, number, blockers, prerequisiteLabel, onOpenMappings, 
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow). It stays thin
           on purpose: at a baseline of ~38 policies the collapsed rows are what
           makes the Plan readable, so a row says only enough to decide whether to
-          open it — the lane, the tenant fact, the title, who it touches, when.
-          The lane label is its reason; no line under the title repeats it (RUN-CONTEXT-B decision 10). */}
+          open it — the lane, the tenant fact, the title, who it touches, when,
+          and on a held row the one thing it is waiting for.
+          RUN-CONTEXT-B decision 10 said the lane label was the row's reason and
+          no line under the title should repeat it. `8f440021` made that premise
+          false: `laneLabelOf` appends the tail only on Ready, so every held row
+          read "On Hold" and named nothing. The owner resolved the contradiction
+          in favour of this line (planBoard.ts waitingForOf), which is null
+          wherever the lane already reads as its own reason. */}
       <PlanRow
         stepId={step.id}
         lane={lane.label}
@@ -680,6 +687,7 @@ function Row({ step, lane, number, blockers, prerequisiteLabel, onOpenMappings, 
         chip={factOf(step)}
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
+        waitingFor={lane.waitingFor}
         who={rowWho(step)}
         when={when}
         open={open}

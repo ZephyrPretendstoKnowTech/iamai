@@ -225,3 +225,40 @@ test('a step never states a Direction wait the prerequisite beside it already ca
     }
   }
 })
+
+test('every held row names what it is waiting for, and never just repeats its badge', () => {
+  // The collapsed row's badge is one word by design: `laneLabelOf` appends the
+  // lane tail only on Ready, and `compactLane` in StepSections.tsx strips
+  // `On Hold · After ` from the badge if one gets through. So before this, a
+  // held row said "On Hold" and named nothing — fifteen rows of one plan
+  // waiting on an unanswered Direction question and eleven on one named step,
+  // all reading the same two words. An administrator who reads that, goes to
+  // the portal and deploys anyway has been told he cannot and not told what to
+  // do first. `waitingForOf` is the row's line, and it is `holdLabelOf`.
+  const boards = (['small', 'mid', 'midflight', 'large'] as const).map((name) => {
+    const run = runFixture(fixture(name))
+    const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+    return { name, held: [...laneReadings(run.steps)].filter(([, r]) => r.lane === 'On Hold').map(([id, r]) => ({ id, view: laneViewOf(r, titleOf) })) }
+  })
+
+  // The invariant, over every fixture: the badge is not the whole row. A held
+  // row that names nothing is the defect, whatever kind of thing holds it.
+  for (const { name, held } of boards) {
+    assert.ok(held.length > 0, `${name}: the premise — the fixture holds something`)
+    for (const { id, view } of held) {
+      assert.equal(view.label, 'On Hold', `${name}/${id}: the badge stopped being the bare lane, so this test is reading the wrong thing`)
+      assert.ok(view.waitingFor, `${name}/${id}: a held row that names nothing`)
+      assert.notEqual(view.waitingFor, view.label, `${name}/${id}: the row's reason repeats its badge`)
+    }
+  }
+
+  // The three shapes a hold takes, said the three ways a person can act on.
+  const named = new Map(boards.find((b) => b.name === 'mid')!.held.map(({ id, view }) => [id, view.waitingFor]))
+  // A healthy prerequisite names the step to go and do, by its title.
+  assert.equal(named.get('s-ladder-operator-passkey'), 'After Configure Passkey Authentication')
+  // A Direction question nobody has answered names the answer, not the step asking it.
+  assert.equal(named.get('s-goal-geo-restriction'), directionWords.waiting)
+  // A hold that is a fact about the tenant names the fact.
+  assert.equal(named.get('s-goal-service-accounts-trusted-network'), 'Baseline references an unmapped group')
+  assert.equal(named.get('s-goal-guests-mfa'), 'Not supported')
+})

@@ -42,7 +42,7 @@ import { autoOpenTiles } from './tileExpansion.ts'
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, number = null, stepId, title, who, when, open, onToggle }: {
+export function PlanRow({ lane, tone, chip = null, wave = null, number = null, stepId, title, waitingFor = null, who, when, open, onToggle }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
@@ -63,6 +63,15 @@ export function PlanRow({ lane, tone, chip = null, wave = null, number = null, s
   /** The step the row opens: where the Plan moves the page to (Plan.tsx after a Direction answer). */
   stepId?: string
   title: string
+  /**
+   * What a held row is waiting for, named (planBoard.ts waitingForOf), or null.
+   *
+   * The badge cannot carry it: `laneLabelOf` appends the lane tail only on
+   * Ready, and `compactLane` below strips `On Hold · After ` from the badge if
+   * one gets through, because the badge is one word by design. The When column
+   * cannot either — it is fixed 125px. So it goes here, under the title.
+   */
+  waitingFor?: string | null
   who: string
   /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
   when: string
@@ -97,10 +106,15 @@ export function PlanRow({ lane, tone, chip = null, wave = null, number = null, s
         <span className={`lane lane-${tone}`}>{compactLane(lane)}</span>
         {chip && <Status tone={tone}>{chip}</Status>}
       </span>
-      {/* The pack's `.row-title`: the title. Why the row is where it is, is the
-          lane label's; which step is next, is the Ready tab's order (decision 10). */}
+      {/* The pack's `.row-title`: the title, and beneath it what a held row is
+          waiting for. Decision 10 gave the reason to the lane label, on the
+          premise that the label carried it; `8f440021` stopped that being true
+          by appending the tail only on Ready, so a held row said "On Hold" and
+          nothing else. The owner resolved it in favour of this line. Which step
+          is next is still the Ready tab's order. */}
       <span className="plan-row-title">
         <span className="step-title">{title}</span>
+        {waitingFor && <span className="plan-row-reason">{waitingFor}</span>}
       </span>
       <span className="who">{who}</span>
       <span className="when">{when}</span>
