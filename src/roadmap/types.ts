@@ -271,6 +271,23 @@ export type Action = {
    * strictness rather than helping with it, and they are how readiness gets to
    * the threshold in the first place.
    */
+  /**
+   * The cohort this step is named for, where the policy it offers to CREATE
+   * reaches every user in the tenant instead (roadmap/generate.ts). A step
+   * called "Require MFA for Guests", on a tenant with one guest, offered to
+   * create a policy named "MFA for guests and external users" that applied to
+   * all eleven people: the baseline's all-users MFA policy, matched to the
+   * guests goal because a signature reads the control a policy asks for and
+   * never who it asks it of.
+   *
+   * Disclosure, never selection. Two Foundation A invariants say the goal's
+   * population must not decide which policy is built, and they are right — a
+   * tool that quietly swaps in a different policy than the baseline author
+   * specified is worse than one that says what this one reaches. So this
+   * changes no operation and no reach: it is a sentence, and the reader
+   * decides.
+   */
+  widerThan?: string
   readinessGate?: {
     measure: string
     threshold: string
