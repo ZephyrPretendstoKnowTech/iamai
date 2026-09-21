@@ -411,6 +411,8 @@
     },
     "csvNotice": "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
     "planPromptTitle": "Explain this plan",
+    "proposedNameFollowsConvention": "This follows the convention {tenant} already uses.",
+    "proposedNameDocumented": "{tenant}’s own policy names do not agree on one shape, so this is the documented pattern.",
     "noTemporaryAccessPass": "Turn on a Temporary Access Pass first: Entra ID → Authentication methods → Policies → Temporary Access Pass, enabled and scoped to the people who need one. This policy asks for MFA in order to register MFA, so somebody who has no method yet has no way in without a pass. No step of this plan creates it for you.",
     "sessionLoopReview": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue.",
     "sessionLoopHold": "Review MFA before enabling Every time"
@@ -666,6 +668,7 @@
         "waiting": "After prerequisites",
         "review": "After review",
         "reviewNow": "Review now",
+        "decideNow": "Decide now",
         "done": "Already in place",
         "deferred": "Not scheduled",
         "estimate": "Est. {date}"
@@ -1668,6 +1671,10 @@
             "guest": "guests in scope",
             "admin": "admins",
             "device": "people in scope"
+          },
+          "readinessRoute": {
+            "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
+            "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
           },
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
@@ -2931,7 +2938,7 @@
         "createIfNeeded": "Create one if {tenant} does not already have an exclusions group. IAMAI reads the groups your policies name, not every group in the tenant, so it cannot tell you there is none.",
         "create": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned, never Dynamic.",
-          "Name it {proposedName}, which follows the convention {tenant} already uses.",
+          "Name it {proposedName}. {proposedNameNote}",
           "Add only the accounts chosen in Prepare Emergency Access Accounts: {list:emergencyAccounts}.",
           "Leave it without a licence and not mail-enabled."
         ],
@@ -3121,7 +3128,7 @@
         "lead": "Create the countries named location the country rule reads, holding exactly the countries people work from.",
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location.",
-          "Name it {proposedName}, which follows the convention {tenant} already uses.",
+          "Name it {proposedName}. {proposedNameNote}",
           "Determine location by IP address: Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. Select {list:countriesList}",
           "Leave \"Include unknown countries/regions\" off, so a sign-in whose address maps to no country is treated as outside the list.",
           "A countries location carries no trusted mark; trust belongs to the IP ranges location Define the Trusted Network creates."
@@ -3213,7 +3220,7 @@
         "steps": [
           "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
-          "Name it {proposedName}, which follows the convention {tenant} already uses.",
+          "Name it {proposedName}. {proposedNameNote}",
           "Add each approved range in CIDR notation, as narrow as the network owner's allocation. Entra accepts only masks greater than /8, and no more than two thousand ranges in one location.",
           "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
           "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
@@ -3303,7 +3310,7 @@
         "lead": "Create the group and add only the accounts an application owner confirmed run unattended.",
         "steps": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
-          "Name it {proposedName}, which follows the convention {tenant} already uses.",
+          "Name it {proposedName}. {proposedNameNote}",
           "Add: {list:serviceAccounts}",
           "Any account named as a mail-sending device in Confirm What You Use is already on that list.",
           "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
@@ -3467,7 +3474,7 @@
       "whatToDo": {
         "lead": "Security defaults and Conditional Access are not meant to run together, and the rule runs both ways: security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on. That is why nothing in this plan enforces before this step. Turn them off on the day Require MFA for Everyone enforces, and not before.",
         "steps": [
-          "Confirm Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all four enforce today.",
+          "Check each policy that takes over: Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins. Any one of them not enforced already must have run in report-only with no failures before you turn it on today.",
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled (not recommended) → Save. You need at least the Conditional Access Administrator role.",
           "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
         ]
@@ -3529,11 +3536,11 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before, disable the per-user MFA state on each account listed here.",
+        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state. IAMAI cannot read those states, so it cannot list the accounts for you: the Per-user MFA page is where they are.",
         "steps": [
           "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
-          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → All users → Per-user MFA → select the accounts above → Disable MFA. You need at least the Authentication Policy Administrator role.",
-          "Read each state back as Disabled, then delete any app password these accounts still hold, because an app password bypasses MFA on its own."
+          "Once Require MFA for Everyone is On: Entra admin center → Entra ID → Users → All users → Per-user MFA. Use that page’s own Enabled and Enforced views, select every account they list, and choose Disable MFA. You need at least the Authentication Policy Administrator role.",
+          "Read each state back as Disabled, then delete any app password those accounts still hold, because an app password bypasses MFA on its own."
         ]
       },
       "dates": null,

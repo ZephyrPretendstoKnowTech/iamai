@@ -267,6 +267,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',
   '.shared.changeRemovesGuests',
+  // The other half of the proposed-name line (stepVars.ts proposedNameNote): the
+  // example tenant's own policy names agree on a convention, so the name follows
+  // it and the documented-pattern sentence does not render here.
+  '.shared.proposedNameDocumented',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52

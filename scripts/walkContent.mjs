@@ -119,7 +119,7 @@ export const ACCEPTANCE = [
   // MFA for Everyone G1-G7 (docs/plans/mfa-everyone-spec.md section 8, Microsoft
   // Learn checked 2026-09-20): the step's outcome is the per-user state, not the
   // methods-policy migration, which its own Completion Criteria already said.
-  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Per-user MFA → select the accounts above → Disable MFA', mustNot: 'Manage migration → Migration complete.' },
+  { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Users → All users → Per-user MFA.', mustNot: 'Manage migration → Migration complete.' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'it never requires MFA, so finishing its migration is not what finishes this step' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'why', must: 'asked for MFA at every sign-in whatever the policy decides' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'skip for federated requests from your intranet' },

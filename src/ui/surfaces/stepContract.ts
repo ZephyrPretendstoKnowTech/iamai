@@ -111,6 +111,8 @@ type ContractWords = {
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
+  /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
+  readinessRoute: Record<string, string>
   /** The threshold tile's collapsed value, by its measure's family: the percentage and what it measures (content review S3). */
   readinessValue: Record<string, string>
   foundInPlace: string
@@ -1345,7 +1347,22 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     if (step.state.lifecycle === 'enforced') return line
     return fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line })
   }
-  if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) return fillText(CONTRACT.foundReadiness, { ...gate })
+  if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) {
+    // Where the number is moved, for a measure this plan runs no step for
+    // (CONTRACT.readinessRoute). Device readiness held four steps at 30% of 80%
+    // with nothing on the plan that enrols a device, so the gate stated a
+    // percentage and no way to change it — the Temporary Access Pass dead end
+    // again, one family along.
+    const route = CONTRACT.readinessRoute[familyOf(gate) ?? ''] ?? null
+    const waits = `${fillText(CONTRACT.foundReadiness, { ...gate })}${route ? ` ${route}` : ''}`
+    // The percentage's own numerator. "67% MFA-ready" says how far off the gate
+    // is and nothing about who: the reading behind it — how many people have a
+    // method the target policies accept, out of how many — is computed by
+    // roadmap/methodReadiness.ts, and until now it reached the screen only when
+    // the percentage could not be worked out at all. The number a person can act
+    // on was withheld exactly when there was one.
+    return counted && !waits.includes(line) ? `${waits} ${line}` : waits
+  }
   const family = familyOf(gate) ?? 'mfa'
   return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
 }
@@ -1558,7 +1575,13 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
     if (b.kind === 'missingObject' && [...present].some((k) => k.startsWith('missing:'))) continue
-    out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: null })
+    // The kinds with no tile of their own said their own label twice and
+    // nothing else: "Not supported · Not supported ·". Why Foundation A offers
+    // nothing is already on the contract (`implementation.reason`) and was
+    // rendered here only when no fix displaced the implementation tile, so the
+    // one blocker that leaves a step with no work to do explained itself on
+    // some steps and not on others.
+    out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: c.implementation.offered ? null : c.implementation.because })
   }
   return out
 }

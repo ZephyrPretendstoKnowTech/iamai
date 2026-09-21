@@ -130,7 +130,14 @@ test('recovery tests can be recorded separately, expire, and never cover a newly
 })
 
 test('cleanup completion reopens when the work changes; scan checkpoint trimming retains all decisions', () => {
-  const f = fixture('messy')
+  // Two live policies named off the tenant's own shape, so the naming row has
+  // work to complete. `messy` used to supply this by accident, through its
+  // twenty-four switched-off policies outvoting its twelve live ones
+  // (coverage/organisation.ts).
+  const f = fixture('large')
+  const live = (f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]).filter((x) => x.state !== 'disabled')
+  live[0].displayName = 'Ad hoc legacy block'
+  live[1].displayName = 'Ad hoc guest rule'
   const r = runFixture(f)
   const phase = r.schedule.cleanup!
   const row = phase.rows.find((r) => r.kind === 'naming')!

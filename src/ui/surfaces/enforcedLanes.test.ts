@@ -222,7 +222,9 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
   const gate = admins.action.readinessGate!
   assert.equal(admins.state.lifecycle, 'report-only')
-  assert.equal(note(admins), `Enforcement waits for admin readiness to reach ${gate.threshold}; it is ${gate.value} today.`)
+  // And the reading behind the percentage, which the gate held and did not say
+  // (stepContract.ts readinessSentence).
+  assert.equal(note(admins), `Enforcement waits for admin readiness to reach ${gate.threshold}; it is ${gate.value} today. ${admins.readiness.lines[0]}`)
   const on = { ...admins, state: { ...admins.state, lifecycle: 'enforced' } } as Step
   assert.equal(note(on), `${gate.value} of admins have a qualifying method.`)
 })

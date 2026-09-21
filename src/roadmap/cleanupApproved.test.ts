@@ -54,7 +54,13 @@ test('naming completion requires approved names on the same IDs, no collision, a
 })
 
 test('naming proposals identify collisions before saving and retain descriptive source words', () => {
-  const f = fixture('messy')
+  // One live policy named off the tenant's own shape, so there is a proposal to
+  // collide with. `messy` used to supply this by accident, through its
+  // twenty-four switched-off policies outvoting its twelve live ones
+  // (coverage/organisation.ts).
+  const f = fixture('large')
+  const live = (f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]).filter((x) => x.state !== 'disabled')
+  live[0].displayName = 'Ad hoc legacy block'
   const run = runFixture(f)
   const phase = run.schedule.cleanup!
   const proposal = phase.namingProposals![0]

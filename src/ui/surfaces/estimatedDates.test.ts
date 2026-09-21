@@ -12,7 +12,10 @@ import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts
 import { schedulingWords } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { boardWhenOf } from './planBoard.ts'
+import { boardWhenOf, laneViewFor, laneViewOf, waveStartOf } from './planBoard.ts'
+import { laneReadings } from './planLanes.ts'
+import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
+import { cleanupEntry } from './cleanupExport.ts'
 
 const DAY = 86_400_000
 const t = (iso: string): number => Date.parse(iso)
@@ -130,5 +133,51 @@ test('a finished step keeps the day it was finished, however long ago', () => {
     assert.ok(dayOf(at) < dayOf(today))
     assert.equal(boardWhenOf(s), absoluteDate(at), `${s.id} reads the day it was finished`)
     assert.equal(s.scheduled?.class, 'complete')
+  }
+})
+
+// One authority for "is this row finished" and one for "is it held": the lane
+// (planLanes.ts, the dependency graph). Turn Off Security Defaults carried no
+// blocker of its own while the graph held it behind another step's milestone, and
+// read a near, ordinary day; Prepare Your Team for MFA carried status `done`
+// while an unconfirmed list on it held thirteen policies, and read "Already in
+// place" beside a Needs a decision bar.
+test('the When column never dates a row the board holds, and never calls a row finished that the board does not', () => {
+  let held = 0
+  let live = 0
+  for (const name of ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const answers = f.mapping.breakGlassAnswers ?? null
+    const cleanup = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, answers) }))
+    const readings = laneReadings(r.steps, cleanup)
+    const titleOf = (id: string): string | null => { const x = r.steps.find((y) => y.id === id); return x ? x.plainTitle || x.title : null }
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+      const when = boardWhenOf(step, waveStartOf(step), lane)
+      const dated = /[0-9]{4}$/.test(when)
+      if (lane.lane === 'On Hold' && lane.substatus === null && step.blockedBy.length === 0 && step.status !== 'skipped') { held++; assert.equal(dated, false, `${name}/${step.id}: held row dated ${when}`) }
+      if (step.status === 'done' && lane.lane !== 'Completed') { live++; assert.notEqual(when, schedulingWords.done, `${name}/${step.id}`); assert.equal(dated, false, `${name}/${step.id}: unfinished row dated ${when}`) }
+    }
+  }
+  assert.ok(held > 0 && live > 0, `held ${held}, live ${live}`)
+})
+
+// A Ready · Decision row says the decision, never "Not scheduled" — the word for work outside the rollout.
+test('a Ready row with a decision open and no scheduled day says the decision is the action', () => {
+  for (const name of ['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const answers = f.mapping.breakGlassAnswers ?? null
+    const cleanup = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, answers) }))
+    const readings = laneReadings(r.steps, cleanup)
+    const titleOf = (id: string): string | null => { const x = r.steps.find((y) => y.id === id); return x ? x.plainTitle || x.title : null }
+    for (const step of r.steps) {
+      const reading = readings.get(step.id)
+      const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+      if (lane.lane !== 'Ready' || lane.substatus !== 'Decision') continue
+      assert.notEqual(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.none, `${name}/${step.id}`)
+    }
   }
 })

@@ -136,7 +136,7 @@ function snapshotOf(step: Step, ctx: StepVarContext, lane: LaneView, blockers: P
     headings: headingsOf(b),
     tiles: b.readiness.tiles.map((t) => ({ label: t.label, state: t.value })),
     channels: channelTabsOf(b.artifacts).map((t) => String(t.label)),
-    when: boardWhenOf(step, waveStart),
+    when: boardWhenOf(step, waveStart, lane),
   }
 }
 

@@ -131,8 +131,11 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       if (lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step), lane)
-      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
-      if (step.status === 'done') assert.ok(when === 'Already in place' || DAY.test(when), `${where}: completion has neither evidence nor a date`)
+      assert.ok(['Not scheduled', 'Review now', 'Decide now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
+      // Only where the board also reads the row Completed: a step whose own status
+      // is `done` while its lane still has work for it is not a finished row.
+      if (step.status === 'done' && lane.lane === 'Completed') assert.ok(when === 'Already in place' || DAY.test(when), `${where}: completion has neither evidence nor a date`)
+      if (step.status === 'done' && lane.lane !== 'Completed') assert.ok(when !== 'Already in place' && !DAY.test(when), `${where}: an unfinished row reads as finished ("${when}")`)
       checked += 1
     }
   }

@@ -1040,6 +1040,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
       .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
       .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true && mapping.trustedLocationIds.includes(l.id ?? ''))
+    // Every trusted IP named location the scan read, selected or not. A tenant
+    // whose answer is "everyone works remotely" still has whatever its
+    // directory holds, and the tile said only "No office network is selected" —
+    // so a tenant carrying a trusted "Head office" read Completed beside a
+    // sentence that sounded like a reading of the tenant and was a reading of
+    // the answer. The answer still decides (decisions capture intent); the
+    // evidence stands beside it.
+    const trustedInTenant = (snapshot.config.namedLocations?.rows ?? [])
+      .map((l) => l as { id?: string; displayName?: string; isTrusted?: boolean; '@odata.type'?: string })
+      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation') && l.isTrusted === true)
+      .map((l) => (l.displayName ?? l.id ?? '').split(/\s+/).join(' ').trim())
+      .filter((n) => n.length > 0)
     const proposed = proposedObjectNames(naming).trustedLocation
     const networkDraft = networkDraftOf(mapping)
     const networkConfirmed = mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected'
@@ -1048,7 +1060,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: networkDraft?.name ?? proposed.name, fromBaseline: null },
-      configurationFindings: networkRead && !networkConfirmed && !networkDraft ? [] : [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? 'Create the saved network' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : mapping.trustedLocationIds.length === 0 ? 'No office network is selected; location-based exceptions are not applied.' : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
+      configurationFindings: networkRead && !networkConfirmed && !networkDraft ? [] : [{ key: 'trusted-network-choice', label: 'Trusted Network', value: !networkRead ? 'Locations not read' : !networkConfirmed ? 'Create the saved network' : mapping.trustedLocationIds.length === 0 ? 'Everyone is remote' : ipLocations.length === mapping.trustedLocationIds.length ? 'Confirmed locations found' : 'Selected location needs correction', detail: networkDraft && !networkConfirmed ? `${networkDraft.name}: ${networkDraft.ranges.join(', ')}. Create this IP named location in Entra, mark it trusted, then scan again and select it.` : !networkRead ? 'The named-location scan must succeed before IAMAI can verify the selected networks.' : mapping.trustedLocationIds.length === 0 ? `No office network is selected; location-based exceptions are not applied.${trustedInTenant.length > 0 ? ` The scan read ${trustedInTenant.length === 1 ? 'a trusted named location' : `${trustedInTenant.length} trusted named locations`} this answer leaves out: ${trustedInTenant.join(', ')}.` : ''}` : 'Each selected location must exist as a trusted IP named location in the scan.', outcome: !networkRead ? 'unknown' : networkConfirmed && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? 'pass' : 'fail' }],
       // A tenant that already has an IP named location is preserving one, not making one.
       ...stateFields(snapshot.config.namedLocations?.status === 'ok' && mapping.wizardAnswered.trustedLocations === true && mapping.assumed?.trustedLocations !== 'detected' && (mapping.trustedLocationIds.length === 0 || ipLocations.length === mapping.trustedLocationIds.length) ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),

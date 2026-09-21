@@ -123,10 +123,20 @@ test('recovery basis changes with effective exclusions membership and saved appr
 })
 
 test('the naming row renders renames as from → to, in the tenant\'s convention', () => {
-  const f = fixture('messy')
+  // Two live policies named off the tenant's own shape. `messy` used to supply
+  // this by accident: its twenty-four switched-off "Old - Disabled N" policies
+  // outvoted its twelve live ones, so the convention was the retired prefix and
+  // every live policy was an outlier of it — the row proposed renaming working
+  // policies to match dead ones. Disabled policies no longer set the convention
+  // (coverage/organisation.ts), so the case is built rather than inherited.
+  const f = fixture('large')
+  const live = (f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]).filter((x) => x.state !== 'disabled')
+  live[0].displayName = 'Ad hoc legacy block'
+  live[1].displayName = 'Ad hoc guest rule'
   const r = runFixture(f)
   const naming = r.coverage.organisation.naming
-  assert.ok(naming.outliers.length > 0, 'messy has names off its convention')
+  assert.deepEqual(naming.outliers, ['Ad hoc legacy block', 'Ad hoc guest rule'], 'the two names off the convention are the outliers')
+  assert.equal(naming.prefix, 'Core', 'the live policies still set the convention')
   const row = r.schedule.cleanup!.rows.find((x) => x.kind === 'naming')!
   assert.ok(row, 'the naming row is present')
   for (const line of row.lists.renames) assert.match(line, /^.+ → .+$/, line)

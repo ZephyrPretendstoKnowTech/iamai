@@ -30,6 +30,7 @@ import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
+import { usable as usableConvention } from '../../roadmap/convention.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
@@ -162,6 +163,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // The proposed policy name, in the tenant's convention.
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
+    // Why that name (coverage/naming.ts proposeName `matchesTenant`). The line
+    // claimed the tenant's own convention whatever the reading was, so a tenant
+    // whose names agree on nothing was told sixteen times that a documented
+    // pattern was its own.
+    proposedNameNote: fillText(usableConvention(ctx.naming?.convention ?? null) ? shared.proposedNameFollowsConvention as string : shared.proposedNameDocumented as string, { tenant: tenantNameOf(ctx.snapshot) }),
     existingName: step.naming?.fromBaseline ?? undefined,
     // The operator's own sign-in count, when the operator is in the step's population (the "Your account is in scope" line);
     // in scope with no records of their own (signed in for this scan, outside the window), the no-records line names them instead.

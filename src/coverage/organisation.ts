@@ -51,7 +51,13 @@ export function organisationReport(
   // actually used. detectConvention reads the segment count and the casing too,
   // and recognises a numbered series (CA001, CA002) as a series rather than
   // failing to find any shared prefix at all (prompt 43 Part 2).
-  const own = tenantFacts.filter((f) => !managedIds.has(f.id))
+  // Nor a disabled one. A retired policy's name is not the convention a tenant
+  // writes new policies in: a tenant carrying twenty-four switched-off
+  // "Old - Disabled 1..24" alongside twelve live ones read a two-thirds
+  // agreement on the prefix "Old", and sixteen steps then instructed the
+  // administrator to name new objects "Old - Trusted Head Office". The names
+  // that say what this tenant calls things are the ones it is running.
+  const own = tenantFacts.filter((f) => !managedIds.has(f.id) && f.state !== 'disabled')
   const names = own.map((f) => f.name)
   const convention = detectConvention(names)
   const strong = usableConvention(convention)
