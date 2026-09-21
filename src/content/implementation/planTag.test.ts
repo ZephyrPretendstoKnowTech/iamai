@@ -43,18 +43,21 @@ const WITHOUT_TAG: Readonly<Record<string, string>> = {
   's-goal-session-lifetime': 'the second of its two policies takes its name from a per-policy binding',
 }
 
-// STILL OPEN, and recorded here rather than left to be rediscovered. The JSON
-// channel's create bodies name their fields one at a time, so carrying the tag
-// there needs `policy.target.description` as a declared binding — which changes
-// every package's binding inventory and the ~30 assertions that enumerate it.
+// CLOSED, 2026-09-21. The JSON create bodies carry the tag, and they carry it
+// from one place: `jsonWithPlanTag` (ui/surfaces/stepPackage.ts) puts the
+// resolved operation's description onto any POST that creates a Conditional
+// Access policy and names none of its own. It is not a per-package template
+// field, so no package author can forget it, no binding has to be declared in
+// forty-four manifests, and the state this guard feared most - some tabs tagged
+// and some not, with nothing on any surface saying which - is not reachable.
 //
 // This test reads the RENDERED channel, not the library block. The first version
 // walked library blocks only and so could not see the case it exists to prevent:
 // a step with no library JSON block has its tab generated from the resolved
-// operation, whose body already carries the tag, so the library was UNIFORM and
+// operation, whose body already carried the tag, so the library was UNIFORM and
 // the product was not. An identity consultant found that in a re-run; the guard
 // passed the whole time.
-test('the JSON create bodies that carry no plan tag are counted from what a person actually copies', () => {
+test('every JSON create body a person can copy carries the plan tag', () => {
   const tagged: string[] = []
   const untagged: string[] = []
   for (const name of ['demo', 'demo-week2', 'large'] as const) {
@@ -71,22 +74,12 @@ test('the JSON create bodies that carry no plan tag are counted from what a pers
     }
   }
   assert.ok(tagged.length + untagged.length >= 10, `JSON create tabs rendered: ${tagged.length + untagged.length}`)
-  // Uniformly untagged is the state to hold until the binding lands. The state
-  // that is worse than either is MIXED: some tabs produce a policy IAMAI will
-  // recognise and some do not, with nothing on any surface saying which, so a
-  // reader who spot-checks one step draws the wrong conclusion about the rest.
-  //
-  // Known and not reproducible from a fixture: a step with no library JSON block
-  // has its tab generated from the resolved operation, whose body already carries
-  // the tag — so once such a step is unblocked it renders TAGGED while the
-  // template-driven ones do not. An identity consultant saw exactly that on a
-  // tenant settled through the persona harness, which no shipped fixture reaches.
-  // This count is therefore a floor, not a proof of uniformity.
-  assert.equal(tagged.length, 0, [
-    'The JSON tabs that carry the plan tag changed. Tagged:',
+  // A policy built from an untagged tab comes back unrecognised and its own step
+  // asks for it to be created again, in a live tenant. A second enforcing policy
+  // is a lockout path, so this is the identity the whole plan is tracked by.
+  assert.deepEqual(untagged, [], [
+    'A JSON create tab produces a policy IAMAI will not recognise. Tagged:',
     ...tagged,
-    'Untagged:',
-    ...untagged,
   ].join(String.fromCharCode(10)))
 })
 
