@@ -4,7 +4,7 @@
   "reason": null,
   "fact": null,
   "badge": "On Hold",
-  "bar": "After Require Phishing-Resistant MFA for Admins",
+  "bar": "Prerequisite on hold: Block Device Code Sign-in",
   "rail": "Aug 31, 2026",
   "headings": [
     "About this Step",
@@ -13,6 +13,10 @@
     "Completion Criteria"
   ],
   "tiles": [
+    {
+      "label": "Block Device Code Sign-in",
+      "state": "Prerequisite · Waiting"
+    },
     {
       "label": "Block Legacy Authentication",
       "state": "Prerequisite · To do"

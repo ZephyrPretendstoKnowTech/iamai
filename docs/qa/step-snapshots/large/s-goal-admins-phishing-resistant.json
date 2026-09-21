@@ -12,7 +12,12 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Readiness",
+      "state": "12 of 60 admins"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",
