@@ -583,7 +583,13 @@ const bgHardwareCredential: ValidationRule = {
     if (keys.every((list) => list.length === 0)) return PASS
     const deviceBound = (list: { passkeyType?: string }[]): boolean => list.some((k) => k.passkeyType === 'deviceBound')
     const readable = (list: { passkeyType?: string }[]): boolean => list.some((k) => typeof k.passkeyType === 'string' && k.passkeyType.length > 0)
-    if (!keys.some(readable)) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
+    // The keys were read; their TYPE was not. Saying "registered sign-in
+    // methods" here claims the scan is blind to something it is holding, on a
+    // tenant whose registration source read `ok` — and the reader who checks,
+    // as this one did, finds the methods sitting right there and stops
+    // believing the tile. The verdict stays unknown, which is the conservative
+    // reading and the right one; only the claim about what is missing changes.
+    if (!keys.some(readable)) return unknown(UNKNOWN.needs([NEED_LABEL.passkeyType]))
     return keys.some(deviceBound) ? PASS : fail(F.bgSyncedOnly)
   },
 }
