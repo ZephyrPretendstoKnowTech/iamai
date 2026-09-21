@@ -25,7 +25,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, holdGroupOf, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -229,7 +229,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
       title: contentTitle(step),
       lane: reading.lane,
       laneLabel: laneView.label,
-      hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
       workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
       order: reading.order,
     })
@@ -252,7 +251,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
         title: entry.title,
         lane: reading.lane,
         laneLabel: laneView.label,
-        hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
         workType: 'setup',
         order: reading.order,
       })

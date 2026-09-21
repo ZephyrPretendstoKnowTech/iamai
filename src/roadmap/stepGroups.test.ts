@@ -27,7 +27,7 @@ const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
 const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
 const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices', 's-direction-locations']
-const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, hold: null, workType: 'setup', order: 0 })
+const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
 test('the registry lists the four Emergency Access steps in order, pinned, with the task anatomy', () => {
   assert.deepEqual(STEP_GROUPS.slice(0, 2).map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'the two pinned groups lead the registry')

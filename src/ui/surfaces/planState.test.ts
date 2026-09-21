@@ -18,7 +18,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { planStateOf } from './planState.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { WHEN, boardWhenOf, focusCounts, holdGroupOf, laneViewFor, laneViewOf, waveStartOf } from './planBoard.ts'
+import { WHEN, boardWhenOf, focusCounts, laneViewFor, laneViewOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -53,13 +53,13 @@ function boardOf({ f, r }: Run): { items: BoardItem[]; when: Map<string, string>
   const steps = r.steps.filter((s) => readings.has(s.id))
   const add = (step: Step): void => {
     const reading = readings.get(step.id)!
-    items.push({ id: step.id, title: step.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', order: reading.order })
+    items.push({ id: step.id, title: step.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, workType: 'ca', order: reading.order })
     when.set(step.id, boardWhenOf(step, waveStartOf(step)))
   }
   for (const step of steps) add(step)
   for (const c of cleanup) {
     const reading = readings.get(c.id)!
-    items.push({ id: c.id, title: c.row.kind, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: null, workType: 'setup', order: reading.order })
+    items.push({ id: c.id, title: c.row.kind, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, workType: 'setup', order: reading.order })
   }
   return { items, when, readings }
 }

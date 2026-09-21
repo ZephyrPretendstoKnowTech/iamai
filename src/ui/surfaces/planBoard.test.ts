@@ -38,8 +38,8 @@ import {
   groupSummary,
   groupTotalsOf,
   groupsFor,
-  holdGroupOf,
   laneLabelOf,
+  waitingForOf,
   workTypeOf,
   WORK_TYPE_IDS,
   EMERGENCY_STEP_IDS,
@@ -85,7 +85,6 @@ function itemsFor(name: FixtureName): BoardItem[] {
       title: contentTitle(s),
       lane: reading.lane,
       laneLabel: laneLabelOf(reading, titleOf),
-      hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
       workType: workTypeOf(s.id, (contentStepFor(s) as { kind?: string } | undefined)?.kind ?? null),
       order: reading.order,
     }
@@ -96,7 +95,7 @@ const ids = (items: readonly BoardItem[]): string[] => items.map((i) => i.id)
 const ALL = { ...NO_FOCUS, showCompleted: true, showDeferred: true }
 
 test('the emergency foundation partitions the canonical rows once and stays active until all four are completed', () => {
-  const extra = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, hold: null, workType: 'setup', order: 0 })
+  const extra = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
   const items = [...EMERGENCY_STEP_IDS.map((id, index) => extra(id, index === 0 ? 'Completed' : index === 1 ? 'Ready' : index === 2 ? 'Up Next' : 'On Hold')), extra('ordinary', 'Ready')]
   const partitioned = partitionEmergencyItems(items)
   assert.deepEqual(ids(partitioned.emergency), [...EMERGENCY_STEP_IDS])
@@ -355,14 +354,14 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   assert.equal(laneLabelOf(upNext, titleOf), 'Up Next')
   const held = { lane: 'On Hold' as const, substatus: null, reason: { ...blocker, kind: 'sourceMapping' as const, id: 'sourceMapping:62d67e66', abnormal: true }, blockers: [], gates: [], order: 0, fromEngine: true }
   assert.equal(laneLabelOf(held, titleOf), 'On Hold')
-  assert.equal(holdGroupOf(held), BOARD.blockers.sourceMapping)
+  assert.equal(waitingForOf(held, titleOf), BOARD.blockers.sourceMapping, 'the held row names the unmapped reference')
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }
   assert.equal(laneLabelOf(heldOnStep, titleOf), 'On Hold')
-  assert.equal(holdGroupOf(heldOnStep), BOARD.blockers.step, 'rows held by the same kind of thing group together')
+  assert.equal(waitingForOf(heldOnStep, titleOf), BOARD.blockers.step + ': Emergency Access Accounts', 'a prerequisite on hold names the step by title')
   // A deeper healthy prerequisite holds without anything abnormal, and reads as the wait it is.
   const heldBehind = { ...held, reason: blocker }
   assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold')
-  assert.equal(holdGroupOf(heldBehind), WHEN.afterPrerequisites)
+  assert.equal(waitingForOf(heldBehind, titleOf), 'After Emergency Access Accounts', 'a healthy prerequisite names the step to go and do')
   assert.equal(laneLabelOf({ ...ready, lane: 'Completed', substatus: null }, titleOf), BOARD.lanes.completed)
   assert.equal(laneLabelOf({ ...ready, lane: 'Deferred', substatus: null }, titleOf), BOARD.lanes.deferred)
   for (const name of FIXTURES) {
@@ -543,9 +542,9 @@ test('All work does not renumber: a row keeps its place in its group, and the nu
 
 test('the tab reads how much of each group is done, in the words content.json holds', () => {
   const g = { key: 'k', label: 'K', secondary: false, closed: false, progress: true, items: [
-    { id: 'a', title: 'a', lane: 'Completed' as const, laneLabel: 'Completed', hold: null, workType: 'setup' as const, order: 0 },
-    { id: 'b', title: 'b', lane: 'Completed' as const, laneLabel: 'Completed', hold: null, workType: 'setup' as const, order: 1 },
-    { id: 'c', title: 'c', lane: 'Ready' as const, laneLabel: 'Ready', hold: null, workType: 'setup' as const, order: 2 },
+    { id: 'a', title: 'a', lane: 'Completed' as const, laneLabel: 'Completed', workType: 'setup' as const, order: 0 },
+    { id: 'b', title: 'b', lane: 'Completed' as const, laneLabel: 'Completed', workType: 'setup' as const, order: 1 },
+    { id: 'c', title: 'c', lane: 'Ready' as const, laneLabel: 'Ready', workType: 'setup' as const, order: 2 },
   ] }
   assert.equal(groupSummary(g), '2 of 3 completed')
   // A lane tab's group still counts rows, not progress: the two lines are the
