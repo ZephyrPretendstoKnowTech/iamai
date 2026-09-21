@@ -15,6 +15,7 @@
 // negation stands only where the tenant was read and found clean. The instances
 // are the six the audit and the sweep found; the rule is what stops the seventh.
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -243,4 +244,25 @@ test('the high-risk sign-in step never renders a count of risky sign-ins beside 
   const out = whoEvidenceLines(who, { from: 'Jul 29, 2026', riskyUsers: ['Alex Ray', 'Sam Lee'], strengthName: 'Multifactor authentication' })
   assert.ok(out.some((l) => /sign-ins were rated high risk/.test(l)), 'the claim renders')
   assert.ok(!out.some((l) => /No sign-in in the records was rated high risk/.test(l)), JSON.stringify(out))
+})
+
+/**
+ * The sweep, instance 7. "None matches the baseline's Modern MFA + TAP" is the
+ * negation of a claim about the authentication strengths this tenant holds, and
+ * it fired whenever no strength matched — including on a tenant whose strengths
+ * section never read, where IAMAI had not looked at all. The step now declares
+ * its own evidence unread and the slot says so, which is the same rule as the
+ * other six and needs no second mechanism.
+ */
+test('the authentication-strength step does not say none matches when it never read the strengths', () => {
+  const who = (stepById['s-prereq-auth-strength'] as { who: Who }).who
+  const ex = { tenant: 'Contoso Pty Ltd', strengthName: 'Modern MFA + TAP', strengths: ['Passwordless MFA'] }
+  const read = whoEvidenceLines(who, ex)
+  assert.ok(read.some((l) => /None matches the baseline/.test(l)), `read and nothing matched: the negation stands — ${JSON.stringify(read)}`)
+  const unread = whoEvidenceLines(who, { ...ex, evidenceNotRead: true })
+  assert.ok(!unread.some((l) => /None matches the baseline/.test(l)), JSON.stringify(unread))
+  assert.ok(unread.includes(WHO_UNRESOLVED), JSON.stringify(unread))
+  // And the step is what sets it: the section's own read state, nothing else.
+  const vars = readFileSync('src/ui/surfaces/stepVars.ts', 'utf8')
+  assert.match(vars, /config\.authStrengths\?\.status !== 'ok'\) v\.evidenceNotRead = true/)
 })

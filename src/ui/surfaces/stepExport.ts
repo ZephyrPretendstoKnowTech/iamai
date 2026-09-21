@@ -501,7 +501,11 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   // could not be completed, or where the negation itself cannot be stated, the
   // slot says so instead. This is the whole of R4: the step still has one
   // sentence here, and it is never the opposite of what was read.
-  if (none !== null && !read) out.push(unresolved || !whole(none, listCountVars(none, ex) as Record<string, unknown>) ? WHO_UNRESOLVED : none)
+  // `evidenceNotRead` is the seventh instance of the same fault (R4): a negation
+  // is a claim about what a section holds, and a section the scan never read
+  // holds nothing IAMAI can speak for. Where the step declares its own evidence
+  // unread, the slot says so rather than stating the negative.
+  if (none !== null && !read) out.push(unresolved || truthy(ex.evidenceNotRead) || !whole(none, listCountVars(none, ex) as Record<string, unknown>) ? WHO_UNRESOLVED : none)
   return out
 }
 
