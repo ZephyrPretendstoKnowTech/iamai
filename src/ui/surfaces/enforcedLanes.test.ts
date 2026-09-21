@@ -212,7 +212,13 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   }
   const mfa = stepOf(demoRun, 's-goal-mfa-all-users')
   assert.equal(mfa.state.lifecycle, 'enforced')
-  assert.equal(note(mfa), `Enforcement waits for MFA readiness to reach ${mfa.action.readinessGate!.threshold}; it is not measured today.`, 'unknown evidence must not be phrased as a measured percentage')
+  // An enforced policy is not waiting for anything, so it states the count and
+  // not a threshold: "Enforcement waits ... it is not measured today" was a wait
+  // on a policy already applying, against a number nobody could move.
+  const mfaNote = note(mfa) ?? ''
+  assert.equal(mfaNote, mfa.readiness.lines[0], 'an enforced policy states what was read, not a wait')
+  assert.equal(/Enforcement waits/.test(mfaNote), false, mfaNote)
+  assert.equal(/\d+%/.test(mfaNote), false, 'unknown evidence must not be phrased as a measured percentage')
   const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
   const gate = admins.action.readinessGate!
   assert.equal(admins.state.lifecycle, 'report-only')

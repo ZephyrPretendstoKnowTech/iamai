@@ -57,7 +57,9 @@ for (const stepId of STAGED) {
     const stateWrites = [...script.text.matchAll(/state='([A-Za-z]+)'/g)].map((m) => m[1])
     // The Create body sets Report-only; Enforce sets enabled after its own checks. Nothing else touches state.
     assert.deepEqual(stateWrites, ['enabledForReportingButNotEnforced', 'enabled'])
-    assert.match(script.text, /if\(\$Mode -eq 'Create'\)\{\n? *\$body=\[ordered\]@\{displayName=\$target\.displayName;state='enabledForReportingButNotEnforced'/)
+    // `description` carries the plan tag IAMAI recognises its own work by, and it
+    // sits between the name and the state in the create body.
+    assert.match(script.text, /if\(\$Mode -eq 'Create'\)\{\n? *\$body=\[ordered\]@\{displayName=\$target\.displayName;description=\$target\.description;state='enabledForReportingButNotEnforced'/)
   })
 
   for (const [changed, mode] of CORRECTIONS) {
