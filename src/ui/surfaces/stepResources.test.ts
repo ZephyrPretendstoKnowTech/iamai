@@ -7,7 +7,7 @@ import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { emailResource, inspectionResource, namedPortalResource } from './stepResources.ts'
 
-function opened(name: 'demo' | 'mid') {
+function opened(name: 'demo' | 'demo-week2' | 'mid') {
   const f = fixture(name)
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
@@ -145,4 +145,45 @@ test('removed workflow forms do not leave recording instructions in copied guida
     assert.ok(body, id)
     for (const artifact of body.artifacts) assert.doesNotMatch(artifact.text(), /Verify the workflow:|Record the account, application\/device path, date and result/)
   }
+})
+
+// A step whose target the engine resolves to no operation — already enforced, or
+// unresolvable — still drew the portal channel, and its instruction sent the
+// operator to compare the tenant's policies "with the configuration listed on this
+// step". Such a step lists no configuration: its JSON is a read-only GET and its
+// Implementation section says nothing is generated. The instruction pointed at
+// nothing, and the five administrators put the step down rather than guess.
+test('a read-only policy instruction names the matched policy and the criteria it is checked against, never an absent listing', () => {
+  for (const name of ['demo-week2', 'mid'] as const) {
+    const { r, bodies } = opened(name)
+    let checked = 0
+    for (const [id, body] of bodies) {
+      const portal = body.artifacts.find(a => a.id === 'portal')
+      if (!portal) continue
+      const text = portal.text()
+      assert.doesNotMatch(text, /configuration listed on this step/, id)
+      const step = r.steps.find(x => x.id === id)!
+      const matched = (step.tracking?.members ?? []).filter(m => m.policyName)
+      if (!/the policy IAMAI matched to this step/.test(text)) continue
+      checked++
+      assert.ok(matched.length > 0, id)
+      for (const m of matched) {
+        assert.ok(text.includes(m.policyName!), `${id}: ${m.policyName} is not named`)
+        assert.ok(m.policyId === null || text.includes(m.policyId), `${id}: ${m.policyId} is not named`)
+      }
+      assert.match(text, /Completion Criteria on this step/, id)
+    }
+    assert.ok(checked > 0, `${name}: no step reached the read-only instruction`)
+  }
+})
+
+// The other half: a step with nothing matched cannot name a policy, so it asks for
+// a review of the policies that affect it and points nowhere.
+test('a read-only policy instruction with nothing matched asks for a review and claims no listing', () => {
+  const { r, bodies } = opened('demo')
+  const step = r.steps.find(x => x.id === 's-goal-admin-portals-protected')!
+  assert.equal((step.tracking?.members ?? []).filter(m => m.policyName).length, 0)
+  const text = bodies.get(step.id)!.artifacts.find(a => a.id === 'portal')!.text()
+  assert.match(text, /Review the policies that affect Block the Admin Portals for Non-Admins: their assignments, conditions, access controls and current state./)
+  assert.doesNotMatch(text, /listed on this step|matched to this step/)
 })
