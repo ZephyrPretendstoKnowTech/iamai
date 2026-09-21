@@ -17,7 +17,7 @@ import { applyProgress } from '../../roadmap/progress.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
-import { implementationOffered } from '../../roadmap/operations.ts'
+import { implementationOffered, isPreserved } from '../../roadmap/operations.ts'
 import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../mapping/safetyChoice.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
@@ -324,5 +324,36 @@ test('contract 12: every Plan row and every step body is drawn by the shared com
   assert.match(body, /readinessOf\(step, contract, blockers, prerequisiteLabel \?\? undefined\)/, 'and its blockers, as Readiness tiles labelled by their own lane (A1b decision 12)')
   for (const gone of ['implementationOffered', 'isPreserved', 'statusOf']) {
     assert.doesNotMatch(body, new RegExp(`\\b${gone}\\(`), `ContentStep still asks the engine ${gone}() itself`)
+  }
+})
+
+// A step IAMAI WATCHED move is not a report of coverage that was already there.
+// "Already delivered by X, so there is nothing to create" is a sentence about a
+// tenant that had the policy before IAMAI looked; printed on the step somebody
+// has just created, watched through its window and enforced, it describes their
+// work as something they never needed to do. Every persona who finishes a policy
+// correctly reads this line, so it is the successful path's sentence, not an
+// edge case. `observation.since` already knows which it is (observation.ts).
+test('a policy IAMAI watched get into place is not reported as coverage the tenant already had', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const r = runFixture(f)
+  const watched = r.steps.find((s) => s.state.observation?.latest.since === 'observed-change' && isPreserved(s))
+  const found = (s: Step, run: Run): string[] =>
+    stepContract(s, ctxFor(f, run, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text)
+  if (watched) {
+    const text = found(watched, r).join(' ')
+    assert.equal(/nothing to create/.test(text), false, `${watched.id}: ${text}`)
+    assert.match(text, /IAMAI watched (it|them) get there/, `${watched.id}: ${text}`)
+  }
+  // And a goal the tenant genuinely already had, on a scan that watched nothing:
+  // the existing-coverage report is unchanged, because it is still true.
+  const first = structuredClone(fixture('mid'))
+  const fr = runFixture(first)
+  const already = fr.steps.filter((s) => isPreserved(s) && s.state.observation?.latest.since !== 'observed-change')
+  assert.ok(already.length > 0, 'the premise: this tenant has goals it already delivered')
+  for (const s of already) {
+    const text = stepContract(s, ctxFor(first, fr, s)).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(' ')
+    if (text.length === 0) continue
+    assert.equal(/IAMAI watched/.test(text), false, `${s.id}: claims to have watched a policy it found in place — ${text}`)
   }
 })
