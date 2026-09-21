@@ -553,13 +553,23 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // rather than an invented one.
   if (isPreserved(step)) {
     const by = existingOf(step)
-    // Whether IAMAI watched this object move, or found it already as it is
-    // (observation.ts `since`). The difference matters in words: "already
-    // delivered ... so there is nothing to create" is a report about coverage
-    // that was there before IAMAI looked, and on a step somebody has just
-    // created, watched through its window and enforced it reads as though the
-    // work had been unnecessary. A watched policy is stated, not explained away.
-    const watched = step.state.observation?.latest.since === 'observed-change'
+    // Whether IAMAI watched this policy arrive, or found it already as it is.
+    // "Already delivered ... so there is nothing to create" is a report about
+    // coverage that was there before IAMAI looked; on a step somebody has just
+    // done the work on it reads as though the work had been unnecessary.
+    //
+    // Two proofs, because one of them cannot reach the commonest case. `since`
+    // is 'observed-change' only where the artifact id is the SAME across two
+    // scans (observation.ts), so it catches a policy moving report-only →
+    // enforced and can never catch one going absent → present — which is
+    // precisely "somebody has just created this", the case the wording exists
+    // for. A previous scan that recorded this step's policy as ABSENT is the
+    // other proof, and a stronger one: whatever is here now arrived after IAMAI
+    // looked, whoever made it and however fast.
+    const obs = step.state.observation
+    const watched = obs?.latest.since === 'observed-change'
+      || obs?.prior?.state === 'absent'
+      || step.state.members.some((m) => m.change.prior?.state === 'absent')
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
