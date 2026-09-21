@@ -130,22 +130,30 @@ test('the pack draws a four-zone roadmap row, and so does production', () => {
   assert.match(row, /padding: 0 17px;/)
 })
 
-test('the title zone carries the title alone: no reason line under it (RUN-CONTEXT-B decision 10)', () => {
+test("the title zone carries the title, and under it what a held row waits for, at the pack's one quiet level", () => {
   const pack = read(PACK)
-  // The pack sets one quiet level for the row's secondary zones. It also draws a
-  // subtitle under the title, which decision 10 removed: the lane label already
-  // says why the row is where it is.
+  // The pack sets one quiet level for the row's secondary zones, and the first
+  // of the three it names is a subtitle under the title.
+  //
+  // RUN-CONTEXT-B decision 10 removed that subtitle, on the premise that "the
+  // lane label already says why the row is where it is". `8f440021` ended the
+  // premise: `laneLabelOf` appends the lane tail only on Ready, so every held
+  // row read "On Hold" and named nothing. The owner resolved it in favour of
+  // the line, which returns to the slot the pack drew for it.
   assert.match(pack, /\.row-title span,\.row-meta,\.row-date\{color:var\(--muted\);font-size:12px\}/, 'the pack no longer sets one quiet level for the row')
 
-  // Production: the title is a zone of its own, and nothing under it restates the lane.
+  // Production: the title is a zone of its own, with the waiting line under it.
   assert.match(ROW, /<span className="plan-row-title">/, 'the row has no title zone')
   const title = ROW.slice(ROW.indexOf('<span className="plan-row-title">'), ROW.indexOf('<span className="who">'))
   assert.match(title, /className="step-title"/, 'the title left its own zone')
-  assert.equal(ROW.includes('plan-row-reason'), false, 'the row draws a reason line under its title')
-  assert.equal(CSS.includes('.plan-row-reason'), false, 'a style for the removed reason line remains')
-  // One quiet level for the secondary zones, as the pack sets it.
-  assert.match(rule('.plan-row .who,\n.plan-row .when'), /font-size: var\(--t-1\);/)
-  assert.match(rule('.plan-row .who,\n.plan-row .when'), /color: var\(--quiet-text\);/)
+  assert.match(title, /\{waitingFor && <span className="plan-row-reason">\{waitingFor\}<\/span>\}/, 'the waiting line left the title zone')
+  // The three secondary zones read at ONE level, which is what the pack sets.
+  for (const selector of ['.plan-row-reason', '.plan-row .who,\n.plan-row .when']) {
+    assert.match(rule(selector), /font-size: var\(--t-1\);/, `${selector} is not at the row's quiet reading size`)
+    assert.match(rule(selector), /color: var\(--quiet-text\);/, `${selector} is not at the row's quiet ink`)
+  }
+  // The title keeps the weight; the line under it must not compete with it.
+  assert.equal(rule('.plan-row-reason').includes('font-weight'), false, 'the waiting line takes weight from the title')
 })
 
 test('the metadata and date zones are right-aligned tracks of their own', () => {
@@ -702,7 +710,7 @@ test('the narrow widths collapse the approved regions and widen nothing', () => 
 type Mock = { step: Step; c: StepContract }
 
 /** The board's one state reading (planBoard.ts laneViewOf), as a mock: the lane, its substatus and its tail. */
-const laneOf = (lane: Lane, substatus: Substatus | null = null, tail: string | null = substatus): LaneView => ({ lane, substatus, label: tail ? `${lane} · ${tail}` : lane, tail, tone: 'ok' })
+const laneOf = (lane: Lane, substatus: Substatus | null = null, tail: string | null = substatus): LaneView => ({ lane, substatus, label: tail ? `${lane} · ${tail}` : lane, tail, waitingFor: null, tone: 'ok' })
 
 /** A step and its contract in one canonical state, carrying only the fields the projections read. */
 function stateOf(o: {

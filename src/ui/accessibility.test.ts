@@ -565,11 +565,22 @@ test('the one Plan row says it is a control and whether the step under it is ope
   assert.match(div.attrs, /e\.preventDefault\(\)/)
   // Every Step Contract fact the row carries is on it, in four zones (task
   // 033): the state, the title, who it touches, when. A zone that disappears
-  // takes a fact with it. The lane label is the row's reason, so no reason line
-  // sits under the title (RUN-CONTEXT-B decision 10).
+  // takes a fact with it.
   const spans = [...row.matchAll(/className="(?:plan-row-status|plan-row-title|step-title|who)"/g)]
   assert.equal(spans.length, 4, 'the row lost or gained a column')
-  assert.equal(row.includes('plan-row-reason'), false, 'the row draws a reason line under its title again')
+  // A held row also says what it is waiting for, under the title.
+  //
+  // RUN-CONTEXT-B decision 10 asserted the opposite, on the premise that "the
+  // lane label is the row's reason". `8f440021` ended that premise: `laneLabelOf`
+  // appends the lane tail only on Ready, and `compactLane` strips `On Hold ·
+  // After ` from the badge, so a held row said "On Hold" and named nothing —
+  // fifteen rows of one plan waiting on an unanswered question and eleven on one
+  // named step, all reading the same word. The owner resolved the contradiction
+  // in favour of the reason line; this guard carries the new decision rather
+  // than the old one, and still pins that the line is the BOARD's reading and
+  // not something the row computes.
+  assert.match(row, /\{waitingFor && <span className="plan-row-reason">\{waitingFor\}<\/span>\}/, 'a held row no longer names what it is waiting for')
+  assert.equal(row.includes('waitingForOf('), false, 'the row works out its own reason instead of taking the board reading')
   // The state zone is the lane label over the one tenant fact (A1b); When is a day or the placeholder.
   assert.match(row, /<span className="when">\{when\}<\/span>/)
   assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{compactLane\(lane\)\}<\/span>/)

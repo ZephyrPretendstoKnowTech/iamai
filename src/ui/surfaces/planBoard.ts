@@ -247,12 +247,12 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  * apply here has no engine reading and reads `Doesn't apply` (decision 3).
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
-  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), tone: LANE_TONE[r.lane] }
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane] }
 }
 
 /** The view of a step the person said does not apply here: the Deferred lane, said as Doesn't apply. */
 export function doesntApplyView(): LaneView {
-  return { lane: 'Deferred', substatus: null, label: BOARD.lanes.doesntApply, tail: null, tone: LANE_TONE.Deferred }
+  return { lane: 'Deferred', substatus: null, label: BOARD.lanes.doesntApply, tail: null, waitingFor: null, tone: LANE_TONE.Deferred }
 }
 
 /**
@@ -282,6 +282,36 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
     return title !== null ? `${kind}: ${title}` : kind
   }
   return kind
+}
+
+/**
+ * What a held row is waiting for, named: the step it waits on, by title, or the
+ * Direction answer nobody has saved.
+ *
+ * The board worked this out already — it is `holdLabelOf`, which the lane tail
+ * carries — and no collapsed row could show it. `laneLabelOf` appends the tail
+ * only on Ready (since 8f440021), and `compactLane` in StepSections.tsx strips
+ * `On Hold · After ` from the badge if one gets through, because the badge is
+ * one word by design. So fifteen rows of one plan waited on a question nobody
+ * had answered, eleven on one named step, and every one of them said "On Hold".
+ * An administrator who reads that, goes to the portal and deploys anyway has
+ * been told he cannot and not told what to do first.
+ *
+ * It is `holdLabelOf` and nothing else. An earlier draft of this function kept
+ * its own copy of two of that function's branches — the step edge and the
+ * Direction wait — and returned null for the rest, on the premise that those
+ * holds "already read as themselves in the lane's substatus". They do not: an
+ * unsupported goal, an unmapped baseline group and a running observation window
+ * all carry `substatus: null`, so those rows read bare "On Hold" as well. One
+ * reason, one source (`holdLabelOf`); this asks it the question the row asks.
+ *
+ * Null only where the answer would be the badge again — the reading where the
+ * engine named no blocker at all, which `holdLabelOf` answers with the lane.
+ */
+export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | null): string | null {
+  if (r.lane !== 'On Hold') return null
+  const label = holdLabelOf(r, titleOf)
+  return label === BOARD.lanes.onHold ? null : label
 }
 
 /** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */

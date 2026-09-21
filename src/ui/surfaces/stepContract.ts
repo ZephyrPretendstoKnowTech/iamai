@@ -73,6 +73,12 @@ export type LaneView = {
   substatus: Substatus | null
   label: string
   tail: string | null
+  /**
+   * What a held row is waiting for, named (planBoard.ts waitingForOf): the step
+   * it waits on, or the Direction answer nobody has saved. Null everywhere else.
+   * The collapsed row draws it under its title; the badge cannot carry it.
+   */
+  waitingFor: string | null
   tone: StatusTone
 }
 
