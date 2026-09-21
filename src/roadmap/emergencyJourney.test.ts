@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { approvedPasskeyModels, emergencyMethodFinding, journeyGroupFindings, journeyPasskeyFindings, journeyRecoveryFindings, recoveryWaitingLine } from './emergencyJourney.ts'
+import { approvedPasskeyModels, emergencyMethodFinding, journeyAccountFindings, journeyGroupFindings, journeyPasskeyFindings, journeyRecoveryFindings, recoveryWaitingLine } from './emergencyJourney.ts'
+import { emergencyTierOf } from '../validation/emergencyTiers.ts'
 import { buildContext, breakGlassReport } from '../validation/report.ts'
 import { recoveryAccountBasis, recoveryCandidateReadings, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import type { CleanupCheckpoint } from './cleanupDone.ts'
@@ -246,4 +247,34 @@ test('with no display time zone set, Step 4 times read in the browser’s zone, 
   const start = '2026-09-18T16:37:21.751Z'
   assert.equal(recoveryWaitingLine(start, [], null), recoveryWaitingLine(start, [], browser))
   assert.equal(recoveryWaitingLine(start, [], 'Australia/Sydney'), 'Sign in with this account’s passkey after Sep 19, 2026, 2:37 AM GMT+10.')
+})
+
+// Emergency access is the plan's one large gate (owner, 2026-09-20), so a
+// contradiction on its own card costs more here than anywhere else. `tenant()`
+// gives both accounts the same single hardware key, which is exactly what
+// bg.methodDiversity warns about — a warning, in the hardening tier, that the
+// step is meant to finish over. The card said "Recovery method correction
+// required" while the step read Completed: the one gate disagreeing with its own
+// evidence. The tier decides the word now, in the vocabulary the step already
+// uses for that tier.
+test('a hardening warning reads as hardening on the card, and only a minimum check is a correction', () => {
+  const f = tenant()
+  const both = journeyAccountFindings(reportOf(f), f.snapshot, f.mapping)
+  const methods = both.find((x) => x.key === 'recovery-methods')!
+  const results = reportOf(f).targets.flatMap((t) => t.results)
+  const diversity = results.find((r) => r.id === 'bg.methodDiversity')!
+  assert.notEqual(diversity.outcome, 'pass', 'the premise: both accounts rely on one method type')
+  assert.equal(emergencyTierOf(diversity, f.mapping.breakGlassUserIds.length), 'hardening', 'the premise: it is hardening, not minimum')
+  assert.equal(methods.value, 'Minimum met · hardening open')
+  assert.equal(/correction/i.test(methods.value), false, 'a warning the step finishes over is not a correction')
+  // The step does finish over it, which is why the card must not say otherwise.
+  const run = runFixture(f)
+  assert.equal(run.steps.find((s) => s.id === 's-prereq-break-glass')?.status, 'done')
+
+  // A minimum check is still a correction, and the step does not finish.
+  const none = structuredClone(f)
+  none.snapshot.authMethods[none.mapping.breakGlassUserIds[0]] = []
+  const broken = journeyAccountFindings(reportOf(none), none.snapshot, none.mapping).find((x) => x.key === 'recovery-methods')!
+  assert.equal(/correction/i.test(broken.value), true, broken.value)
+  assert.notEqual(runFixture(none).steps.find((s) => s.id === 's-prereq-break-glass')?.status, 'done')
 })
