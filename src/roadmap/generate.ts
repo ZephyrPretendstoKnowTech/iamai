@@ -86,7 +86,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { goalFamily, mfaReady, readinessFor } from './readiness.ts'
+import { blindSourceOf, goalFamily, mfaReady, readinessFor } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -1884,6 +1884,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           threshold: `${threshold}%`,
           value: readiness.percent !== null ? `${readiness.percent}%` : floor ? `${readiness.atLeast}%` : engine.readiness.notMeasured,
           ...(floor ? { floor: true as const } : {}),
+          // And what the scan could not see, where a source is the reason the
+          // number is missing. "It is not measured yet" is true and names
+          // nothing to go and do; this names the source, its recorded reason,
+          // the permission that reads it and the licence it needs.
+          ...(readiness.percent === null ? (() => { const blind = blindSourceOf(readiness.family, snapshot); return blind === null ? {} : { blind } })() : {}),
         }
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }
@@ -2354,7 +2359,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const movedByCampaign = new Set(['mfa', 'guest', 'admin'])
     for (const s of steps) {
       const gate = s.action.readinessGate
-      if (gate === undefined || gate.route !== undefined) continue
+      // Not where the scan could not read the source (`blind`): nothing moves
+      // that number until the source can be read, and naming a campaign beside
+      // it sends the reader to do work that will not change it.
+      if (gate === undefined || gate.route !== undefined || gate.blind !== undefined) continue
       const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
       if (family === undefined || !movedByCampaign.has(family)) continue
       s.action = { ...s.action, readinessGate: { ...gate, route: verifyStep.title } }

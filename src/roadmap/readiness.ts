@@ -7,6 +7,13 @@ import type { DeviceScope } from './answers.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
 import { signInProofsRecorded } from '../scoring/fromSnapshot.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
+import type { SourceKey } from '../graph/collect/types.ts'
+import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
+import { app, engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+const W = engine.readiness
+const CAPS = (app as { inventory: { caps: Record<string, string> } }).inventory.caps
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -58,6 +65,41 @@ export function adminReady(v: Pick<MfaViability, 'readiness'>): boolean {
 export function readyNeeded(active: number, thresholdPercent: number): number {
   for (let n = 0; n <= active; n++) if (Math.round((n / active) * 100) >= thresholdPercent) return n
   return active
+}
+
+/**
+ * The source that made this family's number unreadable, named, with what would
+ * open it (Priya, severity 3). Sixteen policies of one tenant were parked
+ * behind three sources the scan could not read, and the product knew which
+ * three: "not measured" was said sixteen times and the cause nowhere.
+ *
+ * The same sources, in the same order, that `readinessFor` below refuses to
+ * measure through — so this can never name a source that is not the reason.
+ * Null where nothing is wrong with the sources: a number that is unreadable
+ * because a policy's own scope could not be settled is not a blind the reader
+ * can clear by granting anything, and saying so would send them to the wrong
+ * place.
+ */
+const BLIND_SOURCES: Record<string, SourceKey[]> = {
+  mfa: ['registrationDetails', 'signInEvidence'],
+  guest: ['registrationDetails', 'signInEvidence'],
+  admin: ['registrationDetails', 'signInEvidence'],
+  device: ['devices'],
+}
+
+export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnapshot): string | null {
+  for (const key of BLIND_SOURCES[family] ?? []) {
+    const source = snapshot.sources?.[key]
+    if (!source || source.status === 'ok' || source.status === 'partial') continue
+    const spec = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
+    if (!spec) continue
+    const capability = spec.requiredCapability === null ? null : (CAPS[spec.requiredCapability] ?? null)
+    const fix = capability === null
+      ? fillText(W.blindFix, { scope: spec.scopes.join(', ') })
+      : fillText(W.blindFixLicensed, { scope: spec.scopes.join(', '), capability })
+    return fillText(W.blind, { source: spec.name.toLowerCase(), reason: source.reason ?? source.status, fix })
+  }
+  return null
 }
 
 export function goalFamily(goalId: string): Readiness['family'] {

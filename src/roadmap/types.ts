@@ -285,6 +285,14 @@ export type Action = {
      * moves it sat Ready on the same board, named by none of them.
      */
     route?: string
+    /**
+     * The source that made this number unreadable, named, with what would open
+     * it (roadmap/readiness.ts blindSourceOf). Set only where the number could
+     * not be worked out AND a source is the reason: "not measured" said
+     * sixteen times over one tenant named neither the three sources that were
+     * switched off nor the permission that reads them.
+     */
+    blind?: string
   }
   /**
    * The emergency-access foundation this step is held behind while its own

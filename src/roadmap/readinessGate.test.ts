@@ -166,7 +166,14 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   assert.equal(readinessFor('admins-phishing-resistant', [], r.viability, f.snapshot).unmeasured, 'unreadable', 'the source could not be read')
   assert.equal(admins.readiness.percent, null)
   // No floor: nobody here could be judged ready, and "at least 0%" is true of every tenant (roadmap/readiness.ts atLeast).
-  assert.deepEqual(admins.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: 'not measured', route: 'Prepare Your Team for MFA' }, 'a number the scan could not read still names the step that moves it')
+  const gate = admins.action.readinessGate!
+  assert.deepEqual({ measure: gate.measure, threshold: gate.threshold, value: gate.value, route: gate.route }, { measure: 'admin readiness', threshold: '100%', value: 'not measured', route: undefined }, 'no step is named: no step of this plan moves a number nothing can read')
+  // And the reason is not left unsaid. The scan knows which source failed, what
+  // it failed with, which permission reads it and which licence it needs.
+  const blind = gate.blind ?? ''
+  assert.ok(blind.includes('registration details'), blind)
+  assert.ok(blind.includes('access denied (403)'), blind)
+  assert.ok(blind.includes('AuditLog.Read.All'), blind)
   assert.equal(enforcementHeld(admins), true, 'unknown is not met')
   assert.equal(admins.events, null)
   assert.deepEqual(admins.rings, [])

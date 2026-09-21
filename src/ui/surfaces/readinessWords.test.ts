@@ -232,6 +232,15 @@ test('every readiness gate holding a step names what moves the number', () => {
       if (!gate || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
       checked++
       const said = readinessSentence(step, gate)
+      // A source the scan could not read answers before any of them, and
+      // replaces them: nothing moves this number until the source can be read,
+      // so naming a step beside it would send the reader to do work that
+      // changes nothing.
+      if (gate.blind !== undefined) {
+        assert.ok(said.endsWith(gate.blind), `${name}/${step.id}: the blind is on the gate and not at the end of the sentence — ${said}`)
+        assert.ok(gate.route === undefined || !said.includes(gate.route), `${name}/${step.id}: names a step that moves a number nothing can read — ${said}`)
+        continue
+      }
       const family = Object.keys(CONTRACT.readinessRoute).find((k) => said.includes(CONTRACT.readinessRoute[k]))
       if (gate.route === undefined) {
         assert.ok(family !== undefined, `${name}/${step.id}: waits for a number and names nothing that moves it — ${said}`)
@@ -246,6 +255,42 @@ test('every readiness gate holding a step names what moves the number', () => {
     }
   }
   assert.ok(checked > 10, `only ${checked} gates were held`)
+})
+
+// Sixteen policies of one tenant were parked behind three data sources the scan
+// could not read, and every one of them said only "not measured". The product
+// knew which sources, what the read failed with, which permission reads them and
+// which licence they need — all four already recorded — and named none of it.
+test('a number the scan could not read names the source, the reason and what would open it', () => {
+  const f = fixture('hostile')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const blind = r.steps.filter((s) => s.action.readinessGate?.blind !== undefined)
+  assert.ok(blind.length > 0, 'the premise: hostile holds steps behind a source it cannot read')
+  for (const step of blind) {
+    const said = readinessSentence(step, step.action.readinessGate!)
+    // The source, by the name the collector registry gives it.
+    assert.match(said, /registration details|sign-in logs|devices/i, `${step.id}: names no source — ${said}`)
+    // Why the read failed, as the scan recorded it.
+    assert.ok(said.includes('access denied (403)'), `${step.id}: does not say why — ${said}`)
+    // And what would open it: the permission that reads it.
+    assert.ok(said.includes('AuditLog.Read.All'), `${step.id}: names nothing that would open it — ${said}`)
+    assert.match(said, /scan again/, `${step.id}: does not say to scan again — ${said}`)
+  }
+})
+
+// A tenant whose sources are all readable says none of this: a number that is
+// unreadable because a policy's own scope could not be settled is not a blind
+// anybody clears by granting a permission.
+test('a readiness the scan could read names no blind source', () => {
+  for (const name of ['demo', 'small', 'mid', 'large', 'midflight'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate) continue
+      assert.equal(gate.blind, undefined, `${name}/${step.id}: claims a source it could not read — ${gate.blind}`)
+    }
+  }
 })
 
 // An engine blocker with no tile of its own said its own label twice and nothing
