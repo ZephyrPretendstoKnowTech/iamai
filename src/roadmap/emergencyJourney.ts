@@ -333,7 +333,19 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   }
   for (const item of authChecks.items ?? []) if (item.accountId) item.label = accountLabel(snapshot, item.accountId)
   authentication.label = 'Prepared passkeys'
-  authentication.detail = 'Each selected account needs a registered approved passkey compatible with the current and planned settings.'
+  // The card says WHICH hardening is open, where one is. "Minimum met · hardening
+  // open" is a tier, not a finding: on an account whose only recovery credential
+  // is a passkey synced to somebody's phone, the tier word is QUIETER than the
+  // words it replaced, so the check that exists to catch that case announced it
+  // less loudly than before the check existed. The generic requirement stands
+  // only where nothing specific is outstanding.
+  const sentence = (t: string): string => `${t.charAt(0).toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? '' : '.'}`
+  const openHardening = [...new Set((authChecks.items ?? [])
+    .filter(item => item.outcome !== 'pass' && typeof item.value === 'string' && item.value.trim().length > 0)
+    .map(item => sentence(String(item.value).trim())))].slice(0, 2)
+  authentication.detail = authentication.outcome !== 'pass' && openHardening.length > 0
+    ? openHardening.join(' ')
+    : 'Each selected account needs a registered approved passkey compatible with the current and planned settings.'
   return [identity, authentication]
 }
 

@@ -158,6 +158,21 @@ function reopen(step: Step, note: string, at: string, kind: Step['kind']): void 
 
 const rows = (snapshot: TenantSnapshot): PolicyRow[] => (snapshot.config.caPolicies?.rows ?? []) as PolicyRow[]
 
+/**
+ * Whether this scan actually READ the tenant's Conditional Access policies.
+ *
+ * A read that failed leaves the same empty list as a tenant with no policies,
+ * and everything downstream then records "not deployed" for every member — an
+ * observation IAMAI never made. The next scan compares against that and states,
+ * of a policy enforced and watched for months, that it was not there last time
+ * and went live unobserved. Two confident sentences in opposite directions,
+ * both false, from a Graph 503.
+ */
+const policiesRead = (snapshot: TenantSnapshot): boolean => {
+  const status = snapshot.config.caPolicies?.status
+  return status === 'ok' || status === 'partial'
+}
+
 const nameKey = (v: string | null | undefined): string => String(v ?? '').trim().toLowerCase()
 
 // ---- the step's required policy members ----
@@ -895,7 +910,11 @@ export function trackExecution(
     for (const m of matches) {
       const policyRow = m.policy
       const pr = policyRow ? snapshot.evidencePolicyResults.find((p) => p.policyId === policyRow.id) : undefined
-      const observedState = observedStateOf(policyRow?.state ?? null)
+      // A policy this scan did not find is 'absent' only where the scan could
+      // look. Where the read failed there is no sighting at all, and `unknown`
+      // is what IAMAI holds: an absence it never observed must not become the
+      // evidence a later scan reasons from.
+      const observedState: ObservedState = policyRow ? observedStateOf(policyRow.state) : policiesRead(snapshot) ? 'absent' : 'unknown'
       const artifact = artifactIdOf(policyRow?.id)
       // Where the deployed object is not what the plan asked for in a part the
       // operation does not write (observation.ts unwrittenDifferences). Read

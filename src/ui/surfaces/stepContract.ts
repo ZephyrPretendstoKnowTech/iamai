@@ -1301,8 +1301,15 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // name it — how many people are ready and how many could not be read — was
   // computed by roadmap/methodReadiness.ts and rendered nowhere. The gate states
   // its own reason now, in that sentence's own words.
+  // Only where the line states a READING — "209 of 279 people have a registered
+  // method" — because that is the fact the gate is missing. methodReadiness.ts
+  // puts an internal fallback in the same slot when the policy scope itself is
+  // unsettled ("The target policy scope must be resolved before method readiness
+  // can be measured"), and appending that to "It is not measured yet:" told the
+  // reader to do work the same screen showed already done.
   const line = step.readiness.lines[0]
-  if (!gate.value.endsWith('%') && typeof line === 'string' && line.length > 0) {
+  const counted = typeof line === 'string' && /\d+ of \d+/.test(line)
+  if (!gate.value.endsWith('%') && counted) {
     // An already-enforced policy is not waiting for anything: the threshold is
     // moot and the count is the whole of the fact, so it is stated alone.
     if (step.state.lifecycle === 'enforced') return line
