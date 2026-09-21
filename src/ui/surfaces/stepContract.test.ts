@@ -365,22 +365,41 @@ test('a policy IAMAI watched get into place is not reported as coverage the tena
 // one step — the finding, the Threshold tile and its note — and named nothing
 // the reader could go and change. methodReadiness.ts had already counted who is
 // ready and who could not be read, and that sentence was rendered nowhere.
-test('a readiness gate with no number says what could not be measured', () => {
-  const f = structuredClone(fixture('mid'))
-  const r = runFixture(f)
-  const gated = r.steps.filter((s) => s.action.readinessGate && !s.action.readinessGate.value.endsWith('%'))
-  assert.ok(gated.length > 0, 'the premise: this tenant has a gate with no number')
-  for (const s of gated) {
-    const text = readinessSentence(s, s.action.readinessGate!)
-    const line = s.readiness.lines[0]
-    if (typeof line !== 'string' || line.length === 0) continue
-    assert.ok(text.includes(line), `${s.id}: the gate does not say what could not be measured — ${text}`)
-    assert.match(text, /reach 90%|reach \d+%/, `${s.id}: the gate no longer states its threshold — ${text}`)
+//
+// Since the floor (roadmap/readiness.ts `atLeast`) the two cases cannot overlap:
+// a counted reading means the scope was read, which means there IS a number to
+// state, so a gate with no number is now exactly a gate whose scope could not be
+// read. It must still say its threshold, and must still not claim a number.
+test('a readiness gate with no number states its threshold and claims no number', () => {
+  let bare = 0
+  let floored = 0
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const r = runFixture(structuredClone(fixture(name)))
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate) continue
+      const text = readinessSentence(step, gate)
+      const line = step.readiness.lines[0]
+      if (!gate.value.endsWith('%')) {
+        bare += 1
+        assert.match(text, /reach [0-9]+%/, `${name}/${step.id}: the gate no longer states its threshold — ${text}`)
+        assert.equal(typeof line === 'string' && /[0-9]+ of [0-9]+/.test(line), false, `${name}/${step.id}: a counted reading with no number to state it as`)
+        continue
+      }
+      if (gate.floor !== true) continue
+      floored += 1
+      // What used to be a dead end: the reading is said, and marked as a floor.
+      assert.match(text, /At least [0-9]+%/, `${name}/${step.id}: ${text}`)
+      if (step.state.lifecycle !== 'enforced' && typeof line === 'string' && line.length > 0) assert.ok(text.includes(line), `${name}/${step.id}: the gate does not say what could not be measured — ${text}`)
+    }
   }
+  assert.ok(floored > 3, `gates reading a floor: ${floored}`)
+  assert.ok(bare > 0, 'no fixture reaches a gate whose scope could not be read')
   // A measured gate is unchanged: it has a number, and the number is the point.
-  for (const s of r.steps.filter((x) => x.action.readinessGate?.value.endsWith('%'))) {
+  const r = runFixture(structuredClone(fixture('mid')))
+  for (const s of r.steps.filter((x) => x.action.readinessGate?.value.endsWith('%') && x.action.readinessGate?.floor !== true)) {
     const g = s.action.readinessGate!
-    assert.match(readinessSentence(s, g), new RegExp(g.value.replace('%', '%')), `${s.id}: a measured gate lost its number`)
+    assert.ok(readinessSentence(s, g).includes(g.value), `${s.id}: a measured gate lost its number`)
   }
 })
 

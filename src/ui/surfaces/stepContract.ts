@@ -1414,11 +1414,11 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
  */
 function shortReadingOf(step: Step): { value: string; line: string } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
-  const line = step.readiness.lines[0]
+  const line = step.readiness?.lines?.[0]
   if (typeof line !== 'string') return null
   const m = /([0-9]+) of ([0-9]+)/.exec(line)
   if (m === null || Number(m[1]) >= Number(m[2])) return null
-  const scope = CONTRACT.readinessScope[step.readiness.family] ?? CONTRACT.readinessScope.mfa
+  const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
   return { value: `${m[1]} of ${m[2]} ${scope}`, line }
 }
 
