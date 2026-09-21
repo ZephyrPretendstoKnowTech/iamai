@@ -12,6 +12,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
+import { stepBodyOf } from './stepBody.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 
 // Nobody has answered the exclusions-group question here: that is what makes
@@ -104,4 +105,27 @@ test(`the name line claims the tenant's convention only where the tenant has one
   }
   assert.match(said('demo'), /follows the convention/)
   assert.match(said('messy'), /do not agree on one shape/)
+})
+
+// A member with no resolved operation binds no name, so the planning preview
+// marked the policy's own name unresolved and stepResources.ts glossed the marker
+// into a sentence: Name: `the browser-session policy named in this step`, an
+// instruction to name a policy after the sentence describing it. IAMAI holds the
+// name the whole time. Invisible on the pinned baseline, which names every member.
+test('a previewed policy is named by the plan, never by the sentence describing it', () => {
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
+    for (const step of r.steps) {
+      for (const a of stepBodyOf(step, ctx).artifacts) {
+        for (const line of a.text().split(String.fromCharCode(10))) {
+          const bare = line.trim().replace(/^[0-9]+[.] */, '').replace(/^[-*]+ */, '')
+          if (!/^[*]*Name[*]* *:/.test(bare)) continue
+          assert.doesNotMatch(line, /policy named in this step|listed on this step/, `${name}/${step.id}/${a.id}: ${line.trim()}`)
+          assert.doesNotMatch(line, /‹[^›]+›/, `${name}/${step.id}/${a.id}: ${line.trim()}`)
+        }
+      }
+    }
+  }
 })

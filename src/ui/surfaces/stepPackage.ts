@@ -339,6 +339,29 @@ export function bindingLabel(binding: string): string {
 }
 
 /**
+ * A single-member policy's own name, for a planning preview that would otherwise
+ * mark it unresolved.
+ *
+ * A member's `target.displayName` is bound from the resolved operation, so a
+ * member with no operation yet binds nothing and the preview drew ‹browser session
+ * policy name› where the name goes — which stepResources.ts glosses into a
+ * sentence, so the procedure read: Name: `the browser-session policy named in
+ * this step`. That is an instruction to name a policy after the sentence
+ * describing it. IAMAI holds the name the whole time: it is the one the plan
+ * proposes, on `step.naming.proposed`.
+ *
+ * One member only. A pair's second name is policyPairNames', not the step's, and
+ * giving both halves the same name is the fault pair naming exists to prevent.
+ * Everything else keeps its marker, which is what the preview is for.
+ */
+function previewName(step: Step, pkg: CompiledPackage, binding: string): string | null {
+  if (!/^policies..+.target.displayName$/.test(binding) && binding !== 'policy.target.displayName') return null
+  if ((pkg.meta.baselineAuthority?.members ?? []).length > 1) return null
+  const proposed = step.naming?.proposed
+  return typeof proposed === 'string' && proposed !== '' ? proposed : null
+}
+
+/**
  * The planning preview a step shows in place of an empty Implementation region,
  * or null where the step has something executable, nothing planned, or planned
  * content that does not project (a correction no module covers, a package fault).
@@ -352,7 +375,7 @@ export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContrac
   const waitsOnValues = held !== null && held.invalid.length === 0 && held.unknownMismatches.length === 0 && !held.noProjection && (held.missingBindings.length > 0 || held.pendingPrerequisites.length > 0)
   const planned = NO_ACTION_STATES.has(state) ? plannedPackageStateOf(step, c, snapshot) : waitsOnValues ? state : null
   if (planned === null) return null
-  const preview = planSafely(pkg, planned, bindings, runtime, (binding) => fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
+  const preview = planSafely(pkg, planned, bindings, runtime, (binding) => previewName(step, pkg, binding) ?? fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
   return preview.preview && preview.channels.length > 0 ? preview : null
 }
 
