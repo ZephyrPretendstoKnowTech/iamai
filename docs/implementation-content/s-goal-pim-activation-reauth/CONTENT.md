@@ -15,7 +15,7 @@ Entra admin center → Entra ID → Conditional Access → Policies → New poli
 4. Conditions: no additional risk, location, platform, device, or authentication-flow condition.
 5. Grant: Grant access → Require authentication strength → IAMAI-resolved target strength.
 6. Session → Sign-in frequency → **Every time**.
-7. Enable policy: **Report-only**.
+7. Enable policy: **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 Save, read back, and rescan IAMAI. Do not configure PIM role settings yet.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -56,7 +56,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 @@IAMAI-BEGIN {"id":"entra.enable-ca","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 
-Open the dedicated policy by its policy ID. Confirm the authentication context is published, the authentication strength and exclusions are resolved, and no readiness blocker remains. Change the policy from Report-only to **On**.
+Open the dedicated policy by its policy ID. Confirm the authentication context is published, the authentication strength and exclusions are resolved, and no readiness blocker remains. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change the policy from Report-only to **On**.
 
 Verify after the change: the policy reads back On. Update PIM role settings only after this check succeeds. The policy applies only when a sign-in requests this authentication context, such as a PIM activation configured to require it.
 @@IAMAI-END

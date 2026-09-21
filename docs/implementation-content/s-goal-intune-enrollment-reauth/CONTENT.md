@@ -11,7 +11,7 @@ Create this policy in Report-only. It will not enforce its access rule until you
 5. Conditions: leave every condition unconfigured, **Client apps** included. At **Configure: No** the client-apps condition reaches every client app, which is the target here; selecting the four boxes instead writes a narrower policy that IAMAI reads as a difference that never resolves.
 6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement. Microsoft's own enrollment recipe adds one; the pinned baseline does not, and IAMAI follows the baseline.
 7. Session → Sign-in frequency: Every time.
-8. Enable policy: Report-only.
+8. Enable policy: Report-only. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
 9. Create. Rescan in IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -50,7 +50,7 @@ Keep the policy in Report-only while you review the evidence listed for this ste
 Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
 1. Open the same policy ID and confirm it still matches the intended settings and is Report-only.
 2. Confirm the required user-driven and userless/self-deploying enrollment workflows have been reviewed.
-3. Change Enable policy to On and save.
+3. Do not turn it on unless all of this is true now. The required report-only period is complete, with no failures on this policy in the sign-in records. The policy is still Report-only and its settings still match the intended target, exclusions included — the script for this step refuses to enforce a policy that is not. Emergency access is prepared and tested. If any one of them is not true, leave the policy in Report-only. Change Enable policy to On and save.
 4. Verify after the change: complete a controlled user-driven Intune enrollment and confirm it asks for fresh authentication.
 5. Verify required userless/self-deploying flows still work, then rescan IAMAI.
 6. If enrollment fails unexpectedly, return this same policy to Report-only.
