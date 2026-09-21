@@ -86,7 +86,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { blindSourceOf, goalFamily, mfaReady, readinessFor } from './readiness.ts'
+import { blindSourceOf, goalFamily, mfaReady, readinessFor, routeShortfallOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -2380,7 +2380,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (gate === undefined || gate.route !== undefined || gate.blind !== undefined) continue
       const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
       if (family === undefined || !movedByCampaign.has(family)) continue
-      s.action = { ...s.action, readinessGate: { ...gate, route: verifyStep.title } }
+      // "Moved there by construction" is the claim this checks. The campaign
+      // prepares the people the scan has seen sign in; this gate counts everyone
+      // its target policy covers. Where the campaign's cohort cannot close the
+      // gap, naming it sends the reader to finish a step that will not move the
+      // number — which is what happened: "Nothing left to do" on the campaign,
+      // and the gate still reading 18%.
+      const cohort = verifyStep.preparation
+      const mine = s.methodPreparation
+      const threshold = Number.parseInt(gate.threshold, 10)
+      const shortfall = cohort && mine && Number.isFinite(threshold)
+        ? routeShortfallOf(mine, cohort, verifyStep.title, threshold)
+        : null
+      s.action = { ...s.action, readinessGate: { ...gate, ...(shortfall === null ? { route: verifyStep.title } : { routeShortfall: shortfall }) } }
     }
   }
 

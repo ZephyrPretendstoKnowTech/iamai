@@ -21,7 +21,8 @@ import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
-import { curatedFixture as fixture } from './fixtures/index.ts'
+import { curatedFixture as fixture, fixture as shippedFixture } from './fixtures/index.ts'
+import type { FixtureName } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
@@ -256,4 +257,60 @@ test('6: an already-enabled policy with no material change stays in place, and n
   const held = { ...step, action: { ...step.action, readinessGate: { measure: 'admin readiness', threshold: '100%', value: '0%' } } } as Step
   assert.equal(unavailableReason(held), null, 'the hold is on enforcement, and there is none left to hold')
   assert.equal(isPreserved(held), true)
+})
+
+test('a gate names the campaign only where finishing it could reach the threshold', () => {
+  // `route` was set from the measure's FAMILY: mfa, guest and admin were "moved
+  // by the campaign by construction". The construction does not hold. The
+  // campaign prepares the people the scan has seen sign in; the gate counts
+  // everyone the target policy covers. On a tenant where nine of eleven people
+  // have never signed in, the campaign's cohort is two and the threshold is
+  // 90% — so the reader finished "Prepare Your Team for MFA", was told
+  // "Nothing left to do", and the number had not moved a point, with no other
+  // action offered anywhere on the board.
+  // The shipped fixture, not the curated one this file otherwise uses: this is
+  // about the plan a person is handed, which is what the gate's claim is made to.
+  const gatesOf = (name: FixtureName) => {
+    const run = runFixture(shippedFixture(name))
+    const campaign = run.steps.find((s) => s.id === 's-verify-mfa')
+    return { campaign, gates: run.steps.filter((s) => s.action.readinessGate !== undefined) }
+  }
+
+  // getiamai: eleven people measured, a cohort of two, none of the nine short
+  // people inside it. The campaign cannot move this number and no longer says it can.
+  const small = gatesOf('getiamai')
+  assert.equal(small.campaign?.preparation?.ids.length, 2, 'the premise: the campaign covers two people')
+  const flagship = small.gates.find((s) => s.id === 's-goal-mfa-all-users')
+  assert.ok(flagship, 'the premise: getiamai gates Require MFA for Everyone on readiness')
+  const held = flagship.action.readinessGate!
+  assert.equal(held.route, undefined, 'the gate still names a campaign that cannot reach its threshold')
+  assert.ok(held.routeShortfall?.includes('will not move this number'), `said instead: ${held.routeShortfall}`)
+  // It names the shortfall, why those people are outside the campaign, and the
+  // decision that is the reader's other way out — the step is otherwise a dead end.
+  assert.ok(held.routeShortfall?.includes('9 people'), 'the sentence does not say how many it is short')
+  assert.ok(held.routeShortfall?.includes('not seen them sign in'), 'the sentence does not say why they are outside the campaign')
+  assert.ok(held.routeShortfall?.includes('not in use'), 'the sentence offers no decision where the work cannot be done')
+
+  // The admin gate on the same tenant CAN be cleared — its one admin is in the
+  // cohort — so it still names the campaign. The rule is per gate, not per tenant.
+  const admins = small.gates.find((s) => s.id === 's-goal-admins-phishing-resistant')
+  assert.equal(admins?.action.readinessGate?.route, 'Prepare Your Team for MFA', 'a gate the campaign can clear stopped naming it')
+  assert.equal(admins?.action.readinessGate?.routeShortfall, undefined)
+
+  // Where the campaign can close the gap, nothing changes: every gate on these
+  // three fixtures still names it, which is the reading that was always right.
+  for (const name of ['mid', 'large', 'midflight'] as const) {
+    const { gates } = gatesOf(name)
+    const routed = gates.filter((s) => s.action.readinessGate?.route !== undefined)
+    assert.ok(routed.length > 0, `${name}: no gate names the campaign any more`)
+    for (const s of routed) assert.equal(s.action.readinessGate?.routeShortfall, undefined, `${name}/${s.id}: both answers at once`)
+  }
+
+  // The two are exclusive everywhere, and a gate never states both.
+  for (const name of ['small', 'mid', 'large', 'midflight', 'getiamai', 'hostile', 'demo', 'demo-week2'] as const) {
+    for (const s of gatesOf(name).gates) {
+      const g = s.action.readinessGate!
+      assert.equal(g.route !== undefined && g.routeShortfall !== undefined, false, `${name}/${s.id}: names a campaign and says it will not work`)
+    }
+  }
 })

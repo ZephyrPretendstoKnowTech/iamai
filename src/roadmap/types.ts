@@ -303,6 +303,19 @@ export type Action = {
      */
     route?: string
     /**
+     * Said instead of `route` where the campaign provably cannot reach this
+     * threshold (roadmap/readiness.ts routeShortfallOf): the two are exclusive.
+     *
+     * `route` was set from the measure's family, on the premise that mfa, guest
+     * and admin are "moved by the campaign by construction". They are not: the
+     * campaign prepares the people the scan has seen sign in, and the gate
+     * counts everyone the target policy covers. On a tenant where nine of
+     * eleven people have never signed in, the campaign's cohort is two and the
+     * threshold is 90% — the reader finished the named step, was told "Nothing
+     * left to do", and the number had not moved a point.
+     */
+    routeShortfall?: string
+    /**
      * The source that made this number unreadable, named, with what would open
      * it (roadmap/readiness.ts blindSourceOf). Set only where the number could
      * not be worked out AND a source is the reason: "not measured" said

@@ -87,6 +87,49 @@ const BLIND_SOURCES: Record<string, SourceKey[]> = {
   device: ['devices'],
 }
 
+/**
+ * Whether the campaign this gate names can actually reach the gate's threshold,
+ * and the sentence to say instead where it cannot.
+ *
+ * `route` was set from the measure's FAMILY — mfa, guest and admin were "moved
+ * by the campaign by construction". The construction does not hold. The campaign
+ * prepares the people the scan has seen sign in; the gate counts everyone the
+ * target policy covers. Where most of a tenant has never signed in, those two
+ * populations barely overlap: eleven people measured, a cohort of two, a 90%
+ * threshold, and a reader who finished the named step, read "Nothing left to
+ * do", and watched the number stay exactly where it was — with no other action
+ * offered anywhere on the board.
+ *
+ * So the claim is checked before it is made. `cohort` is the campaign's people
+ * and `prepared` the ones it has already done; the most it can still contribute
+ * is the difference, and only for people this gate is actually short. If that
+ * cannot close the gap, the campaign is not what moves this number and saying so
+ * is false.
+ *
+ * Returns null where the campaign CAN clear the gate — the caller then names it,
+ * exactly as before. Returns the replacement sentence where it cannot.
+ */
+export function routeShortfallOf(
+  gate: { ids: readonly string[]; readyIds: readonly string[] },
+  campaign: { ids: readonly string[]; readyIds: readonly string[] },
+  step: string,
+  thresholdPercent: number,
+): string | null {
+  const ready = new Set(gate.readyIds)
+  const short = gate.ids.filter((id) => !ready.has(id))
+  if (short.length === 0) return null
+  const prepared = new Set(campaign.readyIds)
+  const movable = new Set(campaign.ids.filter((id) => !prepared.has(id)))
+  const covered = short.filter((id) => movable.has(id)).length
+  // Whole people, and the threshold is a floor: 90% of 11 needs 10, not 9.9.
+  const needed = Math.ceil((thresholdPercent / 100) * gate.ids.length) - ready.size
+  if (covered >= needed) return null
+  const threshold = `${thresholdPercent}%`
+  return covered === 0
+    ? fillText(W.routeShortfallNone, { step, short: short.length, threshold })
+    : fillText(W.routeShortfallSome, { step, covered, short: short.length, rest: short.length - covered, threshold })
+}
+
 export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnapshot): string | null {
   for (const key of BLIND_SOURCES[family] ?? []) {
     const source = snapshot.sources?.[key]

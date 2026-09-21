@@ -242,6 +242,20 @@ test('every readiness gate holding a step names what moves the number', () => {
         continue
       }
       const family = Object.keys(CONTRACT.readinessRoute).find((k) => said.includes(CONTRACT.readinessRoute[k]))
+      // The campaign this gate WOULD have named, where finishing it provably
+      // cannot reach the threshold (roadmap/readiness.ts routeShortfallOf).
+      // This is a stronger answer than the family fallback, not a missing one:
+      // it says which step was considered, why it falls short, and what the
+      // reader can do instead — including deciding the accounts are not in use,
+      // which is the only way out where the work cannot be done at all.
+      if (gate.routeShortfall !== undefined) {
+        assert.equal(gate.route, undefined, `${name}/${step.id}: names a campaign and says it will not work`)
+        assert.ok(said.includes(gate.routeShortfall), `${name}/${step.id}: the shortfall is on the gate and not in the sentence — ${said}`)
+        const named = [...titles].find((t) => gate.routeShortfall!.includes(t))
+        assert.ok(named !== undefined, `${name}/${step.id}: the shortfall names no step of this plan — ${gate.routeShortfall}`)
+        assert.ok(/sign in|not in use/.test(gate.routeShortfall), `${name}/${step.id}: says the campaign falls short and offers nothing instead — ${gate.routeShortfall}`)
+        continue
+      }
       if (gate.route === undefined) {
         assert.ok(family !== undefined, `${name}/${step.id}: waits for a number and names nothing that moves it — ${said}`)
         continue
