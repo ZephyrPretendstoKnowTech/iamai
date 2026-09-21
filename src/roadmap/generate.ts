@@ -2336,6 +2336,29 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (s.phase < verifyStep.phase) continue
       if (!s.blockedBy.includes(verifyStep.id)) s.blockedBy.push(verifyStep.id)
     }
+    // And every gate the campaign moves says so. A gate stated what it waits
+    // for and never what opens it: seven steps of one plan waited on MFA
+    // readiness while the campaign that raises it sat Ready on the same board,
+    // named by none of them, and sixteen of another waited on a number the scan
+    // could not read with nothing saying who would change it.
+    //
+    // Keyed on the MEASURE, not on the step's own effects or its status. The
+    // campaign's cohort is the MFA candidates and the admin candidates together
+    // (its `preparation` above), and guests are counted inside it, so those
+    // three families are moved there by construction. The edge above cannot
+    // answer this: it is drawn only for a BLOCKED step, and a policy already
+    // sitting in report-only under an unmet threshold — the state the whole
+    // rollout waits in — keeps the gate and never gets the edge. Device is the
+    // one family no step of this plan moves; it keeps the route to Intune
+    // (CONTRACT.readinessRoute).
+    const movedByCampaign = new Set(['mfa', 'guest', 'admin'])
+    for (const s of steps) {
+      const gate = s.action.readinessGate
+      if (gate === undefined || gate.route !== undefined) continue
+      const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
+      if (family === undefined || !movedByCampaign.has(family)) continue
+      s.action = { ...s.action, readinessGate: { ...gate, route: verifyStep.title } }
+    }
   }
 
   // Temporary Access Pass is Microsoft's documented rescue for somebody who has

@@ -119,6 +119,7 @@ type ContractWords = {
   readinessScope: Record<string, string>
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
   readinessRoute: Record<string, string>
+  foundReadinessRouteStep: string
   /** The threshold tile's collapsed value, by its measure's family: the percentage and what it measures (content review S3). */
   readinessValue: Record<string, string>
   foundInPlace: string
@@ -1365,12 +1366,23 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // `atLeast`). "Not measured" beside a sibling reading a percentage off the same
   // people, in the same scan, reads as the tool contradicting itself; this says
   // the same thing the sibling does, and marks what is still unknown.
-  if (gate.floor === true && counted && step.state.lifecycle !== 'enforced') return fillText(CONTRACT.foundReadinessFloor, { measure: gate.measure, threshold: gate.threshold, value: gate.value, line })
+  // Where the number is moved. Two answers, and the plan's own beats the
+  // family's: `gate.route` is the step the generator drew this one's readiness
+  // edge to (generate.ts), so it names a row on this board; CONTRACT.readinessRoute
+  // answers for a family whose number no step of this plan moves at all (device,
+  // which moves in Intune). An enforced policy waits for nothing and gets neither.
+  const routeStep = gate.route !== undefined && step.state.lifecycle !== 'enforced' ? fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route }) : null
+  const route = routeStep ?? CONTRACT.readinessRoute[familyOf(gate) ?? ''] ?? null
+  const withRoute = (said: string): string => (route === null ? said : `${said} ${route}`)
+  if (gate.floor === true && counted && step.state.lifecycle !== 'enforced') return withRoute(fillText(CONTRACT.foundReadinessFloor, { measure: gate.measure, threshold: gate.threshold, value: gate.value, line }))
   if (!gate.value.endsWith('%') && counted) {
     // An already-enforced policy is not waiting for anything: the threshold is
     // moot and the count is the whole of the fact, so it is stated alone.
     if (step.state.lifecycle === 'enforced') return line
-    return fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line })
+    // "It is not measured yet: 0 of 2 people have a registered method" was the
+    // whole sentence on sixteen held steps of one tenant, and named nothing to
+    // go and do. This is the branch that needed the route most.
+    return withRoute(fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line }))
   }
   if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) {
     // Where the number is moved, for a measure this plan runs no step for
@@ -1378,15 +1390,17 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     // with nothing on the plan that enrols a device, so the gate stated a
     // percentage and no way to change it — the Temporary Access Pass dead end
     // again, one family along.
-    const route = CONTRACT.readinessRoute[familyOf(gate) ?? ''] ?? null
-    const waits = `${fillText(CONTRACT.foundReadiness, { ...gate })}${route ? ` ${route}` : ''}`
+    const waits = fillText(CONTRACT.foundReadiness, { ...gate })
     // The percentage's own numerator. "67% MFA-ready" says how far off the gate
     // is and nothing about who: the reading behind it — how many people have a
     // method the target policies accept, out of how many — is computed by
     // roadmap/methodReadiness.ts, and until now it reached the screen only when
     // the percentage could not be worked out at all. The number a person can act
     // on was withheld exactly when there was one.
-    return counted && !waits.includes(line) ? `${waits} ${line}` : waits
+    // The route goes last, after the reading. Between the threshold and its own
+    // numerator it read as an interruption: "it is 0% today. The step that moves
+    // this number is X. 0 of 2 people have a registered method."
+    return withRoute(counted && !waits.includes(line) ? `${waits} ${line}` : waits)
   }
   const family = familyOf(gate) ?? 'mfa'
   // A floor stays a floor once the policy is on: the number is still not the

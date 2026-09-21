@@ -166,7 +166,7 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   assert.equal(readinessFor('admins-phishing-resistant', [], r.viability, f.snapshot).unmeasured, 'unreadable', 'the source could not be read')
   assert.equal(admins.readiness.percent, null)
   // No floor: nobody here could be judged ready, and "at least 0%" is true of every tenant (roadmap/readiness.ts atLeast).
-  assert.deepEqual(admins.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: 'not measured' })
+  assert.deepEqual(admins.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: 'not measured', route: 'Prepare Your Team for MFA' }, 'a number the scan could not read still names the step that moves it')
   assert.equal(enforcementHeld(admins), true, 'unknown is not met')
   assert.equal(admins.events, null)
   assert.deepEqual(admins.rings, [])
@@ -195,7 +195,7 @@ test('5: a material change to an already-enabled policy is held while its readin
   f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step
-  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%' })
+  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%', route: 'Prepare Your Team for MFA' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')
   const op = step.action.resolution!.policies[0]
   assert.deepEqual(op.body, { state: 'enabled' }, 'the operation is the enforcement')
   assert.equal(enforcesOnRun(op), true)

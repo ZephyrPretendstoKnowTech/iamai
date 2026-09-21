@@ -1678,6 +1678,8 @@
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
             "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
           },
+          "$commentFoundReadinessRouteStep": "A gate that says what it waits for but not what opens it is half a sentence. The plan already knows: generate.ts draws the edge from a readiness-held step to the campaign that moves the number, and the step it drew to was named nowhere on the held step. Only where that edge exists.",
+          "foundReadinessRouteStep": "The step that moves this number is “{step}”.",
           "readinessAtLeast": "At least {value}",
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",

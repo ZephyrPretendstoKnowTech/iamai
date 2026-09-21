@@ -213,6 +213,41 @@ test('a readiness measure this plan runs no step for says where the number is mo
   assert.match(CONTRACT.readinessRoute.device, /Intune/)
 })
 
+// A gate that says what it waits for but not what opens it is half a sentence.
+// Seven steps of one 4,900-person plan waited on MFA readiness while the one
+// campaign that moves it sat Ready on the same board, named by none of them;
+// sixteen steps of another waited on a number the scan could not read at all.
+// Two routes are legitimate — a step on this plan (`gate.route`, set where
+// generate.ts drew the readiness edge) or somewhere outside it
+// (CONTRACT.readinessRoute, device readiness in Intune) — and a gate with
+// neither names nothing the reader can go and do.
+test('every readiness gate holding a step names what moves the number', () => {
+  let checked = 0
+  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const titles = new Set(r.steps.map((s) => s.title))
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
+      checked++
+      const said = readinessSentence(step, gate)
+      const family = Object.keys(CONTRACT.readinessRoute).find((k) => said.includes(CONTRACT.readinessRoute[k]))
+      if (gate.route === undefined) {
+        assert.ok(family !== undefined, `${name}/${step.id}: waits for a number and names nothing that moves it — ${said}`)
+        continue
+      }
+      // A route that names a step names a step the reader can actually find.
+      assert.ok(titles.has(gate.route), `${name}/${step.id}: routed to "${gate.route}", which is not a step of this plan`)
+      assert.ok(said.includes(gate.route), `${name}/${step.id}: the route is on the gate and not in the sentence — ${said}`)
+      // Last, after the reading: between a threshold and its own numerator it
+      // reads as an interruption.
+      assert.ok(said.trim().endsWith(`${gate.route}”.`), `${name}/${step.id}: the route is not the last thing said — ${said}`)
+    }
+  }
+  assert.ok(checked > 10, `only ${checked} gates were held`)
+})
+
 // An engine blocker with no tile of its own said its own label twice and nothing
 // else — "Not supported · Not supported ·" — while the reason sat on the contract.
 test('every readiness tile says something its label has not already said', () => {
