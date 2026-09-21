@@ -387,8 +387,7 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo/s-ladder-operator-passkey
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-block-legacy-auth
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo/s-goal-mfa-all-users
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo/s-goal-block-legacy-auth
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
   'check · check · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · one-policy · who-none', // demo/s-review-baseline-iac-app-block-sharepoint-onedrive-nontrustedlocations-1gjmtq8
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa

@@ -1629,6 +1629,7 @@
             "readiness": "Readiness",
             "in-place": "Existing coverage",
             "observation": "New evidence",
+        "differs": "Not as asked",
             "guestDirectory": "Guest Directory",
             "directory-inventory": "Guest Directory"
           },
@@ -1674,6 +1675,8 @@
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
+    "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
+    "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
     "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
     "foundInPlaceWatched": "{policies} is in place. IAMAI watched it get there.",
     "foundInPlaceWatchedTogether": "{policies} are in place together, and no one of them covers the whole goal on its own. IAMAI watched them get there.",
