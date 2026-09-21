@@ -1371,8 +1371,14 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // edge to (generate.ts), so it names a row on this board; CONTRACT.readinessRoute
   // answers for a family whose number no step of this plan moves at all (device,
   // which moves in Intune). An enforced policy waits for nothing and gets neither.
-  const routeStep = gate.route !== undefined && step.state.lifecycle !== 'enforced' ? fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route }) : null
-  const route = routeStep ?? CONTRACT.readinessRoute[familyOf(gate) ?? ''] ?? null
+  const waiting = step.state.lifecycle !== 'enforced'
+  const routeStep = gate.route !== undefined && waiting ? fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route }) : null
+  // A blind beats a route, and replaces it. Where the scan could not read the
+  // source this number comes from (`gate.blind`, roadmap/readiness.ts), the
+  // campaign is not what moves it — nothing moves it until the source can be
+  // read — and naming a step beside "not measured" sends the reader to do work
+  // that will not change the number.
+  const route = (waiting ? gate.blind : undefined) ?? routeStep ?? CONTRACT.readinessRoute[familyOf(gate) ?? ''] ?? null
   const withRoute = (said: string): string => (route === null ? said : `${said} ${route}`)
   if (gate.floor === true && counted && step.state.lifecycle !== 'enforced') return withRoute(fillText(CONTRACT.foundReadinessFloor, { measure: gate.measure, threshold: gate.threshold, value: gate.value, line }))
   if (!gate.value.endsWith('%') && counted) {

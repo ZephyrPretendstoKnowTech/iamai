@@ -319,7 +319,11 @@
         "policies": "its Conditional Access policies could not be read"
       },
       "readiness": {
-        "notMeasured": "not measured"
+        "notMeasured": "not measured",
+        "$commentBlind": "\"It is not measured yet\" is true and unactionable on its own. Sixteen policies of one tenant were parked behind three sources the scan could not read, and no sentence anywhere named which three or what would open them — a blind the reader could have cleared in five minutes. The source's name, the recorded reason, the permission that reads it and the licence it needs all exist already (graph/collect/registry.ts, the snapshot's own SourceState).",
+        "blind": "This number is measured from {source}, which IAMAI could not read in this tenant — {reason}. {fix}",
+        "blindFix": "It is read with the {scope} permission; once that is granted, scan again.",
+        "blindFixLicensed": "It is read with the {scope} permission and needs {capability}; once both are in place, scan again."
       },
       "cohort": {
         "$comment": "One cohort, one set of words wherever it is counted (owner, 2026-09-19): guests stay in the MFA campaign and are named beside the people, never dropped from one count and kept in another. derive/whoLine.ts cohortWords is the one caller.",
