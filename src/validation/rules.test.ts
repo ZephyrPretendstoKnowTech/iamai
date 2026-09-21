@@ -42,6 +42,7 @@ const EXPECTED: Record<RuleSubject, string[]> = {
     'bg.microsoftManaged',
     'bg.phishingResistant',
     'bg.methodDiversity',
+    'bg.hardwareCredential',
     'bg.perUserMfaOff',
     'bg.noLicenceNeeded',
     'bg.drilled',
@@ -248,6 +249,14 @@ const CASES: Record<string, Case> = {
     },
   },
   'bg.phishingResistant': { target: bgId, fail: (b) => { b.snapshot.authMethods[bgId(b)] = [{ kind: 'phone', phoneType: 'mobile' }] } },
+  // Owner R7: emergency access keeps the hardware key. A passkey in Microsoft
+  // Authenticator is a multiDeviceCredential — it lives on a phone and syncs
+  // with a personal account — and the step accepted two of them as Completed.
+  'bg.hardwareCredential': {
+    target: bgId,
+    pass: (b) => { for (const id of b.state.breakGlassUserIds) b.snapshot.authMethods[id] = [{ kind: 'fido2', passkeyType: 'deviceBound' }] },
+    fail: (b) => { for (const id of b.state.breakGlassUserIds) b.snapshot.authMethods[id] = [{ kind: 'fido2', passkeyType: 'multiDeviceCredential' }] },
+  },
   'bg.methodDiversity': {
     target: bgId,
     pass: (b) => {

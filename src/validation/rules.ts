@@ -547,6 +547,47 @@ const bgMethodDiversity: ValidationRule = {
   },
 }
 
+/**
+ * Owner rule (R7, 2026-09-21): team and operator passkeys route to Microsoft
+ * Authenticator first, and EMERGENCY ACCESS keeps the hardware key. A passkey in
+ * Authenticator is a `multiDeviceCredential`: it lives on a phone and syncs with
+ * a personal account, which is three dependencies a break-glass credential
+ * exists to have none of.
+ *
+ * The scan already reads the storage type and printed it per account as a bare
+ * word — `multiDeviceCredential` — and judged nothing. A reader who does not
+ * know the term learns nothing from it, and the approved-model list offers the
+ * two Authenticator models first, so the shortest path through the step puts the
+ * organisation's only way back in on one person's phone.
+ *
+ * A warning, not a minimum: the owner's rule is that emergency access is the one
+ * large gate and nothing else becomes one. This says so where the credential is
+ * chosen; it does not refuse the plan. It passes as soon as ONE account holds a
+ * device-bound credential, because one hardware key kept apart is the point.
+ */
+const bgHardwareCredential: ValidationRule = {
+  id: 'bg.hardwareCredential',
+  subject: 'breakGlass',
+  severity: 'warning',
+  needs: ['authMethods'],
+  evaluate: (_id, ctx) => {
+    if (ctx.breakGlassIds.length === 0) return PASS
+    const perAccount = ctx.breakGlassIds.map((bid) => {
+      const m = ctx.snapshot.authMethods[bid]
+      if (m === undefined || m === 'unknown' || !Array.isArray(m)) return null
+      return m.filter((x) => x.kind === 'passkey' || x.kind === 'fido2')
+    })
+    // A type the scan could not read is not a phone credential: unknown never fails.
+    if (perAccount.some((keys) => keys === null)) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
+    const keys = perAccount as { passkeyType?: string }[][]
+    if (keys.every((list) => list.length === 0)) return PASS
+    const deviceBound = (list: { passkeyType?: string }[]): boolean => list.some((k) => k.passkeyType === 'deviceBound')
+    const readable = (list: { passkeyType?: string }[]): boolean => list.some((k) => typeof k.passkeyType === 'string' && k.passkeyType.length > 0)
+    if (!keys.some(readable)) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
+    return keys.some(deviceBound) ? PASS : fail(F.bgSyncedOnly)
+  },
+}
+
 const bgPerUserMfaOff: ValidationRule = {
   id: 'bg.perUserMfaOff',
   subject: 'breakGlass',
@@ -1209,6 +1250,7 @@ export const REGISTRY: ValidationRule<any>[] = [
   bgMicrosoftManaged,
   bgPhishingResistant,
   bgMethodDiversity,
+  bgHardwareCredential,
   bgPerUserMfaOff,
   bgNoLicenceNeeded,
   bgDrilled,
