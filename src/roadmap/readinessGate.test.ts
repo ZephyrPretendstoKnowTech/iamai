@@ -165,11 +165,8 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   const admins = r.steps.find((s) => s.id === ADMINS) as Step
   assert.equal(readinessFor('admins-phishing-resistant', [], r.viability, f.snapshot).unmeasured, 'unreadable', 'the source could not be read')
   assert.equal(admins.readiness.percent, null)
-  // The hostile tenant's people were counted and only their methods could not be
-  // judged, so the gate states the floor it can prove rather than nothing at all
-  // (roadmap/readiness.ts `atLeast`). The floor is display: `unmeasured` is still
-  // 'unreadable' above, and that is what holds enforcement below.
-  assert.deepEqual(admins.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '0%', floor: true })
+  // No floor: nobody here could be judged ready, and "at least 0%" is true of every tenant (roadmap/readiness.ts atLeast).
+  assert.deepEqual(admins.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: 'not measured' })
   assert.equal(enforcementHeld(admins), true, 'unknown is not met')
   assert.equal(admins.events, null)
   assert.deepEqual(admins.rings, [])

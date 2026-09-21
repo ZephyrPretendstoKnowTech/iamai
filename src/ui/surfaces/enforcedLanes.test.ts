@@ -270,3 +270,26 @@ test('a rollout that finished short of its own readiness says so, and keeps the 
   // And an unfinished one still reads its gate, not this.
   assert.equal(readinessOf(admins, stepContract(admins, ctx)).tiles.some((x) => x.key === 'enforced-readiness'), false)
 })
+
+// The other half: a finished rollout's reading is a reading of PEOPLE, so it
+// needs at least one of them to have been judged. `hostile` reads "0 of 40 people
+// have a registered method" because its registration source is switched off, and
+// "this policy is enforced and nobody can satisfy it" over that is a claim about
+// forty people made from having looked at none. Found by a persona run.
+test('a finished rollout says nothing about people the scan could not look at', () => {
+  const f = fixture('hostile')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const ctx = ctxOf(f, r, f.snapshot)
+  let blind = 0
+  for (const step of r.steps) {
+    if (!step.state.satisfied || step.state.lifecycle !== 'enforced') continue
+    // A block goal has no readiness to speak of ('no-population'); this is about
+    // the ones that DO measure people and could not look at any of them.
+    const line = step.readiness.lines[0] ?? ''
+    if (step.readiness.unmeasured !== 'unreadable' || !/^0 of [0-9]+/.test(line)) continue
+    blind += 1
+    const tiles = readinessOf(step, stepContract(step, ctx)).tiles
+    assert.equal(tiles.some((t) => t.key === 'enforced-readiness'), false, `${step.id}: a reading drawn from nobody — ${line}`)
+  }
+  assert.ok(blind > 0, 'the premise: this tenant enforces a policy whose people it could not read')
+})

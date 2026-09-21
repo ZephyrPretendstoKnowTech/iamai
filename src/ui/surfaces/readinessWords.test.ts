@@ -257,3 +257,24 @@ test('a readiness the scan could only put a floor under says the floor, and says
   }
   assert.ok(floors > 3, `steps reading a floor: ${floors}`)
 })
+
+// A floor of zero is not a floor. `hostile` has its registration source switched
+// off, so nobody can be judged ready; the floor read "At least 0% of admins
+// phishing-resistant" — true of every tenant, and a measurement of the people
+// where the fact is about what the scan could not see. Found by a persona run.
+test('a tenant whose methods cannot be read states no floor, and no zero percentage', () => {
+  const f = fixture('hostile')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  let checked = 0
+  for (const step of r.steps) {
+    const gate = step.action.readinessGate
+    if (!gate || step.status === 'done' || step.status === 'skipped') continue
+    checked += 1
+    assert.notEqual(gate.floor, true, `${step.id}: a floor where nobody could be judged`)
+    assert.doesNotMatch(readinessValueOf(gate), /At least/, step.id)
+    assert.doesNotMatch(readinessSentence(step, gate), /At least/, step.id)
+    // And the step still says what could not be measured.
+    assert.match(readinessSentence(step, gate), /not measured/, step.id)
+  }
+  assert.ok(checked > 1, `gates on the unreadable tenant: ${checked}`)
+})

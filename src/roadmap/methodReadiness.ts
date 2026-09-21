@@ -186,7 +186,11 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
   // The floor, where the people were counted and only their methods could not be
   // judged (types.ts `atLeast`). An incomplete scope has no real denominator, so
   // it has no floor either.
-  const atLeast = completeScope && ids.length > 0 && unknownIds.length > 0 ? Math.round(readyIds.length / ids.length * 100) : undefined
+  // And only where somebody was actually judged ready. With the registration
+  // source switched off nobody can be, so the floor would be "at least 0%" — true
+  // of every tenant, and read as a measurement of the people rather than of what
+  // the scan could not see. A floor of zero is not a floor.
+  const atLeast = completeScope && ids.length > 0 && unknownIds.length > 0 && readyIds.length > 0 ? Math.round(readyIds.length / ids.length * 100) : undefined
   return { family, percent: unreadable || ids.length === 0 ? null : Math.round(readyIds.length / ids.length * 100),
     ...(atLeast !== undefined ? { atLeast } : {}),
     ...(unreadable ? { unmeasured: 'unreadable' as const } : ids.length === 0 ? { unmeasured: 'no-population' as const } : {}),

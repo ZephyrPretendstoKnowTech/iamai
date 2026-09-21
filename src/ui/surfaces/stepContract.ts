@@ -1418,6 +1418,12 @@ function shortReadingOf(step: Step): { value: string; line: string } | null {
   if (typeof line !== 'string') return null
   const m = /([0-9]+) of ([0-9]+)/.exec(line)
   if (m === null || Number(m[1]) >= Number(m[2])) return null
+  // Nor where nobody could be judged at all. A tenant whose registration source
+  // is switched off reads "0 of 40 people have a registered method", and saying
+  // "this policy is enforced and nobody can satisfy it" over that is a claim
+  // about forty people made from having looked at none of them. Where some were
+  // judged — "22 of 33, one not established" — the count is a reading and stands.
+  if (step.readiness?.unmeasured === 'unreadable' && Number(m[1]) === 0) return null
   const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
   return { value: `${m[1]} of ${m[2]} ${scope}`, line }
 }

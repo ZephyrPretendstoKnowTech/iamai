@@ -76,8 +76,10 @@ export const ACCEPTANCE = [
   // that creating Conditional Access policies prevents enabling them.
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'once these policies exist you cannot turn security defaults back on.', mustNot: '{firstPolicy}' },
   // The lead is a Tasks Remaining card's one sentence, so the dating is a whole sentence and not a colon leading a list.
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'on the day Require MFA for Everyone enforces, and not before.' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', mustNot: 'Report-only policies can exist while security defaults are on' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Turn them off on that day and not before.' },
+  // The order is sourced now (playbook V3 corroborated 2026-09-21), so the step
+  // states it. What it still may not do is claim Microsoft guarantees coexistence.
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'create all four replacements in Report-only while security defaults are still on' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins in the same change window' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Disabled (not recommended)' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.' },
