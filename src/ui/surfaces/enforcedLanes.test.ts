@@ -19,7 +19,8 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { stepSnapshotsOf } from '../../testing/stepSnapshots.ts'
 import { laneReadings, tenantStateOf } from './planLanes.ts'
-import { readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, readinessOf, stepContract } from './stepContract.ts'
+import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
 import { BOARD, laneViewFor } from './planBoard.ts'
@@ -230,7 +231,9 @@ test('U22: the threshold tile states the fact on an enforced policy and the gate
   assert.equal(admins.state.lifecycle, 'report-only')
   // And the reading behind the percentage, which the gate held and did not say
   // (stepContract.ts readinessSentence).
-  assert.equal(note(admins), `Enforcement waits for admin readiness to reach ${gate.threshold}; it is ${gate.value} today. ${admins.readiness.lines[0]}`)
+  // …and the step that moves the number, last, read from the words rather than
+  // spelled out here so a reword of them does not land as a failure of this.
+  assert.equal(note(admins), `Enforcement waits for admin readiness to reach ${gate.threshold}; it is ${gate.value} today. ${admins.readiness.lines[0]} ${fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route! })}`)
   const on = { ...admins, state: { ...admins.state, lifecycle: 'enforced' } } as Step
   assert.equal(note(on), `${gate.value} of admins have a qualifying method.`)
 })
