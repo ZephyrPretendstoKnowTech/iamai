@@ -319,10 +319,14 @@ test('a simple step activates fewer sections than a complex one', () => {
     ].filter(Boolean).length
   }
   const all = everyStep()
-  const rung = all.find((o) => o.cs.kind === 'ladder')
+  // A check, not a ladder rung: since 2026-09-20 a tenant with no Entra ID P1 is
+  // given no plan (owner), so no fixture renders a rung. A check is the same
+  // comparison — a supporting step with no policy lifecycle, against a policy
+  // step carrying findings and members.
+  const simple = all.find((o) => o.cs.kind === 'check')
   const policy = all.find((o) => o.cs.kind === 'policy' && o.contract.found.length > 0 && o.contract.members.length > 0)
-  assert.ok(rung && policy, 'the fixtures no longer cover both a ladder rung and a policy step')
-  assert.ok(sections(rung) < sections(policy), `a ladder rung draws ${sections(rung)} sections and a policy step ${sections(policy)}`)
+  assert.ok(simple && policy, 'the fixtures no longer cover both a supporting step and a policy step')
+  assert.ok(sections(simple) < sections(policy), `a check draws ${sections(simple)} sections and a policy step ${sections(policy)}`)
 })
 
 // ---------------------------------------------------------------------------
@@ -359,11 +363,16 @@ test('the two families the engine words carry no policy rollout, no policy compl
     assert.equal(datesLineFor(o.step, o.cs), null, `${where}: a rollout date`)
     assert.equal(ifWrongLineFor(o.step, o.cs), null, `${where}: a rollback for a change nobody submits`)
   }
-  // A rung whose work the rest of the plan already draws defers to that step
-  // (ladder.ts COVERED_BY_STEP, step-redundancy-analysis.md finding 9), so it is
-  // not a rung on a fixture that carries the step: the ones that remain are these.
-  const drawnRungs = DRAWN_RUNGS.length
-  assert.ok(seen >= drawnRungs, `only ${seen} of these steps appear in the fixtures, expected at least ${drawnRungs}`)
+  // Neither family reaches a fixture plan any more, so the loop above is a guard
+  // rather than a proof, and the count says which gap is which rather than
+  // pretending to teeth it does not have:
+  //   * the rungs, because a tenant with no Entra ID P1 is given no plan at all
+  //     (owner, 2026-09-20) and `micro` was the only fixture that carried them.
+  //     They stay under test as steps in roadmap/ladder.test.ts.
+  //   * the blocker steps, which no fixture has ever produced — a pre-existing
+  //     gap the V1 audit recorded, not something the licence gate caused.
+  // The moment either becomes reachable the loop above starts proving again.
+  assert.equal(seen, 0, `these steps are reachable again (${seen}): the loop above now proves them, and this line should say so`)
 })
 
 // The export view is the one the calendar, the prompt pack and the grounding

@@ -78,6 +78,10 @@ test('every fixture with emergency accounts schedules their tests independently 
     const r = runFixture(f)
     const c = r.schedule.cleanup
     if (f.mapping.breakGlassUserIds.length === 0) continue
+    // A tenant that cannot use Conditional Access is given no plan at all
+    // (owner, 2026-09-20), so it has no enforcement for recovery testing to be
+    // independent OF. The rule is about a schedule, and there is no schedule.
+    if (r.steps.length === 0) continue
     assert.ok(c, `${f.name}: emergency accounts give Cleanup at least the alerting and drill rows`)
     assert.equal(c.start, c.rows.find(row => row.kind === 'drill')!.day, `${f.name}: recovery testing starts independently of last enforcement`)
     for (const row of c.rows.filter(row => row.kind !== 'drill')) assert.ok(row.day > r.schedule.targetEnd)

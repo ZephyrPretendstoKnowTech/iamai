@@ -93,25 +93,20 @@ test('facts come from the directory, not from anything the operator types', () =
 
 // ---- through the whole engine ----
 
-test('a free tenant gets the ladder as its plan, in ladder order, and no Conditional Access prerequisite', () => {
+test('a tenant that cannot use Conditional Access gets no plan at all', () => {
+  // Owner, 2026-09-20: Entra ID P1 is the real minimum, and no opinion beats a
+  // half-baked one. `micro` has no Conditional Access licence, so the whole plan
+  // is withheld — not the Conditional Access steps only, which would leave three
+  // identity checks standing and read as "the plan".
   const { steps } = runFixture(fixture('micro'))
-  // Two rungs are drawn by the step that already is them, in the rung's own
-  // place (COVERED_BY_STEP, docs/plans/step-redundancy-analysis.md finding 9):
-  // every item is still a row, and no item is two rows.
-  const COVERED: Record<string, string> = { 'admin-accounts-separate': 's-check-separate-admin-accounts', 'stale-accounts': 's-check-dormant-accounts' }
-  const rows = LADDER_ITEMS.map((i) => COVERED[i.id] ?? ladderStepId(i.id))
-  const ladder = steps.filter((s) => rows.includes(s.id))
-  assert.equal(ladder.length, LADDER_ITEMS.length, 'every rung is a row')
-  assert.deepEqual(ladder.map((s) => s.id), rows, 'ladder order is the plan order')
-  assert.equal(steps.indexOf(ladder[0]), 0, 'the ladder leads the plan')
-  for (const id of Object.keys(COVERED)) assert.equal(steps.some((s) => s.id === ladderStepId(id)), false, `${id}: the ladder drew a second id for one step`)
-  // No free-tier Emergency Access path (owner, 2026-09-19): no rung, and no emergency step from anywhere else.
-  assert.equal(LADDER_ITEMS.some((i) => /break-glass|emergency/i.test(i.id)), false)
-  assert.equal(steps.some((s) => /break-glass|emergency/i.test(s.id)), false, 'a free tenant has no Emergency Access step')
-  // Objects that exist only to be referenced by a policy have nothing to serve.
-  for (const id of ['s-prereq-exclusion-group', 's-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-security-defaults']) {
-    assert.equal(steps.some((s) => s.id === id), false, `${id} is not asked for without Conditional Access`)
-  }
+  assert.equal(steps.length, 0, 'no licence, no plan')
+  // The free-tier ladder that used to be that plan is still in the tree, dormant
+  // behind one flag the owner asked to keep for a later comparison. It is off,
+  // and turning it on is a visible one-line change rather than a drift.
+  assert.match(readFileSync('src/roadmap/generate.ts', 'utf8'), /const FREE_TIER_LADDER = false/)
+  // Dormant, not dead: the rungs above still build, so the words and the evidence
+  // stay under test while the flag is off.
+  assert.equal(ladderSteps(freeSnapshot(), mapping(), []).steps.length, LADDER_ITEMS.length)
 })
 
 test('a licensed tenant gets no ladder steps', () => {
@@ -144,12 +139,15 @@ test('separation review includes eligible role holders but excludes emergency ac
   // On the one step that does the review, whatever the licence: the ladder's
   // second id for it is gone (finding 9), and the population is applyManualReviews'
   // (roadmap/manualWork.ts ADMIN_SEPARATION), not a rung's own list.
-  const snapshot = freeSnapshot()
+  // A licensed tenant, because since 2026-09-20 an unlicensed one has no plan to
+  // find the step on. The population rule under test is the same either way.
+  const base = fixture('small')
+  const snapshot = { ...base.snapshot }
   const [ordinary, emergency] = snapshot.users.slice(0, 2)
   snapshot.roles = { active: { [emergency.id]: [GLOBAL_ADMIN_ROLE_ID] }, eligible: { [ordinary.id]: [GLOBAL_ADMIN_ROLE_ID] } }
   const m = mapping({ breakGlassUserIds: [emergency.id] })
-  const step = runFixture({ ...fixture('micro'), snapshot, mapping: m }, { mapping: m }).steps.find(s => s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
-  assert.ok(step, 'the review is on a free tenant\u2019s plan too')
+  const step = runFixture({ ...base, snapshot, mapping: m }, { mapping: m }).steps.find(s => s.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
+  assert.ok(step, 'the review is on the plan')
   assert.deepEqual(step.population.ids, [ordinary.id])
   assert.equal(ladderSteps(snapshot, m, [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-check-dormant-accounts']).steps.some(s => s.id === ladderStepId('admin-accounts-separate')), false)
 })
@@ -163,9 +161,10 @@ test('the two steps the ladder carried a second id for are one step with one set
   for (const id of ['s-ladder-admin-accounts-separate', 's-ladder-stale-accounts']) {
     assert.equal(stepById[id], undefined, `${id}: a second set of words for one step`)
   }
-  // The steps that absorbed them are on every plan, licensed or not, which is
-  // what lets the ladder defer to them.
-  for (const name of ['micro', 'small', 'demo'] as const) {
+  // The steps that absorbed them are on every plan that builds, which is what
+  // lets the ladder defer to them. `micro` is not in the list: since 2026-09-20 a
+  // tenant with no Conditional Access licence builds no steps at all.
+  for (const name of ['small', 'mid', 'demo'] as const) {
     const ids = runFixture(fixture(name)).steps.map((x) => x.id)
     for (const id of [SEPARATE_ADMIN_ACCOUNTS_STEP_ID, 's-check-dormant-accounts']) assert.ok(ids.includes(id), `${name}: ${id} is missing`)
     for (const id of ['s-ladder-admin-accounts-separate', 's-ladder-stale-accounts']) assert.equal(ids.includes(id), false, `${name}: ${id} came back`)

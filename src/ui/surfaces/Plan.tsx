@@ -344,13 +344,23 @@ export function Plan({ scan: lastScan, baseline, account }: {
     { key: 'projectedFinish', label: summary.finish, value: projected.estimate !== null ? absoluteDate(projected.estimate) : summary.finishUnknown, tip: lengthTip },
   ]
 
+  // Without Entra ID P1 no Conditional Access policy can exist (owner,
+  // 2026-09-19), and since 2026-09-20 the engine builds no steps at all rather
+  // than a partial plan (owner: "I'd rather give no opinion than a half-baked
+  // one"). So the page is that one sentence. The tiles, the tabs and the waves
+  // are not drawn empty around nothing: an empty board reads as a plan.
+  if (licenceLine) return (
+    <section className="surface plan">
+      {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
+      <h1>{P.h1}</h1>
+      <Callout kind="info">{licenceLine}</Callout>
+    </section>
+  )
+
   return (
     <section className="surface plan">
       {data.persistence === 'failed' && <div role="alert"><p>Changes are still in this tab, but could not be saved in this browser. Retry before closing it.</p><Button variant="secondary" onClick={data.retrySave}>Retry Saving</Button></div>}
       <h1>{P.h1}</h1>
-      {/* Without Entra ID P1 no Conditional Access policy can exist (owner, 2026-09-19):
-          the Plan says so first, and the free-tier ladder below is the whole plan. */}
-      {licenceLine && <Callout kind="info">{licenceLine}</Callout>}
       {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
           repeated what the rows below already say and named blockers the board
           names where they are. Why the plan is as long as it is stays one tip away. */}

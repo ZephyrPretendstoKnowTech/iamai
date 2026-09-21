@@ -583,6 +583,9 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
 test('013.H: the printed document draws every step exactly once, and never dates finished work', () => {
   for (const c of CASES) {
     const steps = c.run.steps
+    // A tenant with no Conditional Access licence builds no plan (owner,
+    // 2026-09-20), so there is no printed document to draw anything twice.
+    if (steps.length === 0) continue
     const waves = c.run.schedule.waves
     const seen = new Map<string, string[]>()
     const at = (s: Step, where: string): void => {

@@ -16,6 +16,7 @@ import { savePlanRecord, loadPlanRecord, saveMappingRecord, loadMappingRecord } 
 import { hasStorageIssue } from '../graph/collect/storageIssues.ts'
 import { watermarkDemoFile } from '../ui/exportGuard.ts'
 import { setState } from './lifecycle.ts'
+import { ladderSteps } from './ladder.ts'
 import type { Step } from './types.ts'
 
 const at = '2026-09-14T12:00:00Z'
@@ -66,7 +67,9 @@ test('manual policy review survives unrelated scan changes and reopens if its ba
 
 test('guest review can finish while keeping guests; a changed guest population reopens it', () => {
   const f = fixture('micro')
-  const step = runFixture(f).steps.find((s) => s.id === 's-ladder-guest-review')!
+  // From the ladder builder, not from a plan: a tenant with no Conditional Access
+  // licence has built no plan since 2026-09-20, and the rung is what is under test.
+  const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-guest-review')!
   assert.ok(step)
   assert.ok(f.snapshot.users.some((u) => u.userType === 'guest'))
   const record = { at, testedAt: at.slice(0, 10), outcome: 'retained' as const, accountIds: f.snapshot.users.filter(u => u.userType === 'guest').map(u => u.id), basis: '' }
@@ -84,7 +87,7 @@ test('guest review can finish while keeping guests; a changed guest population r
 
 test('manual confirmation cannot override an unsatisfied scan requirement', () => {
   const f = fixture('micro')
-  const step = runFixture(f).steps.find((s) => s.id === 's-ladder-authenticator-over-sms')!
+  const step = ladderSteps(f.snapshot, f.mapping, []).steps.find((s) => s.id === 's-ladder-authenticator-over-sms')!
   assert.ok(step)
   setState(step, { satisfied: false, inPlace: false })
   applyManualReviews([step], f.snapshot, { [step.id]: { [MANUAL_REVIEW_ID]: { at, basis: manualBasis(step, f.snapshot) } } })
