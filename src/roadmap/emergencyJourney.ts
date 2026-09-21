@@ -90,6 +90,20 @@ export const emergencyMethodIssueKey = (accountId: string, phase: 'current' | 'p
 
 export function emergencyMethodFinding(snapshot: TenantSnapshot, mapping: MappingState, groups: GroupMembers = new Map()): ConfigurationFinding {
   const ids = mapping.breakGlassUserIds
+  // The approved models by AAGUID (passkeySettings.ts requiredModels: the pinned
+  // defaults plus whatever this tenant approved). The card printed the raw
+  // identifier as the model — "Authenticator model:
+  // a25342c0-3cdc-4414-8e46-f4807fca511c" — on the shipped demo, on the one gate
+  // the whole plan stands behind, while that AAGUID is the pinned list's own
+  // "YubiKey 5 Series with NFC". The passkey-settings step a few rows away was
+  // already resolving names from this list.
+  const modelNames = new Map(requiredModels(mapping).map((m) => [m.aaguid.toLowerCase(), m.name]))
+  /** The model as a person can check it: its name where the list knows one, and the identifier either way. */
+  const modelOf = (aaGuid: string | null | undefined): string | null => {
+    if (typeof aaGuid !== 'string' || aaGuid === '') return null
+    const name = modelNames.get(aaGuid.toLowerCase())
+    return name === undefined ? aaGuid : `${name} · ${aaGuid}`
+  }
   const current = emergencyPasskeyCompatibility(snapshot, ids, groups)
   const intended = emergencyProposedPasskeyCompatibility(snapshot, ids, mapping, groups)
   const results = ids.map(id => {
@@ -100,7 +114,7 @@ export function emergencyMethodFinding(snapshot: TenantSnapshot, mapping: Mappin
     const ready = checks.every(c => c.state === 'eligible')
     const methods = snapshot.authMethods[id]
     const keys = Array.isArray(methods) ? methods.filter(m => m.kind === 'passkey' || m.kind === 'fido2') : []
-    const details = keys.map(k => [clean(k.displayName || 'Registered passkey'), k.aaGuid || 'AAGUID not read', k.passkeyType || 'storage type not read'].join(' · ') + '.')
+    const details = keys.map(k => [clean(k.displayName || 'Registered passkey'), modelOf(k.aaGuid) ?? 'AAGUID not read', k.passkeyType || 'storage type not read'].join(' · ') + '.')
     const issueGroups = new Map<string, { value: string; issueKeys: string[] }>()
     for (const [phase, check] of [['current', now], ['planned', next]] as const) {
       if (check.state === 'eligible') continue
@@ -114,7 +128,7 @@ export function emergencyMethodFinding(snapshot: TenantSnapshot, mapping: Mappin
     const items = [
       ...keys.flatMap((key, index) => [
         { label: 'Registered passkey', factLabel: 'Registered passkey', value: clean(key.displayName || `Passkey ${index + 1}`), accountId: id, subjectId: id, subjectLabel: label, outcome: 'pass' as const },
-        { label: 'Authenticator model', factLabel: 'Authenticator model', value: key.aaGuid || 'Could not verify', accountId: id, subjectId: id, subjectLabel: label, outcome: key.aaGuid ? 'pass' as const : 'unknown' as const },
+        { label: 'Authenticator model', factLabel: 'Authenticator model', value: modelOf(key.aaGuid) ?? 'Could not verify', accountId: id, subjectId: id, subjectLabel: label, outcome: key.aaGuid ? 'pass' as const : 'unknown' as const },
         { label: 'Storage type', factLabel: 'Storage type', value: key.passkeyType || 'Could not verify', accountId: id, subjectId: id, subjectLabel: label, outcome: key.passkeyType ? 'pass' as const : 'unknown' as const },
       ]),
       ...[...issueGroups.entries()].map(([reason, issue]) => ({
