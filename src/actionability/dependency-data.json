@@ -560,6 +560,18 @@
       "table": "10.1"
     },
     {
+      "step": "s-prereq-security-defaults",
+      "action": "start",
+      "prerequisite": "s-goal-block-device-code",
+      "prerequisiteKind": "step",
+      "milestone": "ready-to-enforce",
+      "condition": "sd-enabled",
+      "edgeKind": "conditional",
+      "source": "ms-doc",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-goal-mfa-all-users",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",

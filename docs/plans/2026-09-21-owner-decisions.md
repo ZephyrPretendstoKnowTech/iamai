@@ -6,47 +6,65 @@ finding with a diagnosis; none of them is mine to decide.
 
 ---
 
-## 1. The cutover's fourth policy is not the one the authority names
+## 1. The cutover — ANSWERED, and one question left open
 
-Three answers to "which policies take over from security defaults", in one repo:
+**Owner, 2026-09-21: security defaults do block device code flow.** Confirmed
+against `learn.microsoft.com/entra/fundamentals/security-defaults` the same day,
+which now carries a "Block device code flow" section of its own: "After security
+defaults are enabled in your tenant, authentication requests that use device code
+flow are blocked", and from 1 July 2026 every new tenant blocks it.
 
-| source | the policies |
-|---|---|
-| `pages.plan` (the step's procedure and its who-line) | MFA for Everyone, Block Legacy Authentication, **Block Device Code Sign-in**, Admins phishing-resistant |
-| `IAMAI-Actionability-Dependency-Playbook.md` §10.1, the authority | MFA for Everyone, Admins phishing-resistant, Block Legacy Authentication, **Azure Management MFA** |
-| `src/actionability/dependency-data.json`, generated from it | the first three only |
+So the **content was right and the playbook was missing a row.** Fixed:
 
-The graph dropping the fourth is **correct**: §10.0 marks
-`s-goal-azure-management-mfa` "not in pinned baseline", so no such step exists in
-a plan and no edge can point at it. That is the generator doing its job.
+- §10.1 gains `s-prereq-security-defaults:start ← s-goal-block-device-code
+  @ready-to-enforce [sd-enabled]`, and `dependency-data.json` is regenerated. The
+  cutover now waits on four in a pinned-baseline plan, which is what the step has
+  always told the reader.
+- §11's cutover entry records what the six enforced protections are and how the
+  pinned baseline's four steps cover them — `s-goal-mfa-all-users` reaches Azure
+  management as All resources, which is why no separate Azure step is needed.
+  `s-goal-azure-management-mfa` keeps its §10.1 row and generates nothing, being
+  outside the pin.
+- `dependencyData.test.ts` asserts the four, so the row cannot go missing again.
 
-What is not explained is the content's fourth. **Block Device Code Sign-in
-appears nowhere in §10.1.** It is in the playbook only as a goal of its own,
-gated on `device-code-workflows-exist` — someone uses device code for CLI tools
-or display-limited devices — which is a reason to have the policy, not a reason
-the cutover waits on it.
+Before this, a plan could have turned security defaults off with the device-code
+route left open behind it, and nothing would have held the cutover back.
 
-The claim underneath it is the who-line's: "security defaults require MFA, block
-legacy authentication **and block device code sign-in** today, and four policies
-of this plan take over all of it." The step's only citation is
-`learn.microsoft.com/entra/fundamentals/security-defaults`, and nothing in the
-repo records that page as the source of the device-code half.
+### The question this opened, which is bigger
 
-So one of two things is true. Either security defaults do block device code, the
-playbook is missing a row, and the cutover should hold on four; or they do not,
-and the content is naming a policy the cutover has no reason to wait for — on
-the step where getting the order wrong is how a tenant loses its protection.
+The repo holds **two opposite readings of the same silence**, and they have never
+been reconciled:
 
-**What I did instead:** the procedure's first line asserted that all four "have
-been in report-only with no failures", which is false on any tenant where one is
-already enforced — Sam's had three enforced since May. It now says to check each
-one, and that any one *not already enforced* must have run in report-only with no
-failures first. True in every state, and it decides nothing.
+- **Playbook V3** (cleared twice, most recently 2026-09-20): no Learn page
+  forbids *creating* a Report-only policy while security defaults are on, so it
+  is permitted. The gate therefore sits on `enforce`, and **every policy step in
+  the plan instructs the reader to create in Report-only while security defaults
+  are still on.**
+- **`scripts/walkContent.mjs` C7**: a standing `mustNot` forbidding the product
+  from ever saying "Report-only policies can exist while security defaults are
+  on", because no Learn page says they may.
 
-**Decision needed:** do security defaults block device code sign-in? If yes, §10.1
-gains a row and the graph gains an edge. If no, the who-line and the procedure
-lose a policy. Either way the answer belongs in the playbook first, because that
-is where the cutover reads it from.
+The engine acts on the first. The words are forbidden from stating it. And the
+owner's reading, 2026-09-21, is the second and stronger one: "You can't create,
+configure, or enable those while security defaults are in place."
+
+Learn is explicit that security defaults must be **disabled to implement**
+replacements, and silent on creation. I could not settle it from documentation,
+and I am not going to settle it by preference, because of what each answer costs:
+
+- **If creation under security defaults is permitted** (V3), today's design is
+  right: build all four in Report-only, watch them, then cut over in one change
+  window. That is the safest rollout available and it is what ships.
+- **If it is not**, then for every tenant created since October 2019 — security
+  defaults on by default — the report-only observation period is impossible. The
+  cutover becomes: turn security defaults off, then create and enable four
+  policies with the tenant unprotected in between, and no observation at all.
+  That is a different product, and a far more dangerous day.
+
+**Decision needed:** can a Report-only Conditional Access policy be created while
+security defaults are enabled — yes or no? If no, the rollout shape needs
+redesigning and it is not a wording change. I left the step's words exactly as
+they were rather than assert either side.
 
 ---
 

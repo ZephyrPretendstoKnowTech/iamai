@@ -43,3 +43,29 @@ test('§8 owns every condition an edge uses; conditional edges carry a condition
     if (e.condition) assert.ok(owned.has(e.condition), e.condition)
   }
 })
+
+// Security Defaults enforce six things (Microsoft Learn, fundamentals/security-defaults,
+// checked 2026-09-21): MFA registration, MFA for administrators, MFA for users when
+// necessary, blocking legacy authentication, blocking device code flow, and protecting
+// privileged activities such as the Azure portal. Turning them off drops all six at once,
+// so the cutover may not start until something stands in for each. §10.1 carried four rows
+// and missed device code, which is the one a reader would least expect to be there: a plan
+// could have turned Security Defaults off with the device-code route left open behind it.
+test('the Security Defaults cutover waits on a replacement for every protection it removes', () => {
+  const inputs = data.edges.filter((e) => e.step === 's-prereq-security-defaults' && e.action === 'start' && e.prerequisiteKind === 'step')
+  const planned = new Set(data.steps.map((x) => x.id))
+  for (const e of inputs) {
+    assert.equal(e.milestone, 'ready-to-enforce', e.prerequisite)
+    assert.equal(e.condition, 'sd-enabled', e.prerequisite)
+  }
+  // What a plan built on the pinned baseline actually waits for. A row naming a step
+  // outside the pin (azure-management-mfa) generates nothing and is not one of these;
+  // Require MFA for Everyone reaches Azure management as All resources.
+  const gating = inputs.map((e) => e.prerequisite).filter((id) => planned.has(id)).sort()
+  assert.deepEqual(gating, [
+    's-goal-admins-phishing-resistant',
+    's-goal-block-device-code',
+    's-goal-block-legacy-auth',
+    's-goal-mfa-all-users',
+  ], 'a protection Security Defaults removes has no replacement holding the cutover')
+})

@@ -308,6 +308,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-prereq-security-defaults:start` | `s-goal-admins-phishing-resistant` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-block-legacy-auth` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-azure-management-mfa` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
+| `s-prereq-security-defaults:start` | `s-goal-block-device-code` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `<every CA policy step in §11 E–H>:enforce` | `s-prereq-security-defaults` | step | `complete` | `sd-enabled` | conditional | ms-doc | ok |
 | `<every CA policy step in §11 E–H>:enforce` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | owner | ok |
 | `<every CA policy step in §11 E–H>:enforce` | `cleanup-drill` | step | `complete` | — | hard | owner | ok |
@@ -677,7 +678,9 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Work type: cutover · scope_class: all-users · effort_kind: portal · actions: start → complete
 - Condition it owns: `sd-enabled`.
 - Non-step blockers: `fact:` Security Defaults currently enabled (if not, the step resolves not-applicable).
-- Rationale: a coordinated cutover, never a day-one prerequisite. Its start is gated on the four replacement policies reaching ready-to-enforce; every CA policy's enforce is gated on it while Security Defaults is on (V3 resolved: Report-only creation is not restricted by first-party documentation, so the gate stays on enforce).
+- Rationale: a coordinated cutover, never a day-one prerequisite. Its start is gated on the replacement policies reaching ready-to-enforce; every CA policy's enforce is gated on it while Security Defaults is on (V3 resolved: Report-only creation is not restricted by first-party documentation, so the gate stays on enforce).
+- **What the replacements have to replace (V12, 2026-09-21).** The Security Defaults page enumerates six enforced policies: MFA registration for all users, MFA for administrators, MFA for users when necessary, blocking legacy authentication protocols, **blocking device code flow**, and protecting privileged activities such as the Azure portal. §10.1 carried four rows and missed the device-code one, so a plan could turn Security Defaults off with nothing standing in for it. The row is added. In the pinned baseline the six map onto four steps: `s-goal-mfa-all-users` (registration, users-when-necessary, and Azure management, which it reaches as All resources), `s-goal-admins-phishing-resistant`, `s-goal-block-legacy-auth`, `s-goal-block-device-code`. `s-goal-azure-management-mfa` keeps its row and generates nothing, being outside the pin (§10.0).
+- **One path, not several.** Report-only creation is permitted while Security Defaults is on (V3) and enforcement is not, so exactly one order is viable and the step states only that order: create all four in Report-only, watch them, turn Security Defaults off, enable all four in the same change window. There is no supported variant in which Security Defaults and an enforcing replacement coexist, and none in which the replacements are created after the cutover.
 
 #### `s-prereq-per-user-mfa` — Finish Moving Off Per-User MFA
 - Work type: cutover / legacy cleanup · scope_class: all-users · effort_kind: portal · actions: start → complete
