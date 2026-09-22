@@ -136,7 +136,13 @@ export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnaps
     if (!source || source.status === 'ok' || source.status === 'partial') continue
     const spec = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
     if (!spec) continue
-    const capability = spec.requiredCapability === null ? null : (CAPS[spec.requiredCapability] ?? null)
+    // The licence, only where the tenant does not already hold it. This named
+    // Entra ID P1 as something to put in place on a tenant holding P1 AND P2,
+    // beside a permission that genuinely was missing - so the one actionable
+    // half of the sentence arrived next to a false half, and a reader who
+    // checked their own licensing found the product wrong about it.
+    const held = spec.requiredCapability !== null && snapshot.capabilities?.[spec.requiredCapability]?.enabled === true
+    const capability = spec.requiredCapability === null || held ? null : (CAPS[spec.requiredCapability] ?? null)
     const fix = capability === null
       ? fillText(W.blindFix, { scope: spec.scopes.join(', ') })
       : fillText(W.blindFixLicensed, { scope: spec.scopes.join(', '), capability })

@@ -1,4 +1,9 @@
 import { methodAvailability } from './methodAvailability.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+/** The readiness words (shared.engine.readiness). */
+const W = engine.readiness
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
 import { accountApplicability, tenantStrengthsOf } from './operations.ts'
@@ -194,5 +199,14 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
   return { family, percent: unreadable || ids.length === 0 ? null : Math.round(readyIds.length / ids.length * 100),
     ...(atLeast !== undefined ? { atLeast } : {}),
     ...(unreadable ? { unmeasured: 'unreadable' as const } : ids.length === 0 ? { unmeasured: 'no-population' as const } : {}),
-    lines: completeScope ? [`${readyIds.length} of ${ids.length} people have a registered method allowed by the target policies.${unknownIds.length > 0 ? ` Method compatibility is not yet established for ${unknownIds.length}.` : ''}`] : ['The target policy scope must be resolved before method readiness can be measured.'] }
+    // Where NOBODY could be judged, a bare leading zero is an unread count in
+    // the shape of a measurement: the same tenant after the permission is
+    // granted reads "0 of 2 people have a registered method allowed by the
+    // target policies", and a reader had to reach the third clause to learn
+    // which kind of zero they were looking at.
+    lines: !completeScope
+      ? ['The target policy scope must be resolved before method readiness can be measured.']
+      : readyIds.length === 0 && ids.length > 0 && unknownIds.length === ids.length
+        ? [fillText(W.noneJudged, { n: ids.length })]
+        : [`${readyIds.length} of ${ids.length} people have a registered method allowed by the target policies.${unknownIds.length > 0 ? ` Method compatibility is not yet established for ${unknownIds.length}.` : ''}`] }
 }
