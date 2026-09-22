@@ -349,7 +349,27 @@ export function nextMilestone(step: Step): Milestone {
     return { kind: 'deploy', label, at: null, gatedBy: step.blockedReason }
   }
   if (hold !== null) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
-  if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }
+  if (s.lifecycle === 'ready-to-enforce') {
+    // What the step is waiting for, once the evidence has stopped being it.
+    //
+    // "Enable the reviewed policy, then verify the result." beside "ready now:
+    // 0 failures in 8 days" and a date eighteen days out. Every part of that is
+    // correct — the evidence is earned, and the plan places the change after
+    // the notice the people affected are owed (events.announce, noticeDays) —
+    // and together they read as the step contradicting itself. So the milestone
+    // says which wait is left, rather than pairing an instruction in the
+    // present with a date in the future and leaving the reader to reconcile it.
+    const at = step.events?.enforce.at ?? null
+    const today = (step.scheduled ? scheduleOf(step) : null)?.basis?.today ?? null
+    const later = at !== null && today !== null && Date.parse(at) > Date.parse(today)
+    const days = step.events?.noticeDays ?? 0
+    const label = !later
+      ? MILESTONE.enforce
+      : days > 0
+        ? fillText(MILESTONE.enforceScheduled, { date: absoluteDate(at), days: String(days) })
+        : fillText(MILESTONE.enforceScheduledOther, { date: absoluteDate(at) })
+    return { kind: 'enforce', label, at, gatedBy: null }
+  }
   if (s.lifecycle === 'report-only') {
     // A policy this scan found rewritten is being watched from here, and the
     // milestone says so rather than naming a window it has not served.

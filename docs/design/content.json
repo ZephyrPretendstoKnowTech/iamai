@@ -268,6 +268,9 @@
         "observeUntil": "Continue observation and collect the missing evidence. Review from {date}.",
         "observeRecords": "Continue observation and collect the missing evidence.",
         "enforce": "Enable the reviewed policy, then verify the result.",
+        "$commentEnforceScheduled": "A policy whose evidence is complete says \"Enable the reviewed policy\" and \"ready now: 0 failures in 8 days\", and the date beside it was the plan's own placement - eighteen days out on one tenant. Both are right and they read as a contradiction: the wait is not the evidence any more, it is the notice the people affected are owed. The milestone says which wait it is.",
+        "enforceScheduled": "The evidence for this policy is complete, so it is ready to be turned on. The plan turns it on on {date}, which leaves the {days} working days of notice a change this size asks for.",
+        "enforceScheduledOther": "The evidence for this policy is complete, so it is ready to be turned on. The plan turns it on on {date}.",
         "verify": "Verify the change and rescan.",
         "preserve": "No change needed.",
         "none": "Nothing left to do."
