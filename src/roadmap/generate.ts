@@ -927,15 +927,34 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
-  /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
-  const uniqueName = (goal: Goal): { name: string; note: string | null } => {
+  /** The names of the policies this plan tagged for one step, lower-cased. */
+  const taggedNamesFor = (stepId: string): Set<string> => {
+    const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+    const ids = new Set(findTaggedPolicies(snapshot, planId, stepId).map((tag) => tag.policyId))
+    return new Set(rows.filter((p) => ids.has(String(p.id))).map((p) => String(p.displayName ?? '').trim().toLowerCase()).filter(Boolean))
+  }
+  /**
+   * The tenant-convention name, suffixed when a policy of that name already
+   * exists; the note explains.
+   *
+   * A policy this plan tagged for THIS step is not somebody else's name to
+   * avoid: it is the step's own. A tenant IAMAI had planned before arrived with
+   * that policy switched off, which is not a live policy the step can claim, so
+   * the step proposed a create — and suffixed it around its own policy, telling
+   * the operator to build "Core - Block - Device code flow (2)" beside "Core -
+   * Block - Device code flow". Two policies then carried the tag for one step,
+   * which is a state the step can never finish from.
+   */
+  const uniqueName = (goal: Goal, stepId: string): { name: string; note: string | null } => {
     const base = proposedPolicyName(goal, naming)
-    if (!existingNames.has(base.toLowerCase()) && !proposedTaken.has(base.toLowerCase())) {
+    const mine = taggedNamesFor(stepId)
+    const taken = (name: string): boolean => (existingNames.has(name) && !mine.has(name)) || proposedTaken.has(name)
+    if (!taken(base.toLowerCase())) {
       proposedTaken.add(base.toLowerCase())
       return { name: base, note: null }
     }
     let n = 2
-    while (existingNames.has(`${base} (${n})`.toLowerCase()) || proposedTaken.has(`${base} (${n})`.toLowerCase())) n += 1
+    while (taken(`${base} (${n})`.toLowerCase())) n += 1
     const name = `${base} (${n})`
     proposedTaken.add(name.toLowerCase())
     return { name, note: null }
@@ -1635,7 +1654,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     } else if (result.status === 'absent') {
       kind = 'create'
       if (source) {
-        const proposed = uniqueName(goal)
+        const proposed = uniqueName(goal, stepId)
         action = buildCreateAction(named(stepPolicies(), proposed.name), mapping, planId, stepId, goal.id)
         namingNote = proposed
       } else {
@@ -1644,7 +1663,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // Wave 0 step named where they do not (prompt 46 item 12). Every step
         // is executable; nothing says "create a policy that meets the floor".
         for (const p of resolveTemplate(impl.template as TemplateBody, templateValues).unresolved) blockPlaceholder(p)
-        const proposed = uniqueName(goal)
+        const proposed = uniqueName(goal, stepId)
         // The goal's own template is a body the engine wrote, so it carries no
         // author references; it goes through the same boundary all the same, for
         // the exclusions group and the de-duplication.
@@ -1767,7 +1786,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           action = changesFor(buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections }), sections, firstUpdate)
         }
       }
-      if (action.kind === 'create') namingNote = uniqueName(goal)
+      if (action.kind === 'create') namingNote = uniqueName(goal, stepId)
     }
 
     // No usable, owner-confirmed exclusions group, and the goal's own policy needs

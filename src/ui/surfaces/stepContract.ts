@@ -134,6 +134,7 @@ type ContractWords = {
   foundWider: string
   foundWiderCohort: Record<string, string>
   foundDiffers: string
+  foundTaggedDisabled: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
@@ -583,6 +584,19 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', fillText(CONTRACT.foundEnforcedShort, { line: short.line }))) }
+  // A policy this plan tagged, switched off, on a step that is proposing to
+  // create one.
+  //
+  // A tenant IAMAI had planned before arrived carrying six policies with its
+  // own tag, one of them disabled. `claimedPolicy` will not take a disabled
+  // policy as the live one — correctly, it enforces nothing — and then
+  // nothing said it was there, so the step read as though the tenant had
+  // never been planned. The tracking holds the whole answer: the name, that
+  // the match was by tag, and the state.
+  const tag = step.tracking
+  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step)) {
+    out.push(found('tagged-disabled', fillText(CONTRACT.foundTaggedDisabled, { policy: tag.policyName, tenant })))
+  }
   // A goal the tenant already delivers, and *which* policy delivers it. The
   // line used to say only that the tenant "already has a policy doing this",
   // which is the one fact an operator cannot act on: to check that IAMAI

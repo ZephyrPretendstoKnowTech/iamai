@@ -1657,7 +1657,8 @@
             "shortfall": "Who it misses",
             "guestDirectory": "Guest Directory",
             "directory-inventory": "Guest Directory",
-            "awaitingReview": "Your review"
+            "awaitingReview": "Your review",
+            "tagged-disabled": "Left switched off"
           },
           "condition": {
             "healthy": "Healthy",
@@ -1722,6 +1723,8 @@
             "workload": "workload identities"
           },
           "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
+          "$commentFoundTaggedDisabled": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own plan tag, and one of them is switched off. The engine matches it (tracking.matchedBy is a tag, tracking.state is disabled) and then ignores it, because a disabled policy cannot be the step's live policy — so the step proposed a second policy of the same name, the operator built it, two policies then carried the tag for one step, and the step could never finish. The proposal no longer suffixes around the step's own policy, and the finding says what is there.",
+          "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and enable it there if it is the one you want, or follow the instructions below and leave it switched off.",
           "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
           "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
           "foundInPlaceWatched": "{policies} is in place. IAMAI watched it get there.",
