@@ -920,11 +920,13 @@ function waitTextOf(b: Step['blockers'][number]): string | null {
  */
 function enforcementWaitsOf(step: Step): ContractFix[] {
   if (step.state.condition === 'baseline-conflict') return []
-  if (scheduleOf(step).transition !== 'createReportOnly') return []
   const threshold = thresholdBinding(step)
+  const waits = step.blockers.filter((b) => b.kind === 'readiness' && !isThresholdWait(b, threshold))
+  // The schedule is asked only where there is a wait to state: readinessOf runs
+  // for every step on every render, and most hold no readiness wait at all.
+  if (waits.length === 0 || scheduleOf(step).transition !== 'createReportOnly') return []
   const out: ContractFix[] = []
-  for (const b of step.blockers) {
-    if (b.kind !== 'readiness' || isThresholdWait(b, threshold)) continue
+  for (const b of waits) {
     const text = waitTextOf(b)
     if (text !== null && !out.some((f) => f.text === text)) out.push({ key: `${b.kind}:${b.label}`, text })
   }
