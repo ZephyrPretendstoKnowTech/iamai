@@ -216,7 +216,16 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
       required: affected.users.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
       issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
-      steps: [affected.users.length ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.` : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.', '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.'],
+      steps: [affected.users.length
+        ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
+        // Could not judge is not the same as not affected, and saying the
+        // second over the first is an unhedged all-clear before a change that
+        // can cost people their sign-in method. The tile beside this already
+        // reads "Existing passkeys affected · Could not verify"; the task said
+        // the opposite four lines below it.
+        : affected.unassessable.length
+          ? `IAMAI could not tell whether the planned settings affect the passkeys on ${affected.unassessable.length} ${affected.unassessable.length === 1 ? 'account' : 'accounts'}, because it could not read their key model. Check those before applying restrictions, and keep the existing working method available.`
+          : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.', '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.'],
     },
     {
       id: 'apply-passkey-settings', accountId: null, title: 'Configure passkey protections', subjectLabel: subject, targetUpn: null,

@@ -245,3 +245,32 @@ test('an unambiguous assigned profile mismatch produces an executable per-profil
     assert.ok(reading.differs.includes('passkeyProfiles'))
   }
 })
+
+test('a passkey the scan cannot judge is reported as unjudged, never folded into "none affected"', () => {
+  // `users` is the accounts a proposed change provably breaks. Accounts holding
+  // a passkey the scan could not assess were counted into neither list, and the
+  // step read the empty `users` as an all-clear: "No existing passkey is
+  // affected by the planned settings" — four lines under its own tile saying
+  // "Existing passkeys affected · Could not verify", and immediately above
+  // instructions to enforce attestation and a four-model allow-list. On one
+  // tenant that sentence covered thirty-five accounts whose key model the scan
+  // had never been able to read.
+  const f = fixture('mid')
+  const projection = affectedPasskeysByProposedChange(f.snapshot, f.mapping, f.groups)
+
+  // The premise: this tenant holds passkeys whose model is unreadable.
+  const unreadable = f.snapshot.users.filter((u) => {
+    const methods = f.snapshot.authMethods[u.id]
+    if (!Array.isArray(methods)) return false
+    const keys = methods.filter((m) => m.kind === 'fido2' || m.kind === 'passkey')
+    return keys.length > 0 && keys.every((k) => !k.aaGuid)
+  })
+  assert.ok(unreadable.length > 10, `the premise: mid has many unreadable passkeys, not ${unreadable.length}`)
+
+  assert.equal(projection.state, 'unknown', 'a tenant it cannot fully assess reports itself as known')
+  assert.ok(projection.unassessable.length > 0, 'the accounts it could not judge are counted nowhere')
+  // They are not claimed as broken either: unjudged is its own answer.
+  for (const id of projection.unassessable) {
+    assert.equal(projection.users.some((u) => u.accountId === id), false, `${id} is reported as provably affected and as unjudged`)
+  }
+})
