@@ -82,6 +82,12 @@ export type Readiness = {
 
 export type Evidence = {
   status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending' | 'error' | 'none'
+  /**
+   * Why the sign-in source was not read, where it was not (evidence.ts): the
+   * source's own reason. Carried so the evidence gate can say the source
+   * refused rather than describe a short window (derive/readyWhen.ts).
+   */
+  reason?: string | null
   lines: string[]
   affectedUserIds: string[]
   /**

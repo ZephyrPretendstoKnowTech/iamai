@@ -54,7 +54,8 @@ test('an ordinary policy stays observation-driven: no records is not a clean win
 })
 
 test('the readiness basis and the Done-when say configuration, and never a record count, for a User Action step', () => {
-  const ready: ReadyWhen = { kind: 'now', date: SINCE, days: 1, failures: null, seen: null, people: null, read: false, configuration: true }
+  // `sourceUnread: null`: the sign-in source was read (R4-48 added the field; a User Action step's basis is its configuration either way).
+  const ready: ReadyWhen = { kind: 'now', date: SINCE, days: 1, failures: null, seen: null, people: null, read: false, configuration: true, sourceUnread: null }
   assert.equal(readyBasis(ready), engine.tracking.readyConfigured)
   assert.doesNotMatch(readyBasis(ready) ?? '', /failures/)
   assert.equal(readyBasis({ ...ready, configuration: false }), fillText(engine.tracking.readyNow, { n: 1 }))

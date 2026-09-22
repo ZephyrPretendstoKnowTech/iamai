@@ -63,7 +63,26 @@ export type ReadyWhen = {
    * (roadmap/evidenceStrategy.ts). Its basis says so, and states no record count.
    */
   configuration: boolean
+  /**
+   * The sign-in source's own reason where it refused the read outright
+   * (Step.evidence, roadmap/evidence.ts): nothing in the window was read, and
+   * nothing will be until the source can be. Null where the source was read
+   * in whole or in part (see REFUSED). `read` is false here too, and that alone read as a
+   * short window — "the sign-in records read do not cover the whole window,
+   * 0 of 34 active people seen in 8 days" over a tenant whose sign-in records
+   * could not be read at all (R4-48): a gap that waiting closes, and a count
+   * nobody took.
+   */
+  sourceUnread: string | null
 }
+
+/**
+ * The sign-in source's own word for a read it refused (roadmap/evidence.ts,
+ * from the collector's section status). Not `none`, which is a step with no
+ * sign-in evidence to speak of, nor `pending`, a section the scan never
+ * reported on: neither says the tenant refused anything.
+ */
+const REFUSED: ReadonlySet<Step['evidence']['status']> = new Set(['insufficient', 'disabled', 'error'])
 
 export function readyWhen(step: Step): ReadyWhen | null {
   const t = step.tracking
@@ -73,7 +92,9 @@ export function readyWhen(step: Step): ReadyWhen | null {
   // shapes of "not yet": the window has closed and the records are short, or the
   // window is still open.
   const kind = t.readyNow ? 'now' : Date.parse(t.readyOn) <= Date.parse(t.noticedAt) ? 'since' : 'on'
-  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead, configuration: t.evidenceStrategy === 'configuration' }
+  const ev = step.evidence
+  const sourceUnread = REFUSED.has(ev.status) ? (ev.reason ?? ev.status) : null
+  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead, configuration: t.evidenceStrategy === 'configuration', sourceUnread }
 }
 
 /**
@@ -93,6 +114,10 @@ export function readyBasis(ready: ReadyWhen): string | null {
   // waited for, so none is counted in the line that states it.
   if (ready.configuration) return ready.kind === 'now' ? TRACK.readyConfigured : null
   if (ready.kind === 'now') return fillText(TRACK.readyNow, { n: ready.days })
+  // A source that refused the read outright is not a short window: the line
+  // says the records could not be read, and why, and counts nobody — nothing
+  // counted anybody. It needs no scope to say so.
+  if (ready.sourceUnread !== null) return fillText(TRACK.evidenceSourceUnread, { reason: ready.sourceUnread })
   if (ready.seen === null || ready.people === null) return null
   // A window the records do not reach across has no failure count to state and
   // no clean stretch to claim: what the line can say is that the reading is

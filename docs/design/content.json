@@ -220,6 +220,8 @@
         "evidenceToday": "{failures} failing or interrupted, {seen} of {people} active people seen in {n} days",
         "evidenceTodayUnread": "no sign-in records read for this policy, {seen} of {people} active people seen in {n} days",
         "evidenceWindowShort": "the sign-in records read do not cover the whole window, {seen} of {people} active people seen in {n} days",
+        "$commentEvidenceSourceUnread": "The evidence gate where the sign-in source refused the read outright (derive/readyWhen.ts, from the step's own evidence status). It read \"the sign-in records read do not cover the whole window, 0 of 34 active people seen in 8 days\" on the Done-when and the Plan row, which describes a gap that waiting closes. Nothing was read and nothing will be until the source can be read, so it says that and counts nobody: no count was taken.",
+        "evidenceSourceUnread": "the sign-in records could not be read in this tenant ({reason}), so nothing in this window has been checked and waiting will not change that",
         "regression": {
           "disabled": "{name} was disabled after {since}; the goal is open again",
           "deleted": "{name} was deleted after {since}; the goal is open again",
