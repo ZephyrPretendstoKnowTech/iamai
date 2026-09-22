@@ -5,6 +5,7 @@
 // all read the same sentences. Findings name the object and the fact that
 // produced them, never a rule id.
 import { count, list } from './statements.ts'
+import { methodName } from './inventory.ts'
 
 export const SEVERITY = {
   blocker: 'Must fix',
@@ -388,7 +389,11 @@ export const FINDING = {
   bgPersonalOperator: 'this account is signed in to IAMAI now. Confirm this is a controlled recovery test rather than daily administration',
   bgSmsOnly: 'a code by text or call is the only method registered',
   bgNoPhishingResistant: 'no phishing-resistant method registered: a security key or passkey is the stronger choice',
-  bgSameMethodType: (kind: string): string => `every emergency account relies on ${kind} alone`,
+  // The kind in words (inventory.ts methodName): the finding printed the Graph
+  // kind bare, "every emergency account relies on fido2 alone" (R4-56). And
+  // "registered", because that is what the scan reads: a certificate used for
+  // certificate-based authentication is not a registered method.
+  bgSameMethodType: (kind: string): string => `every emergency account relies on one type of registered sign-in method, the same one: ${methodName(kind)}`,
   bgSyncedOnly: 'the only recovery credential on every emergency account is a passkey synced to a personal device, not a security key kept apart from it',
   bgPerUserMfa: 'the tenant has not finished migrating to the authentication methods policy, so the legacy per-user settings still decide which methods are offered',
   bgLicensed: (plans: number): string => `${count(plans, 'licence plan')} assigned, including a mailbox`,

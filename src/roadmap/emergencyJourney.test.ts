@@ -428,3 +428,19 @@ test('a finished emergency step never promises a deferral or a Cleanup row it do
   assert.ok(c.whatToDo.text.includes('Prepared passkeys'), `the lead does not say where the recommendation is: ${c.whatToDo.text}`)
   assert.ok(!(run.schedule.cleanup?.rows ?? []).some(row => row.kind === 'hardening'), 'the premise: no Cleanup row holds it')
 })
+
+// R4-56 (Sam D14, Nadia D11), the words. The method-diversity finding printed
+// the Graph kind bare — "Every emergency account relies on fido2 alone.",
+// "… relies on microsoftAuthenticator alone." — on the card, the export and AI
+// Info. The kind is named as the rest of the product names it.
+test('the method-diversity finding names the method type in words, never the Graph kind', () => {
+  for (const [kind, words] of [['fido2', 'Passkey or FIDO2 security key'], ['microsoftAuthenticator', 'Microsoft Authenticator'], ['phone', 'Text or call']] as const) {
+    const f = tenant()
+    for (const id of f.mapping.breakGlassUserIds) f.snapshot.authMethods[id] = kind === 'fido2' ? f.snapshot.authMethods[id] : [{ kind, id: `m-${id}`, displayName: `Device ${id}` }] as never
+    const diversity = reportOf(f).targets.flatMap(t => t.results).find(r => r.id === 'bg.methodDiversity')!
+    assert.equal(diversity.outcome, 'fail', `the premise: both accounts rely on ${kind}`)
+    const detail = journeyAccountFindings(reportOf(f), f.snapshot, f.mapping).find(x => x.key === 'recovery-methods')!.detail
+    assert.ok(detail.includes(words), `${kind}: ${detail}`)
+    assert.doesNotMatch(detail, new RegExp(`\b${kind}\b`), `${kind} printed bare: ${detail}`)
+  }
+})
