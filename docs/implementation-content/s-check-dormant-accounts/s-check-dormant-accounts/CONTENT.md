@@ -1,5 +1,8 @@
 @@IAMAI-BEGIN {"id":"entra.dormant","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:
+Review each account IAMAI lists with its owner before changing it.
+
+Accounts to review ({{people.affected.count}}): {{people.affected.summary}}. [omit this line when unavailable]
+ An old or missing sign-in record is a reason to investigate, not proof that the account is unused: the directory keeps sign-ins only so far back, and never fills the gap in later. Record one outcome for each account:
 1. No longer needed: disable sign-in, as at least a User Administrator. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.
 2. Still needed: confirm its purpose and owner, and verify legitimate use. Once the owner signs in, the directory's record can take a day to catch up, so scan again after that.
 3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.

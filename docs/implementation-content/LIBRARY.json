@@ -74,7 +74,7 @@
       ],
       "correctionModules": 0,
       "requiredBindings": 3,
-      "optionalBindings": 8,
+      "optionalBindings": 10,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
@@ -1618,7 +1618,7 @@
       ],
       "correctionModules": 3,
       "requiredBindings": 6,
-      "optionalBindings": 6,
+      "optionalBindings": 7,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -3941,6 +3941,7 @@
       "binding": "people.affected.count",
       "requiredBy": [],
       "optionalBy": [
+        "s-check-dormant-accounts",
         "s-goal-azure-management-mfa",
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
@@ -3961,6 +3962,7 @@
         "s-goal-user-risk-medium"
       ],
       "packages": [
+        "s-check-dormant-accounts",
         "s-goal-azure-management-mfa",
         "s-goal-block-auth-transfer",
         "s-goal-block-device-code",
@@ -3985,6 +3987,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "people.affected.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "people.pushOnly.count",
@@ -5271,6 +5285,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "serviceAccounts.accountsSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "serviceAccounts.group.displayName",
       "requiredBy": [],
       "optionalBy": [
@@ -5996,14 +6022,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 936,
-    "uniqueBindings": 259,
+    "uniqueBindings": 261,
     "bindingsRequiredByAtLeastOneProjection": 87,
-    "bindingsOptionalInAtLeastOnePackage": 176,
+    "bindingsOptionalInAtLeastOnePackage": 178,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 217,
+    "bindingDefinitionsPendingHolisticReview": 219,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 217,
+    "knownIAMAIInputUnreviewed": 219,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

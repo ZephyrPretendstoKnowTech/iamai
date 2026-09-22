@@ -15,6 +15,9 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fillText, listCountVars, missingVars, whole } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { fixture as shippedFixture } from '../../roadmap/fixtures/index.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { stepPopulation } from '../../derive/population.ts'
 
 const HOLE = / ,|,,|,\.|\bfrom is\b|\{[a-zA-Z:]+\}/
 
@@ -168,4 +171,58 @@ test('on the demo and GetIAMAI, no rendered line has a hole', () => {
     }
     assert.deepEqual(bad, [], `${name}: lines with a hole`)
   }
+})
+
+/**
+ * The mid tenant as a reader meets it: the shipped fixture, not the curated
+ * one, because this is about the instructions a person is handed.
+ */
+function marcusFixtureRun() {
+  const f = shippedFixture('mid')
+  const r = runFixture(f)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  return { steps: r.steps, ctx }
+}
+
+test('a step that tells you to review a set renders the set in the channel you work in', () => {
+  // "Review each account IAMAI lists with its owner before changing it." — and
+  // the only channel that listed them was the AI briefing: sixty names there,
+  // none in the portal, the script or the email. Four readers met that
+  // sentence, went looking for the list where the work is done, and found an
+  // instruction naming a set the page did not contain.
+  //
+  // The count was bound all along (`people.affected.count`) and the names were
+  // one field away on the same view. The pairing is the point: a line that
+  // counts and lists is judged on both, so where the directory cannot name
+  // every one of them the whole line is omitted rather than rendering a set
+  // that silently drops people.
+  const t = marcusFixtureRun()
+  const portalOf = (id: string): string => {
+    const step = t.steps.find((s) => s.id === id)
+    assert.ok(step, `${id} is not on this plan`)
+    const body = stepBodyOf(step, t.ctx)
+    const channel = body.artifacts.find((a) => a.id === 'portal')
+    assert.ok(channel, `${id} offers no portal channel`)
+    return channel.text()
+  }
+
+  // Every dormant candidate, by name, where the reader is working.
+  const dormant = portalOf('s-check-dormant-accounts')
+  const expected = stepPopulation(t.steps.find((s) => s.id === 's-check-dormant-accounts')!)?.names ?? []
+  assert.ok(expected.length > 10, `the premise: mid has many dormant candidates, not ${expected.length}`)
+  for (const id of expected) {
+    const upn = t.ctx.snapshot.users.find((u) => u.id === id)?.userPrincipalName
+    if (upn) assert.ok(dormant.includes(upn), `the portal omits ${upn}, which the step tells the reader to review`)
+  }
+
+  // And the confirmed service accounts on the step whose instruction names them.
+  const service = portalOf('s-prereq-service-accounts-group')
+  const confirmed = t.ctx.mapping.serviceAccountUserIds ?? []
+  assert.ok(confirmed.length > 0, 'the premise: mid confirms service accounts')
+  for (const id of confirmed) {
+    const upn = t.ctx.snapshot.users.find((u) => u.id === id)?.userPrincipalName
+    if (upn) assert.ok(service.includes(upn), `the portal omits ${upn}, which the step tells the reader to add`)
+  }
+  // The instruction no longer promises a list it does not carry.
+  assert.equal(service.includes('as IAMAI lists'), false, 'the step still points at a list it does not render')
 })
