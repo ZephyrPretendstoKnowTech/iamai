@@ -2468,8 +2468,9 @@
               "no": "No"
             },
             "serviceEvidence": {
-              "seen": "{service} sign-ins were seen in the last 30 days.",
-              "notSeen": "No {service} sign-ins in the last 30 days.",
+              "seen": "{service} sign-ins appear in the tenant's app sign-in summary or its service-principal activity.",
+              "$commentSeen": "These said \"in the last 30 days\" over two sources that declare no window at all: appSignInSummary and spActivity both carry coveredWindow null on every tenant seen so far. A reader who trusts the window reads a measured negative — IAMAI watched for a month and saw nothing — where what happened is that a summary with no stated period does not list the app. The named window is gone; what the sources are is said instead. Whether an undeclared window should still suggest removing a policy from the plan is a separate question, and a bigger one: it decides plan composition.",
+              "notSeen": "{service} does not appear in the tenant's app sign-in summary or its service-principal activity.",
               "syncSeen": "An account holds the Directory Synchronization Accounts role, so a sync service is likely in use.",
               "syncNotSeen": "No account holds the Directory Synchronization Accounts role."
             },
