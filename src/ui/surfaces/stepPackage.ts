@@ -23,7 +23,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { operationsOf, policyResult } from '../../roadmap/operations.ts'
+import { operationsOf, policyHold, policyResult } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
@@ -245,6 +245,18 @@ const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o
  * Anything else — an enforced policy short of the baseline with no update to
  * offer — is blocked: nothing is projected rather than something invented.
  */
+/**
+ * A policy whose evidence is complete and whose turn-on waits on the plan's own
+ * prerequisites (roadmap/enforceWaits.ts; operations.ts hold `prerequisite-unmet`)
+ * projects what it is: a policy that stays in Report-only. Its readyToEnforce
+ * projection is the turn-on — "Change Enable policy to On", the enabling PATCH,
+ * the Enforce mode — and it was shipped whole, executable and as a planning
+ * preview alike, under a "Stop" line in one channel (Sam D2, Nadia D1).
+ */
+function enforceHeld(step: Step): boolean {
+  return policyHold(step) === 'prerequisite-unmet'
+}
+
 export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnapshot | null): PackageState | null {
   const s = c.state
   if (s.setAside) return null
@@ -275,7 +287,7 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // A set partly in the tenant — one member to create beside one already there —
   // is a correction of the set, never a create of every member (correction batch 2).
   if (partlyDeployed(operationsOf(step))) return 'partial'
-  if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
+  if (s.lifecycle === 'ready-to-enforce') return enforceHeld(step) ? 'reportOnly' : 'readyToEnforce'
   if (s.lifecycle === 'report-only') return 'reportOnly'
   if ((s.lifecycle === 'not-deployed' || s.lifecycle === null) && operationsOf(step).some((o) => o.mode === 'create')) return 'missing'
   // A preparation step makes the object it names: until it is in place, that
@@ -319,7 +331,7 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
     // (B10 P0-1: the unconfirmed exclusions group left every enforced policy on
     // the real tenant with "Nothing to submit yet").
     if (s.lifecycle === 'enforced') return 'partial'
-    if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
+    if (s.lifecycle === 'ready-to-enforce') return enforceHeld(step) ? 'reportOnly' : 'readyToEnforce'
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
   }

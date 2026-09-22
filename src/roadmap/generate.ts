@@ -61,6 +61,7 @@ import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
+import { settleEnforceWaits } from './enforceWaits.ts'
 import { app, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -2818,6 +2819,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // goal an all-users policy covers is held for its own questions): left on,
   // it is a guest percentage measured over everybody, waiting for a reader.
   for (const s of steps) if (!s.state.satisfied && s.action.enforcedBelowReadiness) { const { enforcedBelowReadiness: _, ...rest } = s.action; s.action = rest }
+  // What turning each policy on still waits on, from the plan's own Cleanup
+  // record and the scan (roadmap/enforceWaits.ts): here, where the drill row
+  // and every title exist. It holds the turn-on in every channel
+  // (operations.ts `policyResult`, hold `prerequisite-unmet`) and nothing else.
+  settleEnforceWaits(steps, schedule)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.
   const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })

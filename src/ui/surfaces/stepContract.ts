@@ -981,6 +981,11 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // an unavailable reason so that confirmed-unsafe stays the answer where both
   // apply — a review never softens it (Foundation A, `reasonLine`).
   if (heldForReview(step)) return { kind: milestone.kind, text: milestone.label }
+  // A turn-on the plan's own prerequisites still hold (roadmap/enforceWaits.ts;
+  // operations.ts hold `prerequisite-unmet`): what it waits for is the action,
+  // in Foundation B's words, whatever the step's content leads with. The content
+  // was written for a policy it is time to turn on.
+  if (policyHold(step) === 'prerequisite-unmet') return { kind: milestone.kind, text: milestone.label }
   // Nothing overrules the lifecycle here, so the step's own words for its work
   // are the action where it has them — "Fix each failing check. 3 of 34 fail
   // today." says more than "Make the object this step names.", and saying both

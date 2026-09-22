@@ -352,15 +352,21 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
 
 /**
  * The hard prerequisites of the action a completed step already took, that the
- * scan still finds unmet. Conditional edges are left out: their condition may
- * simply not apply. Evidence edges are gates on enforcement, not facts (§7).
+ * scan still finds unmet, and the conditional ones whose condition this plan has
+ * resolved to applicable. An unresolved condition is left out: it may simply not
+ * apply, and "that order was not followed" is a claim. A resolved one is not:
+ * eight policies enforced while security defaults were on read Completed with a
+ * tile naming the recovery test and nothing naming the cutover, because every
+ * security-defaults edge is conditional (Sam D2). Evidence edges are gates on
+ * enforcement, not facts (§7).
  */
 function completedWithout(ctx: Ctx, id: string): Blocker[] {
   const kind = kindOf(ctx, id)
   const action: Action = kind === 'policy' ? 'enforce' : kind === 'decision' ? 'decide' : 'complete'
   const out: Blocker[] = []
   for (const e of edgesOf(ctx, id)) {
-    if (e.action !== action || e.edgeKind !== 'hard' || isEvidenceEdge(e)) continue
+    if (e.action !== action || isEvidenceEdge(e)) continue
+    if (e.edgeKind !== 'hard' && !(e.edgeKind === 'conditional' && conditionState(ctx, e.condition) === 'applicable')) continue
     if (e.prerequisite === id || edgeSatisfied(ctx, e)) continue
     const kindOfBlocker = e.prerequisiteKind === 'step' ? 'step' : nonStepKind(e, prerequisiteState(ctx, e.prerequisite))
     if (out.some((b) => b.kind === kindOfBlocker && b.id === e.prerequisite)) continue
