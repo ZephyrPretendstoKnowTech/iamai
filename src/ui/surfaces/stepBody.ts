@@ -339,7 +339,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Keep every substantively supported lifecycle format. Fill missing machine
   // projections with clearly labelled inspection, never a placeholder message.
   const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && resourceChannelAllowed(step, ch)) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
-  const resources = pkg && pkgState && pkgBindings && pkgRuntime ? lifecycleResources(pkg, pkgState, pkgBindings, pkgRuntime.runtime, key => `‹${key.split('.').join(' ')}›`) : []
+  const resources = pkg && pkgState && pkgBindings && pkgRuntime ? lifecycleResources(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : []
   for (const resource of resources) {
     const artifact = packageArtifact(resource, grounding)
     if (resourceChannelAllowed(step, artifact.id) && !produced.some(a => a.id === artifact.id) && artifact.text().trim()) produced.push(artifact)

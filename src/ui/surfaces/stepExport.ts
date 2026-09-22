@@ -388,7 +388,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     const projection = projectSafely(pkg, state, bindings, runtime)
     const preview = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projection)
     const projectedEntra = (preview?.channels ?? projection.channels).find(channel => channel.channel === 'entra')
-    const entra = projectedEntra ?? lifecycleResources(pkg, state, bindings, runtime, key => `‹${key.split('.').join(' ')}›`).find(channel => channel.channel === 'entra')
+    const entra = projectedEntra ?? lifecycleResources(pkg, state, bindings, runtime).find(channel => channel.channel === 'entra')
     if (entra) {
       hasPackagePortal = true
       lines.splice(0)

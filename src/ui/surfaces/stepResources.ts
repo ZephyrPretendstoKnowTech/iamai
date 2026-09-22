@@ -11,11 +11,27 @@ import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roa
 import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 
-/** The same resource remains useful when a task moves from preparation to verification. */
-export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, label: (key: string) => string): ChannelArtifact[] {
+/** Where a lifecycle resource would print a value IAMAI does not hold. Never shown: a channel carrying it is dropped. */
+const UNBOUND = ''
+
+/**
+ * The same resource remains useful when a task moves from preparation to
+ * verification — but only a channel whose every value IAMAI holds.
+ *
+ * Callers used to hand in a label for a missing value, and both passed the raw
+ * binding key: `‹policies guests mixed target displayName›`. With one of the
+ * guests pair resolved, the Entra channel read "Create the two guest policies
+ * separately" with the second policy named by that key, and the task list and
+ * the AI briefing, which read the Entra channel, repeated it. A name IAMAI does
+ * not hold cannot be typed into the portal, and the name plus the plan tag is how
+ * IAMAI recognises the policy afterwards. The screen and the export already fall
+ * back to the step's own resolved lines, or to a read-only inspection, where no
+ * channel comes from here, so dropping the channel is the whole fix.
+ */
+export function lifecycleResources(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext): ChannelArtifact[] {
   // Read the current state's own reference/verification blocks first. Never select a
   // different mutation state merely to fill a missing format: the planner owns that target.
-  return planSafely(pkg, state, bindings, runtime, label).channels
+  return planSafely(pkg, state, bindings, runtime, () => UNBOUND).channels.filter((a) => !JSON.stringify(a).includes(UNBOUND))
 }
 
 const NON_MACHINE = new Set(['s-ladder-operator-passkey', 's-prereq-device-plan', 's-confirm-workloads'])
