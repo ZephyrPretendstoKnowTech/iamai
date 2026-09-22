@@ -419,7 +419,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // path that makes the object, the campaign's preparation, the review's reading
   // — so the task frame draws exactly what this step drew. The four Emergency
   // Access steps keep their own producers above and are never this.
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping) : null)
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0)) : null)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null
