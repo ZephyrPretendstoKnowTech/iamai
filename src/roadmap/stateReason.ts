@@ -106,7 +106,9 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
         case 'unmatched-pair':
           return step.action.ambiguousTarget ? BLOCKED_REASON.targetAmbiguous : BLOCKED_REASON.pairUnmatched
         case 'no-operation':
-          return BLOCKED_REASON.noOperation
+          // An update the tenant's policy already holds in full is not a step a
+          // scan rebuilds: every scan rebuilds the same empty update.
+          return step.action.nothingOwed ? BLOCKED_REASON.noOperationHeld : BLOCKED_REASON.noOperation
         case 'manual-correction':
           return BLOCKED_REASON.manualCorrection
         case 'unsafe-emergency-access':

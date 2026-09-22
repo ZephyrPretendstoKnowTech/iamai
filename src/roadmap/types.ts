@@ -366,6 +366,23 @@ export type Action = {
    */
   enforceWaitsOn?: { id: string; title: string }[]
   /**
+   * An update with nothing in it, because the tenant policy it targets already
+   * holds every section this step writes (generate.ts). `gaps` is what still
+   * keeps the goal short that no update writes — a condition narrower than the
+   * baseline's — in the classifier's own words (coverage reason details);
+   * empty where nothing of the kind is left.
+   *
+   * The step said "This step has no policy for IAMAI to write in this plan.
+   * Scan <tenant> again to rebuild it", with the Done-when "A scan rebuilds this
+   * step with a policy IAMAI can write". Both were false: the policy is there,
+   * and every scan rebuilt the same empty update. Following the plan reaches it
+   * (the demo tenants' device policy, enforced as the step asked, then read
+   * narrower than the baseline in its device platforms), and a tenant whose own
+   * compliant-device policy leaves phones out, as its device decision does, has
+   * it on the first scan.
+   */
+  nothingOwed?: { gaps: string[] }
+  /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the
    * break-glass accounts, or the exclusions group. Set only on a step that can

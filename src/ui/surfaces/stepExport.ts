@@ -335,7 +335,11 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // entry: the artifacts say the same thing the screen says about it, on
   // whichever goal the active baseline hands that source.
   else if (conflicted && conflictWords !== null) lines.push(fillText(conflictWords, ex))
-  else if (noOperation) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
+  // The screen's own reason line (stepContract.ts reasonLine), not a second copy
+  // of the generic one: "Scan again to rebuild it" is false over a policy the
+  // tenant switched off, one that already delivers the goal, and one that
+  // already holds everything this step writes, and only the screen knew that.
+  else if (noOperation) lines.push((contract.implementation.offered ? null : contract.implementation.because) ?? fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
   else if (manual) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.manualCorrection), { tenant: String(ex.tenant ?? ''), fields: dimensionWords(step.state.observation?.unwritten ?? []) }))
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))

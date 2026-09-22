@@ -174,6 +174,8 @@ type ContractWords = {
   doneEmergency: string
   doneOperation: string
   doneOperationCovered: string
+  /** An update the tenant's policy already holds in full (types.ts Action.nothingOwed): the goal in place, or declined. */
+  doneOperationHeld: string
   /** A policy the tenant switched off: its end state is being on again, not being built (roadmap/operations.ts switchedOffPolicy). */
   doneSwitchedOn: string
   doneManual: string
@@ -515,6 +517,21 @@ function stageOf(step: Step): string {
   return s.lifecycle ? CONTRACT.lifecycle[s.lifecycle] : ''
 }
 
+/**
+ * The reason line of an update the tenant's policy already holds in full
+ * (types.ts Action.nothingOwed): the policy by name, that there is nothing to
+ * submit, and what still keeps the goal short that no update writes. Null on
+ * any other step with no operation.
+ */
+function heldLine(step: Step): string | null {
+  const owed = step.action.nothingOwed
+  if (!owed) return null
+  const names = (step.action.resolution?.policies ?? []).map((o) => (o.target as { displayName?: unknown } | undefined)?.displayName).filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+  if (names.length === 0) return null
+  const lead = fillText(app.plan.noOperationHeld, { policy: list([...new Set(names)]) })
+  return owed.gaps.length > 0 ? `${lead} ${fillText(app.plan.noOperationHeldGap, { gaps: owed.gaps.join('; ') })}` : lead
+}
+
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
 function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclusionsUnconfirmed = false): string {
   switch (reason) {
@@ -542,6 +559,13 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       const by = step.satisfiedBy
       const covered = by && by.policies.length > 0 ? by.sufficient ?? by.policies[0] : null
       if (covered !== null) return fillText(app.plan.noOperationCovered, { tenant, policy: covered })
+      // And a third: the update is empty because the policy it targets already
+      // holds every section this step writes (Action.nothingOwed). Every scan
+      // rebuilds the same empty update, so "scan again to rebuild it" was a
+      // remedy that did nothing (R4-11). It names the policy, and what still
+      // keeps the goal short where that is something no update writes.
+      const held = heldLine(step)
+      if (held !== null) return held
       return fillText(app.plan.noOperation, { tenant })
     }
     case 'manual-correction':
@@ -598,7 +622,11 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       // it open. What finishes it is on the card above.
       const by = step.satisfiedBy
       const covered = by && by.policies.length > 0 ? by.sufficient ?? by.policies[0] : null
-      return covered === null ? CONTRACT.doneOperation : fillText(CONTRACT.doneOperationCovered, { policy: covered, tenant })
+      if (covered !== null) return fillText(CONTRACT.doneOperationCovered, { policy: covered, tenant })
+      // The same for an update the tenant's policy already holds in full: each
+      // scan rebuilds the same empty update, so the goal in place, or declined,
+      // is what finishes it.
+      return heldLine(step) !== null ? fillText(CONTRACT.doneOperationHeld, { tenant }) : CONTRACT.doneOperation
     }
     case 'manual-correction':
       return fillText(CONTRACT.doneManual, { fields: dimensionWords(step.state.observation?.unwritten ?? []) })

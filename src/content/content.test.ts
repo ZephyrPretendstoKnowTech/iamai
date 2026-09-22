@@ -132,6 +132,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
+  // The row reason for an update the tenant's policy already holds in full
+  // (roadmap/stateReason.ts, types.ts Action.nothingOwed): a later scan's state,
+  // which the review page's example plan is not in.
+  '.pages.plan.blocked.noOperationHeld',
   // A4 (2026-09-12): the row reasons for a correction only a person can make and
   // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
   '.pages.plan.blocked.manualCorrection',
