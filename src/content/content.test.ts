@@ -225,6 +225,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
   '.steps[13].who.groups.needsSetup',
   '.steps[13].who.groups.readinessUnknown',
+  // The same group where the campaign's source was refused (R4-20): the example's sources are all read.
+  '.steps[13].who.groups.readinessUnknownBlind',
   '.steps[13].who.groups.holdouts',
   // The admins the campaign waits on outside its active people (R4-52): the
   // example's tenant has none, dormant or with sign-in activity unread.

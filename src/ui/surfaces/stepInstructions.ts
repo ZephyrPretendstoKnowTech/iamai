@@ -94,3 +94,23 @@ function engineSteps(step: Step, cs: ContentStepLike): unknown[] {
   if (cs?.kind === 'policy') return []
   return step.action.portalSteps ?? []
 }
+
+/**
+ * The lines that promise a scan will show people's progress (content
+ * `whatToDo.rescan`): its `steps` follow the step's own lines and its
+ * `generic` follows the lines for everyone else. Empty while the step's own
+ * reading names a source the scan could not read (roadmap/types.ts
+ * `Readiness.blind`): then no scan shows anything until that source can be
+ * read, and the Readiness card says which permission opens it.
+ *
+ * On a tenant whose registration details returned 403, Prepare Your Team for
+ * MFA said "the record shows it on the next scan" and "the lists above shrink
+ * as people are seen", and neither could happen (R4-20, Priya D5). The promise
+ * is left out; no warning is set beside it.
+ */
+export function rescanLinesOf(step: Step, cs: ContentStepLike): { steps: string[]; generic: string[] } {
+  const rescan = ((cs?.whatToDo ?? {}) as { rescan?: { steps?: unknown; generic?: unknown } }).rescan
+  if (rescan === undefined || step.readiness?.blind !== undefined) return { steps: [], generic: [] }
+  const strings = (xs: unknown): string[] => (Array.isArray(xs) ? xs.filter((x): x is string => typeof x === 'string') : [])
+  return { steps: strings(rescan.steps), generic: strings(rescan.generic) }
+}

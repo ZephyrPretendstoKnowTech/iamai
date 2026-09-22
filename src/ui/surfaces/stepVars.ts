@@ -330,6 +330,15 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.dormantAdminsNotReady = waiting(step.preparation.dormantIds)
     v.unreadAdminsNotReady = waiting(step.preparation.activityUnreadIds)
   }
+  // The same unknown people under a heading with no "scan again before assessing
+  // readiness" (who.groups.readinessUnknownBlind), where the step's own reading
+  // names a source the scan could not read (Readiness.blind): no scan settles
+  // them until that source can be read, and the Readiness card says what opens
+  // it (R4-20, Priya D5).
+  if (step.readiness?.blind !== undefined) {
+    v.readinessUnknownBlind = v.readinessUnknown
+    v.readinessUnknown = []
+  }
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one

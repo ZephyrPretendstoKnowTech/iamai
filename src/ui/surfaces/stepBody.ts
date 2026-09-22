@@ -34,7 +34,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
-import { stepInstructions } from './stepInstructions.ts'
+import { rescanLinesOf, stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
@@ -405,7 +405,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     produced.push(step.id === 's-verify-mfa' ? mfaPreparationEmail(ctx) : emailResource(step, ctx, contract.why))
   }
   if (step.id === 's-verify-mfa') {
-    const lines = [...(Array.isArray(w.steps) ? w.steps : []), ...(Array.isArray(w.generic) ? w.generic : [])].filter((line): line is string => typeof line === 'string').map(line => fillText(line, ex)).filter(line => line.trim() && !/\{[^}]+\}/.test(line))
+    // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts rescanLinesOf, R4-20).
+    const rescan = rescanLinesOf(step, cs)
+    const lines = [...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic].filter((line): line is string => typeof line === 'string').map(line => fillText(line, ex)).filter(line => line.trim() && !/\{[^}]+\}/.test(line))
     for (const channel of ['portal', 'ps', 'ai'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)
