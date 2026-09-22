@@ -255,6 +255,37 @@ export function heldForReview(step: Pick<Step, 'state'>): boolean {
   return s.lifecycle === 'report-only' || s.lifecycle === 'ready-to-enforce'
 }
 
+/**
+ * What a review is about, read from the members that asked for one
+ * (observation.ts `drifted`, `unwritten`): a policy IAMAI was watching moved
+ * somewhere the plan did not ask for, or a deployed policy is not what the plan
+ * asked for in a part IAMAI does not write, or both. The first is a change
+ * somebody made and a person finds out why; the second is a difference nobody
+ * has to explain, only correct in the Entra admin center. Every surface that
+ * words a review reads it here, so none of them says "what changed on it" about
+ * a policy first seen in this scan (R4-25).
+ *
+ * `unwritten` is every such member's dimensions, in order and once each.
+ */
+export function reviewCauses(step: Pick<Step, 'state'>): { drifted: boolean; unwritten: string[] } {
+  const asked = step.state.members.filter((m) => m.change.reviewRequired)
+  return {
+    drifted: asked.some((m) => m.change.drifted),
+    unwritten: [...new Set(asked.flatMap((m) => [...m.change.unwritten]))],
+  }
+}
+
+/**
+ * True when a step held for review is held only because its policy is not what
+ * the plan asked for in a part IAMAI does not write: nothing moved, so there is
+ * no change to find out about, and the next thing is the correction.
+ */
+export function heldForCorrection(step: Pick<Step, 'state'>): boolean {
+  if (!heldForReview(step)) return false
+  const why = reviewCauses(step)
+  return !why.drifted && why.unwritten.length > 0
+}
+
 /** Raise the condition to `next` if it binds harder than the one the step already carries. */
 export function raiseCondition(step: Step, next: Condition): Step {
   if (CONDITION_RANK[next] <= CONDITION_RANK[step.state.condition]) return step
@@ -294,6 +325,12 @@ export function nextMilestone(step: Step): Milestone {
   // a window closing does not settle a change nobody has explained, and there is
   // no date on which a person looks, so it carries none. What has to clear first
   // is the observation itself, in Foundation B's own words.
+  // Held only on a difference IAMAI does not write, nothing changed on the policy
+  // and there is nothing to find out: the next thing is the correction, in the
+  // words the manual-correction hold below uses (R4-25).
+  if (heldForCorrection(step)) {
+    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(reviewCauses(step).unwritten) }), at: null, gatedBy: s.observation?.note ?? null }
+  }
   if (heldForReview(step)) return { kind: 'resolve', label: MILESTONE.review, at: null, gatedBy: s.observation?.note ?? null }
   // Anything else that holds the step comes before the stage's own next move too
   // (roadmap/holds.ts): a policy being watched while a prerequisite, a missing
