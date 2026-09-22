@@ -10,12 +10,13 @@ import { contentStepFor } from '../content/stepTitle.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds } from './sets.ts'
-import { peopleCounts } from './population.ts'
+import { isActivePerson, peopleCounts, reached } from './population.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { EXPLAINED, readinessView } from './mfaReadiness.ts'
 import { KINDS, ladder } from './ladder.ts'
 import { READINESS_STATES } from '../scoring/phishingResistant.ts'
-import { affectedIds } from './whoLine.ts'
+import { affectedIds, populationLine } from './whoLine.ts'
+import { adminUserIds } from '../roles.ts'
 import { contentLists } from './contentLists.ts'
 import { planDates, stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -75,15 +76,56 @@ test('the emergency accounts are not people: listed on MFA Readiness by kind, ne
 // and guests are the active ones too, so the line and the count cannot
 // disagree") and the separation step counted them over all of them. The
 // review scope is its own figure and says so ("60 accounts to review").
+//
+// Exactly, not "at most" (R4-57): the admins and guests on a line are the ones
+// among the ids its head counts. A step that names accounts rather than people
+// (the dormant accounts, the per-user MFA states) counts them over those
+// accounts; the dormant step read "731 accounts" on the large tenant with 9
+// admins and 28 guests among them and said neither, because its admins were
+// counted over the active people it holds, which is none. "admins <= active"
+// passed it.
 test('one admin denominator: every step counts admins over the people it counts', () => {
   for (const name of ['small', 'mid', 'large', 'midflight', 'hostile', 'messy'] as const) {
-    for (const step of runFixture(fixture(name)).steps) {
+    const fx = fixture(name)
+    const admins = adminUserIds(fx.snapshot.roles)
+    const guests = new Set(fx.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+    for (const step of runFixture(fx).steps) {
       const p = step.population
       if (!p) continue
-      assert.ok(p.admins <= p.active, `${name}/${step.id}: ${p.admins} admins among ${p.active} active people`)
-      assert.ok(p.guests <= p.active, `${name}/${step.id}: ${p.guests} guests among ${p.active} active people`)
+      const head = affectedIds(p)
+      assert.equal(p.admins, head.filter((id) => admins.has(id)).length, `${name}/${step.id}: ${p.admins} admins, counted over the ${head.length} the line counts`)
+      assert.equal(p.guests, head.filter((id) => guests.has(id)).length, `${name}/${step.id}: ${p.guests} guests, counted over the ${head.length} the line counts`)
     }
   }
+})
+
+// R4-57. The per-user MFA step built its population by hand: "active" meant the
+// account is enabled, and the admins and guests were carried over as zero from
+// an empty population. With per-user MFA on for the two emergency accounts, two
+// dormant ones and one active admin, its line read "5 active people": the
+// emergency accounts are not people anywhere, the dormant ones are not active,
+// and three admins read as none.
+test('the per-user MFA step names accounts, and counts its admins among them', () => {
+  const fx = structuredClone(fixture('getiamai'))
+  const first = runFixture(fx)
+  const active = new Set(first.input.viability.filter((v) => isActivePerson(v)).map((v) => v.userId))
+  const admins = adminUserIds(fx.snapshot.roles)
+  const bg = new Set(fx.mapping.breakGlassUserIds)
+  const dormant = fx.snapshot.users.filter((u) => !active.has(u.id) && !bg.has(u.id)).slice(0, 2).map((u) => u.id)
+  const activeAdmin = fx.snapshot.users.filter((u) => active.has(u.id) && admins.has(u.id)).slice(0, 1).map((u) => u.id)
+  const on = new Set([...bg, ...dormant, ...activeAdmin])
+  assert.equal(on.size, 5, 'the premise: two emergency accounts, two dormant, one active admin')
+  fx.snapshot.perUserMfa = Object.fromEntries(fx.snapshot.users.map((u) => [u.id, { state: on.has(u.id) ? 'enabled' : 'disabled', reason: null }])) as typeof fx.snapshot.perUserMfa
+  const step = runFixture(fx).steps.find((s) => s.id === 's-prereq-per-user-mfa')
+  assert.ok(step, 'the premise: the step is planned')
+  const pop = reached(step)
+  assert.ok(pop !== null)
+  assert.deepEqual([...affectedIds(pop)].sort(), [...on].sort(), 'the step names every account the scan read as on')
+  const line = populationLine(pop)
+  assert.doesNotMatch(line, /active (person|people)/, `emergency and dormant accounts are called active people: ${line}`)
+  assert.equal(pop.admins, [...on].filter((id) => admins.has(id)).length, 'the admins are counted over the accounts it names')
+  assert.ok(pop.admins > 0, 'and there are some')
+  assert.match(line, new RegExp(`^5 accounts · ${pop.admins} admins?`), line)
 })
 
 // And the one figure that is deliberately a different population says so.
