@@ -214,3 +214,26 @@ test('a count of one bends the verb a binding uses', () => {
   assert.equal(BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0), 'when 1 Temporary Access Pass policy exists (now 0)')
   assert.equal(BLOCKED_REASON.exist(2, 'trusted location', 0), 'when 2 trusted locations exist (now 0)')
 })
+
+test('two configuration checks that produce the same card draw one card', () => {
+  // One step drew "Allowed countries · Not Fully Read · Missing scan evidence:
+  // sign-in records" twice, from two different check keys. A reader counts two
+  // problems where there is one, and then reasonably wonders what else on the
+  // page is doubled. `directOnly` deduped tiles naming the same STEP; two
+  // checks can still come out byte for byte identical.
+  for (const name of ['demo', 'hostile', 'midflight', 'large', 'mid', 'getiamai'] as const) {
+    const f = fixture(name)
+    const run = runFixture(f)
+    const ctx: StepVarContext = {
+      snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
+      signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+    }
+    for (const step of run.steps) {
+      const r = readinessOf(step, stepContract(step, ctx))
+      for (const list of [r.tiles, r.satisfied]) {
+        const cards = list.filter((t) => t.key.startsWith('configuration:')).map((t) => JSON.stringify([t.label, t.value, t.note]))
+        assert.equal(cards.length, new Set(cards).size, `${name}/${step.id} draws the same card twice`)
+      }
+    }
+  }
+})
