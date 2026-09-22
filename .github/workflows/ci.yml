@@ -17,7 +17,11 @@ jobs:
   checks:
     name: Type and unit checks
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The suite is ~13-15 minutes and was sitting on a 15-minute timeout, so it
+    # cancelled itself mid-run and the deploy skipped for a reason that had
+    # nothing to do with the code. Headroom, not a target: if this is ever
+    # close again the suite has grown enough to be worth splitting.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
