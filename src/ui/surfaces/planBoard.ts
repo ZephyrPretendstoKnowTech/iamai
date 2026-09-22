@@ -41,8 +41,8 @@ import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import type { PlanStateFacts } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
-import type { LaneReading } from './planLanes.ts'
-import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
+import type { LaneReading, LaneRowInput } from './planLanes.ts'
+import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
@@ -466,11 +466,45 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
  * done, and nothing says anyone started it — `Prerequisite · Completed`, `Prerequisite · Waiting` while it is Up
  * Next or On Hold, `Prerequisite · Deferred`; null where the board has no reading
  * of the step, and the tile keeps its own label.
+ *
+ * It carries the same readings' answer to where a step that cannot be done
+ * today can be started (`startOf`, chainStartOf below), so every surface that
+ * labels a prerequisite by its lane also points at the start of its chain: the
+ * screen, the printed plan and the step snapshots all read one board.
  */
-export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>): (id: string) => string | null {
-  return (id) => {
+export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>): PrerequisiteLabel {
+  const label = (id: string): string | null => {
     const r = readings.get(id)
     return r ? `${PREREQUISITE} · ${PREREQUISITE_STATE[r.lane]}` : null
+  }
+  return Object.assign(label, { startOf: (id: string) => chainStartOf(readings, id) })
+}
+
+/**
+ * The first step that can be done today on the way to `id`, where `id` itself
+ * cannot: the engine's own reason for each step's lane, followed step to step
+ * until one is Ready. Null where `id` is Ready (it is where to start), finished
+ * or deferred, and where the chain ends in something that is not a step — a
+ * mapping, a decision, a fact — which that step's own page names.
+ *
+ * The Threshold card named "Prepare Your Team for MFA" as the step that moves
+ * the number. That step was On Hold behind Register Your Own Passkey, which was
+ * Up Next behind Verify Emergency Access: the reader was sent to a held step and
+ * had three hops across three tabs to find the first thing anybody could do,
+ * while the board had worked out the whole chain (R4-33, Marcus D15).
+ */
+export function chainStartOf(readings: ReadonlyMap<string, LaneReading>, id: string): string | null {
+  const seen = new Set<string>([id])
+  let at = id
+  for (;;) {
+    const r = readings.get(at)
+    if (!r) return null
+    if (r.lane === 'Ready') return at === id ? null : at
+    if (r.lane !== 'Up Next' && r.lane !== 'On Hold') return null
+    const next = r.reason?.kind === 'step' ? r.reason.id : null
+    if (next === null || seen.has(next)) return null
+    seen.add(next)
+    at = next
   }
 }
 const PREREQUISITE = 'Prerequisite'

@@ -33,8 +33,8 @@ import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
 import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
-import { factOf } from './stepContract.ts'
-import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
+import { cleanupTitleOf, factOf } from './stepContract.ts'
+import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -630,7 +630,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
   /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
   blockers: PrerequisiteBlocker[]
   /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor). */
-  prerequisiteLabel: (id: string) => string | null
+  prerequisiteLabel: PrerequisiteLabel
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings: () => void
   /**

@@ -54,7 +54,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
-import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
+import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
@@ -222,7 +222,7 @@ export function ContentStep({
   /** The engine's unresolved prerequisites of this step's next action (planBoard.ts readinessBlockersOf), each a Readiness tile the contract's own fixes do not already state. */
   blockers?: readonly PrerequisiteBlocker[]
   /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor, decision 12); null keeps the tiles' own labels. */
-  prerequisiteLabel?: ((id: string) => string | null) | null
+  prerequisiteLabel?: PrerequisiteLabel | null
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings?: () => void
   onCredentialStorage?: (done: boolean) => void

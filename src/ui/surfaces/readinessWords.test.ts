@@ -432,7 +432,7 @@ test('a readiness gate that names the step moving its number links to that step'
       const route = r.steps.find((s) => s.title === gate.route)!
       assert.equal(gate.routeId, route.id, `${name}/${step.id}: the gate names "${gate.route}" and carries a different id`)
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null, groups: f.groups }
-      const tile = stepBodyOf(step, ctx, { lane: laneViewOf(readings.get(step.id)!, titleOf), blockers: readinessBlockersOf(readings.get(step.id), titleOf) }).readiness!.tiles.find((t) => t.key === 'gate')
+      const tile = stepBodyOf(step, ctx, { lane: laneViewFor(step, { readings, titleOf }), blockers: readinessBlockersOf(readings.get(step.id), titleOf) }).readiness!.tiles.find((t) => t.key === 'gate')
       assert.ok(tile, `${name}/${step.id}: no Threshold card`)
       assert.ok(tile.note!.includes(gate.route), `${name}/${step.id}: the card does not name the route`)
       assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card names "${gate.route}" and does not link to it`)

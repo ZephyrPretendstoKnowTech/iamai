@@ -144,6 +144,8 @@ type ContractWords = {
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
   readinessRoute: Record<string, string>
   foundReadinessRouteStep: string
+  /** The same, where that step cannot be done today: it names where its chain starts (R4-33). */
+  foundReadinessRouteStepHeld: string
   /** The threshold tile's collapsed value, by its measure's family: the percentage and what it measures (content review S3). */
   readinessValue: Record<string, string>
   foundInPlace: string
@@ -1564,6 +1566,14 @@ export type ReadinessTile = {
  * defaults waits for the replacements to be ready to enforce, they wait for it
  * to be complete — into an apparent deadlock with no way out.
  */
+/**
+ * A prerequisite tile's label by the prerequisite's own lane (planBoard.ts
+ * prerequisiteLabelFor), with the same board's answer to where a step that
+ * cannot be done today starts (planBoard.ts chainStartOf). Absent `startOf`,
+ * nothing resolves a chain and each step is named alone.
+ */
+export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null }
+
 export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
   /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
   overtaken?: true
@@ -1590,7 +1600,7 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * on, and the fact alone once it is enforced — enforcement is no longer waiting
  * for the number. A value never measured keeps the gate's own words.
  */
-export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string {
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, startOf?: PrerequisiteLabel['startOf']): string {
   // A threshold stated against a non-number is a dead end. "It is not measured
   // today" is true and unactionable: it names nothing the reader could go and
   // change, and the step said it three times while the one sentence that DOES
@@ -1619,8 +1629,14 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // provably cannot, what is short instead (roadmap/readiness.ts
   // routeShortfallOf). The two are exclusive and the generator picks between
   // them, because only it can see both populations.
+  // Where that step cannot be done today, the board's readings say where its
+  // chain starts, and the sentence names both (R4-33): the step that moves the
+  // number, and the first thing anybody can do on the way to it.
+  const start = routeStartOf(step, gate, startOf)
   const routeStep = gate.route !== undefined && waiting
-    ? fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route })
+    ? start !== null
+      ? fillText(CONTRACT.foundReadinessRouteStepHeld, { step: gate.route, first: start.title })
+      : fillText(CONTRACT.foundReadinessRouteStep, { step: gate.route })
     : gate.routeShortfall !== undefined && waiting ? gate.routeShortfall : null
   // A blind beats a route, and replaces it. Where the scan could not read the
   // source this number comes from (`gate.blind`, roadmap/readiness.ts), the
@@ -1740,6 +1756,14 @@ function gateRouteOf(step: Step, gate: NonNullable<Step['action']['readinessGate
   return { id: gate.routeId, title: gate.route }
 }
 
+/** The step the route's chain starts at, where the route step itself cannot be done today (planBoard.ts chainStartOf). */
+function routeStartOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>, startOf: PrerequisiteLabel['startOf']): { id: string; title: string } | null {
+  const route = gateRouteOf(step, gate)
+  const id = route === null || startOf === undefined ? null : startOf(route.id)
+  if (id === null || id === step.id) return null
+  return { id, title: stepById[id]?.title ?? cleanupTitleOf(id) ?? id }
+}
+
 /** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
 const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
 
@@ -1758,7 +1782,7 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */
-function stateTile(step: Step, c: StepContract): ReadinessTile | null {
+function stateTile(step: Step, c: StepContract, startOf?: PrerequisiteLabel['startOf']): ReadinessTile | null {
   const s = c.state
   const t = R().tiles
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
@@ -1812,9 +1836,10 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (gate && step.status !== 'done' && step.status !== 'skipped') {
     // The step its sentence names opens from the card, as every prerequisite
     // tile's step does (R4-24): a title with nothing to click sent the reader to
-    // search the board for it.
-    const route = gateRouteOf(step, gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    // search the board for it. Where that step cannot be done today, the card
+    // opens where its chain starts, which is what the sentence says to do (R4-33).
+    const route = routeStartOf(step, gate, startOf) ?? gateRouteOf(step, gate)
+    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate, startOf), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
@@ -2040,7 +2065,7 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * kept apart, readable and out of the way; a resolved prerequisite leaves the
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
  */
-export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
+export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: PrerequisiteLabel = () => null): ContractReadiness {
   const configuration = step.configurationFindings ?? []
   let configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
   if (step.id === 's-prereq-exclusion-group') {
@@ -2079,7 +2104,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, prerequisiteLabel.startOf)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

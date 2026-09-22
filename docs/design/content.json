@@ -1801,6 +1801,8 @@
           },
           "$commentFoundReadinessRouteStep": "A gate that says what it waits for but not what opens it is half a sentence. The plan already knows: generate.ts draws the edge from a readiness-held step to the campaign that moves the number, and the step it drew to was named nowhere on the held step. Only where that edge exists.",
           "foundReadinessRouteStep": "The step that moves this number is “{step}”.",
+          "$commentFoundReadinessRouteStepHeld": "The same pointer where the step it names cannot be done today (R4-33, Marcus D15). The Threshold card sent the reader to Prepare Your Team for MFA, which sat On Hold behind Register Your Own Passkey, which was Up Next behind Verify Emergency Access: three hops across three tabs to find the first thing anybody could do. The board's own lane readings know the chain: the sentence names the first step on it that is Ready, and the card links there.",
+          "foundReadinessRouteStepHeld": "The step that moves this number is “{step}”; it waits on “{first}”, which is where to start.",
           "readinessAtLeast": "At least {value}",
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
