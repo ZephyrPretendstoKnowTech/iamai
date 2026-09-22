@@ -2276,6 +2276,118 @@
               "policy.target.grantJson": "selected grant JSON"
             },
             "email": "Email",
+            "$commentEmails": "The audience emails the Email channel hands over (stepResources.ts emailResource, mfaPreparationEmail), keyed by step id, moved here from the code (Nadia D10). Each message is signed with the plan's email signature (Plan settings, {signature}), as Tell your people is, and asks people to contact IT, as every other email does. They used to end \"[administrator contact]\" and say \"Contact [support contact]\": a bracketed fill-in nobody was told to fill, copied as written into an email the Prepare Your Team step says to send. {subject} is the message's own subject; countries, devicePlan and their values are the lines the countries and device-plan emails add under their body.",
+            "emails": {
+              "subject": "Subject: {subject}",
+              "signOff": "{signature}",
+              "steps": {
+                "s-goal-all-users-no-persistence": {
+                  "subject": "Changes to Work Browser Sign-ins",
+                  "body": "We are updating browser sign-in settings to reduce the risk of work accounts staying signed in on shared or unattended computers. After the change, you may need to sign in again when you reopen your browser. Keep your approved sign-in method available. Save work before closing the browser and always sign out on shared computers. If you encounter repeated prompts or cannot access a work app, contact IT with the app name and the time of the problem."
+                },
+                "s-goal-mfa-all-users": {
+                  "subject": "Stronger Sign-in Protection for Your Work Account",
+                  "body": "We are strengthening sign-in protection for work accounts. Make sure you have registered an approved authentication method at https://aka.ms/mfasetup and can use it to sign in. Contact IT before the change if you need help registering or cannot use the offered methods. We will confirm the rollout date separately."
+                },
+                "s-goal-admin-session": {
+                  "subject": "Review Administrator Session Settings",
+                  "body": "We are reviewing sign-in session settings for administrator accounts. Test your normal administrative tasks and tell IT about any unexpected prompts or interrupted work so we can coordinate the change."
+                },
+                "s-goal-inforcer-mfa": {
+                  "subject": "MFA for Inforcer Access",
+                  "body": "We are reviewing MFA protection for Inforcer access. Please confirm your work account has an approved MFA method and contact IT if you need help testing sign-in. Tell IT about any unattended job that uses a person’s account so its access path can be reviewed separately."
+                },
+                "s-ladder-legacy-auth-inventory": {
+                  "subject": "Review Older Sign-In Workflows",
+                  "body": "Please identify each application, printer or scheduled job that uses an older client or username-and-password protocol. Include the account, actual protocol, owner, normal and infrequent run schedules, supported replacement and a delivery or access test window."
+                },
+                "s-ladder-app-passwords": {
+                  "subject": "Coordinate App Password Retirement",
+                  "body": "Please identify applications or jobs that use an app password. Arrange a supported replacement and test access with IT before removing the old credential. Confirm the app password has been removed and report any failed workflow so we can finish the change."
+                },
+                "s-prereq-exclusion-group": {
+                  "subject": "Review Emergency Exclusions",
+                  "body": "Please review the emergency-access group and its membership, and confirm the exclusions on the listed existing policies. Let us know if another approved exception needs to remain."
+                },
+                "s-prereq-service-accounts-group": {
+                  "subject": "Confirm Service Account Use",
+                  "body": "Please confirm the jobs each listed account runs. Identify temporary mail exceptions separately from other service access the account still needs. We will use the confirmed list to prepare the group and check its policy scope."
+                },
+                "s-prereq-auth-strength": {
+                  "subject": "Review Authentication Strength Setup",
+                  "body": "Please review the required authentication methods and model restrictions, together with the policies that use this strength. Identify any working method the proposed settings would exclude, and suggest a change window if adjustments are needed."
+                },
+                "s-prereq-allowed-countries": {
+                  "subject": "Confirm Work Countries",
+                  "body": "Please confirm the countries where people normally work and the recurring travel destinations listed below. Recurring travel is recorded separately from the normal-work access policy. Please send any corrections."
+                },
+                "s-prereq-trusted-location": {
+                  "subject": "Confirm Office Networks",
+                  "body": "Please confirm which of the listed named networks belong to our offices. If an office is missing, provide its public egress IP range and location name so we can create the named location in Entra. If everyone works remotely, confirm that instead."
+                },
+                "s-prereq-device-plan": {
+                  "subject": "Confirm Device Access Requirements",
+                  "body": "Please review our proposed phone management, phone app protection and computer management choices below. Identify work apps or devices that need a different arrangement, and confirm who will prepare the required device and app settings."
+                },
+                "s-check-dormant-accounts": {
+                  "subject": "Review Inactive Accounts",
+                  "body": "Please review the listed accounts and last-known activity. Confirm which accounts are still needed and why, which can be disabled, and which need investigation."
+                },
+                "s-check-separate-admin-accounts": {
+                  "subject": "Plan Separate Administrator Access",
+                  "body": "Please confirm the ordinary and dedicated administrator accounts for the people listed below. We need to test that each dedicated account can perform the required work before removing administrative access from the ordinary account. Please suggest a handover time."
+                },
+                "s-shared-devices": {
+                  "subject": "Test Shared Device Access",
+                  "body": "Please review the shared accounts and proposed policy scope below. The device owner needs to test the normal work tasks and sign-in flow before and after the change. Please confirm who will perform the test and report any interruption."
+                },
+                "s-goal-guests-mfa": {
+                  "subject": "Upcoming Guest MFA Requirements",
+                  "body": "We are strengthening MFA requirements for guest access to our organization. Please review the proposed access change with your team and confirm which guest accounts you use. We will coordinate a test before changing access. If you encounter a sign-in problem, contact IT with the affected account and time of the attempt."
+                },
+                "s-goal-block-legacy-auth": {
+                  "subject": "Review Older Sign-In and Email Methods",
+                  "body": "We are preparing to block older username-and-password sign-in methods. Please identify applications, printers or scanners that still depend on them, and confirm the authentication and TLS capabilities, sender and recipient requirements, and a delivery-test window for each. SMTP with OAuth, connector-based relay and Direct Send use different paths; please provide the actual method your device uses."
+                }
+              },
+              "countries": [
+                "Normal-work countries: {countries}",
+                "Recurring travel destinations: {travel}"
+              ],
+              "devicePlan": [
+                "Phone Management: {phones}",
+                "Phone App Protection: {appProtection}",
+                "Computer Management: {computers}"
+              ],
+              "notSelected": "Not selected",
+              "noneSelected": "None selected",
+              "required": "Required",
+              "notRequired": "Not required",
+              "mfaPreparation": [
+                {
+                  "heading": null,
+                  "subject": "Prepare Your Team for MFA",
+                  "paragraphs": [
+                    "We are preparing stronger sign-in requirements. Please follow the instructions below to register an approved method and test sign-in. Contact IT if you need help or cannot use the required method.",
+                    "Open https://aka.ms/mfasetup, choose Add sign-in method, and register an approved method offered to your account. Follow the setup prompts, then test sign-in using that method."
+                  ]
+                },
+                {
+                  "heading": "--- Administrator message ---",
+                  "subject": "Prepare Your Administrator Sign-In Method",
+                  "paragraphs": [
+                    "Open https://aka.ms/mfasetup with your dedicated administrator account. Register the approved passkey or hardware security key for that account, then complete a test sign-in using it. Contact IT if you need help arranging a test."
+                  ]
+                },
+                {
+                  "heading": "--- Follow-up message ---",
+                  "subject": "Help Completing Your Sign-In Setup",
+                  "paragraphs": [
+                    "Your account still needs a suitable registered sign-in method. Open https://aka.ms/mfasetup and complete the approved method setup. Contact IT if you cannot finish so we can arrange hands-on help before the access change."
+                  ]
+                }
+              ]
+            },
             "sourceChecked": "Source checked {date}",
             "learn": "Microsoft Learn",
             "troubleshooting": "Troubleshooting",

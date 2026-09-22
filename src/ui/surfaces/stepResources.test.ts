@@ -279,3 +279,49 @@ test('a lifecycle resource is handed over only when IAMAI holds every value in i
   const b = stepBodyOf(resolving(['strong']), ctx)
   for (const line of [...b.artifacts.map((a) => a.text()), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)]) assert.doesNotMatch(line, /‹policies [^›]+›/)
 })
+
+// Nadia D10. Prepare Your Team for MFA says "Send the email below to everyone else;
+// send the admin note to the admins", and its email asked people to "Contact [support
+// contact]" three times, with nothing marking it as a fill-in; every other step email
+// ended with the line "[administrator contact]", and the guests email said "contact
+// [administrator contact]". Copied as instructed, staff received the brackets. The
+// emails live in content now: each message asks people to contact IT, as the other
+// emails always did, and each is signed with the plan's email signature.
+test('every email IAMAI hands over is signed with the plan signature and carries no bracketed contact to fill in', () => {
+  const SIGNATURE = 'Contoso Service Desk'
+  const signedOff = (text: string, where: string): void => {
+    assert.doesNotMatch(text, /\[[a-z ]*contact\]/i, where)
+    assert.equal(text.trimEnd().split('\n').at(-1), SIGNATURE, where)
+  }
+  let seen = 0
+  for (const name of ['demo', 'getiamai', 'mid'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: SIGNATURE, operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    for (const step of r.steps) {
+      const email = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'email')
+      if (!email) continue
+      seen++
+      const text = email.text()
+      signedOff(text, `${name}/${step.id}`)
+      // The MFA step's three messages are sent separately, so each one is signed.
+      if (step.id === 's-verify-mfa') {
+        const messages = text.split(/\n\n--- [A-Za-z-]+ message ---\n/)
+        assert.equal(messages.length, 3, `${name}: everyone, the admins, the follow-up`)
+        for (const m of messages) signedOff(m, `${name}/s-verify-mfa: ${m.split('\n')[0]}`)
+        assert.equal(text.match(/Contact IT/g)?.length, 3, `${name}: each message says who to contact`)
+      }
+    }
+    // Every template, including those no fixture step reaches today.
+    for (const id of ['s-goal-guests-mfa', 's-ladder-legacy-auth-inventory', 's-ladder-app-passwords', 's-prereq-device-plan', 's-prereq-allowed-countries']) {
+      const text = emailResource({ ...r.steps[0], id }, ctx, '').text()
+      signedOff(text, `${name}/template ${id}`)
+    }
+  }
+  assert.ok(seen >= 20, `the premise: the fixtures hand over emails (${seen})`)
+  // The guests email names who to contact, not a bracket.
+  const f = fixture('mid')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const guests = emailResource(r.steps.find((s) => s.id === 's-goal-guests-mfa')!, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, signature: SIGNATURE, operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }, '').text()
+  assert.match(guests, /If you encounter a sign-in problem, contact IT with the affected account and time of the attempt\./)
+})
