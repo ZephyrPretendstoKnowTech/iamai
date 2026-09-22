@@ -17,7 +17,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
-import { implementationPackageFor } from './stepPackage.ts'
+import { implementationPackageFor, packageForEntry } from './stepPackage.ts'
 import { stepBodyOf } from './stepBody.ts'
 
 const f = fixture('getiamai')
@@ -25,7 +25,7 @@ const r = runFixture(f, {}, null, f.snapshot.asOf)
 const step = r.steps.find((s) => s.id === 's-goal-guests-mfa') as Step
 const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
 // The pair's members, read from the package by its content entry: the step itself resolves neither.
-const members = (implementationPackageFor({ id: step.id, goalId: step.goalId })?.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
+const members = (packageForEntry(step)?.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
 const [create] = step.action.resolution!.policies as PolicyOperation[]
 
 /**

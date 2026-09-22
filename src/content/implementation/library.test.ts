@@ -19,7 +19,7 @@ import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, packageBindings, packageForEntry, packageDrawsImplementation, packageReviewFor, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
 
 const LIBRARY = compileLibrary()
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
@@ -100,7 +100,7 @@ test('each package reaches the steps whose title comes from its content entry, a
   }
   assert.ok(reached + reviewed >= 27, `only ${reached + reviewed} demo steps reached a package`)
   assert.equal(implementationPackageFor(at(DEMO, 's-goal-all-users-no-persistence').step)?.meta.stepId, 's-goal-session-lifetime')
-  assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
+  assert.equal(packageForEntry({ id: 'cleanup-drill', goalId: '' }), null)
 })
 
 // V1 audit S4-12: the workload-identity step's title, its package title and the header of

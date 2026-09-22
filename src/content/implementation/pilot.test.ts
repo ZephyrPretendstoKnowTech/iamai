@@ -22,7 +22,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { CONTRACT, readinessOf, stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageSourceLine, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, mergeReadiness, packageForEntry, packageBindings, packageRuntime, packageSourceLine, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
 import { fillText } from '../render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
@@ -56,7 +56,7 @@ test('the registry holds the pilot exactly as compiled, authored against the bas
   // Re-authored against the build's pin on 2026-09-11 (it named 8461e0f2 before).
   assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
   assert.equal(PILOT_PIN, BASELINE_COMMIT)
-  assert.equal(implementationPackageFor({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
+  assert.equal(packageForEntry({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
 })
 
 test('a duplicate, nested, unterminated or unknown block fails, and so does an unsupported channel', () => {

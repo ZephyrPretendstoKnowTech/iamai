@@ -9,14 +9,14 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
-import { implementationPackageFor, memberBindings } from './stepPackage.ts'
+import { memberBindings, packageForEntry } from './stepPackage.ts'
 
 const f = fixture('getiamai')
 const step = runFixture(f, {}, null, f.snapshot.asOf).steps.find((s) => s.id === 's-goal-guests-mfa') as Step
 // Read from the package by its content entry: getiamai's own step resolves neither
 // member, so the package is set aside for that step (stepPackage.ts resolvesNoMember;
 // guestsPairSetAside.test.ts). The steps below, built with the members, reach it.
-const members = (implementationPackageFor({ id: step.id, goalId: step.goalId })?.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
+const members = (packageForEntry(step)?.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
 const [create] = step.action.resolution!.policies as PolicyOperation[]
 
 /** The step with one resolved create per named role, each a copy of the step's own create under that member's key. */

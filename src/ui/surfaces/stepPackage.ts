@@ -73,23 +73,38 @@ const packageByEntry = (step: { id: string; goalId: string }): CompiledPackage |
 }
 
 /**
- * The package for a step, or null: a step without one keeps its existing
- * channels. A step and a package meet at the content entry the step's title comes
- * from, so a merged goal or an aliased step reaches the package its entry names.
+ * The package a content entry names, or null. A step and a package meet at the
+ * content entry the step's title comes from, so a merged goal or an aliased step
+ * reaches the package its entry names.
  *
  * A package the semantic re-pin review sets aside — a member it implements changed
  * or left the baseline since it was reviewed — does not apply: its guidance was
  * written for a policy the baseline no longer asks for, and the step draws the
  * baseline's own channels (packageReviewFor says why). Only that package.
  *
- * So does a package of several members none of which is a policy this step
- * resolves (resolvesNoMember): its words describe those members, and the step
- * would hand over something else.
+ * This asks nothing of a step's own operations, so it is never what a step
+ * implements (implementationPackageFor is). It is the lookup for a package's own
+ * metadata by its entry: its members, its registration.
  */
-export function implementationPackageFor(step: { id: string; goalId: string } | Step): CompiledPackage | null {
-  const pkg = packageByEntry(step)
-  if (pkg === null || (REVIEWS[pkg.meta.stepId]?.status ?? 'current') !== 'current') return null
-  return 'action' in step && resolvesNoMember(pkg, step) ? null : pkg
+export function packageForEntry(entry: { id: string; goalId: string }): CompiledPackage | null {
+  const pkg = packageByEntry(entry)
+  return pkg !== null && (REVIEWS[pkg.meta.stepId]?.status ?? 'current') === 'current' ? pkg : null
+}
+
+/**
+ * The package a step implements, or null: a step without one keeps its existing
+ * channels. It is the package its entry names (packageForEntry), except a
+ * package of several members none of which is a policy this step resolves
+ * (resolvesNoMember): its words describe those members, and the step would hand
+ * over something else.
+ *
+ * It takes a step, never a bare entry. It used to accept `{ id, goalId }` too
+ * and skipped the member check for anything without an `action`, so a caller
+ * holding only an entry reached a package the step itself would set aside.
+ */
+export function implementationPackageFor(step: Step): CompiledPackage | null {
+  const pkg = packageForEntry(step)
+  return pkg !== null && resolvesNoMember(pkg, step) ? null : pkg
 }
 
 /**
