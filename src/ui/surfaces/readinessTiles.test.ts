@@ -378,8 +378,13 @@ test('a Threshold card whose campaign is held names where its chain starts, and 
       if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
       const reading = readings.get(step.id)!
-      const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf))
-      const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), prerequisiteLabelFor(readings)).tiles.find((t) => t.key === 'gate')!
+      // The board's chain goes into the contract, which works out where the
+      // route starts once for the card and every finding (StepContract.routeStart);
+      // handed to the card alone, the finding and the AI Info briefing kept
+      // naming the held campaign (review of R4-33).
+      const label = prerequisiteLabelFor(readings)
+      const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf), label.startOf)
+      const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), label).tiles.find((t) => t.key === 'gate')!
       assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card opens nothing`)
       const start = chainStartOf(readings, gate.routeId)
       if (readings.get(gate.routeId)!.lane === 'Ready') {
@@ -398,6 +403,53 @@ test('a Threshold card whose campaign is held names where its chain starts, and 
     }
   }
   assert.ok(seen.held > 0 && seen.clear > 0, `the premise: both a held and a clear campaign — ${JSON.stringify(seen)}`)
+})
+
+// R4-33, second half. Where the chain starts was worked out in the Threshold
+// card alone, from the label the board hands the card; the contract's own
+// finding was built without it. So the Evidence dialog and the AI Info briefing
+// (both read the contract's findings) still sent the reader to the held
+// campaign, and the printed plan, which prints a finding only where no card says
+// it word for word, printed the threshold twice: the card's version, then the
+// finding's. Rendered as the Plan and the print render it, the card, the finding
+// and the briefing name the same place to start, and the print says it once.
+test('the Threshold card, its finding and the AI Info briefing name the same place to start', async () => {
+  const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
+  const { cleanupEntry } = await import('./cleanupExport.ts')
+  const { prerequisiteLabelFor } = await import('./planBoard.ts')
+  const { cleanupTitleOf } = await import('./stepContract.ts')
+  const { stepBodyOf } = await import('./stepBody.ts')
+  let held = 0
+  for (const name of ['small', 'midflight', 'messy'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
+    const readings = laneReadings(r.steps, rows)
+    const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? cleanupTitleOf(x)
+    const label = prerequisiteLabelFor(readings)
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
+      const start = label.startOf!(gate.routeId)
+      if (start === null) continue
+      held++
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
+      const reading = readings.get(step.id)!
+      const b = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: label })
+      const where = `it waits on “${titleOf(start)}”, which is where to start.`
+      const tile = b.readiness.tiles.find((t) => t.key === 'gate')!
+      const finding = b.contract.found.find((x) => x.key === 'readiness')
+      assert.ok(tile.note!.includes(where), `${name}/${step.id}: the premise — the card names where to start: ${tile.note}`)
+      assert.equal(finding?.text, tile.note, `${name}/${step.id}: the Evidence dialog says a different threshold sentence from the card`)
+      // ContentStep's printing branch: a finding a card already states, word for word, is not printed again.
+      const printed = b.contract.found.filter((x) => !b.allTiles.some((t) => t.note === x.text || t.value === x.text))
+      assert.equal(printed.some((x) => x.key === 'readiness'), false, `${name}/${step.id}: the printed plan says the threshold twice`)
+      const ai = String(b.artifacts.find((a) => a.id === 'ai')!.text())
+      assert.ok(ai.includes(where), `${name}/${step.id}: the AI Info briefing does not say where to start`)
+      assert.equal(ai.includes(`moves this number is “${gate.route}”.`), false, `${name}/${step.id}: the AI Info briefing sends the reader to the held campaign`)
+    }
+  }
+  assert.ok(held >= 4, `the premise: gates whose campaign is held — ${held}`)
 })
 
 // The chain is the engine's own reasons, and it ends where a step does: a chain
