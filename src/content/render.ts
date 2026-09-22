@@ -333,6 +333,25 @@ const h = (label: string): string => `<h4>${esc(label)}</h4>`
 const chip = (t: string): string => `<span class="chip">${esc(t)}</span>`
 const btn = (t: string, primary = false): string => `<span class="btn${primary ? ' primary' : ''}">${esc(t)}</span>`
 
+/**
+ * A step's Done-when for the state the scan read (steps[].doneWhenWhen, beside
+ * who.leadWhen): the lines of the first fact this tenant, or the review's
+ * example, carries replace the step's own; where it carries none of them the
+ * step's own lines stand. The product (stepContract.ts doneWhenOf) and the
+ * review page read this one choice.
+ *
+ * Turn Off Security Defaults completes on security defaults being off and on
+ * nothing else, and its own lines — the cutover it performs — also claimed the
+ * four replacement policies enforced. On a tenant whose scan read them already
+ * off, the step read Completed beside a Done-when naming a policy that did not
+ * exist (R4-38). A read state's Done-when claims what completes the step there.
+ */
+export function doneWhenFor(st: { doneWhen?: unknown; doneWhenWhen?: unknown } | null | undefined, ex: Ex): unknown[] {
+  const when = st?.doneWhenWhen as Record<string, unknown> | null | undefined
+  if (when) for (const [fact, lines] of Object.entries(when)) if (!fact.startsWith('$') && Array.isArray(lines) && truthy(ex?.[fact])) return lines
+  return Array.isArray(st?.doneWhen) ? st.doneWhen : []
+}
+
 function doneWhen(items: string[], ex: Ex): string {
   const out: string[] = []
   for (const i of items) {
@@ -553,7 +572,7 @@ export function renderStep(st: Record<string, any>, title?: string): string {
   }
   // Done when
   parts.push(h(HEAD.doneWhen))
-  parts.push(doneWhen(st.doneWhen || [], ex))
+  parts.push(doneWhen(doneWhenFor(st, ex) as string[], ex))
   // If it goes wrong
   if (st.ifWrong) {
     parts.push(h(HEAD.ifWrong))

@@ -37,7 +37,7 @@ import { app, cleanup, directionWords, engine, pages, shared, stepById, scheduli
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, whole } from '../../content/render.ts'
+import { doneWhenFor, fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, READINESS_MEASURE } from '../../copy/reasons.ts'
@@ -1035,7 +1035,8 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
-  const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[], mapping)
+  // The lines for the state the scan read, where the step writes one (content/render.ts doneWhenFor, R4-38).
+  const own = doneWhenTemplates(step, doneWhenFor(cs, ex), mapping)
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
   // A manual task keeps its actual completion criteria while prerequisites wait.
