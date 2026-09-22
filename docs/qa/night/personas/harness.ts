@@ -20,7 +20,8 @@ import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
-import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from '../../../../src/ui/surfaces/planBoard.ts'
+import { asideGroupsFor, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
+import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
@@ -62,15 +63,50 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
   }
 }
 
-/** Every step in the order the board shows it, with the lane word a person reads. */
-export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; substatus: string | null }[] {
+/**
+ * Every step in the order the board shows it, with the lane word a person reads.
+ *
+ * It used to say that and return `r.steps` in plan order, which is not the
+ * order anything renders: the board draws three tabs, and inside each the rows
+ * come out in their group's registry order (planBoard.ts groupsFor). A persona
+ * reading this saw a step above its own prerequisite and filed it, and on the
+ * board the two are in different tabs with the prerequisite first. So this
+ * builds the board's rows and walks them tab by tab, group by group, exactly as
+ * the page does, and names the tab and the group it found each row under.
+ */
+export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; substatus: string | null; tab: string; group: string }[] {
   const readings = laneReadings(r.steps)
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
-  return r.steps.map((step) => {
+  const byId = new Map(r.steps.map((s) => [s.id, s]))
+  const items: BoardItem[] = r.steps.flatMap((step) => {
+    const reading = readings.get(step.id)
+    if (!reading) return []
+    const view = laneViewOf(reading, titleOf)
+    return [{ id: step.id, title: step.title, lane: reading.lane, laneLabel: view.label, workType: workTypeOf(step.id, step.kind ?? null), order: reading.order }]
+  })
+  const out: { step: Step; lane: string; substatus: string | null; tab: string; group: string }[] = []
+  const push = (tab: string, groups: ReturnType<typeof groupsFor>): void => {
+    for (const group of groups) {
+      for (const item of group.items) {
+        const step = byId.get(item.id)
+        if (!step) continue
+        const reading = readings.get(step.id)!
+        out.push({ step, lane: reading.lane, substatus: laneViewOf(reading, titleOf).substatus, tab, group: group.label })
+      }
+    }
+  }
+  for (const tab of LANES) push(tab, groupsFor(tab, items))
+  push('completed', asideGroupsFor(items))
+  // Anything the board drew nowhere is still reported, after the rows, so a
+  // reading of this is never quietly short of a step.
+  const drawn = new Set(out.map((row) => row.step.id))
+  for (const step of r.steps) {
+    if (drawn.has(step.id)) continue
     const reading = readings.get(step.id)
     const view = reading ? laneViewOf(reading, titleOf) : null
-    return { step, lane: view?.lane ?? 'Unknown', substatus: view?.substatus ?? null }
-  })
+    out.push({ step, lane: view?.lane ?? 'Unknown', substatus: view?.substatus ?? null, tab: 'none', group: 'not on the board' })
+  }
+  return out
 }
 
 /**
