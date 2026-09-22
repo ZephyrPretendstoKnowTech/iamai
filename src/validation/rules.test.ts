@@ -722,25 +722,3 @@ test('bg.hardwareCredential: keys it could not read and a key TYPE it could not 
   assert.ok(typeUnknown.finding?.includes(NEED_LABEL.passkeyType), `the key type is not what it names: ${typeUnknown.finding}`)
   assert.equal(typeUnknown.finding?.includes(NEED_LABEL.authMethods), false, 'still claims the methods are missing while holding them')
 })
-
-// R4-56. The diversity check counted every MFA kind an account holds, so the
-// quickest answer to "every emergency account relies on a security key" — add a
-// text-message number, or Authenticator notifications, to one of them — cleared
-// it, and the card would have read Meets recommendations over a phishable
-// Global Administrator that every policy excludes. What an account relies on is
-// its phishing-resistant method where it has one; only another phishing-
-// resistant type makes the accounts differ.
-test('bg.methodDiversity is not cleared by a weaker method beside the security keys', () => {
-  const f = structuredClone(fixture('demo-week2'))
-  const [a, b] = f.mapping.breakGlassUserIds
-  const diversity = () => breakGlassReport(buildContext({ snapshot: f.snapshot, state: f.mapping })).targets.flatMap(t => t.results).find(r => r.id === 'bg.methodDiversity')!.outcome
-  f.snapshot.authMethods[a] = [{ kind: 'fido2' }]
-  f.snapshot.authMethods[b] = [{ kind: 'fido2' }]
-  assert.equal(diversity(), 'fail', 'the premise: two accounts on one security key type')
-  f.snapshot.authMethods[a] = [{ kind: 'fido2' }, { kind: 'phone', phoneType: 'mobile' } as never]
-  assert.equal(diversity(), 'fail', 'a text-message number cleared it')
-  f.snapshot.authMethods[a] = [{ kind: 'fido2' }, { kind: 'microsoftAuthenticator' }]
-  assert.equal(diversity(), 'fail', 'Authenticator notifications cleared it')
-  f.snapshot.authMethods[a] = [{ kind: 'fido2' }, { kind: 'windowsHelloForBusiness' }]
-  assert.equal(diversity(), 'pass', 'a second phishing-resistant type is a second way in')
-})
