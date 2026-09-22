@@ -6,7 +6,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
-import { laneViewFor } from './planBoard.ts'
+import { boardReadingsOf, laneViewFor } from './planBoard.ts'
 import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { setState } from '../../roadmap/lifecycle.ts'
 import { QUESTION_STEP, answerKey, questionLabels, questionOptions } from '../../roadmap/answers.ts'
@@ -66,7 +66,7 @@ test('generic Entra references include the selected request settings in the step
   assert.match(portal,/Settings for This Action/)
   assert.match(portal,/Users → Include: All users/)
   assert.match(portal,/Core - Exclusions/)
-  assert.match(stepExportView(step,ctx,laneViewFor(step,r.steps)).whatToDo.join('\n'),/Settings for This Action/)
+  assert.match(stepExportView(step,ctx,laneViewFor(step,boardReadingsOf(r.steps,r.schedule.cleanup,r.input.mapping.breakGlassAnswers??null))).whatToDo.join('\n'),/Settings for This Action/)
   assert.equal(body.contract.doneWhen.filter(line=>/enabled state/.test(line)).length,1)
 })
 

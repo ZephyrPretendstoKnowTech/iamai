@@ -36,7 +36,7 @@ import { powershellFor } from './ui/surfaces/stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './ui/surfaces/stepPortal.ts'
 import { rowReason, rowWhen } from './ui/surfaces/rowWhen.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
-import { laneViewFor } from './ui/surfaces/planBoard.ts'
+import { boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
 import { laneReadings } from './ui/surfaces/planLanes.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
@@ -171,9 +171,10 @@ test('042.3: the collapsed row and the opened step agree on every fact they both
 test('042.4: nothing derives a lifecycle of its own, and no condition implies one', () => {
   const seen = new Map<string, Set<string>>()
   for (const c of corpus()) {
+    const board = boardReadingsOf(c.steps, c.run.schedule.cleanup, c.fixture.mapping.breakGlassAnswers ?? null)
     for (const step of c.steps) {
       // The lane read over the plan (planBoard.ts laneViewFor, A1c): the badge and the export view state it.
-      const lane = laneViewFor(step, c.steps)
+      const lane = laneViewFor(step, board)
       const contract = stepContract(step, ctxFor(c, step), undefined, lane)
       const view = stepExportView(step, ctxFor(c, step), lane)
       // The export's state is the contract's badge, word for word.

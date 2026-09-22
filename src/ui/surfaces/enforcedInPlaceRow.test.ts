@@ -14,7 +14,7 @@ import { isPreserved, policyResult, unavailableReason } from '../../roadmap/oper
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { stepSnapshotsOf } from '../../testing/stepSnapshots.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { laneViewFor } from './planBoard.ts'
+import { boardReadingsOf, laneViewFor } from './planBoard.ts'
 import { badgeLabel, stepContract } from './stepContract.ts'
 
 const DC = 's-goal-block-device-code'
@@ -48,7 +48,7 @@ test('demo week two answered: the same step asks for its workflow test, never a 
   assert.ok(step)
   assert.equal(step.unsavedInputs, undefined, 'the premise: the answer is saved')
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
-  const c = stepContract(step, ctx, undefined, laneViewFor(step, run.steps))
+  const c = stepContract(step, ctx, undefined, laneViewFor(step, boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)))
   assert.equal(badgeLabel(c), 'Ready · Review')
   assert.equal(c.whatToDo.kind, 'verify', c.whatToDo.text)
   assert.equal(c.implementation.offered, false, 'nothing to write')

@@ -9,7 +9,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { laneReadings } from './planLanes.ts'
-import { laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -44,7 +44,7 @@ function bodyOf(name: FixtureName, stepId: string): StepBody {
   const step = r.steps.find((s) => s.id === stepId)
   assert.ok(step, `the ${name} plan has ${stepId}`)
   const reading = readings.get(step.id)
-  const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+  const lane = laneViewFor(step, { readings, titleOf })
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
   return stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
 }

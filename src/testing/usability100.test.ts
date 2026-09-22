@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { usability100, type Usability100Stage } from './usability100.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { laneReadings, observe } from '../ui/surfaces/planLanes.ts'
-import { laneViewFor } from '../ui/surfaces/planBoard.ts'
+import { boardReadingsOf, laneViewAlone, laneViewFor } from '../ui/surfaces/planBoard.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import { railOf } from '../ui/surfaces/stepContract.ts'
@@ -14,13 +14,14 @@ import { applyManualReviews, MANUAL_REVIEW_ID, manualBasis, scopeManualBasis } f
 function setup(stage: Usability100Stage) {
   const f=usability100(stage),r=runFixture(f,{},null,f.snapshot.asOf)
   const ctx={snapshot:f.snapshot,mapping:f.mapping,nameOf:(id:string)=>r.input.names!.label(id),signature:'IT',operatorId:f.operatorId,now:f.snapshot.asOf,groups:f.groups,directory:r.input.directory,naming:r.coverage.organisation.naming}
-  const body=(id:string)=>{const s=r.steps.find(s=>s.id===id)!;assert.ok(s,id);return stepBodyOf(s,ctx,{lane:laneViewFor(s,r.steps)})}
-  return {f,r,ctx,body}
+  const board=boardReadingsOf(r.steps,r.schedule.cleanup,f.mapping.breakGlassAnswers??null)
+  const body=(id:string)=>{const s=r.steps.find(s=>s.id===id)!;assert.ok(s,id);return stepBodyOf(s,ctx,{lane:laneViewFor(s,board)})}
+  return {f,r,ctx,body,board}
 }
 test('100 identities remain stable across deployment stages; drift reopens the admin policy',()=>{
   const stages=['initial','deployment','configured','drift','specialist'] as const
   const runs=stages.map(setup)
-  for(const {f,r,ctx,body} of runs){
+  for(const {f,r,ctx,body,board} of runs){
     assert.equal(f.snapshot.users.length,100)
     assert.deepEqual(f.snapshot.users.map(u=>u.id),runs[0].f.snapshot.users.map(u=>u.id))
     for(const s of r.steps){
@@ -28,7 +29,7 @@ test('100 identities remain stable across deployment stages; drift reopens the a
       assert.ok(b.contract.why.trim(),s.id)
       assert.ok(b.contract.doneWhen.length,s.id)
       assert.ok(b.artifacts.find(a=>a.id==='ai')?.text().length!>150,s.id)
-      assert.deepEqual(stepExportView(s,ctx,laneViewFor(s,r.steps)).doneWhen,b.contract.doneWhen,s.id)
+      assert.deepEqual(stepExportView(s,ctx,laneViewFor(s,board)).doneWhen,b.contract.doneWhen,s.id)
     }
   }
   assert.equal(runs[2].r.steps.find(s=>s.id==='s-goal-admins-phishing-resistant')!.state.satisfied,true)
@@ -73,7 +74,7 @@ test('shared-device review can finish, survive a rescan, and reopen after a poli
   assert.equal(step.state.satisfied,true)
   const rescanned=runFixture(f,{manualConfirmations:confirmations},null,f.snapshot.asOf).steps.find(s=>s.id===step.id)!
   assert.equal(rescanned.state.satisfied,true)
-  const completed = stepBodyOf(rescanned,ctx,{lane:laneViewFor(rescanned,[rescanned])})
+  const completed = stepBodyOf(rescanned,ctx,{lane:laneViewAlone(rescanned)})
   assert.match(completed.contract.doneWhen.join(' '),/successful test records the account, task and date/)
   assert.doesNotMatch(completed.contract.doneWhen.join(' '),/scan found the assessed configuration/)
   const refreshed=structuredClone(f.snapshot)

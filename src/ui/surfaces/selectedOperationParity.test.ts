@@ -15,7 +15,7 @@ import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roa
 import type { Step } from '../../roadmap/types.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneReadings } from './planLanes.ts'
-import { laneViewFor, laneViewOf } from './planBoard.ts'
+import { laneViewFor } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { CONTRACT, stepContract } from './stepContract.ts'
 import type { LaneView } from './stepContract.ts'
@@ -49,7 +49,7 @@ function planOf(name: FixtureName, settled = false): { steps: Step[]; open: (s: 
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
   const open = (step: Step): Opened => {
     const reading = readings.get(step.id)
-    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const lane = laneViewFor(step, { readings, titleOf })
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming } as StepVarContext
     return { step, ctx, lane }
   }
@@ -129,8 +129,7 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
   const step = r.steps.find((s) => s.id === 's-goal-user-risk-medium')
   assert.ok(step)
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
-  const reading = laneReadings(r.steps).get(step.id)
-  const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+  const lane = laneViewFor(step, { readings: laneReadings(r.steps), titleOf })
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, reportOnlyAt: null } as StepVarContext
   assert.equal(implementationOffered(step), false, 'the premise: the step waits on a baseline mapping')
   const ai = aiOf({ step, ctx, lane })

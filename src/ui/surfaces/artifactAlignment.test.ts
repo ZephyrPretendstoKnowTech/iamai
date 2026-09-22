@@ -15,12 +15,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepExportView } from './stepExport.ts'
+import { exportViewsOf, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { CONTRACT, NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -35,7 +35,7 @@ import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
 import { laneReadings } from './planLanes.ts'
-import { boardReadingsOf, doesntApplyView, laneViewFor, laneViewOf } from './planBoard.ts'
+import { boardReadingsOf, laneViewFor, laneViewOf } from './planBoard.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
@@ -62,17 +62,15 @@ function load(named: string | Fixture): Case {
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = once((s: Step): StepVarContext =>
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
-  // The lane read over the whole plan, as the Export page hands it down: the
-  // board's own readings, Cleanup rows included (planBoard.ts boardReadingsOf).
-  // This read `laneViewFor(s, run.steps)` — no Cleanup rows — which is the
-  // construction the Export page had, so the sweep agreed with the page's
-  // defect: a step the board held behind the drill exported another lane (R4-22).
+  // The row's lane, as the Plan reads it off its board (planBoard.ts
+  // boardReadingsOf, laneViewFor), and the export view the Export page itself
+  // builds (stepExport.ts exportViewsOf). The sweep read the export with a lane
+  // it built here — first with no Cleanup rows, which copied the page's defect
+  // (R4-22), then with the board's, which only restated the page's fix. It now
+  // reads the page's own construction and holds it to the Plan's.
   const board = boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-  const lane = once((s: Step): ReturnType<typeof laneViewFor> => {
-    const r = board.readings.get(s.id)
-    return r ? laneViewOf(r, board.titleOf) : doesntApplyView()
-  })
-  const view = once((s: Step) => stepExportView(s, ctx(s), lane(s)))
+  const lane = once((s: Step): ReturnType<typeof laneViewFor> => laneViewFor(s, board))
+  const view = once(exportViewsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null, ctx))
   let entries: Map<string, string> | null = null
   const entry = (s: Step): string | undefined => {
     if (entries === null) {
@@ -652,7 +650,7 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
   for (const [file, call] of [
     ['./Plan.tsx', 'boardReadingsOf(c.steps, cleanupPhase, answers)'],
     ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
-    ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
+    ['./Export.tsx', 'exportViewsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null, stepCtx)'],
     ['./Connect.tsx', 'boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers)'],
   ] as const) {
     const src = read(file)
@@ -660,7 +658,16 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
     assert.equal(src.includes('laneReadings('), false, `${file} builds lane readings of its own beside the board's`)
     assert.equal(src.includes('cleanupComplete('), false, `${file} decides a Cleanup row's completion itself`)
   }
+  // The Export page reads a step under no lane but the one exportViewsOf hands it.
+  assert.equal(read('./Export.tsx').includes('stepExportView('), false, 'the Export page builds an export view of its own beside exportViewsOf')
 })
+
+/** The calendar entry the Export page's view writes for one step, unfolded (RFC 5545 folds long lines). */
+function calendarEntry(run: FixtureRun, view: (s: Step) => ReturnType<typeof stepExportView>, step: Step): string {
+  const entry = buildIcs(run.steps, 'Tenant', run.input.planId, view).split('BEGIN:VEVENT').find((x) => x.includes(`-${step.id}@iamai`))
+  assert.ok(entry, `the premise: the calendar carries ${step.id}`)
+  return entry.replace(/\r\n /g, '')
+}
 
 test('R4-22: a step the board holds behind the drill exports the board\'s lane, not the one without it', () => {
   // mid, first scan: Register Your Own Passkey waits on Verify Emergency
@@ -672,7 +679,40 @@ test('R4-22: a step the board holds behind the drill exports the board\'s lane, 
   const withoutCleanup = laneReadings(c.run.steps).get(step.id)!
   assert.equal(laneViewOf(withoutCleanup, () => null).label, 'Up Next', 'the premise: without the Cleanup rows the step reads another lane')
   assert.equal(c.lane(step).label, 'On Hold', 'the board holds the step behind the drill')
+  // c.view is the Export page's own construction (exportViewsOf).
   assert.equal(c.view(step).state, 'On Hold', 'the export states a lane the board does not')
-  const ics = c.entry(step) ?? ''
-  assert.equal(ics.replace(/\r\n /g, '').includes('Up Next'), false, 'the calendar entry says Up Next where the board says On Hold')
+  assert.equal(calendarEntry(c.run, c.view, step).includes('Up Next'), false, 'the calendar entry says Up Next where the board says On Hold')
+})
+
+// The validator's severity-4 case (R4-22 challenge): a policy ready to enforce
+// on its own evidence, which the board holds Up Next until Verify Emergency
+// Access — the drill every policy's enforcement waits on — is done. The Export
+// page's old construction had no Cleanup rows, so the drill did not exist
+// there, and the calendar runbook said "Ready · Ready to enforce" beside the
+// guard telling the reader not to turn it on until emergency access was
+// tested. demo-week2 is the curated deployed tenant (fixtures/transitions.ts
+// DEPLOYED); with its foundation settled, Token Protection is that policy. The
+// validator found the same shape on getiamai settled, deployed and eight days
+// on (seven policies, Block Legacy Authentication among them;
+// docs/qa/night/personas/prints-r422-getiamai.ts).
+test('R4-22: a policy the board holds behind the drill goes into the calendar as the board says it, never Ready to enforce', () => {
+  const f = withFoundationSettled(fixture('demo-week2'))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === 's-goal-token-protection')!
+  assert.ok(step, 'the premise: demo-week2 carries Token Protection')
+  const answers = f.mapping.breakGlassAnswers ?? null
+  const board = boardReadingsOf(run.steps, run.schedule.cleanup, answers)
+  assert.equal(step.status, 'ready-to-enforce', 'the premise: the policy is ready to enforce on its own evidence')
+  assert.equal(board.readings.get(step.id)?.reason?.id, 'cleanup-drill', 'the premise: the board holds it behind the drill')
+  assert.equal(laneViewOf(laneReadings(run.steps).get(step.id)!, board.titleOf).label, 'Ready · Ready to enforce', 'the premise: without the Cleanup rows it reads Ready to enforce')
+  const nameOf = (id: string): string => run.input.names?.label(id) ?? id
+  const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
+  // The Export page's own construction, as Export.tsx calls it.
+  const view = exportViewsOf(run.steps, run.schedule.cleanup, answers, ctx)
+  assert.equal(view(step).state, laneViewFor(step, board).label, 'the export states a lane the board does not')
+  assert.equal(view(step).state, 'Up Next')
+  const entry = calendarEntry(run, view, step)
+  const description = entry.split('\r\n').find((l) => l.startsWith('DESCRIPTION:')) ?? ''
+  assert.ok(description.includes('\\nUp Next\\n'), 'the runbook does not state the board\'s lane')
+  assert.equal(entry.includes('Ready to enforce'), false, 'the runbook calls a policy the board holds behind the drill Ready to enforce')
 })

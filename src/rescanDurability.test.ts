@@ -31,7 +31,7 @@ import { exclusionsGroupChoice, awaitsOperator, exclusionsGroupIdToVerify } from
 import { emergencySelection } from './mapping/emergencyChoice.ts'
 import { badgeLabel, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
-import { laneViewFor } from './ui/surfaces/planBoard.ts'
+import { boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
 import { breakGlassFindings } from './validation/report.ts'
 import { implementationOffered, unavailableReason } from './roadmap/operations.ts'
@@ -451,20 +451,23 @@ test('043.11: unchanged semantic input produces the same plan, in the same order
 test('043.12: the export view is the current scan’s, never the last one’s', () => {
   let differed = 0
   for (const t of transitions()) {
+    // Each scan's board, as its Plan reads it (planBoard.ts boardReadingsOf).
+    const boardA = boardReadingsOf(t.a.steps, t.a.run.schedule.cleanup, t.a.fixture.mapping.breakGlassAnswers ?? null)
+    const boardB = boardReadingsOf(t.b.steps, t.b.run.schedule.cleanup, t.b.fixture.mapping.breakGlassAnswers ?? null)
     for (const s of t.b.steps) {
       // The lane read over this scan's plan (planBoard.ts laneViewFor, A1c): the
       // opened step and the export view state it, word for word.
-      const lane = laneViewFor(s, t.b.steps)
+      const lane = laneViewFor(s, boardB)
       const contract = stepContract(s, ctxFor(t.b, s), undefined, lane)
       const view = stepExportView(s, ctxFor(t.b, s), lane)
       assert.equal(view.state, badgeLabel(contract), `${t.key}/${s.id}: the export view and the opened step give different states`)
       const was = stepIn(t.a, s.id)
       if (!was) continue
-      const before = stepExportView(was, ctxFor(t.a, was), laneViewFor(was, t.a.steps))
+      const before = stepExportView(was, ctxFor(t.a, was), laneViewFor(was, boardA))
       // Where the step's lane moved, the export moved with it; where it did not,
       // it did not invent a difference (the state is the lane, A1c, never the
       // lifecycle read again).
-      const laneBefore = laneViewFor(was, t.a.steps)
+      const laneBefore = laneViewFor(was, boardA)
       assert.equal(before.state, laneBefore.label, `${t.key}/${s.id}: the earlier scan's export view states a different lane from its board`)
       if (laneBefore.label !== lane.label) {
         assert.notEqual(view.state, before.state, `${t.key}/${s.id}: the step moved and the export still speaks for the scan before it`)
