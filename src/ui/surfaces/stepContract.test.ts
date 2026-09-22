@@ -12,7 +12,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { boardReadingsOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
@@ -624,4 +625,41 @@ test('a completed step whose own prerequisite is still unmet says the order was 
   // It is still outstanding, and it is a warning either way.
   assert.equal(overtaken.value, 'Prerequisite · To do')
   assert.equal(overtaken.tone, 'warn')
+})
+
+// R4-NEW-jordanb-1: the engine records a prerequisite a step went ahead of only
+// on a step it reads Completed, and the board can still draw that step outside
+// Completed. On midflight with the foundation settled, Require MFA for Guests is
+// already on and the drill undone, and the board reads it Ready · Review (an
+// unmatched guest pair to look at). Its tile read "This step is finished and
+// Verify Emergency Access is not" beside a badge saying there is work left on
+// it. The note is worded by the lane now; the fact — the change went in before
+// its prerequisite — stays.
+test('the went-ahead-of-its-prerequisite note never calls a step finished that the board does not', () => {
+  const f = withFoundationSettled(fixture('midflight'))
+  const r = runFixture(f)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  const reading = board.readings.get(step.id)!
+  assert.equal(reading.lane, 'Ready', 'the premise: the board draws the guest step Ready')
+  assert.ok((reading.overtaken ?? []).some((b) => b.id === 'cleanup-drill'), 'the premise: the engine recorded the drill as gone ahead of')
+  const lane = laneViewOf(reading, board.titleOf)
+  const c = stepContract(step, ctxFor(f, r, step), undefined, lane)
+  const tiles = readinessOf(step, c, readinessBlockersOf(reading, board.titleOf), prerequisiteLabelFor(board.readings)).tiles
+  for (const t of tiles) assert.doesNotMatch(t.note ?? '', /This step is finished/, `${t.key}: a Ready · Review step is called finished`)
+  const drill = tiles.find((t) => t.key === 'engine:step:cleanup-drill')
+  assert.ok(drill, 'the tile naming Verify Emergency Access is gone: the fact was dropped with the word')
+  assert.match(drill!.note ?? '', /Verify Emergency Access/)
+  assert.match(drill!.note ?? '', /already in place/)
+  assert.match(drill!.note ?? '', /not followed/)
+  // A step the board does call Completed keeps its own words.
+  const done = runFixture(fixture('small'))
+  const doneBoard = boardReadingsOf(done.steps, done.schedule.cleanup, fixture('small').mapping.breakGlassAnswers ?? null)
+  const mfa = done.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const mfaReading = doneBoard.readings.get(mfa.id)!
+  assert.equal(mfaReading.lane, 'Completed', 'the premise: the MFA policy is Completed on small')
+  const mfaContract = stepContract(mfa, ctxFor(fixture('small'), done, mfa), undefined, laneViewOf(mfaReading, doneBoard.titleOf))
+  const mfaTiles = readinessOf(mfa, mfaContract, readinessBlockersOf(mfaReading, doneBoard.titleOf), prerequisiteLabelFor(doneBoard.readings))
+  const mfaDrill = [...mfaTiles.tiles, ...mfaTiles.satisfied].find((t) => t.key === 'engine:step:cleanup-drill')
+  assert.match(mfaDrill?.note ?? '', /This step is finished/, 'a Completed step no longer says it is finished')
 })
