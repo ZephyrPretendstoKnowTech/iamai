@@ -14,6 +14,7 @@ import { directionWords } from '../../content/content.ts'
 import { headingsOf, stepBodyOf } from './stepBody.ts'
 import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
 import { emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const W = directionWords
@@ -216,4 +217,33 @@ test('an unsaved question that moved to Direction links to the Direction step th
     }
   }
   assert.ok(checked >= 1, `only ${checked} unsaved Direction tiles checked`)
+})
+
+// R4-46: Require MFA for Guests' procedure still said "Answer the IT Provider
+// Access question" after that question moved to Confirm What You Use. The step
+// draws the Answered-in-Direction card instead of the decision control, so the
+// line pointed at a control that is on no page, and kept saying "Answer" after
+// the answer was saved. Where the question is answered is the card's to say;
+// no procedure line on a step whose question moved asks for it.
+test('a step whose question moved to Direction asks for no answer in its own procedure', () => {
+  const f = fixture('midflight')
+  const r = runFixture(f)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as StepVarContext
+  let checked = 0
+  for (const id of Object.keys(ANSWERED_IN)) {
+    const step = r.steps.find((s) => s.id === id)
+    if (!step) continue
+    const heading = ((contentStepFor(step) as { decision?: { heading?: unknown } | null } | undefined)?.decision?.heading ?? null) as string | null
+    const lines = (stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t))
+    for (const line of lines) {
+      assert.doesNotMatch(line, /\bAnswer the\b.*question/, `${id}: "${line}" asks for an answer the step no longer takes`)
+      if (heading) assert.equal(line.includes(heading), false, `${id}: "${line}" names the ${heading} control, which the step does not draw`)
+      checked++
+    }
+  }
+  assert.ok(checked > 5, `only ${checked} procedure lines checked`)
+  // The fact the line carried stays, as a statement.
+  const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  const text = (stepBodyOf(guests, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t)).join('\n')
+  assert.match(text, /service-provider external-user type/, 'the partner answer\'s effect is no longer stated')
 })
