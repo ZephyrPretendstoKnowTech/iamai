@@ -413,40 +413,72 @@ test('007.11f: a sign-in read that started after the window did leaves the begin
   assert.equal(short.step.tracking?.readyNow, true, 'the interval is the question, not the label')
 })
 
-test('007.11f2 (R4-48): a sign-in source that refused every read is said to be unread, not a short window', () => {
-  // The defect: readyWhen built the evidence gate from the tracking alone and
-  // never read the step's own evidence status, where the refusal already was.
-  // A tenant whose sign-in source read nothing ("no sign-in records could be
-  // read") got the 007.11f sentence for a collection that started late: "the
-  // sign-in records read do not cover the whole window, 0 of 34 active people
-  // seen in 8 days" on the Done-when, the Plan row and the lane gate. That is a
-  // gap waiting closes, and a count nobody took; nothing will be read until the
-  // source is.
-  // The same policy ten days on from the scan that first recorded it, so its
-  // window has closed, with the sign-in source refusing every read: no
-  // collected window and no report-only results, as the collector leaves them.
-  const reason = 'no sign-in records could be read'
+test('007.11f2 (R4-48): a sign-in read that reached no record says so, and says whether the tenant refused it; one that reached some hours is a short window', () => {
+  // The defect (R4-48): readyWhen built the evidence gate from the tracking
+  // alone and never read the step's own evidence status. A tenant whose
+  // sign-in source read nothing got the 007.11f sentence for a collection that
+  // started late — "the sign-in records read do not cover the whole window, 0
+  // of 34 active people seen in 8 days" — on the Done-when, the Plan row and
+  // the lane gate: a gap waiting closes, and a count nobody took.
+  //
+  // And the defect in the first fix (R4-48 review): it called every
+  // 'insufficient' and 'error' read a refusal by the tenant — "could not be
+  // read in this tenant … waiting will not change that". The collector
+  // (graph/collect/laneBCore.ts runLaneB) writes 'insufficient' for a read that
+  // ran and stopped short, with how far it got in its reason, and 'error' for a
+  // fault that may pass. Over 17 hours of records the line contradicted its own
+  // reason, and over "Graph 503 after retries" it called a passing fault a
+  // standing refusal. Only 'disabled' is the tenant refusing.
+  //
+  // One case per branch runLaneB and the worker take, each with the reason and
+  // covered window they write. The same policy ten days on from the scan that
+  // first recorded it, so its window has closed.
   const f = fixture(FIXTURE)
   const first = runFixture(f)
   const asOf = new Date(Date.parse(f.snapshot.asOf) + 10 * DAY).toISOString()
-  const snapshot = scannedAt({
-    ...f.snapshot,
-    sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason, coveredWindow: null } },
-    evidencePolicyResults: [],
-  } as TenantSnapshot, asOf)
-  const c = caseOf(runFixture({ ...f, snapshot }, { snapshot }, observationsOf(first.steps)), snapshot, f, STEP_ID)
-  assert.equal(c.step.evidence.status, 'insufficient', 'the step carries the refusal')
-  const ready = readyWhen(c.step)!
-  assert.equal(ready.kind, 'since', 'the window has closed, so the row states the gate')
-  assert.equal(ready.sourceUnread, reason, 'and the gate carries it through, with the source’s own reason')
-  const row = rowReason(c.step)!
-  assert.equal(row, readyBasis(ready), 'one reading for the row and the Done-when')
-  assert.doesNotMatch(row, /do not cover the whole window/, 'a refusal is not a short window')
-  assert.doesNotMatch(row, /\d+ of \d+ active people/, 'and nobody counted anybody')
-  assert.match(row, /could not be read/)
-  assert.ok(row.includes(reason), `the row names why: ${row}`)
-  assert.equal(stepVars(c.step, c.ctx).evidenceGate, row, 'the Done-when states the same line')
-  nothingIsOffered(c)
+  const hoursBack = (h: number) => ({ from: new Date(Date.parse(asOf) - h * 3_600_000).toISOString(), to: asOf })
+  const run = (status: string, reason: string, coveredWindow: { from: string; to: string } | null) => {
+    const snapshot = scannedAt({
+      ...f.snapshot,
+      sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status, reason, coveredWindow } },
+      evidencePolicyResults: [],
+    } as TenantSnapshot, asOf)
+    const c = caseOf(runFixture({ ...f, snapshot }, { snapshot }, observationsOf(first.steps)), snapshot, f, STEP_ID)
+    const ready = readyWhen(c.step)!
+    assert.equal(ready.kind, 'since', status + ': the window has closed, so the row states the gate')
+    const row = rowReason(c.step)!
+    assert.equal(row, readyBasis(ready), status + ': one reading for the row and the Done-when')
+    assert.equal(stepVars(c.step, c.ctx).evidenceGate, row, status + ': the Done-when states the same line')
+    nothingIsOffered(c)
+    return { c, ready, row, tile: c.step.evidence.lines.join(' ') }
+  }
+
+  // The tenant refused the read: a 403 (graph/collect/http.ts SectionDisabledError).
+  const refused = run('disabled', 'access denied (403)', null)
+  assert.match(refused.row, /could not be read in this tenant \(access denied \(403\)\)/, refused.row)
+  assert.doesNotMatch(refused.row, /\d+ of \d+ active people/, 'nobody counted anybody')
+  assert.match(refused.tile, /could not read in this tenant — access denied \(403\)/, refused.tile)
+
+  // A fault before any record arrived: nothing read, and nothing the tenant refused.
+  const failed = run('error', 'Graph 503 after retries', null)
+  for (const line of [failed.row, failed.tile]) assert.doesNotMatch(line, /in this tenant|waiting will not change/, 'a fault that may pass is not a standing refusal: ' + line)
+  assert.match(failed.row, /^this scan read no sign-in records \(Graph 503 after retries\)/, failed.row)
+  assert.match(failed.row, /scan again/)
+  assert.doesNotMatch(failed.row, /\d+ of \d+ active people/, 'nobody counted anybody')
+  assert.deepEqual(failed.ready.sourceUnread, { refused: false, reason: 'Graph 503 after retries' })
+  assert.deepEqual(refused.ready.sourceUnread, { refused: true, reason: 'access denied (403)' })
+
+  // Reads that ran and stopped with some hours covered: short windows, as 007.11f.
+  for (const [status, reason, hours] of [
+    ['insufficient', 'stopped at memory ceiling with only 17 h covered (minimum 24 h)', 17],
+    ['error', 'Graph 503 after retries', 5],
+  ] as const) {
+    const short = run(status, reason, hoursBack(hours))
+    for (const line of [short.row, short.tile]) assert.doesNotMatch(line, /could not (be )?read|read no sign-in records|read none of them/, status + ': ' + line)
+    assert.match(short.row, /^the sign-in records read do not cover the whole window/, short.row)
+    assert.ok(short.tile.includes(reason), 'the tile keeps the collector\'s own reason: ' + short.tile)
+    assert.equal(short.ready.sourceUnread, null, status + ' with ' + hours + ' h read is not an unread source')
+  }
 })
 
 test('007.11g: a collection that cannot say what it covered is not a window anybody watched', () => {

@@ -85,12 +85,16 @@ test('an open observation says why it has not completed: the people it stopped, 
 
   // 1. The source refused. Nothing about waiting longer changes this, and the
   //    sentence says so rather than asking for a review of records that do not exist.
+  //    A refusal is the status the collector writes for one, 'disabled' with its
+  //    403 reason. This case used 'insufficient', which the collector writes for
+  //    a read that ran and stopped short; that is not a refusal and no longer
+  //    reads as one (R4-48 review; readyToEnforce.test.ts 007.11f2).
   const blind = evidenceFor('block-auth-transfer', snapshotWith({
-    sources: { ...fixture('large').snapshot.sources, signInEvidence: { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: '2026-08-28T09:00:00.000Z' } },
+    sources: { ...fixture('large').snapshot.sources, signInEvidence: { status: 'disabled', reason: 'access denied (403)', coveredWindow: null, asOf: '2026-08-28T09:00:00.000Z' } },
   }), [])
-  assert.equal(blind.status, 'insufficient')
+  assert.equal(blind.status, 'disabled')
   assert.equal(blind.lines.length, 1, 'an unreadable source says nothing about itself')
-  assert.ok(blind.lines[0].includes('no sign-in records could be read'), `the recorded reason is not in the line: ${blind.lines[0]}`)
+  assert.ok(blind.lines[0].includes('access denied (403)'), `the recorded reason is not in the line: ${blind.lines[0]}`)
   // That waiting does not complete it, in words that hold on a policy already
   // enforced too: the sentence reaches the AI briefing of every lifecycle, and it
   // said "Time in report-only cannot complete it" on policies past report-only.
@@ -98,7 +102,7 @@ test('an open observation says why it has not completed: the people it stopped, 
   assert.doesNotMatch(blind.lines[0], /report-only/i, blind.lines[0])
   // And the reason on its own, for a surface that says it in its own context
   // (stepContract.ts, the device code decision tile).
-  assert.equal(blind.unreadable, 'no sign-in records could be read')
+  assert.equal(blind.unreadable, 'access denied (403)')
 
   // 2. The records were read, and they are what holds the gate shut. The count
   //    is the one number the reader needs; it was on the step and said nowhere.

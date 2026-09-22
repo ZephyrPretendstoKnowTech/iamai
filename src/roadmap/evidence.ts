@@ -4,7 +4,7 @@
 // is tracking.ts's question (the time gate and the evidence gate), not this
 // module's. Pure.
 import type { TenantSnapshot, UsageSignal } from '../graph/collect/types.ts'
-import type { Evidence } from './types.ts'
+import type { Evidence, SourceUnread } from './types.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -42,6 +42,23 @@ export function riskIds(signals: (UsageSignal | undefined)[]): string[] {
 }
 
 /**
+ * Where this scan holds no sign-in record at all, and whether the tenant
+ * refused it. 'disabled' is the collector's word for a refusal (a 403, or a
+ * licence the tenant lacks): nothing changes until the tenant does. 'error' and
+ * 'insufficient' with no covered window are a read that reached no record — a
+ * fault, or a stop before the first page — which another scan may not repeat.
+ * With a covered window they read some hours: that is a short window, and null
+ * here, like a read that is whole or partial.
+ */
+export function sourceUnreadOf(src: TenantSnapshot['sources']['signInEvidence']): SourceUnread | null {
+  if (!src) return null
+  const reason = src.reason ?? src.status
+  if (src.status === 'disabled') return { refused: true, reason }
+  if ((src.status === 'error' || src.status === 'insufficient') && !src.coveredWindow) return { refused: false, reason }
+  return null
+}
+
+/**
  * `matchedPolicyIds` is every policy this plan tagged for the step, not one of
  * them: a goal the baseline implements with two policies is one step delivering
  * both, and the people Policy A's report-only results failed are not the people
@@ -74,7 +91,8 @@ export function evidenceFor(
   // "— pending —".
   if (!usable) {
     const reason = src?.reason || W.status[status as keyof typeof W.status] || status
-    return { ...base, reason, lines: [unreadLine(reason)], unreadable: reason }
+    const unread = sourceUnreadOf(src)
+    return { ...base, unread, lines: [unreadLine(reason)], unreadable: reason }
   }
 
   const usage = snapshot.evidenceUsage

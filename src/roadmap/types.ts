@@ -80,14 +80,22 @@ export type Readiness = {
   lines: string[] // plain-language numbers per §4
 }
 
+/** A sign-in source this scan holds no record from, and whether the tenant refused it (Evidence.unread). */
+export type SourceUnread = { refused: boolean; reason: string }
+
 export type Evidence = {
   status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending' | 'error' | 'none'
   /**
-   * Why the sign-in source was not read, where it was not (evidence.ts): the
-   * source's own reason. Carried so the evidence gate can say the source
-   * refused rather than describe a short window (derive/readyWhen.ts).
+   * Where this scan holds no sign-in record at all (evidence.ts sourceUnreadOf),
+   * with the source's own reason. `refused` where the tenant refused the read
+   * ('disabled': a 403, or a licence it lacks), which waiting does not change;
+   * not refused where this scan reached no record ('error' or 'insufficient'
+   * with no covered window), which another scan may. Null where records were
+   * read, in whole or in part: an 'insufficient' or 'error' read that reached
+   * some hours is a short window, not an unread source. Carried so the evidence
+   * gate says which of these it is (derive/readyWhen.ts).
    */
-  reason?: string | null
+  unread?: SourceUnread | null
   lines: string[]
   affectedUserIds: string[]
   /**

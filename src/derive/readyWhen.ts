@@ -6,7 +6,7 @@
 // window the plan has not finished, are each half an answer. One reading, shared
 // by the row's date column, the step's Done-when and the history note, so they
 // can never disagree. Null on a step whose policy is not in report-only. Pure.
-import type { Step } from '../roadmap/types.ts'
+import type { SourceUnread, Step } from '../roadmap/types.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { observationDaysFor } from '../roadmap/schedule.ts'
@@ -64,25 +64,18 @@ export type ReadyWhen = {
    */
   configuration: boolean
   /**
-   * The sign-in source's own reason where it refused the read outright
-   * (Step.evidence, roadmap/evidence.ts): nothing in the window was read, and
-   * nothing will be until the source can be. Null where the source was read
-   * in whole or in part (see REFUSED). `read` is false here too, and that alone read as a
-   * short window — "the sign-in records read do not cover the whole window,
-   * 0 of 34 active people seen in 8 days" over a tenant whose sign-in records
-   * could not be read at all (R4-48): a gap that waiting closes, and a count
-   * nobody took.
+   * Where this scan holds no sign-in record at all, with the source's own
+   * reason and whether the tenant refused it (Step.evidence.unread,
+   * roadmap/evidence.ts sourceUnreadOf). Null where records were read, in
+   * whole or in part. `read` is false here too, and that alone read as a short
+   * window — "the sign-in records read do not cover the whole window, 0 of 34
+   * active people seen in 8 days" over a tenant whose sign-in records could not
+   * be read at all (R4-48): a gap that waiting closes, and a count nobody took.
+   * A read that reached some hours and stopped is that short window, and is not
+   * here: calling it unread contradicted its own reason (R4-48 review).
    */
-  sourceUnread: string | null
+  sourceUnread: SourceUnread | null
 }
-
-/**
- * The sign-in source's own word for a read it refused (roadmap/evidence.ts,
- * from the collector's section status). Not `none`, which is a step with no
- * sign-in evidence to speak of, nor `pending`, a section the scan never
- * reported on: neither says the tenant refused anything.
- */
-const REFUSED: ReadonlySet<Step['evidence']['status']> = new Set(['insufficient', 'disabled', 'error'])
 
 export function readyWhen(step: Step): ReadyWhen | null {
   const t = step.tracking
@@ -92,8 +85,7 @@ export function readyWhen(step: Step): ReadyWhen | null {
   // shapes of "not yet": the window has closed and the records are short, or the
   // window is still open.
   const kind = t.readyNow ? 'now' : Date.parse(t.readyOn) <= Date.parse(t.noticedAt) ? 'since' : 'on'
-  const ev = step.evidence
-  const sourceUnread = REFUSED.has(ev.status) ? (ev.reason ?? ev.status) : null
+  const sourceUnread = step.evidence.unread ?? null
   return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead, configuration: t.evidenceStrategy === 'configuration', sourceUnread }
 }
 
@@ -114,10 +106,15 @@ export function readyBasis(ready: ReadyWhen): string | null {
   // waited for, so none is counted in the line that states it.
   if (ready.configuration) return ready.kind === 'now' ? TRACK.readyConfigured : null
   if (ready.kind === 'now') return fillText(TRACK.readyNow, { n: ready.days })
-  // A source that refused the read outright is not a short window: the line
-  // says the records could not be read, and why, and counts nobody — nothing
-  // counted anybody. It needs no scope to say so.
-  if (ready.sourceUnread !== null) return fillText(TRACK.evidenceSourceUnread, { reason: ready.sourceUnread })
+  // A scan that holds no sign-in record is not a short window: the line says
+  // nothing was read, and why, and counts nobody — nothing counted anybody. It
+  // needs no scope to say so. A tenant that refused the read is told waiting
+  // will not change it; a scan that reached no record (a fault, a stop before
+  // the first page) is told to scan again, since another scan may read them.
+  if (ready.sourceUnread !== null) {
+    const { refused, reason } = ready.sourceUnread
+    return fillText(refused ? TRACK.evidenceSourceUnread : TRACK.evidenceSourceNotRead, { reason })
+  }
   if (ready.seen === null || ready.people === null) return null
   // A window the records do not reach across has no failure count to state and
   // no clean stretch to claim: what the line can say is that the reading is
