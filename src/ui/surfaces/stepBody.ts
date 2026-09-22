@@ -42,7 +42,7 @@ import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, entraWithSettings, jsonWithPlanTag } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, inspectionResource, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, withWorkflowVerification } from './stepResources.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -270,7 +270,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // fixes and the engine's blockers on the next action, one tile each, with the
   // package's gates merged in (stepPackage.ts mergeReadiness). Nothing below
   // lists a prerequisite a second time.
-  const readiness = mergeReadiness(readinessOf(step, contract, blockers, prerequisiteLabel ?? undefined), pkgReadiness)
+  const readiness = mergeReadiness(readinessOf(step, contract, blockers, prerequisiteLabel ?? undefined, { setupAfterEnforcement: setupAfterEnforcementOf(step) !== null }), pkgReadiness)
   const allTiles = [...readiness.tiles, ...readiness.satisfied]
   // The step's own instructions — its decision, its create lines, its own steps —
   // were What to do, and no step draws What to do (U1, RUN-CONTEXT-B decision 1).

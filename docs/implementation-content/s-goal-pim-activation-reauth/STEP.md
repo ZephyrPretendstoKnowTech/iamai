@@ -57,7 +57,7 @@ Authentication-context ID/publication state; CA users/exclusions, authentication
 - **Partial:** correct only IAMAI-classified context/CA mismatches and keep/return the CA policy to Report-only while correcting.
 - **Report-only:** validate the canonical CA policy and authentication context; do **not** yet point PIM at it.
 - **Ready to enforce:** enable the canonical CA policy first and verify it remains resolvable.
-- **PIM settings pending:** notify privileged administrators, then PATCH only the authentication-context rule on each selected PIM role-management policy.
+- **PIM settings pending:** notify privileged administrators, then PATCH only the authentication-context rule on each selected PIM role-management policy. IAMAI does not read PIM role settings, so from the scan that reads the policy On until the workflow record confirms the role settings use the context, the step shows this state's work as planned work, naming the context by the ID the enforced policy targets (R4-18).
 - **Verification pending:** perform a controlled eligible-role activation and verify the PIM rule/CA result, then rescan.
 - **In place:** no implementation action.
 
