@@ -62,6 +62,9 @@ export const RETIRED_OPENER = [
   'Every step carries the portal clicks, the policy JSON, and the communications to send',
   'more baselines are coming, including the ability to load your own',
   'See it with sample data',
+  // Loading your own baseline is reserved for V2 (Connect keeps the loader off).
+  'or load your own',
+  'your chosen baseline',
 ]
 
 /** One row of what IAMAI does: the verb in the label column, the rest beside it. */
