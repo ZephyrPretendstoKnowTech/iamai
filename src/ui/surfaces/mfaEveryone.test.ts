@@ -548,9 +548,11 @@ test('G2: help desk says Conditional Access does not change the per-user state',
 
 test('G3: the portal step reads Per-user MFA and Disable MFA', () => {
   const w = whatToDoOf(PER_USER)
-  // "select the accounts above" pointed at a list this step does not draw: IAMAI
-  // cannot read a legacy per-user state, which is why the step exists. The
-  // instruction now sends the reader to the page that does hold them.
+  // "select the accounts above" pointed at a list this step does not draw. The
+  // accounts the scan read as Enabled or Enforced are on the Legacy Per-User MFA
+  // tile, and an account whose state it could not read is on no list here (this
+  // said IAMAI cannot read a per-user state at all, which is not so: G11). The
+  // instruction sends the reader to the page that holds every one of them.
   assert.match(w, /Users → All users → Per-user MFA./)
   assert.match(w, /Enabled and Enforced views, select every account they list, and choose Disable MFA/)
   assert.doesNotMatch(w, /accounts above|accounts listed here/)
@@ -619,6 +621,37 @@ test('G10: the per-user MFA tile counts through count() and says what its number
   const oneUnread = tileOf(demo)
   assert.ok(oneUnread)
   assert.equal(oneUnread.detail, '1 account needs a per-user MFA state check: the scan could not read their state.')
+})
+
+// The step's action said "IAMAI cannot read those states, so it cannot list the
+// accounts for you" beside its own Legacy Per-User MFA tile listing, by name, the
+// accounts the scan read as Enabled or Enforced. IAMAI reads every account's
+// state (graph/collect/collectors.ts, /authentication/requirements); the tile is
+// the one place that says what this scan read, including where it could not.
+test('G11: the step never says IAMAI cannot read the per-user states it lists', () => {
+  const f = structuredClone(fixture('demo'))
+  const [first, second] = f.snapshot.users
+  f.snapshot.perUserMfa = Object.fromEntries(f.snapshot.users.map((u) => [u.id, { state: u.id === first.id || u.id === second.id ? 'enforced' : 'disabled', reason: null }])) as typeof f.snapshot.perUserMfa
+  setDisplayTimeZone('UTC')
+  try {
+    const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+    const step = r.steps.find((s) => s.id === PER_USER)
+    assert.ok(step, 'the premise: the step is planned')
+    const tile = step.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+    assert.equal(tile?.value, '2 accounts Enabled or Enforced', 'the premise: the tile lists what the scan read')
+    for (const id of [first.id, second.id]) assert.ok(tile?.detail.includes(f.snapshot.users.find((u) => u.id === id)!.displayName!), `the tile names ${id}`)
+    const readings = laneReadings(r.steps, [])
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    const reading = readings.get(PER_USER)!
+    const body = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+    const drawn = everyString(JSON.parse(JSON.stringify(body))).join('\n')
+    assert.match(drawn, /disable every legacy per-user MFA state/, 'the premise: the action is drawn')
+    assert.doesNotMatch(drawn, /cannot read those states|cannot list the accounts/)
+  } finally {
+    setDisplayTimeZone(null)
+  }
 })
 
 test('G9: per-user MFA is never called retired; no Learn page gives it an end date', () => {
