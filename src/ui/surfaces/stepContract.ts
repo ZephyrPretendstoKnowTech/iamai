@@ -156,6 +156,7 @@ type ContractWords = {
   doneEscapeHatch: string
   doneEmergency: string
   doneOperation: string
+  doneOperationCovered: string
   doneManual: string
   doneVerify: string
   doneDeploy: string
@@ -552,8 +553,16 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
     }
     case 'unmatched-pair':
       return step.action.ambiguousTarget ? fillText(CONTRACT.doneTarget, { tenant }) : CONTRACT.donePair
-    case 'no-operation':
-      return CONTRACT.doneOperation
+    case 'no-operation': {
+      // A completion no scan can reach. Where the goal is already delivered by
+      // a policy the step names (Step.satisfiedBy) there is nothing to
+      // rebuild, so "a scan rebuilds this step" made the row unfinishable AND
+      // undeclinable: an operator scanned, read the identical page, and left
+      // it open. What finishes it is on the card above.
+      const by = step.satisfiedBy
+      const covered = by && by.policies.length > 0 ? by.sufficient ?? by.policies[0] : null
+      return covered === null ? CONTRACT.doneOperation : fillText(CONTRACT.doneOperationCovered, { policy: covered, tenant })
+    }
     case 'manual-correction':
       return fillText(CONTRACT.doneManual, { fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
