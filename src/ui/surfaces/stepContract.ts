@@ -667,6 +667,21 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
     // and "IAMAI watched it get there" is false — this scan did not. A reader
     // who took over an inherited tenant met six of these with nothing anywhere
     // saying the plan had been run here before.
+    // What the tag proves is AUTHORSHIP, not a date.
+    //
+    // This said the policy was written "before IAMAI's first scan", and a
+    // reader found it on one recorded ABSENT across three consecutive scans
+    // and watched appearing on the fourth, eight days after the first scan.
+    // IAMAI cannot know when a tagged policy was written: `watchedArrive`
+    // compares against the immediately prior scan only, so a policy it watched
+    // arrive is forgotten two scans later, and `neverObserved` cannot separate
+    // the two cases either — it is set both for a policy the first scan found
+    // enforced and for one deployed straight to enforced under the watch.
+    //
+    // So the sentence claims only what the tag actually proves. Where the
+    // rollout itself went unwatched, the observation note says so in its own
+    // words ("it went live without a report-only period IAMAI could watch"),
+    // which is a different fact and renders beside this one.
     const inherited = !watched && step.tracking?.matchedBy === 'tag'
     const text =
       by === null
