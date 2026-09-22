@@ -19697,7 +19697,8 @@
           "location.current.includeUnknown",
           "evidence.signInCountries",
           "decision.travelMode",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "location.seen.unlisted"
         ],
         "projection": {
           "needsDecision": {
@@ -19814,7 +19815,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**. Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. The other option, **Determine location by GPS coordinates**, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. Leave **Include unknown countries/regions** off, so an address that maps to no country stays outside this list.\n6. There is no trusted mark on a countries location; trust belongs to the IP ranges location Define the Trusted Network creates.\n7. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
+          "text": "1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.\n2. Name it **{{location.target.displayName}}**.\n3. Use **Determine location by IP address**. Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. The other option, **Determine location by GPS coordinates**, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.\n4. Select these Work Countries: **{{location.target.countryCodes}}**.\n5. The scan saw sign-ins from **{{location.seen.unlisted}}**, which that list leaves out. Add them only if those sign-ins are expected; leaving them out is what blocks them. [omit this line when unavailable]\n5. Leave **Include unknown countries/regions** off, so an address that maps to no country stays outside this list.\n6. There is no trusted mark on a countries location; trust belongs to the IP ranges location Define the Trusted Network creates.\n7. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.\n"
         },
         "entra.correct.open": {
           "meta": {

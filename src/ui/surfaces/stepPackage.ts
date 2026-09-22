@@ -748,6 +748,17 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     if (step.id === 's-prereq-service-accounts-group') put('group.target.displayName', step.naming?.proposed)
   }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
+  // Countries the scan saw people sign in from that the saved list leaves out.
+  //
+  // Three tiles on this step said NZ was missing, and the task four lines below
+  // them said "Select these Work Countries: AU" — building the list the step
+  // had just called wrong, with no count on either and nothing at the point of
+  // action to say the two disagreed. The instruction names the gap now. It does
+  // NOT add the country: widening where people may sign in from is the
+  // operator's decision and stays one.
+  const allowed = new Set((ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
+  const seenCountries = [...new Set(Object.values(ctx.snapshot.signInEvidence ?? {}).flatMap((rec) => (rec as { countries?: string[] })?.countries ?? []))]
+  putSome('location.seen.unlisted', seenCountries.map((c) => c.toUpperCase()).filter((c) => !allowed.has(c)).sort())
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
   put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)
   // The confirmed service accounts by name, for the same reason the emergency

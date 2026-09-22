@@ -390,7 +390,13 @@ export const FINDING = {
   locUnseen: (cidrs: string[]): string => `no sign-in in the window came from ${list(cidrs)}`,
 
   ctyNone: 'no country is allowed, which blocks everyone',
-  ctyMissingOperator: (countries: string[]): string => `admins have signed in from ${list(countries)}, which the list leaves out`,
+  // The number of admins, because one is not a pattern. On a 51-admin tenant
+  // exactly one had signed in from the country this names, and "admins have
+  // signed in from NZ" read as a group habit rather than a single person — a
+  // reader who checks, and this sentence is written for readers who check,
+  // finds one and stops trusting the line.
+  ctyMissingOperator: (countries: string[], admins: number): string =>
+    `${admins === 1 ? 'an admin has' : `${admins} admins have`} signed in from ${list(countries)}, which the list leaves out`,
   ctyUnknown: 'sign-ins from unknown countries are allowed',
   ctySeenMissing: (countries: string[]): string => `people signed in from ${list(countries)} in the window, and the list leaves them out`,
 
