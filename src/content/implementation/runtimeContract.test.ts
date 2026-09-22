@@ -304,6 +304,57 @@ test('an optional line’s omit marker is resolved in either spelling: the marke
   }
 })
 
+// R4-39 (Priya D9), the second site. The managed-device create read "5. Conditions →
+// set only what IAMAI resolved, and set each one through its own Configure toggle:"
+// and then "6. Grant", on a target with no location or platform condition: each
+// condition line under it was omitted for want of a value, and the line that
+// introduces them stayed, an instruction to set a list of conditions that lists
+// none. The JSON and the script set no condition, so there is no Conditions step:
+// the introducing line goes with its lines and the list closes the gap. The text
+// below is that package's block (s-goal-require-managed-device entra.create), cut short.
+test('a line that introduces indented lines goes with them when every one has gone, and the numbered list closes the gap', () => {
+  const create = [
+    '1. Go to Entra admin center → Conditional Access → Policies → New policy.',
+    '2. Name: {{policy.target.displayName}}.',
+    '3. Target resources: All resources.',
+    '4. Conditions → set only what IAMAI resolved, and set each one through its own **Configure** toggle:',
+    '   Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. [omit this line when unavailable]',
+    '   Device platforms: set **Configure** to **Yes**, then **{{policy.target.platformWords}}**. [omit this line when unavailable]',
+    '5. Grant → Grant access → Require device to be marked as compliant.',
+    '6. Enable policy: Report-only.',
+    '7. Create. Rescan in IAMAI.',
+  ].join('\n')
+  const name = { 'policy.target.displayName': 'Core - Require - Compliant device' }
+  const required = new Set(['policy.target.displayName'])
+  const linesOf = (bindings: Record<string, unknown>): string[] => {
+    const out = bindText(create, bindings, required)
+    assert.ok('text' in out, JSON.stringify(out))
+    return out.text.split('\n')
+  }
+  // No condition resolved: no line introduces a list and lists nothing, and the steps count on.
+  assert.deepEqual(linesOf(name), [
+    '1. Go to Entra admin center → Conditional Access → Policies → New policy.',
+    '2. Name: Core - Require - Compliant device.',
+    '3. Target resources: All resources.',
+    '4. Grant → Grant access → Require device to be marked as compliant.',
+    '5. Enable policy: Report-only.',
+    '6. Create. Rescan in IAMAI.',
+  ])
+  // One condition resolved: the introducing line stays, with that condition under it and only that one.
+  assert.deepEqual(linesOf({ ...name, 'policy.target.locationWords': 'Include: Any location; Exclude: All trusted locations' }), [
+    '1. Go to Entra admin center → Conditional Access → Policies → New policy.',
+    '2. Name: Core - Require - Compliant device.',
+    '3. Target resources: All resources.',
+    '4. Conditions → set only what IAMAI resolved, and set each one through its own **Configure** toggle:',
+    '   Locations: set **Configure** to **Yes**, then **Include: Any location; Exclude: All trusted locations**.',
+    '5. Grant → Grant access → Require device to be marked as compliant.',
+    '6. Enable policy: Report-only.',
+    '7. Create. Rescan in IAMAI.',
+  ])
+  // A line ending in a colon with no indented lines authored under it is left as written.
+  assert.deepEqual(bindText('1. Do this:\n2. Then {{x}}. [omit this line when unavailable]\n3. Save.', {}, new Set()), { text: '1. Do this:\n3. Save.' })
+})
+
 
 test('numbered Entra preview instructions retain unresolved optional settings', () => {
   const pkg = compile({ optionalBindings: ['scope.group'], projection: { missing: { entra: 'e.create' } } },
