@@ -358,3 +358,48 @@ test('the configuration procedure claims nothing wider than the three changes it
   const text = stepBodyOf(step, context(structuredClone(fixture('demo')))).artifacts.find(a => a.id === 'portal')!.text()
   assert.doesNotMatch(text, /No selected account currently needs configuration/)
 })
+
+// R4-35 (Priya D10, Nadia D5). The Prepared passkeys summary lost track of
+// which account it was talking about. It composed "account — clause" per item,
+// dropped exact repeats and kept the first two, so with both accounts' methods
+// unread it read "Break-glass 1 — Missing scan evidence: registered sign-in
+// methods. Missing scan evidence: registered sign-in methods." (the second
+// account gone, the clause again with nobody attached), and with two findings on
+// each of two accounts it named the first account twice and never the second.
+// That sentence is all the export and AI Info carry of the card. Each clause is
+// said once with every account it is true of, by the sign-in name the rows use.
+test('the Prepared passkeys summary names every account a clause is true of, and each clause once', () => {
+  const methods = (value: ReturnType<typeof tenant>) => runFixture(value).steps.find(s => s.id === 's-prereq-break-glass')!.configurationFindings!.find(x => x.key === 'recovery-methods')!
+  const upn = (value: ReturnType<typeof tenant>, id: string) => value.snapshot.users.find(u => u.id === id)!.userPrincipalName!
+  const unread = 'Missing scan evidence: registered sign-in methods.'
+  const count = (text: string, part: string) => text.split(part).length - 1
+
+  // Both accounts unread.
+  const hostile = structuredClone(fixture('hostile'))
+  const [h1, h2] = hostile.mapping.breakGlassUserIds
+  assert.deepEqual([hostile.snapshot.authMethods[h1], hostile.snapshot.authMethods[h2]], ['unknown', 'unknown'], 'the premise: neither account was read')
+  const both = methods(hostile)
+  assert.ok(both.detail.includes(upn(hostile, h1)) && both.detail.includes(upn(hostile, h2)), both.detail)
+  assert.equal(count(both.detail, unread), 1, both.detail)
+  assert.ok(both.detail.startsWith(upn(hostile, h1)), `an unattributed clause leads: ${both.detail}`)
+  // The rows beneath are grouped under the same name the summary uses.
+  for (const item of both.items ?? []) if (item.accountId) assert.equal(item.subjectLabel, upn(hostile, item.accountId), JSON.stringify(item))
+
+  // The first account prepared, the second still unread: only the second is named.
+  const one = structuredClone(fixture('hostile'))
+  one.snapshot.authMethods[h1] = [{ kind: 'fido2', id: 'recovery-key', displayName: 'Recovery key', aaGuid: HARDWARE, passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+  const second = methods(one)
+  assert.ok(second.detail.startsWith(upn(one, h2)), `the summary does not start with the unread account: ${second.detail}`)
+  assert.ok(!second.detail.includes(upn(one, h1)), second.detail)
+  assert.equal(count(second.detail, unread), 1, second.detail)
+
+  // Two findings on each of two accounts: both accounts, every clause.
+  const shared = tenant()
+  const [a, b] = shared.mapping.breakGlassUserIds
+  for (const id of [a, b]) shared.snapshot.authMethods[id] = [{ kind: 'microsoftAuthenticator', id: `app-${id}`, displayName: 'SM-S918U' }] as never
+  const four = methods(shared)
+  const results = reportOf(shared).targets.flatMap(t => t.results).filter(r => r.outcome !== 'pass' && (r.id === 'bg.separateDevices' || r.id === 'bg.phishingResistant'))
+  assert.equal(results.length, 4, 'the premise: two open findings on each account')
+  for (const r of results) assert.ok(four.detail.includes(r.finding!.replace(/[.]$/, '')), `dropped: ${r.finding}`)
+  assert.ok(four.detail.includes(`${upn(shared, a)} and ${upn(shared, b)} — `), `the clause both accounts share names both: ${four.detail}`)
+})

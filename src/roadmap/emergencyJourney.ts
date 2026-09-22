@@ -18,6 +18,7 @@ import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import { exclusionGroupPolicySafety } from '../validation/report.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { displayZone } from '../copy/dates.ts'
+import { list } from '../copy/statements.ts'
 import { app } from '../content/content.ts'
 
 // A failing finding's value. "Needs attention" is a retired state word
@@ -365,7 +366,11 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
     detail: mapping.breakGlassUserIds.length ? '' : 'Select the intended accounts so IAMAI can evaluate their identity and role evidence.',
     items: identityItems,
   }
-  for (const item of authChecks.items ?? []) if (item.accountId) item.label = accountLabel(snapshot, item.accountId)
+  // One name per account on this card, the one its rows are grouped under: the
+  // sign-in name. The report's own target label is the display name, and the
+  // rows beneath a summary that said "Break-glass 1" read
+  // "bg1@hostile-fixture.onmicrosoft.com".
+  for (const item of authChecks.items ?? []) if (item.accountId) { item.label = accountLabel(snapshot, item.accountId); item.subjectLabel = item.label }
   authentication.label = 'Prepared passkeys'
   // The card says WHICH hardening is open, where one is. "Minimum met · hardening
   // open" is a tier, not a finding: on an account whose only recovery credential
@@ -385,13 +390,38 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   // ("every emergency account relies on ... alone") is about all of them and
   // takes no prefix.
   const stop = (t: string): string => `${t}${/[.!?]$/.test(t) ? '' : '.'}`
-  const openHardening = [...new Set((authChecks.items ?? [])
-    .filter(item => item.outcome !== 'pass' && typeof item.value === 'string' && item.value.trim().length > 0)
-    .map(item => {
-      const clause = String(item.value).trim()
-      const subject = item.accountId ? item.subjectLabel ?? item.label : null
-      return subject ? `${subject} — ${stop(clause)}` : sentence(clause)
-    }))].slice(0, 2)
+  // Each clause once, with every account it is true of — never the first two
+  // composed lines.
+  //
+  // The summary used to compose "account — clause" per item, drop exact
+  // repeats and keep two. The items come account by account, with the
+  // set-level checks between the first account's and the second's, so on two
+  // unread accounts it read "Break-glass 1 — Missing scan evidence: registered
+  // sign-in methods. Missing scan evidence: registered sign-in methods." — the
+  // second account gone and the same clause twice, once with nobody attached —
+  // and on two accounts with two findings each it named the first account twice
+  // and never the second. Nothing said anything was left out, and this sentence
+  // is all the export and AI Info carry of the card. The items held every
+  // account's result; only the summary threw them away.
+  //
+  // A set-level check whose clause an account already states is left out: it
+  // is unknown only because those accounts' methods were unread, and saying it
+  // again unattributed reads as a third, unnamed problem.
+  const byClause = new Map<string, string[]>()
+  const setClauses: string[] = []
+  for (const item of authChecks.items ?? []) {
+    if (item.outcome === 'pass' || typeof item.value !== 'string' || item.value.trim().length === 0) continue
+    const clause = item.value.trim()
+    if (!item.accountId) { if (!setClauses.includes(clause)) setClauses.push(clause); continue }
+    const accounts = byClause.get(clause) ?? []
+    const who = accountLabel(snapshot, item.accountId)
+    if (!accounts.includes(who)) accounts.push(who)
+    byClause.set(clause, accounts)
+  }
+  const openHardening = [
+    ...[...byClause].map(([clause, accounts]) => `${list(accounts)} — ${stop(clause)}`),
+    ...setClauses.filter(clause => !byClause.has(clause)).map(sentence),
+  ]
   authentication.detail = authentication.outcome !== 'pass' && openHardening.length > 0
     ? openHardening.join(' ')
     : 'Each selected account needs a registered approved passkey compatible with the current and planned settings.'
