@@ -84,7 +84,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -246,8 +246,11 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   const unread = needing.length === 0 ? selected.filter((_, index) => passkeyChecks[index] === null).map(id => targetOf(ctx, id)) : []
   const registrationTarget = needing.length === 1 ? needing[0] : unread.length === 1 ? unread[0] : 'the account you are preparing'
   const bold = (upns: string[]): string => list(upns.map(upn => `**${upn}**`))
+  // More than one account needing a passkey (a new tenant's usual case) used to
+  // merge the session reminder into the account list and point "above": the
+  // reminder is its own first line here as on every emergency task.
   const repeatLead = needing.length > 1
-    ? [`Keep your working administrator session open. Accounts: **${needing.join('**, **')}**.`, 'Repeat this procedure separately for each account listed above.']
+    ? ['Keep your working administrator session open.', fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) })]
     : needing.length === 1
       ? ['Keep your working administrator session open.']
       : selected.length

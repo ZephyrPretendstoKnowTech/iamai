@@ -4,7 +4,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { emergencyAccountTasksOf, emergencyAccountTasksText, emergencyTaskText } from './emergencyAccountTasks.ts'
+import { emergencyAccountTasksOf, emergencyAccountTasksText, emergencyTaskSteps, emergencyTaskText } from './emergencyAccountTasks.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
@@ -214,7 +214,33 @@ test('the passkey procedure names only the selected accounts whose passkey check
   assert.ok(failing.length === 1 && others.length === 1, 'the demo has one account needing a passkey and one not')
   assert.ok(text.includes(failing[0].upn!))
   assert.ok(!text.includes(others[0].upn!), `${others[0].upn} is not named`)
-  assert.doesNotMatch(text, /Repeat this procedure separately for each account/)
+  // One account: no "for each" line. (It was "Repeat this procedure separately
+  // for each account listed above."; the several-account line now reads
+  // "... need an approved passkey. Follow these steps separately for each one.")
+  assert.doesNotMatch(text, /separately for each/)
+})
+
+// Two accounts needing a passkey, a new tenant's usual case. The procedure
+// opened "Keep your working administrator session open. Accounts: **a**, **b**."
+// and "Repeat this procedure separately for each account listed above.": the
+// reminder merged into the account list, where every other emergency task
+// gives it its own first line, and a pointer "above" the tasks' opening rule
+// bans. The reminder stands alone and the next line names both accounts.
+test('two accounts needing a passkey are named on their own line after the session reminder', () => {
+  const value = structuredClone(fixture('demo-week2'))
+  const [a, b] = value.mapping.breakGlassUserIds
+  for (const id of [a, b]) value.snapshot.authMethods[id] = []
+  const run = runFixture(value)
+  const step = run.steps.find(item => item.id === STEP)!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const task = emergencyAccountTasksOf(step, ctx).tasks.find(item => item.id === 'set-up-passkey')!
+  const upn = (id: string) => value.snapshot.users.find(user => user.id === id)!.userPrincipalName!
+  for (const variant of task.variants ?? []) {
+    const steps = emergencyTaskSteps(task, variant.id)
+    assert.equal(steps[0], 'Keep your working administrator session open.', variant.id)
+    assert.equal(steps[1], `**${upn(a)}** and **${upn(b)}** need an approved passkey. Follow these steps separately for each one.`, variant.id)
+    assert.doesNotMatch(steps.join('\n'), /listed above/, variant.id)
+  }
 })
 
 test('with every selected account passing, the passkey procedure stays available and says no account needs it', () => {

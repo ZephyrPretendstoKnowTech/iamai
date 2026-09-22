@@ -29,6 +29,14 @@ const CASES: [string, () => Fixture][] = [
   ['small', () => structuredClone(fixture('small'))],
   ['no exclusions answer', () => noExclusionsAnswer(fixture('small'))],
   ['passkey profile', profileTenant],
+  // Both emergency accounts without a passkey, a new tenant's usual case. No
+  // fixture reached it, and the passkey procedure there merged the session
+  // reminder into its account list and ended "for each account listed above".
+  ['both accounts need a passkey', () => {
+    const value = structuredClone(fixture('demo-week2'))
+    for (const id of value.mapping.breakGlassUserIds) value.snapshot.authMethods[id] = []
+    return value
+  }],
 ]
 
 /** Each step's tasks, as ContentStep and CleanupStep project them. */
