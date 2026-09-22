@@ -80,7 +80,7 @@ export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; sub
  */
 export function render(t: Tenant, r: FixtureRun, step: Step): {
   title: string; eyebrow: string | null; lane: string; state: string
-  why: string; cards: string[]; found: string[]; milestone: string; tasks: { title: string; steps: string[] }[]
+  why: string; cards: string[]; found: string[]; milestone: string; tasks: { title: string; steps: string[]; variants: { label: string; steps: string[] }[] }[]
   channels: { id: string; text: string }[]; doneWhen: string[]; decision: string | null
 } {
   // WITH the lane, the readiness blockers and the prerequisite labels, because
@@ -118,7 +118,16 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
     // comprehension softer than it looked.
     found: b.contract.found.map((f: { label: string; text: string }) => `${f.label} · ${f.text}`),
     milestone: `${b.rail.metric}${b.rail.sub ? ` — ${b.rail.sub}` : ''}`,
-    tasks: (b.emergencyAccountTasks?.tasks ?? []).map((task) => ({ title: task.title, steps: [...task.steps] })),
+    // A task's VARIANTS are part of it. A task can end 'continue with the
+    // steps below to register a replacement' and carry those steps in three
+    // variant procedures, which the page draws and this used to drop - so a
+    // reader of this harness saw an instruction pointing at nothing and filed
+    // it as a defect. Read the whole task.
+    tasks: (b.emergencyAccountTasks?.tasks ?? []).map((task) => ({
+      title: task.title,
+      steps: [...task.steps],
+      variants: ((task as { variants?: { label: string; steps: string[] }[] }).variants ?? []).map((v) => ({ label: v.label, steps: [...v.steps] })),
+    })),
     channels: b.artifacts.map((a) => { let text = ''; try { text = a.text() } catch (e) { text = `RENDER ERROR: ${String(e)}` } return { id: a.id, text } }),
     doneWhen: [...b.contract.doneWhen],
     decision: b.decides ? 'this step asks the person to decide' : null,

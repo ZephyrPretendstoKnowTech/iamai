@@ -326,7 +326,9 @@
         "blindFixLicensed": "It is read with the {scope} permission and needs {capability}; once both are in place, scan again.",
         "$commentRouteShortfall": "Naming the campaign beside every MFA gate was keyed on the MEASURE, not on whether that campaign's cohort actually contains the people the gate is short. The campaign prepares people the scan has seen sign in. On a tenant where most people never have, the gate counts them and the campaign cannot: eleven people measured, a cohort of two, a 90% threshold. The reader finished the named step, read \"Nothing left to do\", and the number had not moved a point — with no other action anywhere on the board. Said only where finishing the named step provably cannot reach the threshold.",
         "routeShortfallNone": "“{step}” will not move this number: none of the {short} people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach {threshold}.",
-        "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out."
+        "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out.",
+        "$commentNoneJudged": "\"0 of 39 people have a registered method allowed by the target policies\" is the same construction as a MEASURED zero — the post-grant line on the same tenant reads \"0 of 2 people have a registered method\". Where nobody could be judged at all, leading with a bare zero puts an unread count in the shape of a measurement, and a reader had to reach the third clause to learn which kind of zero it was. Said only where the ready count is zero AND every person in scope is unestablished.",
+        "noneJudged": "None of the {n} people in scope could be judged: method compatibility is not established for any of them."
       },
       "evidence": {
         "$comment": "Why a report-only observation has not completed, in the two cases where the reason is known and was said nowhere. The tile read \"Review the available records and the remaining evidence requirements\" over both: over a tenant whose records refused every read, and over a tenant where four hundred people had been stopped in report-only. Both numbers were on the step already — Evidence.affectedUserIds had the four hundred and Evidence.lines was empty — and no surface read either. Said only while the observation is still open.",
@@ -427,7 +429,9 @@
     "proposedNameDocumented": "{tenant}’s own policy names do not agree on one shape, so this is the documented pattern.",
     "noTemporaryAccessPass": "Turn on a Temporary Access Pass first: Entra ID → Authentication methods → Policies → Temporary Access Pass, enabled and scoped to the people who need one. This policy asks for MFA in order to register MFA, so somebody who has no method yet has no way in without a pass. No step of this plan creates it for you.",
     "sessionLoopReview": "Review MFA for this sign-in before enabling Every time. The intended policy has no MFA grant; without an applicable MFA requirement, repeated sign-in prompts can loop. Keep this policy in Report-only while the policy design is reviewed. More observation time will not resolve this configuration issue.",
-    "sessionLoopHold": "Review MFA before enabling Every time"
+    "sessionLoopHold": "Review MFA before enabling Every time",
+    "$commentProposedNameNoPolicies": "\"<tenant>-s own policy names do not agree on one shape, so this is the documented pattern\" was the fallback for every tenant without a usable naming convention - including tenants with NO Conditional Access policies at all, where nothing exists to agree or disagree. Two readers checked, found zero policies, and stopped believing the line. Convention.sampled is how many names were read, so the three cases are distinguishable.",
+    "proposedNameNoPolicies": "{tenant} has no Conditional Access policy names to follow, so this is the documented pattern."
   },
   "phases": {
     "first": "Preparation",

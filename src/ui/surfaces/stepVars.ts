@@ -167,7 +167,19 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // claimed the tenant's own convention whatever the reading was, so a tenant
     // whose names agree on nothing was told sixteen times that a documented
     // pattern was its own.
-    proposedNameNote: fillText(usableConvention(ctx.naming?.convention ?? null) ? shared.proposedNameFollowsConvention as string : shared.proposedNameDocumented as string, { tenant: tenantNameOf(ctx.snapshot) }),
+    // Three cases, not two. The fallback said names "do not agree on one shape"
+    // for every tenant without a usable convention - including one with NO
+    // Conditional Access policies at all, where nothing exists to agree or
+    // disagree. Two readers checked, found zero policies, and stopped believing
+    // the line. `Convention.sampled` is how many names were read.
+    proposedNameNote: fillText(
+      usableConvention(ctx.naming?.convention ?? null)
+        ? shared.proposedNameFollowsConvention as string
+        : (ctx.naming?.convention?.sampled ?? 0) === 0
+          ? shared.proposedNameNoPolicies as string
+          : shared.proposedNameDocumented as string,
+      { tenant: tenantNameOf(ctx.snapshot) },
+    ),
     existingName: step.naming?.fromBaseline ?? undefined,
     // The operator's own sign-in count, when the operator is in the step's population (the "Your account is in scope" line);
     // in scope with no records of their own (signed in for this scan, outside the window), the no-records line names them instead.
