@@ -213,9 +213,17 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
         ? fillText(app.plan.enforceOutstanding, { items: outstanding[0] })
         : fillText(app.plan.enforceOutstandingMany, { items: list([...outstanding]) }),
   ].filter((line): line is string => line !== null)
+  // ABOVE the heading, not inside the list.
+  //
+  // Spliced under "Do not turn it on unless all of these are true now:", the
+  // outstanding prerequisite became an item in a list of conditions that must
+  // be TRUE while saying something is NOT finished. Two readers hit the
+  // inversion independently and one followed it literally, enforcing ten
+  // policies with the prerequisite open. It is not a condition; it is the
+  // reason not to reach the conditions at all, so it stands before them.
   const withOutstanding = checklist < 0 || spliced.length === 0
     ? steps
-    : [...steps.slice(0, checklist + 1), ...spliced, ...steps.slice(checklist + 1)]
+    : [...steps.slice(0, checklist), ...spliced, ...steps.slice(checklist)]
   const mail = mailDevicesTaskOf(step, mapping)
   const task: EmergencyAccountTask = {
     id: 'policy-procedure',

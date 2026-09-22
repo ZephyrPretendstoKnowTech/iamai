@@ -33,7 +33,21 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
   const completeMembers = members?.directMembers === 'complete'
   const directIds = members?.directMemberIds ?? []
   const missing = completeMembers ? selected.filter(id => !directIds.some(member => same(member, id))) : []
-  const extra = completeMembers ? directIds.filter(id => !selected.some(selectedId => same(selectedId, id))) : []
+  // A member is "extra" only by comparison with the saved emergency selection.
+  // With no selection saved there is nothing to compare against, and the
+  // comparison names EVERY member — which on an inherited tenant is the
+  // break-glass accounts themselves. Removing those from the exclusions group
+  // puts them back inside every policy it is excluded from, which is the one
+  // way this product can lock somebody out of their own tenant.
+  //
+  // A reader met exactly that: two accounts in bold, "Remove" in bold, on the
+  // first screen after the first scan, and nearly did it. The warning was
+  // already in the sentence; it was not enough, because the bold words are
+  // what a fast reader takes. So the list is not computed at all until the
+  // selection exists to compute it against, and the task says what to do first.
+  const extra = completeMembers && selected.length > 0 ? directIds.filter(id => !selected.some(selectedId => same(selectedId, id))) : []
+  /** True where members were read but nobody has said which accounts are the emergency ones. */
+  const unselected = completeMembers && selected.length === 0 && directIds.length > 0
   const directObject = (id: string): string => {
     const object = members?.directMemberObjects?.find(row => same(row.id, id))
     if (!object) return upnOf(ctx, id)
@@ -82,7 +96,10 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
         // The portal channel does explain it, in its fourth paragraph, which is
         // not where somebody working down a numbered list is looking.
         ...(extra.length ? [`First confirm any of these that is a genuinely dedicated emergency account, in the emergency accounts step: removing one puts it back inside every policy this group is excluded from. Then, for the rest only: select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, and confirm. Remove a few at a time and check their next sign-in before the next few.`] : []),
-        ...(groupId && completeMembers && !missing.length && !extra.length ? ['No membership change is needed.'] : []),
+        // Nothing can be said about this group's membership until the emergency
+        // accounts are chosen, so the step asks for that instead of guessing.
+        ...(unselected ? [`This group has ${directIds.length} direct member${directIds.length === 1 ? '' : 's'}. Which of them belong here cannot be worked out until the emergency accounts are selected: do that in Prepare Emergency Access Accounts, then scan again and this list will mean something. Remove nobody before then — a member taken out of this group goes back inside every policy the group is excluded from.`] : []),
+        ...(groupId && completeMembers && !unselected && !missing.length && !extra.length ? ['No membership change is needed.'] : []),
         `Confirm ${accounts} appear as direct members.`,
         'Reopen **Members** and verify the intended list. Return to IAMAI and select **Scan to update the plan**.',
       ],
