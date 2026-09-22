@@ -466,3 +466,44 @@ test('the enforce checklist carries the step\'s own unresolved prerequisites, no
   assert.match(many[at + 1], /Prepare Your Team for MFA/)
   assert.equal(many.filter((l) => /not finished yet/.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
 })
+
+test('a field still waiting on a reference is not printed as a setting to copy', () => {
+  // The numbered procedure is careful: "Users: the resolved admin roles, with
+  // the resolved exclusions." The machine-written "Settings for This Action"
+  // block under it — the copy-paste half — read the request bodies directly and
+  // printed every line, so before the exclusions group was chosen it said
+  // "Users → Include: All users." with no exclusions line at all.
+  //
+  // Saving the selection changed that line to directory roles plus the
+  // exclusions group. So the earlier version was not a vaguer statement of the
+  // same policy; it was a different and much wider one, fully copyable, on a
+  // tenant where nine steps were waiting on that reference.
+  //
+  // The binding layer already refuses to bind a field a waiting reference is in
+  // — "an exclusion set short of the groups still to answer read as complete".
+  // This block now obeys the same rule.
+  const f = fixture('midflight')
+  const run = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+
+  const waiting = run.steps.filter((s) => (s.action.missing ?? []).length > 0)
+  assert.ok(waiting.length > 0, 'the premise: midflight has steps waiting on a reference')
+  let printed = 0
+  for (const step of waiting) {
+    const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')
+    const text = portal?.text() ?? ''
+    const at = text.indexOf('Settings for This Action')
+    if (at < 0) continue
+    printed++
+    const settings = text.slice(at)
+    // The scope is the field those references live in, so it is the one that
+    // must not appear as a value while they are unanswered.
+    assert.equal(/Users → Include:/.test(settings), false, `${step.id} prints a Users scope while waiting on ${JSON.stringify(step.action.missing)}`)
+  }
+  assert.ok(printed > 0, 'no waiting step prints a settings block, so this proves nothing')
+
+  // And a step with nothing outstanding still prints its scope: this withholds
+  // an unresolved field, it does not empty the block.
+  const settled = run.steps.find((s) => (s.action.missing ?? []).length === 0 && (stepBodyOf(s, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? '').includes('Users → Include:'))
+  assert.ok(settled, 'no settled step prints a Users scope any more')
+})

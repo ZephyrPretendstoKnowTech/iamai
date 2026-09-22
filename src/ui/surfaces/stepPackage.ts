@@ -500,8 +500,33 @@ export function entraWithSettings(text: string, step: Step, ctx: StepVarContext,
   if (!selected || !selected.some(s => 'conditions' in s.body || 'grantControls' in s.body || 'sessionControls' in s.body)) return text
   // The procedure already covers navigation, saving and removed exclusions.
   // This supplement carries only the selected policy's settings and pair labels.
+  // A field still waiting on a reference is not shown as a setting to copy.
+  //
+  // The binding layer already refuses to bind one (`incompleteFieldsOf`): "what
+  // is left of its conditions, grant and users is not the target — an exclusion
+  // set short of the groups still to answer read as complete". This block read
+  // the request bodies directly and rendered every line, so before the
+  // exclusions group was chosen a step showed "Users → Include: All users." as
+  // a settings line, under a procedure that carefully said "the resolved admin
+  // roles, with the resolved exclusions". Saving the selection changed that one
+  // line to directory roles plus the exclusions group — so the earlier version
+  // was not a narrower statement of the same thing, it was a different and much
+  // wider policy, fully copyable.
+  const openFields = incompleteFieldsOf(step, plannedOperationsOf(step)[0] ?? null)
+  const FIELD_OF: [RegExp, string][] = [
+    [/^Users →/, 'conditions.users'],
+    [/^(?:Target resources|Cloud apps)/, 'conditions.applications'],
+    [/^Grant →/, 'grantControls'],
+    [/^Session →/, 'sessionControls'],
+  ]
+  const settled = (line: string): boolean => {
+    const field = FIELD_OF.find(([re]) => re.test(line))?.[1]
+    return field === undefined || !touches(openFields, field)
+  }
   const lines = plannedPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), c.title), selected)
-    ?.filter(line => /^(?:Policy [AB] —|Name:|Description:|Users →|Target resources|Cloud apps|Conditions →|Grant →|Session →)/.test(line)).map(line => line.replace(/: Entra admin center.*$/, ''))
+    ?.filter(line => /^(?:Policy [AB] —|Name:|Description:|Users →|Target resources|Cloud apps|Conditions →|Grant →|Session →)/.test(line))
+    .filter(settled)
+    .map(line => line.replace(/: Entra admin center.*$/, ''))
   if (!lines?.length) return text
   return `${text.trim()}\n\n### ${shared.policySettingsForAction}\n\n${lines.map(line => `- ${line}`).join('\n')}`
 }
