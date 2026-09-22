@@ -1,8 +1,9 @@
-// The persona harness. NOT part of the product: this directory is gitignored
-// and nothing here ships. It exists so five simulated administrators can each
-// use IAMAI end to end — read a tenant, answer its questions, follow its
-// instructions, come back and scan again — and so what they saw can be quoted
-// exactly rather than remembered.
+// The persona harness. NOT part of the product: nothing here ships. This file
+// is tracked (the rest of the directory is gitignored; .gitignore says why).
+// It exists so five simulated administrators can each use IAMAI end to end —
+// read a tenant, answer its questions, follow its instructions, come back and
+// scan again — and so what they saw can be quoted exactly rather than
+// remembered.
 //
 // Everything here drives the SAME producers the screen drives. No text is
 // invented: `render()` returns what `ContentStep.tsx` would draw, because it

@@ -126,7 +126,7 @@ finding that rests on one of them is the harness's until it is re-run.
 - **`plan()` showed a step the product withholds.** `planData.ts` drops the
   steps `customerPlanSteps` withholds from every customer surface (today the
   admin-portals policy) before anything reads them; the harness kept them, so
-  personas rendered and filed a step no screen draws, and "Known walls" below
+  personas rendered and filed a step no screen draws, and "Known walls" above
   named it. `plan()` and `rescan()` now drop them too.
 - **`lanes()` was not the board.** It built rows from the steps only, so the
   Cleanup rows — the drill that holds every policy's enforcement among them —
@@ -158,9 +158,8 @@ finding that rests on one of them is the harness's until it is re-run.
   skipped anyone with any registered method, so a person holding only a phone
   number, in a tenant with text and voice disabled, never registered the method
   the campaign asks for. On Sam's tenant that is 669 people, and the readiness
-  gate stopped at 86% however often it ran (R4-41 — the number was right; the
-  ceiling was the harness). It now enrols them, by the product's own reading of
-  which methods the tenant allows.
+  gate stopped at 86% however often it ran (R4-41). It now enrols them, by the
+  product's own reading of which methods the tenant allows.
 - **Every persona tenant but the demo ran on a baseline that never ships.**
   `fixture()` builds every non-demo tenant on an eight-policy synthetic
   baseline (fixtures/index.ts, whose comment said the opposite until
@@ -180,7 +179,11 @@ finding that rests on one of them is the harness's until it is re-run.
 
 ## Rules
 
-- Nothing in this directory goes in the repo; it is gitignored.
+- This directory is gitignored except the harness core — `harness.ts`, this
+  file, `r3-tenants.ts` and `r3-journey.ts` — which is tracked (.gitignore
+  says why). Scripts, probes and round reports stay untracked. Nothing here
+  ships, and the tracked files are not typechecked by `npm run verify`; run
+  `npx tsc --noEmit` over them yourself after changing one.
 - Quote what the product renders. `render()` reads the same `stepBodyOf` the
   screen does.
 - Before reporting a defect, check it is not the harness. The last run reported
