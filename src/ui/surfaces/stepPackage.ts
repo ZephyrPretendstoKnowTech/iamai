@@ -151,10 +151,18 @@ export function plannedOperationsOf(step: Step): PolicyOperation[] {
  * semantic facts about a correction (roadmap/changedFields.ts), over every update
  * operation the step resolves and the tenant policy each names — held or not, so a
  * correction a prerequisite still holds can be planned from what it will change.
+ *
+ * With them, the parts of the policy the scan found are not what the plan asked
+ * for and the update does not write (roadmap/observation.ts unwrittenDifferences,
+ * `observation.unwritten`): a person corrects those, and the correction is still
+ * the step's to describe. They used to be left out, so a token-protection policy
+ * without the Cloud PC device filter was told "a person corrects it" while its
+ * package's own device-filter correction never drew, and the portal said only
+ * to keep observing (R4-10).
  */
 export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null): string[] {
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
-  const out = new Set<string>()
+  const out = new Set<string>(step.state?.observation?.unwritten ?? [])
   for (const op of plannedOperationsOf(step)) {
     if (op.mode !== 'update' || typeof op.policyId !== 'string') continue
     const current = rows.find((r) => r.id === op.policyId) ?? null
