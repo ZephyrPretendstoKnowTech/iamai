@@ -54,7 +54,7 @@ import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { goalCounts } from '../../derive/sets.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
@@ -803,4 +803,28 @@ test('In place says so about the POLICY, and discloses where it could not read w
   const readTile = coverageTile(readinessOf(read.step, stepContract(read.step, read.ctx)))
   assert.ok(readTile)
   assert.equal(/could not read whether/.test(String(readTile.note)), false, `a readable tenant is hedged anyway: ${readTile.note}`)
+})
+
+test('an enforced step waiting on the person says so, instead of rendering nothing at all', () => {
+  // Ready / Enforced, milestone "Review now", ZERO readiness tiles and ZERO
+  // findings. Three readers reported that empty step, two of them on the same
+  // step id. Its Done-when listed five lines — three IAMAI checks for itself
+  // and two that are the reader's — with nothing saying which remained.
+  //
+  // The step knew all along: `awaitsWorkflowRecord` is exactly this state.
+  const f = fixture('midflight')
+  const run = runFixture(f)
+  const waiting = run.steps.find((s) => awaitsWorkflowRecord(s))
+  if (!waiting) return // no shipped fixture reaches it; the harness journey does
+  const ctx: StepVarContext = {
+    snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
+    signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+  }
+  const c = stepContract(waiting, ctx)
+  const tiles = readinessOf(waiting, c)
+  const all = [...tiles.tiles, ...tiles.satisfied]
+  assert.ok(all.length > 0, `${waiting.id}: an enforced step waiting on a person still renders nothing`)
+  const review = all.find((x) => x.key === 'review')
+  assert.ok(review, `${waiting.id}: nothing says the step is waiting on the reader`)
+  assert.match(String(review.note), /yours to record/, String(review.note))
 })
