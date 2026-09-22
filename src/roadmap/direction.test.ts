@@ -453,3 +453,28 @@ test('NEW-Nadia-D4: a person read on their own after a partial read, seen on an 
   assert.deepEqual(phoneSignInIds(s), [id])
   assert.equal(phonesToday(f), fillText(W.questions.phones.today, { n: 1 }))
 })
+
+test('NEW-Nadia-D4: over a sign-in read that stopped short, the device question never says no phone or no unidentified computer was seen', () => {
+  // The second way a real scan reached the sentence: a read interrupted or
+  // capped part of the way through the window never reached the iPhone
+  // sign-ins before where it stopped, and the question still said "Today: no
+  // phone sign-ins were seen." — a claim about records nobody read.
+  const f = fixture('getiamai')
+  const s = f.snapshot
+  for (const e of Object.values(s.signInEvidence)) {
+    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+  }
+  const computers = (): string | null => q(stepOf(directionSteps({ snapshot: s, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'computers').today
+  // Read whole, the negatives stand: nothing was missed.
+  assert.equal(s.sources.signInEvidence.status, 'ok', 'the premise: a whole read')
+  assert.equal(phonesToday(f), W.questions.phones.todayNone)
+  assert.equal(computers(), W.questions.computers.todayNone)
+  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'collection interrupted: Graph 503 after retries' }
+  assert.equal(phonesToday(f), null)
+  assert.equal(computers(), null)
+  // What a short read did see is still said.
+  const id = Object.keys(s.signInEvidence)[0]
+  s.signInEvidence[id].devices = [...(s.signInEvidence[id].devices ?? []), { os: 'Android', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: null }]
+  assert.equal(phonesToday(f), fillText(W.questions.phones.today, { n: 1 }))
+})

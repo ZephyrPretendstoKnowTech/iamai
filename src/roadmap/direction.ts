@@ -182,6 +182,12 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const registered = evidence?.registeredComputers?.people.length
   // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
   const phones = phoneSignInIds(ctx.snapshot)?.length
+  // "None was seen" is said only over sign-in records read whole. An
+  // interrupted or capped read never reached the sign-ins before where it
+  // stopped, and "Today: no phone sign-ins were seen." over a read that missed
+  // the iPhone sign-ins 3 and 10 days back is a claim about records nobody read
+  // (NEW-Nadia-D4). What was seen is still said; the flat negative is not.
+  const readWhole = ctx.snapshot.sources?.signInEvidence?.status === 'ok'
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
@@ -199,14 +205,14 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       // and enrolled — so leaving the registered ones out of a line headed
       // "computers that aren't joined" understated a 2,339-person fleet as 3.
       today: unjoined === undefined ? null : [
-        unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : Q.computers.todayNone,
+        unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : readWhole ? Q.computers.todayNone : null,
         registered === undefined ? null : registered > 0 ? fillText(Q.computers.todayRegistered, { n: registered }) : null,
-      ].filter((line): line is string => line !== null).join(' '),
+      ].filter((line): line is string => line !== null).join(' ') || null,
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
       suggested: answer('apps'), evidence: W.baselineEvidence,
-      today: phones === undefined ? null : phones > 0 ? fillText(Q.phones.today, { n: phones }) : Q.phones.todayNone,
+      today: phones === undefined ? null : phones > 0 ? fillText(Q.phones.today, { n: phones }) : readWhole ? Q.phones.todayNone : null,
       // Blocked from company data is not a setting on this step: it adds a
       // policy step of its own (generate.ts s-ladder-phone-access-restriction),
       // which the question never said (owner, 2026-09-20).
