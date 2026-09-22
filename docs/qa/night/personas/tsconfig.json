@@ -1,5 +1,0 @@
-{
-  "//": "The tracked harness core, typechecked with the project's own options: npx tsc -p docs/qa/night/personas. npm run verify checks src/ and scripts/ only, so nothing else checks these files.",
-  "extends": "../../../../tsconfig.json",
-  "include": ["harness.ts", "r3-tenants.ts", "r3-journey.ts", "../../../../src/vite-env.d.ts"]
-}

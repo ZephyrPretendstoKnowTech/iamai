@@ -1,7 +1,9 @@
 // The persona harness. NOT part of the product: nothing here ships. This file
 // is tracked with the rest of the harness core, which .gitignore lists and
-// says why; everything else in the directory is ignored. Typecheck it with
-// `npx tsc -p docs/qa/night/personas` after a change: `npm run verify` does not.
+// says why; everything else in the directory is ignored. Its self-check,
+// src/testing/personaHarness.test.ts, imports it: after a change, run
+// `npm run verify -- src/testing/personaHarness.test.ts`, which typechecks it
+// and checks it still says what the screen says. CI runs both with the suite.
 // It exists so five simulated administrators can each use IAMAI end to end —
 // read a tenant, answer its questions, follow its instructions, come back and
 // scan again — and so what they saw can be quoted exactly rather than
