@@ -495,8 +495,8 @@
         "errors": {
           "consent": {
             "state": "Microsoft asked for admin approval",
-            "$commentLead": "It said \"This is the first sign-in\" and \"send them this link\". Approval is missing whenever no administrator has approved IAMAI for the organization, not only at a first sign-in, and there was no link. An administrator who signs in without ticking the box approves it for themselves only, so the Global Reader who tries next is stopped again.",
-            "lead": "IAMAI is not yet approved in {domain}. A Global Administrator approves it once: sign in with that account and tick “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.",
+            "$commentLead": "It said \"This is the first sign-in\" and \"send them this link\". Approval is missing whenever no administrator has approved IAMAI for the organization, not only at a first sign-in, and there was no link. An administrator who signs in without selecting that option approves it for themselves only, so the Global Reader who tries next is stopped again.",
+            "lead": "IAMAI is not yet approved in {domain}. A Global Administrator approves it once: sign in with that account and select “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.",
             "thisTenant": "this tenant"
           },
           "personal": {
@@ -516,7 +516,7 @@
       "account": {
         "title": "Signed in",
         "line": "{upn} · {role}",
-        "note": "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by ticking “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough.",
+        "note": "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by selecting “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough.",
         "signInAnother": "Sign in with another account",
         "signOut": "Sign out",
         "sampleTitle": "Sample tenant",

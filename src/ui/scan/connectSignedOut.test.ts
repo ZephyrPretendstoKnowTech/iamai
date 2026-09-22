@@ -15,7 +15,7 @@ import { demoTenant } from '../demo.ts'
 import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
 
-const CONSENT = "Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by ticking “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough."
+const CONSENT = "Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by selecting “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough."
 
 const OWN: Record<string, string[]> = {
   none: ['no tenant connected'],
@@ -99,7 +99,7 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   // No "first sign-in" claim and no link that does not exist: the approval is
   // missing until an administrator grants it for the organization, and one who
   // leaves the box unticked approves it for themselves only.
-  assert.equal(c.lead, "IAMAI is not yet approved in contoso.com. A Global Administrator approves it once: sign in with that account and tick “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.")
+  assert.equal(c.lead, "IAMAI is not yet approved in contoso.com. A Global Administrator approves it once: sign in with that account and select “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.")
   assert.doesNotMatch(c.lead ?? '', /first sign-in|this link/)
   assert.equal(c.note, null, 'the error paragraph replaces the Global Reader line')
   assert.deepEqual(
