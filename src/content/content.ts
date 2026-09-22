@@ -139,7 +139,7 @@ export type EngineWords = {
   /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */
   detectionGap: { groups: string; policies: string }
   /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */
-  readiness: { notMeasured: string; blind: string; blindFix: string; blindFixLicensed: string; routeShortfallNone: string; routeShortfallSome: string; noneJudged: string; noneJudgedOne: string; methodLine: string; methodLineUnknown: string; methodLineStale: string; deviceComputers: string; deviceBoth: string }
+  readiness: { notMeasured: string; blind: string; blindFix: string; blindFixLicensed: string; routeShortfallNone: string; routeShortfallSome: string; noneJudged: string; noneJudgedOne: string; methodLine: string; methodLineUnknown: string; methodLineStale: string; methodLineOff: string; methodLineOffAll: string; deviceComputers: string; deviceBoth: string }
   /** Why an observation has not completed (roadmap/evidence.ts); `status` fills {reason} where the sign-in source states none. */
   evidence: { failures: string; unreadable: string; status: Record<'pending' | 'insufficient' | 'disabled' | 'error' | 'none', string> }
   /** One cohort's words wherever it is counted: people, guests, or both (derive/whoLine.ts cohortWords). */

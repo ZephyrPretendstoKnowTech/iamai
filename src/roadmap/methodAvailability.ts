@@ -2,6 +2,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { ScopeEvidence } from './operations.ts'
 import { emergencyPasskeyCompatibility } from './passkeyCompatibility.ts'
+import type { PasskeyCompatibility } from './passkeyCompatibility.ts'
 
 type Verdict = 'yes' | 'no' | 'unknown'
 type Configuration = { id?: string; state?: string; includeTargets?: { id?: string; targetType?: string; authenticationMode?: string }[]; excludeTargets?: { id?: string; targetType?: string }[] }
@@ -20,8 +21,8 @@ export function methodAvailability(snapshot: TenantSnapshot, context: ScopeEvide
   const configs = new Map((policy?.authenticationMethodConfigurations ?? []).map(c => [String(c.id).toLowerCase(), c]))
   const groups: GroupMembers = new Map(Object.entries(context.groupMembers ?? {}).map(([id, members]) => [id, { memberIds: [...members], memberCount: members.length, sampled: false }]))
   const groupSets = new Map([...groups].map(([id, group]) => [id.toLowerCase(), new Set(group.memberIds.map(member => member.toLowerCase()))]))
-  const keys = new Map<string, Verdict>()
-  const passkey = (id: string, allowed?: readonly string[]): Verdict => {
+  const keys = new Map<string, PasskeyCompatibility>()
+  const passkeyFinding = (id: string, allowed?: readonly string[]): PasskeyCompatibility => {
     const cacheKey = JSON.stringify([id, allowed])
     const cached = keys.get(cacheKey)
     if (cached) return cached
@@ -30,9 +31,12 @@ export function methodAvailability(snapshot: TenantSnapshot, context: ScopeEvide
     const source = allowed ? { ...snapshot, authMethods: { [id]: filtered ?? 'unknown' as const } } : snapshot
     // Can this key sign in now: the sign-in rules, not the registration rules (owner item 8).
     const finding = emergencyPasskeyCompatibility(source, [id], groups, 'runtime')[0]
-    const answer = finding.state === 'eligible' ? 'yes' : finding.state === 'unknown' ? 'unknown' : 'no'
-    keys.set(cacheKey, answer)
-    return answer
+    keys.set(cacheKey, finding)
+    return finding
+  }
+  const passkey = (id: string, allowed?: readonly string[]): Verdict => {
+    const finding = passkeyFinding(id, allowed)
+    return finding.state === 'eligible' ? 'yes' : finding.state === 'unknown' ? 'unknown' : 'no'
   }
   const matches = (targets: Configuration['includeTargets'], id: string): Verdict => {
     if (!Array.isArray(targets)) return 'unknown'
@@ -73,5 +77,18 @@ export function methodAvailability(snapshot: TenantSnapshot, context: ScopeEvide
     }
     return unknown ? 'unknown' : 'no'
   }
-  return { usable, passkey }
+  /**
+   * Whether it is this tenant's Authentication methods policy that stops a
+   * registered method: switched off, not aimed at the person, excluding them,
+   * or (a passkey) a key it does not allow. Every 'no' `usable` gives is one of
+   * those but one: a passkey the registration report names with no key on
+   * record for the person, which is a missing key and not a setting, and is
+   * never said to be the tenant's doing (methodReadiness.ts offIds).
+   */
+  const refused = (id: string, method: string): boolean => {
+    if (!isPasskey(method)) return usable(id, method) === 'no'
+    const finding = passkeyFinding(id)
+    return (finding.state === 'review' || finding.state === 'excluded') && finding.reason !== 'newKey'
+  }
+  return { usable, passkey, refused }
 }

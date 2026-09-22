@@ -275,3 +275,88 @@ test('R4-15: two steps reading the same people from one scan name the same aged-
   assert.deepEqual(second.staleIds, first.staleIds, 'the second step lost the reason')
   assert.deepEqual(second, methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}), 'the shared answer differs from a fresh one')
 })
+
+// R4-41 (Sam D7), the residual the challenger kept, and R4-15 (Marcus D5). 669 of
+// 4,900 people held a phone and nothing else; the tenant's Authentication methods
+// policy switches text and voice off; the gate read "4231 of 4900 people in scope
+// of these policies have a registered method the policies allow". Sam knew
+// Require MFA accepts a phone and took the number for a measurement error. On
+// Marcus's tenant 38 people whose only method was text were called unknowable.
+// The engine told "registered only what the tenant does not allow" from
+// "registered nothing" and dropped the difference before the line, and "the
+// policies" named the wrong authority: the Conditional Access policy accepts a
+// phone; the methods policy stops it.
+test('R4-41: people who registered only methods the tenant does not allow are counted, and named, apart from people who registered nothing', () => {
+  const { snapshot } = setup()
+  const methods = snapshot.config.authMethodsPolicy.rows[0] as any
+  methods.policyMigrationState = 'migrationComplete'
+  methods.authenticationMethodConfigurations.push(
+    { id: 'Sms', state: 'disabled', includeTargets: [], excludeTargets: [] },
+    { id: 'Voice', state: 'disabled', includeTargets: [], excludeTargets: [] },
+  )
+  // u-1 Authenticator; u-2 a phone and nothing else; u-3 nothing; u-4 a passkey
+  // the registration report names and no key on record, which is a missing key,
+  // not a setting, and is never put down to the tenant.
+  const shape: Record<string, { methods: string[]; capable: boolean }> = {
+    'u-1': { methods: ['microsoftAuthenticatorPush'], capable: true },
+    'u-2': { methods: ['mobilePhone'], capable: false },
+    'u-3': { methods: [], capable: false },
+    'u-4': { methods: ['fido2SecurityKey'], capable: true },
+  }
+  for (const r of snapshot.registrationDetails) if (shape[r.id]) Object.assign(r, { methodsRegistered: shape[r.id].methods, isMfaCapable: shape[r.id].capable, isMfaRegistered: shape[r.id].capable })
+  snapshot.authMethods['u-4'] = []
+  const ids = Object.keys(shape)
+  const scope = { users: { includeUsers: ids }, applications: { includeApplications: ['All'] } }
+  const requireMfa = effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+  const reading = methodPreparation([requireMfa], ids, snapshot)
+  assert.deepEqual(reading.readyIds, ['u-1'])
+  assert.deepEqual(reading.unknownIds, [], 'a method the tenant does not allow is known, not "not established"')
+  assert.deepEqual(reading.offIds, ['u-2'], 'a phone the tenant switched off, told apart from nothing registered and from a key not on record')
+  const line = methodReadiness('mfa', reading).lines[0]
+  assert.match(line, /^1 of 4 people this step's policies include has a registered method those policies accept and this tenant lets them use\. /, line)
+  assert.match(line, /\. 1 of the 3 people without one has registered only methods this tenant's Authentication methods policy does not let them use\.$/, line)
+  assert.doesNotMatch(line, /the policies allow/, 'the line names the Conditional Access policy as what stopped them')
+
+  // Marcus's steps required Microsoft's built-in MFA strength: the same people, the same words.
+  const strength = effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000002' } } })
+  assert.deepEqual(methodPreparation([strength], ids, snapshot), reading)
+
+  // Where every person it did not count is one of them, it says so without "1 of the 1".
+  const two = methodPreparation([requireMfa], ['u-1', 'u-2'], snapshot)
+  assert.equal(methodReadiness('mfa', two).lines[0].split('. ')[1], "The 1 person without one has registered only methods this tenant's Authentication methods policy does not let them use.")
+
+  // A key on record that the passkey settings exclude is the tenant's doing.
+  snapshot.authMethods['u-4'] = [{ kind: 'fido2', aaGuid: 'key' }]
+  methods.authenticationMethodConfigurations[1].excludeTargets = [{ id: 'all_users' }]
+  assert.deepEqual(methodPreparation([requireMfa], ids, snapshot).offIds, ['u-2', 'u-4'])
+  methods.authenticationMethodConfigurations[1].excludeTargets = []
+
+  // Before the methods policy has migrated, the legacy MFA and SSPR settings can
+  // still turn text on: the scan cannot say, and does not.
+  methods.policyMigrationState = 'migrationInProgress'
+  const legacy = methodPreparation([requireMfa], ids, snapshot)
+  assert.deepEqual(legacy.offIds, [])
+  assert.doesNotMatch(methodReadiness('mfa', legacy).lines[0], /does not let them use\./)
+})
+
+test('R4-41: on a generated plan, the gate names the people holding only a phone the tenant switched off, the same on every step reading them', () => {
+  const f = fixture('large')
+  const methods = ((f.snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations as { id: string; state: string }[])
+  assert.deepEqual(methods.filter(c => ['Sms', 'Voice'].includes(c.id)).map(c => c.state), ['disabled', 'disabled'], 'the premise: text and voice are off')
+  const run = runFixture(f)
+  const phoneOnly = new Set(f.snapshot.registrationDetails.filter(r => r.methodsRegistered.length > 0 && r.methodsRegistered.every(m => /phone/i.test(m))).map(r => r.id))
+  const nothing = new Set(f.snapshot.registrationDetails.filter(r => r.methodsRegistered.length === 0).map(r => r.id))
+  const step = run.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
+  const prep = step.methodPreparation!
+  const off = prep.ids.filter(id => phoneOnly.has(id))
+  assert.ok(off.length > 0 && prep.ids.some(id => nothing.has(id)), 'the premise: people in scope hold only a phone, and others hold nothing')
+  assert.deepEqual(prep.offIds, off, 'the phone-only people, and not the people who registered nothing')
+  const short = prep.ids.length - prep.readyIds.length - prep.unknownIds.length
+  assert.ok(off.length < short, 'the premise: some of the people not counted registered nothing')
+  const line = step.readiness.lines[0]
+  assert.ok(line.includes(`. ${off.length} of the ${short} people without one have registered only methods this tenant's Authentication methods policy does not let them use.`), line)
+  // Another step over the same people reads the same people the same way (one reading per person per scan).
+  const sibling = run.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
+  assert.deepEqual(sibling.methodPreparation!.ids, prep.ids, 'the premise: the same people')
+  assert.deepEqual(sibling.methodPreparation!.offIds, prep.offIds)
+})

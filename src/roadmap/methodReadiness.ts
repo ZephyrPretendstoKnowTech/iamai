@@ -38,6 +38,21 @@ export type MethodPreparation = {
    * number that would not move (R4-15).
    */
   staleIds?: string[]
+  /**
+   * People counted not ready who registered methods, every one of which this
+   * tenant's Authentication methods policy does not let them use
+   * (methodAvailability.ts `refused`).
+   *
+   * The engine told them from people who registered nothing, and dropped the
+   * difference before the line. On a 4,900-person tenant 669 people held a
+   * phone and nothing else, with text and voice switched off, and the gate read
+   * "4231 of 4900 people have a registered method the policies allow": the
+   * reader knew Require MFA accepts a phone and took the number for a
+   * measurement error (R4-41). On another, 38 people whose only method was text
+   * were called unknowable (R4-15). What refuses them is not the policy the step
+   * creates, and they need a method the tenant allows, not a first one.
+   */
+  offIds?: string[]
   completeScope: boolean
 }
 
@@ -65,7 +80,7 @@ export function createMethodPreparationCache(snapshot: TenantSnapshot, context: 
     // only because their proof aged out: both belong to the answer, so a step
     // that reads it from the cache reads both (R4-15).
     scopeAnswers: new Map<string, Map<string, 'in' | 'out' | 'unknown'>>(), methodAnswers: new Map<string, Map<string, Judged>>(),
-    methods: new Map<string, { usableMethods: string[]; possibleMethods: string[]; signature: string }>(),
+    methods: new Map<string, { usableMethods: string[]; possibleMethods: string[]; refused: boolean; signature: string }>(),
     strengths: tenantStrengthsOf(snapshot), registrations: new Map(snapshot.registrationDetails.map(r => [r.id, r])), users: new Map(snapshot.users.map(u => [u.id, u])) }
 }
 type PreparationCache = ReturnType<typeof createMethodPreparationCache>
@@ -122,7 +137,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     }
     return got
   }
-  const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], staleIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
+  const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], staleIds: [], offIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
   /**
    * Whether a successful sign-in with one of these method classes settles a
    * requirement registration left unknown. One rule, read twice: for the
@@ -148,18 +163,25 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     const methods = effect.requirements.map((r, i) => ({ r, answer: answers[i] })).filter(x => x.r.kind === 'mfa' || x.r.kind === 'strength').map(x => x.answer)
     return methods.includes('no') ? 'no' : methods.includes('unknown') ? 'unknown' : 'yes'
   }
-  const registered = (effect: PolicyEffect, id: string): Judged => {
-    if (effect.unknown.length > 0) return { answer: 'unknown', stale: false }
-    const row = registrations.get(id)
-    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false }
+  /** What one person registered, read against the tenant's method settings once per scan. */
+  const methodsOf = (id: string, row: TenantSnapshot['registrationDetails'][number]) => {
     let registrationMethods = cache.methods.get(id)
     if (!registrationMethods) {
       const states = row.methodsRegistered.map(method => ({ method, usable: availability.usable(id, method) }))
       const usableMethods = states.filter(m => m.usable === 'yes').map(m => m.method)
       const possibleMethods = states.filter(m => m.usable !== 'no').map(m => m.method)
-      registrationMethods = { usableMethods, possibleMethods, signature: JSON.stringify([usableMethods, possibleMethods]) }
+      // Registered something, and the methods policy stops every one of them.
+      const refused = states.length > 0 && states.every(m => m.usable === 'no' && availability.refused(id, m.method))
+      registrationMethods = { usableMethods, possibleMethods, refused, signature: JSON.stringify([usableMethods, possibleMethods]) }
       cache.methods.set(id, registrationMethods)
     }
+    return registrationMethods
+  }
+  const registered = (effect: PolicyEffect, id: string): Judged => {
+    if (effect.unknown.length > 0) return { answer: 'unknown', stale: false }
+    const row = registrations.get(id)
+    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false }
+    const registrationMethods = methodsOf(id, row)
     const { usableMethods, possibleMethods } = registrationMethods
     const answers = effect.requirements.map((requirement): Answer => {
       if (requirement.kind === 'mfa') return !row.isMfaCapable || !row.methodsRegistered.length ? 'no' : usableMethods.length ? 'yes' : possibleMethods.length ? 'unknown' : 'no'
@@ -243,6 +265,10 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     else if (!failed) {
       result.unknownIds.push(id)
       if (aged) (result.staleIds ??= []).push(id)
+    } else {
+      // Not "registered nothing": registered, and refused by the tenant's methods policy.
+      const row = registrations.get(id)
+      if (row && methodsOf(id, row).refused) (result.offIds ??= []).push(id)
     }
   }
   return result
@@ -251,6 +277,9 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
 export function methodReadiness(family: Readiness['family'], preparation: MethodPreparation): Readiness {
   const { ids, readyIds, unknownIds, completeScope } = preparation
   const staleIds = preparation.staleIds ?? []
+  const offIds = preparation.offIds ?? []
+  // The people judged without an accepted method the tenant lets them use.
+  const short = ids.length - readyIds.length - unknownIds.length
   const unreadable = !completeScope || unknownIds.length > 0
   // The floor, where the people were counted and only their methods could not be
   // judged (types.ts `atLeast`). An incomplete scope has no real denominator, so
@@ -284,8 +313,14 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // Which people the denominator counts: the ones the target policies
         // apply to, which is neither the step's active count nor its enabled
         // count, and a step can print all three (246, 283, 279 on one card).
-        : [fillText(
-          staleIds.length > 0 ? W.methodLineStale : unknownIds.length > 0 ? W.methodLineUnknown : W.methodLine,
-          { ready: readyIds.length, total: ids.length, unknown: unknownIds.length, stale: staleIds.length },
-        )] }
+        // Then, straight after it, how many of the people it did not count
+        // registered only methods the tenant does not let them use — the reason
+        // the engine has (MethodPreparation.offIds) and the reader could not
+        // see — and last, the people it could not judge.
+        : [[
+          fillText(W.methodLine, { ready: String(readyIds.length), total: String(ids.length) }),
+          offIds.length === 0 ? null : fillText(offIds.length === short ? W.methodLineOffAll : W.methodLineOff, { off: String(offIds.length), short: String(short) }),
+          staleIds.length > 0 ? fillText(W.methodLineStale, { unknown: String(unknownIds.length), stale: String(staleIds.length) })
+            : unknownIds.length > 0 ? fillText(W.methodLineUnknown, { unknown: String(unknownIds.length) }) : null,
+        ].filter((x): x is string => x !== null).join(' ')] }
 }
