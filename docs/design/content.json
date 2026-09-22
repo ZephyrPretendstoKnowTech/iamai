@@ -4945,6 +4945,11 @@
         "verification": [
           "Identify the legitimate tools or devices using device code. Move each required workflow to an alternative supported by that tool, then run the actual task with a representative account.",
           "Record the account, tool/task, replacement sign-in path, date and result. A quiet device-code report alone does not demonstrate that the required workflow was replaced."
+        ],
+        "$commentVerificationLead": "The line the workflow check opens on, by the saved answer to the device code decision (options: None, Yes), read the way a decision's per-option effect is read (answers.ts effectLine; stepResources.ts verificationResourceLines). With None saved the check still opened on \"Identify the legitimate tools or devices using device code. Move each required workflow...\" as if nothing had been answered (R4-29, Marcus D10). The checks stay under None: the decision's effect asks for None once each workflow is moved off, so None is also the answer saved when there are moved workflows to test, and a quiet device-code report can miss infrequent use. Yes adds nothing: the checks are that answer's work.",
+        "verificationLead": [
+          "You recorded that nothing uses device code sign-in. Confirm it with the checks below: infrequent CLI, shared-device and enrollment use is easy to miss.",
+          ""
         ]
       }
     },

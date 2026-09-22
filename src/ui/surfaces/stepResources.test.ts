@@ -2,13 +2,16 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { manualEvidenceLines } from './stepExport.ts'
+import { manualEvidenceLines, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { emailResource, inspectionResource, namedPortalResource } from './stepResources.ts'
+import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.ts'
 
-function opened(name: 'demo' | 'demo-week2' | 'mid') {
-  const f = fixture(name)
+/** A shipped tenant's plan and step bodies, with any answers saved on top of its own. */
+function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}) {
+  const base = fixture(name)
+  const f = { ...base, mapping: { ...base.mapping, questionAnswers: { ...(base.mapping.questionAnswers ?? {}), ...answers } } }
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
   return { r, ctx, bodies: new Map(r.steps.map(step => [step.id, stepBodyOf(step, ctx)])) }
@@ -186,4 +189,31 @@ test('a read-only policy instruction with nothing matched asks for a review and 
   const text = bodies.get(step.id)!.artifacts.find(a => a.id === 'portal')!.text()
   assert.match(text, /Review the policies that affect Block the Admin Portals for Non-Admins: their assignments, conditions, access controls and current state./)
   assert.doesNotMatch(text, /listed on this step|matched to this step/)
+})
+
+// R4-29 (Marcus D10), third part. With "None" saved for "Does anyone use device
+// code sign-in for CLI tools, IoT devices, or display-limited devices?", the
+// step's workflow check still opened on "Identify the legitimate tools or devices
+// using device code. Move each required workflow…" as if nothing had been
+// answered: the saved answer reached the lane's condition (planLanes.ts) and
+// nothing the person reads. The check says what they recorded now.
+//
+// The check itself stays, on every answer. The decision's own effect line asks
+// for None once each workflow has been moved off device code, so None is also
+// the answer saved when there ARE moved workflows to test; and a quiet
+// device-code report can miss infrequent use. Dropping the check on None would
+// take away the one test of the answer before the block stops what it missed.
+test('a saved None on the device code decision is stated in the workflow check, which still checks it', () => {
+  const DC = QUESTION_STEP.deviceCode
+  const key = answerKey(DC, questionLabels(DC).decision!)
+  const LEAD = 'You recorded that nothing uses device code sign-in.'
+  for (const [option, stated] of [[null, false], ['None', true], ['Yes', false]] as const) {
+    const { r, ctx, bodies } = opened('mid', option === null ? {} : { [key]: option })
+    const portal = bodies.get(DC)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
+    const exported = stepExportView(r.steps.find(s => s.id === DC)!, ctx).whatToDo.join('\n')
+    for (const [where, text] of [['portal', portal], ['export', exported]] as const) {
+      assert.equal(text.includes(LEAD), stated, `${option ?? 'unsaved'} / ${where}: ${text}`)
+      assert.match(text, /Move each required workflow to an alternative supported by that tool/, `${option ?? 'unsaved'} / ${where}: the check itself is gone`)
+    }
+  }
 })
