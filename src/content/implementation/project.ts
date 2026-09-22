@@ -513,6 +513,12 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           miss.push(...rendered.missing)
           continue
         }
+        // A script whose withheld modes cannot be removed cleanly is not shipped
+        // half stripped: the channel is withheld and says which mode did it.
+        if ('unstripped' in rendered) {
+          bad.push(`${id}: modes it does not run cannot be removed from the script: ${rendered.unstripped.join(', ')}`)
+          continue
+        }
         runs.push(...ownRuns)
         texts.push(rendered.text)
         continue
