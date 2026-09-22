@@ -187,7 +187,13 @@ test('correction instructions retain location and device conditions from the sub
 // Microsoft's built-in strength (…0002), a different and weaker object than the
 // one the request sends. The PIM step's settings said it over a strength IAMAI
 // had not resolved while the baseline asks for its own custom one. The line
-// names the reference the request carries instead: the id, or a preview's marker.
+// names the id the request carries instead.
+//
+// A planning preview's stand-in is not an id. The first version of this fix
+// wrote it as the value ("…: ‹authentication strength›"), a placeholder in the
+// settings of a held step, which the portal never carries
+// (ui/surfaces/stepResources.test.ts "held and completed tasks …" failed on
+// mid): the line states the requirement and names nothing.
 test('a strength nothing names is written by its own reference, never as the built-in Multifactor authentication', () => {
   const body = (id: string) => ({ id: null, displayName: 'Activation reauthentication', placeholders: {}, conditions: { users: { includeUsers: ['All'] }, applications: { includeAuthenticationContextClassReferences: ['c1'] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id } }, sessionControls: null }) as unknown as Pol
   const unnamed = { ...contextFor(body('x')), strengthName: null }
@@ -195,7 +201,8 @@ test('a strength nothing names is written by its own reference, never as the bui
   const lines = portalLines(policyFacts(body(custom), EMPTY), unnamed)
   assert.ok(lines.includes(`Grant → Require authentication strength: ${custom}`), lines.join('\n'))
   const preview = portalLines(policyFacts(body('‹authentication strength›'), EMPTY), unnamed)
-  assert.ok(preview.includes('Grant → Require authentication strength: ‹authentication strength›'), preview.join('\n'))
+  assert.ok(preview.includes('Grant → Require authentication strength'), preview.join('\n'))
+  assert.ok(!preview.some((l) => /‹/.test(l)), preview.join('\n'))
   assert.ok(![...lines, ...preview].some((l) => /Multifactor authentication/.test(l)))
   // A strength the context names is still named.
   assert.ok(portalLines(policyFacts(body(custom), EMPTY), { ...unnamed, strengthName: 'Modern MFA + TAP' }).includes('Grant → Require authentication strength: Modern MFA + TAP'))

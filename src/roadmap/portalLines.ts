@@ -259,6 +259,9 @@ const GRANT_LABEL: Record<string, string> = {
   approvedapplication: 'Require approved client app',
 }
 
+/** An authentication strength's object id, built-in (`00000000-…-000000000002`) or custom. */
+const STRENGTH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** The `Grant → …` line, or null when the policy is session-only. */
 function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride): string | null {
   if (!f.grant) return null
@@ -266,15 +269,22 @@ function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride)
   const controls = new Set([...f.grant.controls].map(lc))
   if (controls.has('block')) return 'Grant → Block access'
   const reqs: string[] = []
-  // A strength nothing names is written by the reference the request carries —
-  // its id, or a planning preview's ‹…› marker for one still to resolve — and
+  // A strength nothing names is written by the id the request carries, and
   // never by a name. The fallback here was "Multifactor authentication", which
   // is not a generic phrase: it is the display name of Microsoft's built-in
   // strength (…0002), a different and weaker object than the one the request
   // sends. The PIM step's settings named it over a preview whose strength IAMAI
   // had not resolved, while the baseline asks for its own custom strength
   // (R4-18); a reader choosing it would weaken the grant.
-  if (f.grant.strengthId) reqs.push(`Require authentication strength: ${ctx.strengthName ?? f.grant.strengthId}`)
+  //
+  // A planning preview's stand-in for a strength still to resolve is not an id:
+  // the line states the requirement and names no strength. Written as the
+  // stand-in itself it put a placeholder in the settings of a held step, which
+  // the portal never carries (ui/surfaces/stepResources.test.ts).
+  if (f.grant.strengthId) {
+    const named = ctx.strengthName ?? (STRENGTH_ID.test(f.grant.strengthId) ? f.grant.strengthId : null)
+    reqs.push(named !== null ? `Require authentication strength: ${named}` : 'Require authentication strength')
+  }
   else if (controls.has('mfa')) reqs.push('Require multifactor authentication')
   for (const c of ['compliantdevice', 'domainjoineddevice', 'compliantapplication', 'passwordchange', 'approvedapplication'])
     if (controls.has(c)) reqs.push(GRANT_LABEL[c])
