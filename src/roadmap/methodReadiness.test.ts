@@ -217,3 +217,56 @@ test('R4-42: on a generated plan, a step requiring the built-in MFA strength rea
   }
   assert.equal(checked, 2)
 })
+
+// R4-15 (Marcus D5). "13 of those were confirmed by a sign-in that is now older
+// than 30 days, so nothing about them has changed: ask them to sign in once with
+// that method and the next scan counts them again." Their old sign-ins were text
+// messages, against a strength only a passkey, Windows Hello or certificate
+// sign-in settles: the admin did as told, and the next scan counted nobody. The
+// clause is said only where the same sign-in, made today, would count the person
+// — the one rule a fresh sign-in is read by.
+test('R4-15: an aged-out sign-in is named only where the same sign-in made today would count the person', () => {
+  const { snapshot, policy } = setup()
+  // Settled by a passkey alone, or by a password and Authenticator push.
+  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2', 'password,microsoftAuthenticatorPush'], combinationConfigurations: [] }]
+  // Authenticator is on for a group the scan could not open, so u-1's registration cannot settle it.
+  ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
+  const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
+  // u-2 is judged ready (a passkey sign-in this week), so the line is a reading.
+  snapshot.signInEvidence['u-2'] = { ...snapshot.signInEvidence['u-2'], proofs: [{ cls: 'passkey', os: 'Windows', at: snapshot.asOf, method: 'passkey' }] } as never
+  const signedIn = (cls: string, at: string) => {
+    snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls, os: 'Windows', at, method: cls }] } as never
+    return methodPreparation([effectOf(policy)], ['u-1', 'u-2'], snapshot)
+  }
+  // A text-message sign-in settles nothing here, fresh or old.
+  const text = signedIn('phone', old)
+  assert.deepEqual(text.unknownIds, ['u-1'], 'the premise: u-1 cannot be judged')
+  assert.deepEqual(text.staleIds, [], 'an old sign-in that could never count is called the reason')
+  assert.doesNotMatch(methodReadiness('mfa', text).lines[0], /sign in once/, 'the line promises a number that will not move')
+  assert.deepEqual(signedIn('phone', snapshot.asOf).readyIds, ['u-2'], 'the premise: made today, it would not count either')
+  // An old passkey sign-in would: said, and true.
+  const passkey = signedIn('passkey', old)
+  assert.deepEqual(passkey.staleIds, ['u-1'])
+  assert.match(methodReadiness('mfa', passkey).lines[0], /confirmed by a sign-in that is now older than 30 days/)
+  assert.deepEqual(signedIn('passkey', snapshot.asOf).readyIds, ['u-1', 'u-2'], 'and made today, it counts them: the promise is kept')
+})
+
+// The same clause was lost on the second step reading the same people: the
+// answer is shared across steps in one scan (createMethodPreparationCache) and
+// only the step that computed it recorded why. Device registration read "not
+// yet established for 38" beside Admin Portals' "— 13 of those were confirmed
+// by a sign-in that is now older than 30 days", over the same people.
+test('R4-15: two steps reading the same people from one scan name the same aged-out sign-ins', () => {
+  const { snapshot } = setup()
+  ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
+  const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
+  snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls: 'authenticator', os: 'Windows', at: old, method: 'Mobile app notification' }] } as never
+  const requireMfa = (users: string[]) => effectOf({ state: 'enabled', conditions: { users: { includeUsers: users }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+  const ids = snapshot.users.map(u => u.id)
+  const cache = createMethodPreparationCache(snapshot, {})
+  const first = methodPreparation([requireMfa(['u-1', 'u-2'])], ids, snapshot, {}, cache)
+  const second = methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}, cache)
+  assert.deepEqual(first.staleIds, ['u-1'], 'the premise: u-1 is unknown only because the sign-in aged out')
+  assert.deepEqual(second.staleIds, first.staleIds, 'the second step lost the reason')
+  assert.deepEqual(second, methodPreparation([requireMfa(['u-1', 'u-3'])], ids, snapshot, {}), 'the shared answer differs from a fresh one')
+})
