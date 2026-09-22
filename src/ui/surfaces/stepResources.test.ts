@@ -10,7 +10,7 @@ import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { emailResource, inspectionResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
 import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.ts'
-import { BASELINE_COMMIT, implementationPackageFor, memberBindings } from './stepPackage.ts'
+import { BASELINE_COMMIT, memberBindings, packageForEntry } from './stepPackage.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 
@@ -256,7 +256,7 @@ test('a lifecycle resource is handed over only when IAMAI holds every value in i
   const f = fixture('getiamai')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const step = r.steps.find((s) => s.id === 's-goal-guests-mfa') as Step
-  const pkg = implementationPackageFor({ id: step.id, goalId: step.goalId })!
+  const pkg = packageForEntry(step)!
   const members = (pkg.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
   const [create] = step.action.resolution!.policies as PolicyOperation[]
   // The step as it reads once emergency access and Direction are done (Nadia's
@@ -294,7 +294,7 @@ test('with one of a pair resolved, the screen hands over the same create the exp
   const f = fixture('getiamai')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const step = r.steps.find((s) => s.id === 's-goal-guests-mfa') as Step
-  const pkg = implementationPackageFor({ id: step.id, goalId: step.goalId })!
+  const pkg = packageForEntry(step)!
   const members = (pkg.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
   const [create] = step.action.resolution!.policies as PolicyOperation[]
   const resolving = (roles: string[]): Step => ({

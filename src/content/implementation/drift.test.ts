@@ -9,7 +9,7 @@ import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { driftOf, identitiesAt, memberFingerprint, memberIdentity, membersAt } from './drift.ts'
 import { PINNED } from '../../baseline/pinned.ts'
-import { implementationPackageFor, packageReviewFor } from '../../ui/surfaces/stepPackage.ts'
+import { packageForEntry, packageReviewFor } from '../../ui/surfaces/stepPackage.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const REVIEWS = (registry as unknown as { reviews: Record<string, { status: string; changed: string[] }> }).reviews
@@ -110,9 +110,9 @@ test('an id-less member falls back to what it targets: a cosmetic rename is curr
 
 test('a package set aside for review no longer draws its step, says why, and every other package still applies', () => {
   const portalStep = { id: 's-goal-admin-portals-protected', goalId: 'admin-portals-protected' }
-  assert.equal(implementationPackageFor(portalStep), null, 'guidance for a policy the baseline no longer asks for was applied')
+  assert.equal(packageForEntry(portalStep), null, 'guidance for a policy the baseline no longer asks for was applied')
   assert.equal(packageReviewFor(portalStep)?.status, 'reviewNeeded')
-  const applied = Object.keys(PACKAGES).filter((id) => implementationPackageFor({ id, goalId: id.replace(/^s-goal-/, '') }) !== null)
+  const applied = Object.keys(PACKAGES).filter((id) => packageForEntry({ id, goalId: id.replace(/^s-goal-/, '') }) !== null)
   assert.ok(applied.length >= Object.keys(PACKAGES).length - 1, `only ${applied.length} packages still apply`)
   assert.equal(packageReviewFor({ id: 's-goal-device-registration-mfa', goalId: 'device-registration-mfa' }), null)
 })
