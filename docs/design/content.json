@@ -4468,7 +4468,7 @@
       "id": "guests-mfa",
       "preparation": [
         "Read the Tasks Remaining cards above to see which guest-policy settings or prerequisites need attention.",
-        "Your answer about partner or MSP technicians decides whether the service-provider external-user type is included; it does not configure partner MFA trust.",
+        "Check that the guest types this policy includes match your answer about partner or MSP technicians: that answer decides whether the service-provider external-user type is included, and it does not configure partner MFA trust.",
         "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."
       ],
       "kind": "policy",
@@ -4492,7 +4492,7 @@
       "decision": {
         "label": "Partner tier",
         "heading": "IT Provider Access",
-        "help": "Review MFA for both guest groups: guests covered by an approved partner trust, and other external users. Trust must be configured and verified in Entra; saving an answer here does not establish trust.",
+        "help": "Review MFA for both guest groups: guests covered by an approved partner trust, and other external users. Trust must be configured and verified in Entra; your answer about partner or MSP technicians does not establish it.",
         "save": "Save",
         "multi": true,
         "question": {
