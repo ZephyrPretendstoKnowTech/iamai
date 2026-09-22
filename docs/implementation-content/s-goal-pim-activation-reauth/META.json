@@ -329,7 +329,6 @@
     "pimSettingsPending": {
       "requires": [
         "authContext.target.id",
-        "authContext.target.displayName",
         "authStrength.target.id",
         "policy.target.excludeGroups",
         "policy.current.id",

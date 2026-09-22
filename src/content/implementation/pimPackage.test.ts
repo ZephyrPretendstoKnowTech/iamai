@@ -245,7 +245,10 @@ test('an enforced activation policy asks for the PIM role settings that make it 
   assert.match(review.note ?? '', /only once each role's PIM settings require it, and IAMAI does not read PIM role settings/)
   assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.id'], 'c1')
   const portal = channelText(body, 'portal')
-  assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles\. For each selected role, open \*\*Role settings\*\* → \*\*Edit\*\* and enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, selecting the authentication context with ID `c1` \(`Privileged role activation`\)/)
+  assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles\. For each selected role, open \*\*Role settings\*\* → \*\*Edit\*\* and enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, selecting the authentication context with ID `c1` — the context this policy targets — then \*\*Update\*\*/)
+  // The plan built this policy on its own context, so the name its create
+  // proposed is said as that, on its own line.
+  assert.match(portal, /^This plan proposed the name `Privileged role activation` for that context\.$/m)
   // IAMAI selects no roles, so the procedure does not say it did.
   assert.doesNotMatch(portal, /IAMAI-selected/)
   const task = body.emergencyAccountTasks?.tasks[0]
@@ -258,7 +261,15 @@ test('an enforced activation policy asks for the PIM role settings that make it 
 // plan tag, targets a context the tenant named itself, and the PIM line told the
 // reader to select `Privileged role activation` — a context that may not exist,
 // or a different one of that name, whose own policy then decides role activation.
-// The ID is read off the policy; the name stays unresolved and says so.
+// The ID is read off the policy.
+//
+// R4-18 review: the name then stayed unresolved and drew its ‹authentication
+// context name› stand-in into the procedure — "selecting … ID `c7` (`‹authentication
+// context name›`)" — a placeholder the portal of a step never carries
+// (ui/surfaces/stepResources.test.ts), because the PIM state required a name IAMAI
+// has no business giving a context the tenant named. The context is named by
+// the ID its policy targets, and the premise of this test's last assertion changes
+// with it: no stand-in, and the proposed-name line drops.
 test('a tenant’s own activation policy is named by the context ID it targets, never by the name IAMAI proposes for its own', () => {
   const { step, body, ctx } = pimOn(enforcedOn(PIM_STEP, (p) => {
     delete p.description
@@ -271,8 +282,32 @@ test('a tenant’s own activation policy is named by the context ID it targets, 
   assert.equal(bindings['authContext.target.id'], 'c7')
   assert.equal(bindings['authContext.target.displayName'], undefined)
   const portal = channelText(body, 'portal')
-  assert.match(portal, /selecting the authentication context with ID `c7` \(`‹authentication context name›`\)/)
-  assert.doesNotMatch(portal, /Privileged role activation/)
+  assert.match(portal, /selecting the authentication context with ID `c7` — the context this policy targets — then \*\*Update\*\*/)
+  assert.doesNotMatch(portal, /Privileged role activation|‹[^›]+›|This plan proposed the name/)
+})
+
+// R4-18 review: the portal of a held or completed step never carries a ‹…›
+// stand-in (ui/surfaces/stepResources.test.ts, on the demo and mid fixtures),
+// and the PIM step on the pinned baseline is on neither, so its context line
+// broke the rule where nothing looked: the enforced tenant's own policy read
+// `‹authentication context name›`. Every state the PIM step reaches on the
+// pinned mid tenant, as each channel's copyable text.
+test('no PIM state on the pinned baseline draws a ‹…› stand-in into the portal, the script or the request', () => {
+  const states: [string, Fixture][] = [
+    ['create', pinnedMid()],
+    ['report-only, the plan’s own', reportOnlyOn('c1', false)],
+    ['report-only, the tenant’s own', reportOnlyOn('c7', true)],
+    ['enforced, the plan’s own', pimEnforced()],
+    ['enforced, the tenant’s own', enforcedOn(PIM_STEP, (p) => {
+      delete p.description
+      p.displayName = 'PIM step-up'
+      ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
+    })],
+  ]
+  for (const [name, f] of states) {
+    const { body } = pimOn(f)
+    for (const id of ['portal', 'ps', 'json']) assert.doesNotMatch(channelText(body, id), /‹[^›]+›/, `${name}/${id}`)
+  }
 })
 
 /**

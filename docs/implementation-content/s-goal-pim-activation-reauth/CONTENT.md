@@ -71,7 +71,9 @@ If any one of them is not true, leave the policy in Report-only. Change the poli
 Verify after the change: the policy reads back On. Update PIM role settings only after this check succeeds. The policy applies only when a sign-in requests this authentication context, such as a PIM activation configured to require it.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.pim.configure","channel":"entra","states":["pimSettingsPending"],"format":"markdown","kind":"template"}
-With the matching Conditional Access policy verified **On**: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For each selected role, open **Role settings** → **Edit** and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting the authentication context with ID `{{authContext.target.id}}` (`{{authContext.target.displayName}}`), then **Update**. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.
+With the matching Conditional Access policy verified **On**: Entra admin center → ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles. For each selected role, open **Role settings** → **Edit** and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting the authentication context with ID `{{authContext.target.id}}` — the context this policy targets — then **Update**. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.
+
+This plan proposed the name `{{authContext.target.displayName}}` for that context. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.verify-activation","channel":"entra","states":["verificationPending"],"format":"markdown","kind":"template"}
 Verify after the change: use a controlled eligible admin or test account to activate one selected role. Confirm activation invokes the expected Conditional Access requirement, then confirm the role activated. Microsoft can reuse a recent reauthentication for another activation within its documented 10-minute window, so a second activation soon afterward may not prompt again. Rescan IAMAI.
@@ -100,7 +102,7 @@ Verify after the change: use a controlled eligible admin or test account to acti
 @@IAMAI-BEGIN {"id":"json.pim.auth-context-rule","channel":"json","states":["pimSettingsPending"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{roleManagementPolicyId}/rules/AuthenticationContext_EndUser_Assignment","repeatForBinding":"pim.roleManagementPolicyIds"}
 {"@odata.type":"#microsoft.graph.unifiedRoleManagementPolicyAuthenticationContextRule","id":"AuthenticationContext_EndUser_Assignment","isEnabled":true,"claimValue":"{{authContext.target.id}}"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["contextMissing","missing","partial","reportOnly","readyToEnforce","pimSettingsPending","verificationPending"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"AuthenticationContextId":{"binding":"authContext.target.id","modes":["PrepareContext","Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM","VerifyPIM"]},"AuthenticationContextDisplayName":{"binding":"authContext.target.displayName","modes":["PrepareContext","Create","Verify","ConfigurePIM"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify","ConfigurePIM"]},"RoleManagementPolicyIds":{"binding":"pim.roleManagementPolicyIds","modes":["ConfigurePIM","VerifyPIM"]}},"withheldModes":{"EnforceCA":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["contextMissing","missing","partial","reportOnly","readyToEnforce","pimSettingsPending","verificationPending"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"AuthenticationContextId":{"binding":"authContext.target.id","modes":["PrepareContext","Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM","VerifyPIM"]},"AuthenticationContextDisplayName":{"binding":"authContext.target.displayName","modes":["PrepareContext","Create","Verify"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify","ConfigurePIM"]},"RoleManagementPolicyIds":{"binding":"pim.roleManagementPolicyIds","modes":["ConfigurePIM","VerifyPIM"]}},"withheldModes":{"EnforceCA":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require MFA at Every Role Activation
 # Module: Microsoft.Graph.Authentication
@@ -196,6 +198,9 @@ function Assert-CaCanonical($p) {
   foreach ($field in @('persistentBrowser','applicationEnforcedRestrictions','cloudAppSecurity','disableResilienceDefaults')) { if ($null -ne $p.sessionControls.$field) { $errors.Add("Noncanonical session control exists: $field") } }
   if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_ }; throw 'Canonical CA verification failed.' }
 }
+function Assert-ContextPublished($c) {
+  if (-not $c.isAvailable) { throw 'Authentication context is not published.' }
+}
 function Assert-ContextCanonical($c) {
   if (-not $c.isAvailable) { throw 'Authentication context is not published.' }
   if ($c.displayName -ne $AuthenticationContextDisplayName) { throw 'Authentication-context display name mismatch.' }
@@ -249,7 +254,7 @@ switch ($Mode) {
   'ConfigurePIM' {
     if ($RoleManagementPolicyIds.Count -lt 1) { throw 'No IAMAI-resolved role-management-policy IDs supplied.' }
     Connect-Scopes @('Policy.Read.All','AuthenticationContext.Read.All','RoleManagementPolicy.ReadWrite.Directory')
-    Assert-ContextCanonical (Get-Context)
+    Assert-ContextPublished (Get-Context)
     $p=Get-Policy; Assert-CaCanonical $p
     if ($p.state -ne 'enabled') { throw 'PIM configuration is blocked until the matching CA policy is On.' }
     foreach ($rid in $RoleManagementPolicyIds) {
