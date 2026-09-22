@@ -26,6 +26,30 @@ import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
  */
 export const POLICY_VERIFY_AFTER: string = (content.shared as unknown as { policyVerifyAfter: string }).policyVerifyAfter
 
+/**
+ * What an enforced policy IAMAI never watched in report-only says in place of the
+ * two report-only gates (shared.policyDoneWhenUnobserved).
+ */
+export const POLICY_UNOBSERVED: string = (content.shared as unknown as { policyDoneWhenUnobserved: string }).policyDoneWhenUnobserved
+
+/**
+ * IAMAI watched no report-only period for any of the step's policies: every
+ * member was first seen already enforced (observation.ts `neverObserved`, which
+ * covers both a policy the first scan found on and one that appeared on after a
+ * scan recorded it absent, and travels with the object). A step with no policy
+ * member is not this.
+ *
+ * Not "no member has a report-only date" (tracking.ts `reportOnlyAt`): that date
+ * is kept only while the policy is IN report-only, and a policy IAMAI watched
+ * there for weeks reads null the scan after it goes on. A record written before
+ * `neverObserved` existed carries none, and says nothing here: the conservative
+ * reading is to claim no missing window rather than a false one.
+ */
+function reportOnlyUnwatched(step: Step): boolean {
+  const observed = step.state.members
+  return observed.length > 0 && observed.every((m) => m.change.latest.neverObserved === true)
+}
+
 export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pick<MappingState, 'trustedLocationIds' | 'wizardAnswered' | 'assumed'>): unknown[] {
   const shared = content.shared as Record<string, string[]>
   // The completion follows the answer.
@@ -73,9 +97,16 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pic
   // policy of six tenants, and on one whose sign-in records could not be read at
   // all. The lines after the gates stay: the scan that confirms the policy and the
   // person's own check.
+  //
+  // Where IAMAI watched no report-only period for it, the gates give way to a line
+  // that says so. Dropping them silently left nothing recording that the window
+  // was never watched: a policy an administrator created On, skipping report-only,
+  // finished on the same lines as one IAMAI had watched through its period, and
+  // the unmet gate had been the only line saying otherwise.
   const enforced = step.state.lifecycle === 'enforced'
   const afterGates = shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)
-  const rollout = readyWhen(step) ? [...tracked, ...afterGates] : enforced ? afterGates : shared.policyDoneWhen
+  const past = enforced && reportOnlyUnwatched(step) ? [POLICY_UNOBSERVED, ...afterGates] : afterGates
+  const rollout = readyWhen(step) ? [...tracked, ...afterGates] : enforced ? past : shared.policyDoneWhen
   const policy = configured ? shared.policyDoneWhenConfiguration : [...rollout, POLICY_VERIFY_AFTER]
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
