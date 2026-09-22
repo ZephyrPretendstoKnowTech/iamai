@@ -228,7 +228,17 @@ export function readinessFor(
     // Same population on both sides of the ratio: active members only.
     const withDevice = [...activeIds].filter((id) => owners.has(id)).length
     const percent = members > 0 ? Math.round((withDevice / members) * 100) : null
-    return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
+    // The counts, and what the ratio is OVER. A bare percentage with no line -
+    // where every MFA gate prints "N of M people" - was hand-counted by three
+    // readers who each got a different answer, because this counts people with
+    // a compliant device on a platform THE DEVICE DECISION COVERS, and the
+    // sentence above it said "of people on a compliant device". Where the
+    // answer is computers, a phone is not counted and enrolling the phones
+    // would not have moved the number the reader was told to move.
+    const line = scope.computers && !scope.phones
+      ? fillText(W.deviceComputers, { ready: withDevice, total: members })
+      : fillText(W.deviceBoth, { ready: withDevice, total: members })
+    return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: members > 0 ? [line] : [] }
   }
   // A family with no threshold of its own: a block, a location, a risk policy.
   // Their readiness is evidence, not a percentage, and nothing gates on it.
