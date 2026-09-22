@@ -256,6 +256,25 @@ test('R4-15: an aged-out sign-in is named only where the same sign-in made today
   assert.deepEqual(signedIn('passkey', snapshot.asOf).readyIds, ['u-1', 'u-2'], 'and made today, it counts them: the promise is kept')
 })
 
+// The R4-15 review. The clause said of these people "so nothing about them has
+// changed". The scan cannot know that: there is no registration history, and
+// under the rule above a person is aged out while their fresh sign-ins used
+// another method — here a text message this week, beside a passkey sign-in two
+// months ago, on a step only a passkey sign-in settles.
+test('R4-15: the aged-out clause says how old the sign-in is, never that nothing about the person changed', () => {
+  const { snapshot, policy } = setup()
+  snapshot.config.authStrengths.rows = [{ id: 'target', allowedCombinations: ['fido2', 'password,microsoftAuthenticatorPush'], combinationConfigurations: [] }]
+  ;(snapshot.config.authMethodsPolicy.rows[0] as any).authenticationMethodConfigurations[0].includeTargets = [{ id: 'team', targetType: 'group' }]
+  const old = new Date(Date.parse(snapshot.asOf) - 60 * 86_400_000).toISOString()
+  snapshot.signInEvidence['u-2'] = { ...snapshot.signInEvidence['u-2'], proofs: [{ cls: 'passkey', os: 'Windows', at: snapshot.asOf, method: 'passkey' }] } as never
+  snapshot.signInEvidence['u-1'] = { ...snapshot.signInEvidence['u-1'], proofs: [{ cls: 'passkey', os: 'Windows', at: old, method: 'passkey' }, { cls: 'phone', os: 'Windows', at: snapshot.asOf, method: 'phone' }] } as never
+  const reading = methodPreparation([effectOf(policy)], ['u-1', 'u-2'], snapshot)
+  assert.deepEqual(reading.staleIds, ['u-1'], 'the premise: aged out, while signing in this week with another method')
+  const line = methodReadiness('mfa', reading).lines[0]
+  assert.match(line, / Method compatibility is not yet established for 1 — 1 of those was confirmed by a sign-in that is now older than 30 days: ask them to sign in once with that method and the next scan counts them again\.$/, line)
+  assert.doesNotMatch(line, /changed/, 'a claim about the person the scan has no record to make')
+})
+
 // The same clause was lost on the second step reading the same people: the
 // answer is shared across steps in one scan (createMethodPreparationCache) and
 // only the step that computed it recorded why. Device registration read "not

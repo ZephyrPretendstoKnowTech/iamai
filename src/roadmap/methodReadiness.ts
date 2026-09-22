@@ -29,12 +29,14 @@ export type MethodPreparation = {
    * People counted unready ONLY because the sign-in that confirmed their method
    * has aged out of the 30-day proof window.
    *
-   * Nothing about them changed. A reader watched admin readiness fall 5 -> 4 ->
-   * 0 of 60 over thirty days on a tenant where fourteen admins held a
-   * phishing-resistant method the whole time, with the screen saying "0 of 60
-   * people have a registered method the policies allow" and nothing saying why
-   * it had moved. A number that goes down on its own, on a gate that has to
-   * reach 100%, reads as the tenant getting worse.
+   * A reader watched admin readiness fall 5 -> 4 -> 0 of 60 over thirty days on
+   * a tenant where fourteen admins held a phishing-resistant method the whole
+   * time, with the screen saying "0 of 60 people have a registered method the
+   * policies allow" and nothing saying why it had moved. A number that goes
+   * down on its own, on a gate that has to reach 100%, reads as the tenant
+   * getting worse. What the scan can say is the age of the sign-in; it cannot
+   * say nothing else about them changed — there is no registration history, and
+   * a person whose recent sign-ins used another method is still counted here.
    *
    * ONLY: the same sign-in, made today, would count them. The line tells the
    * admin to ask these people to sign in once, and it said so of people whose
