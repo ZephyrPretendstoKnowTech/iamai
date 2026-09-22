@@ -235,7 +235,9 @@ test('5: a material change to an already-enabled policy is held while its readin
   const step = r.steps.find((s) => s.id === ADMINS) as Step
   // Two of three is 66.7%, and it reads 66%: a reading is rounded down, never up
   // to a number it has not reached (R4-14, readiness.ts readinessPercent).
-  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '66%', route: 'Prepare Your Team for MFA' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')
+  // The step that moves it by its id as well as its title: the Threshold card
+  // links to it (R4-24, Jordan D14), where the title alone gave nothing to click.
+  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '66%', route: 'Prepare Your Team for MFA', routeId: 's-verify-mfa' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')
   const op = step.action.resolution!.policies[0]
   assert.deepEqual(op.body, { state: 'enabled' }, 'the operation is the enforcement')
   assert.equal(enforcesOnRun(op), true)
