@@ -28,6 +28,7 @@ import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
 import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
 import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
+import { contentStepFor, contentTitle } from '../../../../src/content/stepTitle.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
@@ -103,6 +104,9 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
   }
 }
 
+/** One Cleanup row as the board holds it (Plan.tsx `cleanupRows`). */
+type BoardCleanupRow = { id: string; kind: string; title: string; complete: boolean }
+
 /**
  * The board's readings, built the way Plan.tsx builds them.
  *
@@ -111,17 +115,48 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
  * the dependency graph makes a hard prerequisite of EVERY CA policy
  * enforcement — was invisible here, and a blocker naming it came out as the
  * bare words "Prerequisite on hold".
+ *
+ * A step is named the way Plan.tsx's `titleOf` names it (`plainTitle || title`)
+ * wherever a reason line or a tile names it. This read `step.title`, the
+ * engine's goal statement, so a tile a persona quoted as "Legacy protocols
+ * blocked · Prerequisite · Waiting" reads "Block Legacy Authentication" on the
+ * screen (R4-40). A Cleanup row is complete as Plan.tsx reads it, with the
+ * emergency-access answers the plan holds, not with none.
  */
-function boardReadings(r: FixtureRun): { readings: ReturnType<typeof laneReadings>; titleOf: (id: string) => string | null } {
-  const rows = (r.schedule.cleanup?.rows ?? [])
+function boardReadings(r: FixtureRun): { readings: ReturnType<typeof laneReadings>; titleOf: (id: string) => string | null; cleanup: BoardCleanupRow[] } {
+  const answers = r.input.mapping.breakGlassAnswers ?? null
+  const cleanup = (r.schedule.cleanup?.rows ?? [])
     .filter((row) => cleanupEntry(row.kind) !== null)
-    .map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
-  const titleOf = (id: string): string | null => r.steps.find((x) => x.id === id)?.title ?? cleanupTitleOf(id)
-  return { readings: laneReadings(r.steps, rows), titleOf }
+    .map((row) => ({ id: `cleanup-${row.kind}`, kind: row.kind as string, title: cleanupEntry(row.kind)!.title, complete: cleanupComplete(row, answers) }))
+  const byId = new Map(r.steps.map((x) => [x.id, x]))
+  const titleOf = (id: string): string | null => {
+    const step = byId.get(id)
+    return step ? step.plainTitle || step.title : cleanupTitleOf(id)
+  }
+  const readings = laneReadings(r.steps, cleanup.map((row) => ({ id: row.id, complete: row.complete, afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) })))
+  return { readings, titleOf, cleanup }
 }
 
 /**
- * Every step in the order the board shows it, with the lane word a person reads.
+ * One row of the board. `title` is the text the row draws — `contentTitle(step)`
+ * for a step, the Cleanup entry's title for a Cleanup row — and `step` is null
+ * on a Cleanup row, which is a row and not a step: read `id`, `title` and
+ * `cleanup` (its kind) there.
+ */
+export type BoardRow = {
+  id: string
+  title: string
+  step: Step | null
+  cleanup: string | null
+  lane: string
+  substatus: string | null
+  tab: string
+  group: string
+}
+
+/**
+ * Every row in the order the board shows it, with the title and the lane word a
+ * person reads.
  *
  * It used to say that and return `r.steps` in plan order, which is not the
  * order anything renders: the board draws three tabs, and inside each the rows
@@ -131,23 +166,41 @@ function boardReadings(r: FixtureRun): { readings: ReturnType<typeof laneReading
  * builds the board's rows and walks them tab by tab, group by group, exactly as
  * the page does, and names the tab and the group it found each row under.
  */
-export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; substatus: string | null; tab: string; group: string }[] {
-  const { readings, titleOf } = boardReadings(r)
+export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
+  const { readings, titleOf, cleanup } = boardReadings(r)
   const byId = new Map(r.steps.map((s) => [s.id, s]))
+  const cleanupById = new Map(cleanup.map((row) => [row.id, row]))
+  // The rows Plan.tsx builds: every step the lane engine reads, titled
+  // `contentTitle(step)` and grouped by its CONTENT kind, then every Cleanup row
+  // (the drill among them) as a setup row under its own title. This built the
+  // step rows only, titled them `step.title` — the engine's goal statement, a
+  // name no row draws, on 22 of 40 steps of mid — and grouped them by
+  // `step.kind`, so a persona read "Device-code flow blocked" where the board
+  // says "Block Device Code Sign-in" (R4-40, R4-47), never saw the drill row
+  // that holds every enforcement, and could not find a prerequisite a tile
+  // named (R4-24).
   const items: BoardItem[] = r.steps.flatMap((step) => {
     const reading = readings.get(step.id)
     if (!reading) return []
     const view = laneViewOf(reading, titleOf)
-    return [{ id: step.id, title: step.title, lane: reading.lane, laneLabel: view.label, workType: workTypeOf(step.id, step.kind ?? null), order: reading.order }]
+    return [{ id: step.id, title: contentTitle(step), lane: reading.lane, laneLabel: view.label, workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null), order: reading.order }]
   })
-  const out: { step: Step; lane: string; substatus: string | null; tab: string; group: string }[] = []
+  if (r.schedule.cleanup) {
+    for (const row of cleanup) {
+      const reading = readings.get(row.id)!
+      items.push({ id: row.id, title: row.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, workType: 'setup', order: reading.order })
+    }
+  }
+  const out: BoardRow[] = []
   const push = (tab: string, groups: ReturnType<typeof groupsFor>): void => {
     for (const group of groups) {
       for (const item of group.items) {
-        const step = byId.get(item.id)
-        if (!step) continue
-        const reading = readings.get(step.id)!
-        out.push({ step, lane: reading.lane, substatus: laneViewOf(reading, titleOf).substatus, tab, group: group.label })
+        const reading = readings.get(item.id)
+        if (!reading) continue
+        const step = byId.get(item.id) ?? null
+        const row = cleanupById.get(item.id)
+        if (!step && !row) continue
+        out.push({ id: item.id, title: item.title, step, cleanup: row ? row.kind : null, lane: reading.lane, substatus: laneViewOf(reading, titleOf).substatus, tab, group: group.label })
       }
     }
   }
@@ -161,14 +214,17 @@ export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; sub
   // under "Doesn't apply here". Calling that "not on the board" invited exactly
   // the kind of finding that costs a round — a persona reporting a step the
   // product had lost, when the product had put it where the person asked.
-  const drawn = new Set(out.map((row) => row.step.id))
+  const drawn = new Set(out.map((row) => row.id))
   for (const step of r.steps) {
     if (drawn.has(step.id)) continue
     const reading = readings.get(step.id)
     const view = reading ? laneViewOf(reading, titleOf) : null
     const ruledOut = step.doesntApply != null
     out.push({
+      id: step.id,
+      title: contentTitle(step),
       step,
+      cleanup: null,
       lane: ruledOut ? BOARD.lanes.doesntApply : view?.lane ?? 'Unknown',
       substatus: view?.substatus ?? null,
       tab: ruledOut ? 'doesntApply' : 'none',
@@ -195,18 +251,16 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
   // follow that instead of the board. On a messy tenant that disagreed with the
   // real board for 18 of 38 steps, so this harness was manufacturing exactly the
   // phantom states it exists to catch. Found by the cautious-engineer run.
-  const { readings, titleOf } = boardReadings(r)
+  const { readings, titleOf, cleanup } = boardReadings(r)
   const reading = readings.get(step.id)
   const laneView = reading ? laneViewOf(reading, titleOf) : undefined
   const b = stepBodyOf(step, ctxOf(t, r, step), {
     lane: laneView,
     blockers: reading ? readinessBlockersOf(reading, titleOf) : undefined,
     prerequisiteLabel: prerequisiteLabelFor(readings),
-    // What the enforce checklist's conditions wait on, as Plan.tsx passes it.
-    enforceWaits: (r.schedule.cleanup?.rows ?? [])
-      .filter((row) => row.kind === 'drill' && row.done === null)
-      .map((row) => cleanupEntry(row.kind)?.title)
-      .filter((x): x is string => typeof x === 'string' && x.length > 0),
+    // What the enforce checklist's conditions wait on, as Plan.tsx passes it:
+    // the drill row while the board reads it incomplete.
+    enforceWaits: cleanup.filter((row) => row.kind === 'drill' && !row.complete).map((row) => row.title).filter((x) => x.length > 0),
   } as never)
   const card = (c: { heading: string; upn?: string | null; title: string; detail?: string; instruction?: string }): string =>
     [c.heading, c.upn ?? '', c.title, c.detail ?? '', c.instruction ?? ''].filter((x) => String(x).trim()).join(' · ')
