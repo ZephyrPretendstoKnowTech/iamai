@@ -40,6 +40,7 @@ import { stepExportView } from './stepExport.ts'
 import { CONTRACT } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
+import { submitsEnforcementOnly } from '../../roadmap/operations.ts'
 import { incompleteFieldsOf, plannedOperationsOf, policyBodiesOfChannel } from './stepPackage.ts'
 import { plannedPortalLines, portalNamesFor } from './stepPortal.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -130,9 +131,22 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   const selected = i.json ? policyBodiesOfChannel(i.json, i.json.preview) : null
   const intended: string[] = []
   if (c.policy) {
-    const lines = plannedPortalLines(i.step, portalNamesFor(i.ctx, i.ex, contentTitle(i.step)), selected) ?? []
+    // A step that withholds its implementation withholds the turn-on here too.
+    // This section stated "Enable policy: On → Save — only when all of this is
+    // true now", then "The step cannot hand them over yet": the instruction the
+    // Portal, JSON and PowerShell channels had just withheld, with a warning
+    // after it — on a held admin policy whose checklist did not even name the
+    // readiness gate holding it, and whose "no failures in the sign-in records"
+    // was vacuously true on a tenant with none (Priya D6). Where turning the
+    // policy on is the whole of the change, there is no intended setting left
+    // to state; where it is part of it, the rest is stated and the turn-on is not.
+    const offered = implementationOffered(i.step)
+    const names = portalNamesFor(i.ctx, i.ex, contentTitle(i.step))
+    const planned = plannedOperationsOf(i.step)
+    const turnOnOnly = planned.length > 0 && planned.every(submitsEnforcementOnly)
+    const lines = !offered && turnOnOnly ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
     intended.push(...lines)
-    if (lines.length > 0 && !implementationOffered(i.step)) intended.push(W.proposed)
+    if (lines.length > 0 && !offered) intended.push(W.proposed)
     const open = [...new Set(plannedOperationsOf(i.step).flatMap((op) => [...incompleteFieldsOf(i.step, op)]))].sort()
     if (open.length > 0) intended.push(fillText(W.unresolvedFields, { fields: open.join(', ') }))
   } else if (i.json && selected === null && i.json.text.trim() !== '') {

@@ -11,7 +11,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneReadings } from './planLanes.ts'
@@ -23,7 +23,9 @@ import { pinnedPackage } from '../../baseline/pinned.ts'
 import { stepExportView } from './stepExport.ts'
 import { implementationIsCurrent } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
-import { selectedPolicyBodiesOf } from './stepPackage.ts'
+import { plannedOperationsOf, selectedPolicyBodiesOf } from './stepPackage.ts'
+import { submitsEnforcement } from '../../roadmap/operations.ts'
+import { shared } from '../../content/content.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -137,6 +139,45 @@ test('a held step whose reference is unresolved: AI Info proposes the settings, 
   assert.match(facts, /^Not available in this scan: conditions\.users$/m)
   assert.ok(facts.includes(BRIEFING.previewValues), 'the unresolved preview values are named as unresolved')
   assert.match(facts, /Also exclude Guest or external users \(all types\)\./)
+})
+
+// The briefing's Intended result stated "Enable policy: On → Save — only when all
+// of this is true now", then "The step cannot hand them over yet": the turn-on the
+// Portal, JSON and PowerShell channels had just withheld, with a warning after it.
+// On a held admin policy its checklist did not name the readiness gate holding it,
+// and "no failures in the sign-in records" was vacuously true on a tenant with none
+// (Priya D6). A withheld turn-on is not stated as the intended result either.
+test('a step that withholds its implementation states no turn-on as its intended result; one that offers it does', () => {
+  const ENABLE = String(shared.enableLine).split(' — ')[0]
+  let held = 0
+  for (const name of ['demo-week2', 'hostile', 'mid', 'large', 'midflight'] as FixtureName[]) {
+    for (const settled of [false, true]) {
+      const p = planOf(name, settled)
+      for (const step of p.steps) {
+        if ((step.kind !== 'create' && step.kind !== 'adjust') || implementationOffered(step)) continue
+        if (!plannedOperationsOf(step).some(submitsEnforcement)) continue
+        held++
+        const ai = aiOf(p.open(step))
+        const facts = ai.slice(ai.indexOf(BRIEFING.heading))
+        assert.equal(facts.includes(ENABLE), false, `${name}${settled ? '+settled' : ''}/${step.id}: a withheld turn-on is the intended result:\n${facts}`)
+      }
+    }
+  }
+  assert.ok(held > 0, 'no fixture withholds a turn-on, so this proves nothing')
+
+  // The control: the recovery test recorded, nothing holds the token policy's turn-on.
+  setDisplayTimeZone('UTC')
+  const g = withRecoveryTested(withFoundationSettled(fixture('demo-week2')))
+  const r = runFixture(g, {}, null, g.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-token-protection')
+  assert.ok(step)
+  assert.equal(implementationOffered(step), true, 'the premise: the turn-on is offered')
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const reading = laneReadings(r.steps).get(step.id)
+  const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+  const ctx = { snapshot: g.snapshot, mapping: g.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: g.operatorId, now: g.snapshot.asOf, groups: g.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, reportOnlyAt: null } as StepVarContext
+  const ai = aiOf({ step, ctx, lane })
+  assert.ok(ai.slice(ai.indexOf(BRIEFING.heading)).includes(ENABLE), 'an offered turn-on is not stated')
 })
 
 test('every packaged policy step whose lines are handed over: the export lines are the translation of the body its JSON sends', () => {
