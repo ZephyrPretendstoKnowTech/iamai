@@ -208,8 +208,12 @@ const READABLE_CONTROLS = new Set(['block', 'mfa', 'compliantdevice', 'domainjoi
 
 /** What each of Microsoft's built-in authentication strengths allows; their ids describe them in every tenant. */
 export const BUILT_IN_STRENGTHS = new Map<string, string[]>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.allowedCombinations]))
-/** Microsoft's built-in Multifactor authentication strength: the Require MFA grant, as a strength (effectOf). */
-export const BUILT_IN_MFA_STRENGTH = '00000000-0000-0000-0000-000000000002'
+/**
+ * Microsoft's built-in Multifactor authentication strength: the Require MFA
+ * grant, as a strength (effectOf). Its id is the data file's, found by the name
+ * Microsoft gives it, and not written out again here.
+ */
+export const BUILT_IN_MFA_STRENGTH = builtinStrengths.strengths.find((s) => s.displayName === 'Multifactor authentication')!.id.toLowerCase()
 
 /** The device requirements: a policy that asks for one asks for a machine the tenant manages, in the way it names. */
 const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice'])
