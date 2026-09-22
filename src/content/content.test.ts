@@ -207,7 +207,14 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
   '.steps[5].who.none',
-  '.steps[5].whatToDo.steps[4]',
+  // The service-accounts group's list lines: each renders (the example nominates
+  // svc-mailer-1 and svc-mailer-2), but the words after its list begin with the
+  // punctuation the review renderer drops after a list, so the fragment this test
+  // looks for carries a leading "." or ":" the page does not. The mail-sending
+  // sentence rides the list line now ([2]), so it goes with the list where none is
+  // nominated; the ROPC line moved from [4] to [3].
+  '.steps[5].whatToDo.steps[2]',
+  '.steps[5].whatToDo.steps[3]',
   '.steps[6].who.none',
   // The lead for a tenant whose security defaults the scan read as already off
   // (who.leadWhen, R4): the example's tenant has them on, so only that sentence
