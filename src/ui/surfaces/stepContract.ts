@@ -497,6 +497,15 @@ export type StepContract = {
   decisionNote: string
   /** The exclusions group step's reach over the tenant's policies (B10 P0-11): how many exclude the chosen group, of how many; null elsewhere, or with no group chosen. */
   exclusionsReach: { excludedFrom: number; policyCount: number } | null
+  /**
+   * Where the chain to the step that moves this step's readiness number starts,
+   * where that step cannot be done today (planBoard.ts chainStartOf, over the
+   * board's readings the caller hands in); null where it can, where no board was
+   * handed in, and on every step with no route. Worked out once here: the
+   * Threshold card, its link, the finding the Evidence dialog and the printed
+   * plan show, and the AI Info briefing all read it (R4-33).
+   */
+  routeStart: { id: string; title: string } | null
 }
 
 /**
@@ -663,7 +672,7 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
 /** The step that owns the security-defaults ordering invariant, and so the one that reports it broken. */
 const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
 
-function foundOf(step: Step, tenant: string, said: string | null): ContractFound[] {
+function foundOf(step: Step, tenant: string, said: string | null, routeStart: StepContract['routeStart'] = null): ContractFound[] {
   const out: ContractFound[] = []
   // The one step that states the ordering invariant is the one that has to
   // notice it has been broken. A reader enforced eight policies with security
@@ -677,7 +686,10 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
     if (line !== undefined) out.push(found('readiness', line))
   }
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
+  // The same sentence the Threshold card says, with the same start of its route's
+  // chain (StepContract.routeStart): the finding the Evidence dialog, the printed
+  // plan and the AI Info briefing carry is the card's, word for word.
+  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate, routeStart)))
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
   // A policy this plan tagged, switched off, on a step that is proposing to
@@ -1245,9 +1257,12 @@ export function factOf(step: Pick<Step, 'state'>): string | null {
  * One step, as the Plan renders it. `vars` is the step's already-filled content
  * variables where the caller holds them (ContentStep builds them once); they are
  * built here otherwise. `lane` is the board's one state reading of the step
- * (planBoard.ts laneViewOf); the badge, the bar and the rail read it.
+ * (planBoard.ts laneViewOf); the badge, the bar and the rail read it. `startOf`
+ * is the same board's answer to where a step that cannot be done today starts
+ * (planBoard.ts prerequisiteLabelFor → chainStartOf); the contract resolves its
+ * readiness route against it once (`routeStart`).
  */
-export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null): StepContract {
+export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf']): StepContract {
   const ex = vars ?? stepVars(step, ctx)
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
@@ -1300,7 +1315,14 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   }
   const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
-  const found = foundOf(step, tenant, milestone.line)
+  // Where the chain to the step that moves the readiness number starts (R4-33),
+  // once: the card built from this contract and every finding read from it say
+  // the same thing. Worked out in the card alone, the Evidence dialog, the
+  // printed plan and the AI Info briefing still sent the reader to the held
+  // campaign, and the printed plan said the threshold twice in two versions.
+  const gateNow = step.action.readinessGate
+  const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
+  const found = foundOf(step, tenant, milestone.line, routeStart)
   const inventory = inventoryOf(step, ctx)
   if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
@@ -1346,6 +1368,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
     decisionNote: decisionNoteOf(step, cs, ex),
     exclusionsReach: step.id === GATE_STEP.exclusionGroup && typeof ex.excludedFrom === 'number' && typeof ex.policyCount === 'number' ? { excludedFrom: ex.excludedFrom, policyCount: ex.policyCount } : null,
+    routeStart,
   }
 }
 
@@ -1603,8 +1626,9 @@ export type ReadinessTile = {
 /**
  * A prerequisite tile's label by the prerequisite's own lane (planBoard.ts
  * prerequisiteLabelFor), with the same board's answer to where a step that
- * cannot be done today starts (planBoard.ts chainStartOf). Absent `startOf`,
- * nothing resolves a chain and each step is named alone.
+ * cannot be done today starts (planBoard.ts chainStartOf). stepContract reads
+ * `startOf` once, into `StepContract.routeStart`; absent it, nothing resolves a
+ * chain and each step is named alone.
  */
 export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null }
 
@@ -1648,7 +1672,7 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * on, and the fact alone once it is enforced — enforcement is no longer waiting
  * for the number. A value never measured keeps the gate's own words.
  */
-export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, startOf?: PrerequisiteLabel['startOf']): string {
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null): string {
   // A threshold stated against a non-number is a dead end. "It is not measured
   // today" is true and unactionable: it names nothing the reader could go and
   // change, and the step said it three times while the one sentence that DOES
@@ -1678,9 +1702,9 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
   // routeShortfallOf). The two are exclusive and the generator picks between
   // them, because only it can see both populations.
   // Where that step cannot be done today, the board's readings say where its
-  // chain starts, and the sentence names both (R4-33): the step that moves the
-  // number, and the first thing anybody can do on the way to it.
-  const start = routeStartOf(step, gate, startOf)
+  // chain starts (StepContract.routeStart), and the sentence names both (R4-33):
+  // the step that moves the number, and the first thing anybody can do on the
+  // way to it.
   const routeStep = gate.route !== undefined && waiting
     ? start !== null
       ? fillText(CONTRACT.foundReadinessRouteStepHeld, { step: gate.route, first: start.title })
@@ -1826,8 +1850,8 @@ function gateRouteOf(step: Step, gate: NonNullable<Step['action']['readinessGate
   return { id: gate.routeId, title: gate.route }
 }
 
-/** The step the route's chain starts at, where the route step itself cannot be done today (planBoard.ts chainStartOf). */
-function routeStartOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>, startOf: PrerequisiteLabel['startOf']): { id: string; title: string } | null {
+/** The step the route's chain starts at, where the route step itself cannot be done today (planBoard.ts chainStartOf). stepContract asks once, for `routeStart`. */
+function routeStartOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>, startOf: PrerequisiteLabel['startOf']): StepContract['routeStart'] {
   const route = gateRouteOf(step, gate)
   const id = route === null || startOf === undefined ? null : startOf(route.id)
   if (id === null || id === step.id) return null
@@ -1856,7 +1880,7 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */
-function stateTile(step: Step, c: StepContract, startOf?: PrerequisiteLabel['startOf']): ReadinessTile | null {
+function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   const s = c.state
   const t = R().tiles
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
@@ -1912,8 +1936,9 @@ function stateTile(step: Step, c: StepContract, startOf?: PrerequisiteLabel['sta
     // tile's step does (R4-24): a title with nothing to click sent the reader to
     // search the board for it. Where that step cannot be done today, the card
     // opens where its chain starts, which is what the sentence says to do (R4-33).
-    const route = routeStartOf(step, gate, startOf) ?? gateRouteOf(step, gate)
-    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate, startOf), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+    // Both read the contract's one answer (`routeStart`), as its finding does.
+    const route = c.routeStart ?? gateRouteOf(step, gate)
+    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate, c.routeStart), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
   }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
@@ -2178,7 +2203,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, prerequisiteLabel.startOf)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
