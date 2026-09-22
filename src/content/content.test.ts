@@ -207,6 +207,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // renders. The review page draws the one the example's facts earn, as the
   // product does.
   '.steps[7].who.leadWhen.securityDefaultsOff',
+  // Its Done-when for the same read state (doneWhenWhen, R4-38): the step is
+  // complete there and claims only that. The example's security defaults are
+  // on, so the review page draws the cutover's own lines, as the product does.
+  '.steps[7].doneWhenWhen.securityDefaultsOff[0]',
   '.steps[10].who.match',
   '.steps[13].who.groups.noMethod',
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.

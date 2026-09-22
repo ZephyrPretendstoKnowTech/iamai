@@ -27,6 +27,7 @@ import { stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { listCountVars, missingVars, whole } from '../../content/render.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { stepContract } from './stepContract.ts'
 
 type Who = Record<string, unknown>
 type Ex = Record<string, unknown>
@@ -194,6 +195,43 @@ test('the security-defaults step describes the state the scan read, and says so 
   // Neither fact read: the sentence for a state nobody confirmed is not offered.
   const who = (stepById['s-prereq-security-defaults'] as { who: Who }).who
   assert.equal(whoLeadTemplate(who, { tenant: 'Contoso Pty Ltd' }), WHO_UNRESOLVED)
+})
+
+// R4-38: Turn Off Security Defaults completes on security defaults being off
+// and on nothing else — it cannot also wait for the four replacement policies,
+// which each wait on it. Its Done-when also said those four "are enforced". On
+// a tenant whose scan read security defaults already off the step read
+// Completed beside that claim, on a board whose own row for the admin
+// phishing-resistant policy read Not deployed. Where the scan read them off,
+// the Done-when is what completes the step; where it read them on, the
+// cutover this step performs still names all four.
+test('the security-defaults step claims only what completes it, in the state the scan read', () => {
+  const sd = stepById['s-prereq-security-defaults'] as unknown as { doneWhen: string[]; doneWhenWhen: { securityDefaultsOff: string[] } }
+  const contractOf = (f: ReturnType<typeof fixture>) => {
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
+    return { step, c: stepContract(step, ctxFor(f, r)), r }
+  }
+  for (const name of ['small', 'hostile'] as const) {
+    const { step, c, r } = contractOf(fixture(name))
+    assert.equal(step.status, 'done', `${name}: the premise: the step is complete on security defaults read off`)
+    assert.deepEqual(c.doneWhen, sd.doneWhenWhen.securityDefaultsOff, `${name}: the Done-when is not the read state's`)
+    for (const line of c.doneWhen) assert.doesNotMatch(line, /enforced|changeover/, `${name}: "${line}" claims what nothing checks`)
+    // The claim was false on the same board: hostile has no admin phishing-resistant policy.
+    if (name === 'hostile') {
+      const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')
+      assert.ok(admins && admins.status !== 'done', 'the premise: the admin policy the old line called enforced is not')
+    }
+  }
+  // Read on: the cutover this step performs, all four replacements named.
+  const on = contractOf(fixture('messy')).c
+  assert.deepEqual(on.doneWhen, sd.doneWhen, 'the cutover lost its Done-when')
+  assert.match(on.doneWhen[0], /Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins/)
+  // Read neither way: nothing confirmed them off, so the cutover's lines stand
+  // (the conservative reading — the step is not complete there either).
+  const unread = structuredClone(fixture('messy'))
+  unread.snapshot.config.securityDefaults = { ...unread.snapshot.config.securityDefaults!, status: 'error', rows: [] } as typeof unread.snapshot.config.securityDefaults
+  assert.deepEqual(contractOf(unread).c.doneWhen, sd.doneWhen, 'an unread state took the Done-when for security defaults off')
 })
 
 /**

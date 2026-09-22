@@ -3610,6 +3610,12 @@
         "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins are enforced.",
         "Test sign-in for representative users and admins right after the changeover."
       ],
+      "$commentDoneWhenWhen": "The Done-when for the state the scan read, beside who.leadWhen. The lines above are the cutover this step performs where the scan read security defaults on (or could not read them): turn them off and enforce the four replacements in the same window. The step completes on security defaults being off and on nothing else (roadmap/generate.ts); it cannot also wait for the four policies, because each of them waits on this step. Where the scan read them already off, the step is Completed and the cutover lines claimed four policies enforced that nothing checked — on a tenant with no admin phishing-resistant policy at all, whose own row read Not deployed on the same board (R4-38). There is no changeover to test either. So that read state's Done-when is what completes the step, and only that; what the four replacements still need is their own steps', and the who lead already says nothing replaces security defaults until they are enforced.",
+      "doneWhenWhen": {
+        "securityDefaultsOff": [
+          "Security defaults are off."
+        ]
+      },
       "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
       "comms": null,
       "doesntApply": false,

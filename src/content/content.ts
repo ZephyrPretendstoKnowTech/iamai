@@ -40,6 +40,8 @@ export type ContentStep = {
   whatToDo?: Record<string, unknown> | null
   dates?: string | null
   doneWhen?: string[] | null
+  /** The Done-when for a read state (render.ts doneWhenFor): a fact the scan read, and the lines that replace `doneWhen` where it holds. */
+  doneWhenWhen?: Record<string, string[]> | null
   /**
    * The Tasks Remaining card's own words on a step that delivers no policy: the
    * subject the card is about, and the check the scan's reading is. Without
