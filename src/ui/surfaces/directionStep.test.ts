@@ -242,8 +242,18 @@ test('a step whose question moved to Direction asks for no answer in its own pro
     }
   }
   assert.ok(checked > 5, `only ${checked} procedure lines checked`)
-  // The fact the line carried stays, as a statement.
+  // The fact the line carried stays. It is a numbered line, and a numbered line
+  // is something to do (the passkey preparation's rule above): it was left a
+  // bare statement, "Your answer about partner or MSP technicians decides …",
+  // and it is now the check that the policy's guest types follow that answer.
   const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
-  const text = (stepBodyOf(guests, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t)).join('\n')
-  assert.match(text, /service-provider external-user type/, 'the partner answer\'s effect is no longer stated')
+  const body = stepBodyOf(guests, ctx)
+  const partner = (body.emergencyAccountTasks?.tasks ?? []).flatMap((t) => emergencyTaskSteps(t)).filter((l) => /service-provider external-user type/.test(l))
+  assert.equal(partner.length, 1, 'the partner answer\'s effect is no longer stated, or stated twice')
+  assert.match(partner[0], /^(?:\d+\.\s*)?Check\b/, `a numbered line that instructs nothing: "${partner[0]}"`)
+  // Its decision note — the Decision tile's words — said "saving an answer
+  // here does not establish trust" on a step that takes no answer: the partner
+  // answer is saved on Confirm What You Use.
+  assert.doesNotMatch(body.contract.decisionNote, /\bhere\b/, `the decision note places the answer on this step: "${body.contract.decisionNote}"`)
+  assert.match(body.contract.decisionNote, /does not establish/, 'the note no longer says an answer does not establish trust')
 })
