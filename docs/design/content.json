@@ -1910,6 +1910,8 @@
             "$comment": "The opened step's Implementation region (docs/design/approved/anatomy/plan-step-v1.html `.implementation-section`). The channels are production's own artifacts — the portal translator, stepPowerShell.ts, stepJson.ts and the step context the prompts read (roadmap/prompts.ts stepContext) — and `empty` is the one truthful no-action box a step shows when it offers none of them, by the reason it offers none.",
             "heading": "Implementation",
             "tabsLabel": "Implementation channel",
+            "$commentReference": "A finished step still draws its Implementation Tasks on purpose: with nothing needing doing, every change stays available to look up. They are typeset as commands, so on a step reading Completed a reader met three task blocks of eight, nine and ten imperative lines and took them for work that remained. Owner decision 2026-09-22 (option A): keep every word, change the default from \"do this\" to \"look this up\". A disclosure, closed, on a step the board reads Completed or Deferred, and never while printing - the printed plan carries every step whole.",
+            "reference": "Reference: how each of these changes is made",
             "ai": "AI Info",
             "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
             "aiFacts": {

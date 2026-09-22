@@ -5,6 +5,22 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { emergencyAccountTasksOf, emergencyAccountTasksText, emergencyTaskText } from './emergencyAccountTasks.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewOf } from './planBoard.ts'
+
+/** The opened step as the board hands it over: the lane reading included, because that is what decides whether a step's procedures are reference. */
+function bodyOf(name: Parameters<typeof fixture>[0], id: string) {
+  const f = structuredClone(fixture(name))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === id)!
+  const readings = laneReadings(run.steps)
+  const titleOf = (x: string): string | null => run.steps.find((s) => s.id === x)?.title ?? null
+  const reading = readings.get(step.id)!
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (x: string) => x, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  return stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf) })
+}
+
 
 const STEP = 's-prereq-break-glass'
 
@@ -241,4 +257,28 @@ test('Step 1 notes an emergency account that is signed in to IAMAI now', () => {
   const signedIn = dedicatedCase((value, id) => { value.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id }] } })
   const account = signedIn.accounts.find(row => row.accountId === signedIn.id)!
   assert.match(account.notes?.[0]?.value ?? '', /signed in to IAMAI now/)
+})
+
+// A finished step's procedures are reference, not instructions.
+//
+// They stay on purpose — emergencyAccountTasks.ts keeps them so that "with
+// none needing any, every change stays available as a reference" — and they
+// are typeset as commands. On a step reading Completed a reader met three
+// task blocks of eight, nine and ten imperative lines, two of them led by a
+// line saying nothing needed doing, and took the lot for work that remained.
+// Owner decision 2026-09-22, option A: keep every word, change the default
+// from "do this" to "look this up".
+test('the procedures on a finished step are reference, and on an open one they are not', () => {
+  const done = bodyOf('demo-week2', 's-prereq-break-glass')
+  assert.equal(done.laneView.lane, 'Completed', 'the premise: the board reads this step finished')
+  assert.ok(done.emergencyAccountTasks, 'the premise: it still draws its procedures')
+  assert.equal(done.implementationReference, true, 'a finished step still presents its procedures as instructions')
+  // Every word is still there: this is what is open, not what exists.
+  const lines = (done.emergencyAccountTasks.tasks ?? []).flatMap((t) => t.steps)
+  assert.ok(lines.length > 15, `the procedures were dropped rather than folded: ${lines.length} lines`)
+
+  // The same step before it is finished asks for the work, and says so.
+  const open = bodyOf('demo', 's-prereq-break-glass')
+  assert.notEqual(open.laneView.lane, 'Completed', 'the premise: this one is not finished')
+  assert.equal(open.implementationReference, false, 'an open step folded away its own instructions')
 })
