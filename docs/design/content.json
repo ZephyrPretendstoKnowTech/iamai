@@ -3646,8 +3646,7 @@
         "steps": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned.",
           "Name it {proposedName}. {proposedNameNote}",
-          "Add: {list:serviceAccounts}",
-          "Any account named as a mail-sending device in Confirm What You Use is already on that list.",
+          "Add: {list:serviceAccounts}. Any account named as a mail-sending device in Confirm What You Use is already on that list.",
           "For {list:ropcAccounts}: these sign in with a password over a script; move each to a service principal or managed identity when you can, and until then keep it in this group."
         ]
       },
