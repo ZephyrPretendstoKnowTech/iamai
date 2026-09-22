@@ -128,7 +128,12 @@ test('the readiness line says which population its denominator is', () => {
       // policy steps' readiness line (methodReadiness.ts).
       if (!step.methodPreparation) continue
       checked++
-      assert.match(line, /in scope of these policies/, `${name}/${step.id}: ${line}`)
+      // "In scope of these policies" read as one number over two steps whose
+      // policies include different people — 200 of 265 on one step, 209 of 279
+      // on the next, both headed MFA readiness (R4-14, Marcus D4). The line names
+      // the step's own policies, so two steps reading two numbers say why.
+      assert.match(line, /people this step's policies include/, `${name}/${step.id}: ${line}`)
+      assert.doesNotMatch(line, /these policies/, `${name}/${step.id}: ${line}`)
       // And the count itself is unchanged: the population it counts is the
       // step's own methodPreparation, not a new one.
       const m = /([0-9]+) of ([0-9]+) people/.exec(line)!
