@@ -30,6 +30,7 @@ import { SUBJECT_PLAIN } from '../copy/validation.ts'
 // The consent rows Connect shows, generated from GRAPH_SCOPES and SCOPE_COPY: the
 // review page reads the permission authority rather than a copy of it.
 import { consentRows } from '../copy/permissions.ts'
+import { figure } from '../copy/statements.ts'
 import { FEEDBACK_ADDRESS } from '../feedback.ts'
 
 const CONSENT = consentRows()
@@ -100,6 +101,10 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     if (key in sharedRefs) return fillText(sharedRefs[key], ex, depth + 1)
     const v = (ex as Record<string, unknown>)[key]
     if (v === undefined || v === null || Array.isArray(v) || typeof v === 'object') return ''
+    // A whole number prints as count() prints it (copy/statements.ts figure):
+    // "3,032 people", never "3032" under a lead that reads "3,981 people".
+    // Callers pass the number, never a formatted string.
+    if (typeof v === 'number' && Number.isInteger(v)) return figure(v)
     return String(v)
   }
   let out = String(text)

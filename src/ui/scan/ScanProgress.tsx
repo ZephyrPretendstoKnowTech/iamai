@@ -82,7 +82,7 @@ export function ScanDevTools({ tenantId, scan, snapshot }: { tenantId: string; s
               {s.status === 'started'
                 ? `${SCAN.sections[s.source] ?? s.source}: ${SCAN.reading}`
                 : s.rows !== undefined
-                  ? fillText(SCAN.found, { label: SCAN.sections[s.source] ?? s.source, n: s.rows.toLocaleString('en') })
+                  ? fillText(SCAN.found, { label: SCAN.sections[s.source] ?? s.source, n: s.rows })
                   : `${SCAN.sections[s.source] ?? s.source}: ${statusLabel(s.status, s.reason)}`}
               {s.reason && <span className="muted"> ({s.reason})</span>}
               {isPrivilegeDenial(s.reason) && <div className="reason">{ACCESS.needsRole(rolesForSource(s.source).least)}</div>}

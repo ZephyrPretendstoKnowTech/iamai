@@ -6,9 +6,18 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return n === 1 ? one : many
 }
 
+/**
+ * A number as every surface prints it: "4,900", never "4900". The one place a
+ * count is formatted: count() below, and content/render.ts fillText for every
+ * whole number a content line is filled with.
+ */
+export function figure(n: number): string {
+  return n.toLocaleString('en')
+}
+
 /** "3 users", "1 user", "no users". */
 export function count(n: number, one: string, many = `${one}s`): string {
-  return n === 0 ? `no ${many}` : `${n.toLocaleString('en')} ${plural(n, one, many)}`
+  return n === 0 ? `no ${many}` : `${figure(n)} ${plural(n, one, many)}`
 }
 
 /** Joins with commas and "and". */
