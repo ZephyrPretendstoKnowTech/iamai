@@ -60,7 +60,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { stepContract } from './stepContract.ts'
+import { readinessOf, stepContract } from './stepContract.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
@@ -769,4 +769,38 @@ test('a finished verification campaign is delivered, and says so without claimin
   // without one.
   const claimed = run.steps.filter((s) => statusOf(s).word === 'Enforced' && s.state.lifecycle !== 'enforced').map((s) => s.id)
   assert.deepEqual(claimed, [], 'a step read Enforced with no enforced policy behind it')
+})
+
+test('In place says so about the POLICY, and discloses where it could not read whether the people can satisfy it', () => {
+  // The canonical case is a goal the tenant already delivers, and its answer is
+  // to recognise the policy and leave it alone. What "In place / Completed"
+  // must not become is a claim about PROTECTION.
+  //
+  // On a tenant whose registration source returned 403 this step read
+  // Completed, headline "Every user satisfies MFA on every app", beside a
+  // readiness the engine had already computed: "0 of 40 people have a
+  // registered method allowed by the target policies. Method compatibility is
+  // not yet established for 40." None of that reached the finished step. A
+  // reader takes Completed as done.
+  const blind = caseOf(runFixture(fixture('hostile')), fixture('hostile'), 's-goal-mfa-all-users')
+  assert.equal(blind.step.status, 'done', 'the premise: an existing policy delivers this goal')
+  assert.equal(blind.step.readiness.unmeasured, 'unreadable', 'the premise: readiness could not be read on this tenant')
+  // Both lists, the way the step itself draws them: the in-place tile lives in
+  // `satisfied`, not `tiles`, and reading one of the two is how half a step
+  // goes unchecked.
+  const coverageTile = (c: ReturnType<typeof readinessOf>): { key: string; note: string | null } | undefined =>
+    [...c.tiles, ...c.satisfied].find((x) => x.key === 'coverage')
+  const blindTile = coverageTile(readinessOf(blind.step, stepContract(blind.step, blind.ctx)))
+  assert.ok(blindTile, 'the in-place step lost its coverage tile')
+  assert.match(String(blindTile.note), /could not read whether the people it covers can satisfy it/, String(blindTile.note))
+  assert.match(String(blindTile.note), /0 of 40 people/, 'the count the engine computed is still not on the step')
+  assert.match(String(blindTile.note), /describes the policy, not the people/, 'the tile does not say what In place is a fact about')
+
+  // And where readiness IS readable the tile is unchanged: this is a
+  // disclosure, not a hedge to bolt onto every delivered goal.
+  const read = caseOf(runFixture(fixture('mid')), fixture('mid'), 's-goal-mfa-all-users')
+  assert.notEqual(read.step.readiness.unmeasured, 'unreadable', 'the premise: mid can read its registration details')
+  const readTile = coverageTile(readinessOf(read.step, stepContract(read.step, read.ctx)))
+  assert.ok(readTile)
+  assert.equal(/could not read whether/.test(String(readTile.note)), false, `a readable tenant is hedged anyway: ${readTile.note}`)
 })

@@ -1508,8 +1508,19 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
-  const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string }
-  if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote }
+  const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string; coverageUnreadable: string }
+  if (s.satisfied) {
+    // A goal an existing policy already delivers reads In place, and said
+    // nothing about whether the people it covers can satisfy it. On a tenant
+    // whose registration source returned 403 this step read Completed beside a
+    // readiness of "0 of 40 people have a registered method allowed by the
+    // target policies" — computed by the engine, shown nowhere on the finished
+    // step. In place is a fact about the POLICY, and a reader takes Completed
+    // as protection.
+    const unreadable = step.readiness.unmeasured === 'unreadable' ? fillText(notes.coverageUnreadable, { line: step.readiness.lines[0] ?? '' }).trim() : null
+    const found = c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote
+    return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: unreadable === null ? found : `${found} ${unreadable}` }
+  }
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
