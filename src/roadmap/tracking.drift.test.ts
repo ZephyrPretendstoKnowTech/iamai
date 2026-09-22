@@ -23,6 +23,10 @@ import { holdOf } from './holds.ts'
 import { nextSafeAction } from './nextSafeAction.ts'
 import { awaitsWorkflowRecord, unavailableReason } from './operations.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
+import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
+import { stepExportView } from '../ui/surfaces/stepExport.ts'
+import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
+import { shared } from '../content/content.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 import type { StepObservation, StepObservationRecord } from './observation.ts'
 import { SOLE_MEMBER, driftOutcomeOf, matchMembers } from './tracking.ts'
@@ -370,6 +374,33 @@ test('A5: a report-only policy whose conditions drifted is not offered for enfor
   assert.equal(step.state.observation?.reviewRequired, true, 'the conditions were compared before enforcement was offered')
   assert.ok(step.state.condition === 'review-required' || step.state.condition === 'blocked' && step.blockers.some(b => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the location change can also reopen the emergency recovery check')
   assert.match(step.state.observation?.note ?? '', /locations/i)
+})
+
+test('R4-10: a token-protection policy without the Cloud PC device filter is told, on the portal and in the export, to put the filter back', () => {
+  // R4-10 (B), on the pinned baseline: the week-two demo's token-protection
+  // policy in report-only, without the baseline's Cloud PC device filter. The
+  // update the step resolves is the turn-on alone, so the filter is a difference
+  // that update does not write (observation.unwritten). The step said "a person
+  // corrects it in the Entra admin center", while the portal kept to the
+  // observe procedure and no channel named the filter. The package has its own
+  // device-filter correction, but it picks corrections from the fields the
+  // update changes, and the unwritten fields were dropped before it
+  // (ui/surfaces/stepPackage.ts correctionFieldsOf). The product's own words:
+  // left at No, Microsoft Entra joined Cloud PCs are blocked.
+  const snapshot = structuredClone(ANSWERED.snapshot)
+  const row = rowsOf(snapshot).find((p) => p.displayName === TOKEN)!
+  assert.ok(conditions(row).devices, 'the premise: the demo policy carries the filter')
+  delete conditions(row).devices
+  const run = runFixture({ ...ANSWERED, snapshot })
+  const step = stepOf(run, 'token-protection')
+  assert.deepEqual(step.state.observation?.unwritten, ['conditions.devices'], 'the premise: the filter is a difference the update does not write')
+  const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const rule = 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"'
+  const portal = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  assert.ok(portal.includes(rule), `the portal does not say which filter to set:\n${portal}`)
+  assert.match(portal, /Exclude filtered devices from policy/)
+  assert.equal(portal.includes(String(shared.changeUntouched)), false, 'the portal tells the operator to leave the missing filter as it is')
+  assert.ok(stepExportView(step, ctx).whatToDo.some((l) => l.includes(rule)), 'the export says a person corrects the filter and never says to what')
 })
 
 test('A6: an ordinary person excluded from MFA-for-all is a coverage gap, as it is for the legacy-auth block', () => {
