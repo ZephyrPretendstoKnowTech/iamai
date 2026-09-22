@@ -222,6 +222,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[13].who.groups.needsSetup',
   '.steps[13].who.groups.readinessUnknown',
   '.steps[13].who.groups.holdouts',
+  // The admins the campaign waits on outside its active people (R4-52): the
+  // example's tenant has none, dormant or with sign-in activity unread.
+  '.steps[13].who.dormantAdmins',
+  '.steps[13].who.unreadAdmins',
   '.steps[14].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists

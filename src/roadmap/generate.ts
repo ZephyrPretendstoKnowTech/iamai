@@ -2325,11 +2325,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Phase 2 verification campaign ----
   const mfaGoal = input.coverage.results.find((r) => r.goal.id === 'mfa-all-users')
   if (mfaGoal) {
-    // The campaign works the active people only, named (prompt 48.1 item 2):
-    // never the dormant accounts, never break-glass (it has its own drill).
-    // Break-glass is never in the campaign (prompt 48.1 item 2): it has its own drill.
-    // Verification complete on this scan → the campaign is done and the
-    // scheduler skips its window (prompt 18 §1).
+    // The campaign works the active people, named (prompt 48.1 item 2), and
+    // every role holder, active or not (adminCandidates, 8f440021). Never
+    // break-glass: it has its own drill. Verification complete on this scan →
+    // the campaign is done and the scheduler skips its window (prompt 18 §1).
     const candidates = campaignIds(viability, snapshot, mapping)
     // A role holder that signs in only to scripting tools is a script, not a person to prepare (owner item 3, derive/population.ts isActivePerson).
     const adminCandidates = [...new Set([...Object.keys(snapshot.roles.active), ...Object.keys(snapshot.roles.eligible ?? {})])].filter(id => viabilityById.has(id) && !excluded.has(id) && !viabilityById.get(id)!.readiness.automated)
@@ -2347,16 +2346,38 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // count MFA Readiness and the MFA gate read, not a second "to set up".
     const toSetUp = preparationIds.length - preparedSet.size
     const verifyDone = registrationKnown && toSetUp === 0
+    // The role holders the campaign prepares outside its active people, by what
+    // the scan read of them (R4-52): dormant by the dormant step's own rule
+    // (derive/sets.ts notActiveUsers, which judges activity only where it was
+    // read), or with sign-in activity the scan could not read at all
+    // (scoring/mfaViability.ts activity 'unknown'). The step names the ones it
+    // waits on in those words; it never calls an unread account dormant.
+    const dormantSet = new Set(dormant.map((u) => u.id))
     steps.push({
       ...prereq('s-verify-mfa'),
       title: 'Prepare Your Team for MFA',
-      preparation: { ids: preparationIds, readyIds: [...preparedSet], missingIds: preparationIds.filter(id => !preparedSet.has(id)), unknownIds: targetsKnown ? preparation.unknownIds : preparationIds, guestIds: preparationIds.filter(id => popIndex.guests.has(id)) },
+      preparation: {
+        ids: preparationIds,
+        readyIds: [...preparedSet],
+        missingIds: preparationIds.filter(id => !preparedSet.has(id)),
+        unknownIds: targetsKnown ? preparation.unknownIds : preparationIds,
+        guestIds: preparationIds.filter(id => popIndex.guests.has(id)),
+        dormantIds: preparationIds.filter(id => dormantSet.has(id)),
+        activityUnreadIds: preparationIds.filter(id => viabilityById.get(id)?.activity === 'unknown'),
+      },
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
       ...stateFields(verifyDone ? { satisfied: true } : {}),
       deliveredBy: verifyDone ? ['Every person in the preparation cohort has a suitable registered authentication method.'] : [],
-      population: population(preparationIds, popIndex),
+      // Every account the campaign prepares, as its lead and its row count them
+      // (stepVars {cohort}, rowWho): one population. population() counted the
+      // active ones only, so on the large tenant the tile read "4,169 active
+      // people" beside a lead of "3,981 people and 197 guests", nine admins
+      // apart and none of them named; where sign-in activity was not read it
+      // read "No user impact" over a campaign waiting on 48 admins. The head
+      // says "active people" only where every one of them is (namedAccounts).
+      population: namedAccounts(preparationIds, popIndex),
       readiness: verifyReadiness,
       forManager: MANAGER.verify(toSetUp),
     })

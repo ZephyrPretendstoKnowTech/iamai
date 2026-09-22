@@ -20,6 +20,7 @@ import type { Step, StepStatus } from '../roadmap/types.ts'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { applicableGoals, doneSteps, goalCounts, trackableSteps, notPeopleIds } from './sets.ts'
+import { populationLine } from './whoLine.ts'
 
 const STATUSES: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
 
@@ -198,6 +199,7 @@ test('one verdict: task completion requires coverage and any explicit workflow e
 // produce is the "11 people" bug the live walk found (three denominators on one
 // page). Every population number is bounded by, and derived from, activeUsers /
 // enabledUsers / adminUsers — the sets Today counts.
+const NAMED_ACCOUNTS = new Set(['s-check-dormant-accounts', 's-prereq-per-user-mfa', 's-verify-mfa'])
 for (const f of allFixtures()) {
   test(`${f.name}: Today's tiles and every step's who-line agree on the denominator`, async () => {
     const { peopleCounts } = await import('./population.ts')
@@ -216,8 +218,17 @@ for (const f of allFixtures()) {
       // The who-line names people, never a count Today never counted.
       assert.ok(affectedIds(p).length <= enabledBound, `${s.id}: who-line names ${affectedIds(p).length}, more than Today's enabled ${pc.enabled}`)
       // A step that touches active people names exactly the active set — never
-      // the in-scope count (the "11 people" regression).
-      if (p.active > 0) assert.equal(affectedIds(p).length, p.active, `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)
+      // the in-scope count (the "11 people" regression). The exception is a step
+      // whose impact is every account it names (derive/population.ts
+      // namedAccounts), and the MFA campaign is one since R4-52: it prepares
+      // every admin, active or not, and its lead and row count all of them, so
+      // its tile counting only the active ones was the defect. Such a line says
+      // "accounts", never "active people", so it cannot pass the in-scope count
+      // off as people.
+      if (p.active > 0 && affectedIds(p).length !== p.active) {
+        assert.ok(NAMED_ACCOUNTS.has(s.id), `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)
+        assert.doesNotMatch(populationLine(p), /active (?:person|people)/, `${s.id}: ${populationLine(p)}`)
+      }
     }
   })
 }
