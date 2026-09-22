@@ -284,6 +284,32 @@ test('each configuration check on the allowed-countries step is its own card, an
   }
 })
 
+// R4-58, the third case: a check that ran on sign-in records the scan read and
+// found nothing to decide on is Not Fully Read — and its note said "Missing scan
+// evidence: sign-in records", the words for a source never collected. The state
+// said the records were read and the note said they were missing, on one card.
+// On small, whose sign-in records were read, with no administrator's sign-in
+// carrying a country and no counts by country, both checks ran and could not
+// decide; each says so in its own words.
+test('a country check that ran on sign-in records holding nothing to decide on reads Not Fully Read, and never calls the records missing', () => {
+  const f = structuredClone(fixture('small'))
+  assert.equal(f.snapshot.sources.signInEvidence?.status, 'ok', 'the premise: small\'s sign-in records were read')
+  for (const id of Object.keys(f.snapshot.roles?.active ?? {})) {
+    const e = f.snapshot.signInEvidence[id]
+    if (e) e.countries = []
+  }
+  if (f.snapshot.evidenceAggregates) (f.snapshot.evidenceAggregates as { byCountry: unknown }).byCountry = null
+  const { step, c } = opened(f, 's-prereq-allowed-countries')
+  const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
+  for (const id of ['cty.includesOperator', 'cty.seenCountriesIncluded']) {
+    const card = cards.find((t) => t.key.startsWith(`configuration:${id}:`))
+    assert.ok(card, `${id} draws no card`)
+    assert.equal(card.value, CHECK_STATE.notFullyRead, `${id} ran and reads "${card.value}"`)
+    assert.doesNotMatch(card.note ?? '', /Missing scan evidence/, `${id} ran on the sign-in records and calls them missing: "${card.note}"`)
+    assert.match(card.note ?? '', /sign-in records this scan read/, `${id} does not say what the records it read hold`)
+  }
+})
+
 // R4-58, the other half: headed by its check, a finding still names the object
 // it is about. The trusted-location step runs the same checks over every saved
 // location; without the location's name in the note, two locations failing one
