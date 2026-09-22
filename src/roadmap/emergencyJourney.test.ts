@@ -441,6 +441,8 @@ test('the method-diversity finding names the method type in words, never the Gra
     assert.equal(diversity.outcome, 'fail', `the premise: both accounts rely on ${kind}`)
     const detail = journeyAccountFindings(reportOf(f), f.snapshot, f.mapping).find(x => x.key === 'recovery-methods')!.detail
     assert.ok(detail.includes(words), `${kind}: ${detail}`)
-    assert.doesNotMatch(detail, new RegExp(`\b${kind}\b`), `${kind} printed bare: ${detail}`)
+    // "\\b", not "\b": inside a template literal "\b" is a backspace character,
+    // so this check matched nothing and could never fail.
+    assert.doesNotMatch(detail, new RegExp(`\\b${kind}\\b`), `${kind} printed bare: ${detail}`)
   }
 })
