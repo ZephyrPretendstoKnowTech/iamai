@@ -35,7 +35,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
@@ -460,7 +460,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // remained. The words do not change; what changes is whether they are open.
   // The board's own reading, so the page and the row cannot disagree about
   // whether this step is finished.
-  const implementationReference = taskProjection !== null && (laneView.lane === 'Completed' || laneView.lane === 'Deferred')
+  const implementationReference = taskProjection !== null && proceduresAreReference(laneView)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null
