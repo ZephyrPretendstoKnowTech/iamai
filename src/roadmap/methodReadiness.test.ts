@@ -137,3 +137,17 @@ test('the readiness line says which population its denominator is', () => {
   }
   assert.ok(checked > 3, `only ${checked} steps printed a readiness reading`)
 })
+
+// Two readings that were sentences about nobody. "0 of 0 people in scope of
+// these policies have a registered method" stood where there was nobody to
+// count, and "None of the 1 person in scope could be judged" was the
+// count-of-one rule applied to a sentence written for many.
+test('nobody to count states no reading, and one person unjudged reads as one', () => {
+  const nobody = methodReadiness('mfa', { ids: [], readyIds: [], unknownIds: [], completeScope: true })
+  assert.deepEqual(nobody.lines, [])
+  assert.equal(nobody.unmeasured, 'no-population')
+  const one = methodReadiness('mfa', { ids: ['a'], readyIds: [], unknownIds: ['a'], completeScope: true })
+  assert.deepEqual(one.lines, ['The one person in scope could not be judged: method compatibility is not established for them.'])
+  const two = methodReadiness('mfa', { ids: ['a', 'b'], readyIds: [], unknownIds: ['a', 'b'], completeScope: true })
+  assert.match(two.lines[0], /^None of the 2 people in scope could be judged/)
+})

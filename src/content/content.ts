@@ -133,7 +133,7 @@ export type EngineWords = {
   /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */
   detectionGap: { groups: string; policies: string }
   /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */
-  readiness: { notMeasured: string; blind: string; blindFix: string; blindFixLicensed: string; routeShortfallNone: string; routeShortfallSome: string; noneJudged: string; methodLine: string; methodLineUnknown: string; methodLineStale: string; deviceComputers: string; deviceBoth: string }
+  readiness: { notMeasured: string; blind: string; blindFix: string; blindFixLicensed: string; routeShortfallNone: string; routeShortfallSome: string; noneJudged: string; noneJudgedOne: string; methodLine: string; methodLineUnknown: string; methodLineStale: string; deviceComputers: string; deviceBoth: string }
   evidence: { failures: string; unreadable: string }
   /** One cohort's words wherever it is counted: people, guests, or both (derive/whoLine.ts cohortWords). */
   cohort: { people: string; guests: string; both: string }
