@@ -122,6 +122,13 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find(row => row.id === 'prepare-affected-passkeys')!
     const first = task.steps[0]
     if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$/)
+    // Three readings, not two. "Could not judge" is not "not affected", and
+    // saying the second over the first is an unhedged all-clear before a change
+    // that enforces attestation and a model allow-list: on one tenant it was
+    // said over thirty-five accounts whose key model the scan had never read,
+    // four lines under a tile saying "Existing passkeys affected · Could not
+    // verify".
+    else if (/could not tell whether/.test(first)) assert.match(first, /passkeys on [0-9]+ accounts?, because it could not read their key model/)
     else assert.equal(first, 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.')
   }
 })

@@ -8,7 +8,15 @@ import type { Fido2Configuration } from './passkeySettings.ts'
 export type PasskeyCompatibility = { accountId: string; state: 'excluded' | 'unknown' | 'review' | 'eligible'; reason: string }
 export type AffectedPasskeyMethod = { methodId: string | null; displayName: string; model: string | null; aaguid: string | null; passkeyType: string | null; reason: string }
 export type AffectedPasskeyUser = { accountId: string; methods: AffectedPasskeyMethod[]; hasCompatibleAlternative: boolean }
-export type AffectedPasskeyProjection = { state: 'known' | 'unknown'; users: AffectedPasskeyUser[]; coverage: string[] }
+/**
+ * `users` is the accounts a proposed change provably breaks. `unassessable`
+ * is the accounts holding a passkey the scan could not judge either way —
+ * which is NOT the same as safe, and was being read as safe: the step said
+ * "No existing passkey is affected by the planned settings" and then enforced
+ * attestation and a four-model allow-list over thirty-five accounts whose key
+ * model it had never been able to read.
+ */
+export type AffectedPasskeyProjection = { state: 'known' | 'unknown'; users: AffectedPasskeyUser[]; unassessable: string[]; coverage: string[] }
 export type RecoveryPasskeyCandidateSet = { state: 'complete' | 'incompatible' | 'unknown'; ids: string[]; reason: string }
 
 const isPasskey = (method: AuthMethodSummary): boolean => method.kind === 'fido2' || method.kind === 'passkey'
@@ -211,9 +219,10 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
 /** Registered methods that are usable now and not under the exact proposed target. */
 export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
-  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'] }
+  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'] }
   const target = reading.resolution.target
   const users: AffectedPasskeyUser[] = []
+  const unassessable = new Set<string>()
   const coverage = new Set<string>()
   for (const user of snapshot.users) {
     const accountId = user.id
@@ -225,7 +234,10 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
       const one = oneKey(snapshot, accountId, method)
       return { method, current: policyCompatibility(one, [accountId], reading.current, groups, 'policyUnread', 'runtime')[0], future: policyCompatibility(one, [accountId], target, groups, 'policyUnread', 'runtime')[0] }
     })
-    if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
+    if (states.some(state => state.current.state === 'unknown' || state.future.state === 'unknown')) {
+      coverage.add('Some passkeys could not be assessed because model, storage, profile, or group-membership evidence was incomplete.')
+      unassessable.add(accountId)
+    }
     const affected = states.filter(state => state.current.state === 'eligible' && state.future.state !== 'eligible' && state.future.state !== 'unknown')
     if (!affected.length) continue
     users.push({
@@ -241,5 +253,5 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
       })),
     })
   }
-  return { state: coverage.size ? 'unknown' : 'known', users, coverage: [...coverage] }
+  return { state: coverage.size ? 'unknown' : 'known', users, unassessable: [...unassessable], coverage: [...coverage] }
 }
