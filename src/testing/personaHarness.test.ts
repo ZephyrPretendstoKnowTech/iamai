@@ -13,6 +13,7 @@
 // how two calls with the wrong number of arguments sat in a tracked file.
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { acceptDirection, activePeople, answers, decide, enrolMfa, lanes, mappingOf, plan, render, stepView, tenant } from '../../docs/qa/night/personas/harness.ts'
 import type { Tenant } from '../../docs/qa/night/personas/harness.ts'
 import { marcusTenant } from '../../docs/qa/night/personas/r3-tenants.ts'
@@ -108,6 +109,14 @@ test('the board a persona reads is the board the Plan draws: its rows, their tit
   // And r3-journey counts the same rows.
   const counted = Object.values(journeyBoard(t, r)).reduce((n, k) => n + k, 0)
   assert.equal(counted, rows.length, 'the journey counts a board of its own')
+  // The harness reads the board; it builds no copy of it. Its copy of Plan.tsx's
+  // construction was wrong five ways before it was right, and it would drift
+  // again the next time the board changed.
+  const src = readFileSync('docs/qa/night/personas/harness.ts', 'utf8').replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')
+  assert.match(src, /\bboardOf\(/, 'the harness does not read the board')
+  for (const own of ['laneReadings(', 'laneViewOf(', 'readinessBlockersOf(', 'prerequisiteLabelFor(', 'cleanupComplete(', 'cleanupTitleOf(']) {
+    assert.equal(src.includes(own), false, `the harness builds its own board: it calls ${own}`)
+  }
 })
 
 test('the opened step reports the badge its head draws, and has no state of its own', () => {
