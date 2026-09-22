@@ -43,7 +43,7 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
   assert.equal(t.state, tenant)
   assert.equal(t.tone, 'done')
   assert.equal(t.line, 'alex@example.com · Global Administrator')
-  assert.equal(t.note, 'Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. The first sign-in in a tenant needs an account that can grant consent (a Global Administrator, once); every sign-in after that can be Global Reader.')
+  assert.equal(t.note, "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by ticking “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough.")
   assert.deepEqual(t.actions, [
     { label: 'Sign in with another account', weight: 'secondary' },
     { label: 'Sign out', weight: 'tertiary' },

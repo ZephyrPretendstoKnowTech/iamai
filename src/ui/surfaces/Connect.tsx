@@ -366,8 +366,9 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
   useEffect(() => {
     if (signInReady && opening && !firing.current) {
       firing.current = true
-      // A personal account: the picker, so a work or school account can be chosen.
-      const go = error?.kind === 'personal' ? signInAnother : signIn
+      // A personal account, or one that could not approve IAMAI: the picker, so a
+      // work or school account, or a Global Administrator, can be chosen.
+      const go = error?.kind === 'personal' || error?.kind === 'consent' ? signInAnother : signIn
       run(
         go().catch((e: unknown) => {
           firing.current = false

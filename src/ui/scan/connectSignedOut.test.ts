@@ -15,11 +15,11 @@ import { demoTenant } from '../demo.ts'
 import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
 
-const CONSENT = 'The first sign-in in a tenant needs an account that can grant consent (a Global Administrator, once); every sign-in after that can be Global Reader.'
+const CONSENT = "Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by ticking “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough."
 
 const OWN: Record<string, string[]> = {
   none: ['no tenant connected'],
-  consent: ['Microsoft asked for admin approval', 'first sign-in for'],
+  consent: ['Microsoft asked for admin approval', 'is not yet approved in'],
   personal: ['personal Microsoft account', 'Sign in with a work or school account'],
   cancelled: ['sign-in was cancelled'],
 }
@@ -96,13 +96,17 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   const c = signInTile({ error: consent })
   assert.equal(c.state, 'Microsoft asked for admin approval')
   assert.equal(c.tone, 'wait')
-  assert.equal(c.lead, 'This is the first sign-in for contoso.com, and consent has to be granted once by a Global Administrator. Sign in with that account this one time, or send them this link; after that, Global Reader is enough.')
+  // No "first sign-in" claim and no link that does not exist: the approval is
+  // missing until an administrator grants it for the organization, and one who
+  // leaves the box unticked approves it for themselves only.
+  assert.equal(c.lead, "IAMAI is not yet approved in contoso.com. A Global Administrator approves it once: sign in with that account and tick “Consent on behalf of your organization” on Microsoft's screen. After that, Global Reader is enough.")
+  assert.doesNotMatch(c.lead ?? '', /first sign-in|this link/)
   assert.equal(c.note, null, 'the error paragraph replaces the Global Reader line')
   assert.deepEqual(
     c.actions.map((a) => a.label),
     ['Sign in with Microsoft', 'Try it with sample data'],
   )
-  assert.equal(signInTile({ error: { kind: 'consent', domain: null } }).lead?.startsWith('This is the first sign-in for this tenant, '), true)
+  assert.equal(signInTile({ error: { kind: 'consent', domain: null } }).lead?.startsWith('IAMAI is not yet approved in this tenant. '), true)
   onlyItsOwn('consent', c)
 
   const p = signInTile({ error: personal })
