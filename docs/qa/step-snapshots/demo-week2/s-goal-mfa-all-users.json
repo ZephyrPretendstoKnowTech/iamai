@@ -16,6 +16,10 @@
     {
       "label": "Readiness",
       "state": "22 of 33 people in scope"
+    },
+    {
+      "label": "Prepare Your Team for MFA",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

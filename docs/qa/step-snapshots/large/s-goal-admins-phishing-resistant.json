@@ -16,6 +16,10 @@
     {
       "label": "Readiness",
       "state": "12 of 60 admins"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

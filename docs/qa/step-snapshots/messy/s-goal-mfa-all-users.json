@@ -12,7 +12,12 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
+    }
+  ],
   "channels": [
     "Entra",
     "PowerShell",
