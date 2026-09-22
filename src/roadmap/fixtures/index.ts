@@ -796,17 +796,19 @@ export function buildFixture(spec: Spec): Fixture {
   groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, directMembers: 'complete', directMemberIds: [...exclusionMembers], displayName: 'Core - Exclusions', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] })
   // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
   const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
-  // EVERY fixture derives through the same baseline as the product (walk-51 item
-  // 9): the pinned package. The demo always did; the rest ran an eight-policy
-  // synthetic stand-in, so nine of eleven fixtures - and four of the five
-  // simulated administrators - exercised a baseline that never ships.
+  // Only the demo (both weeks) derives through the baseline the product ships
+  // (walk-51 item 9): the pinned package. The other nine fixtures build on an
+  // eight-policy synthetic stand-in (`syntheticBaseline`), which the unit tests
+  // over them are written against and which no administrator ever sees. Moving
+  // them to the pin was measured and not done (b8ca3df9): the tests whose
+  // subject stops existing are listed in the decisions file.
   //
-  // Findings about mechanics held either way. Findings about policy content did
-  // not, and three of one persona's severity 4s were withdrawn for it; a name
-  // that read as its own gloss survived six fixtures because the pin resolves it.
-  // A test whose subject IS a baseline that is not the pin asks for
-  // `syntheticBaseline` by name (withSyntheticBaseline), which states the premise
-  // those tests used to rely on without saying.
+  // So a finding about mechanics holds on any fixture, and a finding about
+  // policy content — an app list, a filter, a name, a JSON body — holds only
+  // on the pin. Something that must see what ships (the persona harness,
+  // docs/qa/night/personas/harness.ts `tenant()`) re-bases the fixture on
+  // `pinnedPackage()` itself; `withSyntheticBaseline` names the stand-in for a
+  // test that means it.
   const baseline = spec.demo ? pinnedPackage() : syntheticBaseline(seed)
   // The demo's week two carries the answers its technician gave in week one
   // (E1): the travellers question (New Zealand added), the partner question
@@ -1032,8 +1034,9 @@ export function withBreakGlassCarveOut(f: Fixture): Fixture {
 /**
  * A fixture on the eight-policy synthetic baseline, for a test whose subject is a
  * baseline that is NOT the pin: a custom package with no reviewed source, a goal
- * the pinned map holds that the package does not. Every fixture ships on the pin
- * now, so a test that needs the other case says so here.
+ * the pinned map holds that the package does not. Only the demo fixtures are
+ * built on the pin; every other fixture is already on this baseline, so on them
+ * this changes nothing and only states the premise the test relies on.
  */
 export function withSyntheticBaseline(f: Fixture): Fixture {
   return { ...f, baseline: syntheticBaseline(f.name) }

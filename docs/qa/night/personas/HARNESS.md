@@ -31,6 +31,10 @@ import { tenant, plan, rescan, observations, deploy, days,
   (`appliedMapping`, as `planData.ts` derives it). `decide()` saves a
   decision and does not touch `t.mapping`; read `mappingOf(t)` after it.
 
+- `tenant(name, mutate?, { baseline? })` — a shipped fixture, **re-based on the
+  pinned baseline the product ships** unless `{ baseline: 'fixture' }` asks for
+  the fixture's own (the eight-policy synthetic stand-in, on every fixture but
+  the demo).
 - `plan(t)` — the FIRST scan. No prior record, by definition.
 - `observations(run, prior?)` — what that scan recorded, to hand to the next one.
 - `rescan(t, prior, now?)` — **always pass `prior`.** A rescan without it is
@@ -157,6 +161,14 @@ finding that rests on one of them is the harness's until it is re-run.
   gate stopped at 86% however often it ran (R4-41 — the number was right; the
   ceiling was the harness). It now enrols them, by the product's own reading of
   which methods the tenant allows.
+- **Every persona tenant but the demo ran on a baseline that never ships.**
+  `fixture()` builds every non-demo tenant on an eight-policy synthetic
+  baseline (fixtures/index.ts, whose comment said the opposite until
+  2026-09-22); the product loads only the pinned package. Jordan, Marcus, Sam,
+  Nadia and Priya all ran on the stand-in, so **every round-4 finding about
+  policy content — apps, filters, names, JSON bodies — needs re-running on the
+  pin before it is worked** (R4-10, R4-23). `tenant()` now re-bases on the pin
+  by default.
 
 ## Rules
 
