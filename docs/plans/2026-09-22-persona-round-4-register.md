@@ -66,3 +66,14 @@ the harness — the withdrawals matter as much as the fixes.
 | R4-56 | 2 | Sam D14 | Emergency access sits on the Completed tab while its own text says the tenant is less resilient than recommended | |
 | R4-57 | 2 | Sam D9 | The affected-people line counts break-glass into the people figure and out of the admin figure, and leads with a population smaller than the one the policy covers | |
 | R4-58 | 1 | Priya D14 | Two different tiles share one heading | |
+
+## Owner decisions, 2026-09-22 (evening)
+
+1. **Merge order.** Everything on the fix branches lands before sharing where it can: low-risk first, then what can be fixed, then the harder work — each reviewed, tested and pushed with CI green.
+2. **Held steps follow the board (R4-21, R4-55, R4-34).** A step the board holds ("After prerequisites") carries no date anywhere — rail, calendar, export, print. This narrows the Step 4 sequencing ruling to work nothing holds.
+3. **An unwatched enforcement stays Completed (R4-12)**, with a warning tile saying it went live without a watched report-only window, and "Verify after the change" kept on it.
+4. **Security defaults on beside enabled policies (R4-08):** state it and say not to turn security defaults off to settle it; do not instruct a revert. The owner's view: that state should not be possible.
+5. **Dormant admins stay in Prepare Your Team for MFA (R4-52)**, named on their own line — only where their sign-in activity was actually read, never assumed.
+6. **Only the recovery drill and security defaults hold a policy's turn-on** in every channel; the graph's other hard prerequisites stay the lane engine's to sequence (readiness thresholds already gate the MFA campaign).
+7. **One passkey per emergency account.** Redundancy is the second account, not a second method; nothing may ask for a second method on an emergency account. The per-account "method diversity" change (0c2bcd9e) stays reverted; a cross-account concern (both accounts on one device) remains a hint.
+8. **Authentication context c1 (R4-18):** explain on the step, in plain words, what an authentication context is and why PIM needs it; no confirmation checkbox. A collision with another use of c1 costs extra MFA prompts, not access.
