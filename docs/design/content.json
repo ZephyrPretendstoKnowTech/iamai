@@ -341,6 +341,14 @@
       },
       "readiness": {
         "notMeasured": "not measured",
+        "$commentMeasureStrength": "A readiness number is measured against the policy's own requirement (roadmap/methodReadiness.ts, over the step's effects), and was labelled by the goal's family. The device-registration policy requires the custom strength Modern MFA + TAP, which Authenticator does not satisfy, and its threshold read \"At least 5% MFA-ready\" and \"when MFA readiness reaches 90%\" beside the registration policy's \"79% MFA-ready\" on the same board: two numbers for two requirements under one label, and a reader acted on the larger one (R4-26, Jordan D4). Where the policies require a strength the family's words do not already say (plain MFA for mfa and guest, Phishing-resistant MFA for admin), the measure names it, by the tenant's own name for it. Each ends on \"readiness\", as the family's own measures do, so the row's threshold reads in the shape the date column and the plan header look for (\"when … readiness reaches 90% (now 27%)\").",
+        "measureStrength": {
+          "mfa": "{strength} readiness",
+          "guest": "guest {strength} readiness",
+          "admin": "admin {strength} readiness"
+        },
+        "$commentStrengthUnnamed": "The same, where nothing in the tenant names the strength the policies require: it is still not the family's requirement, and the label must not say it is.",
+        "strengthUnnamed": "authentication strength",
         "$commentBlind": "\"It is not measured yet\" is true and unactionable on its own. Sixteen policies of one tenant were parked behind three sources the scan could not read, and no sentence anywhere named which three or what would open them — a blind the reader could have cleared in five minutes. The source's name, the recorded reason, the permission that reads it and the licence it needs all exist already (graph/collect/registry.ts, the snapshot's own SourceState).",
         "blind": "This number is measured from {source}, which IAMAI could not read in this tenant — {reason}. {fix}",
         "blindFix": "It is read with the {scope} permission; once that is granted, scan again.",
@@ -1809,6 +1817,12 @@
             "mfa": "{value} MFA-ready",
             "admin": "{value} of admins phishing-resistant",
             "device": "{value} of people on a compliant device"
+          },
+          "$commentReadinessValueStrength": "The threshold tile's collapsed value where the gate names the strength its policies require (engine.readiness.measureStrength, R4-26 Jordan D4): two tiles measuring different requirements never share a label.",
+          "readinessValueStrength": {
+            "mfa": "{value} ready for {strength}",
+            "guest": "{value} ready for {strength}",
+            "admin": "{value} of admins ready for {strength}"
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",

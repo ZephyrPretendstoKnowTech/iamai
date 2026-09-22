@@ -18,7 +18,7 @@ import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
-import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
+import { BLOCKED_REASON, readinessFamilyOf, readinessMeasure } from '../copy/reasons.ts'
 import { EMERGENCY_ACCOUNT_RULES, emergencyAccountStanding, emergencyAccountStandingForStep, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
@@ -88,7 +88,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf } from './readiness.ts'
+import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf, strengthMeasuredOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -1974,9 +1974,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // The resolved target determines method suitability and its denominator.
     // Eligible role holders are prepared for activation; Impact stays active-only.
+    // The strength that target requires, where the family's words would name
+    // another (roadmap/readiness.ts strengthMeasuredOf): the gate below is stated
+    // against it.
+    let measuredStrength: string | null = null
     if (['mfa', 'admin', 'guest'].includes(readinessKey)) {
       const effects = deliveringEffects ?? validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
       methodTargets.set(goal.id, effects)
+      measuredStrength = strengthMeasuredOf(effects, readinessKey, snapshot, mapping)
       policyPreparation = methodPreparation(effects, viability.map(v => v.userId), snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
@@ -2016,8 +2021,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // is computed from the percentage and the unmeasured reason, both
       // untouched, so unknown still holds enforcement exactly as before.
       const floor = readiness.percent === null && readiness.atLeast !== undefined
+      const family = readiness.family
       return {
-        measure: READINESS_MEASURE[readiness.family] ?? 'readiness',
+        // Named for the requirement the number was measured against (R4-26):
+        // the policies' own strength where the family's words would say another.
+        // Every sentence that states the gate reads this one measure.
+        measure: readinessMeasure(family, measuredStrength),
+        ...(measuredStrength !== null ? { family, strength: measuredStrength } : {}),
         threshold: `${threshold}%`,
         value: readiness.percent !== null ? `${readiness.percent}%` : floor ? `${readiness.atLeast}%` : engine.readiness.notMeasured,
         ...(floor ? { floor: true as const } : {}),
@@ -2583,7 +2593,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // that number until the source can be read, and naming a campaign beside
       // it sends the reader to do work that will not change it.
       if (gate === undefined || gate.route !== undefined || gate.blind !== undefined) continue
-      const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
+      // The gate's own family: its measure may name a strength rather than the family (R4-26).
+      const family = readinessFamilyOf(gate)
       if (family === undefined || !movedByCampaign.has(family)) continue
       // "Moved there by construction" is the claim this checks. The campaign
       // prepares the people the scan has seen sign in; this gate counts everyone

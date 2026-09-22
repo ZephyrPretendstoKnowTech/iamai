@@ -117,3 +117,27 @@ export const READINESS_MEASURE: Record<string, string> = {
   admin: 'admin readiness',
   device: 'device readiness',
 }
+
+/**
+ * The family a readiness gate measures: its own where the gate carries one —
+ * only where its measure names the policies' strength rather than the family's
+ * words (R4-26) — else read back from its measure. It picks the gate's tile
+ * words and whether the campaign moves its number.
+ */
+export function readinessFamilyOf(gate: { measure: string; family?: string }): string | undefined {
+  return gate.family ?? Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
+}
+
+/**
+ * The measure a readiness threshold is stated against: its family's words, or,
+ * where its policies require an authentication strength those words do not say
+ * (roadmap/readiness.ts strengthMeasuredOf), that strength by name. The gate
+ * carries the result as its `measure`, so every sentence that states the gate
+ * — the row's reason, the Threshold card, the milestone, the export — names the
+ * requirement the number was measured against (R4-26, Jordan D4).
+ */
+export function readinessMeasure(family: string, strength: string | null): string {
+  if (strength === null) return READINESS_MEASURE[family] ?? 'readiness'
+  const words = engine.readiness.measureStrength
+  return fillText(words[family] ?? words.mfa, { strength })
+}

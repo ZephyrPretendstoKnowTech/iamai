@@ -41,7 +41,7 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
-import { BLOCKED_REASON, BLOCKED_SUBJECT, READINESS_MEASURE } from '../../copy/reasons.ts'
+import { BLOCKED_REASON, BLOCKED_SUBJECT, readinessFamilyOf } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
@@ -148,6 +148,8 @@ type ContractWords = {
   foundReadinessRouteStepHeld: string
   /** The threshold tile's collapsed value, by its measure's family: the percentage and what it measures (content review S3). */
   readinessValue: Record<string, string>
+  /** The same, where the gate names the strength its policies require (R4-26). */
+  readinessValueStrength: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
   foundShortfall: string
@@ -1832,8 +1834,8 @@ function routeStartOf(step: Step, gate: NonNullable<Step['action']['readinessGat
   return { id, title: stepById[id]?.title ?? cleanupTitleOf(id) ?? id }
 }
 
-/** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
-const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
+/** The family a readiness gate measures (copy/reasons.ts readinessFamilyOf). */
+const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => readinessFamilyOf(gate)
 
 /**
  * The threshold tile's collapsed value (content review S3): the percentage with
@@ -1842,11 +1844,15 @@ const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | 
  */
 export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate']>): string {
   const family = familyOf(gate)
-  const template = family === undefined ? undefined : CONTRACT.readinessValue[family]
+  // Named for the strength the number was measured against, where the family's
+  // words would name another: "At least 5% MFA-ready" and "79% MFA-ready" sat on
+  // one board over two different requirements (R4-26, Jordan D4).
+  const strength = gate.strength === undefined ? undefined : CONTRACT.readinessValueStrength[family ?? 'mfa'] ?? CONTRACT.readinessValueStrength.mfa
+  const template = strength ?? (family === undefined ? undefined : CONTRACT.readinessValue[family])
   // A floor is wrapped before the family template, so "At least 68% MFA-ready"
   // reads beside a sibling's "68% MFA-ready" as the weaker claim it is.
   const value = gate.floor === true ? fillText(CONTRACT.readinessAtLeast, { value: gate.value }) : gate.value
-  return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value }) : value
+  return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value, strength: gate.strength ?? '' }) : value
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */
