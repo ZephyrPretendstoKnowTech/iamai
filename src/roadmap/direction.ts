@@ -224,7 +224,19 @@ function locationQuestions(ctx: Context): DirectionQuestion[] {
       // first place, on no evidence; the suggestion that keeps the work on the
       // plan is the conservative one (owner, 2026-09-20).
       suggested: trusted.length > 0 ? answer('office', trusted) : answer('notInEntra'),
-      evidence: !read ? W.defaultEvidence : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length }) : Q.officeNetwork.notSeen,
+      // The evidence, and — where the saved answer contradicts it — what that
+      // answer does with it. "Everyone works remotely" sat beside "1 named
+      // location is marked trusted" with nothing joining them: the evidence is
+      // true, argues for the opposite answer, and the suggestion WAS the
+      // opposite answer. A reader who reads carefully, which is who this
+      // question is for, met a contradiction on one line and no way to tell
+      // which half to believe.
+      evidence: [
+        !read ? W.defaultEvidence : trusted.length > 0 ? fillText(Q.officeNetwork.seen, { n: trusted.length }) : Q.officeNetwork.notSeen,
+        read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote'
+          ? fillText(Q.officeNetwork.savedRemoteUnused, { n: trusted.length })
+          : null,
+      ].filter((line): line is string => line !== null).join(' '),
       note: Q.officeNetwork.note,
     }),
     question('workCountries', ctx, {
