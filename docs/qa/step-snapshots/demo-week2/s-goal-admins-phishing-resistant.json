@@ -16,6 +16,10 @@
     {
       "label": "Readiness",
       "state": "2 of 3 admins"
+    },
+    {
+      "label": "Prepare Your Team for MFA",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

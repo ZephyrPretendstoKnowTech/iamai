@@ -16,6 +16,10 @@
     {
       "label": "Readiness",
       "state": "43 of 60 people in scope"
+    },
+    {
+      "label": "Verify Emergency Access",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
