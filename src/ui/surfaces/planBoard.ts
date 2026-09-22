@@ -449,7 +449,10 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
   if (!r) return []
   const read = (b: HoldBlocker, overtaken: boolean): PrerequisiteBlocker => {
     const direction = b.kind === 'decision' && isDirectionStep(b.id)
-    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(overtaken ? { overtaken: true as const } : {}) }
+    // Which of them the row names (holdLabelOf reads `r.reason`), so the opened
+    // step can never leave out the one prerequisite its row is showing.
+    const primary = !overtaken && r.reason !== null && r.reason.kind === b.kind && r.reason.id === b.id
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(overtaken ? { overtaken: true as const } : {}), ...(primary ? { primary: true as const } : {}) }
   }
   // A completed step's own prerequisites that the scan still finds unmet: not
   // work on this step any more, but the reader is owed the fact that it went

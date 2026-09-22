@@ -331,3 +331,25 @@ test('two trusted locations failing the same check stay two cards, each naming i
   for (const t of wide) assert.equal(t.label, RULE_TEXT['loc.notWholeInternet'].label, 'the finding is not headed by its check')
   assert.deepEqual(wide.map((t) => (t.note ?? '').split(':')[0]).sort(), ['Branch Office', office.displayName].sort(), 'a card does not name the location it is about')
 })
+
+// R4-16 (Marcus D6), second half. Four risk policies read "On Hold · After
+// Prepare Your Team for MFA" on the board, and each opened on one tile, "Verify
+// Emergency Access · To do": the campaign itself waits on the drill, so the
+// direct-only rule dropped it as "waiting on another". One row and its page
+// named different prerequisites, and the one the row named was on the page
+// nowhere. The row's own prerequisite (the lane's reason) is always drawn; the
+// one that can be done today stays beside it.
+test('the prerequisite the row names is on the opened step, beside the one that can be done today', () => {
+  // A policy with no step of its own to finish first, so the two below are its only prerequisites.
+  const { step, c } = opened('demo-week2', 's-goal-register-info-protected')
+  assert.equal(readinessOf(step, c, []).tiles.some((t) => /^(step|missing):/.test(t.key)), false, 'the premise: no other prerequisite tile')
+  const drill: PrerequisiteBlocker = { kind: 'step', id: 'cleanup-drill', abnormal: false, label: BOARD.blockers.step, title: 'Verify Emergency Access' }
+  const campaign: PrerequisiteBlocker = { kind: 'step', id: 's-verify-mfa', abnormal: false, label: BOARD.blockers.step, title: 'Prepare Your Team for MFA' }
+  const drawn = (bs: PrerequisiteBlocker[]): string[] => readinessOf(step, c, bs).tiles.map((t) => t.key).filter((k) => k.startsWith('engine:step:'))
+  assert.deepEqual(drawn([drill, campaign]), ['engine:step:cleanup-drill'], 'the premise: the campaign waits on the drill, so a prerequisite no row names is still left to the drill')
+  assert.deepEqual(drawn([drill, { ...campaign, primary: true }]), ['engine:step:cleanup-drill', 'engine:step:s-verify-mfa'])
+  // And the board marks which one its row names: the lane's own reason.
+  const reading = { lane: 'On Hold' as const, substatus: null, reason: { kind: 'step' as const, id: 's-verify-mfa', milestone: null, condition: null, abnormal: false, ordinal: 5 }, blockers: [{ kind: 'step' as const, id: 'cleanup-drill', milestone: null, condition: null, abnormal: false, ordinal: 1 }, { kind: 'step' as const, id: 's-verify-mfa', milestone: null, condition: null, abnormal: false, ordinal: 5 }], gates: [], order: 0, fromEngine: true }
+  const marked = readinessBlockersOf(reading as never, () => null)
+  assert.deepEqual(marked.filter((b) => b.primary === true).map((b) => b.id), ['s-verify-mfa'])
+})
