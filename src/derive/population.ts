@@ -101,9 +101,16 @@ export type StepPopulationView = {
  *
  * Null on an open policy whose scope could not be settled: the surfaces then
  * render no count and no names rather than the goal's people (Foundation A).
+ *
+ * A delivered step is the same answer about the tenant policies that deliver
+ * it, read from their own scope (`deliveredReach`), so turning a policy on does
+ * not move its reach (R4-30). It read the goal's population whenever the step
+ * was done, and a policy the plan had watched in report-only covering 283
+ * covered 279 the scan after it was enforced, unchanged. Where their scope could
+ * not be settled the step keeps the goal's population, as it did.
  */
 export function reached(step: Step): StepPopulation | null {
-  if (effectsOf(step) === null) return step.population
+  if (effectsOf(step) === null) return step.state?.satisfied === true && step.deliveredReach ? step.deliveredReach : step.population
   return step.cohort ?? null
 }
 

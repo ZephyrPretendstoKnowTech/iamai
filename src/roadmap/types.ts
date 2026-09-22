@@ -539,6 +539,11 @@ export type Step = {
    * miss most of the directory — a policy that excludes a group holding 116 of
    * 122 accounts delivers it for six people — and the step said only "already
    * delivered, so there is nothing to create". Absent where nothing is short.
+   *
+   * `active` is the goal's accounts that can sign in, `people` the ones the
+   * step's policy does not reach, read from that policy's own scope (`cohort`),
+   * and `reached` the rest (R4-30). Absent where that scope is not settled, and
+   * where the policy misses nobody but the emergency accounts.
    */
   coverageShortfall?: { detail: string; people: number; reached: number; active: number }
   population: StepPopulation
@@ -621,6 +626,14 @@ export type Step = {
    * from `population`.
    */
   cohort?: StepPopulation
+  /**
+   * The same reading of the tenant policies that deliver the goal, where the
+   * scan found it delivered: the accounts their own user scope names, so a
+   * policy's reach does not move when it is turned on (R4-30). Read by
+   * derive/population.ts `reached` while the step stays delivered. Absent where
+   * their scope could not be settled; the step then reads `population`, as it did.
+   */
+  deliveredReach?: StepPopulation
   /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
