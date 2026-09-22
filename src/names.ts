@@ -13,46 +13,54 @@ import type { GroupMembers } from './coverage/population.ts'
 // not is an unnamed account, said plainly, never as a phrase about IAMAI.
 export const UNNAMED = 'an unnamed account'
 
-/** Guest ids whose display name is shared by another account (prompt 49 item 1): they carry a (guest) marker. */
-export function collidingGuestIds(users: { id: string; displayName: string | null; userType: 'member' | 'guest' }[]): Set<string> {
-  const count = new Map<string, number>()
-  for (const u of users) if (u.displayName) count.set(u.displayName, (count.get(u.displayName) ?? 0) + 1)
-  const out = new Set<string>()
-  for (const u of users) if (u.userType === 'guest' && u.displayName && (count.get(u.displayName) ?? 0) > 1) out.add(u.id)
-  return out
-}
+/** A person as the directory records them: enough to name them. */
+export type PersonRow = { id: string; displayName: string | null; userPrincipalName?: string | null; userType: 'member' | 'guest' }
+
 /**
- * Every person's label, with a shared display name told apart.
+ * Every person's label, with a shared display name told apart: the one rule for
+ * naming a person, read by the name directory every surface names people
+ * through, by the engine's own pre-baked strings (roadmap/generate.ts nameOf)
+ * and by the account lists a package hands over (stepPackage.ts).
  *
- * The (guest) marker settles the one case it was written for and no other: a
- * guest and a member with the same name. Two members with the same name — the
- * ordinary case in any directory with a Chen or a Taylor in it — were both
- * rendered as the bare name, on steps that name one person and mean one
- * person. "Kai Brown completed a phishing-resistant sign-in" was read on one
- * step while another listed a different Kai Brown, and the reader concluded
- * the wrong account needed a passkey.
+ * Two members with the same name — the ordinary case in any directory with a
+ * Chen or a Taylor in it — were both rendered as the bare name, on steps that
+ * name one person and mean one person. "Kai Brown completed a phishing-resistant
+ * sign-in" was read on one step while another listed a different Kai Brown, and
+ * the reader concluded the wrong account needed a passkey.
  *
- * So: mark the guest as before, then look again. Any label still shared after
- * that carries the account's sign-in address, which is the thing a person
- * types into a portal to tell the two apart. Nothing is marked where nothing
- * collides, so a directory of distinct names reads exactly as it did.
+ * The (guest) marker (prompt 49 item 1) told a guest from a member of the same
+ * name and left the member bare. On getiamai Prepare Your Team for MFA said
+ * "Admins not yet ready: Kai Brown" while the directory held two Kai Browns, a
+ * member and a guest; the portal finds both by that name, and the dormant-account
+ * review listed the guest as "Kai Brown (user3@…)" without its marker, so a
+ * reader could not tell which account to help register (Nadia §3 item 10).
+ *
+ * So every account whose display name another account shares carries its
+ * sign-in address, which is the thing a person types into a portal to tell the
+ * two apart, and a guest among them keeps its marker: "Kai Brown
+ * (kai@example.com)", "Kai Brown (guest, kai@partner.example.com)". A name
+ * nobody shares is left bare, so a directory of distinct names reads exactly as
+ * it did. `address` asks for the sign-in address on every account, for a list
+ * of accounts a task acts on in the portal.
  */
-export function personLabels(users: { id: string; displayName: string | null; userPrincipalName?: string | null; userType: 'member' | 'guest' }[]): Map<string, string> {
-  const guests = collidingGuestIds(users)
-  const marked = new Map<string, string>()
-  for (const u of users) {
+export function personLabels(users: PersonRow[], o: { address?: boolean } = {}): Map<string, string> {
+  const baseOf = (u: PersonRow): string | null => {
     const base = u.displayName ?? u.userPrincipalName ?? null
-    if (typeof base !== 'string' || base.length === 0) continue
-    marked.set(u.id, guests.has(u.id) ? `${base} (guest)` : base)
+    return typeof base === 'string' && base.length > 0 ? base : null
   }
   const count = new Map<string, number>()
-  for (const label of marked.values()) count.set(label, (count.get(label) ?? 0) + 1)
+  for (const u of users) {
+    const base = baseOf(u)
+    if (base !== null) count.set(base, (count.get(base) ?? 0) + 1)
+  }
   const out = new Map<string, string>()
   for (const u of users) {
-    const label = marked.get(u.id)
-    if (label === undefined) continue
+    const base = baseOf(u)
+    if (base === null) continue
+    const shared = (count.get(base) ?? 0) > 1
     const upn = typeof u.userPrincipalName === 'string' ? u.userPrincipalName.trim() : ''
-    out.set(u.id, (count.get(label) ?? 0) > 1 && upn !== '' && upn !== label ? `${label} (${upn})` : label)
+    const marks = [shared && u.userType === 'guest' ? 'guest' : null, (shared || o.address === true) && upn !== '' && upn !== base ? upn : null].filter((m): m is string => m !== null)
+    out.set(u.id, marks.length > 0 ? `${base} (${marks.join(', ')})` : base)
   }
   return out
 }
@@ -108,8 +116,8 @@ export function buildNameDirectory(
       }
     }
     // One rule for a shared display name, here and in the engine's own pre-baked
-    // strings (roadmap/generate.ts nameOf): the guest marker first, then the
-    // sign-in address wherever two accounts still read the same.
+    // strings (roadmap/generate.ts nameOf): the sign-in address on every account
+    // whose display name another shares, and the guest marker on a guest among them.
     for (const [id, label] of personLabels(snapshot.users)) put(id, label)
     for (const raw of snapshot.config.namedLocations?.rows ?? []) {
       const l = raw as { id?: string; displayName?: string }
