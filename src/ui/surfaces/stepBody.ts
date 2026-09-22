@@ -344,6 +344,20 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     const artifact = packageArtifact(resource, grounding)
     if (resourceChannelAllowed(step, artifact.id) && !produced.some(a => a.id === artifact.id) && artifact.text().trim()) produced.push(artifact)
   }
+  // A policy step whose package drew no Entra procedure — its projection has
+  // none, and no lifecycle resource holds every value it names — hands over the
+  // step's own resolved lines, the translator's create with the plan tag, as
+  // the export does (stepExport.ts: `portal` while the implementation is
+  // current). With one of the guests pair resolved, the lifecycle channel is
+  // dropped for the name IAMAI does not hold (stepResources.ts), and the screen
+  // then fell through to the content's preparation lines while the export, the
+  // print, the prompt pack and the AI Info's intended result carried the create:
+  // two instructions for one step. The preparation lines stay for a step that
+  // has no resolved operation to offer.
+  if (machine && reason === null && deployNow && portalLines.length > 0 && !produced.some(a => a.id === 'portal') && resourceChannelAllowed(step, 'portal')) {
+    supported.add('portal')
+    produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+  }
   const explanations = pkg && pkgState && pkgBindings && pkgRuntime ? projectExplanation(pkg, pkgState, pkgBindings, pkgRuntime.runtime).channels : []
   for (const explanation of explanations) {
     const artifact = packageArtifact(explanation, grounding)
