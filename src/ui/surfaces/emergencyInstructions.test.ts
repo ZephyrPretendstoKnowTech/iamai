@@ -116,6 +116,20 @@ test('Step 1: with enough cloud-only accounts selected the create procedure says
   const none = structuredClone(fixture('demo-week2'))
   none.mapping.breakGlassUserIds = []
   assert.ok(!createOf(none).some(line => REFERENCE.test(line)))
+
+  // A selected account that may not be dedicated. The line used to appear here
+  // too: with the account signed in to IAMAI now, or carrying a job title, its
+  // card noted it and bg.notPersonal's fix said "Use a dedicated account ...
+  // Users → New user", while this procedure said no new account was needed —
+  // steering an administrator towards keeping a daily Global Administrator
+  // account as the way back in. IAMAI cannot know a new account is unneeded
+  // when its own check says one may not be dedicated.
+  const signedIn = structuredClone(fixture('demo-week2'))
+  signedIn.snapshot.config.me = { status: 'ok', reason: null, rows: [{ id: signedIn.mapping.breakGlassUserIds[0] }] }
+  assert.ok(!createOf(signedIn).some(line => REFERENCE.test(line)), 'the operator is selected')
+  const titled = structuredClone(fixture('demo-week2'))
+  titled.snapshot.users.find(user => user.id === titled.mapping.breakGlassUserIds[1])!.jobTitle = 'IT Manager'
+  assert.ok(!createOf(titled).some(line => REFERENCE.test(line)), 'a selected account has a job title')
 })
 
 test('Step 2: nothing wrong reads as nothing to change, with the group named', () => {
