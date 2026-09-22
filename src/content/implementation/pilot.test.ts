@@ -26,6 +26,9 @@ import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor,
 import { fillText } from '../render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
+/** The mode ValidateSet of a projected script, for reading which modes it still declares. */
+const SET_RE = new RegExp("ValidateSet" + String.fromCharCode(92) + "(([^)]*)" + String.fromCharCode(92) + ")")
+
 const DIR = `docs/implementation-content/${PILOT_STEP_ID}`
 const read = (p: string): string => readFileSync(p, 'utf8')
 const PKG: CompiledPackage = compilePackage(read(`${DIR}/META.json`), read(`${DIR}/CONTENT.md`))
@@ -99,7 +102,19 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   // is omitted when nothing is removed, as here; every other authored line is carried.
   const optional = /\[omit this line when unavailable\]/
   assert.ok(authored('powershell.run').split('\n').some((l) => optional.test(l)), 'the premise: the script carries the optional removal line')
-  assert.ok(by.powershell.text.includes(authored('powershell.run').split('\n').filter((l) => !optional.test(l)).join('\n')), 'the authored script is not carried whole')
+  // The script carries the mode it is CALLED in and no other (invocation.ts
+  // scriptForRuns). It used to be carried whole however few modes were offered,
+  // so a step that withheld enforcement in the Portal and JSON channels shipped
+  // a PowerShell Enforce branch with the policy and its id pre-filled, one
+  // word's edit from the mode it did offer.
+  const shipped = by.powershell.text
+  const declared = SET_RE.exec(shipped)
+  assert.equal(declared?.[1], "'Enforce'", `the script still declares modes it is not called in: ${declared?.[1]}`)
+  const authoredLines = authored('powershell.run').split('\n').filter((l) => !optional.test(l))
+  assert.ok(authoredLines.filter((l) => shipped.includes(l)).length > authoredLines.length / 2, 'the script is not the authored one')
+  for (const mode of ['Create', 'CorrectConditions', 'CorrectGrant', 'CorrectSession', 'ReportOnly', 'Verify']) {
+    assert.ok(!shipped.includes(`-eq '${mode}'`), `the script still dispatches on ${mode}`)
+  }
   assert.doesNotMatch(by.powershell.text, /This change removes|\{\{/)
   assert.ok(
     by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
