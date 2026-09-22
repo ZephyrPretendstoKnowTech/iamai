@@ -37,7 +37,11 @@ import { tenant, plan, rescan, observations, deploy, days,
 - `tenant(name, mutate?, { baseline? })` — a shipped fixture, **re-based on the
   pinned baseline the product ships** unless `{ baseline: 'fixture' }` asks for
   the fixture's own (the eight-policy synthetic stand-in, on every fixture but
-  the demo).
+  the demo). A run on the stand-in prints a warning: the goal map names none
+  of its policies, so the engine matches them to goals by signature, which no
+  production baseline does, and what a step creates, reaches or gates on is not
+  what the product would show. A pinned tenant whose baseline the map does not
+  describe stops (`goalMapDescribes`).
 - `plan(t)` — the FIRST scan. No prior record, by definition.
 - `observations(run, prior?)` — what that scan recorded, to hand to the next one.
 - `rescan(t, prior, now?)` — **always pass `prior`.** A rescan without it is

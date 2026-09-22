@@ -39,6 +39,7 @@ import { activePeopleIds } from '../../../../src/derive/population.ts'
 import { notPeopleIds } from '../../../../src/derive/sets.ts'
 import { setDisplayTimeZone } from '../../../../src/copy/dates.ts'
 import { pinnedPackage } from '../../../../src/baseline/pinned.ts'
+import { PINNED_GOAL_MAP, policyKey } from '../../../../src/roadmap/goalMap.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
 import type { Step } from '../../../../src/roadmap/types.ts'
 
@@ -71,12 +72,37 @@ export const activePeople = (t: Tenant): string[] => activePeopleIds(t.snapshot,
  * does not have; R4-23). So a persona's tenant is re-based on the pin unless
  * the persona asks otherwise: `{ baseline: 'fixture' }` keeps the fixture's
  * own, for a run that means to reproduce what a unit test sees.
+ *
+ * The stand-in is not only a different set of policies. The product hands the
+ * engine the goal map pinned with its baseline, and the map names none of the
+ * stand-in's policies, so on the stand-in the engine falls back to matching
+ * policies to goals by their signature (generate.ts `sourcesFor`), a path no
+ * production baseline takes; on the stand-in it picked the all-users MFA
+ * policy for guests. So a tenant whose baseline the map does not describe says so:
+ * on the pin that is a mistake and stops the run; on the stand-in, which asked
+ * for it, the run is told what it is reading.
  */
 export function tenant(base: FixtureName, mutate: (t: Tenant) => void = () => {}, opts: { baseline?: 'pinned' | 'fixture' } = {}): Tenant {
   const t = structuredClone(fixture(base)) as Tenant
-  if ((opts.baseline ?? 'pinned') === 'pinned') t.baseline = pinnedPackage()
+  const pinned = (opts.baseline ?? 'pinned') === 'pinned'
+  if (pinned) t.baseline = pinnedPackage()
   mutate(t)
+  if (!goalMapDescribes(t)) {
+    if (pinned) throw new Error(`tenant('${base}'): the pinned goal map describes none of this tenant's baseline policies, so the engine would match them by signature, which the product never does. Something replaced the pinned baseline.`)
+    console.warn(`tenant('${base}', …, { baseline: 'fixture' }): the fixture's stand-in baseline. The goal map describes none of its policies, so the engine matches them to goals by signature, a path no production baseline takes. Which policy a step creates, its reach and its gate on this run are not what the product would show.`)
+  }
   return t
+}
+
+/**
+ * Whether the goal map the product hands the engine (the pinned baseline's own,
+ * `PINNED_GOAL_MAP`, which runFixture defaults to) names any of this tenant's
+ * baseline policies — the test generate.ts makes before it falls back to
+ * signature matching (`mapDescribesPackage`).
+ */
+export function goalMapDescribes(t: Tenant): boolean {
+  const keys = new Set(t.baseline.policies.map((p) => policyKey(p)))
+  return Object.values(PINNED_GOAL_MAP).flat().some((k) => keys.has(k))
 }
 
 /**
