@@ -27,7 +27,7 @@ import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTit
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
-import { heldForReview } from '../../roadmap/lifecycle.ts'
+import { heldForCorrection, heldForReview } from '../../roadmap/lifecycle.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
@@ -83,6 +83,12 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
   // creation day (roadmap/stepSchedule.ts scheduledEventOf), enforcement undated.
   if (isHeld(step) && !heldForReview(step)) return scheduledEventOf(step)?.transition === 'createReportOnly' ? '{datesDeploy}' : null
   if (awaitingDeployment(step)) return '{datesDeploy}'
+  // Held only on a difference IAMAI does not write, the policy is held like any
+  // other and has no Dates line: {datesReview} says "Held until the change
+  // somebody made to the policy has been looked at", and nobody changed it — it
+  // can be a policy first seen in this scan (R4-25). The step's action names
+  // the correction it waits on.
+  if (heldForCorrection(step)) return null
   // A policy held for review dates no review either: the window's own date says
   // when the *watching* would have been enough, and it was not counted on the
   // policy that is deployed now (roadmap/lifecycle.ts heldForReview).

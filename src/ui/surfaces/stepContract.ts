@@ -27,7 +27,7 @@ import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
 import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
-import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
+import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
@@ -975,11 +975,16 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // member it belongs to and never by the step as a whole, so on a pair the
   // operator reads which policy moved; what moved is the observation, and that
   // is reported under What IAMAI found rather than said twice here.
+  // Only a member that moved is "no longer the policy IAMAI was watching"
+  // (observation.ts `drifted`). One that is not what the plan asked for in a
+  // part IAMAI does not write never moved — it can be a policy first seen in
+  // this scan — so its fix is the correction, named by where it differs (R4-25).
   if (heldForReview(step)) {
     for (const m of step.state.members) {
       if (!m.change.reviewRequired) continue
       const name = step.tracking?.members?.find((t) => t.key === m.key)?.policyName || m.sourceName
-      out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
+      if (m.change.drifted) out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
+      if (m.change.unwritten.length > 0) out.push({ key: `review:${m.key}:unwritten`, text: fillText(engine.tracking.correctionManual, { name, fields: dimensionWords(m.change.unwritten) }) })
     }
   }
   const what = (cs?.whatToDo ?? null) as Record<string, unknown> | null
@@ -1243,7 +1248,14 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   // A step held for review finishes on its own gates *and* on the change being
   // accounted for; the review comes first because until it clears, the gates
   // below are being counted on a policy nobody has vouched for.
-  const review = heldForReview(step) ? [CONTRACT.doneReview] : []
+  // A change is accounted for only where there was one (lifecycle.ts
+  // reviewCauses); a policy held on a difference IAMAI does not write finishes
+  // on holding what the plan asked for there (R4-25).
+  const why = reviewCauses(step)
+  const review = !heldForReview(step) ? [] : [
+    ...(why.drifted || why.unwritten.length === 0 ? [CONTRACT.doneReview] : []),
+    ...(why.unwritten.length > 0 ? [fillText(CONTRACT.doneManual, { fields: dimensionWords(why.unwritten) })] : []),
+  ]
   if (own.length > 0) return [...review, ...own]
   if (review.length > 0) return review
   if (fix.length > 0) return [CONTRACT.doneBlocked]

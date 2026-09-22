@@ -165,6 +165,18 @@ export type ObservationChange = {
    * not a rollout in trouble.
    */
   reviewRequired: boolean
+  /**
+   * Why a person looks, where the reason is a change: the policy IAMAI was
+   * watching now means something the plan did not ask for. `reviewRequired` is
+   * also true for a policy that is not what the plan asked for in a part IAMAI
+   * does not write (`unwritten`), and that is a difference, not a change — a
+   * policy first seen in this scan, built short of the plan, never moved at all.
+   * Folded into the one boolean, every surface said the first: "no longer the
+   * policy IAMAI was watching: find out what changed on it" about a policy
+   * nobody had watched and nothing had changed on (R4-25). Never true on a
+   * first sighting.
+   */
+  drifted: boolean
   /** Where the deployed policy is not what the plan asked for in a part the operation does not write (`unwrittenDifferences`). Derived each scan, never stored. */
   unwritten: readonly string[]
   /** One sentence for the step, from shared.engine.observation. */
@@ -575,6 +587,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       expected: false,
       continuity: 'first-scan',
       reviewRequired: differs !== null,
+      drifted: false,
       unwritten,
       note: differs ?? fillText(OBS.firstScan, { state: STATE_WORD[state], date }),
     }
@@ -628,7 +641,8 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    * nothing about what happens to anybody. Continuity is a fact about history;
    * this is a fact about the tenant, and the two used to be one boolean.
    */
-  const reviewRequired = (semanticsMoved && !expected) || differs !== null
+  const drifted = semanticsMoved && !expected
+  const reviewRequired = drifted || differs !== null
   // The window a state has earned survives anything that did not move it — and
   // begins again at this scan wherever it does not carry over at all.
   const moved = changed !== 'none' || continuity !== 'continues'
@@ -667,6 +681,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     expected,
     continuity,
     reviewRequired,
+    drifted,
     unwritten,
     note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state, artifactAnswer === 'same' && !moved && prior.neverObserved === true),
   }

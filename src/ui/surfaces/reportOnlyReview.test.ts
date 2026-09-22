@@ -598,3 +598,57 @@ test('006.12: the review condition survives the whole path, and every consumer r
   assert.equal(control.step.events !== null, true, 'the healthy control does earn an enforcement')
   assert.equal(nextMilestone(control.step).kind, 'enforce')
 })
+
+// ---- 13. a difference nobody made is not a change to find out about ----
+
+test('006.13 (R4-25): a policy first seen with a part IAMAI does not write left out is corrected, never "no longer the policy IAMAI was watching"', () => {
+  // The defect: observation.ts folded two facts into one `reviewRequired` — the
+  // watched policy drifted, and the policy is not what the plan asked for in a
+  // part IAMAI does not write — and every surface worded the first. An admin
+  // built Block Unsupported Platforms without its platform condition (the
+  // portal default); the scan before had recorded the policy absent. The next
+  // scan's Fix read "… is no longer the policy IAMAI was watching: find out what
+  // changed on it, and why", the milestone "find out what changed on it and
+  // why", and the export's Dates line "Held until the change somebody made to
+  // the policy has been looked at". IAMAI had never watched it and nothing had
+  // changed on it: the fact was the correction, already on the same step.
+  const f = fixture(FIXTURE)
+  const ID = 's-goal-block-unsupported-platforms'
+  const first = runFixture(f)
+  const planned = first.steps.find((s) => s.id === ID)
+  assert.ok(planned, `${FIXTURE} no longer carries ${ID}`)
+  assert.equal(planned.state.lifecycle, 'not-deployed', 'the sequence starts from a policy the tenant does not have')
+  const op = stepOperations(planned).find((o) => o.mode === 'create')
+  assert.ok(op, 'the step creates its policy')
+  const body = structuredClone(op.body) as Row
+  assert.ok((body.conditions as Row).platforms, 'and the policy it creates names a platform condition')
+  delete (body.conditions as Row).platforms
+  body.state = 'enabledForReportingButNotEnforced'
+  const asOf = new Date(Date.parse(f.snapshot.asOf) + DAY).toISOString()
+  const rows = [...((f.snapshot.config.caPolicies?.rows ?? []) as Row[]), { ...body, id: '0f0f0f0f-1111-4222-a333-444444444444', createdDateTime: asOf, modifiedDateTime: asOf }]
+  const snapshot = scannedAt({ ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as TenantSnapshot, asOf)
+  const run = runFixture({ ...f, snapshot }, { snapshot }, observationsOf(first.steps))
+  const step = run.steps.find((s) => s.id === ID)!
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, reportOnlyAt: null }
+  // The engine's two facts, apart: a person looks, and nothing moved.
+  const obs = step.state.observation!
+  assert.equal(obs.prior?.state, 'absent', 'the scan before recorded no policy')
+  assert.equal(obs.reviewRequired, true, 'a person still looks before it goes further')
+  assert.deepEqual([...obs.unwritten], ['conditions.platforms'])
+  assert.equal(obs.drifted, false, 'a policy first seen here drifted from nothing')
+  assert.equal(heldForReview(step), true)
+  const contract = stepContract(step, ctx)
+  const dates = stepExportView(step, ctx).dates ?? ''
+  const said = [...contract.fix.map((x) => x.text), contract.whatToDo.text, nextMilestone(step).label, ...contract.doneWhen, dates]
+  for (const line of said) {
+    assert.doesNotMatch(line, /no longer the policy IAMAI was watching|what changed|change somebody made|accounted for/i, `a change nobody made: ${line}`)
+  }
+  // The Fix names the policy, where it differs, and where a person corrects it.
+  const fix = contract.fix.find((x) => x.key.startsWith('review:'))
+  assert.ok(fix, `Fix before continuing lost the policy: ${JSON.stringify(contract.fix)}`)
+  assert.match(fix.text, new RegExp(step.tracking!.policyName!))
+  assert.match(fix.text, /device platforms/)
+  assert.match(fix.text, /Entra admin center/)
+  assert.match(nextMilestone(step).label, /Correct the policy in the Entra admin center \(device platforms\)/)
+  assert.equal(dates, '', 'a held step dates nothing, and this one waits on the correction its action names')
+})
