@@ -38,6 +38,10 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
   deploy-pages waits for ci and publishes only the commit it passed on, so red CI means the
   live site is unchanged. Never push to main with the required check bypassed: that is the
   one thing that puts unvalidated code in front of people.
+- `.githooks/pre-push` runs the tenant-data guard and the typecheck on every push (~2.5s);
+  `git config core.hooksPath .githooks` turns it on in a fresh clone. The guard is there because
+  this repo is public and a push is a disclosure — CI runs the same check, but after the push.
+  It reads tracked files as they are, so a value added and removed inside one push is not caught.
 - Before pushing, run `npm run verify -- --prepush <the test files the change touches>`
   (typecheck, tenant guard, those tests, the build and browser smoke). Focused runs alone
   cannot catch a break in a file you did not think to name — that is what CI is for, and it

@@ -1,0 +1,27 @@
+#!/bin/sh
+# The two checks that are worth more before a push than after it.
+#
+# TENANT DATA (scripts/tenant-guard.mjs). CLAUDE.md's hardest rule: never commit
+# tenant-derived data. This repo is PUBLIC, so a push is a disclosure — history
+# is permanent, and the values would have to be treated as compromised. CI runs
+# the same check, but it runs after the push, which is too late for this one
+# thing and only this one.
+#
+#   Its reach: `git ls-files`, so it reads tracked files AS THEY ARE NOW. A
+#   value added in one commit and removed in another inside the same push is
+#   not caught. CI has the same limitation. This is a floor, not a guarantee.
+#
+# TYPECHECK. Cheap, and nothing downstream means much if it does not compile.
+#
+# Deliberately NOT here:
+#   - build:site — writes tracked files (home/index.html, home/theme.css), and a
+#     hook must not mutate the working tree during a push.
+#   - the unit suite (~15 min) and browser smoke (~86 s) — CI runs both, and
+#     deploy-pages waits for CI, so anything they catch costs a skipped deploy
+#     rather than a broken site. Run them yourself before a substantial push:
+#       npm run verify -- --prepush <the test files the change touches>
+#
+# Skip once with `git push --no-verify` when you know why.
+set -e
+node scripts/tenant-guard.mjs
+npm exec -- tsc --noEmit
