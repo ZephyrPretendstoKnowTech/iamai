@@ -495,7 +495,10 @@ const bgSeparateDevices: ValidationRule = {
       if (otherId === id || other === 'unknown') continue
       for (const m of other) {
         if (m.kind !== 'microsoftAuthenticator' || !m.displayName || !mine.has(m.displayName)) continue
-        const who = ctx.snapshot.users.filter((u) => u.id === otherId).map((u) => u.displayName ?? u.userPrincipalName ?? otherId)
+        // By sign-in name: the one card this clause is drawn on (Prepared
+        // passkeys) names every account that way, and a display name there gave
+        // the other account a second name in the same sentence.
+        const who = ctx.snapshot.users.filter((u) => u.id === otherId).map((u) => u.userPrincipalName ?? u.displayName ?? otherId)
         return fail(F.bgSharedDevice(m.displayName, who.length > 0 ? who : [otherId]), { device: m.displayName, otherAccount: who[0] ?? otherId })
       }
     }
