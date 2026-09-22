@@ -162,7 +162,7 @@ export function plannedOperationsOf(step: Step): PolicyOperation[] {
  */
 export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null): string[] {
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
-  const out = new Set<string>(step.state?.observation?.unwritten ?? [])
+  const out = new Set<string>(unwrittenFieldsOf(step))
   for (const op of plannedOperationsOf(step)) {
     if (op.mode !== 'update' || typeof op.policyId !== 'string') continue
     const current = rows.find((r) => r.id === op.policyId) ?? null
@@ -575,6 +575,21 @@ export function previewNoteLines(_step: Step, _c: StepContract, _hold: Hold | nu
 const REFERENCE_ROOTS = ['conditions', 'grantControls', 'sessionControls'] as const
 
 /**
+ * The fields where the scan found the tenant's policy is not what the plan asked
+ * for and the update does not write them (roadmap/observation.ts
+ * unwrittenDifferences, the step's `observation.unwritten`). A person corrects
+ * them. The operation's target is the tenant's policy with the patch applied, so
+ * there it still holds the tenant's value: the difference itself, never the value
+ * to set. Nothing that describes the correction reads these fields from the
+ * target (packageBindings, memberBindings). Stating the drift as the setting to
+ * keep is what a legacy-authentication block with a trusted-location exclusion
+ * added did: "Settings for This Action" listed the exclusion.
+ */
+export function unwrittenFieldsOf(step: Step): ReadonlySet<string> {
+  return new Set(step.state?.observation?.unwritten ?? [])
+}
+
+/**
  * The target fields one resolved operation cannot state yet: where a step still
  * waits on references (`action.missing` — a source group nobody has identified, an
  * object a preparation step makes), Foundation A took each one out of the field
@@ -658,7 +673,11 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // unbound (`incompleteFieldsOf`); every other field of the target still binds.
   const target = (op?.target ?? op?.body ?? null) as PolicyShape | null
   const open = incompleteFieldsOf(step, op)
-  const settled = (field: string): PolicyShape | null => (touches(open, field) ? null : target)
+  // Nor is a field the scan found is not what the plan asked for, where the update
+  // does not write it (`unwrittenFieldsOf`): the target keeps the tenant's value
+  // there, which is the very difference the step reports.
+  const unwritten = unwrittenFieldsOf(step)
+  const settled = (field: string): PolicyShape | null => (touches(open, field) || touches(unwritten, field) ? null : target)
   const out: Record<string, unknown> = {}
   const put = (key: string, value: unknown): void => {
     if (value !== undefined && value !== null) out[key] = value
@@ -907,6 +926,7 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null, name
   const declared = [...(pkg.meta.requiredBindings ?? []), ...((pkg.meta as { optionalBindings?: string[] }).optionalBindings ?? [])]
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const ops = plannedOperationsOf(step)
+  const unwritten = unwrittenFieldsOf(step)
   const out: Record<string, unknown> = {}
   const pair: Record<string, unknown>[] = []
   for (const m of members) {
@@ -917,8 +937,10 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null, name
     const whole = (op.target ?? (op.mode === 'create' ? op.body : null)) as PolicyShape | null
     const name = (op.body as PolicyShape).displayName ?? whole?.displayName
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
-    // A member whose target still waits on a reference is not whole (see incompleteFieldsOf).
-    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0) {
+    // A member whose target still waits on a reference is not whole (see
+    // incompleteFieldsOf), nor one whose tenant policy differs where the update
+    // does not write (see unwrittenFieldsOf).
+    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0 && unwritten.size === 0) {
       pair.push({ role: m.role, displayName: name, conditions: whole.conditions, grantControls: whole.grantControls ?? null, sessionControls: whole.sessionControls ?? null })
       // The member's own material roots, for a request that sends each member whole
       // (the guests pair's JSON batch), where the package declares them: only a member
@@ -926,7 +948,7 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null, name
       for (const root of ['conditions', 'grantControls', 'sessionControls'] as const) if (declared.includes(`${prefix}.target.${root}`)) out[`${prefix}.target.${root}`] = whole[root] ?? null
     }
     // Users still waiting on a reference are not the target (see packageBindings).
-    if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
+    if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users') && !touches(unwritten, 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
     // Whether this member is created or corrected, and — for a correction — the
     // fields its own update changes (correction batch 2): a module scoped to this
     // member reads these and never its sibling's.

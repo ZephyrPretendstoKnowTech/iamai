@@ -403,6 +403,36 @@ test('R4-10: a token-protection policy without the Cloud PC device filter is tol
   assert.ok(stepExportView(step, ctx).whatToDo.some((l) => l.includes(rule)), 'the export says a person corrects the filter and never says to what')
 })
 
+test('a difference the update does not write is never stated as the setting to keep, on any channel', () => {
+  // The legacy-authentication block with a trusted-location exclusion added in
+  // the tenant. The plan's policy has no location condition, and the update does
+  // not write one (observation.unwritten). The update's target is the tenant's
+  // policy with the patch applied, so it still carries the exclusion. The step's
+  // package bound its settings from that target, and "Settings for This Action"
+  // listed "Conditions → Locations → ... Exclude: All trusted locations" as the
+  // setting: the drift, stated as the plan. That happened wherever the update
+  // wrote something else (here, the exclusions group put back). When the
+  // package's corrections began to select the unwritten fields (R4-10), it also
+  // happened with the policy in report-only. Legacy authentication from a
+  // trusted network stays unblocked, and the step says that is the plan.
+  const cases: [string, (row: Row) => void][] = [
+    ['report-only', (row) => { row.state = 'enabledForReportingButNotEnforced' }],
+    ['enforced, exclusions group gone', (row) => { users(row).excludeGroups = [] }],
+  ]
+  for (const [label, edit] of cases) {
+    const snapshot = structuredClone(ANSWERED.snapshot)
+    const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
+    conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
+    edit(row)
+    const run = runFixture({ ...ANSWERED, snapshot })
+    const step = stepOf(run, 'block-legacy-auth')
+    assert.deepEqual(step.state.observation?.unwritten, ['conditions.locations'], `${label}: the premise: the location exclusion is a difference the update does not write`)
+    const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    for (const a of stepBodyOf(step, ctx).artifacts) assert.doesNotMatch(a.text(), /trusted locations|AllTrusted/i, `${label}: the ${a.id} channel states the tenant's location exclusion as the plan's setting`)
+    for (const l of stepExportView(step, ctx).whatToDo) assert.doesNotMatch(l, /trusted locations|AllTrusted/i, `${label}: the export states the tenant's location exclusion as the plan's setting`)
+  }
+})
+
 test('A6: an ordinary person excluded from MFA-for-all is a coverage gap, as it is for the legacy-auth block', () => {
   const member = ANSWERED.snapshot.users.find((u) => (u.userPrincipalName ?? '').startsWith('user10@'))!
   assert.equal(member.userType, 'member')
