@@ -17,7 +17,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
+import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -411,7 +411,17 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       : step.id === PASSKEY_SETTINGS ? emergencyPasskeyTasksOf(step, ctx)
         : null
   if (emergencyTasks) {
-    lines.splice(0, lines.length, ...emergencyAccountTasksText(emergencyTasks).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
+    // A finished step's procedures are reference here too, as on the screen.
+    //
+    // The lines of a Completed step are cleared above, and these three steps
+    // then refilled them with every procedure, so the export and AI Info of a
+    // finished Prepare Emergency Access Accounts read thirty-one numbered
+    // imperative lines as its What to do — "Create an emergency account … 2.
+    // Open … New user → Create new user" — while the screen folded the same
+    // words under the reference label and the print listed the step by title
+    // (R4-45). Same words, same label, same rule as the screen.
+    const reference = proceduresAreReference(laneView) ? [CONTRACT.implementation.reference] : []
+    lines.splice(0, lines.length, ...reference, ...emergencyAccountTasksText(emergencyTasks).replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean))
     // The export opens with the screen's action, as every artifact does (013.A).
     if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }

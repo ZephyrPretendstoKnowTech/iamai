@@ -13,6 +13,8 @@ import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { app } from '../../content/content.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewOf } from './planBoard.ts'
 
 const flat = (text: string): string[] => text.replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
 
@@ -66,4 +68,34 @@ test('the flattened emergency tasks carry every alternative under its label, nev
     }
     assert.ok(!text.split(lead)[0].includes('Connect the approved YubiKey'), `${where}: a YubiKey step before the alternatives`)
   }
+})
+
+// R4-45 (Jordan D12). A Completed step's lines are cleared, and the three
+// Emergency Access preparation steps then refilled them with every procedure,
+// so the export and AI Info of a finished Prepare Emergency Access Accounts read
+// thirty-one numbered imperative lines as its What to do while the screen folded
+// the same words under "Reference: how each of these changes is made". The
+// export carries the same label, by the same rule, before the same words.
+test('a finished emergency step exports its procedures under the reference label, and an open one does not', () => {
+  const reference = (app.plan as unknown as { stepContract: { implementation: { reference: string } } }).stepContract.implementation.reference
+  const exported = (name: 'demo' | 'demo-week2') => {
+    const f = structuredClone(fixture(name))
+    const run = runFixture(f)
+    const step = run.steps.find(s => s.id === 's-prereq-break-glass')!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    const lane = laneViewOf(laneReadings(run.steps).get(step.id)!, (x: string) => run.steps.find(s => s.id === x)?.title ?? null)
+    return { lane, whatToDo: stepExportView(step, ctx, lane).whatToDo }
+  }
+  const done = exported('demo-week2')
+  assert.equal(done.lane.lane, 'Completed', 'the premise: the board reads this step finished')
+  const at = done.whatToDo.indexOf(reference)
+  const firstTask = done.whatToDo.indexOf('Create an emergency account')
+  assert.ok(at >= 0, `no reference label: ${JSON.stringify(done.whatToDo.slice(0, 4))}`)
+  assert.ok(firstTask > at, 'a procedure comes before the reference label')
+  // Every word is still there.
+  assert.ok(done.whatToDo.some(line => /New user → Create new user/.test(line)))
+
+  const open = exported('demo')
+  assert.notEqual(open.lane.lane, 'Completed', 'the premise: this one is not finished')
+  assert.ok(!open.whatToDo.includes(reference), 'an open step labelled its own instructions reference')
 })
