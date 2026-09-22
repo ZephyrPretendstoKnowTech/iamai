@@ -13,7 +13,24 @@ import { strengthSatisfaction } from './strand.ts'
 type Answer = 'yes' | 'no' | 'unknown'
 /** The single-method strength combination a sign-in's method class satisfies on its own. */
 const PROOF_COMBINATION: Record<string, string> = { passkey: 'fido2', windowsHello: 'windowshelloforbusiness', certificate: 'x509certificatemultifactor' }
-export type MethodPreparation = { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }
+export type MethodPreparation = {
+  ids: string[]
+  readyIds: string[]
+  unknownIds: string[]
+  /**
+   * People counted unready ONLY because the sign-in that confirmed their method
+   * has aged out of the 30-day proof window.
+   *
+   * Nothing about them changed. A reader watched admin readiness fall 5 -> 4 ->
+   * 0 of 60 over thirty days on a tenant where fourteen admins held a
+   * phishing-resistant method the whole time, with the screen saying "0 of 60
+   * people have a registered method the policies allow" and nothing saying why
+   * it had moved. A number that goes down on its own, on a gate that has to
+   * reach 100%, reads as the tenant getting worse.
+   */
+  staleIds?: string[]
+  completeScope: boolean
+}
 
 /** A readiness cohort includes an eligible administrator's activation path,
  * without claiming that the eligible role is currently active in Impact. */
@@ -74,6 +91,17 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
   // The method classes each person was seen succeeding with in the last 30 days.
   const since = new Date(Date.parse(snapshot.asOf) - 30 * 86_400_000).toISOString()
   const provenCache = new Map<string, Set<string>>()
+  // The same classes with no window at all, to tell "never confirmed" from
+  // "confirmed, and the confirmation is older than the window".
+  const everCache = new Map<string, Set<string>>()
+  const everClasses = (id: string): Set<string> => {
+    let got = everCache.get(id)
+    if (!got) {
+      got = new Set((snapshot.signInEvidence?.[id]?.proofs ?? []).map(p => p.cls))
+      everCache.set(id, got)
+    }
+    return got
+  }
   const provenClasses = (id: string): Set<string> => {
     let got = provenCache.get(id)
     if (!got) {
@@ -82,7 +110,10 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     }
     return got
   }
-  const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
+  const staleByPerson = new Set<string>()
+  const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], staleIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
+  /** Set by `registered` when an answer is 'unknown' only because the proof aged out. */
+  let staleProof = false
   const registered = (effect: PolicyEffect, id: string): Answer => {
     if (effect.unknown.length > 0) return 'unknown'
     const row = registrations.get(id)
@@ -145,6 +176,12 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     // method works under the tenant's settings, so an unknown compatibility is not
     // left unknown for somebody seen using it.
     const proven = provenClasses(id)
+    // Whether the SAME upgrade would have happened on a proof of any age. If it
+    // would, this person is not "never confirmed" — the confirmation simply got
+    // older than the window, and the readiness number fell without anything in
+    // the tenant changing. The line says which it is.
+    const ever = everClasses(id)
+    if (proven.size === 0 && ever.size > 0 && answers.some(a => a === 'unknown')) staleProof = true
     for (const [i, requirement] of effect.requirements.entries()) {
       if (answers[i] !== 'unknown' || proven.size === 0) continue
       if (requirement.kind === 'mfa') answers[i] = 'yes'
@@ -173,20 +210,24 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       if (scope !== 'in') continue
       included = true
       let answer = target.methods.get(id)
-      if (answer === undefined) { answer = registered(target.effect, id); target.methods.set(id, answer) }
+      if (answer === undefined) { staleProof = false; answer = registered(target.effect, id); target.methods.set(id, answer); if (staleProof) staleByPerson.add(id) }
       if (answer === 'no') failed = true
       else if (answer === 'unknown') unknown = true
     }
     if (!included) continue
     result.ids.push(id)
     if (!failed && !unknown) result.readyIds.push(id)
-    else if (!failed) result.unknownIds.push(id)
+    else if (!failed) {
+      result.unknownIds.push(id)
+      if (staleByPerson.has(id)) (result.staleIds ??= []).push(id)
+    }
   }
   return result
 }
 
 export function methodReadiness(family: Readiness['family'], preparation: MethodPreparation): Readiness {
   const { ids, readyIds, unknownIds, completeScope } = preparation
+  const staleIds = preparation.staleIds ?? []
   const unreadable = !completeScope || unknownIds.length > 0
   // The floor, where the people were counted and only their methods could not be
   // judged (types.ts `atLeast`). An incomplete scope has no real denominator, so
@@ -211,5 +252,8 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // Which people the denominator counts: the ones the target policies
         // apply to, which is neither the step's active count nor its enabled
         // count, and a step can print all three (246, 283, 279 on one card).
-        : [fillText(unknownIds.length > 0 ? W.methodLineUnknown : W.methodLine, { ready: String(readyIds.length), total: String(ids.length), unknown: String(unknownIds.length) })] }
+        : [fillText(
+          staleIds.length > 0 ? W.methodLineStale : unknownIds.length > 0 ? W.methodLineUnknown : W.methodLine,
+          { ready: String(readyIds.length), total: String(ids.length), unknown: String(unknownIds.length), stale: String(staleIds.length) },
+        )] }
 }
