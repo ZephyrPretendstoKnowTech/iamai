@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs'
 import { acceptDirection, activePeople, answers, decide, enrolMfa, lanes, mappingOf, plan, render, stepView, tenant } from '../../docs/qa/night/personas/harness.ts'
 import type { Tenant } from '../../docs/qa/night/personas/harness.ts'
 import { marcusTenant } from '../../docs/qa/night/personas/r3-tenants.ts'
-import { board as journeyBoard } from '../../docs/qa/night/personas/r3-journey.ts'
+import { board as journeyBoard, walk } from '../../docs/qa/night/personas/r3-journey.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
@@ -168,4 +168,24 @@ test('the team registers a method: afterwards no active person holds nothing, or
   assert.ok(before.off.length > 0 && before.none.length > 0, 'nobody on mid holds only a turned-off method: this proves nothing')
   const after = stranded(enrolMfa(t))
   assert.deepEqual(after, { none: [], off: [] }, 'the campaign left people with no method the tenant allows')
+})
+
+test('the recovery test can be recorded, and with it the policies ready to enforce are turned on', () => {
+  // The harness had no way to record the drill, and every policy's enforcement
+  // waits on it: on every tenant but the demo's week two a run reached "ready to
+  // enforce" and stopped there, with nothing to submit.
+  const habit = { foundationsFirst: true, fidelity: 'exact', waits: true, enrols: true } as const
+  const stage = (stages: { label: string; counts: Record<string, number> }[], label: string): Record<string, number> => stages.find((s) => s.label === label)!.counts
+  const held = walk(tenant('mid'), { ...habit, drills: false })
+  const ready = stage(held.stages, 'report-only window')['ready-to-enforce'] ?? 0
+  assert.ok(ready > 0, 'nothing reaches ready to enforce on mid: this proves nothing')
+  assert.equal(stage(held.stages, 'enforced what was ready')['ready-to-enforce'], ready, 'without the drill a turn-on went through')
+  for (const s of held.r.steps.filter((x) => x.status === 'ready-to-enforce')) {
+    assert.ok((s.action.enforceWaitsOn ?? []).some((w) => w.id === 'cleanup-drill'), `${s.id} waits on something other than the drill`)
+  }
+  const drilled = walk(tenant('mid'), habit)
+  assert.equal(lanes(drilled.t, drilled.r).find((row) => row.id === 'cleanup-drill')?.lane, 'Completed', 'the recorded drill does not complete the drill row')
+  const enforced = stage(drilled.stages, 'enforced what was ready')
+  assert.equal(enforced['ready-to-enforce'] ?? 0, 0, 'a policy ready to enforce was not turned on')
+  assert.ok(enforced.done > stage(drilled.stages, 'report-only window').done, 'turning the policies on completed none of them')
 })

@@ -1,7 +1,7 @@
 // The shared walk, parameterised by habit. Each persona goes from a first scan
 // to wherever their habits take them, and the board is printed at every stage so
 // a reading can be quoted rather than summarised.
-import { plan, rescan, observations, days, deploy, acceptDirection, prepareEmergencyAccess, configurePasskeys, enrolMfa, lanes } from './harness.ts'
+import { plan, rescan, observations, days, deploy, acceptDirection, prepareEmergencyAccess, configurePasskeys, enrolMfa, lanes, recordDrill } from './harness.ts'
 import type { Tenant } from './harness.ts'
 import type { FixtureRun } from '../../../../src/roadmap/fixtures/run.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
@@ -16,6 +16,13 @@ export type Habit = {
   waits: boolean
   /** Gets the team to register a method. */
   enrols: boolean
+  /**
+   * Runs the emergency-access recovery test before turning anything on (the
+   * default). Every policy's enforcement waits on it, so a walk without it
+   * enforces nothing: that is the product holding the turn-on back, and it is
+   * what a persona who skips the test meets.
+   */
+  drills?: boolean
 }
 
 export type Stage = { label: string; day: string; counts: Record<string, number>; lanes: Record<string, number> }
@@ -71,6 +78,7 @@ export function walk(t0: Tenant, habit: Habit): { stages: Stage[]; t: Tenant; r:
     step((x) => configurePasskeys(days(x, 1, { signIns: false })), 'passkeys configured (late)')
     step((x) => prepareEmergencyAccess(days(x, 3, { signIns: false })), 'emergency access prepared (late)')
   }
+  if (habit.drills ?? true) step((x) => recordDrill(days(x, 1, { signIns: false })), 'recovery test recorded')
   step((x, run) => {
     let y = days(x, 1, { signIns: false })
     for (const s of run.steps) if (s.status === 'ready-to-enforce') y = deploy(y, s, 'enforced')
