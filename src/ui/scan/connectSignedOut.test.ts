@@ -60,11 +60,15 @@ test('tile 1 signed out: no tenant connected, the Global Reader line with the co
   ])
   const P = t.permissions
   assert.equal(P.summary, 'What IAMAI asks for, and how to remove it')
-  assert.equal(P.lead, `Microsoft's consent screen will list these ${P.rows.length}, in this order:`)
+  // Microsoft's screen also lists signing in and staying signed in, and does not
+  // promise an order: the lead said "these N, in this order" and a careful admin
+  // comparing the two found a mismatch in the product's own trust evidence.
+  assert.equal(P.lead, `Microsoft's consent screen will list these ${P.rows.length} directory permissions, plus signing you in and keeping you signed in:`)
   const tenantScopes = GRAPH_SCOPES.filter((s) => !SIGN_IN_SCOPES.includes(s))
   assert.deepEqual([...P.rows.map((r) => r.scope)].sort(), [...tenantScopes].sort(), 'one row per requested tenant scope, none invented')
   assert.equal(P.rows[0].scope, 'Directory.Read.All')
-  assert.equal(P.rows[0].name, "Read all users' basic profiles / Read directory data")
+  // Microsoft's own display names (Graph permissions reference), checked 2026-09-22.
+  assert.equal(P.rows[0].name, 'Read directory data')
   assert.equal(P.rows[1].name, "Read your organization's policies")
   for (const r of P.rows) {
     assert.ok(r.name.length > 10, `${r.scope}: Microsoft's wording`)

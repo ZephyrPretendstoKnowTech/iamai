@@ -490,7 +490,7 @@
         "demo": "Try it with sample data",
         "workAccount": "Sign in with a work or school account",
         "permissionsSummary": "What IAMAI asks for, and how to remove it",
-        "consentLead": "Microsoft's consent screen will list these {n}, in this order:",
+        "consentLead": "Microsoft's consent screen will list these {n} directory permissions, plus signing you in and keeping you signed in:",
         "removal": "Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it.",
         "errors": {
           "consent": {
@@ -2747,10 +2747,10 @@
           "Save a plan file to keep your decisions and progress independently of your sign-in session."
         ],
         "lanes": {
-          "0": "On every load: configuration",
+          "0": "On every scan: configuration",
           "A": "On every scan: inventory",
           "B": "On every scan: sign-in records",
-          "on-demand": "Only after a baseline is picked"
+          "on-demand": "During the scan, or when a step asks"
         },
         "columns": {
           "data": "Data",

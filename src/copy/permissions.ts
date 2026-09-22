@@ -54,7 +54,7 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   'Policy.Read.AuthenticationMethod': {
     reads: 'The Passkey (FIDO2) method configuration, assigned profiles, attestation settings and allowed authenticator models.',
     without: 'IAMAI cannot verify passkey profiles or whether the configured models meet the plan.',
-    consentName: 'Read authentication methods policies',
+    consentName: 'Read authentication method policies',
     consentReads: 'Passkey profiles, target groups, attestation and key restrictions',
   },
   'Policy.Read.All': {
@@ -66,7 +66,7 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   'Directory.Read.All': {
     reads: 'People, groups and their members, devices, the licences the tenant holds, the organisation name and the signed-in account.',
     without: 'No names, no counts and no populations: every step would be about nobody in particular.',
-    consentName: "Read all users' basic profiles / Read directory data",
+    consentName: 'Read directory data',
     consentReads: "People, groups, devices, licences, the tenant's name",
   },
   'AuditLog.Read.All': {
@@ -78,7 +78,7 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   'RoleManagement.Read.Directory': {
     reads: 'Which accounts hold which directory roles, and which roles are assigned through Privileged Identity Management rather than permanently.',
     without: 'IAMAI cannot tell who administers the tenant, so the admin steps and the emergency-access checks have nothing to work from.',
-    consentName: "Read role management data for your company's directory",
+    consentName: 'Read directory RBAC settings',
     consentReads: 'Who holds which role, and which through PIM',
   },
   'UserAuthenticationMethod.Read.All': {
