@@ -793,7 +793,9 @@ test('In place says so about the POLICY, and discloses where it could not read w
   const blindTile = coverageTile(readinessOf(blind.step, stepContract(blind.step, blind.ctx)))
   assert.ok(blindTile, 'the in-place step lost its coverage tile')
   assert.match(String(blindTile.note), /could not read whether the people it covers can satisfy it/, String(blindTile.note))
-  assert.match(String(blindTile.note), /0 of 40 people/, 'the count the engine computed is still not on the step')
+  // The readiness line itself now says none of them could be judged rather
+  // than leading with a bare zero, so this pins the count and the fact.
+  assert.match(String(blindTile.note), /None of the 40 people in scope could be judged/, 'the reading the engine computed is still not on the step')
   assert.match(String(blindTile.note), /describes the policy, not the people/, 'the tile does not say what In place is a fact about')
 
   // And where readiness IS readable the tile is unchanged: this is a
