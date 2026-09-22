@@ -31,7 +31,9 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
-import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
+import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
+import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
+import { list } from '../copy/statements.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
@@ -362,6 +364,25 @@ export function nextMilestone(step: Step): Milestone {
     const at = step.events?.enforce.at ?? null
     const today = (step.scheduled ? scheduleOf(step) : null)?.basis?.today ?? null
     const later = at !== null && today !== null && Date.parse(at) > Date.parse(today)
+    // Its turn-on waits on the plan's own prerequisites (roadmap/enforceWaits.ts;
+    // operations.ts hold `prerequisite-unmet`), so it is not "ready to be turned
+    // on": it stays in Report-only, and the milestone says what it waits for. It
+    // read "ready to be turned on. The plan turns it on on Sep 21" over a board
+    // that had it On Hold, and a reader enforced eight policies beside security
+    // defaults (Sam D2). The day stays on the milestone, as the plan's placement
+    // once they are done (sequencing, owner Step 4), and is not repeated in the
+    // sentence: the board's When already reads "After prerequisites" for a row
+    // held this way, and a second date in words would contradict it.
+    const waits = policyHold(step) === 'prerequisite-unmet' ? (step.action.enforceWaitsOn ?? []) : []
+    if (waits.length > 0) {
+      const items = list(waits.map((w) => w.title))
+      const sd = waits.find((w) => w.id === SECURITY_DEFAULTS_STEP_ID)
+      const label = [
+        fillText(waits.length === 1 ? MILESTONE.enforceWaitsOne : MILESTONE.enforceWaitsMany, { items }),
+        sd ? fillText(MILESTONE.enforceWaitsSecurityDefaults, { step: sd.title }) : null,
+      ].filter((x): x is string => x !== null).join(' ')
+      return { kind: 'resolve', label, at, gatedBy: null }
+    }
     const days = step.events?.noticeDays ?? 0
     const label = !later
       ? MILESTONE.enforce

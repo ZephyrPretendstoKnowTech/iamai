@@ -1191,7 +1191,7 @@ export function isOpenPolicy(step: PolicyStep): boolean {
  * B grants at `ready-to-enforce` and not before. Submitting it today enforces on
  * day two of a window the plan itself has not closed.
  */
-export type PolicyHold = 'observation-incomplete'
+export type PolicyHold = 'observation-incomplete' | 'prerequisite-unmet'
 
 /**
  * What a step's policy work is, in one answer:
@@ -1294,6 +1294,17 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // report-only and a patch that leaves a report-only policy in report-only deny
   // nobody, so they stay offered — that is how the window is spent well.
   if (step.state?.lifecycle === 'report-only' && valid.some(enforcesOnRun)) return { kind: 'held', hold: 'observation-incomplete', operations: valid }
+  // The plan's own prerequisites of turning the policy on, unmet
+  // (`Action.enforceWaitsOn`, roadmap/enforceWaits.ts): the emergency-access
+  // recovery test, and security defaults still on. The board filed the step On
+  // Hold on them while every channel handed over the turn-on under a "Stop"
+  // line in one of them, and a reader enforced eight policies beside security
+  // defaults (Sam D2). Held, not unavailable: the operation is sound, the step
+  // keeps its status and its day (waiting on a step the plan schedules is
+  // sequencing, owner Step 4), and a create or a report-only patch denies
+  // nobody, so only an operation that turns the policy on is held. Not a
+  // policy already on: its next change is a correction, not this.
+  if ((step.action.enforceWaitsOn?.length ?? 0) > 0 && step.state?.lifecycle !== 'enforced' && valid.some(enforcesOnRun)) return { kind: 'held', hold: 'prerequisite-unmet', operations: valid }
   return { kind: 'implementable', operations: valid }
 }
 

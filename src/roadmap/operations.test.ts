@@ -1,5 +1,4 @@
 import { readyEvidence } from './fixtures/readyEvidence.ts'
-import { recoveryAccountBasis } from './cleanupDone.ts'
 // Foundation A: the step's operations are the authority. A channel that read
 // anything else — a body left over in `action.json`, a mode that disagrees with
 // its target — could describe a policy the operations do not, so none of them
@@ -24,7 +23,7 @@ import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled, withRecoveryTested } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
@@ -159,7 +158,9 @@ test('the translator output is not empty, and holds a single-policy and a paired
 // ---- the plan around a step that cannot be written stays usable ----
 
 test('a step the plan cannot write is not scheduled, and the rest of the plan is', () => {
-  const f = withFoundationSettled(fixture('demo-week2'))
+  // The recovery test recorded on the settled tenant: it is one of the plan's own
+  // prerequisites of turning a policy on (roadmap/enforceWaits.ts).
+  const f = withRecoveryTested(withFoundationSettled(fixture('demo-week2')))
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const held = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null)
@@ -206,8 +207,9 @@ function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<strin
   // the plan names for it first; otherwise the hold is what it would be testing.
   const guests = new Set(f.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
   if (opts.adminsReady || opts.guestsReady) readyEvidence(f, snapshot)
-  // This translation fixture assumes a successful recovery drill against its replaced policy set.
-  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
+  // This translation fixture assumes a successful recovery drill against its
+  // replaced policy set: recorded on the tenant it runs, not re-based from another.
+  f.checkpoints = withRecoveryTested({ ...f, snapshot, mapping }).checkpoints
   const scored = opts.adminsReady || opts.guestsReady ? runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never).viability : null
   const viability = scored ? (opts.adminsReady ? withAdminsReady(scored) : scored).map((v) => (opts.guestsReady && guests.has(v.userId) ? { ...v, readiness: READY_ADMIN } : v)) : undefined
   const r = runFixture({ ...f, snapshot, mapping }, { snapshot, mapping, ...(viability ? { viability } : {}) } as never)

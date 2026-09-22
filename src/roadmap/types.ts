@@ -337,6 +337,26 @@ export type Action = {
    */
   enforcedBelowReadiness?: Omit<NonNullable<Action['readinessGate']>, 'route' | 'routeShortfall'>
   /**
+   * The plan's own prerequisites of turning this policy on that are not met yet
+   * (generate.ts, from the enforce edges of src/actionability/dependency-data.json):
+   * the emergency-access recovery test (the Cleanup drill), and Turn Off
+   * Security Defaults while the scan reads them on. Each with the title the
+   * board gives it.
+   *
+   * The board held these steps On Hold on them and every channel handed over the
+   * turn-on anyway: "Change Enable policy to On", `{"state":"enabled"}`, a
+   * PowerShell Enforce mode with the policy id filled in, and AI Info saying
+   * "the next action is enforcement", under one "Stop" line in one channel. A
+   * reader enforced eight policies with security defaults on — which Entra
+   * refuses, pointing at turning security defaults off, which removes the MFA
+   * they require while the plan's own MFA policy is still held (Sam D2). What
+   * it holds is the operation that turns the policy on (operations.ts
+   * `policyResult`, hold `prerequisite-unmet`); the step keeps its status, its
+   * schedule and its report-only preparation, because waiting on a step the
+   * plan schedules is sequencing (owner, Step 4).
+   */
+  enforceWaitsOn?: { id: string; title: string }[]
+  /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the
    * break-glass accounts, or the exclusions group. Set only on a step that can

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { policyTasksOf } from './policyTasks.ts'
@@ -28,7 +28,7 @@ const PILOT = 's-goal-admin-session'
 
 /** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
 function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false) {
-  const value = settled ? withFoundationSettled(fixture(name)) : fixture(name)
+  const value = settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name)
   const run = runFixture(value)
   const step = run.steps.find((row) => row.id === stepId)!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
@@ -516,16 +516,17 @@ test('a field still waiting on a reference is not printed as a setting to copy',
   assert.ok(settled, 'no settled step prints a Users scope any more')
 })
 
-// The condition nobody could act on.
+// The condition nobody could act on, and then the instruction that ignored it.
 //
 // "Emergency access is prepared and tested." is a condition in forty-odd
-// packages, and the thing that tests it is a Cleanup row, not a step. A
-// reader went looking for a step called something like that, found none, and
-// carried on. The engine does hold every CA policy's ENFORCEMENT on the
-// drill (dependency-data.json) — but a policy being created today is not
-// enforcing today, so the drill is not among that step's blockers, and this
-// checklist is precisely about the day it will be.
-test('the enforce checklist names the emergency drill while it is outstanding', () => {
+// packages, and the thing that tests it is a Cleanup row, not a step. The first
+// fix named the drill in a "Stop" line spliced above the checklist and left
+// "Change Enable policy to On" beneath it — and the JSON, the PowerShell Enforce
+// mode and AI Info's "the next action is enforcement" untouched (Nadia D1). A
+// warning beside an instruction is still the instruction. While the drill is
+// outstanding the turn-on is not drawn at all (roadmap/enforceWaits.ts): the
+// step keeps its policy in Report-only and says what it waits for.
+test('while the emergency drill is outstanding the enforce checklist is not drawn at all; once it is done, the checklist stands', () => {
   const f = withFoundationSettled(structuredClone(fixture('demo-week2')))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === 's-goal-token-protection')
@@ -538,13 +539,17 @@ test('the enforce checklist names the emergency drill while it is outstanding', 
   const body = stepBodyOf(step, ctx)
   const title = cleanupEntry('drill')?.title
   assert.ok(title, 'the drill row has a title to name it by')
-  const lines = (policyTasksOf(step, body.title, body.artifacts as never, f.mapping, [title])?.tasks ?? []).flatMap((t) => t.steps)
+  const held = (policyTasksOf(step, body.title, body.artifacts as never, f.mapping, [title])?.tasks ?? []).flatMap((t) => t.steps)
+  assert.equal(held.some((l) => /Do not turn it on unless|Enable policy\*\* to \*\*On/i.test(l)), false, `the turn-on is drawn with the drill outstanding: ${JSON.stringify(held)}`)
+  assert.ok(held.some((l) => /Report-only/.test(l)), 'the held step does not say to keep the policy in Report-only')
+  assert.ok(body.contract.whatToDo.text.includes(`stays in Report-only until ${title} is finished`), body.contract.whatToDo.text)
 
-  const at = lines.findIndex((l) => /Do not turn it on unless/i.test(l))
-  assert.ok(at >= 0, 'the step does not draw the enforce checklist')
-  assert.equal(lines[at - 1], `Stop: ${title} is not finished, and this policy is part of it. Leave this policy in Report-only until it is.`)
-  // The authored condition stays: the splice adds a way to act on it, it does
-  // not replace it.
+  // Once the recovery test is recorded, the checklist is drawn with its authored conditions.
+  const tested = withRecoveryTested(f)
+  const done = runFixture(tested).steps.find((s) => s.id === 's-goal-token-protection')!
+  const doneBody = stepBodyOf(done, { ...ctx, snapshot: tested.snapshot } as StepVarContext)
+  const lines = (policyTasksOf(done, doneBody.title, doneBody.artifacts as never, tested.mapping, [])?.tasks ?? []).flatMap((t) => t.steps)
+  assert.ok(lines.some((l) => /Do not turn it on unless/i.test(l)), 'the step does not draw the enforce checklist once the drill is done')
   assert.ok(lines.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the authored condition was displaced')
 
   // And a bare list marker is not an instruction: the conditions are authored

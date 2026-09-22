@@ -201,7 +201,7 @@ test('5: a material change to an already-enabled policy is held while its readin
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
-  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step
   assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%', route: 'Prepare Your Team for MFA' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')

@@ -120,12 +120,18 @@ test('the step that owns the security-defaults rule reports it broken, and says 
   }
 
   const broken = foundOn(withDefaultsOn())
-  const warning = broken.find((t) => /not meant to run together/.test(t))
+  const warning = broken.find((t) => /which Microsoft does not support/.test(t))
   assert.ok(warning, `nothing on the step reports the coexistence: ${JSON.stringify(broken)}`)
   assert.match(warning, /[0-9]+ Conditional Access policies are enforced/, 'the warning does not count what is already enforced')
-  assert.match(warning, /this is the step that turns them off/, 'the warning does not say where the way out is')
+  // It said "and this is the step that turns them off", which reads as the way
+  // out. On the tenant where it fired the plan's own MFA policy was still held
+  // below its threshold, and turning security defaults off then removes the MFA
+  // they require from everybody (Sam D2). It says not to, and when this step does.
+  assert.doesNotMatch(warning, /this is the step that turns them off/, 'the warning points at turning security defaults off')
+  assert.match(warning, /Do not turn security defaults off to settle it/, warning)
+  assert.match(warning, /same change window/, 'the warning does not say when this step turns them off')
 
   // Silent where the rule is not broken — every shipped fixture has security
   // defaults off, and a warning on all of them would be noise, not a warning.
-  assert.equal(foundOn(fixture('large')).some((t) => /not meant to run together/.test(t)), false, 'a tenant with defaults already off is warned anyway')
+  assert.equal(foundOn(fixture('large')).some((t) => /which Microsoft does not support/.test(t)), false, 'a tenant with defaults already off is warned anyway')
 })

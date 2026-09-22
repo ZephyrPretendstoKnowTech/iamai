@@ -40,7 +40,7 @@ function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
   snapshot.registrationDetails = snapshot.users.filter(u => !f.mapping.breakGlassUserIds.includes(u.id)).map(u => ({ ...snapshot.registrationDetails[0], id:u.id, userType:u.userType, isMfaCapable:true, methodsRegistered:['fido2SecurityKey'] })).concat(snapshot.registrationDetails.filter(r => f.mapping.breakGlassUserIds.includes(r.id)))
   // This translation fixture assumes a successful recovery drill against its replaced policy set.
-  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const scored = runFixture({ ...f, snapshot }, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot }, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!

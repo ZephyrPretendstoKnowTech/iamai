@@ -23,7 +23,7 @@ import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { rowReason, rowWhen } from './rowWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { implementationOffered, unavailableReason } from '../../roadmap/operations.ts'
+import { implementationOffered, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { statusOf } from './statusWord.ts'
 import { laneReadings } from './planLanes.ts'
 import { stepVars } from './stepVars.ts'
@@ -256,7 +256,7 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
 })
 
-test('the app\'s demo: safe report-only correction remains available while final emergency verification still gates enforcement', () => {
+test('the app\'s demo: final emergency verification holds the turn-on everywhere, not only on the board', () => {
   const f = fixture('demo-week2')
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
@@ -265,14 +265,22 @@ test('the app\'s demo: safe report-only correction remains available while final
   // pinned groups are, every policy step is held and the plan dates nothing.
   const run = runFixture(withFoundationSettled({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId }))
   const token = run.steps.find((s) => s.id === TOKEN)!
-  // The token policy's window has closed on clean records. Its bounded
-  // correction remains safe in Report-only; final emergency verification still
-  // gates the later enforcement through the dependency graph.
+  // The token policy's window has closed on clean records, and the one change
+  // left is the turn-on ({"state":"enabled"}). This used to assert that turn-on
+  // was offered, as "a bounded correction safe in Report-only", while final
+  // emergency verification gated "the later enforcement through the dependency
+  // graph" — on the board alone. Every channel handed the turn-on over beside a
+  // board that held it (Sam D2, Nadia D1). The recovery test holds the turn-on
+  // itself now (roadmap/enforceWaits.ts), and the board reads the drill row it
+  // waits on, as Plan.tsx gives it.
   assert.equal(token.tracking?.readyNow, true)
-  assert.equal(unavailableReason(token), null)
-  assert.equal(implementationOffered(token), true)
-  assert.equal(laneReadings(run.steps).get(TOKEN)?.lane, 'Ready')
-  assert.equal(laneReadings(run.steps).get(TOKEN)?.substatus, 'Ready to enforce')
+  assert.equal(unavailableReason(token), null, 'held, not unwritable: the operation is sound')
+  assert.equal(implementationOffered(token), false, 'the turn-on is handed over with the recovery test undone')
+  assert.equal(policyHold(token), 'prerequisite-unmet')
+  assert.deepEqual(token.action.enforceWaitsOn?.map((w) => w.title), ['Verify Emergency Access'])
+  const cleanup = (run.schedule.cleanup?.rows ?? []).map((r) => ({ id: `cleanup-${r.kind}`, complete: r.done !== null }))
+  // Up Next: the drill it waits on is itself Ready work. Never Ready while its turn-on is held.
+  assert.equal(laneReadings(run.steps, cleanup).get(TOKEN)?.lane, 'Up Next', 'the board and the channels disagree about the turn-on')
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word.split(' · ')[0], 'Report-only')
   assert.equal(isHeld(transfer), false)

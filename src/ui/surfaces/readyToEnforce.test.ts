@@ -43,7 +43,7 @@ import assert from 'node:assert/strict'
 // baseline's unexplained references let it be written is
 // roadmap/sourceIdentity.test.ts, and on the demo it is the true answer today.
 import { allFixtures, curatedFixture, fixture as shippedFixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import { boardWhenOf, laneViewOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 
@@ -198,7 +198,7 @@ function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; record
     evidencePolicyResults: over.evidence === false ? [] : (results as typeof f.snapshot.evidencePolicyResults),
   } as TenantSnapshot
   // This is a first scan of the deliberately shaped fixture, not drift after its drill.
-  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const run = runFixture({ ...f, snapshot }, { snapshot })
   return caseOf(run, snapshot, f, STEP_ID)
 }
@@ -1105,9 +1105,12 @@ test('007.15: no plan anywhere offers an enforcement that is not an update of th
 // affected are owed — and together they read as the step contradicting
 // itself. The milestone now says which wait is left.
 test('a policy ready to enforce with a later date says the wait is the notice, not the evidence', () => {
-  const run = runFixture(withFoundationSettled(structuredClone(shippedFixture('demo-week2'))))
+  // The recovery test recorded on the settled tenant: it is one of the plan's own
+  // prerequisites of turning a policy on, and this case is about the notice.
+  const run = runFixture(withRecoveryTested(withFoundationSettled(structuredClone(shippedFixture('demo-week2')))))
   const step = run.steps.find((s) => s.id === 's-goal-token-protection')
   assert.ok(step, 'the premise: demo-week2 plans the token-protection step')
+  assert.equal(step.action.enforceWaitsOn, undefined, 'the premise: nothing the plan itself asks for first is outstanding')
   assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the evidence is earned')
   const at = step.events?.enforce.at ?? null
   assert.ok(at !== null && Date.parse(at) > Date.parse(String(step.scheduled?.basis?.today)), 'the premise: the plan places it later than today')

@@ -17,5 +17,5 @@ export function readyEvidence(fixture: Fixture, snapshot: TenantSnapshot, ids?: 
     snapshot.authMethods[user.id] = [{ kind: 'fido2', id: `fixture-passkey-${user.id}`, aaGuid: fido?.keyRestrictions?.aaGuids?.[0] ?? PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'deviceBound', attestationLevel: 'attested' }]
     return { ...current, id: user.id, userPrincipalName: user.userPrincipalName, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: true, methodsRegistered: ['fido2SecurityKey', 'microsoftAuthenticatorPush'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: false, userType: user.userType }
   }).filter(Boolean)
-  fixture.checkpoints = (fixture.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, fixture.mapping.breakGlassUserIds) }))
+  fixture.checkpoints = (fixture.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, fixture.mapping.breakGlassUserIds, fixture.mapping, fixture.groups) }))
 }

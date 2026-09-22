@@ -81,7 +81,7 @@ export function pilotStepAt(step: Step, state: PilotRuntimeState): Step {
   // body, under the synthetic id, turned on.
   const target = { ...create.body, id: PILOT_IDS.policy, state: 'enabled' }
   const kind = state === 'missing' ? 'create' : 'adjust'
-  const cleared = { ...step.action, kind, missing: [], readinessGate: undefined, escapeHatch: undefined, emergencyExposure: undefined, unmatchedPair: undefined }
+  const cleared = { ...step.action, kind, missing: [], readinessGate: undefined, enforceWaitsOn: undefined, escapeHatch: undefined, emergencyExposure: undefined, unmatchedPair: undefined }
   const lifecycle = state === 'missing' ? 'not-deployed' : state === 'reportOnly' ? 'report-only' : 'ready-to-enforce'
   const policies =
     state === 'missing'

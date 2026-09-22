@@ -44,7 +44,7 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
 test('step 15 names the admins not yet Ready for phishing-resistant MFA on the demo (three or fewer), and counts them past that', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
-  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds) }))
+  f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }

@@ -25,7 +25,9 @@ import { settleForecast } from '../forecast.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import { applyStepDecisions } from '../decisions.ts'
 import { DIRECTION_STEP, directionDecisionOf } from '../directionAnswers.ts'
-import { recoveryCandidate, withPreparedPasskeys } from './recoveryRecords.ts'
+import { observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from './recoveryRecords.ts'
+import { recoveryAccountBasis } from '../cleanupDone.ts'
+import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
 import type { DirectionStepId } from '../directionAnswers.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
@@ -197,6 +199,32 @@ export function withFoundationSettled(f: Fixture): Fixture {
  * Direction left exactly as it was. A case about an unsaved Direction answer
  * starts here — approving them all would answer the question it is asking.
  */
+/**
+ * The emergency-access recovery test recorded as passed on the tenant as it now
+ * stands: each emergency account's own observed passkey sign-in, after the
+ * configuration it covers was read — the record the fixtures build for the demo's
+ * week two (fixtures/index.ts), rebuilt on this snapshot.
+ *
+ * For a case whose premise is that nothing holds a policy's enforcement. The
+ * recovery test is one of the plan's own prerequisites of turning a policy on
+ * (roadmap/enforceWaits.ts), and settling the foundation changes the very
+ * configuration a recorded test covered, so the record a fixture carried stops
+ * counting — correctly: a test of a different configuration is not this one.
+ * Every emergency account needs a recovery sign-in on the scan
+ * (`withEmergencyAccessSettled` gives each one); without one this changes nothing.
+ */
+export function withRecoveryTested(f: Fixture): Fixture {
+  const ids = f.mapping.breakGlassUserIds
+  const events = Object.fromEntries(ids.flatMap((id) => { const e = f.snapshot.signInEvidence[id]?.recoveryCandidates?.[0]; return e ? [[id, e]] : [] }))
+  if (ids.length === 0 || Object.keys(events).length !== ids.length) return f
+  const earliest = Math.min(...Object.values(events).map((e) => Date.parse(e.at)))
+  const configurationObservedAt = new Date(earliest - 3_600_000).toISOString()
+  const accountBasis = recoveryAccountBasis(f.snapshot, ids, f.mapping, f.groups)
+  const candidateSetBasis = Object.fromEntries(ids.map((id) => { const set = recoveryPasskeyCandidateSet(f.snapshot, id, f.mapping, f.groups); return [id, set.state === 'complete' ? JSON.stringify([...set.ids].sort()) : ''] }))
+  const tested = observedRecoveryRecords({ tenantId: f.snapshot.tenantId, events, configurationObservedAt, at: f.snapshot.asOf, accountBasis, candidateSetBasis })
+  return { ...f, checkpoints: [...(f.checkpoints ?? []).filter((c) => (c as { cleanup?: string }).cleanup !== 'drill'), ...tested] }
+}
+
 export function withEmergencyAccessSettled(f: Fixture): Fixture {
   const snapshot = structuredClone(f.snapshot)
   const ids = f.mapping.breakGlassUserIds
