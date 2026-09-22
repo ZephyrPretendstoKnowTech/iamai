@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { effectOf } from './operations.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
+import { fixture } from './fixtures/index.ts'
+import { runFixture } from './fixtures/run.ts'
 
 function setup() {
   const snapshot = fixtureSnapshot()
@@ -106,4 +108,32 @@ test('scan-local readiness memo agrees across target scopes and a new derivation
   config.excludeTargets = [{ id: 'all_users' }]
   ;(snapshot.config.authMethodsPolicy.rows[0] as any).policyMigrationState = 'migrationComplete'
   assert.deepEqual(methodPreparation([effect], ids, snapshot, context, createMethodPreparationCache(snapshot, context)).readyIds, [])
+})
+
+// Which people the denominator counts.
+//
+// One step printed "246 active people", "covers 283 enabled" and "209 of 279
+// people" — three derivable totals, none explained. The readiness
+// denominator is its own population: the people the target policies actually
+// apply to, which is neither the step's active count nor its enabled count.
+// The line said "people" and left the reader to work out which.
+test('the readiness line says which population its denominator is', () => {
+  let checked = 0
+  for (const name of ['small', 'mid', 'large', 'midflight', 'messy'] as const) {
+    for (const step of runFixture(fixture(name)).steps) {
+      const line = step.readiness.lines[0]
+      if (typeof line !== 'string' || !/[0-9]+ of [0-9]+ people/.test(line)) continue
+      // The campaign step states its own cohort in its own words; this is the
+      // policy steps' readiness line (methodReadiness.ts).
+      if (!step.methodPreparation) continue
+      checked++
+      assert.match(line, /in scope of these policies/, `${name}/${step.id}: ${line}`)
+      // And the count itself is unchanged: the population it counts is the
+      // step's own methodPreparation, not a new one.
+      const m = /([0-9]+) of ([0-9]+) people/.exec(line)!
+      assert.equal(Number(m[2]), step.methodPreparation?.ids.length, `${name}/${step.id}: the denominator moved`)
+      assert.equal(Number(m[1]), step.methodPreparation?.readyIds.length, `${name}/${step.id}: the numerator moved`)
+    }
+  }
+  assert.ok(checked > 3, `only ${checked} steps printed a readiness reading`)
 })
