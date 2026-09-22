@@ -207,6 +207,31 @@ export function scopeManualBasis(basis: string, record: Pick<OwnerConfirmation, 
 const sectionRead = (s: { status: string; reason: string | null } | undefined): boolean =>
   s?.status === 'ok' || (s?.status === 'partial' && isLicenceGate(s.reason))
 
+/**
+ * Which source this step could not read, and the reason it recorded, or null.
+ *
+ * "Account or role data not fully read. Active roles, eligible roles and
+ * registered methods must be readable to compare the saved review with the
+ * current configuration." Every source named generically, and the one that was
+ * actually unread named nowhere — on a tenant where `pimEligibility` is
+ * `disabled` with the reason `needs Entra ID P2`, which is a fact the reader
+ * can act on and the words licence, premium and P2 appeared nowhere on the
+ * step. A sole administrator spent time looking for a permission to grant.
+ */
+function unreadSourceOf(snapshot: TenantSnapshot): string | null {
+  const named: [string, { status?: string; reason?: string | null } | undefined][] = [
+    ['role assignments', snapshot.config.roleAssignments],
+    ['eligible role assignments', snapshot.config.pimEligibility],
+    ['the user list', snapshot.sources.users],
+  ]
+  for (const [label, source] of named) {
+    if (!source || source.status === 'ok' || source.status === 'partial') continue
+    const reason = typeof source.reason === 'string' && source.reason.trim() ? source.reason.trim() : source.status
+    return `${label} could not be read: ${reason}.`
+  }
+  return null
+}
+
 function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (!sectionRead(snapshot.sources.users)) return false
   if (step.id === 's-ladder-legacy-auth-inventory' && snapshot.sources.signInEvidence?.status !== 'ok') return false
@@ -305,7 +330,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const activeAdmins = adminUserIds(snapshot.roles)
       const activeIds = ids.filter(id => activePeople.has(id))
       step.population = { ...step.population, ids, total: ids.length, admins: ids.filter(id => activeAdmins.has(id)).length, inScope: ids.length, activeIds, active: activeIds.length }
-      step.configurationFindings = [{ key: 'administrator-review-scope', label: 'Administrator Account Evidence', value: evidenceRead(step, snapshot) ? `${ids.length} accounts to review` : 'Account or role data not fully read', detail: evidenceRead(step, snapshot) ? 'Active and eligible roles identify the review scope. Mailbox licensing and business sign-ins are clues, not proof of dedicated use.' : 'Active roles, eligible roles and registered methods must be readable to compare the saved review with the current configuration.', outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
+      step.configurationFindings = [{ key: 'administrator-review-scope', label: 'Administrator Account Evidence', value: evidenceRead(step, snapshot) ? `${ids.length} accounts to review` : 'Account or role data not fully read', detail: evidenceRead(step, snapshot) ? 'Active and eligible roles identify the review scope. Mailbox licensing and business sign-ins are clues, not proof of dedicated use.' : [unreadSourceOf(snapshot), 'Active roles, eligible roles and registered methods must be readable to compare the saved review with the current configuration.'].filter((x): x is string => x !== null).join(' '), outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
       step.population.active = step.population.activeIds?.length ?? 0
       if (!ids.length && evidenceRead(step, snapshot)) { delete step.manualReview; step.deliveredBy = ['No non-emergency account currently holds an active or eligible directory role.']; setState(step, { satisfied: true, inPlace: true }); continue }
     }
