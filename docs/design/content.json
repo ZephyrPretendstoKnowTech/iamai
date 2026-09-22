@@ -368,6 +368,17 @@
         "guests": "{n} guests",
         "both": "{people} people and {guests} guests"
       },
+      "perUserMfa": {
+        "$comment": "The Legacy Per-User MFA tile on Finish Moving Off Per-User MFA (roadmap/manualWork.ts). {accounts} is copy/statements.ts count(), so it reads \"4,902 accounts\" and \"1 account\". Per-user MFA is a state every account in the directory has, emergency accounts included, so the unread count is the whole directory where the scan read no state at all; detailUnreadAll says so, because every other count on the plan leaves the emergency accounts out and the two numbers otherwise read as a mistake (R4-54). These were inline template strings with no separator and \"1 accounts\".",
+        "label": "Legacy Per-User MFA",
+        "valueOn": "{accounts} Enabled or Enforced",
+        "valueUnread": "Not fully read",
+        "valueOff": "Disabled",
+        "detailUsersUnread": "The account list was not fully read; the tenant-wide per-user MFA state is not established.",
+        "detailUnreadAll": "The scan read no per-user MFA state, so every account in the directory needs a check: all {accounts}, the emergency accounts included.",
+        "detailUnreadSome": "{accounts} need a per-user MFA state check: the scan could not read their state.",
+        "detailOff": "No current account has legacy per-user MFA enabled or enforced."
+      },
       "coverage": {
         "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
         "reason": {

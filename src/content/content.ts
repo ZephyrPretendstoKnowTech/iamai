@@ -143,6 +143,8 @@ export type EngineWords = {
   evidence: { failures: string; unreadable: string }
   /** One cohort's words wherever it is counted: people, guests, or both (derive/whoLine.ts cohortWords). */
   cohort: { people: string; guests: string; both: string }
+  /** The Legacy Per-User MFA tile (roadmap/manualWork.ts); {accounts} is a count() of accounts. */
+  perUserMfa: { label: string; valueOn: string; valueUnread: string; valueOff: string; detailUsersUnread: string; detailUnreadAll: string; detailUnreadSome: string; detailOff: string }
   /** Why an existing policy that is the goal's policy does not put it in place (coverage/coverage.ts). */
   coverage: {
     reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
