@@ -36,7 +36,7 @@ import { IMPACT, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
@@ -1166,7 +1166,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
   return {
     id: step.id,
-    title: typeof cs?.title === 'string' ? cs.title : step.title,
+    // The one resolver the row and the opened step read (content/stepTitle.ts).
+    title: contentTitle(step),
     state: {
       lifecycle: step.state.lifecycle,
       condition: step.state.condition,

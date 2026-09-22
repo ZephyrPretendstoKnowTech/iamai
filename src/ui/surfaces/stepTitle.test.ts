@@ -5,11 +5,13 @@
 // the walk: the row and body titles are the same string, and it is content's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { readFileSync } from 'node:fs'
 import { deferredRows, phaseRows, planPhases, stepListOf } from './planRows.ts'
+import { stepContract } from './stepContract.ts'
+import type { StepVarContext } from './stepVars.ts'
 
 test('the row, the body and the communications use the one content title', () => {
   const fixtures = allFixtures().filter((f) => f.name === 'demo' || f.name === 'getiamai')
@@ -48,14 +50,19 @@ test('the printed timeline names each phase step by the title the board and the 
   assert.ok(printed.includes('Require MFA to Register a Device'), 'the timeline does not name the device-registration policy by its title')
   assert.equal(printed.includes('Admins use phishing-resistant auth'), false, 'the timeline prints the engine\'s goal statement')
   assert.equal(printed.includes('Registering or joining a device requires MFA'), false, 'the timeline prints the engine\'s goal statement')
-  // Every fixture: each name in each cell is a content title.
-  for (const fx of allFixtures()) {
-    const run = runFixture(fx)
-    const off = new Set(deferredRows(run.steps).map((s) => s.id))
-    for (const w of planPhases(run.schedule)) {
-      const rows = phaseRows(run.steps, w).filter((s) => !off.has(s.id))
-      assert.equal(stepListOf(rows), rows.map((s) => contentTitle(s)).join('; '), `${fx.name} phase ${w.wave}`)
-    }
+  // A second tenant, read as a list of names: every step whose goal statement
+  // differs from its title is named by the title and never by the statement.
+  // (This compared stepListOf with the same map it is made of, which could not
+  // fail.)
+  const other = runFixture(fixture('getiamai'))
+  const off = new Set(deferredRows(other.steps).map((s) => s.id))
+  const phased = planPhases(other.schedule).flatMap((w) => phaseRows(other.steps, w).filter((s) => !off.has(s.id)))
+  const names = planPhases(other.schedule).flatMap((w) => stepListOf(phaseRows(other.steps, w).filter((s) => !off.has(s.id))).split('; '))
+  const renamed = phased.filter((s) => s.title !== contentTitle(s))
+  assert.ok(renamed.length > 0, 'the premise: the getiamai timeline carries steps whose goal statement is not their title')
+  for (const s of renamed) {
+    assert.ok(names.includes(contentTitle(s)), `getiamai: the timeline does not name ${s.id} by its title`)
+    assert.equal(names.includes(s.title), false, `getiamai: the timeline names ${s.id} by its goal statement "${s.title}"`)
   }
 })
 
@@ -66,9 +73,26 @@ test('the printed plan names a step only through the content title', () => {
   // which is the fact with two sources the timeline showed can drift.
   const src = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8').replace(/\/\/[^\n]*/g, '')
   assert.ok(src.includes('stepListOf(phaseSteps(w))'), 'the timeline cell does not read stepListOf')
+  // Every occurrence of each: the first alone let a later `.plainTitle` through.
   for (const own of ['.plainTitle', 's.title', '?.title', 'goal.shortName ||']) {
-    const at = src.indexOf(own)
-    const inContentTitle = at >= 0 && src.slice(Math.max(0, at - 80), at).includes('contentTitle(')
-    assert.ok(at < 0 || inContentTitle, `PrintPlan.tsx names a step through ${own}, not contentTitle`)
+    for (let at = src.indexOf(own); at >= 0; at = src.indexOf(own, at + 1)) {
+      assert.ok(src.slice(Math.max(0, at - 80), at).includes('contentTitle('), `PrintPlan.tsx names a step through ${own} at offset ${at}, not contentTitle`)
+    }
   }
+})
+
+// The opened step's contract resolved its title itself: the content title, else
+// the engine's technical title — never the plain title contentTitle falls back
+// to first. A step the content file has no entry for, with a plain title of its
+// own (the free-tier ladder steps carry one), was titled one way on its row and
+// another in its contract. It is one resolver now.
+test('the opened step\'s contract names a step by the title its row shows', () => {
+  const f = fixture('small')
+  const r = runFixture(f)
+  const base = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
+  const step = { ...base, id: 's-no-content-entry', goalId: 'no-content-entry', guidance: undefined, title: 'Technical title', plainTitle: 'Plain title' }
+  assert.equal(contentStepFor(step), undefined, 'the premise: the content file has no entry for this step')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups } as StepVarContext
+  assert.equal(stepContract(step, ctx).title, contentTitle(step))
+  assert.equal(stepContract(step, ctx).title, 'Plain title')
 })
