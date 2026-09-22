@@ -74,6 +74,16 @@ export type LaneReading = {
   order: number
   /** False where the graph does not know the step and the Plan's own state stood in. */
   fromEngine: boolean
+  /**
+   * Conditional inputs nobody has saved (roadmap/answers.ts unsavedInputsOf).
+   *
+   * They are why the engine keeps a step out of Completed (`isComplete`, U28),
+   * and the row could not say so: a policy already enforced read "In place" in
+   * the State column, "Ready - Decision" in its lane and "Not scheduled" under
+   * When, three answers to one question with nothing naming the answer that was
+   * missing.
+   */
+  unsaved?: readonly string[]
 }
 
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */
@@ -405,6 +415,11 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
+  for (const step of steps) {
+    const unsaved = step.doesntApply == null ? step.unsavedInputs ?? [] : []
+    const own = out.get(step.id)
+    if (own && unsaved.length > 0) out.set(step.id, { ...own, unsaved })
+  }
   for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not

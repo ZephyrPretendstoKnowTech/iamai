@@ -35,6 +35,7 @@ import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, groupTotals, membersOf, pinnedGroups, positionInGroup } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
+import { list } from '../../copy/statements.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
@@ -47,7 +48,7 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
-const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the fourth tab brought with it (pages.app.plan.board): its label, and the line a group drawn whole reads. */
 const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
@@ -117,6 +118,8 @@ export const BOARD = {
   allTypes: 'All types',
   /** The row list's five zones. `#` heads the group position every row carries (stepGroups.ts groupPositions). */
   columns: { number: '#', state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
+  /** What a row is short of when a conditional input has no saved answer (roadmap/answers.ts unsavedInputsOf). */
+  unsavedAnswer: LANE_WORDS.unsavedAnswer,
   collapseGroup: 'Collapse group',
   expandGroup: 'Expand group',
   empty: 'No steps match this search.',
@@ -317,9 +320,18 @@ export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | n
   // it. A reader working from the board turned it on with that prerequisite
   // still open. A Ready row already carries its own tail and needs no second
   // line.
-  if (r.lane !== 'On Hold' && r.lane !== 'Up Next') return null
+  // An unanswered input, last: where something holds the row, that is what the
+  // row is waiting for, and an unsaved answer is not it. Where nothing does —
+  // a Ready row — it is the one thing the row is short of and no lane word
+  // names it. It is also what keeps the step out of Completed
+  // (LaneReading.unsaved), which is what let a row read "In place", "Ready -
+  // Decision" and "Not scheduled" all at once with the missing answer named
+  // nowhere.
+  const unsaved = (): string | null =>
+    (r.unsaved ?? []).length > 0 ? fillText(BOARD.unsavedAnswer, { inputs: list([...(r.unsaved ?? [])]) }) : null
+  if (r.lane !== 'On Hold' && r.lane !== 'Up Next') return unsaved()
   const label = holdLabelOf(r, titleOf)
-  return label === BOARD.lanes.onHold || label === BOARD.lanes.upNext ? null : label
+  return label === BOARD.lanes.onHold || label === BOARD.lanes.upNext ? unsaved() : label
 }
 
 /** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */

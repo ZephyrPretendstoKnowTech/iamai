@@ -274,6 +274,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The third of them (stepVars.ts proposedNameNote): the example tenant has
   // policies, so the no-policies case cannot render here either.
   '.shared.proposedNameNoPolicies',
+  // The board row's line for a conditional input nobody has saved
+  // (planBoard.ts waitingForOf): a runtime reading of the plan's own state,
+  // and the review page draws rows from the file with no state to read.
+  '.pages.plan.unsavedAnswer',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52

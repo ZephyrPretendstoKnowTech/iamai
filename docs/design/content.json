@@ -701,6 +701,8 @@
         "deferred": "Deferred",
         "doesntApply": "Doesn't apply"
       },
+      "$commentUnsavedAnswer": "A step can be finished and still be short of an answer somebody has to record: the lane engine keeps it out of Completed for exactly that reason (U28). A policy already enforced then read \"In place\" in the State column, \"Ready - Decision\" in its lane and \"Not scheduled\" under When - three answers to one question, and the missing answer named in none of them. The row now says which answer it is.",
+      "unsavedAnswer": "Waiting on your answer: {inputs}",
       "substatus": {
         "$comment": "The Ready lane's substatus words (A1b, decision 11), keyed by the engine's own literal (planBoard.ts SUBSTATUS_WORD).",
         "create": "Create",
