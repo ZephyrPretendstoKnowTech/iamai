@@ -201,15 +201,16 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
   // product itself calls unsupported and cannot be undone, and the board said
   // Completed. Spliced rather than authored, so no package can miss it.
   const checklist = steps.findIndex((line) => ENFORCE_CHECKLIST.test(line))
-  const withOutstanding = checklist < 0 || outstanding.length === 0
+  const spliced = [
+    outstanding.length === 0
+      ? null
+      : outstanding.length === 1
+        ? fillText(app.plan.enforceOutstanding, { items: outstanding[0] })
+        : fillText(app.plan.enforceOutstandingMany, { items: list([...outstanding]) }),
+  ].filter((line): line is string => line !== null)
+  const withOutstanding = checklist < 0 || spliced.length === 0
     ? steps
-    : [
-        ...steps.slice(0, checklist + 1),
-        outstanding.length === 1
-          ? fillText(app.plan.enforceOutstanding, { items: outstanding[0] })
-          : fillText(app.plan.enforceOutstandingMany, { items: list([...outstanding]) }),
-        ...steps.slice(checklist + 1),
-      ]
+    : [...steps.slice(0, checklist + 1), ...spliced, ...steps.slice(checklist + 1)]
   const mail = mailDevicesTaskOf(step, mapping)
   const task: EmergencyAccountTask = {
     id: 'policy-procedure',
