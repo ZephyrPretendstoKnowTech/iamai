@@ -33,12 +33,26 @@ import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passke
 import { methodAvailability } from '../../../../src/roadmap/methodAvailability.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
+import { notPeopleIds } from '../../../../src/derive/sets.ts'
 import { setDisplayTimeZone } from '../../../../src/copy/dates.ts'
 import { pinnedPackage } from '../../../../src/baseline/pinned.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
 import type { Step } from '../../../../src/roadmap/types.ts'
 
 export type Tenant = Fixture
+
+/**
+ * The people the product counts as active at this scan: `activePeopleIds` at
+ * the scan's own clock, without the accounts the plan says are not people
+ * (service and emergency accounts), exactly as planData.ts and runFixture call
+ * it. `days()` and `enrolMfa()` called it with the snapshot alone, so with no
+ * clock and no exclusions it counted 284 active on Marcus's tenant where the
+ * product counts 246: 33 accounts the clock makes dormant, 3 service accounts
+ * and 2 emergency accounts, all of whom then signed in on every day of
+ * every report-only window, and were enrolled with the team wherever they held
+ * no method.
+ */
+export const activePeople = (t: Tenant): string[] => activePeopleIds(t.snapshot, t.snapshot.asOf, notPeopleIds(mappingOf(t)))
 
 /**
  * A persona's tenant: a shipped fixture as the starting shape, on the baseline
@@ -638,7 +652,7 @@ export function days(t: Tenant, n: number, opts: { signIns?: boolean; failures?:
   // gate asks that EVERY active person a policy reaches signs in during the
   // window, so a narrower list here leaves the gate correctly unopened and looks
   // like a product defect. Guests are active people too.
-  const everyone = [...activePeopleIds(next.snapshot)]
+  const everyone = activePeople(next)
   const dayOf = (k: number): string => new Date(from + k * 864e5).toISOString().slice(0, 10)
   const results = [...(next.snapshot.evidencePolicyResults ?? [])]
   for (const p of reportOnly) {
@@ -700,7 +714,7 @@ export function enrolMfa(t: Tenant): Tenant {
   const available = methodAvailability(s)
   const registration = new Map(s.registrationDetails.map((r) => [r.id, r]))
   const verdicts = (id: string): ('yes' | 'no' | 'unknown')[] => (registration.get(id)?.methodsRegistered ?? []).map((m) => available.usable(id, m))
-  const active = new Set(activePeopleIds(s))
+  const active = new Set(activePeople(next))
   const emergency = new Set(mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
   const donor = [...active].find((id) => {
     if (emergency.has(id.toLowerCase())) return false

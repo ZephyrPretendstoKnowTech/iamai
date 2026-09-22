@@ -169,6 +169,14 @@ finding that rests on one of them is the harness's until it is re-run.
   policy content — apps, filters, names, JSON bodies — needs re-running on the
   pin before it is worked** (R4-10, R4-23). `tenant()` now re-bases on the pin
   by default.
+- **`days()` and `enrolMfa()` counted people without a clock.** They called
+  `activePeopleIds(snapshot)` with no time and no exclusions, so on Marcus's
+  tenant 284 accounts counted as active where the product counts 246: 33
+  dormant, 3 service accounts, 2 emergency accounts. Those signed in on every
+  day of every report-only window and were enrolled with the team.
+  `activePeople(t)` is now the product's reading (the scan's clock, service and
+  emergency accounts out), and both use it. Found fixing the harness, not by a
+  validator.
 
 ## Rules
 
