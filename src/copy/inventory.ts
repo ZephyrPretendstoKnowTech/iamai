@@ -236,6 +236,12 @@ export const PACKAGE = {
 // ---- Friendly names for Graph enumerations (prompt 19 §B: no raw ids where a human reads) ----
 const METHOD_NAMES: Record<string, string> = {
   microsoftauthenticator: 'Microsoft Authenticator',
+  // A method row's own kind (/users/{id}/authentication/methods, collectors.ts KIND_BY_TYPE), where
+  // no enumeration above already names it: an emergency-access finding named
+  // the kind bare ("relies on fido2 alone", R4-56).
+  phone: 'Text or call',
+  passkey: 'Passkey',
+  platformcredential: 'Platform SSO',
   microsoftauthenticatorpush: 'Microsoft Authenticator (notification)',
   microsoftauthenticatorpasswordless: 'Microsoft Authenticator (passwordless)',
   fido2: 'Passkey or FIDO2 security key',

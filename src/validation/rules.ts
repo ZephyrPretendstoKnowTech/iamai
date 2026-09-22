@@ -27,6 +27,7 @@ import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts
 import { isPhishingResistantKind } from '../scoring/phishingResistant.ts'
 import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
 import type { Citation } from '../copy/validation.ts'
+import { methodName } from '../copy/inventory.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 import { isRecordedDrill, latestRecoveryTest, recoveryCredentialBasis, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
@@ -551,7 +552,7 @@ const bgMethodDiversity: ValidationRule = {
     const lists = perAccount as string[][]
     if (lists.some((k) => k.length !== 1)) return PASS
     const only = lists[0][0]
-    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only), { method: only }) : PASS
+    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only), { method: methodName(only) }) : PASS
   },
 }
 
