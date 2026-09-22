@@ -37,6 +37,7 @@ import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
+import { personLabels } from '../names.ts'
 import { countryName, suggestCountries } from '../mapping/countries.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { phoneSignInIds } from '../derive/sets.ts'
@@ -328,7 +329,8 @@ export type DirectionInput = {
 export function directionSteps(input: DirectionInput): Step[] {
   const ctx = { snapshot: input.snapshot, mapping: input.mapping }
   const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds)
-  const nameOf = input.nameOf ?? ((id: string) => input.snapshot.users.find((u) => u.id === id)?.displayName ?? id)
+  // A caller that passes no namer gets the one rule for naming a person (names.ts personLabels).
+  const nameOf = input.nameOf ?? ((labels) => (id: string) => labels.get(id) ?? id)(personLabels(input.snapshot.users))
   const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
   return [
     directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),

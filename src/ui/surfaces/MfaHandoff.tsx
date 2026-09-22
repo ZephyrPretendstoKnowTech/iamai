@@ -19,15 +19,15 @@
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { LadderMapping } from '../../derive/ladder.ts'
-import { methodClassesOf } from '../../derive/ladder.ts'
 import { scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import type { MfaHoldFamily } from '../../derive/stepMfaReadiness.ts'
-import { adminUserIds } from '../../roles.ts'
+import { personLabels } from '../../names.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessStepHref } from '../shell/routes.ts'
 import { classWord, listWords } from './readinessCells.ts'
+import { handoffPreview } from './mfaHandoffPreview.ts'
 import { useMemo } from 'react'
 
 const P = app.plan
@@ -43,47 +43,36 @@ const UNKNOWN = {
 }
 const W = (P as unknown as { mfaPreview: { has: string; needs: string; noMethods: string; needsMethod: string; checkCompat: string; higherBar: string } }).mfaPreview
 
-/**
- * How many people the Plan previews before handing off. Three is enough to make
- * the hold concrete without the step quietly becoming a second readiness table.
- * The TOTAL is never this number: it is `hold.ids.length`, and the line under
- * the preview carries it.
- */
-const PREVIEW = 3
-
 export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: TenantSnapshot; mapping: LadderMapping }) {
   const scored = useMemo(() => scoredPeople(snapshot, mapping, snapshot.asOf), [snapshot, mapping])
+  // The one rule for naming a person, over the whole directory (names.ts).
+  const labels = useMemo(() => personLabels(snapshot.users), [snapshot])
   const hold = stepMfaHold(step, scored)
   if (!hold) return null
   const n = hold.ids === null ? null : hold.ids.length
   // Nobody to hand off: the hold is on a number, and this line is about people.
   if (n === 0) return null
-  const unknown = new Set(step.methodPreparation?.unknownIds ?? [])
-  const admins = adminUserIds(snapshot.roles ?? { active: {} })
-  const byId = new Map(snapshot.users.map((u) => [u.id, u]))
-  const preview = (hold.ids ?? []).map((id) => byId.get(id)).filter((u) => u !== undefined).slice(0, PREVIEW)
+  // The first few people, named and read once (mfaHandoffPreview.ts).
+  const preview = handoffPreview(step, hold.ids, snapshot, labels)
   return (
     <div className="mfa-handoff-block">
       {preview.length > 0 && (
         <ul className="mfa-preview">
-          {preview.map((u) => {
-            const methods = methodClassesOf(snapshot, u.id) ?? []
-            return (
-              <li key={u.id}>
-                <span className="who">
-                  <span className="name">{u.displayName ?? u.userPrincipalName}</span>
-                  {admins.has(u.id) && <span className="role">{(pages.readiness as unknown as { admin: string }).admin}</span>}
-                </span>
-                {/* What they have, and what this step needs. Two facts, labelled. */}
-                <span className="state">
-                  <span className="k">{W.has}</span> {methods.length > 0 ? listWords(methods.map(classWord)) : W.noMethods}
-                </span>
-                <span className="next">
-                  <span className="k">{W.needs}</span> {unknown.has(u.id) ? W.checkCompat : W.needsMethod}
-                </span>
-              </li>
-            )
-          })}
+          {preview.map((p) => (
+            <li key={p.id}>
+              <span className="who">
+                <span className="name">{p.name}</span>
+                {p.admin && <span className="role">{(pages.readiness as unknown as { admin: string }).admin}</span>}
+              </span>
+              {/* What they have, and what this step needs. Two facts, labelled. */}
+              <span className="state">
+                <span className="k">{W.has}</span> {p.methods.length > 0 ? listWords(p.methods.map(classWord)) : W.noMethods}
+              </span>
+              <span className="next">
+                <span className="k">{W.needs}</span> {p.checkCompat ? W.checkCompat : W.needsMethod}
+              </span>
+            </li>
+          ))}
         </ul>
       )}
       <p className="line mfa-handoff">

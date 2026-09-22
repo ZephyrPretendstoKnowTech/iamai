@@ -1,3 +1,5 @@
+import { adminUserIds } from '../roles.ts'
+import { personLabels } from '../names.ts'
 import { isLicenceGate } from '../graph/collect/roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
 import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
@@ -324,7 +326,9 @@ function perUserMfaFinding(snapshot: TenantSnapshot, enabled: readonly UserRow[]
   // read beside them: "3 accounts Enabled or Enforced" over three names read as
   // the complete list while 2,000 states were never read, and the step had no
   // other line saying so.
-  const names = enabled.map(u => u.displayName || u.userPrincipalName).join(', ')
+  // By the one naming rule (names.ts personLabels): a display name another account shares carries its address.
+  const labels = personLabels(snapshot.users)
+  const names = enabled.map(u => labels.get(u.id) || u.userPrincipalName || u.id).join(', ')
   const notRead = !usersRead ? W.detailUsersUnread : unknown.length ? fillText(W.detailUnreadSome, { accounts: accounts(unknown.length) }) : null
   const detail = enabled.length
     ? notRead === null ? names : `${names}. ${notRead}`
@@ -346,6 +350,15 @@ function perUserMfaFinding(snapshot: TenantSnapshot, enabled: readonly UserRow[]
  */
 export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, mapping?: MappingState, index?: PopulationIndex): void {
   const accountCache = new Map<string, string>()
+  // A person this names — in a finding's detail, or as an option in the account
+  // picker a review is recorded with — by the one rule for naming a person
+  // (names.ts personLabels): a display name another account shares carries its
+  // sign-in address, and a guest among them its marker. Both used to read
+  // `displayName || userPrincipalName`, so on getiamai the separate-admin-accounts
+  // picker offered a bare "Kai Brown" beside a directory holding two, and
+  // ManualReviewForm shows an option with no second line. Built once, on first use.
+  let labels: Map<string, string> | null = null
+  const labelOf = (u: { id: string; userPrincipalName?: string | null }): string => (labels ??= personLabels(snapshot.users)).get(u.id) || u.userPrincipalName || u.id
   for (const step of steps) {
     const item = step.id.replace('s-ladder-', '')
     if (!SCOPED_MANUAL.has(step.id) && !mailDevicesFollowUp(step.id, mapping) && step.id !== 's-shared-devices' && step.id !== 's-prereq-per-user-mfa' && (!step.id.startsWith('s-ladder-') || !REVIEWS.has(item))) continue
@@ -420,7 +433,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     const confirmedAt = readyToConfirm && confirmation?.basis === basis && Date.parse(confirmation.at) <= Date.now() ? confirmation.at : null
     if (SCOPED_MANUAL.has(step.id) || mailDevicesFollowUp(step.id, mapping)) {
       const populationIds = new Set(step.population.ids)
-      const fields = manualEvidenceFields(step.id, mapping).map(field => field.key === 'accountIds' ? { ...field, options: snapshot.users.filter(u => step.id === 's-ladder-guest-review' ? u.userType === 'guest' : step.id === 's-goal-pim-activation-reauth' ? u.accountEnabled && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible[u.id]?.length ?? 0) > 0) : step.population.ids.length ? populationIds.has(u.id) : true).map(u => ({ value: u.id, label: u.displayName || u.userPrincipalName || u.id })) } : field.key === 'roleIds' ? { ...field, options: [...new Map([...(snapshot.config.roleAssignments?.rows ?? []), ...(snapshot.config.pimEligibility?.rows ?? [])].flatMap(raw => { const p = raw as Record<string, any>; return p.roleDefinitionId ? [[String(p.roleDefinitionId), { value: String(p.roleDefinitionId), label: String(p.roleDefinition?.displayName ?? p.roleDefinitionId) }] as const] : [] })).values()] } : field.key === 'networkId' ? { ...field, options: (snapshot.config.namedLocations?.rows ?? []).filter(raw => Array.isArray((raw as Record<string, unknown>).ipRanges)).map(raw => { const p = raw as Record<string, unknown>; return { value: String(p.id), label: String(p.displayName ?? p.id) } }) } : field)
+      const fields = manualEvidenceFields(step.id, mapping).map(field => field.key === 'accountIds' ? { ...field, options: snapshot.users.filter(u => step.id === 's-ladder-guest-review' ? u.userType === 'guest' : step.id === 's-goal-pim-activation-reauth' ? u.accountEnabled && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible[u.id]?.length ?? 0) > 0) : step.population.ids.length ? populationIds.has(u.id) : true).map(u => ({ value: u.id, label: labelOf(u) })) } : field.key === 'roleIds' ? { ...field, options: [...new Map([...(snapshot.config.roleAssignments?.rows ?? []), ...(snapshot.config.pimEligibility?.rows ?? [])].flatMap(raw => { const p = raw as Record<string, any>; return p.roleDefinitionId ? [[String(p.roleDefinitionId), { value: String(p.roleDefinitionId), label: String(p.roleDefinition?.displayName ?? p.roleDefinitionId) }] as const] : [] })).values()] } : field.key === 'networkId' ? { ...field, options: (snapshot.config.namedLocations?.rows ?? []).filter(raw => Array.isArray((raw as Record<string, unknown>).ipRanges)).map(raw => { const p = raw as Record<string, unknown>; return { value: String(p.id), label: String(p.displayName ?? p.id) } }) } : field)
       const read = evidenceRead(step, snapshot)
       const complete = completeManualEvidence(step.id, confirmation, undefined, mapping)
       const people = scopedPeople(step, snapshot)
