@@ -21,6 +21,9 @@ import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
 import { asideGroupsFor, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
+import { cleanupTitleOf } from '../../../../src/ui/surfaces/stepContract.ts'
+import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
+import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
 import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
@@ -64,6 +67,23 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
 }
 
 /**
+ * The board's readings, built the way Plan.tsx builds them.
+ *
+ * Plan.tsx passes the Cleanup rows into `laneReadings` and resolves a Cleanup
+ * row's title through `cleanupTitleOf`; this did neither, so the drill — which
+ * the dependency graph makes a hard prerequisite of EVERY CA policy
+ * enforcement — was invisible here, and a blocker naming it came out as the
+ * bare words "Prerequisite on hold".
+ */
+function boardReadings(r: FixtureRun): { readings: ReturnType<typeof laneReadings>; titleOf: (id: string) => string | null } {
+  const rows = (r.schedule.cleanup?.rows ?? [])
+    .filter((row) => cleanupEntry(row.kind) !== null)
+    .map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
+  const titleOf = (id: string): string | null => r.steps.find((x) => x.id === id)?.title ?? cleanupTitleOf(id)
+  return { readings: laneReadings(r.steps, rows), titleOf }
+}
+
+/**
  * Every step in the order the board shows it, with the lane word a person reads.
  *
  * It used to say that and return `r.steps` in plan order, which is not the
@@ -75,8 +95,7 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
  * the page does, and names the tab and the group it found each row under.
  */
 export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; substatus: string | null; tab: string; group: string }[] {
-  const readings = laneReadings(r.steps)
-  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const { readings, titleOf } = boardReadings(r)
   const byId = new Map(r.steps.map((s) => [s.id, s]))
   const items: BoardItem[] = r.steps.flatMap((step) => {
     const reading = readings.get(step.id)
@@ -126,14 +145,18 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
   // follow that instead of the board. On a messy tenant that disagreed with the
   // real board for 18 of 38 steps, so this harness was manufacturing exactly the
   // phantom states it exists to catch. Found by the cautious-engineer run.
-  const titleOf = (id: string): string | null => r.steps.find((x) => x.id === id)?.title ?? null
-  const readings = laneReadings(r.steps)
+  const { readings, titleOf } = boardReadings(r)
   const reading = readings.get(step.id)
   const laneView = reading ? laneViewOf(reading, titleOf) : undefined
   const b = stepBodyOf(step, ctxOf(t, r, step), {
     lane: laneView,
     blockers: reading ? readinessBlockersOf(reading, titleOf) : undefined,
     prerequisiteLabel: prerequisiteLabelFor(readings),
+    // What the enforce checklist's conditions wait on, as Plan.tsx passes it.
+    enforceWaits: (r.schedule.cleanup?.rows ?? [])
+      .filter((row) => row.kind === 'drill' && row.done === null)
+      .map((row) => cleanupEntry(row.kind)?.title)
+      .filter((x): x is string => typeof x === 'string' && x.length > 0),
   } as never)
   const card = (c: { heading: string; upn?: string | null; title: string; detail?: string; instruction?: string }): string =>
     [c.heading, c.upn ?? '', c.title, c.detail ?? '', c.instruction ?? ''].filter((x) => String(x).trim()).join(' · ')

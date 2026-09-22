@@ -153,6 +153,11 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
       underHeading = true
       continue
     }
+    // A list marker with nothing after it is not a step. The enforce block
+    // authors its conditions as an indented list under a numbered item, so
+    // the number lands on a line of its own and was rendered as an
+    // instruction reading "3.".
+    if (/^(?:\d+\.|[-*])$/.test(line)) continue
     const item = /^(?:\d+\.|[-*])\s+(.*)$/.exec(line)?.[1] ?? line
     if (!underHeading) {
       steps.push(item)

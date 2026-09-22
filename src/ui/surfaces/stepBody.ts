@@ -147,6 +147,19 @@ export type StepBodyOptions = {
   confirmations?: Readonly<Record<string, OwnerConfirmation>>
   /** The baseline commit implementation content is matched against: this build's pin, always, on every product surface. */
   baselineCommit?: string
+  /**
+   * Work the enforce checklist's own conditions depend on that is not a
+   * prerequisite of this step's NEXT action, by title.
+   *
+   * The checklist says "Emergency access is prepared and tested." and the thing
+   * that tests it is a Cleanup row, not a step, so nothing on the card named
+   * it: a reader went looking for a step called something like that, did not
+   * find one, and carried on. The engine does make the drill a hard
+   * prerequisite of every policy's ENFORCEMENT (dependency-data.json), but a
+   * step being created today is not enforcing today, so it is not among
+   * `blockers` — and the checklist is precisely about the day it will be.
+   */
+  enforceWaits?: readonly string[]
 }
 
 /** The opened step's body: every value the component draws, decided once here. */
@@ -419,7 +432,8 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // path that makes the object, the campaign's preparation, the review's reading
   // — so the task frame draws exactly what this step drew. The four Emergency
   // Access steps keep their own producers above and are never this.
-  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0)) : null)
+  const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...(o.enforceWaits ?? [])])]
+  const taskProjection: EmergencyTaskProjection | null = emergencyAccountTasks ?? (drawsTaskAnatomy(step.id) ? policyTasksOf(step, title, artifacts, ctx.mapping, outstandingForEnforce) : null)
   const W = CONTRACT.implementation
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null

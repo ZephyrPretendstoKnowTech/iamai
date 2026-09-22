@@ -35,7 +35,7 @@ import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
 import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
-import { factOf } from './stepContract.ts'
+import { cleanupTitleOf, factOf } from './stepContract.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
@@ -190,7 +190,13 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const stepsById = new Map(c.steps.map((s) => [s.id, s]))
   const titleOf = (id: string): string | null => {
     const s = stepsById.get(id)
-    return s ? s.plainTitle || s.title : null
+    // A Cleanup row is a prerequisite like any other and its title lives
+    // somewhere else (content.cleanup, by kind). Without this the board knew
+    // the drill held every policy's enforcement — the dependency graph carries
+    // that edge for every CA step — and could only call it "Prerequisite on
+    // hold", which is what reached the enforce checklist where the condition
+    // "Emergency access is prepared and tested" needed naming.
+    return s ? s.plainTitle || s.title : cleanupTitleOf(id)
   }
   // The Cleanup rows the plan draws (§5), by the id the board gives them; the
   // drill is a Cleanup row and nothing else, so it counts once.
@@ -207,6 +213,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // taken over every row the board has before a tab or a focus filters one out:
   // a step's number is its place in its group, not its place in what is on
   // screen, so the Ready tab reads 1, 3, 6 rather than renumbering to 1, 2, 3.
+  // What the enforce checklist's own conditions wait on that is not a
+  // prerequisite of any step's next action. "Emergency access is prepared and
+  // tested." is a condition in forty-odd packages and the thing that tests it
+  // is a Cleanup row, not a step — so a reader went looking for a step by that
+  // name and found none. The engine does hold every policy's ENFORCEMENT on
+  // the drill; a policy being created today is not enforcing today, so it is
+  // not in that step's blockers, and the checklist is about the day it will be.
+  const enforceWaits = cleanupRows.filter((r) => r.row.kind === 'drill' && !r.complete).map((r) => cleanupEntry(r.row.kind)?.title).filter((x): x is string => typeof x === 'string' && x.length > 0)
   const rowNumbers = rowNumbersOf([...rowSteps, ...cleanupRows])
   // How many rows each group has on the whole board, for the group's one
   // supporting line: "3 of 6 steps" where a tab left three of them, so the
@@ -238,7 +252,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => { data.onDecide(step.id, d); const next = nextDirectionStep(step.id, c.steps); if (next) { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) } }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -617,10 +631,12 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, number, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
+  /** Cleanup work the enforce checklist's conditions depend on, by title (stepBody.ts enforceWaits). */
+  enforceWaits?: readonly string[]
   /** Its place in its group's full order (planBoard.ts rowNumbersOf), or null where the step is in no group. */
   number: number | null
   /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
@@ -702,6 +718,7 @@ function Row({ step, lane, number, blockers, prerequisiteLabel, onOpenMappings, 
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
           lane={lane}
           blockers={blockers}
+          enforceWaits={enforceWaits}
           prerequisiteLabel={prerequisiteLabel}
           onOpenMappings={onOpenMappings}
           decision={decision}

@@ -13,6 +13,7 @@ import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { policyTasksOf } from './policyTasks.ts'
+import { cleanupEntry } from './cleanupExport.ts'
 import { laneReadings } from './planLanes.ts'
 import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -506,4 +507,41 @@ test('a field still waiting on a reference is not printed as a setting to copy',
   // an unresolved field, it does not empty the block.
   const settled = run.steps.find((s) => (s.action.missing ?? []).length === 0 && (stepBodyOf(s, ctx).artifacts.find((a) => a.id === 'portal')?.text() ?? '').includes('Users → Include:'))
   assert.ok(settled, 'no settled step prints a Users scope any more')
+})
+
+// The condition nobody could act on.
+//
+// "Emergency access is prepared and tested." is a condition in forty-odd
+// packages, and the thing that tests it is a Cleanup row, not a step. A
+// reader went looking for a step called something like that, found none, and
+// carried on. The engine does hold every CA policy's ENFORCEMENT on the
+// drill (dependency-data.json) — but a policy being created today is not
+// enforcing today, so the drill is not among that step's blockers, and this
+// checklist is precisely about the day it will be.
+test('the enforce checklist names the emergency drill while it is outstanding', () => {
+  const f = withFoundationSettled(structuredClone(fixture('demo-week2')))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === 's-goal-token-protection')
+  assert.ok(step, 'the premise: demo-week2 plans the token-protection step')
+  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the step draws the enforce procedure')
+  const drill = (run.schedule.cleanup?.rows ?? []).find((r) => r.kind === 'drill')
+  assert.ok(drill && drill.done === null, 'the premise: the drill has not been done')
+
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const body = stepBodyOf(step, ctx)
+  const title = cleanupEntry('drill')?.title
+  assert.ok(title, 'the drill row has a title to name it by')
+  const lines = (policyTasksOf(step, body.title, body.artifacts as never, f.mapping, [title])?.tasks ?? []).flatMap((t) => t.steps)
+
+  const at = lines.findIndex((l) => /Do not turn it on unless/i.test(l))
+  assert.ok(at >= 0, 'the step does not draw the enforce checklist')
+  assert.equal(lines[at + 1], `${title} is not finished yet, and this policy is part of it.`)
+  // The authored condition stays: the splice adds a way to act on it, it does
+  // not replace it.
+  assert.ok(lines.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the authored condition was displaced')
+
+  // And a bare list marker is not an instruction: the conditions are authored
+  // as an indented list under a numbered item, so the number lands on a line
+  // of its own and used to render as a step reading "3.".
+  assert.equal(lines.some((l) => /^s*d+.s*$/.test(l)), false, `a bare list marker rendered as an instruction: ${JSON.stringify(lines.filter((l) => /^s*d+.s*$/.test(l)))}`)
 })

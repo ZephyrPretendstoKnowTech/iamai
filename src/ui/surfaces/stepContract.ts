@@ -1749,7 +1749,7 @@ function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | n
  * so a tile that looked the id up in `stepById` found nothing and printed
  * `cleanup-drill` at the reader.
  */
-function cleanupTitleOf(id: string): string | null {
+export function cleanupTitleOf(id: string): string | null {
   const kind = id.startsWith('cleanup-') ? id.slice('cleanup-'.length) : null
   return kind === null ? null : (cleanup[kind]?.title ?? null)
 }
