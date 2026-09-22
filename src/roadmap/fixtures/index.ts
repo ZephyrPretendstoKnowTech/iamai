@@ -231,6 +231,14 @@ export function buildFixture(spec: Spec): Fixture {
     const guest = !isAdmin && rand() < 0.05
     const dept = isAdmin && i < 3 ? 'IT' : pick(DEPARTMENTS)
     const never = spec.neverSignedIn !== undefined && i >= total - spec.neverSignedIn
+    // Two bands with a 45-day hole between them, and the active window
+    // (INACTIVE_DAYS) is 90 days, so no synthetic person ever crosses the
+    // line between day 45 and day 90 of a run. An auditor advanced the clock
+    // ten days, watched the active count drop by two and then sit still, and
+    // filed it as a window that was not sliding. It was: the two were at
+    // exactly 90 days and everybody behind them is at 44 or less. Left as it
+    // is — every committed count and snapshot is taken over this shape — but
+    // said here, because it is not obvious from the numbers.
     const lastDays = never ? 100_000 : rand() < 0.85 ? Math.floor(rand() * 45) : 90 + Math.floor(rand() * 200)
     const tier = rand()
     const methods = never ? [] : tier < 0.12 ? [] : tier < 0.25 ? ['mobilePhone'] : tier < 0.85 ? ['microsoftAuthenticatorPush'] : ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
