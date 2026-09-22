@@ -149,6 +149,22 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
 
 // ---- D3 Decide How People and Devices Sign In ----
 
+/**
+ * What the Managed answer costs in licences, where the scan read them.
+ *
+ * Null where Intune was never read: an absent capability is not the same as
+ * zero seats, and inventing a licence position is the failure this whole
+ * question exists to avoid.
+ */
+function intuneSeatLine(ctx: Context): string | null {
+  const intune = ctx.snapshot.capabilities?.intune
+  if (intune === undefined || intune === null) return null
+  if (intune.enabled !== true) return Q.computers.intuneAbsent
+  const { seats, consumed } = intune
+  if (typeof seats !== 'number' || typeof consumed !== 'number') return null
+  return fillText(Q.computers.intuneSeats, { consumed, seats })
+}
+
 function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const evidence = ctx.snapshot.scenarioEvidence ?? null
   const unjoined = evidence?.unjoinedComputers?.people.length
@@ -157,7 +173,14 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
-      suggested: answer('managed'), evidence: W.baselineEvidence,
+      // The recommendation, and what it would cost here. Managed means joined
+      // AND enrolled, so every computer under this answer needs an Intune
+      // licence — and the question offered the baseline's advice with nothing
+      // about the tenant beside it, on a tenant holding 300 seats with 41 in
+      // use. Picking the suggestion was committing to enrolment without being
+      // shown whether the licences for it existed.
+      suggested: answer('managed'),
+      evidence: [W.baselineEvidence, intuneSeatLine(ctx)].filter((line): line is string => line !== null).join(' '),
       // Two populations, each saying what it counted. `unjoinedComputers` is
       // devices with NO trust type; a REGISTERED computer is not joined either,
       // and this question decides whether every company computer gets joined

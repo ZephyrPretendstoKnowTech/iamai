@@ -93,7 +93,12 @@ test('(b) a what-you-use question takes today\'s state; a how-it-should-work que
   const devices = stepOf(steps, DIRECTION_STEP.devices)
   assert.equal(q(devices, 'computers').suggested.value, 'managed')
   assert.equal(q(devices, 'phones').suggested.value, 'apps')
-  assert.equal(q(devices, 'computers').evidence, W.baselineEvidence)
+  // The recommendation, and what it costs HERE. Managed means joined and
+  // enrolled, so every computer under this answer needs an Intune licence,
+  // and the question offered the baseline's advice with nothing about the
+  // tenant beside it — on a tenant holding 300 seats with 41 in use.
+  assert.ok(q(devices, 'computers').evidence.startsWith(W.baselineEvidence), q(devices, 'computers').evidence)
+  assert.match(q(devices, 'computers').evidence, /Intune: [0-9]+ of [0-9]+ licences in use/)
   assert.match(q(devices, 'computers').today ?? '', /^Today: /)
   // D4: travel is the baseline's; work countries are where sign-ins came from.
   const locations = stepOf(steps, DIRECTION_STEP.locations)
