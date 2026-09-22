@@ -884,6 +884,54 @@ function thresholdBinding(step: Step): string | null {
 }
 
 /**
+ * Whether a blocker is the threshold this step waits on — its own gate, or a
+ * percentage stated in the shape the row's date column reads (derive/finish.ts
+ * heldByReadiness). It is a wait on every reading and the Threshold card says
+ * it, so neither Fix nor the enforcement waits repeat it.
+ */
+function isThresholdWait(b: Step['blockers'][number], threshold: string | null): boolean {
+  return b.kind === 'readiness' && (b.binding === threshold || (threshold === null && typeof b.binding === 'string' && /readiness reaches/.test(b.binding)))
+}
+
+/**
+ * What a blocker that names a wait says: its own binding, or the written
+ * sentence where the binding is a dead end — nothing in the plan creates a
+ * Temporary Access Pass, so "when 1 Temporary Access Pass policy exists (now
+ * 0)" told the reader a count and no way to change it, with four steps waiting
+ * behind it.
+ */
+function waitTextOf(b: Step['blockers'][number]): string | null {
+  if (typeof b.binding !== 'string' || b.binding.length === 0) return null
+  if (b.kind === 'readiness' && b.label === 'session-loop') return shared.sessionLoopReview as string
+  if (b.kind === 'readiness' && b.label === 'registration-no-tap') return shared.noTemporaryAccessPass as string
+  return b.binding
+}
+
+/**
+ * What holds only the ENFORCEMENT of a step whose next action is its
+ * report-only create: the readiness waits `fixOf` leaves out of Fix while the
+ * create is what the step says to do (owner, 2026-09-11: readiness gates
+ * enforcement, not creation). Leaving them out of Fix is right; leaving them
+ * off the page was not. The registration policy read "Ready · Create" with the
+ * MFA threshold on its card and nothing about the Temporary Access Pass it
+ * cannot be turned on without — the engine held both, and the pass appeared
+ * only once the policy had been built (R4-31, Marcus D12). The threshold is its
+ * own card and is not repeated here.
+ */
+function enforcementWaitsOf(step: Step): ContractFix[] {
+  if (step.state.condition === 'baseline-conflict') return []
+  if (scheduleOf(step).transition !== 'createReportOnly') return []
+  const threshold = thresholdBinding(step)
+  const out: ContractFix[] = []
+  for (const b of step.blockers) {
+    if (b.kind !== 'readiness' || isThresholdWait(b, threshold)) continue
+    const text = waitTextOf(b)
+    if (text !== null && !out.some((f) => f.text === text)) out.push({ key: `${b.kind}:${b.label}`, text })
+  }
+  return out
+}
+
+/**
  * What must be fixed before the step can move: the validation authority's own
  * failing checks, and the blockers that name work. A check that passes is not in
  * `step.checks.items` and so never reaches here.
@@ -945,10 +993,10 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // was blocked when only the enforcement is.
   const creating = scheduleOf(step).transition === 'createReportOnly'
   for (const b of step.blockers) {
-    // The threshold this step waits on — its own gate, or a percentage stated in
-    // the shape the row's date column reads (derive/finish.ts heldByReadiness) —
-    // is a wait, not a fix. Everything else a readiness blocker names is work.
-    if (b.kind === 'readiness' && (creating || b.binding === threshold || (threshold === null && typeof b.binding === 'string' && /readiness reaches/.test(b.binding)))) continue
+    // The threshold this step waits on is a wait, not a fix (isThresholdWait).
+    // Everything else a readiness blocker names is work — and while the create
+    // is next, it is the turn-on's wait, stated as one (enforcementWaitsOf).
+    if (b.kind === 'readiness' && (creating || isThresholdWait(b, threshold))) continue
     if (b.kind === 'step') {
       const title = stepById[b.stepId]?.title ?? b.stepId
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })
@@ -969,12 +1017,8 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     // end: nothing in the plan creates a Temporary Access Pass, so "when 1
     // Temporary Access Pass policy exists (now 0)" told the reader a count and
     // no way to change it, with four steps waiting behind it.
-    if (typeof b.binding === 'string' && b.binding.length > 0) {
-      const written = b.kind === 'readiness' && b.label === 'session-loop' ? shared.sessionLoopReview as string
-        : b.kind === 'readiness' && b.label === 'registration-no-tap' ? shared.noTemporaryAccessPass as string
-        : null
-      out.push({ key: `${b.kind}:${b.label}`, text: written ?? b.binding })
-    }
+    const text = waitTextOf(b)
+    if (text !== null) out.push({ key: `${b.kind}:${b.label}`, text })
   }
   // One wait, said once (docs/plans/step-redundancy-analysis.md finding 3). A
   // fix that names the step which makes what a Direction answer chooses — Define
@@ -1938,9 +1982,9 @@ const mappingsLink = (): ReadinessTile['link'] => ({ label: R().tiles.openMappin
  * composed. A fix that names a step links to it; one that names a mapping
  * links to Plan settings.
  */
-function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | null): ReadinessTile[] {
+function fixTiles(fixes: readonly ContractFix[], prerequisiteLabel: (id: string) => string | null): ReadinessTile[] {
   const t = R().tiles
-  return c.fix.map((f): ReadinessTile => {
+  return fixes.map((f): ReadinessTile => {
     const [kind, ...rest] = f.key.split(':')
     // The card is headed by what is being waited on, and checked by its state
     // (owner, 2026-09-20). A step that waits on four others drew four cards all
@@ -2107,12 +2151,19 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, prerequisiteLabel.startOf)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
-  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
+  const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
+  // What holds only the turn-on while the create is the next action: a wait on
+  // the enforcement, never a fix before the create (enforcementWaitsOf). Headed
+  // "Prerequisites", "when 1 trusted location exists (now 0)" on a step that
+  // says to create the policy today read as the create's own prerequisite —
+  // the claim the owner rule took out of Fix (2026-09-11) — so the card says
+  // what it holds.
+  const waits = fixTiles(enforcementWaitsOf(step), prerequisiteLabel).map((t): ReadinessTile => ({ ...t, label: R().tiles.beforeTurnOn, tone: 'wait' }))
+  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key), ...waits.map((t) => t.key)])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
   const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
+  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...waits, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
   // A "Before enforcement" tile used to be relabelled here, with a sentence
   // composed in code — "Ready for report-only deployment. Complete X before
   // enforcement. Creating this policy in Report-only does not enforce access
