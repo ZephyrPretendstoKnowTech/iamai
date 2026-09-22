@@ -174,6 +174,8 @@ type ContractWords = {
   fixStepAt: Record<string, string>
   /** A completed step whose own hard prerequisite the scan still finds unmet. */
   fixStepOvertaken: string
+  /** The same fact on a step the board does not call Completed: its change is in place, and there is still work on it. */
+  fixStepOvertakenOpen: string
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -1848,7 +1850,14 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      const note = b.overtaken ? fillText(CONTRACT.fixStepOvertaken, { step: title }) : fixStepNote(title, b.milestone)
+      // The engine records a prerequisite a step went ahead of only on a step it
+      // reads Completed, and the board can still draw that step elsewhere: a
+      // policy already on with a review left reads Ready · Review. "This step is
+      // finished" beside that badge contradicted it (R4-NEW-jordanb-1), so the
+      // note is worded by the lane the step is drawn in; the fact — the change
+      // went in before its prerequisite — is kept either way.
+      const overtakenNote = c.state.lane?.lane === 'Completed' ? CONTRACT.fixStepOvertaken : CONTRACT.fixStepOvertakenOpen
+      const note = b.overtaken ? fillText(overtakenNote, { step: title }) : fixStepNote(title, b.milestone)
       out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone: b.overtaken ? 'warn' : tone, value: prerequisiteLabel(b.id) ?? b.label, note, link: stepLink(b.id, title) })
       continue
     }
