@@ -74,7 +74,7 @@ export function evidenceFor(
   // "— pending —".
   if (!usable) {
     const reason = src?.reason || W.status[status as keyof typeof W.status] || status
-    return { ...base, lines: [unreadLine(reason)], unreadable: reason }
+    return { ...base, reason, lines: [unreadLine(reason)], unreadable: reason }
   }
 
   const usage = snapshot.evidenceUsage

@@ -413,6 +413,42 @@ test('007.11f: a sign-in read that started after the window did leaves the begin
   assert.equal(short.step.tracking?.readyNow, true, 'the interval is the question, not the label')
 })
 
+test('007.11f2 (R4-48): a sign-in source that refused every read is said to be unread, not a short window', () => {
+  // The defect: readyWhen built the evidence gate from the tracking alone and
+  // never read the step's own evidence status, where the refusal already was.
+  // A tenant whose sign-in source read nothing ("no sign-in records could be
+  // read") got the 007.11f sentence for a collection that started late: "the
+  // sign-in records read do not cover the whole window, 0 of 34 active people
+  // seen in 8 days" on the Done-when, the Plan row and the lane gate. That is a
+  // gap waiting closes, and a count nobody took; nothing will be read until the
+  // source is.
+  // The same policy ten days on from the scan that first recorded it, so its
+  // window has closed, with the sign-in source refusing every read: no
+  // collected window and no report-only results, as the collector leaves them.
+  const reason = 'no sign-in records could be read'
+  const f = fixture(FIXTURE)
+  const first = runFixture(f)
+  const asOf = new Date(Date.parse(f.snapshot.asOf) + 10 * DAY).toISOString()
+  const snapshot = scannedAt({
+    ...f.snapshot,
+    sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason, coveredWindow: null } },
+    evidencePolicyResults: [],
+  } as TenantSnapshot, asOf)
+  const c = caseOf(runFixture({ ...f, snapshot }, { snapshot }, observationsOf(first.steps)), snapshot, f, STEP_ID)
+  assert.equal(c.step.evidence.status, 'insufficient', 'the step carries the refusal')
+  const ready = readyWhen(c.step)!
+  assert.equal(ready.kind, 'since', 'the window has closed, so the row states the gate')
+  assert.equal(ready.sourceUnread, reason, 'and the gate carries it through, with the source’s own reason')
+  const row = rowReason(c.step)!
+  assert.equal(row, readyBasis(ready), 'one reading for the row and the Done-when')
+  assert.doesNotMatch(row, /do not cover the whole window/, 'a refusal is not a short window')
+  assert.doesNotMatch(row, /\d+ of \d+ active people/, 'and nobody counted anybody')
+  assert.match(row, /could not be read/)
+  assert.ok(row.includes(reason), `the row names why: ${row}`)
+  assert.equal(stepVars(c.step, c.ctx).evidenceGate, row, 'the Done-when states the same line')
+  nothingIsOffered(c)
+})
+
 test('007.11g: a collection that cannot say what it covered is not a window anybody watched', () => {
   // The scan read sign-ins and could not establish the interval they came from.
   // The records that did arrive still name this policy and still cover
