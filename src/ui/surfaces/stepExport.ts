@@ -351,7 +351,18 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
       lines.push(...(projectedEntra ? entraWithSettings(entra.text, step, ctx, contract, preview ?? projection) : entra.text).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
     }
   }
-  if (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  // A policy the tenant has switched off inspects the one that is there, in
+  // every channel that carries these lines.
+  //
+  // The package's blocked projection is the create procedure, and
+  // `hasPackagePortal` let it through to the export and to the AI brief — so
+  // the brief read "Turning it back on is the change here, not a new policy"
+  // and then, two lines later, "1. Open Entra ID > Conditional Access >
+  // Policies > New policy. 2. Name: ...". That is the channel most likely to be
+  // pasted into an assistant, which would then confidently instruct the
+  // duplicate this whole reason exists to prevent.
+  const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
+  if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
   lines.push(...verificationResourceLines(step))
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)

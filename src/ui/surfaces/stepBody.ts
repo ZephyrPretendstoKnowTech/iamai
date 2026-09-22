@@ -317,6 +317,20 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
       ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a.channel === 'json' && machine ? { ...a, text: jsonWithPlanTag(a.text, step) } : a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => resourceChannelAllowed(step, a.id))
+    // A policy the tenant has switched off keeps no channel that would build one.
+    //
+    // The step's own answer is "turn the one that is there back on"
+    // (operations.ts switched-off), and the package's blocked projection is
+    // still the create procedure — "Open Entra ID > Conditional Access >
+    // Policies > New policy" — because no package authors a switched-off
+    // block. Following that tab makes the second policy this whole fix exists
+    // to prevent. The step's own preparation lines may still add a portal
+    // below, which is wanted: those are about the policy that is there.
+    //
+    // Only this reason. `missing-object` renders the same procedure on
+    // twenty-four steps and is right to: there, the policy genuinely is not in
+    // the tenant yet.
+    .filter((a) => reason !== 'switched-off' || !['portal', 'ps', 'json'].includes(a.id))
   // Keep every substantively supported lifecycle format. Fill missing machine
   // projections with clearly labelled inspection, never a placeholder message.
   const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && resourceChannelAllowed(step, ch)) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
