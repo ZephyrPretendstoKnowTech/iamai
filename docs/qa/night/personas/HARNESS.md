@@ -141,6 +141,13 @@ finding that rests on one of them is the harness's until it is re-run.
   Prepare Your Team steps read "Ready" to the persona and "On Hold" on the
   screen and the board (R4-22, R4-33). `render()` now returns `badge` and
   `fact`, and `stepView()` gives scripts the body without copying the board.
+- **Every date was in the machine's time zone.** The product formats every
+  date in the plan's display zone, which planData.ts sets from the stored
+  mapping before it derives or draws anything. The harness never set it, so a
+  Sydney tenant's 7:00 PM scan read as 3:00 AM on a Denver machine, and a date
+  near midnight moved a day. `plan`, `rescan`, `lanes`, `render`,
+  `stepView` and `ctxOf` now set the tenant's zone first. Dates quoted by
+  round-4 personas were in the machine zone (R4-55's note, r4-sam-05).
 
 ## Rules
 

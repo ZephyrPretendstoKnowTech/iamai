@@ -32,6 +32,7 @@ import { contentStepFor, contentTitle } from '../../../../src/content/stepTitle.
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
+import { setDisplayTimeZone } from '../../../../src/copy/dates.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
 import type { Step } from '../../../../src/roadmap/types.ts'
 
@@ -62,8 +63,23 @@ export function mappingOf(t: Tenant): Tenant['mapping'] {
   return appliedMapping({ snapshot: t.snapshot, mapping: t.mapping, nameOf, groups: t.groups, now: t.snapshot.asOf }, t.decisions ?? null)
 }
 
-/** The tenant as planData.ts derives it: the same scan, over the applied mapping. */
-const derived = (t: Tenant): Tenant => ({ ...t, mapping: mappingOf(t) })
+/**
+ * Every date the product formats is in the plan's display time zone, which
+ * planData.ts sets from the stored mapping (`setDisplayTimeZone`) before the
+ * plan is derived or a page drawn. The harness never set it, so every date a
+ * persona read — the engine's own "created in report-only by …" lines as much
+ * as the rail and the tiles — was formatted in whatever zone the machine
+ * running the script was in: Aug 28 3:00 AM on a Denver machine for a Sydney
+ * tenant's 7:00 PM scan. Every entry point that derives or draws calls this
+ * first, with the tenant it is about.
+ */
+const zoned = (t: Tenant): void => setDisplayTimeZone(t.mapping.displayTimeZone ?? null)
+
+/** The tenant as planData.ts derives it: the same scan, over the applied mapping, in its display zone. */
+const derived = (t: Tenant): Tenant => {
+  zoned(t)
+  return { ...t, mapping: mappingOf(t) }
+}
 
 /**
  * The steps the plan surfaces show: planData.ts takes the steps the engine
@@ -96,6 +112,8 @@ export const observations = (r: FixtureRun, prior: Record<string, StepObservatio
  * `applied`), never the stored record.
  */
 export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
+  // A script that renders with this context draws dates too.
+  zoned(t)
   return {
     snapshot: t.snapshot, mapping: r.input.mapping,
     nameOf: (id: string) => r.input.names?.label(id) ?? id,
@@ -167,6 +185,7 @@ export type BoardRow = {
  * the page does, and names the tab and the group it found each row under.
  */
 export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
+  zoned(t)
   const { readings, titleOf, cleanup } = boardReadings(r)
   const byId = new Map(r.steps.map((s) => [s.id, s]))
   const cleanupById = new Map(cleanup.map((row) => [row.id, row]))
@@ -246,6 +265,7 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
  * with a lane present (always, on the board) no surface draws them.
  */
 export function stepView(t: Tenant, r: FixtureRun, step: Step): ReturnType<typeof stepBodyOf> {
+  zoned(t)
   // WITH the lane, the readiness blockers and the prerequisite labels, because
   // Plan.tsx passes all three (Plan.tsx -> ContentStep.tsx). Without them
   // stepBody falls back to `laneViewFor(step)` — the lane engine run over a plan
