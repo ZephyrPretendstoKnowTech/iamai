@@ -16,7 +16,23 @@ export type AffectedPasskeyUser = { accountId: string; methods: AffectedPasskeyM
  * attestation and a four-model allow-list over thirty-five accounts whose key
  * model it had never been able to read.
  */
-export type AffectedPasskeyProjection = { state: 'known' | 'unknown'; users: AffectedPasskeyUser[]; unassessable: string[]; coverage: string[] }
+export type AffectedPasskeyProjection = {
+  state: 'known' | 'unknown'
+  users: AffectedPasskeyUser[]
+  unassessable: string[]
+  coverage: string[]
+  /**
+   * Accounts the intended settings would leave with no passkey IAMAI can confirm
+   * they allow: every passkey the account holds is stopped by them, or could not
+   * be judged. An allow list stops any passkey it does not name, so while one of
+   * these exists the key restrictions are not IAMAI's to hand over — the task
+   * opened on "Set Enforce key restrictions to Yes… Add AAGUID… Save" beside a
+   * hedge four lines above it that eleven accounts' passkeys could not be judged
+   * (Jordan D13). A passkey-only account or an admin under a phishing-resistant
+   * strength among them is locked out by the save.
+   */
+  stranded: string[]
+}
 export type RecoveryPasskeyCandidateSet = { state: 'complete' | 'incompatible' | 'unknown'; ids: string[]; reason: string }
 
 const isPasskey = (method: AuthMethodSummary): boolean => method.kind === 'fido2' || method.kind === 'passkey'
@@ -219,10 +235,11 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
 /** Registered methods that are usable now and not under the exact proposed target. */
 export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
-  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'] }
+  if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['The current and intended passkey configuration could not be compared exactly.'], stranded: [] }
   const target = reading.resolution.target
   const users: AffectedPasskeyUser[] = []
   const unassessable = new Set<string>()
+  const stranded = new Set<string>()
   const coverage = new Set<string>()
   for (const user of snapshot.users) {
     const accountId = user.id
@@ -239,6 +256,9 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
       unassessable.add(accountId)
     }
     const affected = states.filter(state => state.current.state === 'eligible' && state.future.state !== 'eligible' && state.future.state !== 'unknown')
+    // Left without a passkey the intended settings are known to allow, where the
+    // settings stop one it has or IAMAI could not judge one.
+    if ((affected.length > 0 || unassessable.has(accountId)) && !states.some(state => state.future.state === 'eligible')) stranded.add(accountId)
     if (!affected.length) continue
     users.push({
       accountId,
@@ -253,5 +273,5 @@ export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mappi
       })),
     })
   }
-  return { state: coverage.size ? 'unknown' : 'known', users, unassessable: [...unassessable], coverage: [...coverage] }
+  return { state: coverage.size ? 'unknown' : 'known', users, unassessable: [...unassessable], coverage: [...coverage], stranded: [...stranded] }
 }
