@@ -1,14 +1,11 @@
 import type { CaPolicy, Reference, ReferenceKind, ReferenceUse, Portability } from "./types.ts";
 import firstParty from "../../data/first-party-apps.json" with { type: "json" };
+import builtinStrengths from "../../data/builtin-strengths.json" with { type: "json" };
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Built-in authentication strengths share these ids in every tenant. */
-const BUILTIN_AUTH_STRENGTHS = new Set([
-  "00000000-0000-0000-0000-000000000002", // Multifactor authentication
-  "00000000-0000-0000-0000-000000000003", // Passwordless MFA
-  "00000000-0000-0000-0000-000000000004", // Phishing-resistant MFA
-]);
+/** Built-in authentication strengths share these ids in every tenant: the data file's list, not a copy of it. */
+const BUILTIN_AUTH_STRENGTHS = new Set(builtinStrengths.strengths.map((s) => s.id.toLowerCase()));
 
 /** Microsoft first-party application IDs are global Conditional Access resource IDs. */
 const FIRST_PARTY_APPLICATION_IDS = new Set(
