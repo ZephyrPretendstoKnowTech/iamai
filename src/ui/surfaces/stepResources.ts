@@ -13,8 +13,12 @@ import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 
-/** Where a lifecycle resource would print a value IAMAI does not hold. Never shown: a channel carrying it is dropped. */
-const UNBOUND = ''
+/**
+ * Where a lifecycle resource would print a value IAMAI does not hold: U+E000, the
+ * first private-use code point, which no binding or authored line carries. Never
+ * shown: a channel carrying it is dropped.
+ */
+const UNBOUND = '\uE000'
 
 /**
  * The same resource remains useful when a task moves from preparation to
