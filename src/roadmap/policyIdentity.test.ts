@@ -382,3 +382,32 @@ test('C01 R1-F2: beside an All users policy, a group-assigned admins policy is n
     }
   }
 })
+
+// R3-1: a tenant IAMAI has planned before, carrying its own tag on a policy
+// somebody switched off.
+//
+// `claimedPolicy` will not take a disabled policy as the step's live one —
+// correctly, it enforces nothing — and the step fell through to a create.
+// The create then suffixed its name around the step's OWN policy and told the
+// operator to build "Core - Block - Device code flow (2)" beside "Core -
+// Block - Device code flow". Two policies would then carry the tag for one
+// step, which is a state the step can never finish from; and nothing on the
+// card said the first policy was there at all.
+test('a step whose own tagged policy is switched off proposes no duplicate, and says it is there', () => {
+  const f = structuredClone(fixture('midflight'))
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-goal-block-device-code')
+  assert.ok(step, 'the premise: midflight plans the device-code step')
+  assert.equal(step.tracking?.matchedBy, 'tag', 'the premise: the policy carries this plan own tag')
+  assert.equal(step.tracking?.state, 'disabled', 'the premise: the tenant has it switched off')
+
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const body = stepBodyOf(step, ctx)
+  const rendered = JSON.stringify(body)
+  assert.doesNotMatch(rendered, /\(2\)/, 'the step still instructs a duplicate policy')
+  assert.ok(rendered.includes(String(step.tracking?.policyName)), 'nothing on the step names the policy that is already there')
+
+  const found = body.contract.found.find((item) => item.key === 'tagged-disabled')
+  assert.ok(found, 'the card says nothing about a tenant this plan has already written to')
+  assert.match(found.text, /switched off/)
+})
