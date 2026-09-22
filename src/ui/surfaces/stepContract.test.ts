@@ -583,9 +583,13 @@ test('a step whose goal is already delivered does not wait on a scan that cannot
       const by = step.satisfiedBy
       if (!by || by.policies.length === 0) continue
       checked++
-      const done = stepContract(step, ctx).doneWhen.join(String.fromCharCode(10))
+      const contract = stepContract(step, ctx)
+      const done = contract.doneWhen.join(String.fromCharCode(10))
       assert.doesNotMatch(done, /A scan rebuilds this step/, `${name}/${step.id}: an unfinishable completion`)
-      assert.ok(done.includes(by.sufficient ?? by.policies[0]), `${name}/${step.id}: the policy delivering it is not named`)
+      // The policy is named once, on the card; the completion says what
+      // finishes the step and nothing else.
+      const card = contract.milestone.line ?? contract.whatToDo.text
+      assert.ok(card.includes(by.sufficient ?? by.policies[0]), `${name}/${step.id}: the policy delivering it is named nowhere`)
       // And the way out is stated, because there is one.
       assert.match(done, /does not apply/, `${name}/${step.id}: no way to decline`)
     }

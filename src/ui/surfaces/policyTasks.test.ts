@@ -320,7 +320,11 @@ test('a card states no stage for a policy that does not exist (S4-3)', () => {
   assert.equal(body.contract.existing, null, 'the premise: no tenant policy delivers it either')
   assert.equal(body.contract.state.lifecycle, 'enforced', 'the premise: the lifecycle still reads enforced')
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
-  assert.match(card.detail ?? '', /no policy for IAMAI to write in this plan/)
+  // The card must not read as delivered: what it has to say is that nothing is
+  // coming. The sentence was a paragraph and is now two clauses (owner,
+  // 2026-09-22), so this reads for the claim and not the old wording.
+  assert.match(card.detail ?? '', /IAMAI writes no policy here/)
+  assert.doesNotMatch(card.detail ?? '', /again to rebuild it/, 'the false remedy is back')
   assert.equal(card.title, 'Blocked', 'the check is what holds the step, never the stage it is not at')
   assert.deepEqual(card.completed, [])
   assert.equal(card.remainingCount, null)
