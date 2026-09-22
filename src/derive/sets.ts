@@ -155,6 +155,31 @@ export function activityKnown(u: Pick<UserRow, 'successfulSignInActivityRead' | 
 }
 
 /**
+ * Whether nothing this scan read can date this person's activity: the directory
+ * returned no successful-sign-in activity for them and the sign-in records hold
+ * no sign-in of theirs. `notActiveUsers` cannot judge such a person and leaves
+ * them out; `activityUnreadUsers` counts them. One predicate, so the list and
+ * the count of what the list could not judge cannot disagree.
+ */
+function activityUnread(snapshot: Pick<TenantSnapshot, 'signInEvidence'>, u: UserRow): boolean {
+  return !activityKnown(u) && (snapshot.signInEvidence?.[u.id]?.platforms ?? []).length === 0
+}
+
+/**
+ * Enabled people whose activity nothing this scan read can date: the accounts
+ * `notActiveUsers` leaves out. A refused signInActivity read (the Users source
+ * `partial`, graph/collect/collectors.ts collectUsers) leaves every person here
+ * and the dormant list empty, and an empty list read as a directory with
+ * nothing dormant — "Ready · Review" over no accounts, the refusal said nowhere
+ * (R4-49). The dormant step counts them on that read (roadmap/generate.ts).
+ * On a read that succeeded this is not a count of anything unread: Graph leaves
+ * signInActivity out for an account that never signed in.
+ */
+export function activityUnreadUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
+  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => activityUnread(snapshot, u))
+}
+
+/**
  * Enabled people holding a role in the admin catalogue. `adminUserIds` in
  * roles.ts is the one definition of "admin"; this narrows it to accounts that
  * can actually sign in, so the admin count and the enabled count are subsets of
@@ -189,7 +214,7 @@ export function adminUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds:
 export function notActiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
-    if (!activityKnown(u) && (snapshot.signInEvidence?.[u.id]?.platforms ?? []).length === 0) return false
+    if (activityUnread(snapshot, u)) return false
     // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
     const last = lastSuccessOf(snapshot, u)
     const at = last ? Date.parse(last) : Number.NaN

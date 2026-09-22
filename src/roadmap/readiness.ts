@@ -220,19 +220,31 @@ export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnaps
     if (!source || source.status === 'ok' || source.status === 'partial') continue
     const spec = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
     if (!spec) continue
-    // The licence, only where the tenant does not already hold it. This named
-    // Entra ID P1 as something to put in place on a tenant holding P1 AND P2,
-    // beside a permission that genuinely was missing - so the one actionable
-    // half of the sentence arrived next to a false half, and a reader who
-    // checked their own licensing found the product wrong about it.
-    const held = spec.requiredCapability !== null && snapshot.capabilities?.[spec.requiredCapability]?.enabled === true
-    const capability = spec.requiredCapability === null || held ? null : (CAPS[spec.requiredCapability] ?? null)
-    const fix = capability === null
-      ? fillText(W.blindFix, { scope: spec.scopes.join(', ') })
-      : fillText(W.blindFixLicensed, { scope: spec.scopes.join(', '), capability })
-    return fillText(W.blind, { source: spec.name.toLowerCase(), reason: source.reason ?? source.status, fix })
+    return fillText(W.blind, { source: spec.name.toLowerCase(), reason: source.reason ?? source.status, fix: sourceReadFix(key, snapshot) })
   }
   return null
+}
+
+/**
+ * What puts in place a source this scan could not read, in one sentence: the
+ * permission its collector reads it with (graph/collect/registry.ts), and the
+ * licence it needs where the tenant does not already hold it. The one wording
+ * for it, so a gate blind to a source and a check that could not judge its
+ * accounts name the same fix (R4-49). Empty for a source the registry does not know.
+ */
+export function sourceReadFix(key: SourceKey, snapshot: TenantSnapshot): string {
+  const spec = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
+  if (!spec) return ''
+  // The licence, only where the tenant does not already hold it. This named
+  // Entra ID P1 as something to put in place on a tenant holding P1 AND P2,
+  // beside a permission that genuinely was missing - so the one actionable
+  // half of the sentence arrived next to a false half, and a reader who
+  // checked their own licensing found the product wrong about it.
+  const held = spec.requiredCapability !== null && snapshot.capabilities?.[spec.requiredCapability]?.enabled === true
+  const capability = spec.requiredCapability === null || held ? null : (CAPS[spec.requiredCapability] ?? null)
+  return capability === null
+    ? fillText(W.blindFix, { scope: spec.scopes.join(', ') })
+    : fillText(W.blindFixLicensed, { scope: spec.scopes.join(', '), capability })
 }
 
 export function goalFamily(goalId: string): Readiness['family'] {

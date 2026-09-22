@@ -13,7 +13,15 @@ import { pages } from '../../content/content.ts'
 import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor } from './readinessCells.ts'
 import { whoEvidenceLines } from './stepExport.ts'
 import { stepById } from '../../content/content.ts'
-import { activityKnown, notActiveUsers } from '../../derive/sets.ts'
+import { activityKnown, enabledUsers, notActiveUsers, notPeopleIds } from '../../derive/sets.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { sourceReadFix } from '../../roadmap/readiness.ts'
+import { BLOCKED_REASON } from '../../copy/reasons.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { stepBodyOf } from './stepBody.ts'
+
+const DORMANT = 's-check-dormant-accounts'
 
 const W = pages.readiness as unknown as { summaryNoP1: string; groupNoP1: { title: string; why: string }; chip: { unread: string }; next: { none: string } }
 const source = (status: SourceState['status'], reason: string | null): SourceState => ({ status, reason, coveredWindow: null, asOf: '2026-09-19T00:00:00Z' })
@@ -146,4 +154,80 @@ test('no-P1: no account is called dormant, because no account\'s activity was re
   const g = fixture('getiamai')
   assert.ok(g.snapshot.users.every(activityKnown), 'the premise: their activity was read')
   assert.ok(notActiveUsers(g.snapshot, g.snapshot.asOf).length > 0, 'and the dormant list is unchanged')
+})
+
+// ---------------------------------------------------------------------------
+// R4-49 (Priya D12): the same unread activity on a tenant that DOES hold P1.
+// Graph refused signInActivity (AuditLog.Read.All, or no Reports Reader role),
+// so the collector fell back to a user list without it and the Users source
+// is `partial` with the refusal as its reason (graph/collect/collectors.ts
+// collectUsers). Nobody is listed as dormant, rightly, and the step read
+// "Ready · Review" over an empty list, told the reader to "Review each account
+// IAMAI lists", and said the refusal nowhere: an empty list made that way reads
+// as a directory with nothing dormant.
+// ---------------------------------------------------------------------------
+
+test('R4-49: a directory read that returned nobody\'s sign-in activity holds the dormant check on that fact, and says why', () => {
+  const f = fixture('small')
+  const reason = 'signInActivity unavailable: access denied (403)'
+  const snapshot = structuredClone(f.snapshot)
+  snapshot.sources.users = { ...snapshot.sources.users!, status: 'partial', reason }
+  for (const u of snapshot.users) {
+    u.successfulSignInActivityRead = false
+    u.lastSuccessfulSignIn = null
+    u.lastSignInAttempt = null
+  }
+  // The sign-in log is read with the same permission, refused with it.
+  snapshot.sources.signInEvidence = { ...snapshot.sources.signInEvidence!, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  snapshot.signInEvidence = {}
+  const run = runFixture({ ...f, snapshot })
+  const step = run.steps.find((s) => s.id === DORMANT)
+  assert.ok(step, 'the premise: the plan carries the dormant check')
+  assert.equal(step.population?.total ?? 0, 0, 'the premise: nobody is listed, because nobody\'s activity was read')
+
+  // The step says how many accounts it could not judge, the source's own
+  // reason, and what reads them — the same fix sentence a blind readiness gate states.
+  const finding = (step.configurationFindings ?? []).find((x) => x.key === 'activity-unread')
+  assert.ok(finding, 'the refusal is on the step')
+  const n = enabledUsers(snapshot, notPeopleIds(f.mapping)).length
+  assert.ok(n > 0)
+  assert.ok(finding.detail.includes(`${n} of ${n} enabled accounts`), finding.detail)
+  assert.ok(finding.detail.includes(reason), finding.detail)
+  assert.ok(finding.detail.includes(sourceReadFix('users', snapshot)), finding.detail)
+  assert.match(finding.detail, /AuditLog\.Read\.All/)
+  assert.notEqual(finding.outcome, 'pass')
+
+  // Not finished, and not Ready · Review: it holds on the read.
+  assert.equal(step.state.satisfied, false)
+  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+  const readings = laneReadings(run.steps)
+  const reading = readings.get(DORMANT)!
+  const view = laneViewOf(reading, titleOf)
+  assert.equal(reading.lane, 'On Hold', `the step read ${view.label}`)
+  assert.ok(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread))
+
+  // The opened step leads with it, and no longer asks for a review of a list it does not have.
+  const ctx = { snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+  const body = stepBodyOf(step, ctx, { lane: view, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+  assert.equal(body.readiness.tiles[0]?.note, finding.detail, 'the first tile is the refusal')
+  const portal = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  assert.doesNotMatch(portal, /Review each account IAMAI lists/)
+})
+
+test('R4-49: an account without sign-in activity on a read that succeeded is not called unread', () => {
+  // Graph leaves signInActivity out for an account that never signed in
+  // (Microsoft Learn, user resource type). On a read that succeeded that is a
+  // reading, not a refusal, and the dormant check says nothing of a read that
+  // did not fail.
+  const f = fixture('small')
+  const snapshot = structuredClone(f.snapshot)
+  assert.equal(snapshot.sources.users?.status, 'ok', 'the premise: the directory read succeeded')
+  const never = enabledUsers(snapshot, notPeopleIds(f.mapping))[0]
+  never.successfulSignInActivityRead = false
+  never.lastSuccessfulSignIn = null
+  never.lastSignInAttempt = null
+  delete snapshot.signInEvidence[never.id]
+  const step = runFixture({ ...f, snapshot }).steps.find((s) => s.id === DORMANT)!
+  assert.equal((step.configurationFindings ?? []).some((x) => x.key === 'activity-unread'), false)
+  assert.equal(step.blockers.some((b) => b.binding === BLOCKED_REASON.activityUnread), false)
 })
