@@ -33,9 +33,11 @@ import { tenant, plan, rescan, observations, deploy, days,
   Authenticator-first and its first entry is a phone credential, which the
   product correctly refuses for break-glass.
 - `configurePasskeys(t)` — applies the passkey target the step resolves.
-- `acceptDirection(t, run)` — answers all four Direction steps with the
-  product's OWN `suggested` value for each question. A persona who would answer
-  differently calls `decide()` for that question instead.
+- `acceptDirection(t, run)` — presses Approve answers on all four Direction
+  steps without touching a tile: each question's SAVED answer where it has one,
+  else its suggestion, with its basis — exactly what the screen's draft holds
+  (`DirectionQuestions.tsx`, `q.saved ?? q.suggested`). A persona who would
+  answer differently calls `decide()` for that question instead.
 - `settleFoundations` = emergency access + passkeys. `settleAll` = those plus
   the Direction answers.
 - `enrolMfa(t)` — the team registers a method. The one action that moves the MFA
@@ -79,6 +81,16 @@ to the lane engine run over a plan of ONE step, and the contract, Done-when, rai
 and badge followed that rather than the board — a different lane for 18 of 38
 steps on a messy tenant. It now passes `{lane, blockers, prerequisiteLabel}` the
 way `Plan.tsx` does. Any reading taken from `render()` before this is suspect.
+
+## Fixed 2026-09-22: what round 4's validators caught the harness saying
+
+Each of these made a persona read something the screen never shows. A round-4
+finding that rests on one of them is the harness's until it is re-run.
+
+- **`acceptDirection` overwrote saved answers.** It saved `q.suggested` for
+  every question; the screen's Approve saves `q.saved ?? q.suggested`. On
+  Marcus's tenant that turned a saved "everyone works remotely, AU only" into a
+  trusted office network and AU + NZ (R4-13). It now saves what Approve saves.
 
 ## Rules
 
