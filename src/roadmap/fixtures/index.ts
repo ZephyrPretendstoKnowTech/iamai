@@ -801,7 +801,7 @@ export function buildFixture(spec: Spec): Fixture {
   // eight-policy synthetic stand-in (`syntheticBaseline`), which the unit tests
   // over them are written against and which no administrator ever sees. Moving
   // them to the pin was measured and not done (b8ca3df9): the tests whose
-  // subject stops existing are listed in the decisions file.
+  // subject stops existing are listed in docs/plans/2026-09-21-owner-decisions.md.
   //
   // So a finding about mechanics holds on any fixture, and a finding about
   // policy content — an app list, a filter, a name, a JSON body — holds only

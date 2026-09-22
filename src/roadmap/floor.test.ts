@@ -329,8 +329,9 @@ test('a goal map that resolves nowhere in the active package still cannot lend a
 
 test('the same for the legacy block, and a goal the map does hold keeps the fallback', () => {
   // Asked for by name: this case reads a policy out of the synthetic package, as
-  // its last assertion says. Every fixture is on the pinned baseline now, so the
-  // premise is stated rather than inherited from which fixture was chosen.
+  // its last assertion says. getiamai is built on that package already (only the
+  // demo is on the pin, fixtures/index.ts buildFixture), so the premise is stated
+  // rather than inherited from which fixture was chosen.
   const r = runFixture(withSyntheticBaseline(fixture('getiamai')), { goalMap: NON_RESOLVING })
   const legacy = r.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!
   assert.equal(legacy.floor, true)
