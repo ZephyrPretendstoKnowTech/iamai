@@ -280,6 +280,45 @@ test('a lifecycle resource is handed over only when IAMAI holds every value in i
   for (const line of [...b.artifacts.map((a) => a.text()), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)]) assert.doesNotMatch(line, /‹policies [^›]+›/)
 })
 
+// Review of Nadia D2's second path. Once the lifecycle channel was dropped, the
+// screen and the export fell back to different things. With one of the guests
+// pair resolved, the screen's Entra channel and its "Create the policy in
+// Report-only" task fell through to the content's preparation lines ("Review
+// the two guest policies separately ... Use the generated correction or
+// creation instructions once the required scope and references are resolved"),
+// instructions it did not show, while the export's What to do, which the print,
+// the prompt pack and the grounding bundle read, carried the translator's
+// create of the member IAMAI holds. Two instructions for one step. The screen
+// now hands over the step's own resolved lines, as the export does.
+test('with one of a pair resolved, the screen hands over the same create the export does', () => {
+  const f = fixture('getiamai')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-guests-mfa') as Step
+  const pkg = implementationPackageFor({ id: step.id, goalId: step.goalId })!
+  const members = (pkg.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
+  const [create] = step.action.resolution!.policies as PolicyOperation[]
+  const resolving = (roles: string[]): Step => ({
+    ...step, status: 'ready', blockers: [],
+    action: { ...step.action, resolution: { ...step.action.resolution!, policies: members.filter((m) => roles.includes(m.role)).map((m) => ({ ...create, memberKey: memberKeyOf(m.memberStableId, 0), body: { ...(create.body as Record<string, unknown>), displayName: `Sample ${m.role}` } })) } },
+  }) as Step
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const plain = (line: string): string => line.replace(/^\d+\.\s+/, '')
+  for (const role of ['strong', 'mixed']) {
+    const s = resolving([role])
+    const b = stepBodyOf(s, ctx)
+    const view = stepExportView(s, ctx)
+    const task = (b.emergencyAccountTasks?.tasks ?? []).find((t) => /Report-only/.test(t.title))
+    assert.ok(task, `${role}: the step draws its create task`)
+    // The export opens with the step's action; every line after it is the task's.
+    assert.equal(view.whatToDo[0], b.contract.whatToDo.text)
+    assert.deepEqual(task.steps.map(plain), view.whatToDo.slice(1).map(plain), `${role}: the screen and the export hand over one procedure`)
+    const portal = b.artifacts.find((a) => a.id === 'portal')!.text()
+    assert.match(portal, new RegExp(`Name: Sample ${role}`), `${role}: the create names the policy IAMAI holds`)
+    assert.match(portal, /\[IAMAI:plan-/, `${role}: with the plan tag IAMAI recognises it by`)
+    assert.doesNotMatch(portal, /Review the two guest policies separately/, `${role}: not the preparation lines in its place`)
+  }
+})
+
 // Nadia D10. Prepare Your Team for MFA says "Send the email below to everyone else;
 // send the admin note to the admins", and its email asked people to "Contact [support
 // contact]" three times, with nothing marking it as a fill-in; every other step email
