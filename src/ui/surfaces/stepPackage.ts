@@ -683,6 +683,23 @@ export function incompleteFieldsOf(step: Step, op: PolicyOperation | null): Read
 /** Whether an open field (`incompleteFieldsOf`) is this field, inside it, or contains it. */
 export const touches = (open: ReadonlySet<string>, field: string): boolean => [...open].some((f) => f === field || f.startsWith(`${field}.`) || field.startsWith(`${f}.`))
 
+/**
+ * Whether a Conditional Access policy the scan read, other than the ones this
+ * step owns or changes, already targets the authentication context: a context
+ * the tenant uses for something the plan did not make. IAMAI reads no
+ * authentication contexts, so another policy's target is the one evidence it has
+ * that the context is taken. Any state counts — a disabled policy still names it.
+ */
+function contextUsedElsewhere(step: Step, op: PolicyOperation | null, snapshot: TenantSnapshot | null, contextId: string): boolean {
+  const own = new Set([op?.mode === 'update' ? op.policyId : null, step.tracking?.policyId ?? null, ...(step.tracking?.members ?? []).map((m) => m.policyId)].filter((id): id is string => typeof id === 'string').map((id) => id.toLowerCase()))
+  const want = contextId.toLowerCase()
+  return ((snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).some((row) => {
+    if (typeof row.id === 'string' && own.has(row.id.toLowerCase())) return false
+    const refs = ((row.conditions as { applications?: { includeAuthenticationContextClassReferences?: unknown } } | undefined)?.applications?.includeAuthenticationContextClassReferences)
+    return Array.isArray(refs) && refs.some((r) => String(r).toLowerCase() === want)
+  })
+}
+
 type PolicyShape = { displayName?: unknown; description?: unknown; conditions?: { users?: { excludeGroups?: unknown; excludeUsers?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
 
 /**
@@ -842,6 +859,28 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     const named = rows.find((s) => typeof s.id === 'string' && s.id.toLowerCase() === strength.toLowerCase() && typeof s.displayName === 'string' && s.displayName.length > 0)
     put('authStrength.target.displayName', named?.displayName)
     if (Array.isArray(named?.allowedCombinations) && named.allowedCombinations.every((x: unknown) => typeof x === 'string')) put('authStrength.target.allowedCombinations', named.allowedCombinations)
+  }
+  // The authentication context the policy targets (Require MFA at Every Role
+  // Activation), and the name the plan proposes for it.
+  //
+  // The resolved operation always named it — `includeAuthenticationContextClassReferences:
+  // ["c1"]` is in the body the plan would send — and nothing bound it, so the
+  // package held every channel on a value IAMAI had, and the planning preview
+  // drew the create with the ID glossed as "the ID of that context in
+  // Conditional Access → Authentication context" on a Ready · Create row (R4-18).
+  // One context, the target's own: the ID the operation sends is the ID every
+  // channel names, and the name is IAMAI's proposal for the context the package
+  // asks the reader to create or update and publish — never a reading of the
+  // tenant, which IAMAI does not read contexts from.
+  //
+  // Not where another of the tenant's policies already targets that context: the
+  // context is then in use for something this plan did not make, and "create or
+  // update it with this name, and publish it" would repoint whatever already
+  // requests it at this policy's grant. The ID stays unresolved there.
+  const contexts = (settled('conditions.applications')?.conditions as { applications?: { includeAuthenticationContextClassReferences?: unknown } } | undefined)?.applications?.includeAuthenticationContextClassReferences
+  if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string' && !contextUsedElsewhere(step, op, ctx.snapshot, contexts[0])) {
+    put('authContext.target.id', contexts[0])
+    put('authContext.target.displayName', CONTRACT.implementation.authContextName)
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)

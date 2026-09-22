@@ -33,8 +33,6 @@ const UNPRODUCED: readonly string[] = [
   "account.current.id",
   "account.decision.disposition",
   "admin.peopleToSeparate",
-  "authContext.target.displayName",
-  "authContext.target.id",
   "campaign.snoozeDurationInDays",
   "dependencies.replacementMfaSummary",
   "dependencies.replacementProtectionSummary",

@@ -179,13 +179,19 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
   // reference is actually present, retaining this call's snapshot and scope.
   let directory: ReturnType<typeof buildNameDirectory> | undefined
   let names: Map<string | undefined, string | undefined> | undefined
+  // Each gloss points at the step that makes the object. The authentication
+  // context had two that pointed at nothing: "the authentication context
+  // configured for the intended PIM role" on the step that creates the policy,
+  // which is before any role may be pointed at it, and "the ID of that context in
+  // Conditional Access → Authentication context" for a context no step makes. They
+  // turned the ID IAMAI had dropped into a copyable sentence on a Ready · Create
+  // row (R4-18). The ID is bound now (stepPackage.ts packageBindings); where it
+  // cannot be, the preview keeps its ‹…› marker, which says it is unresolved.
   const references: Record<string, string> = {
     'service accounts group display name': 'the group selected in Create or Correct Service Accounts Group',
     'service accounts group': 'the Object ID on that group’s Overview page in Entra',
     'exclusions group': 'the group selected in Configure Emergency Exclusions',
     'trusted locations display names': 'the named locations selected in Define the Trusted Network',
-    'authentication context name': 'the authentication context configured for the intended PIM role',
-    'authentication context ID': 'the ID of that context in Conditional Access → Authentication context',
     'browser session policy name': 'the browser-session policy named in this step',
     'authentication strength name': 'the strength configured in Create the Baseline’s Authentication Strength',
     'grant controls': 'the access controls listed in Settings for This Action',
