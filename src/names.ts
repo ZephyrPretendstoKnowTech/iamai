@@ -21,6 +21,42 @@ export function collidingGuestIds(users: { id: string; displayName: string | nul
   for (const u of users) if (u.userType === 'guest' && u.displayName && (count.get(u.displayName) ?? 0) > 1) out.add(u.id)
   return out
 }
+/**
+ * Every person's label, with a shared display name told apart.
+ *
+ * The (guest) marker settles the one case it was written for and no other: a
+ * guest and a member with the same name. Two members with the same name — the
+ * ordinary case in any directory with a Chen or a Taylor in it — were both
+ * rendered as the bare name, on steps that name one person and mean one
+ * person. "Kai Brown completed a phishing-resistant sign-in" was read on one
+ * step while another listed a different Kai Brown, and the reader concluded
+ * the wrong account needed a passkey.
+ *
+ * So: mark the guest as before, then look again. Any label still shared after
+ * that carries the account's sign-in address, which is the thing a person
+ * types into a portal to tell the two apart. Nothing is marked where nothing
+ * collides, so a directory of distinct names reads exactly as it did.
+ */
+export function personLabels(users: { id: string; displayName: string | null; userPrincipalName?: string | null; userType: 'member' | 'guest' }[]): Map<string, string> {
+  const guests = collidingGuestIds(users)
+  const marked = new Map<string, string>()
+  for (const u of users) {
+    const base = u.displayName ?? u.userPrincipalName ?? null
+    if (typeof base !== 'string' || base.length === 0) continue
+    marked.set(u.id, guests.has(u.id) ? `${base} (guest)` : base)
+  }
+  const count = new Map<string, number>()
+  for (const label of marked.values()) count.set(label, (count.get(label) ?? 0) + 1)
+  const out = new Map<string, string>()
+  for (const u of users) {
+    const label = marked.get(u.id)
+    if (label === undefined) continue
+    const upn = typeof u.userPrincipalName === 'string' ? u.userPrincipalName.trim() : ''
+    out.set(u.id, (count.get(label) ?? 0) > 1 && upn !== '' && upn !== label ? `${label} (${upn})` : label)
+  }
+  return out
+}
+
 /** A role held by software rather than a person (prompt 48.1 item 5). */
 export const SERVICE_PRINCIPAL = 'a service principal'
 
@@ -71,12 +107,10 @@ export function buildNameDirectory(
         put(row.appId, row.appDisplayName)
       }
     }
-    // The guest of a colliding display-name pair carries a (guest) marker (prompt 49 item 1).
-    const markedGuests = collidingGuestIds(snapshot.users)
-    for (const u of snapshot.users) {
-      const base = u.displayName ?? u.userPrincipalName ?? undefined
-      put(u.id, typeof base === 'string' && markedGuests.has(u.id) ? `${base} (guest)` : base)
-    }
+    // One rule for a shared display name, here and in the engine's own pre-baked
+    // strings (roadmap/generate.ts nameOf): the guest marker first, then the
+    // sign-in address wherever two accounts still read the same.
+    for (const [id, label] of personLabels(snapshot.users)) put(id, label)
     for (const raw of snapshot.config.namedLocations?.rows ?? []) {
       const l = raw as { id?: string; displayName?: string }
       put(l.id, l.displayName)
