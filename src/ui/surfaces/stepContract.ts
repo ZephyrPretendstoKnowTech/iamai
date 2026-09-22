@@ -1601,6 +1601,14 @@ export type ReadinessTile = {
 }
 
 /**
+ * A prerequisite tile's label by the prerequisite's own lane (planBoard.ts
+ * prerequisiteLabelFor), with the same board's answer to where a step that
+ * cannot be done today starts (planBoard.ts chainStartOf). Absent `startOf`,
+ * nothing resolves a chain and each step is named alone.
+ */
+export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null }
+
+/**
  * One unresolved prerequisite of the step's next action as the actionability
  * engine read it (src/actionability/lanes.ts `LaneResult.blockers`), labelled by
  * the board (planBoard.ts `readinessBlockersOf`). `title` names a step
@@ -1614,14 +1622,6 @@ export type ReadinessTile = {
  * defaults waits for the replacements to be ready to enforce, they wait for it
  * to be complete — into an apparent deadlock with no way out.
  */
-/**
- * A prerequisite tile's label by the prerequisite's own lane (planBoard.ts
- * prerequisiteLabelFor), with the same board's answer to where a step that
- * cannot be done today starts (planBoard.ts chainStartOf). Absent `startOf`,
- * nothing resolves a chain and each step is named alone.
- */
-export type PrerequisiteLabel = ((id: string) => string | null) & { startOf?: (id: string) => string | null }
-
 export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
   /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
   overtaken?: true
