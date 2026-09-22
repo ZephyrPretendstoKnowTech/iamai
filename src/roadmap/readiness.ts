@@ -58,12 +58,29 @@ export function adminReady(v: Pick<MfaViability, 'readiness'>): boolean {
 }
 
 /**
+ * A readiness percentage: whole, and never more than was measured. It is the
+ * number a gate states AND the number it compares, so it is rounded down.
+ *
+ * It was rounded to nearest, and the gate compared the rounded number: 238 of
+ * 265 (89.8%) read "90%" and opened the 90% gate, 199 of 200 administrators read
+ * "100%" and opened the gate that exists to wait for every one of them, and a
+ * floor of 209 of 279 (74.9%) read "at least 75%" — a floor above the reading.
+ * Rounded down, "reaches 90%" means 90% of the people, the check that says how
+ * many more a gate needs (routeShortfallOf, `Math.ceil`) is the same check, and
+ * the percentage and the count can no longer disagree about whether it is met.
+ * Integer arithmetic: 29/100*100 is 28.999… in floating point.
+ */
+export function readinessPercent(ready: number, total: number): number {
+  return Math.floor((ready * 100) / total)
+}
+
+/**
  * The fewest Ready people out of `active` that the gate accepts, under the same
  * rounding `readinessFor` states the percentage with — so "N of M must be Ready"
  * and the Plan's "reaches 90% (now X%)" can never disagree about the line.
  */
 export function readyNeeded(active: number, thresholdPercent: number): number {
-  for (let n = 0; n <= active; n++) if (Math.round((n / active) * 100) >= thresholdPercent) return n
+  for (let n = 0; n <= active; n++) if (readinessPercent(n, active) >= thresholdPercent) return n
   return active
 }
 
@@ -208,13 +225,13 @@ export function readinessFor(
     let good = 0
     for (const v of rows) if (mfaReady(v)) good += 1
     // Nobody in scope → nothing to be ready; null so the gate does not block.
-    const percent = active.length > 0 ? Math.round((good / active.length) * 100) : null
+    const percent = active.length > 0 ? readinessPercent(good, active.length) : null
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'admin') {
     // One definition of enough (E7): an admin is ready when Ready (scoring/phishingResistant.ts), the state the admin lists read.
     const ready = rows.filter(adminReady).length
-    const percent = rows.length > 0 ? Math.round((ready / rows.length) * 100) : null
+    const percent = rows.length > 0 ? readinessPercent(ready, rows.length) : null
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'device') {
@@ -227,7 +244,7 @@ export function readinessFor(
     const members = activeIds.size
     // Same population on both sides of the ratio: active members only.
     const withDevice = [...activeIds].filter((id) => owners.has(id)).length
-    const percent = members > 0 ? Math.round((withDevice / members) * 100) : null
+    const percent = members > 0 ? readinessPercent(withDevice, members) : null
     // The counts, and what the ratio is OVER. A bare percentage with no line -
     // where every MFA gate prints "N of M people" - was hand-counted by three
     // readers who each got a different answer, because this counts people with

@@ -16,6 +16,7 @@ import { enforcementHeld } from '../../roadmap/operations.ts'
 import { engine, stepById } from '../../content/content.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
+import { readinessPercent } from '../../roadmap/readiness.ts'
 
 const setUp = (curated = false) => {
   // The curated run also settles the plan's foundation (roadmap/foundations.ts):
@@ -35,7 +36,9 @@ test('admin readiness is the share of admins who are Ready for phishing-resistan
   const ready = rows.filter((v) => isReady(v.readiness.state)).length
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
   assert.equal(step.readiness.family, 'admin')
-  assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))
+  // Rounded down, the one rounding a readiness percentage has (R4-14,
+  // roadmap/readiness.ts readinessPercent): two of three admins is 66%, not 67%.
+  assert.equal(step.readiness.percent, readinessPercent(ready, rows.length))
   const camp = stepById['s-verify-mfa'] as unknown as { doneWhen: string[]; whatToDo: { steps: string[] } }
   // Editorial batch C: the admin gate is its own line; the campaign settings check is a human check.
   // mfa-everyone-spec.md §4 C9: Completion Criteria is split so each line says one

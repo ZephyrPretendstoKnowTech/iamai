@@ -828,7 +828,8 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   const short = caseOf(runFixture(fixture('large')), fixture('large'), 's-goal-mfa-all-users')
   const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
   assert.ok(shortReading)
-  assert.match(String(shortReading.note), /holds enforcement until MFA readiness reaches 90%; it is 73% now./, String(shortReading.note))
+  // 3569 of 4900 is 72.8%, read down to 72% (R4-14, roadmap/readiness.ts readinessPercent).
+  assert.match(String(shortReading.note), /holds enforcement until MFA readiness reaches 90%; it is 72% now./, String(shortReading.note))
 
   // And where readiness IS readable the coverage tile is unchanged: this is a
   // disclosure, not a hedge to bolt onto every delivered goal.

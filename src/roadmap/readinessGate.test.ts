@@ -27,7 +27,8 @@ import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason, validOperations } from './operations.ts'
-import { readinessFor } from './readiness.ts'
+import { readinessFor, readyNeeded } from './readiness.ts'
+import { methodReadiness } from './methodReadiness.ts'
 import { pages } from '../content/content.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
@@ -232,7 +233,9 @@ test('5: a material change to an already-enabled policy is held while its readin
   f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step
-  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%', route: 'Prepare Your Team for MFA' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')
+  // Two of three is 66.7%, and it reads 66%: a reading is rounded down, never up
+  // to a number it has not reached (R4-14, readiness.ts readinessPercent).
+  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '66%', route: 'Prepare Your Team for MFA' }, 'the gate states its measure, its threshold, the reading, and the step that moves it')
   const op = step.action.resolution!.policies[0]
   assert.deepEqual(op.body, { state: 'enabled' }, 'the operation is the enforcement')
   assert.equal(enforcesOnRun(op), true)
@@ -242,7 +245,7 @@ test('5: a material change to an already-enabled policy is held while its readin
 
   // The step says why, in its own words, rather than going quiet.
   const view = stepExportView(step, ctxFor(f, r, snapshot))
-  assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 67%') && l.includes('100%')), view.whatToDo.join(' | '))
+  assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 66%') && l.includes('100%')), view.whatToDo.join(' | '))
 
   // With the prerequisite met, the readiness gate releases the same operation.
   const readySnapshot = structuredClone(snapshot)
@@ -370,4 +373,47 @@ test('the held step says which instruction is withheld, and is right about it', 
     }
   }
   assert.ok(seen > 0, 'no fixture reaches the readiness hold, so the sentence is untested')
+})
+
+// ---- R4-14: a gate is met at its threshold, never at a reading rounded up to it ----
+
+test('R4-14: a readiness reading below the threshold never reads as the threshold, and never opens the gate', () => {
+  // Marcus D4. The percentage was rounded to nearest and the gate compared the
+  // rounded number, so 238 of 265 people (89.8%) read "90%" and met the 90% MFA
+  // gate; 199 of 200 administrators read "100%" and met the gate that exists to
+  // wait for every one of them; and a floor of 209 of 279 (74.9%) read "at least
+  // 75%", a floor above the reading it floored. One rounding now: down, for the
+  // number stated and the number compared alike (readiness.ts readinessPercent).
+  const ids = (n: number) => Array.from({ length: n }, (_, i) => `u${i}`)
+  const floor = methodReadiness('mfa', { ids: ids(279), readyIds: ids(209), unknownIds: ids(279).slice(209), completeScope: true })
+  assert.equal(floor.atLeast, 74, 'the floor is above the reading')
+  assert.equal(methodReadiness('mfa', { ids: ids(265), readyIds: ids(238), unknownIds: [], completeScope: true }).percent, 89)
+  assert.equal(methodReadiness('admin', { ids: ids(200), readyIds: ids(199), unknownIds: [], completeScope: true }).percent, 99, 'one admin short reads as every admin')
+  assert.equal(methodReadiness('mfa', { ids: ids(100), readyIds: ids(29), unknownIds: [], completeScope: true }).percent, 29, 'integer arithmetic: 29/100*100 is 28.999… in floating point')
+  // The count a gate needs is the percentage's own rule, and whole people.
+  assert.equal(readyNeeded(265, 90), 239)
+  assert.equal(readyNeeded(200, 100), 200)
+
+  // On a generated plan: the mid tenant's Require MFA for security info
+  // registration, with exactly 238 of its 265 people holding Authenticator.
+  const base = withFoundationSettled(fixture('mid'))
+  const target = runFixture(base).steps.find((s) => s.id === 's-goal-register-info-protected')!.methodPreparation!.ids
+  assert.equal(target.length, 265, 'the premise: the policy includes 265 people')
+  const withReady = (n: number) => {
+    const ready = new Set(target.slice(0, n))
+    const snapshot = structuredClone(base.snapshot)
+    snapshot.registrationDetails = snapshot.registrationDetails.map((r) => target.includes(r.id)
+      ? { ...r, isMfaCapable: ready.has(r.id), isMfaRegistered: ready.has(r.id), methodsRegistered: ready.has(r.id) ? ['microsoftAuthenticatorPush'] : [] }
+      : r)
+    return runFixture({ ...base, snapshot }, { snapshot } as never).steps.find((s) => s.id === 's-goal-register-info-protected') as Step
+  }
+  const short = withReady(238)
+  assert.equal(short.methodPreparation?.readyIds.length, 238, 'the premise: 238 ready')
+  assert.equal(short.readiness.percent, 89)
+  assert.equal(short.action.readinessGate?.value, '89%', 'the gate reads its threshold while short of it')
+  assert.ok(short.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), 'a gate 89.8% of the way is met')
+  const met = withReady(239)
+  assert.equal(met.readiness.percent, 90)
+  assert.equal(met.action.readinessGate, undefined, 'the gate is not met at 90.2%')
+  assert.equal(met.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), false)
 })

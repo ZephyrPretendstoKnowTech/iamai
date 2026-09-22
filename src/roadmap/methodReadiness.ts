@@ -9,6 +9,7 @@ import type { Readiness } from './types.ts'
 import { accountApplicability, tenantStrengthsOf } from './operations.ts'
 import type { PolicyEffect, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
+import { readinessPercent } from './readiness.ts'
 
 type Answer = 'yes' | 'no' | 'unknown'
 /** The single-method strength combination a sign-in's method class satisfies on its own. */
@@ -236,8 +237,10 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
   // source switched off nobody can be, so the floor would be "at least 0%" — true
   // of every tenant, and read as a measurement of the people rather than of what
   // the scan could not see. A floor of zero is not a floor.
-  const atLeast = completeScope && ids.length > 0 && unknownIds.length > 0 && readyIds.length > 0 ? Math.round(readyIds.length / ids.length * 100) : undefined
-  return { family, percent: unreadable || ids.length === 0 ? null : Math.round(readyIds.length / ids.length * 100),
+  // Rounded down, like the percentage (readiness.ts readinessPercent): 209 of 279
+  // is 74.9%, and "at least 75%" was a floor above the reading it floored.
+  const atLeast = completeScope && ids.length > 0 && unknownIds.length > 0 && readyIds.length > 0 ? readinessPercent(readyIds.length, ids.length) : undefined
+  return { family, percent: unreadable || ids.length === 0 ? null : readinessPercent(readyIds.length, ids.length),
     ...(atLeast !== undefined ? { atLeast } : {}),
     ...(unreadable ? { unmeasured: 'unreadable' as const } : ids.length === 0 ? { unmeasured: 'no-population' as const } : {}),
     // Where NOBODY could be judged, a bare leading zero is an unread count in
