@@ -489,8 +489,19 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return waitingLine(step, tenant, exclusionsUnconfirmed)
     case 'unmatched-pair':
       return fillText(step.action.ambiguousTarget ? app.plan.targetAmbiguous : app.plan.pairUnmatched, { tenant })
-    case 'no-operation':
-      return fillText(app.plan.noOperation, { tenant })
+    case 'no-operation': {
+      // "No policy for IAMAI to write. Scan again to rebuild it." — said over a
+      // step whose policy EXISTS and is switched off. The step tracks it:
+      // `state.members` carries the row with `latest.state === 'disabled'`, on
+      // this scan and the one before. So the sentence was false and its remedy
+      // did nothing; a reader scanned three times, got byte-identical output,
+      // and stopped. Turning it on is not offered here, because there is no
+      // operation to offer — but saying which it is turns a dead end into a
+      // portal action.
+      const members = step.state.members ?? []
+      const allDisabled = members.length > 0 && members.every((m) => m.change?.latest?.state === 'disabled')
+      return fillText(allDisabled ? app.plan.noOperationDisabled : app.plan.noOperation, { tenant })
+    }
     case 'manual-correction':
       return fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
