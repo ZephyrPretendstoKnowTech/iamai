@@ -16,6 +16,7 @@ import type { FixtureRun } from '../../../../src/roadmap/fixtures/run.ts'
 import { stepBodyOf } from '../../../../src/ui/surfaces/stepBody.ts'
 import type { StepVarContext } from '../../../../src/ui/surfaces/stepVars.ts'
 import { appliedMapping } from '../../../../src/ui/surfaces/pickerRows.ts'
+import { customerPlanSteps } from '../../../../src/ui/surfaces/customerPlanSteps.ts'
 import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
@@ -64,10 +65,20 @@ export function mappingOf(t: Tenant): Tenant['mapping'] {
 const derived = (t: Tenant): Tenant => ({ ...t, mapping: mappingOf(t) })
 
 /**
+ * The steps the plan surfaces show: planData.ts takes the steps the engine
+ * withholds from every customer surface out (customerPlanSteps.ts) before
+ * anything reads them. The harness showed them, so a persona read, rendered and
+ * filed a step the product never draws (the admin-portals policy). The product
+ * removes them before tracking and this after; no other step refers to them, so
+ * no reading differs.
+ */
+const shown = (r: FixtureRun): FixtureRun => ({ ...r, steps: customerPlanSteps(r.steps) })
+
+/**
  * The person's FIRST scan of this tenant. Nothing was watched before it, so it
  * carries no prior record: everything it sees, it sees for the first time.
  */
-export const plan = (t: Tenant): FixtureRun => runFixture(derived(t))
+export const plan = (t: Tenant): FixtureRun => shown(runFixture(derived(t)))
 
 /**
  * What the plan recorded about the tenant's policies, to hand to the next scan.
@@ -354,7 +365,7 @@ export function deploy(t: Tenant, step: Step, fidelity: 'exact' | 'enforced' | '
  * `now` moves the clock: a scan a week later is how a report-only window passes.
  */
 export const rescan = (t: Tenant, prior: Record<string, StepObservationRecord> | null = null, now: string | null = null): FixtureRun =>
-  runFixture(derived(t), {}, prior, now)
+  shown(runFixture(derived(t), {}, prior, now))
 
 /**
  * The person goes and prepares emergency access: registers an approved recovery

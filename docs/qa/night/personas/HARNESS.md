@@ -78,8 +78,9 @@ enforced  done 19
    a threshold with no number, and nothing the reader can move. The count exists
    one line away ("209 of 279 ... not yet established for 70") and the gate does
    not use it.
-2. Two policies (`admin-portals-protected`, `device-registration-mfa`) sit
-   behind that gate and never advance.
+2. `device-registration-mfa` sits behind that gate and never advances. (This
+   used to name `admin-portals-protected` too; the product withholds that step
+   from every surface, and since 2026-09-22 the harness does as well.)
 
 ## Fixed 2026-09-20, later the same night
 
@@ -106,6 +107,11 @@ finding that rests on one of them is the harness's until it is re-run.
   as saved (Marcus's service accounts, R4-13's second example). `plan()` and
   `rescan()` now derive from `mappingOf(t)`, `ctxOf` renders with the run's
   mapping, and `decide()` only saves.
+- **`plan()` showed a step the product withholds.** `planData.ts` drops the
+  steps `customerPlanSteps` withholds from every customer surface (today the
+  admin-portals policy) before anything reads them; the harness kept them, so
+  personas rendered and filed a step no screen draws, and "Known walls" below
+  named it. `plan()` and `rescan()` now drop them too.
 
 ## Rules
 
