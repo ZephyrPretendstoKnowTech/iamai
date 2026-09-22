@@ -7,11 +7,13 @@ const W = engine.readiness
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
 import { accountApplicability, tenantStrengthsOf } from './operations.ts'
-import type { PolicyEffect, ScopeEvidence } from './operations.ts'
+import type { PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
 import { readinessPercent } from './readiness.ts'
 
 type Answer = 'yes' | 'no' | 'unknown'
+/** One person against one policy's method requirements; `stale` as MethodPreparation.staleIds. */
+type Judged = { answer: Answer; stale: boolean }
 /** The single-method strength combination a sign-in's method class satisfies on its own. */
 const PROOF_COMBINATION: Record<string, string> = { passkey: 'fido2', windowsHello: 'windowshelloforbusiness', certificate: 'x509certificatemultifactor' }
 export type MethodPreparation = {
@@ -28,6 +30,12 @@ export type MethodPreparation = {
    * people have a registered method the policies allow" and nothing saying why
    * it had moved. A number that goes down on its own, on a gate that has to
    * reach 100%, reads as the tenant getting worse.
+   *
+   * ONLY: the same sign-in, made today, would count them. The line tells the
+   * admin to ask these people to sign in once, and it said so of people whose
+   * old sign-in could never settle the policy — a text-message sign-in against
+   * a strength only a passkey sign-in settles — so the admin was promised a
+   * number that would not move (R4-15).
    */
   staleIds?: string[]
   completeScope: boolean
@@ -53,7 +61,10 @@ export function createMethodPreparationCache(snapshot: TenantSnapshot, context: 
     combinations: new Map<string, Map<string, ReturnType<typeof strengthSatisfaction>>>(),
     combinationSets: new WeakMap<string[], Map<string, ReturnType<typeof strengthSatisfaction>>>(),
     unrestrictedStrengths: new Map<string, Map<string, Answer>>(),
-    scopeAnswers: new Map<string, Map<string, 'in' | 'out' | 'unknown'>>(), methodAnswers: new Map<string, Map<string, Answer>>(),
+    // A person's answer for one method requirement, with whether it is unknown
+    // only because their proof aged out: both belong to the answer, so a step
+    // that reads it from the cache reads both (R4-15).
+    scopeAnswers: new Map<string, Map<string, 'in' | 'out' | 'unknown'>>(), methodAnswers: new Map<string, Map<string, Judged>>(),
     methods: new Map<string, { usableMethods: string[]; possibleMethods: string[]; signature: string }>(),
     strengths: tenantStrengthsOf(snapshot), registrations: new Map(snapshot.registrationDetails.map(r => [r.id, r])), users: new Map(snapshot.users.map(u => [u.id, u])) }
 }
@@ -111,14 +122,36 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     }
     return got
   }
-  const staleByPerson = new Set<string>()
   const result: MethodPreparation = { ids: [], readyIds: [], unknownIds: [], staleIds: [], completeScope: effects.length > 0 && snapshot.sources?.users?.status === 'ok' }
-  /** Set by `registered` when an answer is 'unknown' only because the proof aged out. */
-  let staleProof = false
-  const registered = (effect: PolicyEffect, id: string): Answer => {
-    if (effect.unknown.length > 0) return 'unknown'
+  /**
+   * Whether a successful sign-in with one of these method classes settles a
+   * requirement registration left unknown. One rule, read twice: for the
+   * sign-ins inside the proof window, which count, and for every sign-in ever
+   * recorded, which says whether a person is unknown only because theirs aged out.
+   */
+  const settles = (requirement: Requirement, classes: ReadonlySet<string>): boolean => {
+    if (classes.size === 0) return false
+    if (requirement.kind === 'mfa') return true
+    if (requirement.kind !== 'strength') return false
+    // Only an unrestricted strength: a sign-in does not show which key model
+    // it used, so model restrictions stay the registration reading's to judge.
+    const strength = strengths.get(requirement.id.toLowerCase())
+    if (!strength || !Array.isArray(strength.combinationConfigurations) || strength.combinationConfigurations.length > 0) return false
+    const combos = (strength.allowedCombinations ?? []).map(c => c.toLowerCase().split(','))
+    return combos.some(parts => parts.length === 1 && [...classes].some(cls => PROOF_COMBINATION[cls] === parts[0] && (cls !== 'passkey' || fido2Open)))
+  }
+  /** One policy's answer from its requirements' answers. */
+  const combine = (effect: PolicyEffect, answers: readonly Answer[]): Answer => {
+    // AND's device/app tests belong to their own readiness checks. For OR a
+    // suitable method is sufficient; an unmeasured alternative is not failure.
+    if (effect.operator === 'OR') return answers.includes('yes') ? 'yes' : answers.includes('unknown') ? 'unknown' : 'no'
+    const methods = effect.requirements.map((r, i) => ({ r, answer: answers[i] })).filter(x => x.r.kind === 'mfa' || x.r.kind === 'strength').map(x => x.answer)
+    return methods.includes('no') ? 'no' : methods.includes('unknown') ? 'unknown' : 'yes'
+  }
+  const registered = (effect: PolicyEffect, id: string): Judged => {
+    if (effect.unknown.length > 0) return { answer: 'unknown', stale: false }
     const row = registrations.get(id)
-    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return 'unknown'
+    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false }
     let registrationMethods = cache.methods.get(id)
     if (!registrationMethods) {
       const states = row.methodsRegistered.map(method => ({ method, usable: availability.usable(id, method) }))
@@ -177,50 +210,39 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     // method works under the tenant's settings, so an unknown compatibility is not
     // left unknown for somebody seen using it.
     const proven = provenClasses(id)
-    // Whether the SAME upgrade would have happened on a proof of any age. If it
-    // would, this person is not "never confirmed" — the confirmation simply got
-    // older than the window, and the readiness number fell without anything in
-    // the tenant changing. The line says which it is.
+    for (const [i, requirement] of effect.requirements.entries()) if (answers[i] === 'unknown' && settles(requirement, proven)) answers[i] = 'yes'
+    const answer = combine(effect, answers)
+    if (answer !== 'unknown') return { answer, stale: false }
+    // Whether the SAME settling would have happened on the sign-ins of any age.
+    // If it would, this person is not "never confirmed" — the confirmation simply
+    // got older than the window, and the readiness number fell without anything
+    // in the tenant changing. If it would not, a fresh sign-in with that method
+    // settles nothing either, and saying it would is a promise the next scan breaks.
     const ever = everClasses(id)
-    if (proven.size === 0 && ever.size > 0 && answers.some(a => a === 'unknown')) staleProof = true
-    for (const [i, requirement] of effect.requirements.entries()) {
-      if (answers[i] !== 'unknown' || proven.size === 0) continue
-      if (requirement.kind === 'mfa') answers[i] = 'yes'
-      else if (requirement.kind === 'strength') {
-        // Only an unrestricted strength: a sign-in does not show which key model
-        // it used, so model restrictions stay the registration reading's to judge.
-        const strength = strengths.get(requirement.id.toLowerCase())
-        if (!strength || !Array.isArray(strength.combinationConfigurations) || strength.combinationConfigurations.length > 0) continue
-        const combos = (strength.allowedCombinations ?? []).map(c => c.toLowerCase().split(','))
-        if (combos.some(parts => parts.length === 1 && [...proven].some(cls => PROOF_COMBINATION[cls] === parts[0] && (cls !== 'passkey' || fido2Open)))) answers[i] = 'yes'
-      }
-    }
-    const methods = effect.requirements.map((r, i) => ({ r, answer: answers[i] })).filter(x => x.r.kind === 'mfa' || x.r.kind === 'strength').map(x => x.answer)
-    // AND's device/app tests belong to their own readiness checks. For OR a
-    // suitable method is sufficient; an unmeasured alternative is not failure.
-    if (effect.operator === 'OR') return answers.includes('yes') ? 'yes' : answers.includes('unknown') ? 'unknown' : 'no'
-    return methods.includes('no') ? 'no' : methods.includes('unknown') ? 'unknown' : 'yes'
+    const aged = answers.map((a, i): Answer => (a === 'unknown' && settles(effect.requirements[i], ever) ? 'yes' : a))
+    return { answer, stale: combine(effect, aged) === 'yes' }
   }
   for (const id of [...new Set(candidates)]) {
     if (users.get(id)?.accountEnabled === false) continue
-    let included = false, failed = false, unknown = false
+    // `aged`: every policy that left this person unknown did so only because their proof aged out.
+    let included = false, failed = false, unknown = false, aged = true
     for (const target of scopedTargets) {
       let scope = target.scopes.get(id)
       if (scope === undefined) { scope = applies(target.effect, id, snapshot, indexedContext); target.scopes.set(id, scope) }
       if (scope === 'unknown') result.completeScope = false
       if (scope !== 'in') continue
       included = true
-      let answer = target.methods.get(id)
-      if (answer === undefined) { staleProof = false; answer = registered(target.effect, id); target.methods.set(id, answer); if (staleProof) staleByPerson.add(id) }
-      if (answer === 'no') failed = true
-      else if (answer === 'unknown') unknown = true
+      let judged = target.methods.get(id)
+      if (judged === undefined) { judged = registered(target.effect, id); target.methods.set(id, judged) }
+      if (judged.answer === 'no') failed = true
+      else if (judged.answer === 'unknown') { unknown = true; if (!judged.stale) aged = false }
     }
     if (!included) continue
     result.ids.push(id)
     if (!failed && !unknown) result.readyIds.push(id)
     else if (!failed) {
       result.unknownIds.push(id)
-      if (staleByPerson.has(id)) (result.staleIds ??= []).push(id)
+      if (aged) (result.staleIds ??= []).push(id)
     }
   }
   return result
