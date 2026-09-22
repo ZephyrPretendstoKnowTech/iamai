@@ -402,17 +402,42 @@ export function days(t: Tenant, n: number, opts: { signIns?: boolean; failures?:
  * The shape is copied from a person this tenant already reads as ready, so
  * nothing here invents a method the product would not accept.
  */
+/**
+ * Everybody active registers the method somebody else already has.
+ *
+ * This set `isMfaCapable` and `isMfaRegistered` and left `methodsRegistered`
+ * empty, and the product reads `methodsRegistered` to decide whether a person
+ * holds a method a policy would accept (roadmap/methodReadiness.ts: an empty
+ * list is answered 'no', whatever the flags say). So the readiness number could
+ * not move, however many times this ran — and a persona enrolled everybody,
+ * scanned nine times over three weeks, read the identical sentence every time
+ * and filed a severity-5 product defect that was this function. The copy now
+ * carries the registration row the methods imply.
+ */
 export function enrolMfa(t: Tenant): Tenant {
   const next = structuredClone(t) as Tenant
   const active = new Set(activePeopleIds(next.snapshot))
-  const readable = [...active].map((id) => next.snapshot.authMethods[id]).find((m) => Array.isArray(m) && m.length > 0)
-  if (!readable) return next
+  const donor = [...active].map((id) => id).find((id) => {
+    const m = next.snapshot.authMethods[id]
+    const row = next.snapshot.registrationDetails.find((r) => r.id === id)
+    return Array.isArray(m) && m.length > 0 && row !== undefined && row.methodsRegistered.length > 0
+  })
+  if (donor === undefined) return next
+  const readable = next.snapshot.authMethods[donor]
+  const donorRow = next.snapshot.registrationDetails.find((r) => r.id === donor)!
   for (const id of active) {
     const m = next.snapshot.authMethods[id]
     if (Array.isArray(m) && m.length > 0) continue
     next.snapshot.authMethods[id] = structuredClone(readable) as never
     const at = next.snapshot.registrationDetails.find((r) => r.id === id)
-    if (at) { at.isMfaCapable = true; at.isMfaRegistered = true }
+    if (at) {
+      at.isMfaCapable = true
+      at.isMfaRegistered = true
+      at.methodsRegistered = [...donorRow.methodsRegistered]
+      at.isPasswordlessCapable = donorRow.isPasswordlessCapable
+      at.defaultMfaMethod = donorRow.defaultMfaMethod
+      at.userPreferredMethodForSecondaryAuthentication = donorRow.userPreferredMethodForSecondaryAuthentication
+    }
   }
   return next
 }
