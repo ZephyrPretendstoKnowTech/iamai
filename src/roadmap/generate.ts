@@ -42,7 +42,7 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
-import { memberKeyOf } from './observation.ts'
+import { memberKeyOf, sameDimension } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
@@ -663,11 +663,11 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
 }
 
 /**
- * Whether an update turns the policy it updates on: a fact about that policy,
- * and never about the goal's coverage. `changedSections` reads the goal's
- * reasons, and the goal's 'report-only' reason counts people, not policies: the
- * people an enforced policy reaches drop out of it (coverage.ts), whatever that
- * policy is. So once another policy was switched on over the same people — a
+ * Whether an update turns the policy it updates on, and what else it changes
+ * about it: facts about that policy, never about the goal's coverage.
+ * `changedSections` reads the goal's reasons, and the goal's 'report-only'
+ * reason counts people, not policies: the people an enforced policy reaches
+ * drop out of it (coverage.ts), whatever that policy is. So once another policy was switched on over the same people — a
  * platform block with a condition, a session-lifetime policy for the admins —
  * the reason went, 'state' went with it, and the update to the goal's own
  * report-only policy came out as `{}`. A patch with nothing in it is no
@@ -684,10 +684,54 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  * `asPlanned`: "the next submission is the correction, not the switch"). The
  * switch is the update on the scan after, when the correction is in place. An
  * enforced policy has no state to change.
+ *
+ * And "changes nothing else" is read from that policy too. The goal's other
+ * reasons come from the goal's other policies as well: an enforced all-users MFA
+ * policy that excludes one application and lacks the exclusions group leads the
+ * guests goal, its caveats are the goal's 'apps-excluded' and
+ * 'exclusion-missing', and they became users and applications sections on the
+ * update to the guests' own report-only pair — sections the pair already held
+ * word for word. The update was a correction that changed nothing, it withheld
+ * the switch for that correction, and every scan rebuilt the same one: the pair
+ * sat in report-only for good behind a remedy that did nothing, R4-11 again. A
+ * section the policy already holds (observation.ts `sameDimension`, the
+ * comparison `unwrittenDifferences` makes of a deployed policy) is no
+ * correction owed, and where nothing else is owed the update is the switch
+ * alone.
+ *
+ * Never for a policy the goal reads below its floor (`belowFloor`, coverage's
+ * `meetsFloor`): its grant is the finding (gap 4), and a grant the plan cannot
+ * raise is not turned on by this rule. That policy keeps the update it had.
+ *
+ * `built` is the action from these sections; `current` the tenant's own policy
+ * under each update's id. True when the sections moved and the action has to be
+ * built again from them.
  */
-function settleState(sections: Set<ChangedSection>, targetStates: readonly string[]): void {
+function settleSections(sections: Set<ChangedSection>, built: Action, current: ReadonlyMap<string, RawPolicy>, belowFloor: (policyId: string) => boolean): boolean {
+  const before = [...sections].sort().join()
+  const updates = (built.resolution?.policies ?? []).flatMap((o) => {
+    const held = o.mode === 'update' && typeof o.policyId === 'string' ? current.get(o.policyId) : undefined
+    return held ? [{ id: o.policyId as string, body: o.body as RawPolicy, held }] : []
+  })
   sections.delete('state')
-  if (sections.size === 0 && targetStates.includes('enabledForReportingButNotEnforced')) sections.add('state')
+  const owed = [...sections].filter((section) => {
+    const at = SECTION_VALUE[section as Exclude<ChangedSection, 'state'>]
+    return !(updates.length > 0 && updates.every((u) => sameDimension(at(u.body), at(u.held))))
+  })
+  const switchable = updates.some((u) => u.held.state === 'enabledForReportingButNotEnforced') && !updates.some((u) => belowFloor(u.id))
+  if (owed.length === 0 && switchable) {
+    sections.clear()
+    sections.add('state')
+  }
+  return [...sections].sort().join() !== before
+}
+
+/** Where each section an update writes sits on a policy, for `settleSections`. */
+const SECTION_VALUE: Record<Exclude<ChangedSection, 'state'>, (p: RawPolicy) => unknown> = {
+  grantControls: (p) => p.grantControls,
+  sessionControls: (p) => p.sessionControls,
+  users: (p) => ((p.conditions ?? {}) as RawPolicy).users,
+  applications: (p) => ((p.conditions ?? {}) as RawPolicy).applications,
 }
 
 /**
@@ -1758,7 +1802,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // policy's "requires nothing"). Writing them onto this one would swap a
       // tenant's stronger grant for the baseline's, under a correction that was
       // about its users or its state (C01/C02). Its state is its own, and is read
-      // from it below (`settleState`), not from the goal's reasons.
+      // from it below (`settleSections`), not from the goal's reasons.
       if (existing?.contribution === 'strong' || existing?.meetsFloor === true) {
         sections.delete('grantControls')
         sections.delete('sessionControls')
@@ -1771,16 +1815,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') {
         sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
       }
+      // The goal's own reading of each tenant policy: one below the floor is never
+      // turned on by `settleSections`.
+      const belowFloor = (policyId: string): boolean => result.candidates.some((c) => c.policyId === policyId && c.meetsFloor === false)
       if (ambiguousTarget && changing.length < 2) {
         // Several of the goal's own policies nothing tells apart: the step will not
         // guess which one to rewrite, and it does not create a duplicate beside them.
         action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true, ambiguousTarget: true }
       } else if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
-        settleState(sections, existing ? [existing.state] : [])
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
         one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state, policy: existingRaw } : null }
-        action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections }), sections, existingRaw)
+        let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
+        if (settleSections(sections, built, new Map(existing && existingRaw ? [[existing.policyId, existingRaw]] : []), belowFloor)) built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
+        action = changesFor(built, sections, existingRaw)
       } else {
         // Two policies: each member needs its own tenant policy, or none. The
         // plan associates a member with a tenant policy only where the policy
@@ -1802,13 +1850,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             const p = matched[i]
             return p ? { ...m, target: { policyId: String(p.id), state: String(p.state ?? 'enabled'), policy: p } } : { ...m, target: null }
           })
-          // One set of sections for the pair, so where the pair owes nothing else
-          // the state is turned on if either half is in report-only: a half already
-          // on takes `"state": "enabled"` as the no-change it is, and is not left
-          // with an empty patch.
-          settleState(sections, matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.state ?? '')))
+          // One set of sections for the pair: a section stays where either half
+          // does not hold it yet, and where the pair owes nothing else the state is
+          // turned on if either half is in report-only — a half already on takes
+          // `"state": "enabled"` as the no-change it is, and is not left with an
+          // empty patch.
+          let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          if (settleSections(sections, built, new Map(matched.filter((p): p is RawPolicy => p !== null).map((p) => [String(p.id), p])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           const firstUpdate = matched.find((p) => p !== null) ?? null
-          action = changesFor(buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections }), sections, firstUpdate)
+          action = changesFor(built, sections, firstUpdate)
         }
       }
       if (action.kind === 'create') namingNote = uniqueName(goal, stepId)
