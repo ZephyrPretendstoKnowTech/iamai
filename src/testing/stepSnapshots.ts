@@ -20,7 +20,7 @@ import type { Fixture, FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import type { Step } from '../roadmap/types.ts'
 import { setDisplayTimeZone } from '../copy/dates.ts'
-import { boardReadingsOf, boardReasonOf, boardWhenOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
+import { boardReadingsOf, boardReasonOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { badgeLabel, factOf } from '../ui/surfaces/stepContract.ts'
 import type { LaneView, PrerequisiteBlocker } from '../ui/surfaces/stepContract.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
@@ -88,14 +88,15 @@ function snapshotsOf(f: Fixture, r: ReturnType<typeof runFixture>): Record<strin
   const answers = f.mapping.breakGlassAnswers ?? null
   // The board's own readings and titles (planBoard.ts boardReadingsOf), so a
   // snapshot records what the Plan draws.
-  const { readings, titleOf } = boardReadingsOf(steps, r.schedule.cleanup, answers)
+  const board = boardReadingsOf(steps, r.schedule.cleanup, answers)
+  const { readings, titleOf } = board
   const prerequisiteLabel = prerequisiteLabelFor(readings)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const dates = planDates(steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
   const out: Record<string, StepSnapshot> = {}
   for (const step of [...steps].sort((a, b) => a.id.localeCompare(b.id))) {
     const reading = readings.get(step.id)
-    const lane: LaneView = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, steps, titleOf)
+    const lane: LaneView = laneViewFor(step, board)
     const blockers: PrerequisiteBlocker[] = readinessBlockersOf(reading, titleOf)
     const waveStart = waveStartOf(step)
     const ctx: StepVarContext = {

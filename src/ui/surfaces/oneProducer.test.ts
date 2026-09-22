@@ -15,7 +15,7 @@ import { applySkips } from '../../roadmap/progress.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, shared } from '../../content/content.ts'
-import { BOARD, SUBSTATUS_WORD, WHEN, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, WHEN, boardReadingsOf, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -85,13 +85,15 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
   const lanes = new Set<string>()
   for (const run of runs()) {
     const ctx = ctxOf(run)
-    const { readings, views, titleOf, rows } = boardOf(run)
+    const { readings, views, titleOf } = boardOf(run)
+    // The product's one construction (planBoard.ts boardReadingsOf), beside this file's own reading of the board.
+    const board = boardReadingsOf(run.steps, run.r.schedule.cleanup, run.f.mapping.breakGlassAnswers ?? null)
     for (const step of run.steps) {
       const where = `${run.name}/${step.id}`
       const reading = readings.get(step.id)
       if (!reading) {
         assert.ok(step.doesntApply != null, `${where}: a step with no lane reading that the person did not rule out`)
-        assert.equal(laneViewFor(step, run.steps).label, BOARD.lanes.doesntApply, `${where}: a step that does not apply reads a lane`)
+        assert.equal(laneViewFor(step, board).label, BOARD.lanes.doesntApply, `${where}: a step that does not apply reads a lane`)
         continue
       }
       const lane = views.get(step.id)!
@@ -99,7 +101,7 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       // The row: the lane label, and the label is the lane word or `Lane · tail`.
       assert.equal(lane.label, lane.tail === null || lane.lane !== 'Ready' ? BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]] : `${BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]]} · ${lane.tail}`, where)
       // With the board's own inputs, Cleanup rows included: one step, one lane.
-      assert.equal(laneViewFor(step, run.steps, titleOf, rows).label, lane.label, `${where}: the step opened on its own reads a different lane from the board's`)
+      assert.equal(laneViewFor(step, board).label, lane.label, `${where}: the step opened on its own reads a different lane from the board's`)
       if (lane.lane === 'Ready') assert.equal(lane.tail, lane.substatus ? SUBSTATUS_WORD[lane.substatus] : null, `${where}: a Ready row's tail is not its substatus word`)
       if (lane.lane === 'Completed' || lane.lane === 'Deferred') assert.equal(lane.tail, null, `${where}: a ${lane.lane} row carries a tail`)
       // The chip: a tenant fact or nothing (decision 2).
@@ -227,7 +229,7 @@ test('a deferred step and a step that does not apply read the decided words on e
   const target = one
   const deferred = steps.find((s) => s.id === target.id)!
   assert.equal(deferred.status, 'skipped', 'the premise: the operator deferred it')
-  const lane = laneViewFor(deferred, steps)
+  const lane = laneViewFor(deferred, boardReadingsOf(steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
   const c = stepContract(deferred, ctx, undefined, lane)
   assert.equal(lane.label, BOARD.lanes.deferred)
   assert.equal(badgeLabel(c), BOARD.lanes.deferred)
@@ -236,13 +238,13 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(boardWhenOf(deferred, waveStartOf(deferred)), WHEN.none)
   // A step the person said does not apply is not a row; opened on its own it reads Doesn't apply.
   const na = { ...r.steps.find((s) => s.id !== target.id && s.status !== 'done')!, doesntApply: { reason: 'Not here', at: f.snapshot.asOf } } as unknown as Step
-  const naLane = laneViewFor(na, r.steps)
+  const naLane = laneViewFor(na, boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
   assert.equal(naLane.label, BOARD.lanes.doesntApply)
   assert.equal(badgeLabel(stepContract(na, ctx, undefined, naLane)), BOARD.lanes.doesntApply)
   // A baseline conflict is On Hold · Baseline conflict on every surface (decision 4).
   const conflict = r.steps.find((s) => s.state.condition === 'baseline-conflict')
   assert.ok(conflict, 'the premise: the demo carries a baseline conflict')
-  const cl = laneViewFor(conflict, r.steps)
+  const cl = laneViewFor(conflict, boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
   const cc = stepContract(conflict, ctx, undefined, cl)
   assert.equal(cl.label, BOARD.lanes.onHold)
   assert.equal(badgeLabel(cc), cl.label)

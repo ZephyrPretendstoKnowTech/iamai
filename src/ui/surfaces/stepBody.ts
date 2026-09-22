@@ -37,7 +37,7 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
-import { laneViewFor } from './planBoard.ts'
+import { laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
@@ -179,7 +179,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // action, the blockers and the completion, worked out once from Foundations A,
   // B and C, with the lane engine's reading of the step as its one state (A1b).
   // Everything below renders it; nothing below asks them again.
-  const laneView = lane ?? laneViewFor(step)
+  // No lane handed down is a step opened with nothing around it (planBoard.ts
+  // laneViewAlone); every surface that draws a step hands down the board's.
+  const laneView = lane ?? laneViewAlone(step)
   const contract = stepContract(step, ctx, ex as Record<string, unknown>, laneView)
   // The one title, from the one resolver the row reads (content/stepTitle.ts), so
   // the row and the body it opens can never disagree.

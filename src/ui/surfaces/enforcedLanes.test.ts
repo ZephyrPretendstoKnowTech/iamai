@@ -23,7 +23,7 @@ import { CONTRACT, readinessOf, stepContract } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
-import { BOARD, laneViewFor } from './planBoard.ts'
+import { BOARD, boardReadingsOf, laneViewFor } from './planBoard.ts'
 import { stepExportView } from './stepExport.ts'
 import { directionWords } from '../../content/content.ts'
 
@@ -100,7 +100,7 @@ test('U21: an enforced policy with a resolved correction waits on the plan’s f
     assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
     const r = readings.get(s.id)
     assert.notEqual(r?.lane, 'Ready', `${s.id}: Ready while the foundation is unsettled`)
-    const view = laneViewFor(s, demoRun.steps)
+    const view = laneViewFor(s, boardReadingsOf(demoRun.steps, demoRun.schedule.cleanup, demo.mapping.breakGlassAnswers ?? null))
     const exported = stepExportView(s, ctx, view)
     assert.deepEqual([exported.state, exported.lane], [view.label, view.lane], `${s.id}: the export says another state`)
   }
@@ -137,7 +137,7 @@ test('U20: on the demo Follow-up scan with its saved answers every enforced poli
   // session-loop guard is still there beside it.
   assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'decision'])
   assert.ok(intune?.blockers.some((b) => b.kind === 'fact'), 'the session-loop configuration guard is not cleared by waiting for more evidence')
-  const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), run.steps)
+  const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), boardReadingsOf(run.steps, run.schedule.cleanup, run.input.mapping.breakGlassAnswers ?? null))
   assert.equal(view.label, BOARD.lanes.onHold)
   assert.equal(view.tail, directionWords.waiting)
 })

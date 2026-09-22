@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONTRACT, implementationEmptyOf, railOf, readinessLeadOf } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
-import { WHEN, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { WHEN, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { SNAPSHOT_DIR } from '../../testing/stepSnapshots.ts'
 import dependencyData from '../../actionability/dependency-data.json' with { type: 'json' }
@@ -35,7 +35,7 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
   const out = new Map<string, StepBody>()
   for (const step of r.steps) {
     const reading = readings.get(step.id)
-    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const lane = laneViewFor(step, { readings, titleOf })
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
     out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
   }

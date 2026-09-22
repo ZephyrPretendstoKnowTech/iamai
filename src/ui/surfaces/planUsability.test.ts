@@ -11,7 +11,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { dateSpan } from '../../copy/dates.ts'
-import { BOARD, WHEN, boardWhenOf, laneViewFor } from './planBoard.ts'
+import { BOARD, WHEN, boardReadingsOf, boardWhenOf, laneViewFor } from './planBoard.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { rowWho } from './rowWho.ts'
 import { whoLine } from '../../derive/whoLine.ts'
@@ -125,6 +125,7 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
   let dated = 0
   const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
   for (const { name, r } of RUNS) {
+    const board = boardReadingsOf(r.steps, r.schedule.cleanup, r.input.mapping.breakGlassAnswers ?? null)
     for (const s of r.steps as Step[]) {
       const wi = r.schedule.waveOf?.[s.id]
       const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null)
@@ -133,7 +134,7 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
       // whose own status is `done` while the lane still has work for it is not a
       // finished row and is not dated like one (planBoard.ts boardWhenOf).
       if (s.status === 'done') {
-        if (laneViewFor(s, r.steps).lane === 'Completed') {
+        if (laneViewFor(s, board).lane === 'Completed') {
           assert.ok(when === 'Already in place' || DAY.test(when), `${name}/${s.id}`)
           complete += 1
         } else {
@@ -227,7 +228,7 @@ function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pil
   const step = move ? pilotStepAt(found, move) : found
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
   // The board's one state reading of the step (A1b), read over the whole plan as the Plan reads it.
-  const lane = laneViewFor(step, r.steps)
+  const lane = laneViewFor(step, boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
   return { f, r, step, ctx, lane, c: stepContract(step, ctx, undefined, lane) }
 }
 

@@ -41,7 +41,7 @@ import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import type { PlanStateFacts } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
-import type { LaneReading, LaneRowInput } from './planLanes.ts'
+import type { LaneReading } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -311,7 +311,7 @@ export function boardReadingsOf(
   steps: readonly Step[],
   cleanup: CleanupPhase | null | undefined,
   answers: { signInMonitoring: boolean | null } | null | undefined,
-): { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[] } {
+): BoardReadings {
   const cleanupRows = (cleanup?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ row: r, id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
   const readings = laneReadings(steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: AFTER_ROLLOUT.has(r.row.kind) })))
   const byId = new Map(steps.map((s) => [s.id, s]))
@@ -325,21 +325,36 @@ export function boardReadingsOf(
   return { readings, titleOf, cleanupRows }
 }
 
+/** The board's reading of a whole plan (boardReadingsOf): every row's lane reading, the title each names a prerequisite by, and the Cleanup rows it draws. */
+export type BoardReadings = { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[] }
+
 /**
- * The lane view of one step where no board handed one down (the printed step,
- * a step opened on its own in a test): the engine read over the steps given,
- * which is the whole plan where the caller has it and the step alone otherwise.
+ * The lane view of one step, read off a board (boardReadingsOf): the lane its
+ * row reads there, and Doesn't apply for a step the board has no row for.
+ *
+ * It took the plan's steps and, by default, no Cleanup rows, and built its own
+ * readings from them. A caller that left the rows out got a reading in which
+ * the emergency-access drill — the prerequisite every policy's enforcement
+ * waits on — did not exist: a step the board held behind it read Up Next, or
+ * "Ready · Ready to enforce", from this function alone (R4-22). There is no
+ * reading here but the board's now, so nothing can leave the drill out without
+ * saying so where it builds the board.
  */
-export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => { const s = steps.find((x) => x.id === id); return s ? contentTitle(s) : null }, rows: readonly LaneRowInput[] = []): LaneView {
+export function laneViewFor(step: Step, board: Pick<BoardReadings, 'readings' | 'titleOf'>): LaneView {
   if (step.doesntApply != null) return doesntApplyView()
-  // The same inputs the board gives the engine, Cleanup rows included. Without
-  // them the drill is a prerequisite the engine has never heard of, so a step
-  // the board holds behind it read Up Next here — one step, two lanes, which is
-  // the one thing this module exists to prevent. It surfaced when the emergency
-  // accounts started completing on the shipped fixtures (G-F1) and the ladder
-  // step's nearest wait became the drill.
-  const reading = laneReadings(steps.some((s) => s.id === step.id) ? steps : [...steps, step], rows).get(step.id)
-  return reading ? laneViewOf(reading, titleOf) : doesntApplyView()
+  const reading = board.readings.get(step.id)
+  return reading ? laneViewOf(reading, board.titleOf) : doesntApplyView()
+}
+
+/**
+ * The lane of a step read with nothing around it: no other step and no Cleanup
+ * row, so every edge to other work — the emergency-access drill included — is
+ * missing from it. It is never a board's reading. It stands in only where a
+ * caller hands no lane at all (a test opening one step on its own): every
+ * surface that draws or exports a step passes the board's lane.
+ */
+export function laneViewAlone(step: Step): LaneView {
+  return laneViewFor(step, boardReadingsOf([step], null, null))
 }
 
 /** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. The lane alone where the engine named no reason. */
@@ -496,7 +511,7 @@ const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
  *  every cross-step edge is missing and it can only say On Hold; the hold rule
  *  below therefore asks for the board's reading and never the guess. */
 export function boardWhenOf(step: Step, waveStart: string | null = null, read: LaneView | null = null): string {
-  const lane = read ?? laneViewFor(step)
+  const lane = read ?? laneViewAlone(step)
   if (step.status === 'skipped') return schedulingWords.deferred
   // The finished wording belongs to a row the board reads Completed. A step
   // whose own status is `done` while the lane still has work for it read the

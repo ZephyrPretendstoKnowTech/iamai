@@ -23,8 +23,8 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { badgeLabel, factOf, stepContract } from './stepContract.ts'
 import type { LaneView } from './stepContract.ts'
-import { stepExportView } from './stepExport.ts'
-import { boardReadingsOf, doesntApplyView, laneViewOf } from './planBoard.ts'
+import { exportViewsOf, stepExportView } from './stepExport.ts'
+import { boardReadingsOf, laneViewFor } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { waitsOnFoundation } from '../../roadmap/holds.ts'
 
@@ -35,18 +35,22 @@ const ctxOf = (f: Fixture): StepVarContext => {
   return { snapshot, mapping: f.mapping, nameOf: (id) => snapshot.users.find((u) => u.id === id)?.displayName ?? id, signature: 'IT', operatorId: null, now: snapshot.asOf }
 }
 /**
- * The board's one state reading per step, as Plan.tsx and Export.tsx build it
- * (planBoard.ts boardReadingsOf, laneViewOf). This used to call laneReadings
- * with no Cleanup rows, copying the Export page's construction rather than the
- * Plan's, so it agreed with the Export page where the two differed (R4-22).
+ * The row's lane, as Plan.tsx reads it off its board (planBoard.ts
+ * boardReadingsOf, laneViewFor). This used to call laneReadings with no Cleanup
+ * rows, copying the Export page's construction rather than the Plan's, so it
+ * agreed with the Export page where the two differed (R4-22).
  */
 function boardOf(run: ReturnType<typeof runFixture>, f: Fixture): (s: Step) => LaneView {
-  const { readings, titleOf } = boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-  return (s) => {
-    const r = readings.get(s.id)
-    return r ? laneViewOf(r, titleOf) : doesntApplyView()
-  }
+  const board = boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  return (s) => laneViewFor(s, board)
 }
+/**
+ * The export view the Export page builds (stepExport.ts exportViewsOf), which
+ * the sweeps hold to the Plan's lane. Built here from the lane above, the sweep
+ * compared a builder with itself.
+ */
+const exportOf = (run: ReturnType<typeof runFixture>, f: Fixture, ctx: StepVarContext): ((s: Step) => ReturnType<typeof stepExportView>) =>
+  exportViewsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null, () => ctx)
 const RETIRED = /\b(Blocked|Held|Needs attention|Skipped|Set aside|Healthy)\b/
 
 // ---- 1. export state line = badge, on every demo step (A3 B1) ----
@@ -58,7 +62,7 @@ test('A1c: the export view, the calendar entry, the prompt pack and the bundle c
     const run = runFixture(f)
     const ctx = ctxOf(f)
     const laneOf = boardOf(run, f)
-    const view = (s: Step) => stepExportView(s, ctx, laneOf(s))
+    const view = exportOf(run, f, ctx)
     for (const s of run.steps) {
       const where = `${f.name}/${s.id}`
       const lane = laneOf(s)
@@ -103,7 +107,7 @@ test('A1c: every fixture’s export view states the board’s lane label, and no
     const run = runFixture(f)
     const ctx = ctxOf(f)
     const laneOf = boardOf(run, f)
-    const view = (s: Step) => stepExportView(s, ctx, laneOf(s))
+    const view = exportOf(run, f, ctx)
     for (const s of run.steps) assert.equal(view(s).state, laneOf(s).label, `${f.name}/${s.id}: the export view's state is not the row's lane label`)
     assert.doesNotMatch(buildIcs(run.steps, f.name, f.planId, view), RETIRED, `${f.name}: a retired state word in the calendar`)
   }

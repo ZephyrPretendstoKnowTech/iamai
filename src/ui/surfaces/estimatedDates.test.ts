@@ -12,7 +12,7 @@ import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts
 import { schedulingWords } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { boardWhenOf, laneViewFor, laneViewOf, waveStartOf } from './planBoard.ts'
+import { boardWhenOf, laneViewFor, waveStartOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { cleanupEntry } from './cleanupExport.ts'
@@ -154,7 +154,7 @@ test('the When column never dates a row the board holds, and never calls a row f
     const titleOf = (id: string): string | null => { const x = r.steps.find((y) => y.id === id); return x ? x.plainTitle || x.title : null }
     for (const step of r.steps) {
       const reading = readings.get(step.id)
-      const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+      const lane = laneViewFor(step, { readings, titleOf })
       const when = boardWhenOf(step, waveStartOf(step), lane)
       const dated = /[0-9]{4}$/.test(when)
       if (lane.lane === 'On Hold' && lane.substatus === null && step.blockedBy.length === 0 && step.status !== 'skipped') { held++; assert.equal(dated, false, `${name}/${step.id}: held row dated ${when}`) }
@@ -175,7 +175,7 @@ test('a Ready row with a decision open and no scheduled day says the decision is
     const titleOf = (id: string): string | null => { const x = r.steps.find((y) => y.id === id); return x ? x.plainTitle || x.title : null }
     for (const step of r.steps) {
       const reading = readings.get(step.id)
-      const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+      const lane = laneViewFor(step, { readings, titleOf })
       if (lane.lane !== 'Ready' || lane.substatus !== 'Decision') continue
       assert.notEqual(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.none, `${name}/${step.id}`)
     }

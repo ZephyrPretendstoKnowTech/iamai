@@ -21,7 +21,8 @@ import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './ste
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
+import { SUBSTATUS_WORD, boardReadingsOf, laneViewAlone, laneViewFor, laneWordOf } from './planBoard.ts'
+import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
@@ -197,8 +198,8 @@ export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
  *
  * `lane` is the board's one state reading of the step (planBoard.ts laneViewOf,
  * A1c: the lane engine states every surface, the exports included). The Export
- * page hands down the reading it made over the whole plan; a caller with no
- * board reads the step over the steps it holds, as the opened step does.
+ * page hands down the board's (exportViewsOf); a caller with no board reads the
+ * step with nothing around it (planBoard.ts laneViewAlone).
  */
 /**
  * The contract's gate as one line: its own words, ended as a sentence so it
@@ -211,6 +212,28 @@ function gateLine(gatedBy: string | null): string | null {
   return /[.!?]$/.test(gate) ? gate : `${gate}.`
 }
 
+/**
+ * The Export page's view of every step — the one its calendar, grounding
+ * bundle and prompt pack read — each under the lane the board reads it in
+ * (planBoard.ts boardReadingsOf, the one construction the Plan builds its rows
+ * with, Cleanup rows and all).
+ *
+ * The page built its own lane readings, with no Cleanup rows, so the
+ * emergency-access drill did not exist there. A policy the board held Up Next
+ * behind the drill went into the calendar runbook as "Ready · Ready to
+ * enforce", beside the very guard that said not to turn it on until emergency
+ * access was tested (R4-22). The page calls this, and the tests call this.
+ */
+export function exportViewsOf(
+  steps: readonly Step[],
+  cleanup: CleanupPhase | null | undefined,
+  answers: { signInMonitoring: boolean | null } | null | undefined,
+  ctxOf: (s: Step) => StepVarContext,
+): (s: Step) => ExportStep {
+  const board = boardReadingsOf(steps, cleanup, answers)
+  return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board))
+}
+
 export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
@@ -220,7 +243,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // any of them would be a second authority. The state is the lane label the
   // row and the opened step's badge show (planBoard.ts laneLabelOf), and the
   // lane's parts travel beside it for a reader that keys on them.
-  const laneView = lane ?? laneViewFor(step)
+  // No lane handed down is a step read with nothing around it (planBoard.ts
+  // laneViewAlone); the Export page hands down the board's (exportViewsOf).
+  const laneView = lane ?? laneViewAlone(step)
   const contract = stepContract(step, ctx, undefined, laneView)
   const shell = {
     state: badgeLabel(contract),
