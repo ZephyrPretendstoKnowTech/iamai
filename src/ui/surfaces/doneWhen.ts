@@ -55,11 +55,24 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pic
   // failures, everyone in scope seen — are replaced, never stated as something to
   // wait for. The lines after the gates stay.
   const configured = stepEvidenceStrategy(step) === 'configuration'
+  // A policy the tenant enforces is past its report-only period, whether or not
+  // anybody watched one, and the two record gates are not a completion it can
+  // still reach. They were: a guest-MFA policy the FIRST scan found enforced read
+  // "The required report-only period of 7 days is complete, with no failures" and
+  // "every active person in scope signing in during those days" as what finishes
+  // it, under a tile saying the policy was enforced and only the person's workflow
+  // record was left — a window that can never be run, on every inherited enforced
+  // policy of six tenants, and on one whose sign-in records could not be read at
+  // all. The lines after the gates stay: the scan that confirms the policy and the
+  // person's own check.
+  const enforced = step.state.lifecycle === 'enforced'
   const policy = configured
     ? shared.policyDoneWhenConfiguration
     : readyWhen(step)
       ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
-      : shared.policyDoneWhen
+      : enforced
+        ? shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)
+        : shared.policyDoneWhen
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
   const change = createsNewPolicy(step) ? policy : shared.changeDoneWhen
