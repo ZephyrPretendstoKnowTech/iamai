@@ -1,15 +1,11 @@
 // The shared walk, parameterised by habit. Each persona goes from a first scan
 // to wherever their habits take them, and the board is printed at every stage so
 // a reading can be quoted rather than summarised.
-import { plan, rescan, observations, days, deploy, acceptDirection, prepareEmergencyAccess, configurePasskeys, enrolMfa } from './harness.ts'
+import { plan, rescan, observations, days, deploy, acceptDirection, prepareEmergencyAccess, configurePasskeys, enrolMfa, lanes } from './harness.ts'
 import type { Tenant } from './harness.ts'
 import type { FixtureRun } from '../../../../src/roadmap/fixtures/run.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
 import { contentTitle } from '../../../../src/content/stepTitle.ts'
-import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
-import { laneViewFor, laneViewOf } from '../../../../src/ui/surfaces/planBoard.ts'
-import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
-import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
 
 export type Habit = {
   /** Does the foundation work before touching a policy. */
@@ -24,20 +20,17 @@ export type Habit = {
 
 export type Stage = { label: string; day: string; counts: Record<string, number>; lanes: Record<string, number> }
 
-// The board as Plan.tsx builds it: the Cleanup rows join the lane readings, and a
-// step the engine gives no reading (a deferred one) falls back to laneViewFor.
-// `lanes()` in the harness reports those as "Unknown", which is the harness and
-// not the product — checked before reporting, per HARNESS.md.
+// The board's rows counted by the label each draws, read from the harness's
+// `lanes()` — the one copy of the board as Plan.tsx builds it, Cleanup rows
+// included. This kept its own copy of the board readings, which named a
+// prerequisite by `step.title` (the goal statement no row draws) and never
+// counted the Cleanup rows; a second source of the board is how the two
+// drifted. A step the person ruled out counts under "Doesn't apply", where the
+// Plan's footer holds it.
 export function board(t: Tenant, r: FixtureRun): Record<string, number> {
-  const answers = t.mapping.breakGlassAnswers ?? null
-  const cleanup = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, answers) }))
-  const readings = laneReadings(r.steps, cleanup)
-  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
   const out: Record<string, number> = {}
-  for (const step of r.steps) {
-    const reading = readings.get(step.id)
-    const view = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
-    const key = view.substatus ? `${view.lane} · ${view.substatus}` : view.lane
+  for (const row of lanes(t, r)) {
+    const key = row.substatus ? `${row.lane} · ${row.substatus}` : row.lane
     out[key] = (out[key] ?? 0) + 1
   }
   return out
