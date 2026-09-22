@@ -286,6 +286,14 @@ test('an unread passkey check names the unread accounts, never a double negative
   assert.ok(!one.text.includes(one.upn(a)), 'the prepared account is named')
   assert.match(one.text, new RegExp(`IAMAI could not confirm that \\*\\*${one.upn(b)}\\*\\* has an approved passkey\\.`))
   assert.match(one.text, new RegExp(`sign in as \\*\\*${one.upn(b)}\\*\\*`))
+
+  // The first known to need one, the second unread: both named. The unread
+  // accounts used to be looked for only where no account needed a passkey, so
+  // the procedure signed in as the first and never mentioned the second.
+  const mixed = passkeyOf(value => { value.snapshot.authMethods[value.mapping.breakGlassUserIds[0]] = [] })
+  assert.match(mixed.text, new RegExp(`\\*\\*${mixed.upn(a)}\\*\\* needs an approved passkey\\. Follow these steps for it\\.`))
+  assert.match(mixed.text, new RegExp(`IAMAI could not confirm that \\*\\*${mixed.upn(b)}\\*\\* has an approved passkey\\.`))
+  assert.doesNotMatch(mixed.text, new RegExp(`sign in as \\*\\*${mixed.upn(a)}\\*\\*`), 'the procedure is not for the first account alone')
 })
 
 /** Step 1's account tiles, Step 1's status and Step 4's findings for demo-week2, with an edit. */

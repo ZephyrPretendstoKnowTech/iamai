@@ -84,7 +84,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'passkeyNeededOne' | 'passkeyNeededMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -242,21 +242,24 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // needs" and "is confirmed to need" — two words apart, the unread one a double
   // negative that read as "not needed" over a tile saying Could not verify, with
   // eight registration steps under it (R4-51). The engine knows which accounts
-  // were not read; the line names them, and the procedure is for them.
-  const unread = needing.length === 0 ? selected.filter((_, index) => passkeyChecks[index] === null).map(id => targetOf(ctx, id)) : []
-  const registrationTarget = needing.length === 1 ? needing[0] : unread.length === 1 ? unread[0] : 'the account you are preparing'
+  // were not read; the line names them, and the procedure is for them. They are
+  // named beside any account known to need one: looked for only where none did,
+  // the second of two accounts, unread, dropped out of the procedure the export
+  // and the print carry while it signed in as the first.
+  const unread = selected.filter((_, index) => passkeyChecks[index] === null).map(id => targetOf(ctx, id))
+  const toPrepare = [...needing, ...unread]
+  const registrationTarget = toPrepare.length === 1 ? toPrepare[0] : 'the account you are preparing'
   const bold = (upns: string[]): string => list(upns.map(upn => `**${upn}**`))
+  const unreadLine = unread.length === 0 ? [] : [unread.length === 1 ? fillText(WORDS.passkeyUnreadOne, { account: bold(unread) }) : fillText(WORDS.passkeyUnreadMany, { accounts: bold(unread) })]
   // More than one account needing a passkey (a new tenant's usual case) used to
   // merge the session reminder into the account list and point "above": the
   // reminder is its own first line here as on every emergency task.
   const repeatLead = needing.length > 1
-    ? ['Keep your working administrator session open.', fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) })]
+    ? ['Keep your working administrator session open.', fillText(WORDS.passkeyNeededMany, { accounts: bold(needing) }), ...unreadLine]
     : needing.length === 1
-      ? ['Keep your working administrator session open.']
+      ? ['Keep your working administrator session open.', ...(unreadLine.length ? [fillText(WORDS.passkeyNeededOne, { account: bold(needing) }), ...unreadLine] : [])]
       : selected.length
-        ? ['Keep your working administrator session open.', unread.length === 0 ? WORDS.passkeyNotNeeded
-          : unread.length === 1 ? fillText(WORDS.passkeyUnreadOne, { account: bold(unread) })
-            : fillText(WORDS.passkeyUnreadMany, { accounts: bold(unread) })]
+        ? ['Keep your working administrator session open.', ...(unreadLine.length ? unreadLine : [WORDS.passkeyNotNeeded])]
         : ['Keep your working administrator session open.']
   // The existing-account procedure names only the accounts whose check fails.
   type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
