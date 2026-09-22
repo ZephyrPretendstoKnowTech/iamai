@@ -21,7 +21,7 @@ mostly stopped by a gate the harness could not clear — not by a product defect
 import { tenant, plan, rescan, observations, deploy, days,
          settleAll, settleFoundations, prepareEmergencyAccess,
          configurePasskeys, acceptDirection, enrolMfa,
-         decide, answers, render, lanes, ctxOf, mappingOf } from './harness.ts'
+         decide, answers, render, stepView, lanes, ctxOf, mappingOf } from './harness.ts'
 ```
 
 - `t.mapping` is the tenant's STORED mapping record and `t.decisions` the
@@ -58,14 +58,18 @@ import { tenant, plan, rescan, observations, deploy, days,
   `row.cleanup` (its kind). A script that reads `row.step.id` on every row
   stops at the first Cleanup row — skip rows whose `step` is null, or read
   `row.id`.
-- `deploy(t, step, 'exact' | 'enforced' | 'unconfigured', { held? })` — does what
-  the step offers. An `update` operation (turning a policy on) patches the row its
-  own `policyId` names, and merges `conditions` the way Graph does: a section the
-  patch carries replaces that section, one it leaves out stays. `'enforced'` also
-  turns an updated policy on. `{ held: true }` applies what the step declares and
-  withholds today as well (a switch a readiness threshold holds): without it an
-  "everything on" stage never applies a held switch, and never reaches what
-  follows one.
+- `render(t, run, step)` — the opened step, flattened. Its state is `badge`
+  (what the head draws, `badgeLabel`) and `fact` (the chip beside it). There
+  is no `state`; reading it throws.
+- `stepView(t, run, step)` — the whole `stepBodyOf` result, with the board's
+  lane, as ContentStep.tsx receives it, for a section `render()` does not
+  flatten. Do not copy the board's readings into a script to call
+  `stepBodyOf` yourself. **The badge is `badgeLabel(view.contract)`**;
+  `contract.state.badge` and `contract.state.word` are inputs to it that no
+  surface draws.
+- `deploy(t, step, 'exact' | 'enforced' | 'unconfigured')` — does what the step
+  says. An `update` operation (turning a policy on) patches the row the step's
+  member already owns.
 
 ## The journey that now works, on `mid`
 
@@ -130,6 +134,13 @@ finding that rests on one of them is the harness's until it is re-run.
   `plainTitle || title` (so `render()`'s tiles quoted goal statements too), and
   read every Cleanup row as incomplete regardless of the emergency-access
   answers. All five now match `Plan.tsx`.
+- **`render().state` was a state no screen draws.** It was
+  `contract.state.word / stage`, and persona libraries that copied the board
+  readings printed `contract.state.badge`. The head draws `badgeLabel(contract)`,
+  which reads the lane first: Sam's security-defaults, per-user MFA and
+  Prepare Your Team steps read "Ready" to the persona and "On Hold" on the
+  screen and the board (R4-22, R4-33). `render()` now returns `badge` and
+  `fact`, and `stepView()` gives scripts the body without copying the board.
 
 ## Rules
 

@@ -23,7 +23,7 @@ import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
 import { asideGroupsFor, BOARD, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
-import { cleanupTitleOf } from '../../../../src/ui/surfaces/stepContract.ts'
+import { badgeLabel, cleanupTitleOf } from '../../../../src/ui/surfaces/stepContract.ts'
 import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
 import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
 import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
@@ -235,15 +235,17 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
 }
 
 /**
- * What a person actually sees on the opened step: every section, in order, and
- * every implementation channel. This is the text the persona reads, so it is
- * the text a comprehension finding must quote.
+ * The opened step's body exactly as ContentStep.tsx receives it: `stepBodyOf`
+ * with the board's lane, blockers, prerequisite labels and enforce waits. A
+ * script that needs a section `render()` does not flatten reads it here rather
+ * than copying the board's readings — the copies in the round-4 persona libs
+ * carried the harness's old titles and Cleanup completion with them.
+ *
+ * The badge the page draws is `badgeLabel(view.contract)`, never
+ * `contract.state.badge` or `contract.state.word`: those are inputs to it, and
+ * with a lane present (always, on the board) no surface draws them.
  */
-export function render(t: Tenant, r: FixtureRun, step: Step): {
-  title: string; eyebrow: string | null; lane: string; state: string
-  why: string; cards: string[]; found: string[]; milestone: string; tasks: { title: string; steps: string[]; variants: { label: string; steps: string[] }[] }[]
-  channels: { id: string; text: string }[]; doneWhen: string[]; decision: string | null
-} {
+export function stepView(t: Tenant, r: FixtureRun, step: Step): ReturnType<typeof stepBodyOf> {
   // WITH the lane, the readiness blockers and the prerequisite labels, because
   // Plan.tsx passes all three (Plan.tsx -> ContentStep.tsx). Without them
   // stepBody falls back to `laneViewFor(step)` — the lane engine run over a plan
@@ -254,7 +256,7 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
   const { readings, titleOf, cleanup } = boardReadings(r)
   const reading = readings.get(step.id)
   const laneView = reading ? laneViewOf(reading, titleOf) : undefined
-  const b = stepBodyOf(step, ctxOf(t, r, step), {
+  return stepBodyOf(step, ctxOf(t, r, step), {
     lane: laneView,
     blockers: reading ? readinessBlockersOf(reading, titleOf) : undefined,
     prerequisiteLabel: prerequisiteLabelFor(readings),
@@ -262,14 +264,36 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
     // the drill row while the board reads it incomplete.
     enforceWaits: cleanup.filter((row) => row.kind === 'drill' && !row.complete).map((row) => row.title).filter((x) => x.length > 0),
   } as never)
+}
+
+/**
+ * What a person actually sees on the opened step: every section, in order, and
+ * every implementation channel. This is the text the persona reads, so it is
+ * the text a comprehension finding must quote.
+ *
+ * `badge` is the state badge the step's head draws (`badgeLabel`, as
+ * ContentStep.tsx draws it) and `fact` the tenant-fact chip beside it. There is
+ * no `state`: it was `contract.state.word / stage`, which the head never draws,
+ * and personas quoted it as the step's state — "Ready" on a step whose badge
+ * and board row both read On Hold (R4-22, R4-33). Reading it now throws, so a
+ * script written against the old shape stops instead of printing the wrong
+ * word.
+ */
+export function render(t: Tenant, r: FixtureRun, step: Step): {
+  title: string; eyebrow: string | null; lane: string; badge: string; fact: string | null
+  why: string; cards: string[]; found: string[]; milestone: string; tasks: { title: string; steps: string[]; variants: { label: string; steps: string[] }[] }[]
+  channels: { id: string; text: string }[]; doneWhen: string[]; decision: string | null
+} {
+  const b = stepView(t, r, step)
   const card = (c: { heading: string; upn?: string | null; title: string; detail?: string; instruction?: string }): string =>
     [c.heading, c.upn ?? '', c.title, c.detail ?? '', c.instruction ?? ''].filter((x) => String(x).trim()).join(' · ')
   const tiles = [...(b.readiness?.tiles ?? []), ...(b.readiness?.satisfied ?? [])]
-  return {
+  const out = {
     title: b.title,
     eyebrow: b.eyebrow ?? null,
     lane: b.laneView?.lane ?? 'Unknown',
-    state: `${b.contract.state.word}${b.contract.state.stage ? ` / ${b.contract.state.stage}` : ''}`,
+    badge: badgeLabel(b.contract),
+    fact: b.contract.state.fact ?? null,
     why: String((b.cs as { why?: unknown })?.why ?? ''),
     cards: tiles.map((tile) => card({ heading: tile.label, title: tile.value, detail: tile.note ?? '' })),
     // "What IAMAI found" — the step's findings section. `cards` above is the
@@ -295,6 +319,11 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
     doneWhen: [...b.contract.doneWhen],
     decision: b.decides ? 'this step asks the person to decide' : null,
   }
+  Object.defineProperty(out, 'state', {
+    enumerable: false,
+    get: () => { throw new Error('render().state is gone: it was contract.state.word / stage, which no surface draws as the step\'s state. Read render().badge (the badge the head draws) and render().fact (the chip beside it).') },
+  })
+  return out
 }
 
 /** The person saves an answer on a step. Direction steps expand into the decisions their answers have always been saved as. */
