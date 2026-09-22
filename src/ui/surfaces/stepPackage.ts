@@ -40,6 +40,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import { phoneSignInIds } from '../../derive/sets.ts'
+import { personLabels } from '../../names.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
@@ -723,6 +724,14 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const putSome = (key: string, value: readonly string[] | undefined): void => {
     if (value && value.length > 0) out[key] = [...value]
   }
+  // An account a task acts on in the portal, named by the one rule for naming a
+  // person (names.ts personLabels) with its sign-in address, or null where the
+  // directory holds no address for it. Built once, on first use.
+  let accounts: { byId: Map<string, { userPrincipalName?: string | null }>; labels: Map<string, string> } | null = null
+  const accountLabel = (id: string): string | null => {
+    accounts ??= { byId: new Map(ctx.snapshot.users.map((u) => [u.id, u])), labels: personLabels(ctx.snapshot.users, { address: true }) }
+    return accounts.byId.get(id)?.userPrincipalName ? (accounts.labels.get(id) ?? null) : null
+  }
   // A whole policy — a create's body, or the target an update works towards —
   // says everything about its material roots, so one it leaves out is none and
   // binds as null: a session-only policy has no grant. A partial update's body
@@ -872,15 +881,14 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // accounts are named below: the step's instruction says "add only the
   // service-account users whose application owners confirmed them, as IAMAI
   // lists", and the only channel that listed them was the AI briefing.
-  const serviceLabels = (ctx.mapping.serviceAccountUserIds ?? []).map((id) => ctx.snapshot.users.find((u) => u.id === id))
-    .map((u) => (u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null))
+  const serviceLabels = (ctx.mapping.serviceAccountUserIds ?? []).map(accountLabel)
   if (serviceLabels.length > 0 && serviceLabels.every((l): l is string => l !== null)) put('serviceAccounts.accountsSummary', serviceLabels.join(', '))
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
   // The operator's confirmed emergency accounts, every one of them: the set the
   // step's own words name. Only where the directory names each; a set short of an
   // account is not the set.
   const emergency = ctx.mapping.breakGlassUserIds ?? []
-  const labels = emergency.map((id) => ctx.snapshot.users.find((u) => u.id === id)).map((u) => (u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null))
+  const labels = emergency.map(accountLabel)
   if (labels.length > 0 && labels.every((l): l is string => l !== null)) put('emergency.target.accountsSummary', labels.join(', '))
   // The one account the step's per-account work is about: the only confirmed
   // account whose own checks are outstanding, where every account's checks ran
@@ -939,10 +947,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // meeting both should not have to learn two formats. Only where the directory
   // names every one of them: a set short of an account is not the set, and a
   // list that silently drops people is worse here than no list at all.
-  const affectedNames = (affected?.names ?? []).map((id) => {
-    const u = ctx.snapshot.users.find((row) => row.id === id)
-    return u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null
-  })
+  const affectedNames = (affected?.names ?? []).map(accountLabel)
   if (affectedNames.length > 0 && affectedNames.every((l): l is string => l !== null)) put('people.affected.summary', affectedNames.join(', '))
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text) : undefined)
   return out

@@ -347,7 +347,7 @@ export function buildFixture(spec: Spec): Fixture {
   }
   // GetIAMAI, as the live walk found it (prompt 48.1 items 5, 6, 9).
   if (spec.name === 'getiamai') {
-    // A guest shares a display name with a member (prompt 49 item 1): the guest carries the (guest) marker.
+    // A guest shares a display name with a member (prompt 49 item 1): the guest carries the (guest) marker, and both their sign-in address (names.ts personLabels).
     const guestUser = users.find((u) => u.userType === 'guest')
     const memberUser = users.find((u) => u.userType === 'member' && !bgIds.includes(u.id) && u.displayName)
     if (guestUser && memberUser) guestUser.displayName = memberUser.displayName
