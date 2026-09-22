@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Readiness",
+      "state": "Not measured"
+    },
+    {
       "label": "Verify Emergency Access",
       "state": "Prerequisite · Waiting"
     }

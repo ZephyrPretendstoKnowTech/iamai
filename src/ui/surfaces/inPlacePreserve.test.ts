@@ -60,7 +60,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { readinessOf, stepContract } from './stepContract.ts'
+import { FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
@@ -771,7 +771,7 @@ test('a finished verification campaign is delivered, and says so without claimin
   assert.deepEqual(claimed, [], 'a step read Enforced with no enforced policy behind it')
 })
 
-test('In place says so about the POLICY, and discloses where it could not read whether the people can satisfy it', () => {
+test('In place says so about the POLICY, and a threshold never shown met is said once, as a warning, holding nothing', () => {
   // The canonical case is a goal the tenant already delivers, and its answer is
   // to recognise the policy and leave it alone. What "In place / Completed"
   // must not become is a claim about PROTECTION.
@@ -782,29 +782,68 @@ test('In place says so about the POLICY, and discloses where it could not read w
   // registered method allowed by the target policies. Method compatibility is
   // not yet established for 40." None of that reached the finished step. A
   // reader takes Completed as done.
+  //
+  // Then the half-sentence that did reach it was not enough (Priya D3). The
+  // readiness gate is computed only for an unfinished step, so a policy
+  // enforced in the portal while IAMAI was holding it back lost every trace of
+  // the hold: the admin policy went on with neither admin's method readable,
+  // the step read Completed with its Done-when satisfied, and the only trace
+  // was a clause inside the green coverage tile. A gate that congratulates you
+  // for walking around it is not a gate. The finished step now carries the
+  // threshold (Action.enforcedBelowReadiness) and states it as a warning.
   const blind = caseOf(runFixture(fixture('hostile')), fixture('hostile'), 's-goal-mfa-all-users')
   assert.equal(blind.step.status, 'done', 'the premise: an existing policy delivers this goal')
   assert.equal(blind.step.readiness.unmeasured, 'unreadable', 'the premise: readiness could not be read on this tenant')
+  // It holds nothing: the work is done. The fact rides beside the gate, never as it.
+  assert.equal(blind.step.action.readinessGate, undefined, 'a finished step grew a hold')
+  assert.deepEqual(blind.step.action.enforcedBelowReadiness && { ...blind.step.action.enforcedBelowReadiness, blind: undefined }, { measure: 'MFA readiness', threshold: '90%', value: 'not measured', blind: undefined })
   // Both lists, the way the step itself draws them: the in-place tile lives in
   // `satisfied`, not `tiles`, and reading one of the two is how half a step
   // goes unchecked.
-  const coverageTile = (c: ReturnType<typeof readinessOf>): { key: string; note: string | null } | undefined =>
-    [...c.tiles, ...c.satisfied].find((x) => x.key === 'coverage')
-  const blindTile = coverageTile(readinessOf(blind.step, stepContract(blind.step, blind.ctx)))
-  assert.ok(blindTile, 'the in-place step lost its coverage tile')
-  assert.match(String(blindTile.note), /could not read whether the people it covers can satisfy it/, String(blindTile.note))
-  // The readiness line itself now says none of them could be judged rather
-  // than leading with a bare zero, so this pins the count and the fact.
-  assert.match(String(blindTile.note), /None of the 40 people in scope could be judged/, 'the reading the engine computed is still not on the step')
-  assert.match(String(blindTile.note), /describes the policy, not the people/, 'the tile does not say what In place is a fact about')
+  const tileOf = (c: ReturnType<typeof readinessOf>, key: string): { key: string; tone: string; value: string; note: string | null } | undefined =>
+    [...c.tiles, ...c.satisfied].find((x) => x.key === key) as { key: string; tone: string; value: string; note: string | null } | undefined
+  const blindCards = readinessOf(blind.step, stepContract(blind.step, blind.ctx))
+  const reading = tileOf(blindCards, FINISHED_READING)
+  assert.ok(reading, 'a policy enforced below a threshold nothing showed met reads as finished with nothing to say')
+  assert.equal(reading.tone, 'warn')
+  assert.equal(reading.value, 'Not measured')
+  const note = String(reading.note)
+  assert.match(note, /holds enforcement until MFA readiness reaches 90%/, note)
+  assert.match(note, /nothing has shown that threshold met/, note)
+  // The count the engine computed, and what would open the source.
+  assert.match(note, /None of the 40 people in scope could be judged/, 'the reading the engine computed is still not on the step')
+  assert.match(note, /could not read in this tenant/, 'the source that would move the number is not named')
+  // It claims nothing about WHEN the policy went on: IAMAI found it already on.
+  assert.doesNotMatch(note, /went on|was turned on|before IAMAI/, note)
+  // Said once. The coverage tile no longer repeats the same unread count.
+  const blindCoverage = tileOf(blindCards, 'coverage')
+  assert.ok(blindCoverage, 'the in-place step lost its coverage tile')
+  assert.equal(/could not read whether/.test(String(blindCoverage.note)), false, `the unread count is on the step twice: ${blindCoverage.note}`)
 
-  // And where readiness IS readable the tile is unchanged: this is a
+  // Measured and under the threshold: the count, and now the threshold beside it.
+  const short = caseOf(runFixture(fixture('large')), fixture('large'), 's-goal-mfa-all-users')
+  const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
+  assert.ok(shortReading)
+  assert.match(String(shortReading.note), /holds enforcement until MFA readiness reaches 90%; it is 73% now./, String(shortReading.note))
+
+  // And where readiness IS readable the coverage tile is unchanged: this is a
   // disclosure, not a hedge to bolt onto every delivered goal.
   const read = caseOf(runFixture(fixture('mid')), fixture('mid'), 's-goal-mfa-all-users')
   assert.notEqual(read.step.readiness.unmeasured, 'unreadable', 'the premise: mid can read its registration details')
-  const readTile = coverageTile(readinessOf(read.step, stepContract(read.step, read.ctx)))
+  const readTile = tileOf(readinessOf(read.step, stepContract(read.step, read.ctx)), 'coverage')
   assert.ok(readTile)
   assert.equal(/could not read whether/.test(String(readTile.note)), false, `a readable tenant is hedged anyway: ${readTile.note}`)
+
+  // Never where the threshold is met, and never on a step that is not finished.
+  for (const f of allFixtures()) {
+    for (const s of runFixture(f).steps) {
+      const below = s.action.enforcedBelowReadiness
+      if (below === undefined) continue
+      assert.equal(s.state.satisfied, true, `${f.name}/${s.id} carries the finished reading while unfinished`)
+      const percent = s.readiness.percent
+      assert.ok(percent === null || percent < Number.parseInt(below.threshold, 10), `${f.name}/${s.id} reads below ${below.threshold} at ${percent}%`)
+    }
+  }
 })
 
 test('an enforced step waiting on the person says so, instead of rendering nothing at all', () => {
