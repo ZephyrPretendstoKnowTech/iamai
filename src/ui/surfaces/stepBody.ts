@@ -34,7 +34,7 @@ import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { rescanLinesOf, stepInstructions } from './stepInstructions.ts'
+import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
@@ -222,7 +222,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // `implementationIsCurrent`). The same channels come back when the condition
   // does, from the same call, with nothing regenerated.
   const deployNow = cs.kind !== 'policy' || implementationIsCurrent(step)
-  const manualLines = cs.kind !== 'policy' ? instructions.steps.filter((l): l is string => typeof l === 'string').map((l) => fillText(l, ex)).filter((l) => !/\{[^}]+\}/.test(l)) : []
+  const manualLines = cs.kind !== 'policy' ? instructions.steps : []
   const hasPortal = (portal !== null && portal.length + before.length > 0) || manualLines.length > 0
   const channels = step.directionQuestions ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
   const portalLines = hasPortal ? [...before, ...(portal ?? manualLines)] : []
@@ -409,7 +409,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   if (step.id === 's-verify-mfa') {
     // Each list's promise that a scan shows progress follows it, while a scan can (stepInstructions.ts rescanLinesOf, R4-20).
     const rescan = rescanLinesOf(step, cs)
-    const lines = [...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic].filter((line): line is string => typeof line === 'string').map(line => fillText(line, ex)).filter(line => line.trim() && !/\{[^}]+\}/.test(line))
+    const lines = wholeLines([...(Array.isArray(w.steps) ? w.steps : []), ...rescan.steps, ...(Array.isArray(w.generic) ? w.generic : []), ...rescan.generic], ex).filter(line => line.trim())
     for (const channel of ['portal', 'ps', 'ai'] as const) {
       const existing = produced.findIndex(a => a.id === channel)
       if (existing >= 0) produced.splice(existing, 1)

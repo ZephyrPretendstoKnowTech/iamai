@@ -56,10 +56,27 @@ export type StepInstructions = {
   portal: string[] | null
   /** The content's leading lines, filled and whole; empty while the change is held. */
   before: string[]
-  /** The step's own instruction lines, as the surface renders them; empty while the change is held or the portal stands in their place. */
-  steps: unknown[]
+  /** The step's own instruction lines, filled and whole, as the surface renders them; empty while the change is held or the portal stands in their place. */
+  steps: string[]
   /** Why they are empty: an authority holds the change and the action line says which. */
   held: boolean
+}
+
+/**
+ * Content lines as every surface renders them: each filled, and only where
+ * every value it names is there (render.ts `whole`). No line renders around a
+ * hole.
+ *
+ * The one gate for a step's own lines, the screen's and the export's. The
+ * screen used to fill first and then drop only a line with a brace left in it,
+ * and filling turns an empty list into nothing, so "Addresses seen in sign-in
+ * records, to compare with the approved ranges (being seen does not approve
+ * them): {list:ranges}" rendered on a tenant with no sign-in records as a line
+ * ending in a colon that listed nothing. The export judged the same line with
+ * `whole` and left it out.
+ */
+export function wholeLines(lines: unknown, ex: Record<string, unknown>): string[] {
+  return (Array.isArray(lines) ? (lines as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
 }
 
 /**
@@ -74,9 +91,9 @@ export function stepInstructions(step: Step, cs: ContentStepLike, ex: Record<str
   // roadmap/operations.ts implementationOffered), so a held step has none.
   const lines = cs?.kind === 'policy' ? stepPortalLines(step, names) : null
   const portal = lines && lines.length > 0 ? lines : null
-  const before = held ? [] : (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
+  const before = held ? [] : wholeLines(w.before, ex)
   const own = Array.isArray(w.steps) ? (w.steps as unknown[]) : []
-  const steps = held || portal !== null ? [] : own.length > 0 ? own : engineSteps(step, cs)
+  const steps = held || portal !== null ? [] : wholeLines(own.length > 0 ? own : engineSteps(step, cs), ex)
   return { portal, before, steps, held }
 }
 
