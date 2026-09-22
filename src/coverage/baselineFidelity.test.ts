@@ -204,6 +204,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     capabilities: {
       entraP1: caps(true),
       entraP2: caps(true),
+      pim: caps(true),
       intune: caps(false),
       workloadIdPremium: caps(false),
       globalSecureAccess: caps(false),

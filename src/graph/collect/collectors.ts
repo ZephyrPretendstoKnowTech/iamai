@@ -3,7 +3,7 @@
 // a 403/licence error disables its section, never the scan.
 import { GraphRequestError, graphPaged, graphRequest, retryAfterMs, SectionDisabledError, sleep, V1, BETA } from './http.ts'
 import type { TokenSource } from './http.ts'
-import { COLLECTOR_REGISTRY } from './registry.ts'
+import { COLLECTOR_REGISTRY, licenceGateReason } from './registry.ts'
 import { deriveAuthenticatorPlatform } from '../../scoring/platform.ts'
 import type { AuthMethodSummary, MethodKind } from '../../scoring/mfaViability.ts'
 import type {
@@ -304,7 +304,7 @@ export async function collectUsers(
     })
     return {
       users: rows.map(mapUser),
-      partialReason: 'signInActivity not available on this licence (needs Entra ID P1)',
+      partialReason: `signInActivity ${licenceGateReason('entraP1')}`,
     }
   }
   try {

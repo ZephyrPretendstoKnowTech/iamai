@@ -18,6 +18,7 @@ import { proposedPolicyName } from './naming.ts'
 import { organisationReport } from './organisation.ts'
 import { gapClauseOf, gapSentenceOf, verdictOf } from './verdict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { capabilityLicence } from '../graph/collect/registry.ts'
 import type {
   AssumedExclusions,
   CandidateContribution,
@@ -42,7 +43,11 @@ import {
   belowBaselineStatement,
 } from '../copy/statements.ts'
 
-const TIER_NAME: Record<string, string> = { p1: 'Entra ID P1', p2: 'Entra ID P2', intune: 'Intune', workloadId: 'Workload Identities Premium', gsa: 'Global Secure Access', mcas: 'Defender for Cloud Apps', free: 'Entra ID Free' }
+// `pim` is Privileged Identity Management's licence, in the collector's words for it
+// (graph/collect/registry.ts capabilityLicence): Entra ID P2 or Microsoft Entra ID
+// Governance. Named `p2`, the PIM activation goal told a P1 tenant holding
+// Governance it needed a licence it did not hold (R4-37).
+const TIER_NAME: Record<string, string> = { p1: 'Entra ID P1', p2: 'Entra ID P2', pim: capabilityLicence('pim'), intune: 'Intune', workloadId: 'Workload Identities Premium', gsa: 'Global Secure Access', mcas: 'Defender for Cloud Apps', free: 'Entra ID Free' }
 /** The licence a catalogue tier needs, by name; the Not licensed rows fall back to it where the content step names none. */
 export function tierName(tier: string): string {
   return TIER_NAME[tier] ?? tier
@@ -53,6 +58,7 @@ const TIER_CAPABILITY: Record<string, keyof TenantSnapshot['capabilities'] | nul
   free: null,
   p1: 'entraP1',
   p2: 'entraP2',
+  pim: 'pim',
   intune: 'intune',
   workloadId: 'workloadIdPremium',
   gsa: 'globalSecureAccess',

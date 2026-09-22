@@ -218,7 +218,7 @@ const sectionRead = (s: { status: string; reason: string | null } | undefined): 
  * registered methods must be readable to compare the saved review with the
  * current configuration." Every source named generically, and the one that was
  * actually unread named nowhere — on a tenant where `pimEligibility` is
- * `disabled` with the reason `needs Entra ID P2`, which is a fact the reader
+ * `disabled` for want of a licence (graph/collect/registry.ts licenceGateReason), which is a fact the reader
  * can act on and the words licence, premium and P2 appeared nowhere on the
  * step. A sole administrator spent time looking for a permission to grant.
  */

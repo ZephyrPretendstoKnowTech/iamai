@@ -98,7 +98,7 @@ export type Signature = Record<string, unknown>
 export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' }
 
 export type Implementation = {
-  tier: 'free' | 'p1' | 'p2' | 'intune' | 'workloadId' | 'gsa' | 'mcas'
+  tier: 'free' | 'p1' | 'p2' | 'pim' | 'intune' | 'workloadId' | 'gsa' | 'mcas'
   kind: 'ca' | 'setting'
   signature: Signature
   expectedWho: PopulationSpec

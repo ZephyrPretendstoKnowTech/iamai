@@ -8,11 +8,47 @@ import type { ConfigSectionKey, SourceKey } from './types.ts'
 export type Capability =
   | 'entraP1'
   | 'entraP2'
+  /**
+   * Privileged Identity Management. Microsoft licenses it with Entra ID P2 OR
+   * Microsoft Entra ID Governance, which is sold to P1 tenants and carries no
+   * P2 service plan (Microsoft Learn, ID Governance licensing fundamentals). It
+   * was read as `entraP2`, so a P1 tenant holding Governance was told its
+   * eligible role assignments needed Entra ID P2 and was never read (R4-37).
+   * Not folded into `entraP2`: ID Protection's risk policies still need P2.
+   */
+  | 'pim'
   | 'intune'
   | 'workloadIdPremium'
   | 'globalSecureAccess'
   | 'defenderForCloudApps'
   | 'purviewInsiderRisk'
+
+/**
+ * The licence a capability stands for, in the words a section skipped for want
+ * of it states. Only the capabilities a collector is gated on.
+ */
+const CAPABILITY_LICENCE: Partial<Record<Capability, string>> = {
+  entraP1: 'Entra ID P1',
+  entraP2: 'Entra ID P2',
+  pim: 'Entra ID P2 or Microsoft Entra ID Governance',
+}
+
+/** The licence words for a capability: its product name, or the capability's own id where none is kept. */
+export function capabilityLicence(capability: Capability): string {
+  return CAPABILITY_LICENCE[capability] ?? capability
+}
+
+/**
+ * The reason a section carries when the collector skipped it because the
+ * tenant's licence does not include it (graph/collect/worker.ts). One sentence,
+ * so what the collector writes, what a fixture pretends it wrote and what
+ * roles.ts isLicenceGate reads cannot drift apart (R4-37: the fixtures said
+ * "needs Entra ID P2" where the collector says "not available on this licence
+ * (needs Entra ID P2)").
+ */
+export function licenceGateReason(capability: Capability): string {
+  return `not available on this licence (needs ${capabilityLicence(capability)})`
+}
 
 export type CollectorSpec = {
   name: string
@@ -60,7 +96,7 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   { name: 'Cross-tenant access', lane: '0', configKey: 'crossTenantAccess', endpoint: '/policies/crossTenantAccessPolicy', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Guest/B2B posture affecting external-user intents.' },
   { name: 'Role assignments', lane: '0', configKey: 'roleAssignments', endpoint: '/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: null, gate: 'none', purpose: 'Active admin roles per user for admin-targeting intents; role names for display.' },
   { name: 'Role assignment schedules', lane: '0', configKey: 'roleAssignmentSchedules', endpoint: '/roleManagement/directory/roleAssignmentScheduleInstances?$expand=roleDefinition($select=id,displayName)', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: null, gate: 'none', purpose: 'Whether an active emergency administrator role is assigned permanently rather than eligible, activated, or time-limited.' },
-  { name: 'PIM eligibility', lane: '0', configKey: 'pimEligibility', endpoint: '/roleManagement/directory/roleEligibilitySchedules', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: 'entraP2', gate: 'Entra ID P2', purpose: 'Eligible vs permanent roles; eligible is out of CA role scope until activated.' },
+  { name: 'PIM eligibility', lane: '0', configKey: 'pimEligibility', endpoint: '/roleManagement/directory/roleEligibilitySchedules', version: 'v1.0', paged: true, scopes: ['RoleManagement.Read.Directory'], requiredCapability: 'pim', gate: 'Entra ID P2 or Microsoft Entra ID Governance', purpose: 'Eligible vs permanent roles; eligible is out of CA role scope until activated.' },
   { name: 'Subscribed SKUs', lane: '0', configKey: 'subscribedSkus', endpoint: '/subscribedSkus', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Tenant licence capabilities and seat coverage.' },
   { name: 'Organization', lane: '0', configKey: 'organization', endpoint: '/organization', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Tenant name and verified domains for the plan-file header.' },
   { name: 'Signed-in operator', lane: '0', configKey: 'me', endpoint: '/me', version: 'v1.0', scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Operator identity recorded in the plan file.' },

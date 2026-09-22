@@ -10,6 +10,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { emptyMappingState } from '../../mapping/types.ts'
 import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../../mapping/safetyChoice.ts'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
+import { licenceGateReason } from '../../graph/collect/registry.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
 import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
@@ -211,6 +212,8 @@ export function buildFixture(spec: Spec): Fixture {
   const p2 = spec.licence === 'p2' || spec.licence === 'mixed'
   caps.entraP1 = { enabled: p1, seats: p1 ? spec.users + 20 : 0, consumed: p1 ? spec.users : 0 }
   caps.entraP2 = { enabled: p2, seats: p2 ? Math.round(spec.users * (spec.licence === 'mixed' ? 0.5 : 1)) : 0, consumed: p2 ? Math.round(spec.users * 0.4) : 0 }
+  // Entra ID P2 is these tenants' only PIM licence: none holds Microsoft Entra ID Governance.
+  caps.pim = { ...caps.entraP2 }
   if (spec.intuneShare !== undefined) caps.intune = { enabled: true, seats: spec.users, consumed: Math.round(spec.users * spec.intuneShare) }
 
   // ---- people ----
@@ -660,7 +663,7 @@ export function buildFixture(spec: Spec): Fixture {
   // would have carried exists. The licence reason is the worker's own sentence,
   // so `isLicenceGate` reads it and `coreGaps` exempts it exactly as it does in
   // production — which is what makes the no-P1 tenant a state this suite renders.
-  const LICENCE_GATE = 'not available on this licence (needs Entra ID P1)'
+  const LICENCE_GATE = licenceGateReason('entraP1')
   if (!p1) {
     for (const u of users) {
       u.lastSuccessfulSignIn = null
@@ -723,7 +726,9 @@ export function buildFixture(spec: Spec): Fixture {
       deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),
       roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
       roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null }))),
-      pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : 'needs Entra ID P2'),
+      // The collector's own sentence for a read the licence skips (graph/collect/registry.ts
+      // licenceGateReason). This said "needs Entra ID P2", which no scan writes (R4-37).
+      pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : licenceGateReason('pim')),
       subscribedSkus: section([
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),
         ...(p2 ? [{ skuId: 'sku-p2', skuPartNumber: 'AAD_PREMIUM_P2', prepaidUnits: { enabled: Math.round(spec.users / 2) }, consumedUnits: Math.round(spec.users * 0.4), servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Success' }] }] : []),

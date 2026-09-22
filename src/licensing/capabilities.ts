@@ -10,6 +10,7 @@ export type { Capability }
 export const CAPABILITIES: Capability[] = [
   'entraP1',
   'entraP2',
+  'pim',
   'intune',
   'workloadIdPremium',
   'globalSecureAccess',
@@ -83,6 +84,22 @@ export function deriveTenantCapabilities(subscribedSkus: unknown[]): TenantCapab
   return out
 }
 
+/**
+ * A saved scan's capabilities, with every capability IAMAI derives today. A
+ * scan saved before a capability existed has no entry for it, and a reading of
+ * `capabilities[cap].enabled` throws on it — `pim` arrived after scans were
+ * being kept (R4-37). The missing ones are derived from the licence rows the
+ * same scan read, exactly as the collector would have (graph/collect/worker.ts),
+ * so a restored P2 tenant keeps its PIM licence; a capability the scan did
+ * record is never replaced. The scan itself comes back untouched when nothing
+ * is missing.
+ */
+export function withCurrentCapabilities<T extends { capabilities?: Partial<TenantCapabilities>; config?: { subscribedSkus?: { rows?: unknown[] } } }>(snapshot: T): T {
+  const saved = snapshot.capabilities
+  if (!saved || CAPABILITIES.every((c) => saved[c] !== undefined)) return snapshot
+  return { ...snapshot, capabilities: { ...deriveTenantCapabilities(snapshot.config?.subscribedSkus?.rows ?? []), ...saved } }
+}
+
 // assignedPlans carry plan ids but not names, so per-user matching is id-only.
 export function deriveUserCapabilities(
   assignedPlans: { servicePlanId: string; capabilityStatus: string }[],
@@ -107,6 +124,7 @@ export function simulatedCapabilities(profile: LicenceProfile): TenantCapabiliti
   }
   if (profile === 'p2') {
     out.entraP2 = { enabled: true, seats: 999, consumed: 0 }
+    out.pim = { enabled: true, seats: 999, consumed: 0 }
   }
   return out
 }

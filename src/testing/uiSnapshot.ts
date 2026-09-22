@@ -3,6 +3,7 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { BaselineResult } from '../ui/baseline.ts'
 import { emptyCapabilities } from '../licensing/capabilities.ts'
+import { licenceGateReason } from '../graph/collect/registry.ts'
 
 const now = new Date()
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString()
@@ -97,7 +98,7 @@ export function fixtureSnapshot(): TenantSnapshot {
       deviceRegistrationPolicy: { status: 'ok', reason: null, rows: [{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }] },
       roleAssignments: { status: 'ok', reason: null, rows: [] },
       roleAssignmentSchedules: { status: 'ok', reason: null, rows: [] },
-      pimEligibility: { status: 'disabled', reason: 'needs Entra ID P2', rows: [] },
+      pimEligibility: { status: 'disabled', reason: licenceGateReason('pim'), rows: [] },
       subscribedSkus: {
         status: 'ok',
         reason: null,

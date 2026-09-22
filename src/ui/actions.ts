@@ -13,6 +13,7 @@ import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
 import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { mergeMfaHistory, withScanStates } from '../scoring/mfaHistory.ts'
+import { withCurrentCapabilities } from '../licensing/capabilities.ts'
 import { scanStates } from '../derive/readinessProgress.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import * as auth from '../graph/auth.ts'
@@ -307,7 +308,9 @@ export async function restoreSession(account: AccountInfo | null): Promise<void>
   // app lands depends on it (target-state §2: a scanned tenant lands on Plan).
   const stored = await storeLib.loadSnapshotRecord<ScanRecord>(account.tenantId).catch(() => null)
   if (!stillThisTurn(turn)) return
-  if (stored?.snapshot) setSession({ lastScan: { snapshot: stored.snapshot, at: stored.at } })
+  // A scan saved before a capability existed carries no entry for it; the
+  // missing ones come from the licence rows that scan read (licensing/capabilities.ts).
+  if (stored?.snapshot) setSession({ lastScan: { snapshot: withCurrentCapabilities(stored.snapshot), at: stored.at } })
   // The baseline the tenant chose (prompt 14 §6): the pinned index by commit,
   // or the operator's own uploaded files.
   const origin = await storeLib.loadBaselineRecord<BaselineResult['origin']>(account.tenantId).catch(() => null)
