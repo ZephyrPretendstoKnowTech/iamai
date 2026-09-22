@@ -4790,7 +4790,9 @@
         "effect": "These accounts are selected for the service-accounts exception. Review the actual policy exclusions, limit the exception and plan migration to a supported mail-sending method.",
         "save": "Save mail-sending choices",
         "tileValue": "Not confirmed",
-        "tileNote": "A quiet sign-in history does not establish that every scheduled mail job has stopped using basic authentication."
+        "tileNote": "A quiet sign-in history does not establish that every scheduled mail job has stopped using basic authentication.",
+        "$commentTileNoteUnread": "The mail-sending devices tile note where IAMAI does not hold enough of the sign-in records to rely on (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason, else its status in words). tileNote speaks of a quiet sign-in history, and on a tenant whose sign-in source refused every read it said so over a history IAMAI had never read (hostile, Block Legacy Authentication as scanned) - the same defect the device code tile had (R4-19 c). This says what IAMAI does not hold, and where the answer has to come from instead.",
+        "tileNoteUnread": "IAMAI does not hold enough of this tenant's sign-in records to rely on — {reason} — so they cannot show that no scheduled mail job still uses basic authentication. Check each printer, scanner and application's mail settings and confirm with its owner."
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",

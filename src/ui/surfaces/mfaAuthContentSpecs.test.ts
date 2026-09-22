@@ -330,3 +330,25 @@ test('s-goal-block-device-code: on a tenant whose sign-in records IAMAI could no
   assert.ok(note.startsWith(`IAMAI does not hold enough of this tenant's sign-in records to rely on — ${reason} — so they cannot show that nothing uses device code sign-in.`), note)
   assert.doesNotMatch(note, /could not read|nothing here shows whether|records cover observed use/, note)
 })
+
+test('s-goal-block-legacy-auth: on a tenant whose sign-in records IAMAI does not hold, the mail-sending tile never speaks of a quiet sign-in history', () => {
+  // The device code tile's defect, on the other tile that reads the records.
+  // On hostile, whose sign-in source refused every read, the unsaved decision's
+  // tile read "A quiet sign-in history does not establish that every scheduled
+  // mail job has stopped using basic authentication": a history IAMAI had never
+  // read. It says what IAMAI does not hold, and why, and where the answer comes from.
+  const LEGACY = 's-goal-block-legacy-auth'
+  const body = bodiesOf(fixture('hostile')).get(LEGACY)
+  assert.ok(body, 'the hostile plan has the legacy authentication step')
+  const tile = tilesOf(body).find((t) => t.key === 'unsaved:Mail-sending devices')
+  assert.ok(tile, 'the premise: hostile has not saved the mail-sending decision')
+  assert.doesNotMatch(String(tile.note), /quiet sign-in history/, String(tile.note))
+  assert.match(String(tile.note), /^IAMAI does not hold enough of this tenant's sign-in records to rely on — no sign-in records could be read — so they cannot show that no scheduled mail job still uses basic authentication\./, String(tile.note))
+
+  // A tenant whose records were read keeps the step's own note.
+  const read = bodiesOf(fixture('mid')).get(LEGACY)
+  assert.ok(read, 'the mid plan has the legacy authentication step')
+  const readTile = tilesOf(read).find((t) => t.key === 'unsaved:Mail-sending devices')
+  assert.ok(readTile, 'the premise: mid has not saved the mail-sending decision')
+  assert.match(String(readTile.note), /^A quiet sign-in history does not establish/, String(readTile.note))
+})
