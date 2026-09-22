@@ -46,19 +46,19 @@ const pinnedMid = (edit: (f: Fixture) => void = () => {}): Fixture => {
   return f
 }
 
-/** The opened PIM step on a tenant, as Plan.tsx composes it. */
-function pimOn(f: Fixture): { step: Step; body: StepBody; ctx: StepVarContext } {
+/** The opened PIM step (or another step, by id) on a tenant, as Plan.tsx composes it. */
+function pimOn(f: Fixture, id: string = PIM_STEP): { step: Step; body: StepBody; ctx: StepVarContext } {
   setDisplayTimeZone('UTC')
   try {
     const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
-    const step = r.steps.find((s) => s.id === PIM_STEP)
-    assert.ok(step, 'the plan holds no PIM step')
+    const step = r.steps.find((s) => s.id === id)
+    assert.ok(step, `the plan holds no ${id} step`)
     const readings = laneReadings(r.steps, [])
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
     const reading = readings.get(step.id)
-    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const lane = laneViewFor(step, { readings, titleOf })
     return { step, ctx, body: stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }) }
   } finally {
     setDisplayTimeZone(null)
@@ -181,4 +181,82 @@ test('the preview names no strength IAMAI did not resolve', () => {
   const portal = channelText(body, 'portal')
   assert.match(portal, /Grant → Require authentication strength: ‹authentication strength›/)
   assert.doesNotMatch(portal, /Multifactor authentication/)
+})
+
+/**
+ * A step's planned policy, already On in the tenant: enforced, matched to the
+ * step, and waiting on the person's workflow record. As the plan builds it — its
+ * own tag in the description — unless `edit` makes it the tenant's own.
+ */
+const enforcedOn = (id: string = PIM_STEP, edit: (policy: Record<string, unknown>) => void = () => {}): Fixture => {
+  const f = pinnedMid()
+  const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
+  const op = plannedOperationsOf(r.steps.find((s) => s.id === id)!)[0]
+  const policy: Record<string, unknown> = { ...structuredClone(op.body), state: 'enabled', id: '3a9e6c1d-2b4f-4e8a-9c7d-5f1b0a2e4d63', createdDateTime: '2026-07-01T00:00:00Z', modifiedDateTime: '2026-07-01T00:00:00Z' }
+  edit(policy)
+  ;(f.snapshot.config.caPolicies.rows as unknown[]).push(policy)
+  return f
+}
+const pimEnforced = (): Fixture => enforcedOn()
+
+// R4-18, the last link. Once the policy read enforced, the step said "Your
+// review · Waiting on you · The policy is enforced and IAMAI is finished with
+// it", offered a read-only inspection, and no channel ever said to configure the
+// PIM role settings — only to "inspect each selected role's activation
+// settings". Without that setting role activation never asks for the context,
+// so the enforced policy requires nothing, and a reader would take it as
+// protection activation did not have. The package authors the work
+// (`pimSettingsPending`), which the runtime never entered. IAMAI does not read
+// PIM role settings, so it stays the step's work until the workflow record.
+//
+// The enforced step has no operation to read the context from — plannedOperationsOf
+// is empty there — so the PIM line read the raw stand-in: the context the policy
+// targets is read off the tenant policy matched to the step.
+test('an enforced activation policy asks for the PIM role settings that make it apply, and does not say IAMAI is finished', () => {
+  const { step, body, ctx } = pimOn(pimEnforced())
+  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
+  assert.equal(step.manualReview?.readyToConfirm, true, 'the premise: only the workflow record is left')
+  assert.equal(plannedOperationsOf(step).length, 0, 'the premise: no operation names the context here')
+  const review = body.allTiles.find((t) => t.key === 'review')
+  assert.ok(review, body.allTiles.map((t) => t.label).join(', '))
+  assert.doesNotMatch(review.note ?? '', /IAMAI is finished/)
+  assert.match(review.note ?? '', /only once each role's PIM settings require it, and IAMAI does not read PIM role settings/)
+  assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.id'], 'c1')
+  const portal = channelText(body, 'portal')
+  assert.match(portal, /Privileged Identity Management → Microsoft Entra roles → Roles\. For each selected role, open \*\*Role settings\*\* → \*\*Edit\*\* and enable \*\*On activation, require Microsoft Entra Conditional Access authentication context\*\*, selecting the authentication context with ID `c1` \(`Privileged role activation`\)/)
+  // IAMAI selects no roles, so the procedure does not say it did.
+  assert.doesNotMatch(portal, /IAMAI-selected/)
+  const task = body.emergencyAccountTasks?.tasks[0]
+  assert.ok(task && /On activation, require Microsoft Entra Conditional Access authentication context/.test(task.steps[0]), JSON.stringify(task?.steps))
+})
+
+// The name IAMAI proposes is the create's instruction ("create or update … c1 /
+// Privileged role activation, and publish it"), never a reading: IAMAI reads no
+// authentication contexts. A tenant's own activation policy, found On with no
+// plan tag, targets a context the tenant named itself, and the PIM line told the
+// reader to select `Privileged role activation` — a context that may not exist,
+// or a different one of that name, whose own policy then decides role activation.
+// The ID is read off the policy; the name stays unresolved and says so.
+test('a tenant’s own activation policy is named by the context ID it targets, never by the name IAMAI proposes for its own', () => {
+  const { step, body, ctx } = pimOn(enforcedOn(PIM_STEP, (p) => {
+    delete p.description
+    p.displayName = 'PIM step-up'
+    ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
+  }))
+  assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
+  assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the scan tied it by its settings, not by the plan’s tag')
+  const bindings = packageBindings(step, ctx, body.contract)
+  assert.equal(bindings['authContext.target.id'], 'c7')
+  assert.equal(bindings['authContext.target.displayName'], undefined)
+  const portal = channelText(body, 'portal')
+  assert.match(portal, /selecting the authentication context with ID `c7` \(`‹authentication context name›`\)/)
+  assert.doesNotMatch(portal, /Privileged role activation/)
+})
+
+// The note is the package's answer, not the tile's: another step waiting on its
+// workflow record, with no setup after enforcement, keeps "IAMAI is finished".
+test('an enforced step with no setup after enforcement keeps its own review words', () => {
+  const { step, body } = pimOn(enforcedOn('s-goal-device-registration-mfa'), 's-goal-device-registration-mfa')
+  assert.equal(step.manualReview?.readyToConfirm, true, 'the premise: only the workflow record is left')
+  assert.match(body.allTiles.find((t) => t.key === 'review')?.note ?? '', /IAMAI is finished with it/)
 })

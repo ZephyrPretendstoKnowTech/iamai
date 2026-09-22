@@ -1916,7 +1916,7 @@ export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */
-function stateTile(step: Step, c: StepContract): ReadinessTile | null {
+function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): ReadinessTile | null {
   const s = c.state
   const t = R().tiles
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
@@ -1939,10 +1939,16 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // says so and why, in the engine's one sentence for it (evidence.ts unreadLine):
   // a second sentence of its own said "could not read" and "has seen none" over
   // a read that had stopped short of 24 hours with some records read.
+  // Nor where the policy still waits on setup a person does and IAMAI cannot
+  // read (stepPackage.ts setupAfterEnforcementOf): on Require MFA at Every Role
+  // Activation that is every role's PIM activation setting, without which
+  // activation never asks for the context and the enforced policy requires
+  // nothing (R4-18).
   if (awaitsWorkflowRecord(step)) {
-    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string }
+    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string; awaitingPimSettingsNote: string }
     const unread = step.evidence.unreadable === undefined ? null : unreadLine(step.evidence.unreadable)
-    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? t2.awaitingReviewNote : `${t2.awaitingReviewNote} ${unread}` }
+    const said = setupAfterEnforcement ? t2.awaitingPimSettingsNote : t2.awaitingReviewNote
+    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? said : `${said} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
@@ -2199,8 +2205,12 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * secondary and never blocks — over the bar's headline. Satisfied evidence is
  * kept apart, readable and out of the way; a resolved prerequisite leaves the
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
+ *
+ * `setupAfterEnforcement` is the package boundary's answer (stepPackage.ts
+ * setupAfterEnforcementOf): the enforced policy still waits on setup a person
+ * does and IAMAI cannot read, so the review tile does not say IAMAI is finished.
  */
-export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: PrerequisiteLabel = () => null): ContractReadiness {
+export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: PrerequisiteLabel = () => null, o: { setupAfterEnforcement?: boolean } = {}): ContractReadiness {
   const configuration = step.configurationFindings ?? []
   let configuredTiles: ReadinessTile[] = configuration.map(f => ({ key: `configuration:${f.key}`, label: f.label, value: f.value, note: f.detail || null, items: f.items, link: f.link, tone: f.outcome === 'pass' ? 'good' : 'warn' }))
   if (step.id === 's-prereq-exclusion-group') {
@@ -2239,7 +2249,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

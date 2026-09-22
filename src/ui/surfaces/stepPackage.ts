@@ -23,7 +23,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { operationsOf, policyHold, policyResult, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, operationsOf, policyHold, policyResult, unavailableReason } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
@@ -365,6 +365,36 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
 }
 
 /**
+ * The one package state IAMAI shows for work a person does after the policy is
+ * on: Require MFA at Every Role Activation's PIM role settings, pointed at the
+ * authentication context the policy targets (`pimSettingsPending`,
+ * `entra.pim.configure`). Until they are, role activation never asks for the
+ * context and the enforced policy requires nothing of anyone.
+ */
+const SETUP_AFTER_ENFORCEMENT: string = 'pimSettingsPending'
+
+/**
+ * The package state for the setup a step still owes after its policy is on, or
+ * null: a step awaiting the person's workflow record (roadmap/operations.ts
+ * awaitsWorkflowRecord) whose package authors setup that comes after
+ * enforcement.
+ *
+ * The runtime never entered it (content/implementation/states.ts reconciles it
+ * as a hold), so once the policy read enforced the step said "The policy is
+ * enforced and IAMAI is finished with it", offered a read-only inspection, and
+ * no channel ever said to configure the PIM role settings — only to "inspect
+ * each selected role's activation settings" (R4-18). IAMAI does not read PIM
+ * role settings, so it cannot tell whether that setup is done: it stays the
+ * step's work until the person records the workflow, whose own form asks
+ * whether the role settings use the context (roadmap/manualWork.ts).
+ */
+export function setupAfterEnforcementOf(step: Step): PackageState | null {
+  if (!awaitsWorkflowRecord(step)) return null
+  const projection = implementationPackageFor(step)?.meta.projection as Record<string, unknown> | undefined
+  return projection?.[SETUP_AFTER_ENFORCEMENT] !== undefined ? (SETUP_AFTER_ENFORCEMENT as PackageState) : null
+}
+
+/**
  * The package state whose implementation a step will eventually need, where its
  * own state has nothing to implement now (owner, 2026-09-11: the Plan is a
  * planning surface; state controls executability, not whether the planned work
@@ -393,6 +423,10 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   if (unavailableReason(step) === 'switched-off') return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
+    // An enforced policy whose remaining work is a person's own setup, which the
+    // policy does nothing without, is planned as that setup (R4-18).
+    const setup = setupAfterEnforcementOf(step)
+    if (setup !== null) return setup
     // An enforced policy the plan has not finished is planned as its correction,
     // even where a hold emptied the update so no changed field can be read yet
     // (B10 P0-1: the unconfirmed exclusions group left every enforced policy on
@@ -877,10 +911,26 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // context is then in use for something this plan did not make, and "create or
   // update it with this name, and publish it" would repoint whatever already
   // requests it at this policy's grant. The ID stays unresolved there.
-  const contexts = (settled('conditions.applications')?.conditions as { applications?: { includeAuthenticationContextClassReferences?: unknown } } | undefined)?.applications?.includeAuthenticationContextClassReferences
+  //
+  // An enforced policy awaiting only the person's workflow record carries no
+  // operation: the policy IAMAI matched to the step is the delivered target
+  // (operations.ts awaitsWorkflowRecord: enforced and healthy), so its own context
+  // is the one the PIM role settings still have to require (setupAfterEnforcementOf).
+  // The ID is read off that policy. The name is not a reading: it is the
+  // proposal the create's first instruction asks the reader to give the context,
+  // so it is bound only where the policy carries this plan's own tag for the step
+  // — the policy that create built. One the scan tied to the step by its settings
+  // alone, or only by IAMAI's record of an earlier scan, targets a context the
+  // tenant named itself, and IAMAI does not read contexts: "selecting `Privileged
+  // role activation`" there named a context that may not exist, or another one.
+  type Apps = { applications?: { includeAuthenticationContextClassReferences?: unknown } }
+  const tracked = op === null && awaitsWorkflowRecord(step) ? (step.tracking?.policyId?.toLowerCase() ?? null) : null
+  const delivered = tracked === null ? undefined : ((ctx.snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((row) => typeof row.id === 'string' && row.id.toLowerCase() === tracked)
+  const contexts = ((op !== null ? settled('conditions.applications')?.conditions : delivered?.conditions) as Apps | undefined)?.applications?.includeAuthenticationContextClassReferences
   if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string' && !contextUsedElsewhere(step, op, ctx.snapshot, contexts[0])) {
     put('authContext.target.id', contexts[0])
-    put('authContext.target.displayName', CONTRACT.implementation.authContextName)
+    const builtByPlan = delivered === undefined || (step.tracking?.members ?? []).some((m) => m.policyId?.toLowerCase() === tracked && (m.matchedBy === 'member-tag' || m.matchedBy === 'step-tag' || m.matchedBy === 'member-name'))
+    if (builtByPlan) put('authContext.target.displayName', CONTRACT.implementation.authContextName)
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)

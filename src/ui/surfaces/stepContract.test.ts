@@ -324,7 +324,10 @@ test('contract 12: every Plan row and every step body is drawn by the shared com
   assert.match(body, /stepContract\(step, ctx/, 'the step body is built from the contract')
   assert.match(body, /<WhatToDoLead contract=\{contract\}/, 'and its action comes from there')
   assert.match(body, /<DoneWhen /, 'and its completion')
-  assert.match(body, /readinessOf\(step, contract, blockers, prerequisiteLabel \?\? undefined\)/, 'and its blockers, as Readiness tiles labelled by their own lane (A1b decision 12)')
+  // The call may carry the package's answer after the blockers (R4-18: whether
+  // setup a person still owes follows enforcement, stepPackage.ts
+  // setupAfterEnforcementOf); the blockers and their labels are what this reads.
+  assert.match(body, /readinessOf\(step, contract, blockers, prerequisiteLabel \?\? undefined[,)]/, 'and its blockers, as Readiness tiles labelled by their own lane (A1b decision 12)')
   for (const gone of ['implementationOffered', 'isPreserved', 'statusOf']) {
     assert.doesNotMatch(body, new RegExp(`\\b${gone}\\(`), `ContentStep still asks the engine ${gone}() itself`)
   }
