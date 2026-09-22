@@ -4874,7 +4874,9 @@
         ],
         "effect": "Enforcement waits while device code sign-in is in use; move each workflow off it, then save None.",
         "save": "Save",
-        "tileNote": "The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows."
+        "tileNote": "The sign-in records cover observed use; they can miss infrequent CLI, shared-device and enrollment workflows.",
+        "$commentTileNoteUnread": "The device code tile note where IAMAI could not read the sign-in records (stepContract.ts unsavedTiles reads it where the step carries Evidence.unreadable; {reason} is the source's own reason). tileNote says the sign-in records cover observed use, and on a tenant whose sign-in source refused every read it said so over records IAMAI had never read: a coverage that did not exist, beside the very question the records were meant to help answer (R4-19, Priya D4). This states what IAMAI could not read and where the answer has to come from instead.",
+        "tileNoteUnread": "IAMAI could not read the sign-in records in this tenant — {reason} — so nothing here shows whether anything uses device code sign-in. Check CLI tools, shared devices and enrollment workflows with the people who run them."
       },
       "dates": "{datesNew}",
       "doneEnd": "No sign-in to {tenant} completes through device code flow, the exclusions group is applied, and every tool, shared device and enrollment job that used the flow has a tested alternative.",
