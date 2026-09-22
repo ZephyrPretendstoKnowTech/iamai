@@ -48,7 +48,7 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
-const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the fourth tab brought with it (pages.app.plan.board): its label, and the line a group drawn whole reads. */
 const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
@@ -120,6 +120,8 @@ export const BOARD = {
   columns: { number: '#', state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
   /** What a row is short of when a conditional input has no saved answer (roadmap/answers.ts unsavedInputsOf). */
   unsavedAnswer: LANE_WORDS.unsavedAnswer,
+  /** What an empty Ready tab means where rows remain elsewhere (LANE_WORDS.nothingReady). */
+  nothingReady: LANE_WORDS.nothingReady,
   collapseGroup: 'Collapse group',
   expandGroup: 'Expand group',
   empty: 'No steps match this search.',
@@ -252,6 +254,23 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
   return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane] }
+}
+
+/**
+ * What an empty lane means, where the lane is Ready and work remains elsewhere.
+ *
+ * "Nothing in this lane." was read on a board whose counts were byte-identical
+ * across three scans three weeks apart. It is true and it is not an answer: a
+ * reader who has done everything they can do needs to be told that is what
+ * they are looking at, what the rest is waiting on, and that declining a step
+ * is theirs to do. Null on every other tab and wherever Ready has rows, so no
+ * board that has work to offer says this.
+ */
+export function nothingReadyLine(tab: BoardTab, lanes: Readonly<Record<LaneTab, number>>, tenant: string): string | null {
+  if (tab !== 'ready' || lanes.ready > 0) return null
+  const waiting = lanes.upNext + lanes.onHold
+  if (waiting === 0) return null
+  return fillText(BOARD.nothingReady, { n: `${waiting} ${waiting === 1 ? 'step is' : 'steps are'}`, tenant })
 }
 
 /** The view of a step the person said does not apply here: the Deferred lane, said as Doesn't apply. */
