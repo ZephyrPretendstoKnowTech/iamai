@@ -718,7 +718,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const contentIndexes = ringContextIndexes(snapshot)
   const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
   const expectedCache = new Map<string, string[]>()
-  const excludedCache = new Map<string, number>()
+  const goalAccountsCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
   const methodTargets = new Map<string, MethodTarget[]>()
   const readinessCache = new Map<string, Readiness>()
@@ -1505,14 +1505,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
     if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...mapping.serviceAccountUserIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
-    // How many of THIS goal's own people the exclusions take out. The line above
-    // subtracts them from the goal's population, so a policy that excludes a
-    // group holding 116 of 122 accounts leaves a goal defined as six people and
-    // reports itself delivered for all of them. That is true of the goal as
-    // redefined and silent about the 116, which is the number a reader needs.
-    if (!excludedCache.has(whoKey)) {
+    // THIS goal's own accounts that can sign in, before the plan's exclusions
+    // take anybody out. The line above subtracts them from the goal's
+    // population, so a policy that excludes a group holding 116 of 122 accounts
+    // leaves a goal defined as six people and reports itself delivered for all
+    // of them. Who it misses is counted against these (coverageShortfall below).
+    if (!goalAccountsCache.has(whoKey)) {
       const all = whoKey === 'workload' || whoKey === 'serviceAccounts' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
-      excludedCache.set(whoKey, all.filter((id) => excluded.has(id)).length)
+      goalAccountsCache.set(whoKey, all.filter((id) => popIndex.enabled.has(id)))
     }
     const popIds = expectedCache.get(whoKey) ?? []
     if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? { total: popIds.length, active: popIds.length, admins: 0, guests: 0, ids: popIds, activeIds: popIds, inScope: popIds.length } : population(popIds, popIndex))
@@ -1844,12 +1844,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const conflictSource = typeof goal.id === 'string' ? (conflictGoals.get(goal.id) ?? null) : null
     const conflictState = conflictSource !== null ? { state: { condition: BASELINE_CONFLICT, conflictSource } } : {}
 
+    // The tenant policies that deliver the goal, where it is delivered (the
+    // classifier's satisfaction): what the step's method readiness and its reach
+    // read once nothing is left to create (R4-30).
+    const deliveringEffects: PolicyEffect[] | null = state.satisfied
+      ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => (result.satisfaction?.policyIds ?? []).includes(String(p.id))).map(effectOf)
+      : null
+
     // The resolved target determines method suitability and its denominator.
     // Eligible role holders are prepared for activation; Impact stays active-only.
     if (['mfa', 'admin', 'guest'].includes(readinessKey)) {
-      const effects = state.satisfied
-        ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => (result.satisfaction?.policyIds ?? []).includes(String(p.id))).map(effectOf)
-        : validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
+      const effects = deliveringEffects ?? validOperations(action).map(operation => effectOf(operation.mode === 'update' ? operation.target as Record<string, unknown> : operation.body))
       methodTargets.set(goal.id, effects)
       policyPreparation = methodPreparation(effects, viability.map(v => v.userId), snapshot, strandContext, methodPreparationCache)
       const reading = methodReadiness(readinessKey, policyPreparation)
@@ -1988,6 +1993,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // exact cohort is proved or it is not claimed, and never filled in from the
     // goal's population.
     const cohort = isOpenPolicy(asStep) ? cohortFor(stepEffects(asStep)) : null
+    // A delivered step reaches whom the tenant policies delivering it name, read
+    // from their own scope the same way (R4-30). It fell back to the goal's
+    // population minus the plan's exclusions, so enforcing a policy the plan had
+    // just watched in report-only moved its tile from "covers 283 enabled" to
+    // "covers 279 enabled" with the policy unchanged. Null where their scope
+    // cannot be settled: the step then keeps the goal's population, as before.
+    // Its own field, never `cohort`: a delivered step reopened later in this
+    // run (an unestablished Inforcer application, a workload identity) is an
+    // open policy again, and its cohort is its own operation's scope or nothing.
+    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : null
+    const reach = cohort ?? deliveredReach
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
     // it for six people, and the step said "already delivered, so there is
@@ -1995,15 +2011,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // six against. The exclusion itself is EXPECTED — it is the emergency
     // exclusions group the plan asks for — so nothing in the reasons marks it
     // wrong; what is worth saying is the size, which needs no judgement at all.
-    const excludedFromGoal = excludedCache.get(whoKey) ?? 0
-    const reached = pop.ids.length
-    // Only where the exclusions take out MORE than the emergency accounts. Those
+    //
+    // Who it misses is the goal's accounts that the step's policy does not
+    // reach, read from that policy's own scope (R4-30). It was the goal's
+    // accounts in the plan's exclusion set — the emergency accounts, the service
+    // accounts, every account that is not a person and the exclusions group —
+    // and said "6 of them are excluded from the policy that delivers it" of a
+    // policy that excluded two. Nothing is said where the scope is not settled.
+    const goalAccounts = goalAccountsCache.get(whoKey) ?? []
+    const inReach = reach !== null ? new Set(reach.ids) : null
+    const missed = inReach !== null ? goalAccounts.filter((id) => !inReach.has(id)) : []
+    // Only where the policy misses MORE than the emergency accounts. Those
     // are excluded by design, on every policy, and saying so on every step would
-    // put a line about two people under thirty rows. Anybody else in that group
+    // put a line about two people under thirty rows. Anybody else it misses
     // is a person the goal was written for and does not reach.
-    const beyondEmergency = excludedFromGoal - mapping.breakGlassUserIds.length
-    const coverageShortfall = beyondEmergency > 0
-      ? { detail: '', people: excludedFromGoal, reached, active: reached + excludedFromGoal }
+    const emergency = new Set(mapping.breakGlassUserIds)
+    const coverageShortfall = missed.some((id) => !emergency.has(id))
+      ? { detail: '', people: missed.length, reached: goalAccounts.length - missed.length, active: goalAccounts.length }
       : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
@@ -2211,6 +2235,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes,
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
+      ...(deliveredReach !== null ? { deliveredReach: { ...deliveredReach } } : {}),
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),

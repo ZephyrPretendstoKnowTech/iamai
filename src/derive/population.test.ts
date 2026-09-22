@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
-import { runFixture } from '../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
 import { activePeopleIds, campaignIdsFor, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { readinessView } from './mfaReadiness.ts'
@@ -15,6 +15,8 @@ import { whoBlocks } from '../ui/surfaces/whoBlocks.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import type { Step } from '../roadmap/types.ts'
+import { validOperations } from '../roadmap/operations.ts'
+import { stepContract } from '../ui/surfaces/stepContract.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
   for (const f of allFixtures()) {
@@ -175,4 +177,62 @@ test('the campaign names every admin it waits on outside its active people, by w
   // And both are in the one count the tile, the lead and the row give.
   assert.equal(counted(populationLine(reached(step)!).split(' · ')[0]), prep.ids.length)
   assert.equal(counted(String(ex.cohort)), prep.ids.length)
+})
+
+// R4-30. On the mid tenant the plan's own Block Authentication Transfer policy
+// read "covers 283 enabled" while it was planned and in report-only, and
+// "covers 279 enabled" the scan after it was enforced, the policy unchanged: a
+// done step read the goal's population minus the plan's exclusions instead of
+// the policy's own scope. Beside it "Who it misses" said "This goal is written
+// for 285 people in this tenant; 6 of them are excluded from the policy that
+// delivers it, so it reaches 279" of a policy that excludes the two emergency
+// accounts: the six were the plan's exclusions (the emergency accounts, three
+// service accounts and an account that is not a person), which the policy
+// reaches. An administrator would go looking for four exclusions that are not there.
+test('turning a policy on does not move its reach, and "Who it misses" counts only whom the policy misses', () => {
+  const STEP = 's-goal-block-auth-transfer'
+  const base = withFoundationSettled(fixture('mid'))
+  const planned = runFixture(base).steps.find((s) => s.id === STEP)
+  assert.ok(planned, 'the premise: mid plans the step')
+  const ops = validOperations(planned.action)
+  assert.ok(ops.length > 0, 'the premise: the step has a policy to build')
+  const at = new Date(Date.parse(base.snapshot.asOf) - 30 * 86_400_000).toISOString()
+  const scanWith = (state: string) => {
+    const f = structuredClone(base)
+    ops.forEach((op, i) => f.snapshot.config.caPolicies.rows.push({ ...structuredClone(op.body as Record<string, unknown>), id: `r430-${i}`, state, createdDateTime: at, modifiedDateTime: at } as never))
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === STEP)!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    return { step, tile: populationLine(reached(step)!), found: stepContract(step, ctx).found }
+  }
+  const reportOnly = scanWith('enabledForReportingButNotEnforced')
+  const enforced = scanWith('enabled')
+  assert.equal(reportOnly.step.status, 'in-report-only', 'the premise: the policy is watched in report-only')
+  assert.equal(enforced.step.state.satisfied, true, 'the premise: enforced, the goal is delivered')
+  const tilePlanned = populationLine(reached(planned)!)
+  assert.match(tilePlanned, /covers 283 enabled/, `the premise: the policy names 283 accounts (${tilePlanned})`)
+  assert.equal(reportOnly.tile, tilePlanned, 'report-only: the same reach')
+  assert.equal(enforced.tile, tilePlanned, 'enforced: the same reach, the policy unchanged')
+  // The policy excludes the emergency accounts and nobody else, so there is no
+  // line: the emergency accounts are excluded from every policy by design.
+  assert.equal(enforced.found.some((x) => x.key === 'shortfall'), false, `a shortfall the policy does not have: ${JSON.stringify(enforced.found.map((x) => x.text))}`)
+
+  // And a delivering policy that does miss somebody else says whom, counted from
+  // its own scope: the exclusions group it excludes holds three people besides
+  // the emergency accounts.
+  const f = structuredClone(base)
+  const three = reached(planned)!.activeIds!.slice(0, 3)
+  const group = [...f.groups.values()].find((g) => g.displayName === 'Core - Exclusions')
+  assert.ok(group, 'the premise: mid has an exclusions group')
+  group.memberIds = [...group.memberIds, ...three]
+  group.directMemberIds = [...(group.directMemberIds ?? []), ...three]
+  group.memberCount = group.memberIds.length
+  ops.forEach((op, i) => f.snapshot.config.caPolicies.rows.push({ ...structuredClone(op.body as Record<string, unknown>), id: `r430-${i}`, state: 'enabled', createdDateTime: at, modifiedDateTime: at } as never))
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === STEP)!
+  assert.equal(step.state.satisfied, true, 'the premise: still delivered')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const line = stepContract(step, ctx).found.find((x) => x.key === 'shortfall')?.text ?? ''
+  assert.match(line, /; 5 of them are excluded from the policy that delivers it, so it reaches 280\.$/, `the two emergency accounts and the three it excludes (${line})`)
+  assert.match(populationLine(reached(step)!), /covers 280 enabled/, 'and the tile reads the same reach')
 })
