@@ -433,6 +433,30 @@ test('a difference the update does not write is never stated as the setting to k
   }
 })
 
+test('a step whose policy differs where the update does not write never says to leave every other setting as it is', () => {
+  // R4-10 (B): "Change only the settings listed above; leave every other setting
+  // on this policy as it is" closed the update's own lines on every channel that
+  // reads them (AI Info's intended result, the export). Over a policy that differs
+  // in a part the update does not write, that sentence is the instruction that
+  // keeps the difference: the token-protection policy without its Cloud PC
+  // filter, the legacy-authentication block with a trusted-location exclusion.
+  const cases: [string, string, (row: Row) => void][] = [
+    ['token protection without the Cloud PC filter', TOKEN, (row) => { delete conditions(row).devices }],
+    ['legacy authentication with a trusted-location exclusion', LEGACY, (row) => { row.state = 'enabledForReportingButNotEnforced'; conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
+  ]
+  const untouched = String(shared.changeUntouched)
+  for (const [label, name, edit] of cases) {
+    const snapshot = structuredClone(ANSWERED.snapshot)
+    edit(rowsOf(snapshot).find((p) => p.displayName === name)!)
+    const run = runFixture({ ...ANSWERED, snapshot })
+    const step = stepOf(run, name === TOKEN ? 'token-protection' : 'block-legacy-auth')
+    assert.ok((step.state.observation?.unwritten.length ?? 0) > 0, `${label}: the premise: a difference the update does not write`)
+    const ctx: StepVarContext = { snapshot, mapping: ANSWERED.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: ANSWERED.operatorId, now: snapshot.asOf, groups: ANSWERED.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    for (const a of stepBodyOf(step, ctx).artifacts) assert.equal(a.text().includes(untouched), false, `${label}: the ${a.id} channel says to leave every other setting as it is`)
+    assert.equal(stepExportView(step, ctx).whatToDo.some((l) => l.includes(untouched)), false, `${label}: the export says to leave every other setting as it is`)
+  }
+})
+
 test('A6: an ordinary person excluded from MFA-for-all is a coverage gap, as it is for the legacy-auth block', () => {
   const member = ANSWERED.snapshot.users.find((u) => (u.userPrincipalName ?? '').startsWith('user10@'))!
   assert.equal(member.userType, 'member')

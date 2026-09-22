@@ -305,9 +305,15 @@ function resolvedPortalLines(step: Step, names: PortalNames, selected: readonly 
     const whole = (one.target ?? one.body) as Record<string, unknown>
     return typeof whole.displayName === 'string' && whole.displayName ? oneLine(whole.displayName) : names.policyName
   }
+  // Where the tenant's policy is not what the plan asked for in a part the update
+  // does not write (the step's observation.unwritten, stepPackage.ts
+  // unwrittenFieldsOf), a person corrects that part. "Leave every other setting on
+  // this policy as it is" would tell them to keep it (R4-10).
+  const differsUnwritten = (step.state?.observation?.unwritten.length ?? 0) > 0
   const linesOf = (one: (typeof mapped)[number], body: Record<string, unknown>): string[] => {
     const p = asPolicy(body)
-    const ctx = contextFor(p, names, resolution!.tenant, openNameOf(one))
+    const whole = contextFor(p, names, resolution!.tenant, openNameOf(one))
+    const ctx = differsUnwritten ? { ...whole, changeUntouched: undefined } : whole
     // An update lists the fields its own body carries and says the rest is left
     // alone; a create describes the whole policy it writes.
     if (one.mode !== 'update') return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
