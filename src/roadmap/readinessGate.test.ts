@@ -26,8 +26,9 @@ import type { FixtureName } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from './operations.ts'
+import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason, validOperations } from './operations.ts'
 import { readinessFor } from './readiness.ts'
+import { pages } from '../content/content.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -313,4 +314,32 @@ test('a gate names the campaign only where finishing it could reach the threshol
       assert.equal(g.route !== undefined && g.routeShortfall !== undefined, false, `${name}/${s.id}: names a campaign and says it will not work`)
     }
   }
+})
+
+test('the held step says which instruction is withheld, and is right about it', () => {
+  // "The instructions come back when it does." — read on a step that was still
+  // drawing portal prose, a `-Mode 'Create'` body and the AI brief under an
+  // "Implementation · Unavailable" heading. A reader took the sentence at its
+  // word, looked at what was on screen, and concluded the step was lying about
+  // what it was holding. It was holding one thing: the operation that turns the
+  // policy on. The sentence now says so, and this asserts it is true to say it.
+  const sentence = String((pages.app as { plan: Record<string, string> }).plan.readinessHeld)
+  assert.ok(sentence.includes('turns the policy on'), 'the sentence does not name what is withheld')
+  assert.equal(sentence.includes('The instructions come back'), false, 'the unqualified claim is back')
+
+  let seen = 0
+  for (const name of ['small', 'mid', 'large', 'midflight', 'getiamai', 'hostile', 'demo', 'demo-week2'] as const) {
+    for (const step of runFixture(withFoundationSettled(shippedFixture(name))).steps) {
+      if (unavailableReason(step) !== 'readiness-unmet') continue
+      seen++
+      // `operationsOf` is empty by definition once the step is unavailable; the
+      // question is what the hold took away, which is what it was valid to run.
+      const ops = validOperations(step.action)
+      assert.ok(ops.length > 0, `${name}/${step.id}: held with nothing to hold`)
+      // Every one of them enforces the moment it is submitted. If a create or a
+      // report-only patch were ever in here the sentence would be false.
+      for (const op of ops) assert.equal(enforcesOnRun(op), true, `${name}/${step.id}: a ${op.mode} that denies nobody is being withheld`)
+    }
+  }
+  assert.ok(seen > 0, 'no fixture reaches the readiness hold, so the sentence is untested')
 })
