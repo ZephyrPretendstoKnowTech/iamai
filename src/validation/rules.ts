@@ -99,6 +99,14 @@ export type RuleEval = {
    * template changes the words, never whether the check failed.
    */
   fix?: string
+  /**
+   * The check did not run: a source it needs was not collected (missingNeeds),
+   * so it looked at nothing. Set by the runner only. An `unknown` without it is
+   * a check that ran on what the scan read and could not decide, which is a
+   * different state to report: the allowed-countries step called sign-in
+   * records the scan could not use at all "Not Fully Read" (R4-58).
+   */
+  notRead?: true
 }
 
 export type RuleResult = RuleEval & {
@@ -149,7 +157,7 @@ export type ValidationRule<S = string> = {
   evaluate: (target: S, ctx: ValidationContext) => RuleEval
 }
 
-export function ruleText(id: string): { what: string; why: string } {
+export function ruleText(id: string): { what: string; why: string; label?: string } {
   return RULE_TEXT[id] ?? { what: id, why: '' }
 }
 
@@ -1318,7 +1326,7 @@ export function evaluateSubject(subject: RuleSubject, target: unknown, ctx: Vali
   const out: RuleResult[] = []
   for (const rule of rulesFor(subject)) {
     const missing = missingNeeds(rule, ctx)
-    const evaluated: RuleEval = missing.length > 0 ? unknown(UNKNOWN.needs(missing)) : rule.evaluate(target, ctx)
+    const evaluated: RuleEval = missing.length > 0 ? { ...unknown(UNKNOWN.needs(missing)), notRead: true } : rule.evaluate(target, ctx)
     out.push({
       ...evaluated,
       id: rule.id,

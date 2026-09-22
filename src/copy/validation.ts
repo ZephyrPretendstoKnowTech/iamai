@@ -168,8 +168,20 @@ export const CITATION = {
   source: 'Source',
 }
 
-/** One line per rule for the reference page and the plan's checklist. */
-export const RULE_TEXT: Record<string, { what: string; why: string }> = {
+/**
+ * One line per rule for the reference page and the plan's checklist.
+ *
+ * `label` is the check's own short heading, where a check is drawn as a
+ * configuration tile of its own (roadmap/blockerSteps.ts
+ * attachConfigurationFindings: the trusted location, the allowed countries and
+ * the authentication strength). Those tiles were headed by the object checked,
+ * so every check on one object shared a heading: the allowed-countries step drew
+ * three tiles all reading "Allowed countries", and the two whose check could not
+ * run folded into one that named neither — one of them the lockout check for
+ * the countries people actually sign in from (R4-58). A card heading, not a
+ * clause: it starts with a capital and stays short.
+ */
+export const RULE_TEXT: Record<string, { what: string; why: string; label?: string }> = {
   // ---- break-glass, blockers ----
   'bg.count': {
     what: 'At least two emergency access accounts are nominated.',
@@ -290,19 +302,20 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'A mail-enabled exclusions group is a target that also delivers mail.',
   },
   // ---- trusted named location ----
-  'loc.notWholeInternet': { what: 'No range covers the whole internet.', why: 'A location that trusts everything makes every policy that relaxes inside it unconditional.' },
-  'loc.notTooWide': { what: 'Review broad IPv4 ranges (shorter than /16) and IPv6 ranges (shorter than /48) with the network owner.', why: 'A wide range quietly includes networks nobody meant to trust.' },
-  'loc.isTrusted': { what: 'The location is marked as trusted.', why: 'Policies that relax inside a trusted location do nothing until the flag is set.' },
-  'loc.redundancy': { what: 'More than a single address.', why: 'One address means one broken link takes the office out of its own trusted location.' },
-  'loc.seenInSignIns': { what: 'Sign-in records identify this named location.', why: 'Recorded location matches help confirm office usage; an unmatched window does not prove the location is unused.' },
+  'loc.notWholeInternet': { label: 'Whole-Internet Range', what: 'No range covers the whole internet.', why: 'A location that trusts everything makes every policy that relaxes inside it unconditional.' },
+  'loc.notTooWide': { label: 'Broad Ranges', what: 'Review broad IPv4 ranges (shorter than /16) and IPv6 ranges (shorter than /48) with the network owner.', why: 'A wide range quietly includes networks nobody meant to trust.' },
+  'loc.isTrusted': { label: 'Marked as Trusted', what: 'The location is marked as trusted.', why: 'Policies that relax inside a trusted location do nothing until the flag is set.' },
+  'loc.redundancy': { label: 'Address Redundancy', what: 'More than a single address.', why: 'One address means one broken link takes the office out of its own trusted location.' },
+  'loc.seenInSignIns': { label: 'Sign-ins From This Location', what: 'Sign-in records identify this named location.', why: 'Recorded location matches help confirm office usage; an unmatched window does not prove the location is unused.' },
   // ---- allowed countries ----
-  'cty.atLeastOne': { what: 'At least one country is allowed.', why: 'An empty list blocks everyone, everywhere, including the person who set it.' },
+  'cty.atLeastOne': { label: 'Countries Allowed', what: 'At least one country is allowed.', why: 'An empty list blocks everyone, everywhere, including the person who set it.' },
   'cty.includesOperator': {
+    label: 'Administrator Sign-in Countries',
     what: 'Review recent administrator sign-ins outside the approved work countries.',
     why: 'Recent sign-ins can reflect travel or unexpected activity; they do not approve a country for permanent access.',
   },
-  'cty.unknownCountries': { what: 'Sign-ins from unknown countries are not silently allowed.', why: 'Addresses that resolve to no country then pass a policy meant to name every country it allows.' },
-  'cty.seenCountriesIncluded': { what: 'Countries with sign-in history are either allowed or deliberately left out.', why: 'A country people actually work from, left off the list, is a lockout on the first day.' },
+  'cty.unknownCountries': { label: 'Work Countries Location', what: 'Sign-ins from unknown countries are not silently allowed.', why: 'Addresses that resolve to no country then pass a policy meant to name every country it allows.' },
+  'cty.seenCountriesIncluded': { label: 'Countries People Sign In From', what: 'Countries with sign-in history are either allowed or deliberately left out.', why: 'A country people actually work from, left off the list, is a lockout on the first day.' },
   // ---- pilot group ----
   'pilot.hasMembers': { what: 'The pilot group has at least one member.', why: 'An empty first group proves nothing and delays every group behind it.' },
   'pilot.noBreakGlass': { what: 'No emergency access account is in the pilot.', why: 'The escape hatch must never be inside the group a change is being tested on.' },
@@ -322,10 +335,25 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   'svc.noAdminRole': { what: 'No confirmed service account holds an admin role.', why: 'An unattended account with an admin role is a password with tenant-wide reach.' },
   'svc.excludedFromBlocks': { what: 'Review legacy authentication used by confirmed service accounts.', why: 'Legacy usage identifies a dependency to migrate; it does not establish the account’s current policy exclusions.' },
   // ---- authentication strength ----
-  'str.exists': { what: 'The strength the baseline names exists in the tenant.', why: 'A policy referring to a strength that is not there cannot be created.' },
-  'str.achievable': { what: 'Targeted people have registered methods the strength accepts.', why: 'A strength nobody can satisfy is a lockout with a policy around it.' },
-  'str.matchesBaseline': { what: 'The combinations match the ones the baseline expects.', why: 'A strength that allows more than the baseline intends quietly weakens the policy.' },
+  'str.exists': { label: 'Strength in the Tenant', what: 'The strength the baseline names exists in the tenant.', why: 'A policy referring to a strength that is not there cannot be created.' },
+  'str.achievable': { label: 'Methods People Registered', what: 'Targeted people have registered methods the strength accepts.', why: 'A strength nobody can satisfy is a lockout with a policy around it.' },
+  'str.matchesBaseline': { label: 'Allowed Combinations', what: 'The combinations match the ones the baseline expects.', why: 'A strength that allows more than the baseline intends quietly weakens the policy.' },
 }
+
+/**
+ * A check's state on its configuration tile (roadmap/blockerSteps.ts
+ * attachConfigurationFindings), beside its RULE_TEXT label.
+ *
+ * `notRead` is a check that did not run at all: a source it needs was not
+ * collected (validation/rules.ts missingNeeds). It read "Not Fully Read", the
+ * word for a check that ran and could not decide, so a total refusal — sign-in
+ * records the scan could not use — was described as a partial read (R4-58).
+ */
+export const CHECK_STATE = {
+  fail: 'Needs Correction',
+  notRead: 'Not Read',
+  notFullyRead: 'Not Fully Read',
+} as const
 
 /** The findings themselves: the object, then the fact. */
 export const FINDING = {

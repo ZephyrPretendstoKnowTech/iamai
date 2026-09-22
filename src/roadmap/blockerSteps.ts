@@ -8,7 +8,7 @@
 // enforcement is offered while the escape hatch is unverified.
 //
 // Pure: no DOM, no network.
-import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, BLOCKER_WHY, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
+import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, BLOCKER_WHY, CHECK_STATE, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
 import { ruleText } from '../validation/rules.ts'
 import type { RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -153,13 +153,24 @@ export function attachConfigurationFindings(steps: Step[], reports: SubjectRepor
     if (!step) continue
     // User method preparation belongs to each referring policy, not strength object creation.
     const results = report.targets.flatMap(target => target.results.filter(r => r.id !== 'str.achievable').map(r => ({ r, name: target.label })))
-    const findings = results.filter(({r}) => r.outcome !== 'pass').map(({r, name}) => ({
-      key: `${r.id}:${r.target ?? name}`,
-      label: name || SUBJECT[report.subject] || report.subject,
-      value: r.outcome === 'fail' ? 'Needs Correction' : 'Not Fully Read',
-      detail: r.finding ?? ruleText(r.id).what,
-      outcome: r.outcome,
-    }))
+    // Each finding is headed by its check (RULE_TEXT's label), and the object it
+    // is about opens the note: a finding is "the object, then the fact". They
+    // were headed by the object, so every check on one object shared a heading —
+    // the allowed-countries step drew three tiles all reading "Allowed
+    // countries", and the two whose check could not run came out byte for byte
+    // alike and folded into one that named neither, one of them the lockout
+    // check for the countries people actually sign in from (R4-58). A check that
+    // did not run looked at no object, so its note is the source it lacked.
+    const findings = results.filter(({r}) => r.outcome !== 'pass').map(({r, name}) => {
+      const fact = r.finding ?? ruleText(r.id).what
+      return {
+        key: `${r.id}:${r.target ?? name}`,
+        label: ruleText(r.id).label ?? (name || SUBJECT[report.subject] || report.subject),
+        value: r.outcome === 'fail' ? CHECK_STATE.fail : r.notRead ? CHECK_STATE.notRead : CHECK_STATE.notFullyRead,
+        detail: name && !r.notRead ? `${name}: ${fact}` : fact,
+        outcome: r.outcome,
+      }
+    })
     step.configurationFindings = [...(step.configurationFindings ?? []), ...findings]
     if (report.blocking.some(r => r.id !== 'str.achievable')) setState(step, { satisfied: false, inPlace: false })
   }

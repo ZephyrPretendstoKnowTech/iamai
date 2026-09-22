@@ -1965,10 +1965,11 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // Entra procedure's own line, once.
   const satisfied = facts.filter((t) => !unresolved(t))
   // The same card, said once. directOnly above dedupes tiles that name the same
-  // STEP; two tiles built from different checks can still come out byte for byte
-  // identical, and one step drew "Allowed countries · Not Fully Read · Missing
-  // scan evidence: sign-in records" twice from two keys. A reader counts two
-  // problems where there is one, and rightly wonders what else is doubled.
+  // STEP; two configuration tiles can still come out byte for byte identical —
+  // one check that could not run over two locations, for want of the one source.
+  // A reader counts two problems where there is one, and rightly wonders what
+  // else is doubled. Each card is headed by its own check (roadmap/blockerSteps.ts
+  // attachConfigurationFindings), so two different checks never fold (R4-58).
   return { tiles: sameCardOnce(tiles), satisfied: sameCardOnce(satisfied), bar: barOf(c) }
 }
 
@@ -2019,14 +2020,17 @@ function tileStepOf(t: ReadinessTile): string | null {
  * makes and the edge on it) is one tile: the first, which says why.
  */
 /**
- * Two CHECKS that come out as the same card are one finding.
+ * Two configuration findings that come out as the same card are one finding.
  *
  * Scoped to the per-check configuration tiles on purpose. One step drew
  * "Allowed countries · Not Fully Read · Missing scan evidence: sign-in records"
- * twice — from cty.includesOperator and cty.seenCountriesIncluded, two real and
- * different checks that both came out as "the source is unreadable", because it
- * was the same source. To a reader that is one problem said twice, and it
- * invites the question of what else on the page is doubled.
+ * twice — from cty.includesOperator and cty.seenCountriesIncluded. Folding them
+ * was the wrong cure: they are two different checks, and the one card left named
+ * neither, one of them the lockout check for the countries people sign in from
+ * (R4-58). The cause was the heading — every finding headed by the object, not
+ * the check — and each card is now headed by its check, so this folds only a
+ * true repeat: the one check that could not run, over two objects, for want of
+ * the one source.
  *
  * Not applied to the rest: two pending source mappings are two objects to
  * identify, and collapsing them would hide work rather than repetition.

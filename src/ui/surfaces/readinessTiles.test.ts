@@ -22,6 +22,8 @@ import { BOARD, laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
+import { CHECK_STATE, RULE_TEXT } from '../../copy/validation.ts'
+import { rulesFor } from '../../validation/rules.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
 const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx')
@@ -239,4 +241,67 @@ test('two configuration checks that produce the same card draw one card', () => 
       }
     }
   }
+})
+
+// R4-58: the allowed-countries step headed every finding with the object it
+// checked, so its three checks all read "Allowed countries". On hostile, whose
+// sign-in records could not be used at all, the two checks that need them came
+// out byte for byte alike and the test above's fold drew one card naming
+// neither — one of them the lockout check for the countries people actually
+// sign in from. And "Not Fully Read" called a total refusal a partial read. A
+// finding is now headed by its check, and a check that never ran reads Not Read.
+test('each configuration check on the allowed-countries step is its own card, and one that never ran reads Not Read', () => {
+  const f = fixture('hostile')
+  assert.equal(f.snapshot.sources.signInEvidence?.status, 'insufficient', 'the premise: hostile\'s sign-in records could not be used')
+  const { step, c } = opened(f, 's-prereq-allowed-countries')
+  const cards = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('configuration:'))
+  const labels = cards.map((t) => t.label)
+  assert.equal(labels.length, new Set(labels).size, `two checks share a heading: ${labels.join(' | ')}`)
+  const card = (id: string) => cards.find((t) => t.key.startsWith(`configuration:${id}:`))
+  for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator', 'cty.unknownCountries']) {
+    assert.ok(card(id), `${id} draws no card: it was folded into another`)
+    assert.equal(card(id)!.label, RULE_TEXT[id].label, `${id} is not headed by its check`)
+  }
+  assert.equal(card('cty.seenCountriesIncluded')!.label, 'Countries People Sign In From')
+  assert.equal(card('cty.includesOperator')!.label, 'Administrator Sign-in Countries')
+  for (const id of ['cty.seenCountriesIncluded', 'cty.includesOperator']) {
+    assert.equal(card(id)!.value, CHECK_STATE.notRead, `${id} never ran and reads "${card(id)!.value}"`)
+    assert.match(card(id)!.note ?? '', /sign-in records/, `${id} does not name the source it lacked`)
+  }
+  for (const t of cards) assert.notEqual(t.value, CHECK_STATE.notFullyRead, `${t.label} calls sign-in records nobody could use partly read`)
+  assert.equal(card('cty.unknownCountries')!.value, CHECK_STATE.fail)
+  // Every check drawn this way has a heading of its own: a card heading, not a
+  // clause, and no two alike on one step.
+  for (const subject of ['trustedLocation', 'allowedCountries', 'authStrength'] as const) {
+    const rules = rulesFor(subject)
+    const own = rules.map((r) => RULE_TEXT[r.id]?.label)
+    for (const [i, label] of own.entries()) {
+      assert.ok(label, `${rules[i].id} has no heading of its own`)
+      assert.match(label, /^[A-Z]/, `${label}: a card heading starts mid-sentence`)
+      assert.ok(label.length <= 40, `${label}: a card heading is a paragraph`)
+    }
+    assert.equal(own.length, new Set(own).size, `${subject}: two checks share a heading`)
+  }
+})
+
+// R4-58, the other half: headed by its check, a finding still names the object
+// it is about. The trusted-location step runs the same checks over every saved
+// location; without the location's name in the note, two locations failing one
+// check would be the same card, and the fold would drop one of them.
+test('two trusted locations failing the same check stay two cards, each naming its location', () => {
+  const f = structuredClone(fixture('demo'))
+  const rows = f.snapshot.config.namedLocations.rows as { id: string; displayName: string; ipRanges?: { cidrAddress: string }[] }[]
+  const office = rows.find((r) => Array.isArray(r.ipRanges))!
+  office.ipRanges = [{ cidrAddress: '0.0.0.0/0' }]
+  rows.push({ ...structuredClone(office), id: 'loc-branch', displayName: 'Branch Office' })
+  f.mapping.trustedLocationIds = [office.id, 'loc-branch']
+  f.mapping.wizardAnswered.trustedLocations = true
+  if (f.mapping.assumed) delete (f.mapping.assumed as Record<string, unknown>).trustedLocations
+  const r = runFixture(f, { snapshot: f.snapshot, mapping: f.mapping })
+  const step = r.steps.find((s) => s.id === 's-prereq-trusted-location')!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const wide = readinessOf(step, stepContract(step, ctx)).tiles.filter((t) => t.key.startsWith('configuration:loc.notWholeInternet:'))
+  assert.equal(wide.length, 2, `the two locations' whole-internet findings drew ${wide.length} cards`)
+  for (const t of wide) assert.equal(t.label, RULE_TEXT['loc.notWholeInternet'].label, 'the finding is not headed by its check')
+  assert.deepEqual(wide.map((t) => (t.note ?? '').split(':')[0]).sort(), ['Branch Office', office.displayName].sort(), 'a card does not name the location it is about')
 })

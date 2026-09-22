@@ -10,12 +10,15 @@ test('invalid office configuration stays on its canonical task and old repair li
   const r = runFixture(fixture('demo'))
   const step = r.steps.find(s => s.id === 's-prereq-trusted-location')!
   assert.ok(step)
-  const finding = { id: 'loc.notWholeInternet', subject: 'trustedLocation' as const, target: 'office-id', severity: 'blocker' as const, outcome: 'fail' as const, finding: 'Office includes 0.0.0.0/0.' }
+  const finding = { id: 'loc.notWholeInternet', subject: 'trustedLocation' as const, target: 'office-id', severity: 'blocker' as const, outcome: 'fail' as const, finding: '0.0.0.0/0 trusts the entire internet' }
   const report: SubjectReport = { subject: 'trustedLocation', targets: [{ target: {}, label: 'Office', results: [finding] }], blocking: [finding], warnings: [], notRun: [] }
   attachConfigurationFindings(r.steps, [report])
   assert.equal(blockerSteps([report]).length, 0)
   assert.equal(step.state.satisfied, false)
-  assert.equal(step.configurationFindings?.at(-1)?.detail, finding.finding)
+  // Headed by its check, the object opening the note (R4-58): the finding was
+  // headed "Office", a heading every other check on the location shared.
+  assert.equal(step.configurationFindings?.at(-1)?.label, 'Whole-Internet Range')
+  assert.equal(step.configurationFindings?.at(-1)?.detail, `Office: ${finding.finding}`)
   assert.equal(stepFromPlanHash('#/plan/s-blocker-trusted-location'), step.id)
   assert.equal(canonicalBlockerStepId('allowedCountries'), 's-prereq-allowed-countries')
 })
