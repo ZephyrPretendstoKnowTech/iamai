@@ -1,10 +1,10 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Configure Passkey Authentication",
   "fact": null,
   "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
+  "bar": "After Configure Passkey Authentication",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",
@@ -14,7 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     }
   ],

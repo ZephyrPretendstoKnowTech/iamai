@@ -278,6 +278,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // (planBoard.ts waitingForOf): a runtime reading of the plan's own state,
   // and the review page draws rows from the file with no state to read.
   '.pages.plan.unsavedAnswer',
+  '.pages.plan.unsavedConfirm',
   // And the empty Ready tab's line (planBoard.ts nothingReadyLine): a reading
   // of the live lane counts, and the review page has no board.
   '.pages.plan.nothingReady',

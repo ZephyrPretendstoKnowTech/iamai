@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "after: Configure Passkey Authentication",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your direction",
@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Prepare Emergency Access Accounts",
-      "state": "Prerequisite · To do"
-    },
-    {
       "label": "Decide How People and Devices Sign In",
       "state": "Waiting on your direction"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

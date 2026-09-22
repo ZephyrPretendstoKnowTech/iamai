@@ -215,23 +215,37 @@ export const SPECIAL_CARE_STEP_ID = 's-verify-mfa'
 
 type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'>
 
-const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; saved?: (mapping: InputRecord) => boolean }[] = [
+/**
+ * `prefilled`: IAMAI has an answer already and is waiting to have it
+ * confirmed, not waiting to be told. The three questions genuinely ask the
+ * person something the tenant cannot say; the campaign's support list is
+ * computed from readiness and opens filled (ui/surfaces/pickerRows.ts
+ * defaultDecisions). A row that says "waiting on your answer" over a list of
+ * ten names IAMAI worked out itself is telling the reader the wrong thing
+ * about who is holding the step.
+ */
+const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; prefilled?: true; saved?: (mapping: InputRecord) => boolean }[] = [
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
   { stepId: QUESTION_STEP.deviceCode, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
   // The campaign's special-care people (B10 P0-10, S-MC-2, A6): saved once a
   // person's Save confirms the list, an empty one included.
-  { stepId: SPECIAL_CARE_STEP_ID, kind: 'decision', saved: (mapping) => Array.isArray(mapping.specialCareConfirmed) },
+  { stepId: SPECIAL_CARE_STEP_ID, kind: 'decision', prefilled: true, saved: (mapping) => Array.isArray(mapping.specialCareConfirmed) },
 ]
 
 /** The labels of the conditional inputs on a step nobody has saved; a question its content does not ask is not one. */
 export function unsavedInputsOf(stepId: string, mapping: InputRecord): string[] {
-  const out: string[] = []
+  return openInputsOf(stepId, mapping).map((input) => input.label)
+}
+
+/** The same inputs, each saying whether IAMAI has already filled it (`prefilled`) or is asking. */
+export function openInputsOf(stepId: string, mapping: InputRecord): { label: string; prefilled: boolean }[] {
+  const out: { label: string; prefilled: boolean }[] = []
   for (const input of CONDITIONAL_INPUTS) {
     if (input.stepId !== stepId) continue
     const label = questionLabels(stepId)[input.kind]
     const saved = input.saved ? input.saved(mapping) : answerOf(mapping, stepId, input.kind) !== null
-    if (label !== null && !saved) out.push(label)
+    if (label !== null && !saved) out.push({ label, prefilled: input.prefilled === true })
   }
   return out
 }

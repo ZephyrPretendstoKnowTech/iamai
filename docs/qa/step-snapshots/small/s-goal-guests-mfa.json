@@ -22,7 +22,7 @@
       "state": "Confirm whether partners access your tenant"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     },
     {

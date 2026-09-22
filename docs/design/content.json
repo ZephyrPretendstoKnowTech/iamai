@@ -716,6 +716,8 @@
       "nothingReady": "Nothing here can be done today: {n} waiting on something else, and this tab lists what. Open a row to see what it waits for. Where a step does not apply to {tenant} at all, \"Doesn't apply here\" on the step records that and takes it off the plan.",
       "$commentUnsavedAnswer": "A step can be finished and still be short of an answer somebody has to record: the lane engine keeps it out of Completed for exactly that reason (U28). A policy already enforced then read \"In place\" in the State column, \"Ready - Decision\" in its lane and \"Not scheduled\" under When - three answers to one question, and the missing answer named in none of them. The row now says which answer it is.",
       "unsavedAnswer": "Waiting on your answer: {inputs}",
+      "$commentUnsavedConfirm": "Not every open input is a question. The campaign's support list is IAMAI's own — every active admin, everyone with no method, everyone on SMS alone — and it opens filled, waiting on a Save. A row reading \"Waiting on your answer\" over ten names IAMAI worked out itself names the wrong party (owner, 2026-09-22).",
+      "unsavedConfirm": "Waiting on you to confirm: {inputs}",
       "substatus": {
         "$comment": "The Ready lane's substatus words (A1b, decision 11), keyed by the engine's own literal (planBoard.ts SUBSTATUS_WORD).",
         "create": "Create",

@@ -288,3 +288,36 @@ test('a finished row short of an answer names the answer', () => {
   assert.ok((guests.unsavedInputs ?? []).length > 0, 'the premise: this row is short of an answer too')
   assert.equal(laneViewOf(laneReadings(run.steps).get(guests.id)!, titleOf).waitingFor, 'Not supported')
 })
+
+// Not every open input is a question.
+//
+// The campaign's support list is IAMAI's own — every active admin, everyone
+// with no method, everyone on SMS alone (derive/contentLists.ts
+// specialCareIds) — and it opens filled, waiting on a Save. A row reading
+// "Waiting on your answer" over ten names IAMAI worked out itself names the
+// wrong party.
+test('a row waiting on a list IAMAI filled asks for confirmation, not for an answer', () => {
+  // `demo`, where the campaign is Ready: a held row says what holds it first,
+  // and the unsaved line is the last thing it falls back to.
+  const run = runFixture(fixture('demo'))
+  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+  const readings = laneReadings(run.steps)
+
+  const campaign = run.steps.find((s) => s.id === 's-verify-mfa')
+  assert.ok(campaign, 'the premise: mid plans the campaign')
+  assert.deepEqual(campaign.unsavedInputs, ['People Needing Help'], 'the premise: its list is unsaved')
+  assert.equal(campaign.unsavedInputsPrefilled, true, 'the list IAMAI computes is not marked as its own')
+  assert.equal(laneViewOf(readings.get(campaign.id)!, titleOf).waitingFor, 'Waiting on you to confirm: People Needing Help')
+
+  // A question IAMAI genuinely cannot answer is not marked as its own, and
+  // reads as a question wherever its row falls through to the unsaved line. A
+  // held row says what holds it first, so this asserts the reading, and the
+  // line only where the row has no hold to state.
+  const asks = run.steps.filter((s) => (s.unsavedInputs ?? []).length > 0 && s.unsavedInputsPrefilled !== true)
+  assert.ok(asks.length > 0, 'the premise: some step still has a real question open')
+  for (const step of asks) {
+    const view = laneViewOf(readings.get(step.id)!, titleOf)
+    if (view.lane !== 'Ready') continue
+    assert.match(String(view.waitingFor), /^Waiting on your answer: /, `${step.id}: a question read as a confirmation`)
+  }
+})

@@ -4,7 +4,7 @@
   "reason": "until a scan rebuilds this step",
   "fact": "Enforced",
   "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
+  "bar": "After Configure Passkey Authentication",
   "rail": "Not scheduled",
   "headings": [
     "About this Step",
@@ -22,7 +22,7 @@
       "state": "Inforcer application"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     }
   ],

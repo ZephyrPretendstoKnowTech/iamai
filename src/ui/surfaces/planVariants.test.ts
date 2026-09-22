@@ -384,6 +384,7 @@ const INVENTORY: string[] = [
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
   'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // a tenant whose emergency keys are now readable reaches this with its reach settled (G-F1)
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo/s-ladder-operator-passkey
