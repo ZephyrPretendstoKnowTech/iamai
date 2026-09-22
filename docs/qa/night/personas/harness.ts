@@ -20,7 +20,7 @@ import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
-import { asideGroupsFor, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
+import { asideGroupsFor, BOARD, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
 import { cleanupTitleOf } from '../../../../src/ui/surfaces/stepContract.ts'
 import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
 import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
@@ -116,14 +116,27 @@ export function lanes(t: Tenant, r: FixtureRun): { step: Step; lane: string; sub
   }
   for (const tab of LANES) push(tab, groupsFor(tab, items))
   push('completed', asideGroupsFor(items))
-  // Anything the board drew nowhere is still reported, after the rows, so a
+  // Anything the tabs did not draw is still reported, after the rows, so a
   // reading of this is never quietly short of a step.
+  //
+  // A step the person ruled out is one of these and is NOT missing: the lane
+  // engine gives it no reading on purpose and the Plan draws it in the footer,
+  // under "Doesn't apply here". Calling that "not on the board" invited exactly
+  // the kind of finding that costs a round — a persona reporting a step the
+  // product had lost, when the product had put it where the person asked.
   const drawn = new Set(out.map((row) => row.step.id))
   for (const step of r.steps) {
     if (drawn.has(step.id)) continue
     const reading = readings.get(step.id)
     const view = reading ? laneViewOf(reading, titleOf) : null
-    out.push({ step, lane: view?.lane ?? 'Unknown', substatus: view?.substatus ?? null, tab: 'none', group: 'not on the board' })
+    const ruledOut = step.doesntApply != null
+    out.push({
+      step,
+      lane: ruledOut ? BOARD.lanes.doesntApply : view?.lane ?? 'Unknown',
+      substatus: view?.substatus ?? null,
+      tab: ruledOut ? 'doesntApply' : 'none',
+      group: ruledOut ? `${BOARD.lanes.doesntApply} (in the footer, not a lane)` : 'drawn in no tab — check the board',
+    })
   }
   return out
 }
