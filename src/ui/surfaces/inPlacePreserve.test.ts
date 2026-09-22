@@ -875,21 +875,53 @@ test('an enforced step waiting on the person says so, instead of rendering nothi
   // and two that are the reader's — with nothing saying which remained.
   //
   // The step knew all along: `awaitsWorkflowRecord` is exactly this state.
-  const f = fixture('midflight')
+  //
+  // This returned early, asserting nothing: midflight as scanned holds every
+  // policy behind its unsettled foundation, and no step waits on a workflow
+  // record until the foundation is settled — which is where the persona
+  // journeys found it. Settled here, so the case is checked rather than skipped.
+  const review = reviewTileOf('midflight')
+  assert.ok(review, 'nothing says the step is waiting on the reader')
+  assert.match(String(review.note), /yours to record/, String(review.note))
+})
+
+/** The review tile of the first step waiting on a workflow record, on a shipped tenant with its foundation settled. */
+function reviewTileOf(name: Parameters<typeof fixture>[0]): { id: string; note: string | null } | null {
+  const f = withFoundationSettled(fixture(name))
   const run = runFixture(f)
   const waiting = run.steps.find((s) => awaitsWorkflowRecord(s))
-  if (!waiting) return // no shipped fixture reaches it; the harness journey does
+  assert.ok(waiting, `the premise: a step on ${name} waits on a workflow record`)
   const ctx: StepVarContext = {
     snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
     signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
   }
-  const c = stepContract(waiting, ctx)
-  const tiles = readinessOf(waiting, c)
+  const tiles = readinessOf(waiting, stepContract(waiting, ctx))
   const all = [...tiles.tiles, ...tiles.satisfied]
   assert.ok(all.length > 0, `${waiting.id}: an enforced step waiting on a person still renders nothing`)
   const review = all.find((x) => x.key === 'review')
-  assert.ok(review, `${waiting.id}: nothing says the step is waiting on the reader`)
-  assert.match(String(review.note), /yours to record/, String(review.note))
+  return review ? { id: waiting.id, note: review.note ?? null } : null
+}
+
+test('an enforced step waiting on the person says what the scan confirmed, and never that IAMAI is finished with it', () => {
+  // R4-19 (Priya D4). A device-code block and a guest-MFA policy the first scan
+  // found enforced, in a tenant whose sign-in records could not be read at all,
+  // each read "The policy is enforced and IAMAI is finished with it." IAMAI had
+  // watched no report-only period for either and read none of their sign-ins;
+  // the engine held the reason on the step (Evidence) and only the AI briefing
+  // carried it. The note states what the scan confirmed, and where the records
+  // were not read, that and why.
+  const blind = reviewTileOf('hostile')
+  assert.ok(blind, 'the premise: hostile has a review tile')
+  assert.doesNotMatch(String(blind.note), /finished with it/, `${blind.id}: ${blind.note}`)
+  assert.match(String(blind.note), /the assessed configuration in place/, `${blind.id}: ${blind.note}`)
+  assert.match(String(blind.note), /could not read the sign-in records in this tenant — no sign-in records could be read — so it has seen none/, `${blind.id}: ${blind.note}`)
+  assert.match(String(blind.note), /yours to record/, `${blind.id}: ${blind.note}`)
+
+  // A tenant whose records were read carries no such sentence: it is a fact about
+  // that tenant, not a hedge on every enforced policy.
+  const read = reviewTileOf('mid')
+  assert.ok(read, 'the premise: mid has a review tile')
+  assert.doesNotMatch(String(read.note), /finished with it|could not read the sign-in records/, `${read.id}: ${read.note}`)
 })
 
 test('a finished policy IAMAI watched go on keeps the check after the change; one it found already on does not', () => {

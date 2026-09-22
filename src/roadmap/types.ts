@@ -71,6 +71,13 @@ export type Evidence = {
   status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending' | 'error' | 'none'
   lines: string[]
   affectedUserIds: string[]
+  /**
+   * Why the sign-in records could not be read, where they could not (the source's
+   * own reason, else its status); absent where they were read. `lines` states it
+   * in report-only words ("time in report-only cannot complete it"), which are
+   * wrong for a policy already enforced, so the fact travels on its own.
+   */
+  unreadable?: string
 }
 
 /**
