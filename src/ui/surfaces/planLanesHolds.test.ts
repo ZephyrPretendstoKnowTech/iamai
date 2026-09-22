@@ -262,3 +262,29 @@ test('every held or queued row names what it is waiting for, and never just repe
   assert.equal(named.get('s-goal-service-accounts-trusted-network'), 'Baseline references an unmapped group')
   assert.equal(named.get('s-goal-guests-mfa'), 'Not supported')
 })
+
+// A row that is finished and still short of an answer.
+//
+// `s-goal-block-legacy-auth` reads status `done`, lifecycle `enforced` and
+// planState "In place", and the lane engine keeps it in Ready - Decision
+// because a conditional input has no saved answer (lanes.ts isComplete, U28).
+// Three readings of one step on one screen, and the answer that was actually
+// missing named in none of them.
+test('a finished row short of an answer names the answer', () => {
+  const run = runFixture(fixture('mid'))
+  const step = run.steps.find((s) => s.id === 's-goal-block-legacy-auth')
+  assert.ok(step, 'the premise: mid plans the legacy-auth step')
+  assert.equal(step.status, 'done', 'the premise: the step is finished')
+  assert.deepEqual(step.unsavedInputs, ['Mail-sending devices'], 'the premise: one input has no saved answer')
+
+  const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+  const view = laneViewOf(laneReadings(run.steps).get(step.id)!, titleOf)
+  assert.equal(view.label, 'Ready · Decision', 'the premise: the engine keeps it out of Completed')
+  assert.equal(view.waitingFor, 'Waiting on your answer: Mail-sending devices')
+
+  // And never in place of a real hold: a row something holds says what holds
+  // it, whatever else it is short of.
+  const guests = run.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  assert.ok((guests.unsavedInputs ?? []).length > 0, 'the premise: this row is short of an answer too')
+  assert.equal(laneViewOf(laneReadings(run.steps).get(guests.id)!, titleOf).waitingFor, 'Not supported')
+})
