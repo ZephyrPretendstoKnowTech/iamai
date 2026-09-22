@@ -16,7 +16,8 @@
 //   import { plan, render, lanes, decide, deploy, tenant } from './harness.ts'
 import { fixture } from '../../../../src/roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../../../src/roadmap/fixtures/index.ts'
-import { runFixture } from '../../../../src/roadmap/fixtures/run.ts'
+import { runFixture, withRecoveryTested } from '../../../../src/roadmap/fixtures/run.ts'
+import { recoveryCandidate } from '../../../../src/roadmap/fixtures/recoveryRecords.ts'
 import type { FixtureRun } from '../../../../src/roadmap/fixtures/run.ts'
 import { stepBodyOf } from '../../../../src/ui/surfaces/stepBody.ts'
 import type { StepVarContext } from '../../../../src/ui/surfaces/stepVars.ts'
@@ -502,6 +503,41 @@ export function prepareEmergencyAccess(t: Tenant): Tenant {
     }
   }
   return next
+}
+
+/**
+ * The person runs the emergency-access recovery test, which is the Cleanup row
+ * "Verify Emergency Access": each emergency account signs in with the key
+ * `prepareEmergencyAccess` registered, and the next scan records that sign-in as
+ * the test passing. The record written is the one the fixtures build for the
+ * demo's week two (fixtures/run.ts `withRecoveryTested`): the observed passkey
+ * sign-in on each account, after the configuration it covers was read.
+ *
+ * Without it the harness could not finish the drill, and the dependency graph
+ * puts the drill before every Conditional Access policy's ENFORCEMENT. So on
+ * every tenant but the demo's week two, every policy that reached "ready to
+ * enforce" stayed there: its turn-on is withheld while the drill is undone
+ * (`Action.enforceWaitsOn`), `deploy(…, 'enforced')` had nothing to submit, and
+ * nothing in a persona run could ever be enforced.
+ *
+ * Run it after `settleFoundations` (the key and the passkey settings are what the
+ * test covers; without them the product correctly refuses the sign-in as a
+ * test). A change to what the test covers afterwards — the accounts, their
+ * keys, a policy that reaches them — makes the record stale, and the product
+ * asks for the test again; run this again after such a change.
+ */
+export function recordDrill(t: Tenant): Tenant {
+  const next = structuredClone(t) as Tenant
+  const mapping = mappingOf(next)
+  const at = next.snapshot.asOf
+  for (const [i, id] of mapping.breakGlassUserIds.entries()) {
+    const held = next.snapshot.signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }
+    // The key prepareEmergencyAccess registered on this account.
+    next.snapshot.signInEvidence[id] = { ...held, recoveryCandidates: [{ ...recoveryCandidate(id, at, next.snapshot.tenantId, `harness-recovery-${i + 1}`), credentialId: `emergency-passkey-${i + 1}` }] }
+  }
+  // The record is taken against the applied mapping, which is where the
+  // emergency accounts the plan reads are.
+  return { ...next, checkpoints: withRecoveryTested({ ...next, mapping }).checkpoints }
 }
 
 /**

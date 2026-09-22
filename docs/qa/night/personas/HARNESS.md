@@ -14,13 +14,16 @@ Worse: the harness had no way to **prepare emergency access**, and emergency
 access is the plan's one large gate. On nine of the ten shipped fixtures it is
 unfinished, so no policy could ever complete. Personas that "stopped" were
 mostly stopped by a gate the harness could not clear — not by a product defect.
+Until 2026-09-22 it also had no way to **record the recovery test** (the
+Cleanup row "Verify Emergency Access"), which every policy's enforcement waits
+on, so no run on a tenant but the demo's week two could turn a policy on.
 
 ## What it can do now
 
 ```ts
 import { tenant, plan, rescan, observations, deploy, days,
          settleAll, settleFoundations, prepareEmergencyAccess,
-         configurePasskeys, acceptDirection, enrolMfa,
+         configurePasskeys, recordDrill, acceptDirection, enrolMfa,
          decide, answers, render, stepView, lanes, ctxOf, mappingOf } from './harness.ts'
 ```
 
@@ -51,6 +54,15 @@ import { tenant, plan, rescan, observations, deploy, days,
   answer differently calls `decide()` for that question instead.
 - `settleFoundations` = emergency access + passkeys. `settleAll` = those plus
   the Direction answers.
+- `recordDrill(t)` — the recovery test: each emergency account signs in with
+  the key `prepareEmergencyAccess` registered, and the scan records it as
+  passed (the demo week two's record, `withRecoveryTested`). Every policy's
+  turn-on waits on it: until it is recorded a ready-to-enforce step offers no
+  enforcement, and `deploy(…, 'enforced')` has nothing to submit. Run it after
+  `settleFoundations`, and again after changing what it covers (the accounts,
+  their keys, a policy that reaches them). Nothing else records it: the product
+  reconciles observed recovery sign-ins on every scan, and the harness has no
+  sign-in log for emergency accounts but this.
 - `enrolMfa(t)` — the team registers a method. The one action that moves the MFA
   readiness gate. Everyone active holding no method the tenant allows (as
   `methodAvailability` reads it) registers a ready person's method; someone
@@ -80,26 +92,45 @@ import { tenant, plan, rescan, observations, deploy, days,
   says. An `update` operation (turning a policy on) patches the row the step's
   member already owns.
 
-## The journey that now works, on `mid`
+## The journey, on `mid`, measured 2026-09-22
+
+`walk(tenant('mid'), { foundationsFirst: true, fidelity: 'exact', waits: true,
+enrols: true })` (r3-journey.ts), on the pinned baseline:
 
 ```
-settled   done 12, ready 19, blocked 6
-created   in-report-only 11
-day 8     ready-to-enforce 9
-enforced  done 19
+first scan                  done 8, ready 9, blocked 25
+direction answered          done 12, ready 12, blocked 14, skipped 4
+passkeys configured         done 13, ready 21, blocked 4, skipped 4
+emergency access prepared   (no status moves)
+team registered a method    (no status moves)
+policies deployed (exact)   in-report-only 9
+report-only window          ready-to-enforce 8, in-report-only 1
+recovery test recorded      (no status moves; the drill row reads Completed)
+enforced what was ready     done 19, ready 15, blocked 3, in-report-only 1
 ```
 
-## Known walls, which are the product's and not the harness's
+Six of the eight enforce. The other two read Ready again after the turn-on
+(`s-goal-pim-activation-reauth` Ready · Review, `s-goal-token-protection` Ready ·
+Correct); nobody has looked at why. With `drills: false` the eight stay
+ready-to-enforce for good, because each one's turn-on waits on the recovery test.
 
-1. **The MFA readiness gate reads "not measured".** `methodReadiness` returns a
-   null percentage when ANY person in scope has an unreadable method, so the
-   gate says "waits for MFA readiness to reach 90%; it is not measured today" —
-   a threshold with no number, and nothing the reader can move. The count exists
-   one line away ("209 of 279 ... not yet established for 70") and the gate does
-   not use it.
-2. `device-registration-mfa` sits behind that gate and never advances. (This
-   used to name `admin-portals-protected` too; the product withholds that step
-   from every surface, and since 2026-09-22 the harness does as well.)
+## What a run meets, measured 2026-09-22 on the pin
+
+These are readings, not verdicts. A reading taken on the fixture's stand-in
+baseline does not carry over to the pin, and this list once did exactly that.
+
+1. **An MFA readiness gate can read "not measured".** After `settleAll`:
+   `getiamai` (guests MFA), `messy` (admins phishing-resistant) and `hostile`
+   (register info, admins, device registration). None on `mid`, `small`,
+   `midflight` or `large`. On `mid` the gates read a number: 75% and 4%
+   before `enrolMfa`.
+2. **`device-registration-mfa` on `mid` stays On Hold through the journey.**
+   Its tiles read "Baseline mapping: Baseline references an unmapped group",
+   "Exclusions: Not met" and "Threshold: At least 4% MFA-ready"; `enrolMfa`
+   does not move it. On the stand-in baseline the same step reads Ready ·
+   Create and reaches report-only, and this note used to call it stuck behind
+   the MFA gate: a wall measured on the stand-in does not describe the pin.
+3. **The harness cannot open a Cleanup row** (see `lanes` above).
 
 ## Fixed 2026-09-20, later the same night
 
