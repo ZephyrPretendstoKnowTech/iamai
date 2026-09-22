@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
-import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture as fixture, fixture as plainFixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { stepIdForGoal, findTaggedPolicy, planIdFor } from '../../roadmap/generate.ts'
@@ -23,7 +23,9 @@ import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { rowReason, rowWhen } from './rowWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import { implementationOffered, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, implementationOffered, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
+import { stepContract } from './stepContract.ts'
 import { statusOf } from './statusWord.ts'
 import { laneReadings } from './planLanes.ts'
 import { stepVars } from './stepVars.ts'
@@ -39,6 +41,7 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 
 const DAY = 86_400_000
+const shared = content.shared as unknown as Record<string, string[]>
 
 // What the walk reads on every report-only row of the app's demo (scripts/walk.mjs):
 // the two gate lines of the step's Done-when. The time expectation is the walk's
@@ -312,4 +315,48 @@ test("the walk's reading: every report-only step of the app's demo says where it
     assert.match(lines, WALK_TIME, step.id)
     assert.match(lines, WALK_EVIDENCE, step.id)
   }
+})
+
+test('a policy the tenant enforces never finishes on a report-only period it is past', () => {
+  // R4-19, R4-28, R4-29. A guest-MFA policy the first scan found enforced read
+  // Ready · Review under a tile saying only the person's workflow record was left,
+  // and its Done-when led with "The required report-only period of 7 days is
+  // complete, with no failures on this policy in the sign-in records" and "The
+  // available records show every active person in scope signing in during those
+  // days" — a window that can never run on a policy already on. It printed on every
+  // inherited enforced policy of six tenants, one of them a tenant whose sign-in
+  // records could not be read at all (hostile). The shipped tenants as they are
+  // scanned, and again with the foundation settled, which is where the
+  // enforced-and-waiting-on-the-person steps appear.
+  const GATE = /required report-only period|during those days|^Time: in report-only|^Evidence: the sign-in records since/
+  let enforced = 0
+  let awaiting = 0
+  for (const name of ['small', 'mid', 'large', 'messy', 'midflight', 'hostile', 'demo', 'demo-week2'] as const) {
+    for (const f of [plainFixture(name), withFoundationSettled(plainFixture(name))]) {
+      const run = runFixture(f)
+      for (const step of run.steps) {
+        if (step.state.lifecycle !== 'enforced') continue
+        enforced++
+        const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+        const lines = stepContract(step, ctx).doneWhen
+        for (const line of lines) assert.doesNotMatch(line, GATE, `${name}/${step.id} (enforced) still finishes on a report-only window: ${line}`)
+        if (!awaitsWorkflowRecord(step)) continue
+        awaiting++
+        assert.ok(lines.length > 0, `${name}/${step.id} finishes on nothing`)
+        // What is left stays: the scan that confirms the policy, and the person's own workflow line.
+        if (step.id !== 's-goal-guests-mfa') continue
+        assert.ok(lines.includes(shared.policyDoneWhen[2]), `${name}/${step.id} lost the scan that confirms the policy`)
+        assert.ok(lines.some((l) => /Representative guests/.test(l)), `${name}/${step.id} lost its own workflow line: ${lines.join(' | ')}`)
+      }
+    }
+  }
+  assert.ok(enforced > 0 && awaiting > 0, `the premise: enforced steps (${enforced}) and steps waiting on a workflow record (${awaiting})`)
+
+  // A policy still in report-only keeps both gates: this is about the enforced one only.
+  const week2 = runFixture(fixture('demo-week2'))
+  const watched = week2.steps.find((s) => s.state.lifecycle === 'report-only' && readyWhen(s) === null && stepEvidenceStrategy(s) === 'sign-in-records')
+  if (watched) assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2))
+  const notYet = week2.steps.find((s) => s.state.lifecycle === 'not-deployed' && stepEvidenceStrategy(s) === 'sign-in-records')
+  assert.ok(notYet, 'the premise: a policy not yet deployed')
+  assert.deepEqual(doneWhenTemplates(notYet, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2), `${notYet.id} lost the report-only gates it has still to run`)
 })
