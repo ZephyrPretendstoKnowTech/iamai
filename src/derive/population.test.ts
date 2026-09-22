@@ -11,6 +11,10 @@ import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { fillText } from '../content/render.ts'
+import { whoBlocks } from '../ui/surfaces/whoBlocks.ts'
+import { contentStepFor } from '../content/stepTitle.ts'
+import type { Fixture } from '../roadmap/fixtures/index.ts'
+import type { Step } from '../roadmap/types.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
   for (const f of allFixtures()) {
@@ -97,4 +101,78 @@ test('the dormant step\'s impact is the accounts it names, not "No user impact"'
     assert.notEqual(row, 'No user impact', `${f.name}: ${s.population.total} accounts to disable is not "No user impact"`)
     assert.match(row, new RegExp(`^${s.population.total} (?:person|people)`), `${f.name}: the row counts them (${row})`)
   }
+})
+
+// R4-52. On the large tenant Prepare Your Team for MFA read "4,169 active people
+// · 51 admins · 197 guests" on its Affected people tile and "3,981 people and 197
+// guests" (4,178) in its lead and on its row. The nine between them are role
+// holders with no sign-in in 90 days: the campaign prepares every admin, active
+// or not, and waited on six of them, and no line on the step named any of them.
+// Where sign-in activity was not read the tile read "No user impact" over a
+// campaign waiting on 48 admins. One population, counted once, and every admin
+// it waits on named in the words of what the scan read of them: a named line
+// that called every such admin dormant would say it of accounts whose activity
+// IAMAI never read.
+function campaignOf(f: Fixture): { step: Step; ex: Record<string, unknown>; nameOf: (id: string) => string } {
+  const r = runFixture(f)
+  const step = r.steps.find((x) => x.id === 's-verify-mfa')
+  assert.ok(step && step.preparation, `${f.name}: the premise: the campaign is planned`)
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  return { step, ex: stepVars(step, ctx) as Record<string, unknown>, nameOf }
+}
+const counted = (words: string): number => [...words.matchAll(/([\d,]+) (?:people|person|guests?|accounts?|active (?:people|person))/g)].reduce((n, m) => n + Number(m[1].replace(/,/g, '')), 0)
+
+test('the campaign counts one population on its tile, its lead and its row', () => {
+  for (const f of allFixtures()) {
+    const s = runFixture(f).steps.find((x) => x.id === 's-verify-mfa')
+    if (!s?.preparation || s.preparation.ids.length === 0) continue
+    const { ex } = campaignOf(f)
+    const tile = populationLine(reached(s)!)
+    const head = counted(tile.split(' · ')[0])
+    assert.equal(head, s.preparation.ids.length, `${f.name}: the tile counts every account the campaign prepares (${tile})`)
+    assert.equal(counted(rowWho(s)), head, `${f.name}: the row and the tile (${rowWho(s)} / ${tile})`)
+    assert.equal(counted(String(ex.cohort)), head, `${f.name}: the lead and the tile (${String(ex.cohort)} / ${tile})`)
+    // "active people" only where every one of them is.
+    if (/active (?:people|person)/.test(tile)) assert.equal(s.population.active, head, `${f.name}: ${tile}`)
+  }
+})
+
+test('the campaign names every admin it waits on outside its active people, by what the scan read of them', () => {
+  const base = campaignOf(fixture('mid'))
+  const active = new Set(runFixture(fixture('mid')).input.viability.filter((v) => v.activity === 'active').map((v) => v.userId))
+  const roles = fixture('mid').snapshot.roles
+  const admins = new Set([...Object.keys(roles.active), ...Object.keys(roles.eligible ?? {})])
+  const [dormantId, unreadId] = base.step.preparation!.missingIds.filter((id) => admins.has(id) && active.has(id))
+  assert.ok(dormantId && unreadId, 'the premise: mid has two active admins not yet ready')
+
+  // One stops signing in (read: 200 days ago); the scan cannot read the other's activity at all.
+  const f = structuredClone(fixture('mid'))
+  const longAgo = new Date(Date.parse(f.snapshot.asOf) - 200 * 86_400_000).toISOString()
+  for (const u of f.snapshot.users) {
+    if (u.id === dormantId) u.lastSuccessfulSignIn = longAgo
+    if (u.id === unreadId) { u.lastSuccessfulSignIn = null; u.successfulSignInActivityRead = false }
+  }
+  for (const id of [dormantId, unreadId]) if (f.snapshot.signInEvidence[id]) f.snapshot.signInEvidence[id] = { ...f.snapshot.signInEvidence[id], platforms: [] }
+  const { step, ex, nameOf } = campaignOf(f)
+  const prep = step.preparation!
+  assert.ok(prep.ids.includes(dormantId) && prep.ids.includes(unreadId), 'the campaign still prepares both: it prepares every admin')
+  assert.ok(prep.missingIds.includes(dormantId) && prep.missingIds.includes(unreadId), 'and waits on both')
+  assert.ok(!(ex.adminsNotReady as string[]).includes(nameOf(dormantId)) && !(ex.adminsNotReady as string[]).includes(nameOf(unreadId)), 'the premise: the admins note names active admins only')
+
+  // What the step draws: its Who lines.
+  const who = (contentStepFor(step) as unknown as { who: Record<string, unknown> }).who
+  const { inline, held } = whoBlocks(who, ex)
+  const blocks = [...inline, ...held]
+  const lineNaming = (id: string) => blocks.filter((b) => b.names.includes(nameOf(id)))
+  const dormantLines = lineNaming(dormantId)
+  assert.equal(dormantLines.length, 1, `${nameOf(dormantId)} is named once on the step: ${JSON.stringify(blocks.map((b) => b.lead))}`)
+  assert.equal(dormantLines[0].lead, '1 admin with no sign-in in the last 90 days is not yet ready; this step prepares every admin, so it waits on them too:')
+  const unreadLines = lineNaming(unreadId)
+  assert.equal(unreadLines.length, 1, `${nameOf(unreadId)} is named once on the step`)
+  assert.equal(unreadLines[0].lead, '1 admin is not yet ready, and the scan could not read their sign-in activity; this step prepares every admin, so it waits on them too:')
+  assert.doesNotMatch(unreadLines[0].lead, /no sign-in|90 days/, 'an account whose activity was not read is never called dormant')
+  // And both are in the one count the tile, the lead and the row give.
+  assert.equal(counted(populationLine(reached(step)!).split(' · ')[0]), prep.ids.length)
+  assert.equal(counted(String(ex.cohort)), prep.ids.length)
 })

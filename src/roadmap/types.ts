@@ -503,9 +503,13 @@ export type Step = {
   /**
    * A preparation cohort. `guestIds` are the guests among `ids`: guests stay in the MFA
    * campaign (owner, 2026-09-19) and every count of the cohort names them beside the
-   * people (derive/whoLine.ts cohortWords).
+   * people (derive/whoLine.ts cohortWords). The MFA campaign prepares every role holder,
+   * active or not, and says why each one outside its active people is there by what the
+   * scan read (R4-52): `dormantIds` are the ones with no sign-in in 90 days, or none on
+   * record, where activity was read (derive/sets.ts notActiveUsers, the dormant step's
+   * list); `activityUnreadIds` the ones whose sign-in activity was not read at all.
    */
-  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[] }
+  preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[] }
   /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
   methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; staleIds?: string[]; completeScope: boolean }
 

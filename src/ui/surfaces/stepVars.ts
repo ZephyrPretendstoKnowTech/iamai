@@ -319,6 +319,17 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
+  // The admins a preparation step still waits on outside its active people
+  // (R4-52), each in the words of what the scan read of them: the engine's
+  // dormant and unread ids (roadmap/generate.ts), filtered by the step's own
+  // missing ids, never worked out again here. Every other list on the campaign
+  // names active people, so it could wait on six admins nobody named.
+  if (step.preparation) {
+    const missing = new Set(step.preparation.missingIds)
+    const waiting = (ids: readonly string[] | undefined): string[] => (ids ?? []).filter((id) => missing.has(id)).map(ctx.nameOf)
+    v.dormantAdminsNotReady = waiting(step.preparation.dormantIds)
+    v.unreadAdminsNotReady = waiting(step.preparation.activityUnreadIds)
+  }
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one

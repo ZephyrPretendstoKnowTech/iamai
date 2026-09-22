@@ -4049,6 +4049,7 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
       "who": {
+        "$comment": "The campaign prepares every admin, active or not (roadmap/generate.ts adminCandidates), and counts all of them in {cohort} and on the Affected people tile. dormantAdmins and unreadAdmins name the admins it still waits on outside its active people (preparation.missingIds), each by what the scan read of them (ui/surfaces/stepVars.ts): dormantAdminsNotReady are dormant by the dormant step's rule (derive/sets.ts notActiveUsers: no sign-in in 90 days, or none on record, where activity was read); unreadAdminsNotReady are the ones whose sign-in activity the scan could not read, never called dormant. Every other list here names active people, so the step waited on admins it named nowhere (R4-52).",
         "lead": "{cohort} are included in this preparation step.",
         "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
@@ -4061,6 +4062,8 @@
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
         "adminsNote": "Admins not yet ready: {list:adminsNotReady}. Each registers a passkey or security key.",
+        "dormantAdmins": "{n} admins with no sign-in in the last 90 days are not yet ready; this step prepares every admin, so it waits on them too: {list:dormantAdminsNotReady}",
+        "unreadAdmins": "{n} admins are not yet ready, and the scan could not read their sign-in activity; this step prepares every admin, so it waits on them too: {list:unreadAdminsNotReady}",
         "devices": "{deviceIntro} {list:deviceLines}"
       },
       "decision": {
