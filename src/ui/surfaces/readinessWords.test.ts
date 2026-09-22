@@ -441,3 +441,33 @@ test('a readiness gate that names the step moving its number links to that step'
   }
   assert.ok(checked >= 4, `only ${checked} gates named a route`)
 })
+
+// R4-20 (Priya D5). Which source the scan could not read, why, and the
+// permission that would let it was worked out only inside a policy step's
+// threshold. The campaign that moves the MFA number has no threshold, so on a
+// tenant whose registration details returned 403, Prepare Your Team for MFA read
+// Ready with a support-list tile and a count of people, and never said its
+// number could not be read, while the four policies waiting on that number each
+// said both. The blind is the reading's own fact, worked out once: every
+// threshold reads it, and the campaign states it.
+test('the campaign that moves an unreadable number names the source the scan could not read', () => {
+  const f = fixture('hostile')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const campaign = r.steps.find((s) => s.id === 's-verify-mfa')!
+  assert.equal(campaign.readiness.unmeasured, 'unreadable', 'the premise: the campaign\'s own number could not be read')
+  const tiles = bodiesOf(f).get('s-verify-mfa')!.readiness.tiles
+  const tile = tiles.find((t) => (t.note ?? '').includes('access denied (403)'))
+  assert.ok(tile, `the campaign never says what the scan could not read: ${JSON.stringify(tiles.map((t) => `${t.label} · ${t.value}`))}`)
+  assert.equal(tile.label, T.reading)
+  assert.equal(tile.value, T.notMeasured)
+  assert.equal(tile.tone, 'warn')
+  assert.ok(tile.note!.includes('AuditLog.Read.All'), `names nothing that would open it — ${tile.note}`)
+  assert.ok(tile.note!.startsWith(campaign.readiness.lines[0]), 'the reading first, then why it could not be read')
+  // One source: every threshold's blind is its own step's reading's.
+  const gated = r.steps.filter((s) => s.action.readinessGate?.blind !== undefined)
+  assert.ok(gated.length > 0, 'the premise: policies wait on a number the scan could not read')
+  for (const s of gated) assert.equal(s.action.readinessGate!.blind, s.readiness.blind, `${s.id}: the gate works the blind out apart from its reading`)
+  // Where the sources are read, the campaign says nothing of the kind.
+  const mid = bodiesOf(fixture('mid')).get('s-verify-mfa')!.readiness.tiles
+  assert.equal(mid.some((t) => /could not read/.test(t.note ?? '')), false)
+})

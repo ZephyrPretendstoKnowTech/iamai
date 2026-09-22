@@ -1792,6 +1792,28 @@ function enforcedReadingTile(step: Step): ReadinessTile | null {
   return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
 }
 
+/** The key of the tile a step's unreadable reading draws where no threshold or finished reading states it. */
+const BLIND_READING = 'readiness-blind'
+
+/**
+ * A step's own reading that a refused source kept the scan from working out
+ * (roadmap/types.ts `Readiness.blind`), where nothing else on the step says
+ * so: no threshold waits on it and no finished reading states it. That is the
+ * campaign that moves the number. On a tenant whose registration details
+ * returned 403, Prepare Your Team for MFA read Ready with a support-list tile
+ * and a count of people. It never said that the number it exists to move
+ * could not be read, or which permission would let a scan read it, while the
+ * four policies waiting on that number each said both (R4-20, Priya D5).
+ */
+function blindReadingTile(step: Step, c: StepContract): ReadinessTile | null {
+  const r = step.readiness
+  if (r?.blind === undefined || step.status === 'skipped') return null
+  if (step.action.readinessGate !== undefined || step.action.enforcedBelowReadiness !== undefined) return null
+  if (c.state.setAside || c.state.condition === 'baseline-conflict') return null
+  const note = [r.lines[0], r.blind].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' ')
+  return { key: BLIND_READING, label: R().tiles.reading, tone: 'warn', value: R().tiles.notMeasured, note }
+}
+
 /**
  * The step the gate's sentence names as the one that moves its number, where it
  * names one (readinessSentence): the generator's route, while the policy still
@@ -2150,7 +2172,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, prerequisiteLabel.startOf)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, prerequisiteLabel.startOf)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))

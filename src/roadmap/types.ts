@@ -64,6 +64,19 @@ export type Readiness = {
    * unknown, which is what holds enforcement.
    */
   atLeast?: number
+  /**
+   * What the scan could not read, where a refused source is why the number is
+   * missing (roadmap/readiness.ts blindOf): the source, its recorded reason, the
+   * permission that reads it and the licence it needs. Set only with
+   * `unmeasured: 'unreadable'`. It is the reading's own fact, worked out once:
+   * the threshold a policy step waits on reads it (`Action.readinessGate.blind`),
+   * and so does the campaign step that moves the number, which has no threshold.
+   * Computed only inside the policy steps' gate, it never reached that campaign:
+   * on a tenant whose registration details returned 403, Prepare Your Team for
+   * MFA never said why its number could not be read or what would let a scan
+   * read it (R4-20, Priya D5).
+   */
+  blind?: string
   lines: string[] // plain-language numbers per §4
 }
 
@@ -342,10 +355,11 @@ export type Action = {
     routeShortfall?: string
     /**
      * The source that made this number unreadable, named, with what would open
-     * it (roadmap/readiness.ts blindSourceOf). Set only where the number could
-     * not be worked out AND a source is the reason: "not measured" said
-     * sixteen times over one tenant named neither the three sources that were
-     * switched off nor the permission that reads them.
+     * it: the step's own `Readiness.blind`, read and never worked out again
+     * (generate.ts). Set only where the number could not be worked out AND a
+     * source is the reason: "not measured" said sixteen times over one tenant
+     * named neither the three sources that were switched off nor the
+     * permission that reads them.
      */
     blind?: string
   }
