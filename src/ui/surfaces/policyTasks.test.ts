@@ -459,7 +459,10 @@ test('the enforce checklist carries the step\'s own unresolved prerequisites, no
   const one = linesOf(['Turn Off Security Defaults'])
   const at = one.findIndex((l) => /Do not turn it on unless/i.test(l))
   assert.ok(at >= 0, 'the checklist heading was lost')
-  assert.equal(one[at + 1], 'Turn Off Security Defaults is not finished yet, and this policy is part of it.')
+  // ABOVE the heading. Spliced below it, the sentence became an item in a list
+  // of conditions that must be TRUE while saying something was NOT finished;
+  // two readers hit the inversion and one enforced ten policies through it.
+  assert.equal(one[at - 1], 'Stop: Turn Off Security Defaults is not finished, and this policy is part of it. Leave this policy in Report-only until it is.')
   // A condition, never a replacement: the three that were always there stay.
   assert.ok(one.some((l) => /report-only period is complete/i.test(l)), 'the report-only condition was displaced')
   assert.ok(one.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the emergency-access condition was displaced')
@@ -467,9 +470,9 @@ test('the enforce checklist carries the step\'s own unresolved prerequisites, no
 
   // Several read as one sentence, not a stack of near-identical lines.
   const many = linesOf(['Turn Off Security Defaults', 'Prepare Your Team for MFA'])
-  assert.match(many[at + 1], /Turn Off Security Defaults/)
-  assert.match(many[at + 1], /Prepare Your Team for MFA/)
-  assert.equal(many.filter((l) => /not finished yet/.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
+  assert.match(many[at - 1], /Turn Off Security Defaults/)
+  assert.match(many[at - 1], /Prepare Your Team for MFA/)
+  assert.equal(many.filter((l) => /^Stop: /.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
 })
 
 test('a field still waiting on a reference is not printed as a setting to copy', () => {
@@ -539,7 +542,7 @@ test('the enforce checklist names the emergency drill while it is outstanding', 
 
   const at = lines.findIndex((l) => /Do not turn it on unless/i.test(l))
   assert.ok(at >= 0, 'the step does not draw the enforce checklist')
-  assert.equal(lines[at + 1], `${title} is not finished yet, and this policy is part of it.`)
+  assert.equal(lines[at - 1], `Stop: ${title} is not finished, and this policy is part of it. Leave this policy in Report-only until it is.`)
   // The authored condition stays: the splice adds a way to act on it, it does
   // not replace it.
   assert.ok(lines.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the authored condition was displaced')
