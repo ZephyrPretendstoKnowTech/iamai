@@ -43,7 +43,7 @@ the harness — the withdrawals matter as much as the fixes.
 | R4-33 | 3 | Marcus D15 | The step that clears the gate is filed under On Hold, two hops down | |
 | R4-34 | 3 | Marcus D7 | The milestone date recedes as you make progress, and is never labelled | |
 | R4-35 | 3 | Priya D10 | The emergency-access tile loses track of which account it is talking about | |
-| R4-36 | 3 | Priya D6 | The AI briefing states a different, incomplete set of enforcement preconditions | |
+| R4-36 ✅ | 3→4 | Priya D6 | The AI briefing states a different, incomplete set of enforcement preconditions | **Fixed.** Reproduced (`r4-priya-13-channels.ts`): on the held admin policy the Portal, JSON and PowerShell channels withheld the turn-on, and AI Info's Intended result still stated "Enable policy: On → Save — only when all of this is true now…" followed by "The step cannot hand them over yet". Its conditions omitted the readiness gate that was the actual hold, and "no failures in the sign-in records" was vacuously true on a tenant with none. Pattern 2 in the one channel a4b0cbd2 did not reach. A step that withholds its implementation now states no turn-on in the briefing: where turning the policy on is the whole change there is no intended setting to state; where it is part of a change the rest is stated without it. Raised to 4: the same withheld instruction as R4-05, on a policy for Global Administrators. |
 | R4-37 | 3 | Priya D7 | "needs Entra ID P2" on a tenant that holds Entra ID P2 | |
 | R4-38 | 3 | Priya D8 | A step reads "Completed / No change needed" while printing a Done-when naming a policy that does not exist | |
 | R4-39 | 3 | Priya D9 | An instruction introduces a list with a colon and then lists nothing | |

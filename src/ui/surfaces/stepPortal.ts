@@ -64,6 +64,13 @@ export type PortalNames = {
    * from here rather than from the body.
    */
   strengthNameFor?: (id: string) => string | null
+  /**
+   * The step withholds its implementation (roadmap/operations.ts policyResult),
+   * so a description of what it plans states no turn-on: the Portal, JSON and
+   * PowerShell channels withhold it, and a briefing that still said "Enable
+   * policy: On → Save" handed it over anyway (Priya D6).
+   */
+  withholdTurnOn?: boolean
 }
 
 /**
@@ -133,7 +140,7 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
     portalOpen: (shared.portalOpen as string).replace('{policy}', openName ?? policyName),
     reportOnlyLine: shared.reportOnlyLine as string,
     changeUntouched: shared.changeUntouched as string,
-    enableLine: shared.enableLine as string,
+    ...(names.withholdTurnOn ? {} : { enableLine: shared.enableLine as string }),
     exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),
     exclusionsGroupId,
     serviceAccountsGroupId,
