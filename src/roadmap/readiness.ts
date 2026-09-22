@@ -66,8 +66,9 @@ export function adminReady(v: Pick<MfaViability, 'readiness'>): boolean {
  * "100%" and opened the gate that exists to wait for every one of them, and a
  * floor of 209 of 279 (74.9%) read "at least 75%" — a floor above the reading.
  * Rounded down, "reaches 90%" means 90% of the people, the check that says how
- * many more a gate needs (routeShortfallOf, `Math.ceil`) is the same check, and
- * the percentage and the count can no longer disagree about whether it is met.
+ * many more a gate needs (routeShortfallOf, through readyNeeded) is the same
+ * check, and the percentage and the count can no longer disagree about whether
+ * it is met.
  * Integer arithmetic: 29/100*100 is 28.999… in floating point.
  */
 export function readinessPercent(ready: number, total: number): number {
@@ -139,7 +140,11 @@ export function routeShortfallOf(
   const movable = new Set(campaign.ids.filter((id) => !prepared.has(id)))
   const covered = short.filter((id) => movable.has(id)).length
   // Whole people, and the threshold is a floor: 90% of 11 needs 10, not 9.9.
-  const needed = Math.ceil((thresholdPercent / 100) * gate.ids.length) - ready.size
+  // The count the gate itself opens at (readyNeeded), not a second one: this
+  // multiplied in floating point, and 55% of 100 came to 55.00000000000001, so
+  // it asked for 56 people where the gate opens at 55 and said the campaign
+  // could not reach a threshold it reaches.
+  const needed = readyNeeded(gate.ids.length, thresholdPercent) - ready.size
   if (covered >= needed) return null
   const threshold = `${thresholdPercent}%`
   return covered === 0
