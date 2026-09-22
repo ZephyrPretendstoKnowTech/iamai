@@ -4,13 +4,15 @@
 // Today's active count read the same population, the operator included.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../roadmap/fixtures/index.ts'
+import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds } from './sets.ts'
-import { isActivePerson, peopleCounts, reached } from './population.ts'
+import { isActivePerson, namedAccounts, peopleCounts, population, populationIndex, reached } from './population.ts'
+import { activeGap } from '../roadmap/generate.ts'
+import type { GoalResult } from '../coverage/types.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { EXPLAINED, readinessView } from './mfaReadiness.ts'
 import { KINDS, ladder } from './ladder.ts'
@@ -126,6 +128,57 @@ test('the per-user MFA step names accounts, and counts its admins among them', (
   assert.equal(pop.admins, [...on].filter((id) => admins.has(id)).length, 'the admins are counted over the accounts it names')
   assert.ok(pop.admins > 0, 'and there are some')
   assert.match(line, new RegExp(`^5 accounts · ${pop.admins} admins?`), line)
+})
+
+// R4-57, what was left of it: three populations were still built by hand, each
+// with `active` set to "every account it names". The shared-devices step read
+// "1 active person" on its Affected people tile for the Boardroom account on
+// demo and demo-week2 and for Jamie Haddad on mid, neither a person nor
+// counted active anywhere, beside a row that read "1 account"; the service
+// accounts read as active people wherever a step fell back to its population;
+// and a ladder rung carried its review list with no active ids, which reads "No
+// user impact". Every population now comes from the one builder, so a line
+// says "active people" only over the plan's active people.
+test('no step calls an account outside the plan\'s active people an active person', () => {
+  for (const fx of allFixtures()) {
+    if (fx.name === 'huge') continue
+    const run = runFixture(fx)
+    const active = new Set(run.input.viability.filter(isActivePerson).map((v) => v.userId))
+    for (const s of run.steps) {
+      const p = reached(s)
+      if (p === null) continue
+      const line = populationLine(p)
+      if (!/active (?:person|people)/.test(line)) continue
+      const outside = affectedIds(p).filter((id) => !active.has(id))
+      assert.deepEqual(outside, [], `${fx.name}/${s.id} reads "${line}" over ${outside.length} accounts that are not active people`)
+    }
+  }
+  const shared = runFixture(fixture('demo')).steps.find((s) => s.id === 's-shared-devices')
+  assert.ok(shared, 'the premise: demo plans the shared-devices step')
+  const pop = reached(shared)
+  assert.ok(pop !== null)
+  assert.equal(populationLine(pop), '1 account', 'the Boardroom account is an account, not an active person')
+  assert.equal(rowWho(shared), '1 account', 'and the row beside the tile says the same')
+})
+
+// The same residual in the gap clause. A goal's "covers N of M people" is
+// re-counted over the active people its population holds. The service accounts
+// were hand-built as active, so a policy covering one of two read "covers 2 of
+// 2 active": full coverage, from a hand-built count, over accounts no step
+// counts as people. Built by the one builder none of them is active, and the
+// re-count would read "covers 0 of 0 active". A population that names accounts
+// keeps the goal's own count; one of people is still re-counted.
+test('a coverage gap over accounts that are not active people keeps the goal\'s own count', () => {
+  const fx = fixture('demo')
+  const run = runFixture(fx)
+  const index = populationIndex(fx.snapshot, run.input.viability)
+  const ids = [...fx.mapping.serviceAccountUserIds]
+  assert.equal(ids.length, 2, 'the premise: demo maps two service accounts')
+  assert.ok(ids.every((id) => !index.active.has(id)), 'the premise: neither is an active person')
+  const missed = (userIds: string[]) => ({ gapSentence: `covers 1 of 2 people`, gapClause: `covers 1 of 2 people`, reasons: [{ kind: 'not-targeted', expected: false, userIds }] }) as unknown as GoalResult
+  assert.equal(activeGap(missed(ids.slice(1)), namedAccounts(ids, index), index.active), 'covers 1 of 2 people')
+  const people = [...index.active].slice(0, 2)
+  assert.equal(activeGap(missed(people.slice(1)), population(people, index), index.active), 'covers 1 of 2 active', 'a population of people is re-counted over them')
 })
 
 // And the one figure that is deliberately a different population says so.
