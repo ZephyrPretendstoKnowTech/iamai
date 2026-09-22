@@ -39,6 +39,7 @@ import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.t
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
+import { phoneSignInIds } from '../../derive/sets.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
@@ -881,7 +882,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     const devices = ctx.snapshot.devices
     const deviceRead = ctx.snapshot.sources.devices?.status === 'ok'
     put('device.evidence.summary', deviceRead ? fillText(W.evidence, { n: devices.length, managed: devices.filter(d => d.isManaged === true).length, compliant: devices.filter(d => d.isCompliant === true).length, hybrid: devices.filter(d => d.trustType === 'ServerAd').length }) : W.unread)
-    put('device.phones.summary', fillText(W.phones, { n: ctx.snapshot.scenarioEvidence?.phoneSignIns?.people.length ?? 'unknown' }))
+    put('device.phones.summary', fillText(W.phones, { n: phoneSignInIds(ctx.snapshot)?.length ?? 'unknown' }))
     put('device.computers.summary', fillText(W.computers, { n: ctx.snapshot.scenarioEvidence?.unjoinedComputers?.people.length ?? 'unknown' }))
     put('device.intune.summary', fillText(W.intune, { state: ctx.snapshot.capabilities.intune?.enabled ? 'available' : 'not confirmed' }))
     put('dependencies.downstreamSteps', 'Require a Managed Device Outside the Office; app protection; device preparation')

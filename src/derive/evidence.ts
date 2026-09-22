@@ -12,8 +12,6 @@ export type Derived = {
   people: string[]
   count: number
   detail: Record<string, number>
-  /** Sign-ins per person, where a surface names one person's count (phoneSignIns: a Windows-Hello-only person's evidence on Today). Absent on snapshots from before it. */
-  countByPerson?: Record<string, number>
 }
 export type PerPerson = Derived & { byPerson: Record<string, string[]> }
 
@@ -46,8 +44,6 @@ export type ScenarioEvidence = {
   guestsSeen: Derived
   /** Accounts whose only sign-ins are to Teams device apps. */
   sharedDeviceOnly: Derived
-  /** Phone sign-ins (iOS, Android), by person and app: the device decision is asked when any exist (E2). Absent on snapshots from before it. */
-  phoneSignIns?: Derived
   /** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). Absent on snapshots from before it. */
   unjoinedComputers?: Derived
   /**
@@ -85,7 +81,6 @@ const appName = (row: StoredSignIn): string => row.appDisplayName || APP_BY_ID.g
 const isFirstParty = (row: StoredSignIn): boolean => APP_BY_ID.has((row.appId ?? '').toLowerCase())
 /** Rows written before schema 7 carry none of the device labels; nothing device-based fires on them. */
 const hasDeviceLabels = (row: StoredSignIn): boolean => row.os !== undefined
-import { isPhoneOs } from './platforms.ts'
 
 const LEGACY_LABEL: [RegExp, string][] = [
   [/authenticated smtp|^smtp$/i, 'Authenticated SMTP'],
@@ -104,22 +99,14 @@ class Acc {
   count = 0
   detail: Record<string, number> = {}
   byPerson: Record<string, Set<string>> = {}
-  countByPerson: Record<string, number> = {}
   hit(row: StoredSignIn, key: string): void {
     if (row.userId) this.people.add(row.userId)
     this.count += 1
     this.detail[key] = (this.detail[key] ?? 0) + 1
-    if (row.userId) {
-      ;(this.byPerson[row.userId] ??= new Set()).add(key)
-      this.countByPerson[row.userId] = (this.countByPerson[row.userId] ?? 0) + 1
-    }
+    if (row.userId) (this.byPerson[row.userId] ??= new Set()).add(key)
   }
   out(): Derived {
     return { people: [...this.people].sort(), count: this.count, detail: this.detail }
-  }
-  /** With each person's own count, for the one derivation a surface reads per person. */
-  outCounted(): Derived {
-    return { ...this.out(), countByPerson: { ...this.countByPerson } }
   }
   outPerPerson(): PerPerson {
     return { ...this.out(), byPerson: Object.fromEntries(Object.entries(this.byPerson).map(([u, s]) => [u, [...s].sort()])) }
@@ -236,12 +223,11 @@ export function emptyPlatform(rows: Iterable<StoredSignIn>): Derived {
 
 const COMPUTER_OS = new Set(['Windows', 'macOS', 'Linux', 'ChromeOS'])
 
-/** Phone sign-ins (iOS, Android), by person and app (E2: the device decision is asked when any exist). */
-export function phoneSignIns(rows: Iterable<StoredSignIn>): Derived {
-  const acc = new Acc()
-  for (const row of rows) if (hasDeviceLabels(row) && isPhoneOs(row.os)) acc.hit(row, appName(row))
-  return acc.outCounted()
-}
+// Who signed in from a phone is not tallied here. It was, and a person read on
+// their own after a partial bulk read reached their record and never this
+// tally, so the device question said no phone was seen beside a phone MFA
+// Readiness showed (NEW-Nadia-D4). derive/sets.ts phoneSignInIds reads the
+// records MFA Readiness reads.
 
 /** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). */
 export function unjoinedComputers(rows: Iterable<StoredSignIn>): Derived {
@@ -358,7 +344,6 @@ export function deriveScenarioEvidence(rowsIn: Iterable<StoredSignIn>, compliant
     trustedLocationMatches: trustedLocationMatches(rows),
     guestsSeen: guestsSeen(rows),
     sharedDeviceOnly: sharedDeviceOnly(rows),
-    phoneSignIns: phoneSignIns(rows),
     unjoinedComputers: unjoinedComputers(rows),
     registeredComputers: registeredComputers(rows),
     officeSignIns: officeSignIns(rows),
@@ -382,7 +367,6 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     trustedLocationMatches: { total: 0, byLocation: {}, trusted: [] },
     guestsSeen: empty(),
     sharedDeviceOnly: empty(),
-    phoneSignIns: empty(),
     unjoinedComputers: empty(),
     registeredComputers: empty(),
     officeSignIns: { ...empty(), byPerson: {} },

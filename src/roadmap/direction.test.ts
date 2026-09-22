@@ -16,6 +16,9 @@ import { PREREQ_STEP_ID } from './stepIds.ts'
 import { directionWords } from '../content/content.ts'
 import type { DirectionQuestion, Step } from './types.ts'
 import type { Fixture } from './fixtures/index.ts'
+import { isPhoneOs } from '../derive/platforms.ts'
+import { phoneSignInIds } from '../derive/sets.ts'
+import { fillText } from '../content/render.ts'
 
 const W = directionWords
 const AT = '2026-09-18T00:00:00Z'
@@ -230,10 +233,13 @@ test('the demo: its first visit answers none of Direction; week two approved it,
 
 test('(g) the retired steps are gone as rows, and D3 shows even with no device sign-ins', () => {
   const f = fixture('demo')
-  if (f.snapshot.scenarioEvidence) {
-    delete f.snapshot.scenarioEvidence.phoneSignIns
-    delete f.snapshot.scenarioEvidence.unjoinedComputers
+  // No phone in anybody's own records (the one source of who signed in from a
+  // phone, derive/sets.ts phoneSignInIds; NEW-Nadia-D4), and no unjoined computer.
+  for (const e of Object.values(f.snapshot.signInEvidence)) {
+    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
   }
+  if (f.snapshot.scenarioEvidence) delete f.snapshot.scenarioEvidence.unjoinedComputers
   const ids = runFixture(f).steps.map((s) => s.id)
   assert.equal(ids.includes('s-confirm-workloads'), false)
   assert.equal(ids.includes(PREREQ_STEP_ID.devicePlan), false)
@@ -393,4 +399,57 @@ test('the device code question claims no window and no absence over a sign-in re
   f.snapshot.evidenceUsage = { ...f.snapshot.evidenceUsage!, deviceCode: { count: 0, userIds: [], byDetail: {} } }
   assert.equal(f.snapshot.sources.signInEvidence.status, 'ok', 'the premise: demo read its sign-in records')
   assert.equal(q(stepOf(stepsOf(f), DIRECTION_STEP.use), 'deviceCode').evidence, W.questions.deviceCode.notSeen)
+})
+
+// ---------------------------------------------------------------------------
+// NEW-Nadia-D4: "Today: no phone sign-ins were seen." beside an iPhone.
+// The phones question counted a tally over the bulk sign-in rows
+// (scenarioEvidence.phoneSignIns) while MFA Readiness drew each person's phone
+// from their own record. A person read on their own after a partial bulk read
+// reached the record and never the tally, and every shipped fixture built the
+// tally from rows of its own: getiamai, small, mid, messy and midflight said no
+// phone was seen beside MFA Readiness's phones, and the public demo said 3
+// beside 7. One source now (derive/sets.ts phoneSignInIds).
+// ---------------------------------------------------------------------------
+
+const phonesToday = (f: Fixture): string | null => q(stepOf(directionSteps({ snapshot: f.snapshot, mapping: f.mapping, notAssessed: [], availableGoalIds: [] }), DIRECTION_STEP.devices), 'phones').today
+
+test('NEW-Nadia-D4: on every shipped fixture the phones question counts exactly the people MFA Readiness shows a phone for', async () => {
+  const { readinessView } = await import('../derive/mfaReadiness.ts')
+  const { deviceChips } = await import('../ui/surfaces/readinessCells.ts')
+  for (const name of ['getiamai', 'small', 'mid', 'messy', 'midflight', 'demo', 'demo-week2', 'hostile', 'micro'] as const) {
+    const f = fixture(name)
+    const shown = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => deviceChips(r).chips.some((c) => c.kind === 'phone')).map((r) => r.user.id).sort()
+    const counted = phoneSignInIds(f.snapshot)
+    const today = phonesToday(f)
+    if (counted === null) {
+      // Records not read: nobody was seen, which says nothing about phones.
+      assert.equal(today, null, `${name}: a line about phones over records nobody read`)
+      assert.deepEqual(shown, [], `${name}: MFA Readiness shows a phone over records nobody read`)
+      continue
+    }
+    assert.deepEqual(counted, shown, `${name}: the question and MFA Readiness disagree about who signed in from a phone`)
+    assert.equal(today, shown.length > 0 ? fillText(W.questions.phones.today, { n: shown.length }) : W.questions.phones.todayNone, name)
+  }
+})
+
+test('NEW-Nadia-D4: a person read on their own after a partial read, seen on an iPhone, is counted by the phones question', () => {
+  // The collector's second pass (graph/collect/laneB.ts readTargeted) adds the
+  // person's devices to their own record and nothing else; the question read the
+  // tally the first pass left.
+  const f = fixture('getiamai')
+  const s = f.snapshot
+  for (const e of Object.values(s.signInEvidence)) {
+    e.platforms = (e.platforms ?? []).filter((p) => !isPhoneOs(p.os))
+    if (e.devices) e.devices = e.devices.filter((d) => !isPhoneOs(d.os))
+  }
+  assert.equal(phonesToday(f), W.questions.phones.todayNone, 'the premise: nobody signs in from a phone')
+  const id = Object.keys(s.signInEvidence)[0]
+  const e = s.signInEvidence[id]
+  e.platforms = [...(e.platforms ?? []), { os: 'iOS', at: s.asOf }]
+  e.devices = [...(e.devices ?? []), { os: 'iOS', at: s.asOf, trust: 'none', managed: null, deviceIds: [], version: 'iOS 18.2' }]
+  e.individuallyRead = true
+  s.sources.signInEvidence = { ...s.sources.signInEvidence, status: 'partial', reason: 'stopped at memory ceiling; covers the most recent 40 h of the requested 30 days' }
+  assert.deepEqual(phoneSignInIds(s), [id])
+  assert.equal(phonesToday(f), fillText(W.questions.phones.today, { n: 1 }))
 })

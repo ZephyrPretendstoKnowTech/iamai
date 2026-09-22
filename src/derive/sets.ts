@@ -21,6 +21,8 @@ import { INACTIVE_DAYS } from '../scoring/mfaViability.ts'
 import { adminUserIds } from '../roles.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
+import { READINESS_WINDOW_DAYS, devicesSeen } from '../scoring/phishingResistant.ts'
+import { isPhoneOs } from './platforms.ts'
 
 /**
  * The accounts the plan's decisions say are not people: the confirmed service
@@ -177,6 +179,32 @@ function activityUnread(snapshot: Pick<TenantSnapshot, 'signInEvidence'>, u: Use
  */
 export function activityUnreadUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => activityUnread(snapshot, u))
+}
+
+/**
+ * Whoever this scan saw sign in from a phone (iOS, Android), by id, sorted: the
+ * devices each person's own sign-in records show (scoring/phishingResistant.ts
+ * devicesSeen), which is where MFA Readiness draws their phone from.
+ *
+ * The device question, the device-plan briefing and the phone lists used to
+ * count a second source, the scenario tally over the bulk rows
+ * (derive/evidence.ts). A person read on their own after a partial bulk read
+ * (graph/collect/laneB.ts readTargeted) reached their record and never the
+ * tally, and the shipped fixtures built the tally from rows of their own: the
+ * question read "Today: no phone sign-ins were seen." beside an iPhone on MFA
+ * Readiness (NEW-Nadia-D4). One source now, and the tally is gone.
+ *
+ * Inside the window MFA Readiness reads (READINESS_WINDOW_DAYS), counted back
+ * from the scan. Null where the sign-in records were not read at all: nobody
+ * was seen, which says nothing about phones.
+ */
+export function phoneSignInIds(snapshot: Pick<TenantSnapshot, 'signInEvidence' | 'sources' | 'asOf'>): string[] | null {
+  const status = snapshot.sources?.signInEvidence?.status
+  if (status !== 'ok' && status !== 'partial') return null
+  // A scan with no readable time has no window to count back from: every record it holds counts.
+  const scanned = Date.parse(snapshot.asOf)
+  const from = Number.isFinite(scanned) ? new Date(scanned - READINESS_WINDOW_DAYS * 86_400_000).toISOString() : ''
+  return Object.entries(snapshot.signInEvidence ?? {}).filter(([, e]) => devicesSeen(e).some((d) => isPhoneOs(d.os) && d.at >= from)).map(([id]) => id).sort()
 }
 
 /**

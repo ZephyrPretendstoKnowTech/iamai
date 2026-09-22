@@ -501,6 +501,21 @@ export type ReadinessInput = {
 /** A device family as the sign-in fields describe it (graph/collect/types.ts DeviceSeen). */
 export type DeviceSeen = { os: Platform; at: string; trust: 'joined' | 'hybrid' | 'registered' | 'none' | null; managed: boolean | null; deviceIds: readonly string[]; version: string | null }
 
+/**
+ * The devices a person's own sign-in records show them on: the device records
+ * where the scan kept them, or one bare device per platform family on a
+ * snapshot from before it did. The one reading of where a person signs in:
+ * MFA Readiness draws each person's devices from it (personReadiness below),
+ * and whoever signed in from a phone is counted from it (derive/sets.ts
+ * phoneSignInIds), so the device question cannot say "no phone sign-ins were
+ * seen" beside a phone MFA Readiness shows (NEW-Nadia-D4).
+ */
+export function devicesSeen(signIns: { platforms?: readonly PlatformSeen[] | null; devices?: readonly DeviceSeen[] | null }): DeviceSeen[] {
+  return signIns.devices && signIns.devices.length > 0
+    ? [...signIns.devices]
+    : (signIns.platforms ?? []).map((p) => ({ os: p.os, at: p.at, trust: null, managed: null, deviceIds: [], version: null }))
+}
+
 const byClass = (a: MethodClass, b: MethodClass): number => CLASS_ORDER.indexOf(a) - CLASS_ORDER.indexOf(b)
 const byPlatform = (a: Platform | null, b: Platform | null): number => (a === null ? 1 : b === null ? -1 : PLATFORMS.indexOf(a) - PLATFORMS.indexOf(b))
 
@@ -661,9 +676,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // The devices used inside the window, before any method is weighed: an unreadable
   // method list still shows where the person signs in, never "no sign-in".
   const fromRecords = !!input.signIns.devices && input.signIns.devices.length > 0
-  const seenDevices: DeviceSeen[] = fromRecords
-    ? [...(input.signIns.devices as DeviceSeen[])]
-    : input.signIns.platforms.map((p) => ({ os: p.os, at: p.at, trust: null, managed: null, deviceIds: [], version: null }))
+  const seenDevices: DeviceSeen[] = devicesSeen(input.signIns)
   // Join state. Microsoft reports a sign-in's deviceId only for a device registered
   // in Entra ID, so a device whose records never named one is neither joined nor
   // registered; and with no Windows computer in the directory, none of them is.

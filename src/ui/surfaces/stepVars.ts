@@ -23,6 +23,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { stepPopulation } from '../../derive/population.ts'
+import { phoneSignInIds } from '../../derive/sets.ts'
 import { securityDefaultsState, signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { cohortWords, guestsAmong } from '../../derive/whoLine.ts'
 import { pickerVars } from './pickerRows.ts'
@@ -497,7 +498,7 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
     out.mailDevices = mail.picked.map(ctx.nameOf)
   }
   const ev = ctx.snapshot.scenarioEvidence
-  const phones = ev?.phoneSignIns?.people ?? []
+  const phones = phoneSignInIds(ctx.snapshot) ?? []
   const unjoined = ev?.unjoinedComputers?.people ?? []
   out.phoneUsers = phones.map(ctx.nameOf)
   out.unjoinedUsers = unjoined.map(ctx.nameOf)

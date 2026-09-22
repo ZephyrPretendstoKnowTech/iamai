@@ -39,6 +39,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { countryName, suggestCountries } from '../mapping/countries.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
+import { phoneSignInIds } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
@@ -179,7 +180,8 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const evidence = ctx.snapshot.scenarioEvidence ?? null
   const unjoined = evidence?.unjoinedComputers?.people.length
   const registered = evidence?.registeredComputers?.people.length
-  const phones = evidence?.phoneSignIns?.people.length
+  // Who signed in from a phone: the one reading MFA Readiness draws its phones from (derive/sets.ts).
+  const phones = phoneSignInIds(ctx.snapshot)?.length
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
