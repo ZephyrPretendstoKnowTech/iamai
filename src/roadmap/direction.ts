@@ -152,12 +152,21 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
 function deviceQuestions(ctx: Context): DirectionQuestion[] {
   const evidence = ctx.snapshot.scenarioEvidence ?? null
   const unjoined = evidence?.unjoinedComputers?.people.length
+  const registered = evidence?.registeredComputers?.people.length
   const phones = evidence?.phoneSignIns?.people.length
   return [
     question('computers', ctx, {
       label: Q.computers.label, control: 'choice', options: optionsOf(Q.computers.options),
       suggested: answer('managed'), evidence: W.baselineEvidence,
-      today: unjoined === undefined ? null : unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : Q.computers.todayNone,
+      // Two populations, each saying what it counted. `unjoinedComputers` is
+      // devices with NO trust type; a REGISTERED computer is not joined either,
+      // and this question decides whether every company computer gets joined
+      // and enrolled — so leaving the registered ones out of a line headed
+      // "computers that aren't joined" understated a 2,339-person fleet as 3.
+      today: unjoined === undefined ? null : [
+        unjoined > 0 ? fillText(Q.computers.today, { n: unjoined }) : Q.computers.todayNone,
+        registered === undefined ? null : registered > 0 ? fillText(Q.computers.todayRegistered, { n: registered }) : null,
+      ].filter((line): line is string => line !== null).join(' '),
     }),
     question('phones', ctx, {
       label: Q.phones.label, control: 'choice', options: optionsOf(Q.phones.options),
