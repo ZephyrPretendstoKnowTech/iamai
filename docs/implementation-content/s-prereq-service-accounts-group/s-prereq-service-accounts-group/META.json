@@ -56,7 +56,8 @@
     "service.candidates",
     "service.ropcAccounts",
     "service.migrationNotes",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "serviceAccounts.accountsSummary"
   ],
   "projection": {
     "needsDecision": {

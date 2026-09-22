@@ -55,7 +55,9 @@
     "account.evidence.activitySummary",
     "account.owner",
     "dependencies.blockers",
-    "tenant.displayName"
+    "tenant.displayName",
+    "people.affected.count",
+    "people.affected.summary"
   ],
   "projection": {
     "missing": {

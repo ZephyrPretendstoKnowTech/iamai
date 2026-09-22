@@ -750,6 +750,13 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
   put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)
+  // The confirmed service accounts by name, for the same reason the emergency
+  // accounts are named below: the step's instruction says "add only the
+  // service-account users whose application owners confirmed them, as IAMAI
+  // lists", and the only channel that listed them was the AI briefing.
+  const serviceLabels = (ctx.mapping.serviceAccountUserIds ?? []).map((id) => ctx.snapshot.users.find((u) => u.id === id))
+    .map((u) => (u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null))
+  if (serviceLabels.length > 0 && serviceLabels.every((l): l is string => l !== null)) put('serviceAccounts.accountsSummary', serviceLabels.join(', '))
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
   // The operator's confirmed emergency accounts, every one of them: the set the
   // step's own words name. Only where the directory names each; a set short of an
@@ -801,7 +808,24 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.passkey.compatibility', rows.length ? rows.map(row => `${ctx.nameOf(row.accountId)}: ${W[row.reason]}`).join('\n') : W.noAccounts)
   }
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
-  put('people.affected.count', stepPopulation(step)?.active)
+  const affected = stepPopulation(step)
+  put('people.affected.count', affected?.active)
+  // The people the step is about, by name, and not only how many of them there
+  // are. A review step's portal instruction reads "Review each account IAMAI
+  // lists with its owner" — and the only channel that listed them was the AI
+  // briefing: sixty names there, none in the portal, the script or the email,
+  // which are where the work is actually done. The count was bound all along
+  // and the names were one field away, on the same view.
+  //
+  // Named the way the emergency accounts are named above, because a reader
+  // meeting both should not have to learn two formats. Only where the directory
+  // names every one of them: a set short of an account is not the set, and a
+  // list that silently drops people is worse here than no list at all.
+  const affectedNames = (affected?.names ?? []).map((id) => {
+    const u = ctx.snapshot.users.find((row) => row.id === id)
+    return u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null
+  })
+  if (affectedNames.length > 0 && affectedNames.every((l): l is string => l !== null)) put('people.affected.summary', affectedNames.join(', '))
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text) : undefined)
   return out
 }
