@@ -714,10 +714,14 @@ function inventoryOf(step: Step, ctx: StepVarContext): ContractInventory | null 
   if (step.goalId !== 'guests-mfa') return null
   const users = ctx.snapshot.users.filter(u => u.userType === 'guest')
   const complete = ctx.snapshot.sources.users?.status === 'ok'
+  // Which guests this counts, because the step's own line counts different
+  // ones. "Guest Directory - 225 guests" sat on the same board as "197 guests",
+  // both correct — every guest account against the active ones — and nothing
+  // said which was which, so a reader had two numbers for one word.
   return {
     label: 'Guest Directory', count: users.length, complete,
     names: users.map(u => ctx.nameOf(u.id)),
-    note: `${complete ? 'Guest accounts read from the directory' : 'Guest accounts returned by the incomplete directory read'}. Policy applicability also depends on external-user type, home organization and exclusions.`,
+    note: `${complete ? 'Every guest account in the directory, whether or not it has been seen signing in' : 'Every guest account the incomplete directory read returned, whether or not it has been seen signing in'}. Other guest counts on this plan are the people a step acts on, which is smaller. Policy applicability also depends on external-user type, home organization and exclusions.`,
   }
 }
 

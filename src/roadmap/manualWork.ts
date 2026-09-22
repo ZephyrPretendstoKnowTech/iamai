@@ -329,7 +329,14 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const activePeople = activeReviewPeople ?? new Set(step.population.activeIds ?? [])
       const activeAdmins = adminUserIds(snapshot.roles)
       const activeIds = ids.filter(id => activePeople.has(id))
-      step.population = { ...step.population, ids, total: ids.length, admins: ids.filter(id => activeAdmins.has(id)).length, inScope: ids.length, activeIds, active: activeIds.length }
+      // Admins over the ACTIVE ids, as every other step counts them
+      // (generate.ts population: "admins and guests are the active ones too,
+      // so the line and the count cannot disagree"). Counted over all of them
+      // it read "51 active people - 60 admins" here and "51 active people -
+      // 51 admins" on the admin-session step, same tenant, same sixty
+      // accounts, and the review scope is already stated as its own figure
+      // ("60 accounts to review") in the finding below.
+      step.population = { ...step.population, ids, total: ids.length, admins: activeIds.filter(id => activeAdmins.has(id)).length, inScope: ids.length, activeIds, active: activeIds.length }
       step.configurationFindings = [{ key: 'administrator-review-scope', label: 'Administrator Account Evidence', value: evidenceRead(step, snapshot) ? `${ids.length} accounts to review` : 'Account or role data not fully read', detail: evidenceRead(step, snapshot) ? 'Active and eligible roles identify the review scope. Mailbox licensing and business sign-ins are clues, not proof of dedicated use.' : [unreadSourceOf(snapshot), 'Active roles, eligible roles and registered methods must be readable to compare the saved review with the current configuration.'].filter((x): x is string => x !== null).join(' '), outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
       step.population.active = step.population.activeIds?.length ?? 0
       if (!ids.length && evidenceRead(step, snapshot)) { delete step.manualReview; step.deliveredBy = ['No non-emergency account currently holds an active or eligible directory role.']; setState(step, { satisfied: true, inPlace: true }); continue }

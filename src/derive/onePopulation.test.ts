@@ -11,6 +11,7 @@ import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds } from './sets.ts'
 import { peopleCounts } from './population.ts'
+import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { EXPLAINED, readinessView } from './mfaReadiness.ts'
 import { KINDS, ladder } from './ladder.ts'
 import { READINESS_STATES } from '../scoring/phishingResistant.ts'
@@ -64,4 +65,36 @@ test('the emergency accounts are not people: listed on MFA Readiness by kind, ne
   for (const id of emergency) assert.ok(people.rows.some((row) => String(row[0]) === nameOf(id)), `${nameOf(id)} is listed in Inventory`)
   const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   assert.deepEqual(lists.emergencyAccounts, emergency.map(nameOf), 'the emergency step lists them')
+})
+
+// Two numbers for one word, on one board.
+//
+// "51 admins" on the admin-session step and "60 admins" on the
+// administrator-separation step, same tenant, same sixty accounts. Every
+// step counts admins over its ACTIVE ids (generate.ts population: "admins
+// and guests are the active ones too, so the line and the count cannot
+// disagree") and the separation step counted them over all of them. The
+// review scope is its own figure and says so ("60 accounts to review").
+test('one admin denominator: every step counts admins over the people it counts', () => {
+  for (const name of ['small', 'mid', 'large', 'midflight', 'hostile', 'messy'] as const) {
+    for (const step of runFixture(fixture(name)).steps) {
+      const p = step.population
+      if (!p) continue
+      assert.ok(p.admins <= p.active, `${name}/${step.id}: ${p.admins} admins among ${p.active} active people`)
+      assert.ok(p.guests <= p.active, `${name}/${step.id}: ${p.guests} guests among ${p.active} active people`)
+    }
+  }
+})
+
+// And the one figure that is deliberately a different population says so.
+test('the guest directory tile says it counts every guest account', () => {
+  const f = structuredClone(fixture('large'))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')
+  assert.ok(step, 'the premise: large plans the guests step')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const inventory = stepContract(step, ctx).inventory
+  assert.ok(inventory, 'the premise: the guests step carries the directory tile')
+  assert.equal(inventory.count, f.snapshot.users.filter((u) => u.userType === 'guest').length)
+  assert.match(inventory.note, /whether or not it has been seen signing in/)
 })
