@@ -28,6 +28,12 @@ import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.t
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_READING } from './stepContract.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { list } from '../../copy/statements.ts'
+
+/** The line every package authors above the enforce conditions, and the one place a step's own prerequisites belong. */
+const ENFORCE_CHECKLIST = /Do not turn it on unless all of these are true now/i
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
@@ -177,12 +183,33 @@ export function portalProcedureOf(text: string): { steps: string[]; facts: { lab
  * `fixOf`: such a step asks for nothing), and a task there would be work offered
  * over a step that says there is none.
  */
-export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[], mapping?: Pick<MappingState, 'questionAnswers'>): EmergencyTaskProjection | null {
+export function policyTasksOf(step: Step, title: string, artifacts: readonly PortalArtifact[], mapping?: Pick<MappingState, 'questionAnswers'>, outstanding: readonly string[] = []): EmergencyTaskProjection | null {
   if (step.state.condition === 'baseline-conflict') return null
   const portal = artifacts.find((a) => a.id === 'portal')
   if (!portal) return null
   const { steps, facts } = portalProcedureOf(portal.text())
   if (steps.length === 0) return null
+  // The step's own unresolved prerequisites, inside the checklist that says
+  // "Do not turn it on unless all of these are true now".
+  //
+  // That checklist is authored per package — forty-odd identical copies —
+  // and carried three fixed conditions and nothing about THIS step. So a
+  // tenant with security defaults still on had a tile reading "Turn Off
+  // Security Defaults · Prerequisite · Waiting" four lines above a checklist
+  // that did not mention them, on a policy the security-defaults step names
+  // as one of its four replacements. Eight policies went on into a state the
+  // product itself calls unsupported and cannot be undone, and the board said
+  // Completed. Spliced rather than authored, so no package can miss it.
+  const checklist = steps.findIndex((line) => ENFORCE_CHECKLIST.test(line))
+  const withOutstanding = checklist < 0 || outstanding.length === 0
+    ? steps
+    : [
+        ...steps.slice(0, checklist + 1),
+        outstanding.length === 1
+          ? fillText(app.plan.enforceOutstanding, { items: outstanding[0] })
+          : fillText(app.plan.enforceOutstandingMany, { items: list([...outstanding]) }),
+        ...steps.slice(checklist + 1),
+      ]
   const mail = mailDevicesTaskOf(step, mapping)
   const task: EmergencyAccountTask = {
     id: 'policy-procedure',
@@ -194,7 +221,7 @@ export function policyTasksOf(step: Step, title: string, artifacts: readonly Por
     evidence: null,
     actionLabel: 'Open the Entra procedure',
     facts,
-    steps,
+    steps: withOutstanding,
   }
   // Recommended only where writing the policy is what the step is doing now
   // (roadmap/nextSafeAction.ts implementationIsCurrent). A step the plan's

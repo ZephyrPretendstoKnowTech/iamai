@@ -12,6 +12,9 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { policyTasksOf } from './policyTasks.ts'
+import { laneReadings } from './planLanes.ts'
+import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { cardWordsOf, drawsTaskAnatomy, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
@@ -417,4 +420,49 @@ test('the resolved settings stand under the Entra procedure of every step that d
 
 test('one card fills the row, on every step that draws these cards', () => {
   assert.match(read('src/ui/app.css'), /\.emergency-account-status-grid:has\(> \.emergency-account-status:only-child\) \{\n {2}grid-template-columns: minmax\(0, 1fr\);/)
+})
+test('the enforce checklist carries the step\'s own unresolved prerequisites, not three fixed conditions', () => {
+  // "Do not turn it on unless all of these are true now:" is authored
+  // identically in forty-odd packages and listed three things, none of them
+  // about THIS step. On a tenant with security defaults still on, a tile read
+  // "Turn Off Security Defaults · Prerequisite · Waiting" four lines above that
+  // checklist — on a policy the security-defaults step names as one of its four
+  // replacements. Eight policies went on into a state the product itself calls
+  // unsupported and irreversible, and the board then said Completed.
+  //
+  // Spliced into the parsed procedure rather than authored, so one change
+  // reaches every package and no package can be missed.
+  const run = runFixture(fixture('demo'))
+  const step = run.steps.find((x) => x.id === PILOT)!
+  const procedure = [
+    'Reopen the policy by its ID. Confirm it is still **Report-only**.',
+    'Do not turn it on unless all of these are true now:',
+    'The required report-only period is complete, with no failures on this policy in the sign-in records.',
+    'Emergency access is prepared and tested.',
+    'If any one of them is not true, leave the policy in Report-only.',
+    'Change **Enable policy** to **On** and save.',
+  ]
+  const portal = [{ id: 'portal', text: () => procedure.map((line, i) => `${i + 1}. ${line}`).join('\n') }] as never
+  const linesOf = (outstanding: string[]): string[] =>
+    (policyTasksOf(step, step.title, portal, undefined, outstanding)?.tasks ?? []).flatMap((t) => t.steps)
+
+  // Nothing outstanding: the checklist is exactly what the package authored.
+  assert.deepEqual(linesOf([]).filter((l) => /is not finished yet/.test(l)), [], 'a step with nothing outstanding is warned about nothing')
+
+  // One outstanding prerequisite, named, as the FIRST condition — above the
+  // three, because it decides whether the rest even apply.
+  const one = linesOf(['Turn Off Security Defaults'])
+  const at = one.findIndex((l) => /Do not turn it on unless/i.test(l))
+  assert.ok(at >= 0, 'the checklist heading was lost')
+  assert.equal(one[at + 1], 'Turn Off Security Defaults is not finished yet, and this policy is part of it.')
+  // A condition, never a replacement: the three that were always there stay.
+  assert.ok(one.some((l) => /report-only period is complete/i.test(l)), 'the report-only condition was displaced')
+  assert.ok(one.some((l) => /Emergency access is prepared and tested/i.test(l)), 'the emergency-access condition was displaced')
+  assert.ok(one.some((l) => /Change/.test(l) && /Enable policy/.test(l)), 'the action itself was displaced')
+
+  // Several read as one sentence, not a stack of near-identical lines.
+  const many = linesOf(['Turn Off Security Defaults', 'Prepare Your Team for MFA'])
+  assert.match(many[at + 1], /Turn Off Security Defaults/)
+  assert.match(many[at + 1], /Prepare Your Team for MFA/)
+  assert.equal(many.filter((l) => /not finished yet/.test(l)).length, 1, 'one line per prerequisite instead of one line for all of them')
 })
