@@ -847,7 +847,10 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
     // One rule for Step 2, its tile and Step 4 (validation/exclusionsGroupPolicies.ts):
     // every applicable policy, Report-only included, excludes the group.
     const needing = exclusionsGroupPolicies({ policies: ctx.tenantPolicies, groupId: entry.groupId, accountIds: ctx.breakGlassIds, activeRoles: ctx.snapshot.roles.active, membersOf: (id) => ctx.groupMembers.find((g) => g.groupId.toLowerCase() === id.toLowerCase()) })
-    if (needing.length === 0) return PASS
+    // Nothing to check is not the same as checked and correct. Over a tenant
+    // with no Conditional Access policies this passed silently and the tile read
+    // "Required references present", which is verification the scan never did.
+    if (needing.length === 0) return pass(F.xgNoPoliciesYet)
     const missing = needing.filter((p) => p.outcome === 'fail').map((p) => p.name)
     if (missing.length > 0) return fail(F.xgInconsistent(needing.length - missing.length, needing.length), { policies: missing })
     const unverified = needing.filter((p) => p.outcome === 'unknown').map((p) => p.name)

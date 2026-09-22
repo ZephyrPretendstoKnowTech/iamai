@@ -377,6 +377,14 @@ export const FINDING = {
   xgUnapproved: (names: string[]): string => `${list(names)} ${names.length === 1 ? 'is' : 'are'} in the group without being an emergency account or an approved exclusion`,
   xgAdmins: (names: string[]): string => `${list(names)} hold admin roles: exclusion removes their protection`,
   xgDynamic: (rule: string): string => `dynamic membership rule (${rule}): membership can change without anybody reviewing it`,
+  // A pass that is true only because there was nothing to check.
+  //
+  // "Policy exclusions · Required references present" was said over a tenant
+  // with NO Conditional Access policies at all, beside a portal line reading
+  // "Every policy that must exclude Core - Exclusions already does." Both are
+  // vacuously true over an empty set, and both read as verification. A reader
+  // checked, found zero policies, and stopped trusting the tile.
+  xgNoPoliciesYet: 'no policy in this tenant reaches the emergency accounts yet, so there is nothing to exclude them from',
   xgInconsistent: (from: number, total: number): string => `excluded from ${from} of ${total} enabled or report-only policies that reach the emergency accounts`,
   xgExclusionUnverified: (policies: string[]): string => `exclusion could not be verified for ${list(policies)}: the policy's excluded groups or the groups it targets were not read`,
   xgSize: (members: number, breakGlass: number): string => `${count(members, 'member')} for ${count(breakGlass, 'emergency access account')}`,
