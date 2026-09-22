@@ -357,6 +357,9 @@ export function laneViewAlone(step: Step): LaneView {
   return laneViewFor(step, boardReadingsOf([step], null, null))
 }
 
+/** The id prefix planLanes.ts `observe` gives a readiness threshold's evidence gate. */
+const READINESS_GATE = 'evidence:readiness:'
+
 /** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. The lane alone where the engine named no reason. */
 export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
   if (r.reason?.id === 'after-security-rollout') return 'After security rollout'
@@ -367,6 +370,15 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
     const title = titleOf(r.reason.id)
     return title !== null ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
   }
+  // A readiness threshold is not an observation window. planLanes.ts files it as
+  // an evidence gate on enforcement (`evidence:readiness:*`) and hands it the
+  // gate's own words; reading every evidence gate as "Observing" dropped them,
+  // so four rows held at "when MFA readiness reaches 90% (now 75%)" and "when
+  // device readiness reaches 80% (now 32%)" read "Observing" — a wait that time
+  // delivers — and still read it after the window had closed (R4-16, Marcus D6).
+  // Nobody watching a report-only policy moves a readiness number. Without
+  // words the row says no more than its lane: never a claim it is observing.
+  if (r.reason.kind === 'evidence' && r.reason.id.startsWith(READINESS_GATE)) return r.reason.text ?? BOARD.lanes.onHold
   const kind = BOARD.blockers[r.reason.kind]
   if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
