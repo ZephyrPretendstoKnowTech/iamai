@@ -221,8 +221,45 @@ test('with every selected account passing, the passkey procedure stays available
   const { projected, text } = passkeyTaskOf('demo-week2')
   assert.ok(projected.accounts.every(account => account.satisfied))
   assert.ok(projected.tasks.some(item => item.id === 'set-up-passkey'))
-  assert.match(text, /No selected account currently needs an approved passkey\./)
+  // Worded as the configuration procedure's all-clear, reference tail included
+  // (R4-51): it used to read "currently needs", two words from the unread
+  // case's double negative "is confirmed to need".
+  assert.match(text, /No selected account needs an approved passkey\. The steps below stay here as a reference\./)
   for (const account of projected.accounts) assert.ok(!text.includes(account.upn!), `${account.upn} is not named`)
+})
+
+// R4-51 (Priya D15). With both accounts' methods unread the procedure opened
+// "No selected account is confirmed to need an approved passkey." and then gave
+// eight registration steps: a double negative two words from the all-clear,
+// read as "not needed", beside a tile saying Could not verify. The engine knows
+// which accounts were not read. The line names them, and the procedure is for
+// them; the all-clear is only said where every account was read and passes.
+test('an unread passkey check names the unread accounts, never a double negative', () => {
+  const passkeyOf = (edit: (value: Fixture) => void) => {
+    const value = structuredClone(fixture('hostile'))
+    edit(value)
+    const run = runFixture(value)
+    const step = run.steps.find(item => item.id === STEP)!
+    const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+    const task = emergencyAccountTasksOf(step, ctx).tasks.find(item => item.id === 'set-up-passkey')!
+    const upn = (id: string) => value.snapshot.users.find(user => user.id === id)!.userPrincipalName!
+    return { value, text: [emergencyTaskText(task), ...(task.variants ?? []).map(variant => emergencyTaskText(task, variant.id))].join('\n'), upn }
+  }
+  // Both unread.
+  const both = passkeyOf(() => {})
+  const [a, b] = both.value.mapping.breakGlassUserIds
+  assert.deepEqual([both.value.snapshot.authMethods[a], both.value.snapshot.authMethods[b]], ['unknown', 'unknown'], 'the premise: neither account was read')
+  assert.doesNotMatch(both.text, /is confirmed to need|No selected account/)
+  assert.match(both.text, new RegExp(`IAMAI could not confirm that \\*\\*${both.upn(a)}\\*\\* and \\*\\*${both.upn(b)}\\*\\* have an approved passkey\\.`))
+
+  // The first prepared, the second unread: only the second is named, and the procedure signs in as it.
+  const one = passkeyOf(value => {
+    value.snapshot.authMethods[value.mapping.breakGlassUserIds[0]] = [{ kind: 'fido2', id: 'recovery-key', displayName: 'Recovery key', aaGuid: 'a25342c0-3cdc-4414-8e46-f4807fca511c', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+  })
+  assert.doesNotMatch(one.text, /is confirmed to need|No selected account/)
+  assert.ok(!one.text.includes(one.upn(a)), 'the prepared account is named')
+  assert.match(one.text, new RegExp(`IAMAI could not confirm that \\*\\*${one.upn(b)}\\*\\* has an approved passkey\\.`))
+  assert.match(one.text, new RegExp(`sign in as \\*\\*${one.upn(b)}\\*\\*`))
 })
 
 /** Step 1's account tiles, Step 1's status and Step 4's findings for demo-week2, with an edit. */

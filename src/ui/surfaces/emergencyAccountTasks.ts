@@ -9,6 +9,8 @@ import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPre
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { list } from '../../copy/statements.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -82,7 +84,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -235,13 +237,23 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // check fails; it stays available when none does, and says so.
   const passkeyChecks = selected.map(id => preparations.get(id)?.checks.approvedPasskey ?? null)
   const needing = selected.filter((_, index) => passkeyChecks[index] === false).map(id => targetOf(ctx, id))
-  const registrationTarget = needing.length === 1 ? needing[0] : 'the account you are preparing'
+  // An unread check is not a passed one. With no account known to need a
+  // passkey, the two used to share one branch that chose between "currently
+  // needs" and "is confirmed to need" — two words apart, the unread one a double
+  // negative that read as "not needed" over a tile saying Could not verify, with
+  // eight registration steps under it (R4-51). The engine knows which accounts
+  // were not read; the line names them, and the procedure is for them.
+  const unread = needing.length === 0 ? selected.filter((_, index) => passkeyChecks[index] === null).map(id => targetOf(ctx, id)) : []
+  const registrationTarget = needing.length === 1 ? needing[0] : unread.length === 1 ? unread[0] : 'the account you are preparing'
+  const bold = (upns: string[]): string => list(upns.map(upn => `**${upn}**`))
   const repeatLead = needing.length > 1
     ? [`Keep your working administrator session open. Accounts: **${needing.join('**, **')}**.`, 'Repeat this procedure separately for each account listed above.']
     : needing.length === 1
       ? ['Keep your working administrator session open.']
       : selected.length
-        ? ['Keep your working administrator session open.', passkeyChecks.every(check => check === true) ? 'No selected account currently needs an approved passkey.' : 'No selected account is confirmed to need an approved passkey.']
+        ? ['Keep your working administrator session open.', unread.length === 0 ? WORDS.passkeyNotNeeded
+          : unread.length === 1 ? fillText(WORDS.passkeyUnreadOne, { account: bold(unread) })
+            : fillText(WORDS.passkeyUnreadMany, { accounts: bold(unread) })]
         : ['Keep your working administrator session open.']
   // The existing-account procedure names only the accounts whose check fails.
   type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
