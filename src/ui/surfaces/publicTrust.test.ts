@@ -220,12 +220,13 @@ test('the deploy workflow publishes the pushed main commit, and CI validates bes
   const uncommented = (yml: string): string => yml.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
   const ci = uncommented(read('.github/workflows/ci.yml'))
   const config = uncommented(read('.github/workflows/deploy-pages.yml'))
-  // Deploy: main only, the run's own commit, built then published.
-  assert.match(config, /on:\n  push:\n    branches: \[main\]/)
+  // Deploy: after ci, on main only, the validated commit, built then published.
+  assert.match(config, /on:\n  workflow_run:\n    workflows: \[ci\]\n    types: \[completed\]\n    branches: \[main\]/, 'the deploy no longer waits for ci')
+  assert.match(config, /conclusion == 'success'/, 'a failed ci run can publish')
   assert.doesNotMatch(config, /pull_request/, 'a pull request can publish')
   const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
   assert.equal(checkouts.length, 1)
-  assert.equal((config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length, checkouts.length, 'the build is not pinned to the pushed commit')
+  assert.equal((config.match(/ref: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/g) ?? []).length, checkouts.length, 'the build is not pinned to the commit ci validated')
   assert.ok(config.indexOf('npm run build:site') > 0 && config.indexOf('npm run build:site') < config.indexOf('actions/deploy-pages@'), 'the site is deployed without being built first')
   assert.doesNotMatch(config, /npm run walk|workflow_call|night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
   // CI: pull requests and main, both jobs required, reporting beside the deploy.

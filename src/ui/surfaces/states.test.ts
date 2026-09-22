@@ -73,7 +73,14 @@ test('a step whose policy exists and is switched off says so, instead of asking 
   const base = run.steps.find((s) => unavailableReason(s) === 'no-operation' && (s.state.members ?? []).length > 0)
   assert.ok(base, 'midflight no longer carries a step with no operation to offer')
   const because = (x: typeof base): string => { const impl = stepContract(x, ctx).implementation; return impl.offered ? '' : (impl.because ?? '') }
-  assert.match(because(base), /no policy for IAMAI to write/, 'the unchanged case stopped saying what it always said')
+  // The control: whatever else it says, it says IAMAI is writing nothing here
+  // and does not claim the policy is switched off. There are two wordings for
+  // that now — the plain one, and the one for a goal the tenant's own policy
+  // already delivers, which names it ("{policy} found. IAMAI writes no policy
+  // here.") — and the shape this test pins is the same under both.
+  const control = because(base)
+  assert.match(control, /no policy for IAMAI to write|IAMAI writes no policy here/, 'the unchanged case stopped saying it writes nothing')
+  assert.doesNotMatch(control, /switched off/, 'the unchanged case claims the policy is off')
 
   // The same step, with every policy it tracks switched off.
   const off = structuredClone(base)

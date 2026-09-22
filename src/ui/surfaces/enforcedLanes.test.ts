@@ -289,7 +289,13 @@ test('a finished rollout says nothing about people the scan could not look at', 
     // A block goal has no readiness to speak of ('no-population'); this is about
     // the ones that DO measure people and could not look at any of them.
     const line = step.readiness.lines[0] ?? ''
-    if (step.readiness.unmeasured !== 'unreadable' || !/^0 of [0-9]+/.test(line)) continue
+    // Nobody judged ready, in either of the two shapes that says it. "0 of 40
+    // people..." was the only one when this was written; where NOBODY could be
+    // judged at all the line is now its own sentence, because a bare leading
+    // zero is an unread count in the shape of a measurement
+    // (engine.readiness.noneJudged). The premise is the same either way.
+    const nobodyReady = /^0 of [0-9]+/.test(line) || /^None of the [0-9]+ people in scope could be judged/.test(line)
+    if (step.readiness.unmeasured !== 'unreadable' || !nobodyReady) continue
     blind += 1
     const tiles = readinessOf(step, stepContract(step, ctx)).tiles
     assert.equal(tiles.some((t) => t.key === 'enforced-readiness'), false, `${step.id}: a reading drawn from nobody — ${line}`)

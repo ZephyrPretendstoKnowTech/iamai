@@ -353,8 +353,17 @@ test('a day-0 row borrowing its phase day is not an enforcement date: the campai
 })
 
 test('user-facing content spells enrollment the US way', () => {
-  const text = readFileSync('docs/design/content.json', 'utf8')
-  const values = [...text.matchAll(/"((?:[^"\\]|\\.)*)"(\s*:)?/g)].filter((m) => !m[2]).map((m) => m[1])
+  // The file's own convention keys an author's note as a `$comment` sibling
+  // named after what it explains. A note is not user-facing content, which is
+  // what this check is about, so the walk skips them rather than matching every
+  // quoted string in the file.
+  const collect = (node: unknown, out: string[]): string[] => {
+    if (typeof node === 'string') out.push(node)
+    else if (Array.isArray(node)) for (const v of node) collect(v, out)
+    else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (!k.startsWith('$comment')) collect(v, out)
+    return out
+  }
+  const values = collect(JSON.parse(readFileSync('docs/design/content.json', 'utf8')), [])
   assert.deepEqual(values.filter((v) => /\b(enrol|Enrol|enrols|enrolment|Enrolment)\b/.test(v)), [])
   for (const f of ['src/copy/plain.ts', 'src/copy/definitions.ts']) assert.doesNotMatch(readFileSync(f, 'utf8'), /\benrol\b|\benrols\b|\benrolment\b/)
 })
