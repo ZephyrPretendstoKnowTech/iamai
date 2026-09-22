@@ -14,7 +14,7 @@
 import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { acceptDirection, activePeople, answers, decide, enrolMfa, lanes, mappingOf, plan, render, stepView, tenant } from '../../docs/qa/night/personas/harness.ts'
+import { acceptDirection, activePeople, answers, decide, enrolMfa, goalMapDescribes, lanes, mappingOf, plan, render, stepView, tenant } from '../../docs/qa/night/personas/harness.ts'
 import type { Tenant } from '../../docs/qa/night/personas/harness.ts'
 import { marcusTenant } from '../../docs/qa/night/personas/r3-tenants.ts'
 import { board as journeyBoard, walk } from '../../docs/qa/night/personas/r3-journey.ts'
@@ -38,13 +38,30 @@ afterEach(() => setDisplayTimeZone(null))
 
 const LOCATIONS = 's-direction-locations'
 
-test('a persona tenant runs on the baseline the product ships, unless it asks for the fixture\'s', () => {
+test('a persona tenant runs on the baseline the product ships, unless it asks for the fixture\'s', (ctx) => {
+  ctx.mock.method(console, 'warn', () => {})
   // Every fixture but the demo builds on an eight-policy synthetic stand-in the
   // product never loads, so a finding about a policy's contents described a
   // policy that never ships.
   assert.deepEqual(tenant('getiamai').baseline, pinnedPackage())
   assert.deepEqual(tenant('getiamai', () => {}, { baseline: 'fixture' }).baseline, fixture('getiamai').baseline)
   assert.notDeepEqual(fixture('getiamai').baseline.policies.length, pinnedPackage().policies.length, 'the fixture is on the pin now: the opt-out proves nothing')
+})
+
+test('a run on a baseline the goal map does not describe says so, and on the pin it stops', (ctx) => {
+  // The goal map describes the pinned baseline and none of the stand-in's
+  // policies, so on the stand-in the engine matches policies to goals by
+  // signature, which no production baseline does. The opt-out re-opened that
+  // path with only a docstring to warn of it.
+  const warn = ctx.mock.method(console, 'warn', () => {})
+  assert.equal(goalMapDescribes(tenant('getiamai')), true)
+  assert.equal(warn.mock.callCount(), 0, 'a run on the pin was warned')
+  const standIn = tenant('getiamai', () => {}, { baseline: 'fixture' })
+  assert.equal(goalMapDescribes(standIn), false)
+  assert.equal(warn.mock.callCount(), 1, 'a run on the stand-in was not told what it is reading')
+  assert.match(String(warn.mock.calls[0].arguments[0]), /stand-in baseline[\s\S]*by signature/)
+  // A pinned tenant whose baseline was swapped underneath it stops.
+  assert.throws(() => tenant('getiamai', (x) => { x.baseline = fixture('getiamai').baseline }), /goal map describes none/)
 })
 
 test('the plan is derived from the mapping the product derives it from, and saving an answer leaves the stored record alone', () => {
