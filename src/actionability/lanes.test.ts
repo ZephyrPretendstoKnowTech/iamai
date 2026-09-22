@@ -362,3 +362,24 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
     's-goal-token-protection', 'cleanup-drill', 's-goal-require-managed-device',
   ])
 })
+
+// A step enforced in the portal ahead of a hard prerequisite of its enforcement
+// lands in Completed, where "what is left to do" is empty by definition — and
+// the prerequisite tile went with it. A reader turned ten policies on with the
+// emergency-access drill still undone and nothing anywhere recorded that the
+// recovery path had never been verified.
+test('a completed step keeps the hard prerequisites of the action it took that are still unmet', () => {
+  const enforced: StepObservation = { exists: true, evidenceSatisfied: true, enforced: true, complete: true }
+  const s = state({ 'cleanup-drill': { complete: false, exists: false }, 's-goal-admin-session': enforced })
+  const done = lane('s-goal-admin-session', s)
+  assert.equal(done.lane, 'Completed')
+  assert.deepEqual(done.unmetPrerequisites.map((b) => `${b.kind}:${b.id}`), ['step:cleanup-drill'])
+  // Every one of them is abnormal: the plan's own order was not followed.
+  assert.ok(done.unmetPrerequisites.every((b) => b.abnormal))
+  // Done the right way round, the completed step carries nothing.
+  const inOrder = lane('s-goal-admin-session', state({ 's-goal-admin-session': enforced }))
+  assert.equal(inOrder.lane, 'Completed')
+  assert.deepEqual(inOrder.unmetPrerequisites, [])
+  // It is a fact about the completed step, not work: it is not in `blockers`.
+  assert.deepEqual(done.blockers, [])
+})

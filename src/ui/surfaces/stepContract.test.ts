@@ -596,3 +596,32 @@ test('a step whose goal is already delivered does not wait on a scan that cannot
   }
   assert.ok(checked > 3, `only ${checked} rows reach the case`)
 })
+
+// Ten policies enforced in the portal with the emergency-access drill still
+// undone. Every "Prerequisite · To do" tile disappeared as the last of them
+// went on — Completed answers "what is left to do" — and the steps read "as
+// the plan asked". Nothing anywhere recorded that the recovery path had never
+// been verified.
+test('a completed step whose own prerequisite is still unmet says the order was not followed', () => {
+  const { all } = contracts('small')
+  const { step, c } = all.find((x) => (x.step.kind === 'create' || x.step.kind === 'adjust') && !x.c.fix.some((fx) => /^(?:step|missing):/.test(fx.key)))!
+  const title = 'Verify Emergency Access'
+  const tileFor = (overtaken: boolean): { value: string; note: string | null; tone: string } | null => {
+    const blockers = [{ kind: 'step' as const, id: 'cleanup-drill', abnormal: true, label: 'Prerequisite', title, ...(overtaken ? { overtaken: true as const } : {}) }]
+    const ready = readinessOf(step, c, blockers, () => 'Prerequisite · To do')
+    const t = [...ready.tiles, ...ready.satisfied].find((x) => x.key === 'engine:step:cleanup-drill')
+    return t ? { value: t.value, note: t.note, tone: t.tone } : null
+  }
+  const outstanding = tileFor(false)
+  const overtaken = tileFor(true)
+  assert.ok(outstanding && overtaken, 'the prerequisite tile is not drawn')
+  // Work still to do on this step says so; a step that went ahead anyway does not.
+  assert.match(outstanding.note ?? '', /Finish .* first/)
+  assert.doesNotMatch(overtaken.note ?? '', /Finish .* first/)
+  // It names the prerequisite, that this step is finished and it is not, and that the order was not followed.
+  assert.match(overtaken.note ?? '', new RegExp(title))
+  assert.match(overtaken.note ?? '', /not followed/)
+  // It is still outstanding, and it is a warning either way.
+  assert.equal(overtaken.value, 'Prerequisite · To do')
+  assert.equal(overtaken.tone, 'warn')
+})
