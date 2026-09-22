@@ -29,7 +29,7 @@ import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
@@ -157,6 +157,8 @@ type ContractWords = {
   doneEmergency: string
   doneOperation: string
   doneOperationCovered: string
+  /** A policy the tenant switched off: its end state is being on again, not being built (roadmap/operations.ts switchedOffPolicy). */
+  doneSwitchedOn: string
   doneManual: string
   doneVerify: string
   doneDeploy: string
@@ -529,6 +531,8 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return fillText(app.plan.escapeHatchHeld, { tenant, steps: heldByTitle(step) })
     case 'readiness-unmet':
       return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
+    case 'switched-off':
+      return fillText(app.plan.switchedOff, { tenant, policy: switchedOffPolicy(step)?.name ?? '' })
     case 'baseline-conflict':
       // Foundation B's own milestone for a baseline that contradicts itself. The
       // step's full explanation is its own `baselineConflict` paragraph and is
@@ -574,6 +578,10 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       return fillText(CONTRACT.doneEscapeHatch, { steps: heldByTitle(step), tenant })
     case 'readiness-unmet':
       return fillText(CONTRACT.doneReadiness, { ...(step.action.readinessGate ?? {}) })
+    case 'switched-off':
+      // Its own end state: the policy is there, so what finishes this step is
+      // that it is on again and watched, not that one gets built.
+      return CONTRACT.doneSwitchedOn
     case 'baseline-conflict':
       return CONTRACT.doneConflict
   }

@@ -16,6 +16,8 @@ import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { nextSafeAction } from './nextSafeAction.ts'
+import { enforcementHeld, unavailableReason } from './operations.ts'
+import { observationsOf } from './tracking.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
@@ -410,4 +412,71 @@ test('a step whose own tagged policy is switched off proposes no duplicate, and 
   const found = body.contract.found.find((item) => item.key === 'tagged-disabled')
   assert.ok(found, 'the card says nothing about a tenant this plan has already written to')
   assert.match(found.text, /switched off/)
+})
+
+// A policy the tenant switched off is not a policy to create.
+//
+// `claimedPolicy` will not take a disabled policy as the live one, so the step
+// fell through to "Create the policy in Report-only." on a policy already
+// sitting in the tenant — and every channel walked the reader through New
+// policy. Follow it and there are two, which is the state the step can never
+// finish from. It reproduces whenever somebody switches a policy off after it
+// breaks something, which is the ordinary response to a policy breaking
+// something.
+test('a policy the tenant switched off says turn it on, and hands over nothing that builds a second', () => {
+  const ID = 's-goal-block-legacy-auth'
+  const f = withFoundationSettled(structuredClone(fixture('midflight')))
+  const first = runFixture(f)
+  const before = first.steps.find((s) => s.id === ID)!
+  assert.equal(before.state.lifecycle, 'enforced', 'the premise: IAMAI watched this policy go live')
+  const prior = observationsOf(first.steps, undefined)
+
+  // Somebody switches that exact policy off.
+  const g = structuredClone(f)
+  const rows = (g.snapshot.config.caPolicies!.rows ?? []) as Record<string, unknown>[]
+  rows.find((row) => String(row.displayName) === before.tracking!.policyName)!.state = 'disabled'
+  g.snapshot.asOf = new Date(Date.parse(g.snapshot.asOf) + 7 * 864e5).toISOString()
+  const after = runFixture(g, {}, prior, g.snapshot.asOf).steps.find((s) => s.id === ID)!
+
+  assert.equal(after.tracking?.state, 'disabled', 'the premise: the tracker sees it off')
+  assert.equal(unavailableReason(after), 'switched-off')
+  assert.equal(enforcementHeld(after), false, 'the premise: nothing else holds this step')
+
+  const ctx = { snapshot: g.snapshot, mapping: g.mapping, groups: g.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: g.operatorId, now: g.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const body = stepBodyOf(after, ctx)
+  const said = body.contract.whatToDo.text
+  assert.match(said, /switched off/)
+  assert.match(said, /not a new policy/)
+  assert.ok(said.includes(String(before.tracking!.policyName)), `the policy is not named: ${said}`)
+
+  // And nothing anywhere walks the reader into building a second one.
+  for (const id of ['portal', 'ps', 'json', 'ai'] as const) {
+    const text = String(body.artifacts.find((a: { id: string }) => a.id === id)?.text?.() ?? '')
+    const instructs = text.split(String.fromCharCode(10)).filter((line) => /Policiess*>s*New policy/i.test(line))
+    assert.deepEqual(instructs, [], `${id} still instructs a create: ${instructs[0] ?? ''}`)
+  }
+})
+
+// The safety case: turning a policy on enforces, so a threshold the plan is
+// waiting for outranks "turn it on" and the step says that instead.
+test('a switched-off policy whose readiness is unmet says so, and does not say turn it on', () => {
+  let checked = 0
+  for (const ID of ['s-goal-admins-phishing-resistant', 's-goal-mfa-all-users']) {
+    const f = withFoundationSettled(structuredClone(fixture('midflight')))
+    const first = runFixture(f)
+    const before = first.steps.find((s) => s.id === ID)
+    if (!before?.tracking?.policyName) continue
+    const prior = observationsOf(first.steps, undefined)
+    const g = structuredClone(f)
+    const rows = (g.snapshot.config.caPolicies!.rows ?? []) as Record<string, unknown>[]
+    const row = rows.find((r) => String(r.displayName) === before.tracking!.policyName)
+    if (!row) continue
+    row.state = 'disabled'
+    g.snapshot.asOf = new Date(Date.parse(g.snapshot.asOf) + 7 * 864e5).toISOString()
+    const after = runFixture(g, {}, prior, g.snapshot.asOf).steps.find((s) => s.id === ID)!
+    if (!enforcementHeld(after)) continue
+    checked++
+    assert.equal(unavailableReason(after), 'readiness-unmet', `${ID}: a threshold stopped outranking the switch`)
+  }
+  assert.ok(checked > 0, 'no gated step reached the case')
 })

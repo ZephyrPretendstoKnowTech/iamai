@@ -1042,6 +1042,7 @@ export type UnavailableReason =
   | 'unverified-emergency-exclusion'
   | 'escape-hatch-unverified'
   | 'readiness-unmet'
+  | 'switched-off'
 
 /**
  * True when running this operation changes what the tenant enforces the moment
@@ -1058,6 +1059,24 @@ export type UnavailableReason =
  * cannot read in full is one that does: `effectOf` names what it could not read
  * and `any` carries that, so unknown is never read as harmless.
  */
+/**
+ * The policy this step is tracking, where the tenant has it switched off.
+ *
+ * A disabled policy is not a live one, so `claimedPolicy` will not take it and
+ * the step falls through to a create — which is wrong twice over: the policy
+ * exists, so creating one makes a second, and the change that restores the
+ * protection is to turn the one that is there back on. It reproduces whenever
+ * somebody switches a policy off after it breaks something, which is the
+ * ordinary response, and on an inherited tenant that arrives with one off.
+ *
+ * Tracking knows all of it — the name, the id, and that the match was ours.
+ */
+export function switchedOffPolicy(step: PolicyStep): { name: string; id: string } | null {
+  const t = step.tracking
+  if (!t || t.state !== 'disabled' || typeof t.policyName !== 'string' || typeof t.policyId !== 'string') return null
+  return { name: t.policyName, id: t.policyId }
+}
+
 export function enforcesOnRun(op: PolicyOperation): boolean {
   const after = op.mode === 'update' ? op.target : op.body
   // An update with no complete target is not a valid operation in the first
@@ -1098,7 +1117,7 @@ export function submitsEnforcementOnly(op: PolicyOperation): boolean {
 }
 
 /** What any of this applies to: a step that describes a policy. */
-type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview'>>
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state' | 'manualReview' | 'tracking'>>
 
 /**
  * True when a policy the tenant already enforces delivers the goal and the step
@@ -1238,6 +1257,17 @@ export function policyResult(step: PolicyStep): PolicyResult {
   // threshold to withhold.
   if (enforcementHeld(step) && validOperations(step.action).some(enforcesOnRun)) {
     return { kind: 'unavailable', reason: 'readiness-unmet' }
+  }
+  // A policy this plan is tracking that the tenant has switched off. It exists,
+  // so "Create the policy in Report-only" is the wrong instruction: follow it
+  // and there are two. What restores the protection is turning the one that is
+  // there back on — and that enforces the moment it happens, so the readiness
+  // threshold decides whether it can be said today. Where the threshold is
+  // unmet the step says so and withholds it, exactly as it does for any other
+  // enforcement; only where nothing holds it does the step name the policy and
+  // say to switch it on.
+  if (switchedOffPolicy(step) !== null && step.status !== 'done') {
+    return { kind: 'unavailable', reason: enforcementHeld(step) ? 'readiness-unmet' : 'switched-off' }
   }
   const declared = step.action.resolution?.policies ?? []
   const valid = validOperations(step.action)
