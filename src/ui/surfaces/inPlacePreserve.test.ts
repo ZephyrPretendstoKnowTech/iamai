@@ -825,11 +825,14 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   assert.equal(/could not read whether/.test(String(blindCoverage.note)), false, `the unread count is on the step twice: ${blindCoverage.note}`)
 
   // Measured and under the threshold: the count, and now the threshold beside it.
+  // The large tenant's own policy for this goal requires Phishing-resistant MFA,
+  // and the 73% is measured against that policy, so the threshold names that
+  // strength rather than plain MFA (R4-26, Jordan D4).
   const short = caseOf(runFixture(fixture('large')), fixture('large'), 's-goal-mfa-all-users')
   const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
   assert.ok(shortReading)
   // 3569 of 4900 is 72.8%, read down to 72% (R4-14, roadmap/readiness.ts readinessPercent).
-  assert.match(String(shortReading.note), /holds enforcement until MFA readiness reaches 90%; it is 72% now./, String(shortReading.note))
+  assert.match(String(shortReading.note), /holds enforcement until Phishing-resistant MFA readiness reaches 90%; it is 72% now./, String(shortReading.note))
 
   // And where readiness IS readable the coverage tile is unchanged: this is a
   // disclosure, not a hedge to bolt onto every delivered goal.

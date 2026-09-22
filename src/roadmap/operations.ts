@@ -215,6 +215,29 @@ export const BUILT_IN_STRENGTHS = new Map<string, string[]>(builtinStrengths.str
  */
 export const BUILT_IN_MFA_STRENGTH = builtinStrengths.strengths.find((s) => s.displayName === 'Multifactor authentication')!.id.toLowerCase()
 
+/** Microsoft's own names for its built-in authentication strengths, by id. */
+const BUILT_IN_STRENGTH_NAMES = new Map<string, string>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.displayName]))
+
+/**
+ * What this tenant calls an authentication strength: its own row for it, then
+ * the name the person who confirmed the mapping picked it under, then
+ * Microsoft's own name for a built-in one. Null where nothing in the tenant
+ * describes it — better a generic instruction than one naming a different
+ * object. One lookup for the portal lines that name the strength a policy
+ * requires (ui/surfaces/stepPortal.ts strengthNameOf) and for the readiness
+ * number measured against it (roadmap/readiness.ts strengthMeasuredOf).
+ */
+export function strengthNameIn(id: string, snapshot: { config: { authStrengths?: { rows?: unknown[] } } }, mapping: { records?: Record<string, { resolvedId?: string | null; resolvedName?: string | null }> }): string | null {
+  const key = id.toLowerCase()
+  for (const raw of (snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
+    if (typeof raw.id === 'string' && raw.id.toLowerCase() === key && typeof raw.displayName === 'string' && raw.displayName.length > 0) return raw.displayName
+  }
+  for (const rec of Object.values(mapping.records ?? {})) {
+    if (typeof rec.resolvedId === 'string' && rec.resolvedId.toLowerCase() === key && typeof rec.resolvedName === 'string' && rec.resolvedName.length > 0) return rec.resolvedName
+  }
+  return BUILT_IN_STRENGTH_NAMES.get(key) ?? null
+}
+
 /** The device requirements: a policy that asks for one asks for a machine the tenant manages, in the way it names. */
 const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice'])
 /** The application requirements: a policy that asks for one asks for an app the tenant approves or protects. */

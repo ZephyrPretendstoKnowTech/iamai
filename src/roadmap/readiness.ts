@@ -11,6 +11,8 @@ import type { SourceKey } from '../graph/collect/types.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import { app, engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { list } from '../copy/statements.ts'
+import { strengthNameIn } from './operations.ts'
 
 const W = engine.readiness
 const CAPS = (app as { inventory: { caps: Record<string, string> } }).inventory.caps
@@ -150,6 +152,54 @@ export function routeShortfallOf(
   return covered === 0
     ? fillText(W.routeShortfallNone, { step, short: short.length, threshold })
     : fillText(W.routeShortfallSome, { step, covered, short: short.length, rest: short.length - covered, threshold })
+}
+
+/** Microsoft's built-in Multifactor authentication strength: what a plain MFA grant asks for. */
+const MFA_STRENGTH = '00000000-0000-0000-0000-000000000002'
+/** Microsoft's built-in Phishing-resistant MFA strength. */
+const PHISHING_RESISTANT_STRENGTH = '00000000-0000-0000-0000-000000000004'
+
+/**
+ * The requirement a family's own words already name (copy/reasons.ts
+ * READINESS_MEASURE, pages.app.plan.stepContract.readinessValue): "MFA
+ * readiness" and "MFA-ready" say plain MFA; "of admins phishing-resistant"
+ * says Phishing-resistant MFA. A family missing here measures no method.
+ */
+const FAMILY_SAYS: Readonly<Record<string, string>> = { mfa: MFA_STRENGTH, guest: MFA_STRENGTH, admin: PHISHING_RESISTANT_STRENGTH }
+
+/**
+ * The authentication strength a readiness number was measured against, by the
+ * tenant's name for it, where it is not what the family's words already say.
+ * Null where it is, or where the family measures no method.
+ *
+ * The number is the share of people with a method the step's OWN policies
+ * accept (roadmap/methodReadiness.ts, over these effects), and the label was
+ * the family's. The device-registration policy requires the custom strength
+ * Modern MFA + TAP, which Authenticator does not satisfy, and it read "At
+ * least 5% MFA-ready" beside the registration policy's "79% MFA-ready" on one
+ * board: two requirements under one label (R4-26, Jordan D4). Plain MFA is the
+ * floor every strength includes, so beside a strength it names nothing.
+ */
+export function strengthMeasuredOf(
+  effects: readonly { requirements: readonly ({ kind: string; id?: string })[] }[],
+  family: Readiness['family'],
+  snapshot: Pick<TenantSnapshot, 'config'>,
+  mapping: Parameters<typeof strengthNameIn>[2],
+): string | null {
+  const says = FAMILY_SAYS[family]
+  if (says === undefined) return null
+  const ids = new Set<string>()
+  for (const effect of effects) {
+    for (const q of effect.requirements) {
+      if (q.kind === 'mfa') ids.add(MFA_STRENGTH)
+      else if (q.kind === 'strength' && typeof q.id === 'string') ids.add(q.id.toLowerCase())
+    }
+  }
+  if (ids.size > 1) ids.delete(MFA_STRENGTH)
+  ids.delete(says)
+  if (ids.size === 0) return null
+  const names = [...ids].map((id) => strengthNameIn(id, snapshot as Parameters<typeof strengthNameIn>[1], mapping))
+  return names.every((n): n is string => n !== null) ? list(names) : W.strengthUnnamed
 }
 
 /**

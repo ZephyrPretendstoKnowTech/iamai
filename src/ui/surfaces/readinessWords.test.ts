@@ -506,3 +506,45 @@ test('the campaign promises nothing a scan cannot show while its source is refus
   assert.match(mid.portal, /reaches them\.\n10\. Scan to update the plan/, 'the list for everyone else ends with its own')
   assert.match(mid.exported, PROMISES[0])
 })
+
+// R4-26 (Jordan D4), first half. A readiness number is the share of people with
+// a method the step's OWN policies accept, and its label was the goal family's.
+// The device-registration policy requires the custom strength Modern MFA + TAP,
+// and read "At least 27% MFA-ready" and "when MFA readiness reaches 90%" beside
+// the registration policy's "At least 68% MFA-ready" on one board: two
+// requirements under one label, and a reader acted on the larger number. On the
+// pin the admins' policy requires the same strength and read "0% of admins
+// phishing-resistant". The measure now names the strength wherever the family's
+// words would say another, on the card, the row's reason and the plan header.
+test('a readiness number is labelled by the strength its policies require, so two requirements never share a label', async () => {
+  const { pinnedPackage } = await import('../../baseline/pinned.ts')
+  const { planFinish } = await import('../../derive/finish.ts')
+  const f = fixture('demo')
+  const bodies = bodiesOf(f)
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const gateTile = (b: StepBody | undefined) => b?.readiness.tiles.find((t) => t.key === 'gate')
+  const device = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
+  // The premise, from the policy itself: it requires the tenant's Modern MFA + TAP strength.
+  const { effectOf, strengthNameIn, validOperations } = await import('../../roadmap/operations.ts')
+  const required = validOperations(device.action).flatMap((o) => effectOf(o.mode === 'update' ? o.target as Record<string, unknown> : o.body).requirements).filter((q) => q.kind === 'strength').map((q) => strengthNameIn((q as { id: string }).id, f.snapshot, f.mapping))
+  assert.deepEqual(required, ['Modern MFA + TAP'], 'the premise: the device-registration policy requires the custom strength')
+  const deviceTile = gateTile(bodies.get(device.id))!
+  const registerTile = gateTile(bodies.get('s-goal-register-info-protected'))!
+  assert.doesNotMatch(deviceTile.value, /MFA-ready/, 'a strength-bound number labelled as plain MFA')
+  assert.match(deviceTile.value, /ready for Modern MFA \+ TAP$/)
+  assert.match(deviceTile.note ?? '', /Modern MFA \+ TAP readiness/, 'the card\'s sentence names what it waits for')
+  assert.match(registerTile.value, /MFA-ready$/, 'the plain-MFA policy keeps its words')
+  assert.notEqual(deviceTile.value.replace(/^(At least )?\d+% /, ''), registerTile.value.replace(/^(At least )?\d+% /, ''), 'two requirements under one label')
+  // The row's reason states the same measure.
+  const binding = device.blockers.find((b) => b.kind === 'readiness' && b.label === 'readiness')?.binding
+  assert.match(String(binding), /^when Modern MFA \+ TAP readiness reaches 90%/)
+  // The admins' policy keeps "phishing-resistant" where it requires Phishing-resistant MFA...
+  assert.match(gateTile(bodies.get('s-goal-admins-phishing-resistant'))!.value, /of admins phishing-resistant$/)
+  // ...and on the pin, where it requires Modern MFA + TAP, it no longer claims it.
+  const pinned = { ...fixture('small'), baseline: pinnedPackage() }
+  const admins = gateTile(bodiesOf(pinned).get('s-goal-admins-phishing-resistant'))!
+  assert.doesNotMatch(admins.value, /phishing-resistant/, `a Modern MFA + TAP number labelled phishing-resistant: ${admins.value}`)
+  assert.match(admins.value, /of admins ready for Modern MFA \+ TAP$/)
+  // The plan header counts that step under the same words, not the family's.
+  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['admin Modern MFA + TAP readiness'])
+})

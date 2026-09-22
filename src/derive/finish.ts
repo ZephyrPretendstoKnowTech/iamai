@@ -63,7 +63,10 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
     // the threshold the row's own date column states. Every other hold is counted
     // with the steps it waits on.
     if (holdOf(s)?.kind === 'readiness' && heldByReadiness(s)) {
-      const measure = READINESS_MEASURE[s.readiness.family] ?? 'readiness'
+      // The gate's own measure, which names the strength its policies require
+      // where the family's words would name another (R4-26): the header counts
+      // the number the row states, not a second reading of the family.
+      const measure = s.action.readinessGate?.measure ?? READINESS_MEASURE[s.readiness.family] ?? 'readiness'
       const w = waiting.get(measure) ?? { measure, count: 0, family: s.readiness.family }
       w.count += 1
       waiting.set(measure, w)

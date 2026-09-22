@@ -319,7 +319,27 @@ export type Action = {
    */
   widerThan?: string
   readinessGate?: {
+    /**
+     * What the number measures, in words (copy/reasons.ts readinessMeasure):
+     * the family's, or the authentication strength the policies require where
+     * the family's words do not say it (`strength`).
+     */
     measure: string
+    /**
+     * The family the number belongs to (Readiness.family), which picks the
+     * tile's words and whether the campaign moves it. Set with `strength` and
+     * never without it: everywhere else `measure` is the family's own words and
+     * says which (copy/reasons.ts readinessFamilyOf).
+     */
+    family?: Readiness['family']
+    /**
+     * The authentication strength the number was measured against, by the
+     * tenant's name for it, where the family's words do not already say it
+     * (roadmap/readiness.ts strengthMeasuredOf). Two policies measured against
+     * different requirements read "At least 5% MFA-ready" and "79% MFA-ready"
+     * on one board (R4-26, Jordan D4).
+     */
+    strength?: string
     threshold: string
     value: string
     /** `value` is a floor the scan could prove, not the measurement (readiness.atLeast). */

@@ -31,7 +31,7 @@ import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
-import { strengthLookupOf } from '../../roadmap/operations.ts'
+import { strengthLookupOf, strengthNameIn } from '../../roadmap/operations.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalSection } from '../../roadmap/portalLines.ts'
 import { implementationOffered } from './stepJson.ts'
@@ -42,7 +42,6 @@ import { fillText } from '../../content/render.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { SelectedPolicyBody } from './stepPackage.ts'
-import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 const POLICIES = pinned.policies as unknown as PinnedPolicy[]
@@ -74,24 +73,14 @@ export type PortalNames = {
 }
 
 /**
- * What this tenant calls an authentication strength: its own row for it, then
- * the name the person who confirmed the mapping picked it under, then
- * Microsoft's own name for a built-in one. Null where nothing in the tenant
- * describes it — better a generic instruction than one naming a different
- * object.
+ * What this tenant calls an authentication strength (roadmap/operations.ts
+ * strengthNameIn, the one lookup the engine's readiness words read too). Null
+ * where nothing in the tenant describes it — better a generic instruction than
+ * one naming a different object.
  */
 export function strengthNameOf(id: string, ctx: Pick<StepVarContext, 'snapshot' | 'mapping'>): string | null {
-  const key = id.toLowerCase()
-  for (const raw of (ctx.snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
-    if (typeof raw.id === 'string' && raw.id.toLowerCase() === key && typeof raw.displayName === 'string' && raw.displayName.length > 0) return raw.displayName
-  }
-  for (const rec of Object.values(ctx.mapping.records ?? {})) {
-    if (typeof rec.resolvedId === 'string' && rec.resolvedId.toLowerCase() === key && typeof rec.resolvedName === 'string' && rec.resolvedName.length > 0) return rec.resolvedName
-  }
-  return BUILT_IN_STRENGTH_NAMES.get(key) ?? null
+  return strengthNameIn(id, ctx.snapshot, ctx.mapping)
 }
-
-const BUILT_IN_STRENGTH_NAMES = new Map<string, string>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.displayName]))
 
 /** The names a step's lines need, from its variable context. */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
