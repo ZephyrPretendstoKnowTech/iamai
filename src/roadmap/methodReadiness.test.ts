@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
-import { effectOf } from './operations.ts'
+import { effectOf, validOperations } from './operations.ts'
+import { policyVerdict } from './strand.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
@@ -150,4 +151,69 @@ test('nobody to count states no reading, and one person unjudged reads as one', 
   assert.deepEqual(one.lines, ['The one person in scope could not be judged: method compatibility is not established for them.'])
   const two = methodReadiness('mfa', { ids: ['a', 'b'], readyIds: [], unknownIds: ['a', 'b'], completeScope: true })
   assert.match(two.lines[0], /^None of the 2 people in scope could be judged/)
+})
+
+// R4-42 (Sam D8), R4-15 (Marcus D5). One registration was judged two ways.
+// Require MFA read a person with no accepted method as not ready; Microsoft's
+// built-in Multifactor authentication strength — the same grant, stated as a
+// strength — read the same person as "not established", because it carries
+// federated combinations nothing in the registration report speaks to. On one
+// tenant 1,293 people were not ready on Require MFA for All Users and "not yet
+// established" on the two steps beside it; on another, 38 people whose only
+// method (text) the tenant had switched off were called unknowable, and the
+// line told the admin to have them sign in with it. The strength is now read as
+// the grant it is (operations.ts effectOf), so every step gives one answer.
+test('R4-42: the built-in Multifactor authentication strength judges every person exactly as Require MFA does', () => {
+  const { snapshot } = setup()
+  const methods = snapshot.config.authMethodsPolicy.rows[0] as any
+  methods.policyMigrationState = 'migrationComplete'
+  methods.authenticationMethodConfigurations.push(
+    { id: 'Sms', state: 'disabled', includeTargets: [], excludeTargets: [] },
+    { id: 'Voice', state: 'disabled', includeTargets: [], excludeTargets: [] },
+  )
+  const shape: Record<string, { methods: string[]; capable: boolean }> = {
+    'u-1': { methods: [], capable: false },
+    'u-2': { methods: ['mobilePhone'], capable: false },
+    'u-3': { methods: ['microsoftAuthenticatorPush'], capable: true },
+  }
+  for (const r of snapshot.registrationDetails) if (shape[r.id]) Object.assign(r, { methodsRegistered: shape[r.id].methods, isMfaCapable: shape[r.id].capable, isMfaRegistered: shape[r.id].capable })
+  const scope = { users: { includeUsers: ['u-1', 'u-2', 'u-3'] }, applications: { includeApplications: ['All'] } }
+  const grant = effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+  const strength = effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000002' } } })
+  assert.deepEqual(strength.requirements, [{ kind: 'mfa' }], 'the built-in MFA strength is read as the grant it is')
+  assert.deepEqual(strength.strength, { id: '00000000-0000-0000-0000-000000000002' }, 'and the policy still names the strength it names')
+  const ids = Object.keys(shape)
+  const byGrant = methodPreparation([grant], ids, snapshot)
+  const byStrength = methodPreparation([strength], ids, snapshot)
+  assert.deepEqual(byStrength, byGrant, 'the same people, two answers')
+  assert.deepEqual(byStrength.readyIds, ['u-3'])
+  assert.deepEqual(byStrength.unknownIds, [], 'nothing registered, or only a method the tenant switched off, is not "not established"')
+  // And the lockout reading: one verdict per person whichever grant the policy uses.
+  for (const id of ids) assert.deepEqual(policyVerdict(strength, id, snapshot, {}), policyVerdict(grant, id, snapshot, {}), id)
+  // A tenant's own strength is still judged combination by combination.
+  assert.deepEqual(effectOf({ state: 'enabled', conditions: scope, grantControls: { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } }).requirements, [{ kind: 'strength', id: '00000000-0000-0000-0000-000000000004' }])
+})
+
+test('R4-42: on a generated plan, a step requiring the built-in MFA strength reads exactly what Require MFA would', () => {
+  const f = fixture('large')
+  const run = runFixture(f)
+  // The group memberships the plan read, as the generator hands them on.
+  const groupMembers: Record<string, string[]> = {}
+  for (const [id, g] of run.input.groupMembers?.entries() ?? []) if (g.sampled !== true) groupMembers[id.toLowerCase()] = [...g.memberIds]
+  let checked = 0
+  for (const id of ['s-goal-admin-portals-protected', 's-goal-device-registration-mfa']) {
+    const step = run.steps.find((s) => s.id === id)!
+    const body = validOperations(step.action).map((o) => (o.mode === 'update' ? o.target : o.body) as Record<string, unknown>)
+    assert.equal(body.length, 1, `${id}: the premise is one policy`)
+    const grant = body[0].grantControls as { authenticationStrength?: { id?: string } }
+    assert.equal(grant.authenticationStrength?.id, '00000000-0000-0000-0000-000000000002', `${id}: the premise is the built-in MFA strength`)
+    const people = run.viability.map((v) => v.userId)
+    const asGrant = methodPreparation([effectOf({ ...body[0], grantControls: { operator: 'OR', builtInControls: ['mfa'] } })], people, f.snapshot, { groupMembers })
+    const asStrength = methodPreparation([effectOf(body[0])], people, f.snapshot, { groupMembers })
+    assert.deepEqual(asStrength, asGrant, `${id}: one registration, two answers`)
+    assert.equal(step.methodPreparation?.unknownIds.length, 0, `${id}: ${step.readiness.lines[0]}`)
+    assert.equal(step.readiness.atLeast, undefined, `${id}: a floor where Require MFA reads a number`)
+    checked++
+  }
+  assert.equal(checked, 2)
 })

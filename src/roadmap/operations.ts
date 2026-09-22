@@ -208,6 +208,8 @@ const READABLE_CONTROLS = new Set(['block', 'mfa', 'compliantdevice', 'domainjoi
 
 /** What each of Microsoft's built-in authentication strengths allows; their ids describe them in every tenant. */
 export const BUILT_IN_STRENGTHS = new Map<string, string[]>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.allowedCombinations]))
+/** Microsoft's built-in Multifactor authentication strength: the Require MFA grant, as a strength (effectOf). */
+export const BUILT_IN_MFA_STRENGTH = '00000000-0000-0000-0000-000000000002'
 
 /** The device requirements: a policy that asks for one asks for a machine the tenant manages, in the way it names. */
 const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice'])
@@ -670,7 +672,18 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
       if (reading !== true) held.add(`sessionControls.${k}`)
     }
   const requirements: Requirement[] = []
-  if (strength) requirements.push({ kind: 'strength', id: strength.id })
+  // Microsoft's built-in Multifactor authentication strength is the Require
+  // multifactor authentication grant, stated as a strength: it cannot be edited,
+  // and it accepts exactly what that grant accepts. It is read as that grant, so
+  // the same person gets one answer whichever of the two a policy uses. Read as a
+  // strength, it met its federated combinations — which nothing in the
+  // registration report can speak to — and every person without an accepted
+  // method read "not established" on its steps while reading "not ready" on the
+  // Require MFA steps beside them: 1,293 people one way on one step and the
+  // other way on the next (R4-42), 38 people whose only method the tenant has
+  // switched off called unknowable (R4-15). The reference is unchanged
+  // (`strength` below): which strength a policy names is still the policy's.
+  if (strength) requirements.push(strength.id.toLowerCase() === BUILT_IN_MFA_STRENGTH ? { kind: 'mfa' } : { kind: 'strength', id: strength.id })
   for (const c of controls) {
     if (c === 'block') continue
     if (c === 'mfa') requirements.push({ kind: 'mfa' })
