@@ -85,3 +85,40 @@ test('a step whose policy exists and is switched off says so, instead of asking 
   // The report-only discipline survives: it does not simply say "turn it on".
   assert.match(line, /Report-only/, 'the way out skips the observation the rest of the plan insists on')
 })
+
+test('the step that owns the security-defaults rule reports it broken, and says nothing where it is not', () => {
+  // The plan states the invariant in its own voice: "security defaults must be
+  // off before the policies replacing them can take over, and once these
+  // policies exist you cannot turn security defaults back on... That is why
+  // nothing in this plan enforces before this step."
+  //
+  // A reader then enforced eight policies with security defaults still on,
+  // swept all thirty-three steps, and found no warning anywhere. The board read
+  // Completed and the tile said "IAMAI watched it get there." It watched. It
+  // did not say anything.
+  const withDefaultsOn = () => {
+    const f = structuredClone(fixture('large')) as ReturnType<typeof fixture>
+    f.snapshot.config.securityDefaults = { status: 'ok', rows: [{ isEnabled: true }] } as never
+    return f
+  }
+  const foundOn = (f: ReturnType<typeof fixture>): string[] => {
+    const run = runFixture(f)
+    const step = run.steps.find((s) => s.id === 's-prereq-security-defaults')
+    assert.ok(step, 'the security-defaults step left the plan')
+    const ctx: StepVarContext = {
+      snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
+      signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+    }
+    return stepContract(step, ctx).found.map((x) => x.text)
+  }
+
+  const broken = foundOn(withDefaultsOn())
+  const warning = broken.find((t) => /not meant to run together/.test(t))
+  assert.ok(warning, `nothing on the step reports the coexistence: ${JSON.stringify(broken)}`)
+  assert.match(warning, /[0-9]+ Conditional Access policies are enforced/, 'the warning does not count what is already enforced')
+  assert.match(warning, /this is the step that turns them off/, 'the warning does not say where the way out is')
+
+  // Silent where the rule is not broken — every shipped fixture has security
+  // defaults off, and a warning on all of them would be noise, not a warning.
+  assert.equal(foundOn(fixture('large')).some((t) => /not meant to run together/.test(t)), false, 'a tenant with defaults already off is warned anyway')
+})
