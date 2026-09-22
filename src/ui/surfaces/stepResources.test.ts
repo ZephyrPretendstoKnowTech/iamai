@@ -8,8 +8,11 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { manualEvidenceLines, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
-import { emailResource, inspectionResource, namedPortalResource } from './stepResources.ts'
+import { emailResource, inspectionResource, lifecycleResources, namedPortalResource } from './stepResources.ts'
 import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.ts'
+import { BASELINE_COMMIT, implementationPackageFor, memberBindings } from './stepPackage.ts'
+import { memberKeyOf } from '../../roadmap/observation.ts'
+import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 
 /** A shipped tenant's plan and step bodies, with any answers saved on top of its own. */
 function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}) {
@@ -239,4 +242,40 @@ test('the device code record check applies to each workflow moved, so None can s
   const words = JSON.stringify((stepById['block-device-code'] as unknown as { whatToDo: { verification: string[] } }).whatToDo.verification)
   assert.match(words, /For each workflow moved off device code, record the account/)
   assert.doesNotMatch(words, /"Record the account/)
+})
+
+// Nadia D2, the second path. A lifecycle resource fills a format the step's own
+// projection did not draw, and both callers used to label a value IAMAI does not
+// hold with its raw binding key. With one of the guests pair resolved, the Entra
+// channel read "Create the two guest policies separately" and named the second
+// policy ‹policies guests mixed target displayName›; the task list and the AI
+// briefing, which read that channel, repeated it. A name IAMAI does not hold
+// cannot be typed into the portal, and the name and plan tag are how IAMAI
+// recognises the policy afterwards. The channel is not handed over at all.
+test('a lifecycle resource is handed over only when IAMAI holds every value in it', () => {
+  const f = fixture('getiamai')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-guests-mfa') as Step
+  const pkg = implementationPackageFor({ id: step.id, goalId: step.goalId })!
+  const members = (pkg.meta.baselineAuthority?.members ?? []) as { role: string; memberStableId: string }[]
+  const [create] = step.action.resolution!.policies as PolicyOperation[]
+  // The step as it reads once emergency access and Direction are done (Nadia's
+  // state), resolving the named members of the pair.
+  const resolving = (roles: string[]): Step => ({
+    ...step, status: 'ready', blockers: [],
+    action: { ...step.action, resolution: { ...step.action.resolution!, policies: members.filter((m) => roles.includes(m.role)).map((m) => ({ ...create, memberKey: memberKeyOf(m.memberStableId, 0), body: { ...(create.body as Record<string, unknown>), displayName: `Sample ${m.role}` } })) } },
+  }) as Step
+  const runtime = { satisfied: new Set<string>(), baselineCommit: BASELINE_COMMIT }
+  const entraOf = (s: Step) => lifecycleResources(pkg, 'missing', memberBindings(s, f.snapshot), runtime).find((a) => a.channel === 'entra')
+  // One member's name held, the other's not: no Entra channel, rather than one naming a key.
+  assert.equal(entraOf(resolving(['strong'])), undefined)
+  assert.equal(entraOf(resolving(['mixed'])), undefined)
+  // Both held: the pair's procedure, naming both.
+  const both = entraOf(resolving(['strong', 'mixed']))!.text
+  assert.match(both, /Sample strong/)
+  assert.match(both, /Sample mixed/)
+  // And the page: nothing the step hands over carries a raw stand-in.
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const b = stepBodyOf(resolving(['strong']), ctx)
+  for (const line of [...b.artifacts.map((a) => a.text()), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)]) assert.doesNotMatch(line, /‹policies [^›]+›/)
 })
