@@ -7,6 +7,7 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyImplementation } from './emergencyImplementation.ts'
 import { passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { adminUserIds } from '../../roles.ts'
 import { emergencyTaskText } from './emergencyAccountTasks.ts'
 import { PASSKEY_DEFAULT_MODELS, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 
@@ -25,7 +26,22 @@ function project() {
  * rightly withheld (roadmap/passkeyRestrictions.ts) — which is not what the cases
  * about how the restrictions are worded are about.
  */
+/**
+ * Every administrator also holds Windows Hello for Business. An admin whose only
+ * phishing-resistant method is a passkey the scan cannot judge is locked out by
+ * an allow list, and the list is then withheld (roadmap/passkeyRestrictions.ts);
+ * the cases about how the restrictions are worded start where nobody is.
+ */
+function withAdminsOnWindowsHello(snapshot: TenantSnapshot): void {
+  const admins = new Set([...adminUserIds(snapshot.roles), ...(snapshot.registrationDetails ?? []).filter((r) => r.isAdmin).map((r) => r.id)])
+  for (const id of admins) {
+    const methods = snapshot.authMethods[id]
+    if (Array.isArray(methods) && !methods.some((m) => m.kind === 'windowsHelloForBusiness')) snapshot.authMethods[id] = [...methods, { kind: 'windowsHelloForBusiness' }] as never
+  }
+}
+
 function withFido2(snapshot: TenantSnapshot, current: Record<string, unknown>, extra: Record<string, unknown> = {}): void {
+  withAdminsOnWindowsHello(snapshot)
   const rows = (snapshot.config.authMethodsPolicy?.rows ?? []) as { authenticationMethodConfigurations?: Record<string, unknown>[] }[]
   const others = (rows[0]?.authenticationMethodConfigurations ?? []).filter(c => String(c.id).toLowerCase() !== 'fido2')
   snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ ...(rows[0] ?? {}), authenticationMethodConfigurations: [current, ...others], ...extra }] }
@@ -218,8 +234,8 @@ test('storage: stored "deviceBound,synced" with attestation enforced is no chang
 // what they keep. An allow list stops every passkey it does not name. After the
 // settings were applied the same hedge still said "before applying restrictions".
 
-function onMidflight(change: (snapshot: TenantSnapshot, ids: string[]) => void = () => {}) {
-  const value = structuredClone(fixture('midflight'))
+function onMidflight(change: (snapshot: TenantSnapshot, ids: string[]) => void = () => {}, name: 'midflight' | 'small' | 'mid' = 'midflight') {
+  const value = structuredClone(fixture(name))
   change(value.snapshot, passkeyRestrictionReading(value.snapshot, value.mapping, value.groups).stranded)
   const run = runFixture(value)
   const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
@@ -231,15 +247,16 @@ const task = (p: ReturnType<typeof emergencyPasskeyTasksOf>, id: string) => p.ta
 const RESTRICTION = /Enforce key restrictions|Restrict specific keys|Add AAGUID|Target specific AAGUIDs/
 
 test('passkeys nobody could judge: the step opens on preparing them, names them and says what each keeps', () => {
-  const { projected, reading, upn } = onMidflight()
-  assert.equal(reading.stranded.length, 11, 'the premise: eleven accounts hold passkeys whose model the scan could not read')
-  assert.equal(reading.lockedOut.length, 0, 'the premise: each keeps Microsoft Authenticator')
+  // small: four accounts hold passkeys the scan could not judge, none of them an
+  // administrator, and each keeps Microsoft Authenticator.
+  const { projected, reading, upn } = onMidflight(() => {}, 'small')
+  assert.equal(reading.stranded.length, 4, 'the premise: four accounts hold passkeys whose model the scan could not read')
+  assert.equal(reading.lockedOut.length, 0, 'the premise: each keeps Microsoft Authenticator, and none is an admin')
   assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys', 'the step opens on the Save that stops their passkeys')
   const prepare = task(projected, 'prepare-affected-passkeys')
   assert.equal(prepare.required, true)
   const lead = prepare.steps[0]
-  for (const id of reading.stranded.slice(0, 5)) assert.ok(lead.includes(upn(id)), `${upn(id)} is not named: ${lead}`)
-  assert.match(lead, /and 6 more/)
+  for (const id of reading.stranded) assert.ok(lead.includes(upn(id)), `${upn(id)} is not named: ${lead}`)
   assert.match(lead, /Each keeps Microsoft Authenticator, so none is locked out/)
   assert.doesNotMatch(lead, /could not tell whether/, 'the anonymous hedge is back')
   // Nobody is locked out by it, so the restrictions stay offered: holding them back
@@ -284,6 +301,31 @@ test('once the settings are applied, the passkeys nobody could judge are named, 
   const prepare = task(projected, 'prepare-affected-passkeys').steps
   assert.equal(prepare.some(line => /before applying restrictions/.test(line)), false, prepare.join('\n'))
   assert.match(prepare[0], /The passkey settings are applied/)
-  assert.match(prepare[0], /sign in once with their passkey/)
-  assert.notEqual(projected.recommendedTaskId, 'prepare-affected-passkeys', 'nothing is waiting on preparing them any more')
+  assert.match(prepare[0], /sign in (once )?with their passkey/)
+  // An admin among them with no other phishing-resistant way in is told to check now, not that they keep something.
+  if (reading.lockedOut.length > 0) assert.doesNotMatch(prepare[0], /each keeps/)
+  // Nothing waits on preparing them any more — unless one may have lost their way
+  // in, and then checking them is the first thing the step asks.
+  if (reading.lockedOut.length === 0) assert.notEqual(projected.recommendedTaskId, 'prepare-affected-passkeys', 'nothing is waiting on preparing them any more')
+  else assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys', 'an account that may have lost its way in is not the first thing checked')
+})
+
+// An administrator is held to more. The admin policy asks for a
+// phishing-resistant sign-in, and push does not satisfy it where that policy is
+// enforced: "Each keeps Microsoft Authenticator, so none is locked out" was said
+// over five admins on mid whose only phishing-resistant method was the passkey
+// nobody could judge, above the allow list that could stop it.
+test('an administrator whose only phishing-resistant method is an unjudged passkey is locked out by the list, and it is withheld', () => {
+  const { projected, reading } = onMidflight(() => {}, 'mid')
+  const value = fixture('mid')
+  const admins = new Set(value.snapshot.registrationDetails.filter((r) => r.isAdmin).map((r) => r.id.toLowerCase()))
+  const lockedAdmins = reading.lockedOut.filter((id) => admins.has(id.toLowerCase()))
+  assert.ok(lockedAdmins.length > 0, 'the premise: some admin keeps only push beside an unjudged passkey')
+  for (const id of lockedAdmins) {
+    const kinds = (value.snapshot.authMethods[id] as { kind: string }[]).map((m) => m.kind)
+    assert.ok(kinds.includes('microsoftAuthenticator'), `${id}: the premise is an admin who keeps push`)
+  }
+  const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
+  assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
+  assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
 })

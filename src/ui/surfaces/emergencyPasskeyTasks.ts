@@ -256,7 +256,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; withheld: string; withheldTask: string; keptMany: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
@@ -275,6 +275,11 @@ function namedAccounts(ids: readonly string[], ctx: StepVarContext): string {
  * (Marcus D8).
  */
 export function strandedSentence(r: PasskeyRestrictionReading, ctx: StepVarContext, beforeChange: boolean): string {
+  // Before the change, an account the list would lock out withholds it. After it
+  // — the tenant applied the restrictions — "stay off for now" is not true, and
+  // "each keeps …" is not true of an account with no other confirmed way in: the
+  // step says to check each one now.
+  if (r.lockedOut.length > 0 && !beforeChange) return fillText(PR().strandedAfterLocked, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx) })
   if (r.lockedOut.length > 0) return fillText(PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
   const methods = [...new Set(r.keeps.map(k => methodName(k.method === 'phone' ? 'mobilephone' : k.method)))]
   const kept = methods.length === 1 ? methods[0] : fillText(PR().keptMany, { methods: list(methods) })
