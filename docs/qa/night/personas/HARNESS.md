@@ -183,10 +183,13 @@ finding that rests on one of them is the harness's until it is re-run.
 ## Rules
 
 - This directory is gitignored except the harness core — `harness.ts`, this
-  file, `r3-tenants.ts` and `r3-journey.ts` — which is tracked (.gitignore
-  says why). Scripts, probes and round reports stay untracked. Nothing here
-  ships, and the tracked files are not typechecked by `npm run verify`; run
-  `npx tsc --noEmit` over them yourself after changing one.
+  file, `r3-tenants.ts`, `r3-journey.ts` and the `tsconfig.json` that
+  typechecks them — which is tracked (.gitignore says why). Scripts, probes
+  and round reports stay untracked. Nothing here ships, and `npm run verify`
+  does not typecheck the core: after changing one of its files, run
+  `npx tsc -p docs/qa/night/personas` from the repository root. (Plain
+  `npx tsc --noEmit` checks `src/` and `scripts/` and passes whatever the
+  harness holds; naming a file on the command line stops with TS5112.)
 - Quote what the product renders. `render()` reads the same `stepBodyOf` the
   screen does.
 - Before reporting a defect, check it is not the harness. The last run reported

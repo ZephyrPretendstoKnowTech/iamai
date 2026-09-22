@@ -15,6 +15,9 @@ docs/qa/night/personas/*
 !docs/qa/night/personas/harness.ts
 !docs/qa/night/personas/r3-tenants.ts
 !docs/qa/night/personas/r3-journey.ts
+# What typechecks the four above (npx tsc -p docs/qa/night/personas): the
+# project's typecheck covers src/ and scripts/ only.
+!docs/qa/night/personas/tsconfig.json
 
 fixtures/private/
 # The overnight walk harness output (prompt 53 Unit 0): captures and screenshots, never committed.
