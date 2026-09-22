@@ -168,3 +168,17 @@ test('the create prepares and publishes the context before the policy that targe
   assert.deepEqual(runs, ['PrepareContext', 'Create'])
   assert.match(ps, /-Mode 'PrepareContext' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
 })
+
+// R4-18, secondary. On a plan whose PIM policy is the goal's own template
+// (built-in MFA, so no strength resolved for the package's strength grant), the
+// planning preview's settings read "Grant → Require authentication strength:
+// Multifactor authentication": a strength IAMAI did not resolve, named as
+// Microsoft's built-in one, beside a procedure asking for "IAMAI-resolved
+// target strength". The preview now keeps the marker that says it is unresolved.
+test('the preview names no strength IAMAI did not resolve', () => {
+  const { body, ctx, step } = pimOn(withFoundationSettled(structuredClone(fixture('mid'))))
+  assert.equal(packageBindings(step, ctx, body.contract)['authStrength.target.id'], undefined, 'the premise: the strength is unresolved here')
+  const portal = channelText(body, 'portal')
+  assert.match(portal, /Grant → Require authentication strength: ‹authentication strength›/)
+  assert.doesNotMatch(portal, /Multifactor authentication/)
+})

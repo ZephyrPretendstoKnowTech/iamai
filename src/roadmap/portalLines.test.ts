@@ -181,3 +181,22 @@ test('correction instructions retain location and device conditions from the sub
   assert.ok(lines.some(line=>line.includes('marked as compliant')))
   assert.ok(!lines.some(line=>line.startsWith('Users →')||line.startsWith('Enable policy:')),'fields outside this correction are not instructed')
 })
+
+// R4-18 (Marcus D9). A strength nothing names was written "Require
+// authentication strength: Multifactor authentication" — the display name of
+// Microsoft's built-in strength (…0002), a different and weaker object than the
+// one the request sends. The PIM step's settings said it over a strength IAMAI
+// had not resolved while the baseline asks for its own custom one. The line
+// names the reference the request carries instead: the id, or a preview's marker.
+test('a strength nothing names is written by its own reference, never as the built-in Multifactor authentication', () => {
+  const body = (id: string) => ({ id: null, displayName: 'Activation reauthentication', placeholders: {}, conditions: { users: { includeUsers: ['All'] }, applications: { includeAuthenticationContextClassReferences: ['c1'] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id } }, sessionControls: null }) as unknown as Pol
+  const unnamed = { ...contextFor(body('x')), strengthName: null }
+  const custom = '7a1c2e94-3b5d-4f60-8a2b-9c4d1e6f0a73'
+  const lines = portalLines(policyFacts(body(custom), EMPTY), unnamed)
+  assert.ok(lines.includes(`Grant → Require authentication strength: ${custom}`), lines.join('\n'))
+  const preview = portalLines(policyFacts(body('‹authentication strength›'), EMPTY), unnamed)
+  assert.ok(preview.includes('Grant → Require authentication strength: ‹authentication strength›'), preview.join('\n'))
+  assert.ok(![...lines, ...preview].some((l) => /Multifactor authentication/.test(l)))
+  // A strength the context names is still named.
+  assert.ok(portalLines(policyFacts(body(custom), EMPTY), { ...unnamed, strengthName: 'Modern MFA + TAP' }).includes('Grant → Require authentication strength: Modern MFA + TAP'))
+})

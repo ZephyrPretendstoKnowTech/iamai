@@ -266,7 +266,15 @@ function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride)
   const controls = new Set([...f.grant.controls].map(lc))
   if (controls.has('block')) return 'Grant → Block access'
   const reqs: string[] = []
-  if (f.grant.strengthId) reqs.push(`Require authentication strength: ${ctx.strengthName ?? 'Multifactor authentication'}`)
+  // A strength nothing names is written by the reference the request carries —
+  // its id, or a planning preview's ‹…› marker for one still to resolve — and
+  // never by a name. The fallback here was "Multifactor authentication", which
+  // is not a generic phrase: it is the display name of Microsoft's built-in
+  // strength (…0002), a different and weaker object than the one the request
+  // sends. The PIM step's settings named it over a preview whose strength IAMAI
+  // had not resolved, while the baseline asks for its own custom strength
+  // (R4-18); a reader choosing it would weaken the grant.
+  if (f.grant.strengthId) reqs.push(`Require authentication strength: ${ctx.strengthName ?? f.grant.strengthId}`)
   else if (controls.has('mfa')) reqs.push('Require multifactor authentication')
   for (const c of ['compliantdevice', 'domainjoineddevice', 'compliantapplication', 'passwordchange', 'approvedapplication'])
     if (controls.has(c)) reqs.push(GRANT_LABEL[c])

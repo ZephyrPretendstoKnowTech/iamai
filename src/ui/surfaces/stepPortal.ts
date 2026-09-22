@@ -75,9 +75,12 @@ export type PortalNames = {
 
 /**
  * What this tenant calls an authentication strength (roadmap/operations.ts
- * strengthNameIn, the one lookup the engine's readiness words read too). Null
- * where nothing in the tenant describes it — better a generic instruction than
- * one naming a different object.
+ * strengthNameIn, the one lookup the engine's readiness words read too): its
+ * own row for it, then the name the person who confirmed the mapping picked it
+ * under, then Microsoft's own name for a built-in one. Null where nothing in
+ * the tenant describes it: the line then names the strength by the reference
+ * its request carries (roadmap/portalLines.ts grantLine), never by a name for a
+ * different object.
  */
 export function strengthNameOf(id: string, ctx: Pick<StepVarContext, 'snapshot' | 'mapping'>): string | null {
   return strengthNameIn(id, ctx.snapshot, ctx.mapping)
@@ -107,9 +110,11 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? oneLine(p.displayName) : names.policyName
   // The strength the operation's own body names. A body that names one and
   // carries no friendly name for it — a confirmed mapping to a tenant object the
-  // scan has no row for — falls back to the generic phrase, never to the
-  // baseline author's name for a different object and never to a raw id. The
-  // goal's own name stands in only where the body names no strength at all.
+  // scan has no row for, or a preview's strength still to resolve — is named by
+  // that reference (portalLines.ts grantLine), never by the baseline author's
+  // name for a different object and never by "Multifactor authentication", which
+  // is the built-in strength's name and not a generic phrase (R4-18). The goal's
+  // own name stands in only where the body names no strength at all.
   const strength = (p.grantControls as { authenticationStrength?: { id?: unknown } } | null | undefined)?.authenticationStrength
   const strengthId = typeof strength?.id === 'string' ? strength.id : null
   const strengthName = strength ? (strengthId ? (names.strengthNameFor?.(strengthId) ?? null) : null) : (names.strengthName ?? null)
