@@ -314,7 +314,10 @@ test('R4-41: people who registered only methods the tenant does not allow are co
   assert.deepEqual(reading.offIds, ['u-2'], 'a phone the tenant switched off, told apart from nothing registered and from a key not on record')
   const line = methodReadiness('mfa', reading).lines[0]
   assert.match(line, /^1 of 4 people this step's policies include has a registered method those policies accept and this tenant lets them use\. /, line)
-  assert.match(line, /\. 1 of the 3 people without one has registered only methods this tenant's Authentication methods policy does not let them use\.$/, line)
+  // The sentence states the counterfactual it counts (the R4-41 review below):
+  // it said "has registered only methods ... does not let them use", which is
+  // true of people the step's own policy refuses as well.
+  assert.match(line, /\. 1 of the 3 people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered\.$/, line)
   assert.doesNotMatch(line, /the policies allow/, 'the line names the Conditional Access policy as what stopped them')
 
   // Marcus's steps required Microsoft's built-in MFA strength: the same people, the same words.
@@ -323,7 +326,7 @@ test('R4-41: people who registered only methods the tenant does not allow are co
 
   // Where every person it did not count is one of them, it says so without "1 of the 1".
   const two = methodPreparation([requireMfa], ['u-1', 'u-2'], snapshot)
-  assert.equal(methodReadiness('mfa', two).lines[0].split('. ')[1], "The 1 person without one has registered only methods this tenant's Authentication methods policy does not let them use.")
+  assert.equal(methodReadiness('mfa', two).lines[0].split('. ')[1], "The 1 person without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.")
 
   // A key on record that the passkey settings exclude is the tenant's doing.
   snapshot.authMethods['u-4'] = [{ kind: 'fido2', aaGuid: 'key' }]
@@ -336,7 +339,48 @@ test('R4-41: people who registered only methods the tenant does not allow are co
   methods.policyMigrationState = 'migrationInProgress'
   const legacy = methodPreparation([requireMfa], ids, snapshot)
   assert.deepEqual(legacy.offIds, [])
-  assert.doesNotMatch(methodReadiness('mfa', legacy).lines[0], /does not let them use\./)
+  assert.doesNotMatch(methodReadiness('mfa', legacy).lines[0], /Authentication methods policy/)
+})
+
+// R4-41, the review of the fix above. On the phishing-resistant administrator
+// step of a tenant that switches text and voice off, the tile read "5 of the 48
+// people without one have registered only methods this tenant's Authentication
+// methods policy does not let them use". All five held only a phone. A
+// phishing-resistant strength refuses a phone whatever the methods policy says:
+// the sentence named the wrong obstacle, and the one change it invites — text
+// back on for administrators — weakens the tenant and counts nobody. offIds
+// counted everyone whose methods the methods policy refuses, and never asked
+// whether the step's own policy would take those methods if it did not.
+test('R4-41: the methods policy is named only where the policies that refused a person would accept what they registered', () => {
+  const { snapshot } = setup()
+  const methods = snapshot.config.authMethodsPolicy.rows[0] as any
+  methods.policyMigrationState = 'migrationComplete'
+  methods.authenticationMethodConfigurations.push(
+    { id: 'Sms', state: 'disabled', includeTargets: [], excludeTargets: [] },
+    { id: 'Voice', state: 'disabled', includeTargets: [], excludeTargets: [] },
+  )
+  // u-1 and u-2 hold a phone and nothing else; u-3 a passkey with its key on
+  // record, which the passkey settings exclude.
+  const shape: Record<string, string[]> = { 'u-1': ['mobilePhone'], 'u-2': ['mobilePhone'], 'u-3': ['fido2SecurityKey'] }
+  for (const r of snapshot.registrationDetails) if (shape[r.id]) Object.assign(r, { methodsRegistered: shape[r.id], isMfaCapable: false, isMfaRegistered: false })
+  snapshot.authMethods['u-3'] = [{ kind: 'fido2', aaGuid: 'key' }]
+  methods.authenticationMethodConfigurations[1].excludeTargets = [{ id: 'all_users' }]
+  const policy = (users: string[], grantControls: Record<string, unknown>) => effectOf({ state: 'enabled', conditions: { users: { includeUsers: users }, applications: { includeApplications: ['All'] } }, grantControls })
+  const phishingResistant = (users: string[]) => policy(users, { operator: 'OR', authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } })
+
+  const admins = methodPreparation([phishingResistant(['u-1', 'u-3'])], ['u-1', 'u-3'], snapshot)
+  assert.deepEqual(admins.readyIds, [], 'the premise: neither is ready')
+  assert.deepEqual(admins.offIds, ['u-3'], 'the strength refuses a phone either way; only the passkey is held back by the methods policy alone')
+  assert.match(methodReadiness('admin', admins).lines[0], /\. 1 of the 2 people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered\.$/)
+
+  const phoneOnly = methodPreparation([phishingResistant(['u-1'])], ['u-1'], snapshot)
+  assert.deepEqual(phoneOnly.offIds, [], 'a phone-only administrator on a phishing-resistant step')
+  assert.doesNotMatch(methodReadiness('admin', phoneOnly).lines[0], /Authentication methods policy/, 'no sentence that invites switching text back on for administrators')
+
+  // One step, two policies: Require MFA for both, the strength for u-1 as well.
+  // Text back on would count u-2 and not u-1, whom the strength still refuses.
+  const both = methodPreparation([policy(['u-1', 'u-2'], { operator: 'OR', builtInControls: ['mfa'] }), phishingResistant(['u-1'])], ['u-1', 'u-2'], snapshot)
+  assert.deepEqual(both.offIds, ['u-2'])
 })
 
 test('R4-41: on a generated plan, the gate names the people holding only a phone the tenant switched off, the same on every step reading them', () => {
@@ -354,9 +398,26 @@ test('R4-41: on a generated plan, the gate names the people holding only a phone
   const short = prep.ids.length - prep.readyIds.length - prep.unknownIds.length
   assert.ok(off.length < short, 'the premise: some of the people not counted registered nothing')
   const line = step.readiness.lines[0]
-  assert.ok(line.includes(`. ${off.length} of the ${short} people without one have registered only methods this tenant's Authentication methods policy does not let them use.`), line)
+  // The sentence states the counterfactual it counts (the R4-41 review test above).
+  assert.ok(line.includes(`. ${off.length} of the ${short} people without one would be counted if this tenant's Authentication methods policy allowed the methods they registered.`), line)
   // Another step over the same people reads the same people the same way (one reading per person per scan).
   const sibling = run.steps.find((s) => s.id === 's-goal-device-registration-mfa')!
   assert.deepEqual(sibling.methodPreparation!.ids, prep.ids, 'the premise: the same people')
   assert.deepEqual(sibling.methodPreparation!.offIds, prep.offIds)
+
+  // The review: the administrator step asks for the phishing-resistant strength,
+  // which refuses a phone whatever the methods policy says. It named the
+  // phone-only administrators as held back by the methods policy.
+  const admins = run.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  const adminPrep = admins.methodPreparation!
+  const phoneAdmins = adminPrep.ids.filter(id => phoneOnly.has(id))
+  assert.ok(phoneAdmins.length > 0 && phoneAdmins.every(id => !adminPrep.readyIds.includes(id)), 'the premise: administrators hold only a phone, and are not ready')
+  assert.deepEqual(adminPrep.offIds ?? [], [])
+  assert.doesNotMatch(admins.readiness.lines[0], /Authentication methods policy/, admins.readiness.lines[0])
+  // The tenant's own MFA-for-all-users policies sit beside its phishing-resistant
+  // administrator policies, so text back on would count everyone on that step but them.
+  const everyone = run.steps.find((s) => s.id === 's-goal-mfa-all-users')!.methodPreparation!
+  assert.ok(phoneAdmins.every(id => everyone.ids.includes(id)), 'the premise: the same administrators are on the all-users step')
+  assert.deepEqual((everyone.offIds ?? []).filter(id => phoneAdmins.includes(id)), [])
+  assert.deepEqual(everyone.offIds, everyone.ids.filter(id => phoneOnly.has(id) && !phoneAdmins.includes(id)))
 })
