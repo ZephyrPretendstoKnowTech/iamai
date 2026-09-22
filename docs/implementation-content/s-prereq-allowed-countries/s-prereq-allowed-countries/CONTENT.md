@@ -3,6 +3,7 @@
 2. Name it **{{location.target.displayName}}**.
 3. Use **Determine location by IP address**. Entra resolves the sign-in's IPv4 or IPv6 address to a country using a mapping table Microsoft updates periodically. The other option, **Determine location by GPS coordinates**, asks each person's Microsoft Authenticator app for a location every hour, and someone who does not share it can be blocked.
 4. Select these Work Countries: **{{location.target.countryCodes}}**.
+5. The scan saw sign-ins from **{{location.seen.unlisted}}**, which that list leaves out. Add them only if those sign-ins are expected; leaving them out is what blocks them. [omit this line when unavailable]
 5. Leave **Include unknown countries/regions** off, so an address that maps to no country stays outside this list.
 6. There is no trusted mark on a countries location; trust belongs to the IP ranges location Define the Trusted Network creates.
 7. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.

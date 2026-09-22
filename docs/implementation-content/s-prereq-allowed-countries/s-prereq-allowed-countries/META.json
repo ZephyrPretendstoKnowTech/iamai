@@ -56,7 +56,8 @@
     "location.current.includeUnknown",
     "evidence.signInCountries",
     "decision.travelMode",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "location.seen.unlisted"
   ],
   "projection": {
     "needsDecision": {

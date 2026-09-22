@@ -1305,7 +1305,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 4,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
@@ -3601,6 +3601,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.seen.unlisted",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "location.syncServer.displayName",
@@ -6022,14 +6034,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 936,
-    "uniqueBindings": 261,
+    "uniqueBindings": 262,
     "bindingsRequiredByAtLeastOneProjection": 87,
-    "bindingsOptionalInAtLeastOnePackage": 178,
+    "bindingsOptionalInAtLeastOnePackage": 179,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 219,
+    "bindingDefinitionsPendingHolisticReview": 220,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 219,
+    "knownIAMAIInputUnreviewed": 220,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

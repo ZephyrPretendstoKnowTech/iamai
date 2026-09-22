@@ -997,7 +997,12 @@ const ctyIncludesOperator: ValidationRule = {
     const seen = [...new Set(admins.flatMap((id) => ctx.snapshot.signInEvidence[id]?.countries ?? []))]
     if (seen.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const missing = seen.filter((c) => !ctx.allowedCountries.includes(c))
-    return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing))
+    // How many admins, not "admins": on a 51-admin tenant exactly one had
+    // signed in from the country this names, and the plural read as a pattern
+    // rather than one person. The reader who counts is the reader this sentence
+    // is for.
+    const who = admins.filter((id) => (ctx.snapshot.signInEvidence[id]?.countries ?? []).some((c) => missing.includes(c))).length
+    return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing, who))
   },
 }
 
