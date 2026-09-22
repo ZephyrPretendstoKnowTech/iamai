@@ -48,7 +48,9 @@ import { tenant, plan, rescan, observations, deploy, days,
 - `settleFoundations` = emergency access + passkeys. `settleAll` = those plus
   the Direction answers.
 - `enrolMfa(t)` — the team registers a method. The one action that moves the MFA
-  readiness gate.
+  readiness gate. Everyone active holding no method the tenant allows (as
+  `methodAvailability` reads it) registers a ready person's method; someone
+  whose only methods the tenant turned off adds it beside them.
 - `days(t, n, {failures})` — n days pass: the clock moves, the scan's collected
   window moves with it, and everyone a report-only policy covers signs in during
   it. `failures` seeds sign-ins the policy would have stopped.
@@ -148,6 +150,13 @@ finding that rests on one of them is the harness's until it is re-run.
   near midnight moved a day. `plan`, `rescan`, `lanes`, `render`,
   `stepView` and `ctxOf` now set the tenant's zone first. Dates quoted by
   round-4 personas were in the machine zone (R4-55's note, r4-sam-05).
+- **`enrolMfa` never enrolled people whose only method is turned off.** It
+  skipped anyone with any registered method, so a person holding only a phone
+  number, in a tenant with text and voice disabled, never registered the method
+  the campaign asks for. On Sam's tenant that is 669 people, and the readiness
+  gate stopped at 86% however often it ran (R4-41 — the number was right; the
+  ceiling was the harness). It now enrols them, by the product's own reading of
+  which methods the tenant allows.
 
 ## Rules
 

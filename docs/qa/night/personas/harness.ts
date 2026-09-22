@@ -30,6 +30,7 @@ import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
 import { contentStepFor, contentTitle } from '../../../../src/content/stepTitle.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
+import { methodAvailability } from '../../../../src/roadmap/methodAvailability.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
 import { setDisplayTimeZone } from '../../../../src/copy/dates.ts'
@@ -649,46 +650,63 @@ export function days(t: Tenant, n: number, opts: { signIns?: boolean; failures?:
 }
 
 /**
- * The team registers a method: everyone whose authentication methods the scan
- * could not read gets the same shape as the people it could. This is what
- * Prepare Your Team for MFA asks for, and it is the ONE action that moves the
- * MFA readiness gate every policy with a method requirement waits on.
+ * The team registers a method: what Prepare Your Team for MFA asks for, and the
+ * ONE action that moves the MFA readiness gate every policy with a method
+ * requirement waits on.
  *
- * The shape is copied from a person this tenant already reads as ready, so
- * nothing here invents a method the product would not accept.
- */
-/**
- * Everybody active registers the method somebody else already has.
+ * Everybody active who holds no method this tenant allows registers the one a
+ * person it already reads as ready holds — copied from that person, so nothing
+ * here invents a method the product would not accept. "Allows" is the product's
+ * own reading (roadmap/methodAvailability.ts, the one methodReadiness.ts uses):
+ *  - a person the scan could not read, or with nothing registered, gets the
+ *    donor's methods;
+ *  - a person whose every registered method the tenant has turned off (a phone
+ *    number where text and voice are disabled) ADDS the donor's methods beside
+ *    their own, which is what the campaign's "Text or call only: register the
+ *    new method and test it first" asks.
+ * A person holding a method whose availability the product cannot read is left
+ * alone: the harness does not know more than the scan does.
  *
- * This set `isMfaCapable` and `isMfaRegistered` and left `methodsRegistered`
- * empty, and the product reads `methodsRegistered` to decide whether a person
- * holds a method a policy would accept (roadmap/methodReadiness.ts: an empty
- * list is answered 'no', whatever the flags say). So the readiness number could
- * not move, however many times this ran — and a persona enrolled everybody,
- * scanned nine times over three weeks, read the identical sentence every time
- * and filed a severity-5 product defect that was this function. The copy now
- * carries the registration row the methods imply.
+ * It used to skip anyone with any method at all, so the phone-only people on
+ * Sam's tenant (669 of them, text and voice disabled) never enrolled, the gate
+ * stopped at 86% however often it ran, and a persona filed the ceiling as a
+ * product defect (R4-41). Before that it set the flags and left
+ * `methodsRegistered` empty, which the product reads as 'no' — a severity-5
+ * defect that was this function.
+ *
+ * The donor is never an emergency account: its hardware key is not what the
+ * team registers.
  */
 export function enrolMfa(t: Tenant): Tenant {
   const next = structuredClone(t) as Tenant
-  const active = new Set(activePeopleIds(next.snapshot))
-  const donor = [...active].map((id) => id).find((id) => {
-    const m = next.snapshot.authMethods[id]
-    const row = next.snapshot.registrationDetails.find((r) => r.id === id)
-    return Array.isArray(m) && m.length > 0 && row !== undefined && row.methodsRegistered.length > 0
+  const s = next.snapshot
+  const mapping = mappingOf(next)
+  const available = methodAvailability(s)
+  const registration = new Map(s.registrationDetails.map((r) => [r.id, r]))
+  const verdicts = (id: string): ('yes' | 'no' | 'unknown')[] => (registration.get(id)?.methodsRegistered ?? []).map((m) => available.usable(id, m))
+  const active = new Set(activePeopleIds(s))
+  const emergency = new Set(mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
+  const donor = [...active].find((id) => {
+    if (emergency.has(id.toLowerCase())) return false
+    const m = s.authMethods[id]
+    const v = verdicts(id)
+    return Array.isArray(m) && m.length > 0 && v.length > 0 && v.every((x) => x === 'yes')
   })
   if (donor === undefined) return next
-  const readable = next.snapshot.authMethods[donor]
-  const donorRow = next.snapshot.registrationDetails.find((r) => r.id === donor)!
+  const donorMethods = s.authMethods[donor] as unknown[]
+  const donorRow = registration.get(donor)!
   for (const id of active) {
-    const m = next.snapshot.authMethods[id]
-    if (Array.isArray(m) && m.length > 0) continue
-    next.snapshot.authMethods[id] = structuredClone(readable) as never
-    const at = next.snapshot.registrationDetails.find((r) => r.id === id)
+    const m = s.authMethods[id]
+    const v = verdicts(id)
+    const nothing = !Array.isArray(m) || m.length === 0
+    const turnedOff = !nothing && v.length > 0 && v.every((x) => x === 'no')
+    if (!nothing && !turnedOff) continue
+    s.authMethods[id] = (turnedOff ? [...(m as unknown[]), ...structuredClone(donorMethods)] : structuredClone(donorMethods)) as never
+    const at = registration.get(id)
     if (at) {
       at.isMfaCapable = true
       at.isMfaRegistered = true
-      at.methodsRegistered = [...donorRow.methodsRegistered]
+      at.methodsRegistered = turnedOff ? [...new Set([...at.methodsRegistered, ...donorRow.methodsRegistered])] : [...donorRow.methodsRegistered]
       at.isPasswordlessCapable = donorRow.isPasswordlessCapable
       at.defaultMfaMethod = donorRow.defaultMfaMethod
       at.userPreferredMethodForSecondaryAuthentication = donorRow.userPreferredMethodForSecondaryAuthentication
