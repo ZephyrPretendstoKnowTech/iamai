@@ -2069,7 +2069,15 @@ function unsavedTiles(step: Step): ReadinessTile[] {
   // A shorter tile label where the input's own is too long for a tile (content review S5). The
   // input's label stays its answer's key and the key of the tile.
   const labelOf = (label: string): string => (d?.label === label && typeof d.tileLabel === 'string' ? d.tileLabel : label)
-  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label: labelOf(label), tone: 'warn', value: valueOf(label), note: ask(label) }))
+  // A question that moved to Direction is answered on the Direction step that
+  // asks it (roadmap/direction.ts ANSWERED_IN), and the tile links there, as a
+  // Direction wait's tile does. It was the one card on the step with nowhere to
+  // go: "Mail-sending devices · Not confirmed" on Block Legacy Authentication,
+  // with the engine already knowing Confirm What You Use asks it (R4-43).
+  const answeredIn = directionStepsAnswering(step.id)
+  const where = answeredIn.length === 1 && isDirectionStep(answeredIn[0]) ? answeredIn[0] : null
+  const link = where !== null ? stepLink(where, directionTitleOf(where)) : undefined
+  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label: labelOf(label), tone: 'warn', value: valueOf(label), note: ask(label), ...(link ? { link } : {}) }))
 }
 
 /** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */
