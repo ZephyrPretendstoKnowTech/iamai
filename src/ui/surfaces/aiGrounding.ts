@@ -158,6 +158,15 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     tenant ? `${W.tenant}: ${tenant}` : null,
     typeof i.ctx.snapshot.asOf === 'string' && i.ctx.snapshot.asOf !== '' ? `${W.scanned}: ${absoluteDate(i.ctx.snapshot.asOf)}` : null,
     view.who === null ? null : `${WHO_HEADING()}: ${view.who}`,
+    // Why an observation cannot complete, where the step knows it
+    // (roadmap/evidence.ts). This brief carries the enable preconditions —
+    // "only when all of this is true now: the required report-only period is
+    // complete, with no failures on this policy in the sign-in records" — and
+    // on a tenant whose records could not be read that reads as SATISFIED,
+    // because no failures are listed when there is nothing to list. It is the
+    // one line in the product that can walk somebody through an enforcement
+    // believing it was observed.
+    ...i.step.evidence.lines,
   ]
   const who = (i.cs.who ?? {}) as Record<string, unknown>
   const { inline, held } = whoBlocks(who, i.ex as never)
