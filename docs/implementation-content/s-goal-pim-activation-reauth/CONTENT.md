@@ -132,7 +132,7 @@ $ContextDescription = 'Fresh strong authentication for privileged role activatio
 function Connect-Scopes([string[]] $Scopes) {
   Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
   $ctx=Get-MgContext
-  $missing = if ($ctx) { @($Scopes | Where-Object { $_ -notin @($ctx.Scopes) }) } else { $Scopes }
+  $missing = @(if ($ctx) { $Scopes | Where-Object { $_ -notin @($ctx.Scopes) } } else { $Scopes })
   if (-not $ctx -or $missing.Count -gt 0) { Connect-MgGraph -Scopes $Scopes -NoWelcome }
 }
 function Assert-Inputs {
@@ -218,7 +218,7 @@ switch ($Mode) {
     if ([string]::IsNullOrWhiteSpace($PolicyDisplayName)) { throw 'PolicyDisplayName required.' }
     Assert-ContextCanonical (Get-Context)
     $escaped=$PolicyDisplayName.Replace("'","''"); $filter=[uri]::EscapeDataString("displayName eq '$escaped'")
-    if (@((Invoke-MgGraphRequest -Method GET -Uri "$CaBase?`$filter=$filter").value).Count -gt 0) { throw 'Exact display-name collision. Rescan IAMAI; do not create a duplicate.' }
+    if (@((Invoke-MgGraphRequest -Method GET -Uri "${CaBase}?`$filter=$filter").value).Count -gt 0) { throw 'Exact display-name collision. Rescan IAMAI; do not create a duplicate.' }
     $body=@{displayName=$PolicyDisplayName;state='enabledForReportingButNotEnforced';conditions=(New-Conditions);grantControls=(New-Grant);sessionControls=(New-Session)}
     $created=Invoke-MgGraphRequest -Method POST -Uri $CaBase -Body ($body | ConvertTo-Json -Depth 20) -ContentType 'application/json'
     if (-not $created.id) { throw 'Graph returned no policy ID.' }
