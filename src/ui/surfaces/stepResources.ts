@@ -10,6 +10,8 @@ import { countryName } from '../../mapping/countries.ts'
 import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 
 /** Where a lifecycle resource would print a value IAMAI does not hold. Never shown: a channel carrying it is dropped. */
 const UNBOUND = ''
@@ -39,7 +41,7 @@ const NO_EMAIL = new Set(['s-prereq-break-glass', 's-prereq-passkey-settings', '
 
 export function resourceChannelAllowed(step: Step, channel: Channel): boolean {
   if (step.id === 's-verify-mfa' && channel === 'json') return false
-  if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAIL[step.id]))) return false
+  if (channel === 'email' && (NO_EMAIL.has(step.id) || (step.id !== 's-verify-mfa' && !EMAILS.steps[step.id]))) return false
   if ((channel === 'ps' || channel === 'json') && NON_MACHINE.has(step.id)) return false
   return true
 }
@@ -74,41 +76,56 @@ export function inspectionResource(step: Step, channel: 'ps' | 'json'): Artifact
   return { id: channel, form: 'code', lines: [], text: () => text, note: channel === 'json' ? 'POST https://graph.microsoft.com/v1.0/$batch · read-only GET requests' : null }
 }
 
-const EMAIL: Record<string, { subject: string; body: string }> = {
-  's-goal-all-users-no-persistence': { subject: 'Changes to Work Browser Sign-ins', body: 'We are updating browser sign-in settings to reduce the risk of work accounts staying signed in on shared or unattended computers. After the change, you may need to sign in again when you reopen your browser. Keep your approved sign-in method available. Save work before closing the browser and always sign out on shared computers. If you encounter repeated prompts or cannot access a work app, contact IT with the app name and the time of the problem.' },
-  's-goal-mfa-all-users': { subject: 'Stronger Sign-in Protection for Your Work Account', body: 'We are strengthening sign-in protection for work accounts. Make sure you have registered an approved authentication method at https://aka.ms/mfasetup and can use it to sign in. Contact IT before the change if you need help registering or cannot use the offered methods. We will confirm the rollout date separately.' },
-  's-goal-admin-session': { subject: 'Review Administrator Session Settings', body: 'We are reviewing sign-in session settings for administrator accounts. Test your normal administrative tasks and tell IT about any unexpected prompts or interrupted work so we can coordinate the change.' },
-  's-goal-inforcer-mfa': { subject: 'MFA for Inforcer Access', body: 'We are reviewing MFA protection for Inforcer access. Please confirm your work account has an approved MFA method and contact IT if you need help testing sign-in. Tell IT about any unattended job that uses a person’s account so its access path can be reviewed separately.' },
-  's-ladder-legacy-auth-inventory': { subject: 'Review Older Sign-In Workflows', body: 'Please identify each application, printer or scheduled job that uses an older client or username-and-password protocol. Include the account, actual protocol, owner, normal and infrequent run schedules, supported replacement and a delivery or access test window.' },
-  's-ladder-app-passwords': { subject: 'Coordinate App Password Retirement', body: 'Please identify applications or jobs that use an app password. Arrange a supported replacement and test access with IT before removing the old credential. Confirm the app password has been removed and report any failed workflow so we can finish the change.' },
-  's-prereq-exclusion-group': { subject: 'Review Emergency Exclusions', body: 'Please review the emergency-access group and its membership, and confirm the exclusions on the listed existing policies. Let us know if another approved exception needs to remain.' },
-  's-prereq-service-accounts-group': { subject: 'Confirm Service Account Use', body: 'Please confirm the jobs each listed account runs. Identify temporary mail exceptions separately from other service access the account still needs. We will use the confirmed list to prepare the group and check its policy scope.' },
-  's-prereq-auth-strength': { subject: 'Review Authentication Strength Setup', body: 'Please review the required authentication methods and model restrictions, together with the policies that use this strength. Identify any working method the proposed settings would exclude, and suggest a change window if adjustments are needed.' },
-  's-prereq-allowed-countries': { subject: 'Confirm Work Countries', body: 'Please confirm the countries where people normally work and the recurring travel destinations listed below. Recurring travel is recorded separately from the normal-work access policy. Please send any corrections.' },
-  's-prereq-trusted-location': { subject: 'Confirm Office Networks', body: 'Please confirm which of the listed named networks belong to our offices. If an office is missing, provide its public egress IP range and location name so we can create the named location in Entra. If everyone works remotely, confirm that instead.' },
-  's-prereq-device-plan': { subject: 'Confirm Device Access Requirements', body: 'Please review our proposed phone management, phone app protection and computer management choices below. Identify work apps or devices that need a different arrangement, and confirm who will prepare the required device and app settings.' },
-  's-check-dormant-accounts': { subject: 'Review Inactive Accounts', body: 'Please review the listed accounts and last-known activity. Confirm which accounts are still needed and why, which can be disabled, and which need investigation.' },
-  's-check-separate-admin-accounts': { subject: 'Plan Separate Administrator Access', body: 'Please confirm the ordinary and dedicated administrator accounts for the people listed below. We need to test that each dedicated account can perform the required work before removing administrative access from the ordinary account. Please suggest a handover time.' },
-  's-shared-devices': { subject: 'Test Shared Device Access', body: 'Please review the shared accounts and proposed policy scope below. The device owner needs to test the normal work tasks and sign-in flow before and after the change. Please confirm who will perform the test and report any interruption.' },
-  's-goal-guests-mfa': { subject: 'Upcoming Guest MFA Requirements', body: 'We are strengthening MFA requirements for guest access to our organization. Please review the proposed access change with your team and confirm which guest accounts you use. We will coordinate a test before changing access. If you encounter a sign-in problem, contact [administrator contact] with the affected account and time of the attempt.' },
-  // Carries the folded mail follow-up's ask as well as its own, since both are
-  // now this step's (docs/plans/step-redundancy-analysis.md finding 6).
-  's-goal-block-legacy-auth': { subject: 'Review Older Sign-In and Email Methods', body: 'We are preparing to block older username-and-password sign-in methods. Please identify applications, printers or scanners that still depend on them, and confirm the authentication and TLS capabilities, sender and recipient requirements, and a delivery-test window for each. SMTP with OAuth, connector-based relay and Direct Send use different paths; please provide the actual method your device uses.' },
+/**
+ * The audience emails, in content (pages.app.plan.stepContract.implementation.emails).
+ *
+ * They used to be written here, ending "[administrator contact]" and asking
+ * people to "Contact [support contact]": a bracketed fill-in nobody was told to
+ * fill, in an email the Prepare Your Team step says to send, so it went out as
+ * written (Nadia D10). Every message now asks people to contact IT, as the other
+ * emails always did, and is signed with the plan's email signature (Plan
+ * settings), as Tell your people is.
+ */
+type EmailWords = {
+  subject: string
+  signOff: string
+  steps: Record<string, { subject: string; body: string }>
+  countries: string[]
+  devicePlan: string[]
+  notSelected: string
+  noneSelected: string
+  required: string
+  notRequired: string
+  mfaPreparation: { heading: string | null; subject: string; paragraphs: string[] }[]
+}
+const EMAILS = (app.plan as unknown as { stepContract: { implementation: { emails: EmailWords } } }).stepContract.implementation.emails
+
+/** One message: its subject, its paragraphs, and the plan's signature under them. */
+function message(subject: string, paragraphs: string[], ctx: StepVarContext): string {
+  const signature = fillText(EMAILS.signOff, { signature: ctx.signature }).trim()
+  return [fillText(EMAILS.subject, { subject }), ...paragraphs, ...(signature ? [signature] : [])].join('\n\n')
 }
 
 /** Neutral coordination language stays truthful before and after a change. */
 export function emailResource(step: Step, ctx: StepVarContext, why: string): Artifact {
-  const template = EMAIL[step.id]
+  // s-goal-block-legacy-auth carries the folded mail follow-up's ask as well as
+  // its own, since both are now this step's (docs/plans/step-redundancy-analysis.md finding 6).
+  const template = EMAILS.steps[step.id]
   if (!template) throw new Error(`No audience email defined for ${step.id}`)
-  const countries = step.id === 's-prereq-allowed-countries' ? `\n\nNormal-work countries: ${ctx.mapping.allowedCountries.map(countryName).join(', ') || 'Not selected'}\nRecurring travel destinations: ${travelCountriesOf(ctx.mapping).map(countryName).join(', ') || 'None selected'}` : ''
+  const listed = (lines: string[], ex: Record<string, string>): string => lines.map((l) => fillText(l, ex)).join('\n')
   const device = devicePlanOf(ctx.mapping)
-  const choices = step.id === 's-prereq-device-plan' ? `\n\nPhone Management: ${device?.phonesText ?? 'Not selected'}\nPhone App Protection: ${device?.phoneAppProtection === 'required' ? 'Required' : device?.phoneAppProtection === 'not-required' ? 'Not required' : 'Not selected'}\nComputer Management: ${device?.computersText ?? 'Not selected'}` : ''
-  const text = `Subject: ${template.subject}\n\n${template.body}${countries}${choices}\n\n[administrator contact]`
+  const extra = step.id === 's-prereq-allowed-countries'
+    ? [listed(EMAILS.countries, { countries: ctx.mapping.allowedCountries.map(countryName).join(', ') || EMAILS.notSelected, travel: travelCountriesOf(ctx.mapping).map(countryName).join(', ') || EMAILS.noneSelected })]
+    : step.id === 's-prereq-device-plan'
+      ? [listed(EMAILS.devicePlan, { phones: device?.phonesText ?? EMAILS.notSelected, appProtection: device?.phoneAppProtection === 'required' ? EMAILS.required : device?.phoneAppProtection === 'not-required' ? EMAILS.notRequired : EMAILS.notSelected, computers: device?.computersText ?? EMAILS.notSelected })]
+      : []
+  const text = message(template.subject, [template.body, ...extra], ctx)
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 
+/** The MFA preparation step's three messages (everyone, the admins, the follow-up), each signed. */
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
-  const text = `Subject: Prepare Your Team for MFA\n\nWe are preparing stronger sign-in requirements. Please follow the instructions below to register an approved method and test sign-in. Contact [support contact] if you need help or cannot use the required method.\n\nOpen https://aka.ms/mfasetup, choose Add sign-in method, and register an approved method offered to your account. Follow the setup prompts, then test sign-in using that method.\n\n--- Administrator message ---\nSubject: Prepare Your Administrator Sign-In Method\n\nOpen https://aka.ms/mfasetup with your dedicated administrator account. Register the approved passkey or hardware security key for that account, then complete a test sign-in using it. Contact [support contact] if you need help arranging a test.\n\n--- Follow-up message ---\nSubject: Help Completing Your Sign-In Setup\n\nYour account still needs a suitable registered sign-in method. Open https://aka.ms/mfasetup and complete the approved method setup. Contact [support contact] if you cannot finish so we can arrange hands-on help before the access change.\n\n${ctx.signature}`
+  const text = EMAILS.mfaPreparation.map((m) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, m.paragraphs, ctx)).join('\n\n')
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
 }
 
