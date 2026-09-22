@@ -127,7 +127,7 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     // Or the accounts the allow list would leave without a passkey it allows,
     // named, with what each keeps — or why the restrictions are withheld
     // (roadmap/passkeyRestrictions.ts; Jordan D13). Either way, by name.
-    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|would stop the passkeys on [0-9,]+ accounts?, or IAMAI could not judge them: \*\*|Key restrictions stay off for now\. [0-9,]+ accounts? would be left with no way to sign in — \*\*|The passkey settings are applied\. IAMAI could not judge the passkeys on [0-9,]+ accounts?: \*\*/)
+    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|would stop the passkeys on [0-9,]+ accounts?, or IAMAI could not judge them: \*\*|Key restrictions stay off for now: they would lock out [0-9,]+ accounts? — \*\*|The passkey settings are applied\. IAMAI could not judge the passkeys on [0-9,]+ accounts?: \*\*/)
     // Three readings, not two. "Could not judge" is not "not affected", and
     // saying the second over the first is an unhedged all-clear before a change
     // that enforces attestation and a model allow-list: on one tenant it was

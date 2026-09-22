@@ -268,7 +268,12 @@ test('B.8 an allowed model nobody registered is retained, and a registered model
 
 test('B.9 one resolved target in every channel: the bound request, the Entra walkthrough and AI Info say the same models', () => {
   const staff = '00000000-0000-4000-8000-000000000123'
-  const f = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false, includeTargets: [{ ...everyone, id: staff }], ...allow(HARDWARE) }))
+  const f0 = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false, includeTargets: [{ ...everyone, id: staff }], ...allow(HARDWARE) }))
+  // The staff group's membership read, and nobody in it: a target group whose
+  // membership nobody read leaves every passkey outside it unjudged, and the
+  // emergency accounts hold nothing else, so the allow list is rightly withheld
+  // (roadmap/passkeyRestrictions.ts). This case is about the channels agreeing.
+  const f = { ...f0, groups: new Map([...f0.groups, [staff, { memberIds: [], memberCount: 0, sampled: false }]]) } as unknown as Fixture
   const r = runFixture(f)
   const { step, ctx, bindings } = packageOf(f, r)
   const target = targetOf(passkeyReadingOf(f.snapshot).resolution).target

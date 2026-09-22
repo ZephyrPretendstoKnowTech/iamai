@@ -259,7 +259,10 @@ test('an account the allow list would lock out: the restrictions are not handed 
   assert.match(apply, /Key restrictions are not part of this change yet: 1 account would be locked out/)
   assert.match(apply, /Enforce attestation/, 'attestation only affects registration and stays')
   const lead = task(projected, 'prepare-affected-passkeys').steps[0]
-  assert.match(lead, /Key restrictions stay off for now/)
+  assert.match(lead, /Key restrictions stay off for now: they would lock out 1 account/)
+  // A count of one bends the first verb after it (content/render.ts pluralise):
+  // the first wording read "1 account would be left with no way to signs in".
+  assert.doesNotMatch(lead, /signs in/)
   assert.ok(lead.includes(upn(reading.lockedOut[0])), lead)
   assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys')
   // The Entra channel says the same, not "apply the listed … Allow restrictions".
