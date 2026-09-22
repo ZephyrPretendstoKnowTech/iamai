@@ -284,7 +284,20 @@ test('Direction polish: evidence is content sentences, the eyebrow is a decision
   const steps = stepsOf(f)
   const use = stepOf(steps, DIRECTION_STEP.use)
   // Words from content, never the engine's reason ("no sign-in activity for ...").
-  assert.equal(q(use, 'service:sharepoint').evidence, 'SharePoint and OneDrive sign-ins were seen in the last 30 days.')
+  //
+  // The sentence names the SOURCES and not a window. It said "in the last 30
+  // days" while appSignInSummary and spActivity, the two sources behind it,
+  // carry coveredWindow null on every tenant seen so far — so a reader took a
+  // measured month of watching from a summary that states no period at all.
+  assert.equal(q(use, 'service:sharepoint').evidence, "SharePoint and OneDrive sign-ins appear in the tenant's app sign-in summary or its service-principal activity.")
+  // A service question states no window, because its two sources declare none:
+  // appSignInSummary and spActivity carry coveredWindow null on every tenant.
+  // The questions backed by signInEvidence keep theirs — that source DOES
+  // declare a covered window, so "the last 30 days" is measured there and the
+  // distinction is the whole point.
+  for (const x of use.directionQuestions!.filter((y) => y.key.startsWith('service:'))) {
+    assert.doesNotMatch(x.evidence, /last 30 days/, x.key + ' claims a window its sources do not declare')
+  }
   for (const x of use.directionQuestions!) {
     assert.doesNotMatch(x.evidence, /no sign-in activity|sign-in activity observed|licence present/, x.key)
     assert.match(x.evidence, /^[A-Z0-9].*\.$/, `${x.key} is a capitalised sentence: ${x.evidence}`)
