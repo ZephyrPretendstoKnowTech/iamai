@@ -30,7 +30,9 @@ Set the resolved authentication context to the intended name/description and Pub
 Set Users to All users with only the resolved exclusion groups. Do not scope this activation policy to directory roles as a substitute for the authentication context.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.context","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Target resources to the single IAMAI-resolved authentication context `{{authContext.target.displayName}}` (`{{authContext.target.id}}`). Remove any other application, user-action or authentication-context target.
+Set Target resources to the single authentication context with ID `{{authContext.target.id}}`. Remove any other application, user-action or authentication-context target.
+
+This plan proposed the name `{{authContext.target.displayName}}` for that context. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.strength","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Under Grant, require the IAMAI-resolved baseline authentication strength. Do not substitute generic MFA and do not combine built-in MFA with the authentication-strength grant.
@@ -267,7 +269,8 @@ The dedicated authentication context is missing or not published. This state pre
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -287,7 +290,8 @@ This state creates the dedicated Conditional Access policy in Report-only. PIM r
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -307,7 +311,8 @@ This state corrects the authentication context or the dedicated Conditional Acce
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -331,7 +336,8 @@ The dedicated Conditional Access policy is in Report-only. PIM role settings mus
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -351,7 +357,8 @@ This state turns the dedicated Conditional Access policy On. PIM role settings c
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -371,7 +378,8 @@ The dedicated Conditional Access policy is On. This state updates only the authe
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
@@ -391,7 +399,8 @@ The selected PIM role settings require the context. This state verifies the PIM 
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
-- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}
+- Authentication context ID the policy targets: {{authContext.target.id}}
+- Name this plan proposes for that context (IAMAI does not read authentication contexts): {{authContext.target.displayName}} [omit if unavailable]
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 

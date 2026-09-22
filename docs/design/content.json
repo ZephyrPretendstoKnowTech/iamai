@@ -2089,8 +2089,6 @@
               "unavailable": "Not available in this scan."
             },
             "excludeUsersNone": "none: the resolved target excludes no individual accounts",
-            "$commentAuthContextName": "The name IAMAI proposes for the authentication context a policy step targets (stepPackage.ts packageBindings, bound as authContext.target.displayName beside the context ID the resolved operation names). It is the intended name the package asks the reader to give that context when it creates or updates and publishes it, never a claim about what the tenant calls a context today: IAMAI does not read authentication contexts. R4-18: the ID was never bound, so the create read the context as a sentence describing it.",
-            "authContextName": "Privileged role activation",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",

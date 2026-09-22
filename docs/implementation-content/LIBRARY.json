@@ -756,8 +756,8 @@
         "notLicensed"
       ],
       "correctionModules": 6,
-      "requiredBindings": 8,
-      "optionalBindings": 11,
+      "requiredBindings": 7,
+      "optionalBindings": 12,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 6,
@@ -2061,10 +2061,10 @@
     },
     {
       "binding": "authContext.target.displayName",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-pim-activation-reauth"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-pim-activation-reauth"
       ],
@@ -6035,8 +6035,8 @@
     "packagesWithOpenIssues": 8,
     "contentBlocks": 936,
     "uniqueBindings": 262,
-    "bindingsRequiredByAtLeastOneProjection": 87,
-    "bindingsOptionalInAtLeastOnePackage": 179,
+    "bindingsRequiredByAtLeastOneProjection": 86,
+    "bindingsOptionalInAtLeastOnePackage": 180,
     "bindingDefinitionsCarriedForward": 42,
     "bindingDefinitionsPendingHolisticReview": 220,
     "knownIAMAIInputTrue": 40,

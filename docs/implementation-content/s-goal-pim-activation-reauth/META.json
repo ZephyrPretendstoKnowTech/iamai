@@ -38,11 +38,11 @@
     "sourceAuthenticationStrengthId": "42de22a7-5339-4a58-b560-28565d53b14d",
     "sourceAuthenticationStrengthSemantic": "tenant-resolved baseline authentication strength; source ID is not portable",
     "signInFrequency": "everyTime",
+    "authenticationContextDisplayName": "Privileged role activation",
     "authenticationContextDescription": "Fresh strong authentication for privileged role activation."
   },
   "requiredBindings": [
     "authContext.target.id",
-    "authContext.target.displayName",
     "authStrength.target.id",
     "policy.target.displayName",
     "policy.target.excludeGroups",
@@ -55,6 +55,7 @@
     "tenant.displayName",
     "authStrength.target.displayName",
     "authStrength.target.allowedCombinations",
+    "authContext.target.displayName",
     "authContext.current.id",
     "authContext.current.displayName",
     "authContext.current.isAvailable",
