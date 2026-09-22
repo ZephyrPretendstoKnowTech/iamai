@@ -17,7 +17,7 @@ import { applyProgress } from '../../roadmap/progress.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
-import { implementationOffered, isPreserved } from '../../roadmap/operations.ts'
+import { implementationOffered, isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { operatorExclusionsDecision, exclusionsGroupCandidates } from '../../mapping/safetyChoice.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
@@ -536,4 +536,31 @@ test('a policy IAMAI watched arrive is never also reported as coverage the tenan
     assert.match(src, /watchedArrive\(/, `${where}: does not use the shared predicate`)
     assert.equal(/since === 'observed-change'/.test(src), false, `${where}: re-derives "watched" instead of calling it`)
   }
+})
+
+// "Scan again to rebuild it" over a goal the tenant already delivers.
+//
+// The step's own record names the policy doing it (Step.satisfiedBy), so both
+// halves of the sentence are wrong for this case: there is nothing to rebuild
+// and rescanning changes nothing. A reader scanned, got the identical page,
+// and had no way forward — the step is open for some other reason, and those
+// reasons are on the card already.
+test('a step with nothing to write over existing coverage names the policy, not a rescan', () => {
+  let checked = 0
+  for (const name of ['mid', 'large', 'midflight', 'messy', 'hostile'] as const) {
+    const f = structuredClone(fixture(name))
+    const run = runFixture(f)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+    for (const step of run.steps) {
+      if (unavailableReason(step) !== 'no-operation') continue
+      const by = step.satisfiedBy
+      if (!by || by.policies.length === 0) continue
+      checked++
+      const said = stepContract(step, ctx).milestone.line ?? stepContract(step, ctx).whatToDo.text
+      const policy = by.sufficient ?? by.policies[0]
+      assert.ok(said.includes(policy), `${name}/${step.id}: the policy delivering this is not named: ${said}`)
+      assert.doesNotMatch(said, /again to rebuild it/, `${name}/${step.id}: still asks for a rescan`)
+    }
+  }
+  assert.ok(checked > 0, 'no fixture reaches the case')
 })

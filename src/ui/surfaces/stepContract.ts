@@ -135,6 +135,8 @@ type ContractWords = {
   foundWiderCohort: Record<string, string>
   foundDiffers: string
   foundTaggedDisabled: string
+  /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
+  inventoryNames: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
@@ -501,7 +503,16 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       // portal action.
       const members = step.state.members ?? []
       const allDisabled = members.length > 0 && members.every((m) => m.change?.latest?.state === 'disabled')
-      return fillText(allDisabled ? app.plan.noOperationDisabled : app.plan.noOperation, { tenant })
+      if (allDisabled) return fillText(app.plan.noOperationDisabled, { tenant })
+      // And the other way the same sentence is false: the tenant's own policy
+      // already delivers the goal, and the step's own record names it
+      // (Step.satisfiedBy). There is nothing to rebuild and nothing a rescan
+      // changes; what is holding the step is a prerequisite or an unanswered
+      // question, and both are already on the card.
+      const by = step.satisfiedBy
+      const covered = by && by.policies.length > 0 ? by.sufficient ?? by.policies[0] : null
+      if (covered !== null) return fillText(app.plan.noOperationCovered, { tenant, policy: covered })
+      return fillText(app.plan.noOperation, { tenant })
     }
     case 'manual-correction':
       return fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
@@ -1833,7 +1844,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     const tiles = configuredTiles.filter(t => t.tone !== 'good')
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
-  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, ...c.inventory.names].join('\n'), tone: 'info' } : null
+  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
   const facts = [enforcedReadingTile(step), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
