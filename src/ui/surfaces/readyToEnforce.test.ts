@@ -42,8 +42,10 @@ import assert from 'node:assert/strict'
 // about what a policy does once it can be written at all; whether *this*
 // baseline's unexplained references let it be written is
 // roadmap/sourceIdentity.test.ts, and on the demo it is the true answer today.
-import { allFixtures, curatedFixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { allFixtures, curatedFixture, fixture as shippedFixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { boardWhenOf, laneViewOf } from './planBoard.ts'
+import { laneReadings } from './planLanes.ts'
 
 /**
  * The canonical case with the plan's foundation settled. Until both pinned
@@ -1090,6 +1092,50 @@ test('007.15: no plan anywhere offers an enforcement that is not an update of th
         assert.equal(step.state.lifecycle, 'enforced', `${where}: Enforced without the lifecycle`)
         assert.ok(step.tracking?.enforcedAt, `${where}: Enforced with no instant from the tenant`)
       }
+    }
+  }
+})
+
+// The date beside "ready now".
+//
+// A policy whose evidence was complete said "Enable the reviewed policy,
+// then verify the result." and "ready now: 0 failures in 8 days" with a date
+// eighteen days out under When. Every part is correct — the evidence is
+// earned, and the plan places the change after the notice the people
+// affected are owed — and together they read as the step contradicting
+// itself. The milestone now says which wait is left.
+test('a policy ready to enforce with a later date says the wait is the notice, not the evidence', () => {
+  const run = runFixture(withFoundationSettled(structuredClone(shippedFixture('demo-week2'))))
+  const step = run.steps.find((s) => s.id === 's-goal-token-protection')
+  assert.ok(step, 'the premise: demo-week2 plans the token-protection step')
+  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the premise: the evidence is earned')
+  const at = step.events?.enforce.at ?? null
+  assert.ok(at !== null && Date.parse(at) > Date.parse(String(step.scheduled?.basis?.today)), 'the premise: the plan places it later than today')
+
+  const milestone = nextMilestone(step)
+  assert.equal(milestone.kind, 'enforce')
+  assert.match(milestone.label, /evidence for this policy is complete/)
+  assert.match(milestone.label, /working days of notice/, 'the milestone does not say what the date is for')
+  assert.equal(milestone.at, at, 'the milestone moved the date rather than explaining it')
+
+  // The date the sentence names is the date the row shows, and not a second reading of it.
+  const titleOf = (id: string): string | null => run.steps.find((x) => x.id === id)?.title ?? null
+  const when = boardWhenOf(step, null, laneViewOf(laneReadings(run.steps).get(step.id)!, titleOf))
+  assert.ok(when !== null && milestone.label.includes(when), `the sentence says a different day from the row: ${when} vs ${milestone.label}`)
+})
+
+// And where the day has arrived, the instruction stands on its own.
+test('a policy ready to enforce today keeps the plain instruction', () => {
+  for (const f of allFixtures()) {
+    const name = f.name
+    const run = runFixture(withFoundationSettled(structuredClone(f)))
+    for (const step of run.steps) {
+      if (step.state.lifecycle !== 'ready-to-enforce') continue
+      const at = step.events?.enforce.at ?? null
+      const today = step.scheduled?.basis?.today ?? null
+      const later = at !== null && today !== null && Date.parse(at) > Date.parse(today)
+      const label = nextMilestone(step).label
+      if (!later) assert.doesNotMatch(label, /working days of notice/, `${name}/${step.id}: a notice sentence on a step with no later date`)
     }
   }
 })
