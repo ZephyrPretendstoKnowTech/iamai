@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
-import { activePeopleIds, campaignIdsFor, reached, stepPopulation } from './population.ts'
+import { activePeopleIds, campaignIdsFor, namedAccounts, populationIndex, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
@@ -235,4 +235,30 @@ test('turning a policy on does not move its reach, and "Who it misses" counts on
   const line = stepContract(step, ctx).found.find((x) => x.key === 'shortfall')?.text ?? ''
   assert.match(line, /; 5 of them are excluded from the policy that delivers it, so it reaches 280\.$/, `the two emergency accounts and the three it excludes (${line})`)
   assert.match(populationLine(reached(step)!), /covers 280 enabled/, 'and the tile reads the same reach')
+})
+
+// One number format (copy/statements.ts figure). The thousands separator was
+// added at two call sites instead of where numbers are printed: on huge the
+// dormant step's row read "3671 accounts" beside a tile of "3,671 accounts · 46
+// admins · 169 guests", and on large the campaign's Who lines read "3032 people
+// with no phishing-resistant method" under a lead of "3,981 people and 197
+// guests". fillText prints every whole number it fills as count() does, and the
+// row goes through count().
+test('a number prints one way on the row, the tile and every filled line', () => {
+  assert.equal(fillText('{n} people', { n: 3032 }), '3,032 people')
+  assert.equal(fillText('{n} people', { n: 1 }), '1 person', 'a count of one still reads as one')
+  const f = fixture('large')
+  const r = runFixture(f)
+  // The dormant step at the size huge reaches (HUGE=1 runs huge itself).
+  const dormant = r.steps.find((s) => s.id === 's-check-dormant-accounts')
+  assert.ok(dormant, 'the premise: large plans the dormant step')
+  const big: Step = { ...dormant, population: namedAccounts(f.snapshot.users.slice(0, 3671).map((u) => u.id), populationIndex(f.snapshot, r.input.viability)) }
+  assert.equal(rowWho(big), '3,671 accounts')
+  assert.match(populationLine(reached(big)!), /^3,671 accounts( · |$)/)
+  // The campaign's Who lines on large.
+  const { step, ex } = campaignOf(f)
+  const { inline, held } = whoBlocks((contentStepFor(step) as unknown as { who: Record<string, unknown> }).who, ex)
+  const leads = [...inline, ...held].map((b) => b.lead)
+  assert.ok(leads.some((l) => l.startsWith('3,032 people with no phishing-resistant method')), JSON.stringify(leads))
+  for (const l of leads) assert.doesNotMatch(l, /(?<![\w@.,])\d{4,}(?= )/, `a count without its separator: ${l}`)
 })

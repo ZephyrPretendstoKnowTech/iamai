@@ -1,12 +1,12 @@
 // Population copy (roadmap-v2.md §3): every number carries its basis; names
 // stay bounded; the export is generated in the browser.
-import { count } from './statements.ts'
+import { count, figure } from './statements.ts'
 
 export const POPULATION = {
-  basis: (n: number, enabled: number, percent: number) => `${n.toLocaleString('en-AU')} of ${enabled.toLocaleString('en-AU')} enabled users (${percent}%)`,
-  ofWhomNoMethod: (n: number) => `, of whom ${n.toLocaleString('en-AU')} ${n === 1 ? 'has' : 'have'} no MFA method`,
-  ofWhomNoDevice: (n: number) => `, of whom ${n.toLocaleString('en-AU')} ${n === 1 ? 'owns' : 'own'} no compliant device`,
-  ofWhomSeen: (n: number) => `, of whom ${n.toLocaleString('en-AU')} ${n === 1 ? 'was' : 'were'} seen using what this blocks`,
+  basis: (n: number, enabled: number, percent: number) => `${figure(n)} of ${figure(enabled)} enabled users (${percent}%)`,
+  ofWhomNoMethod: (n: number) => `, of whom ${figure(n)} ${n === 1 ? 'has' : 'have'} no MFA method`,
+  ofWhomNoDevice: (n: number) => `, of whom ${figure(n)} ${n === 1 ? 'owns' : 'own'} no compliant device`,
+  ofWhomSeen: (n: number) => `, of whom ${figure(n)} ${n === 1 ? 'was' : 'were'} seen using what this blocks`,
   nobody: 'Nobody is in scope of this step.',
   everyoneNamed: (n: number) => `All ${count(n, 'person', 'people')}:`,
   riskiestTitle: (n: number) => `The ${n} riskiest by name:`,

@@ -16,7 +16,7 @@ import { fillText } from '../content/render.ts'
  * what it touches — its package's `impact.fallbackLabel` — or `none`, the
  * placeholder (U13, ui/surfaces/rowWho.ts).
  */
-export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; none: string } }).impact
+export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; none: string; coversEnabled: string } }).impact
 
 // A row counts people and never names them (RUN-CONTEXT-B decision 11): one
 // person reads "1 person", and the names are on the step. The gap on a row is
@@ -33,20 +33,14 @@ export function affectedIds(pop: StepPopulation): string[] {
  * guests stay in the MFA campaign and are named beside the people — "30 people
  * and 1 guest" — never dropped from one count and kept in another. `total`
  * counts everyone, guests included; a cohort of guests alone reads "1 guest".
- * Every number carries the separator count() gives it ("3,981 people"), as the
- * tile beside it does.
+ * fillText prints each number as count() does ("3,981 people").
  */
 export function cohortWords(total: number, guests: number): string {
   const W = engine.cohort
   const people = Math.max(0, total - guests)
-  if (guests <= 0) return fillText(W.people, { n: grouped(total) })
-  if (people === 0) return fillText(W.guests, { n: grouped(guests) })
-  return fillText(W.both, { people: grouped(people), guests: grouped(guests) })
-}
-
-/** A count as count() prints it (copy/statements.ts): "4,900", never "4900". */
-function grouped(n: number): string {
-  return n.toLocaleString('en')
+  if (guests <= 0) return fillText(W.people, { n: total })
+  if (people === 0) return fillText(W.guests, { n: guests })
+  return fillText(W.both, { people, guests })
 }
 
 /** The guests among a cohort's ids, counted against the ids the cohort holds now. */
@@ -91,6 +85,6 @@ export function populationLine(pop: StepPopulation): string {
   if (pop.guests > 0) bits.push(count(pop.guests, 'guest'))
   let line = bits.join(' · ')
   const inScope = pop.inScope ?? ids.length
-  if (inScope > ids.length) line += ` · covers ${grouped(inScope)} enabled`
+  if (inScope > ids.length) line += ` · ${fillText(IMPACT.coversEnabled, { n: inScope })}`
   return line
 }

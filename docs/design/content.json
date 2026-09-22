@@ -718,7 +718,9 @@
         "$comment": "The Impact column's words that are not a count (derive/whoLine.ts IMPACT). Unknown is never zero. none is the last fallback for a step that reaches no people and whose package authors no impact.fallbackLabel (rowWho.ts).",
         "notEstablished": "Not established",
         "noUserImpact": "No user impact",
-        "none": "—"
+        "none": "—",
+        "$commentCoversEnabled": "The population line's suffix when more enabled accounts are in scope than the line counts (derive/whoLine.ts populationLine). {n} is a number: fillText prints it as count() does, \"covers 4,900 enabled\".",
+        "coversEnabled": "covers {n} enabled"
       },
       "when": {
         "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
