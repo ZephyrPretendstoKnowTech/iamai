@@ -33,13 +33,20 @@ export function affectedIds(pop: StepPopulation): string[] {
  * guests stay in the MFA campaign and are named beside the people — "30 people
  * and 1 guest" — never dropped from one count and kept in another. `total`
  * counts everyone, guests included; a cohort of guests alone reads "1 guest".
+ * Every number carries the separator count() gives it ("3,981 people"), as the
+ * tile beside it does.
  */
 export function cohortWords(total: number, guests: number): string {
   const W = engine.cohort
   const people = Math.max(0, total - guests)
-  if (guests <= 0) return fillText(W.people, { n: total })
-  if (people === 0) return fillText(W.guests, { n: guests })
-  return fillText(W.both, { people, guests })
+  if (guests <= 0) return fillText(W.people, { n: grouped(total) })
+  if (people === 0) return fillText(W.guests, { n: grouped(guests) })
+  return fillText(W.both, { people: grouped(people), guests: grouped(guests) })
+}
+
+/** A count as count() prints it (copy/statements.ts): "4,900", never "4900". */
+function grouped(n: number): string {
+  return n.toLocaleString('en')
 }
 
 /** The guests among a cohort's ids, counted against the ids the cohort holds now. */
@@ -80,6 +87,7 @@ export function populationLine(pop: StepPopulation): string {
   if (pop.admins > 0) bits.push(count(pop.admins, 'admin'))
   if (pop.guests > 0) bits.push(count(pop.guests, 'guest'))
   let line = bits.join(' · ')
-  if ((pop.inScope ?? ids.length) > ids.length) line += ` · covers ${pop.inScope} enabled`
+  const inScope = pop.inScope ?? ids.length
+  if (inScope > ids.length) line += ` · covers ${grouped(inScope)} enabled`
   return line
 }
