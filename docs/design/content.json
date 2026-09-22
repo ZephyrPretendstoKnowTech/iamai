@@ -3712,7 +3712,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state. IAMAI cannot read those states, so it cannot list the accounts for you: the Per-user MFA page is where they are.",
+        "lead": "On the day Require MFA for Everyone enforces, and not before, disable every legacy per-user MFA state.",
         "steps": [
           "Check first that every method these people use is enabled under Entra admin center → Entra ID → Authentication methods → Policies. That policy decides what they may register; it never requires MFA, so finishing its migration is not what finishes this step.",
           "Once Require MFA for Everyone is On: Entra admin center → Entra ID → Users → All users → Per-user MFA. Use that page’s own Enabled and Enforced views, select every account they list, and choose Disable MFA. You need at least the Authentication Policy Administrator role.",
