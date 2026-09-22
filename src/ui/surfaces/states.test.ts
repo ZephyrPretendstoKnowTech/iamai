@@ -8,6 +8,9 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { statusOf } from './statusWord.ts'
+import { stepContract } from './stepContract.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
+import type { StepVarContext } from './stepVars.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
@@ -50,4 +53,35 @@ test('the print finish and the ICS read the same rings the plan does', () => {
   const scheduled = r.steps.filter((s) => scheduledEventOf(s) !== null)
   assert.equal((ics.match(/BEGIN:VEVENT/g) ?? []).length, scheduled.length, 'one calendar entry per scheduled step')
   for (const s of scheduled) assert.ok(ics.includes(`DTSTART;VALUE=DATE:${scheduledEventOf(s)!.start.slice(0, 10).replace(/-/g, '')}`), `${s.id}: booked on another day`)
+})
+
+test('a step whose policy exists and is switched off says so, instead of asking for a scan that changes nothing', () => {
+  // "This step has no policy for IAMAI to write in this plan. Scan <tenant>
+  // again to rebuild it." — said over a step whose policy EXISTS in the tenant
+  // and is disabled. The step tracks that row: `state.members` carries it with
+  // `latest.state === 'disabled'`, on this scan and the one before. So the
+  // sentence was false and its remedy did nothing. A reader scanned three
+  // times, got byte-identical output, and stopped — which is where a beta
+  // tester uninstalls.
+  const f = fixture('midflight')
+  const run = runFixture(f)
+  const ctx: StepVarContext = {
+    snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
+    signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
+  }
+  // A real step that already resolves to no-operation, so only the members move.
+  const base = run.steps.find((s) => unavailableReason(s) === 'no-operation' && (s.state.members ?? []).length > 0)
+  assert.ok(base, 'midflight no longer carries a step with no operation to offer')
+  const because = (x: typeof base): string => { const impl = stepContract(x, ctx).implementation; return impl.offered ? '' : (impl.because ?? '') }
+  assert.match(because(base), /no policy for IAMAI to write/, 'the unchanged case stopped saying what it always said')
+
+  // The same step, with every policy it tracks switched off.
+  const off = structuredClone(base)
+  for (const m of off.state.members ?? []) if (m.change?.latest) m.change.latest.state = 'disabled'
+  assert.equal(unavailableReason(off), 'no-operation', 'the premise: still nothing to submit')
+  const line = because(off)
+  assert.match(line, /already exists in .* and is switched off/, line)
+  assert.equal(line.includes('rebuild it'), false, 'still asks for a scan that cannot change the answer')
+  // The report-only discipline survives: it does not simply say "turn it on".
+  assert.match(line, /Report-only/, 'the way out skips the observation the rest of the plan insists on')
 })

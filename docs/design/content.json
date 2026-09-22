@@ -2587,7 +2587,9 @@
               }
             }
           }
-        }
+        },
+        "$commentNoOperationDisabled": "\"This step has no policy for IAMAI to write in this plan. Scan again to rebuild it.\" was said over a step whose policy EXISTS in the tenant and is switched off - the step was tracking it, state disabled, on both the latest scan and the one before. So the sentence was false and its remedy did nothing: a reader scanned three times, got byte-identical output, and stopped. Said where every policy this step tracks is disabled.",
+        "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Turning it on is a change in the Entra admin center; if it has not been watched in Report-only, set it there first. Scan again once it is on."
       },
       "readiness": {
         "lineNoRecordsReason": "no sign-in records ({reason})",
