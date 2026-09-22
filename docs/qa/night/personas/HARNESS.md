@@ -64,6 +64,9 @@ import { tenant, plan, rescan, observations, deploy, days,
   `row.cleanup` (its kind). A script that reads `row.step.id` on every row
   stops at the first Cleanup row — skip rows whose `step` is null, or read
   `row.id`.
+  The harness cannot open a Cleanup row: `render()` and `stepView()` draw
+  steps, and the Plan draws a Cleanup row's body with `CleanupRow`, which
+  nothing here reads yet. Say so rather than describe a body you did not see.
 - `render(t, run, step)` — the opened step, flattened. Its state is `badge`
   (what the head draws, `badgeLabel`) and `fact` (the chip beside it). There
   is no `state`; reading it throws.
