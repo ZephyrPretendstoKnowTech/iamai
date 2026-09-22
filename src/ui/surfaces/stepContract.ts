@@ -563,8 +563,22 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
  * whatever the observation had to say about what changed. Nothing is invented to
  * fill the section, and an unknown is never written down as a zero.
  */
+/** The step that owns the security-defaults ordering invariant, and so the one that reports it broken. */
+const SECURITY_DEFAULTS_STEP_ID = 's-prereq-security-defaults'
+
 function foundOf(step: Step, tenant: string, said: string | null): ContractFound[] {
   const out: ContractFound[] = []
+  // The one step that states the ordering invariant is the one that has to
+  // notice it has been broken. A reader enforced eight policies with security
+  // defaults still on, swept all thirty-three steps, and found no warning
+  // anywhere — the board read Completed and the tile said "IAMAI watched it get
+  // there." The generator writes the count onto this step's readiness
+  // (generate.ts); a step with no threshold renders none of its readiness, so
+  // it is said here, where a finding about the tenant belongs.
+  if (step.id === SECURITY_DEFAULTS_STEP_ID) {
+    const line = step.readiness.lines.find((l) => l.includes(app.plan.securityDefaultsCoexist.split('{')[0].trim()))
+    if (line !== undefined) out.push(found('readiness', line))
+  }
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
   // And on a step that has finished short of it, where the gate is already gone.
