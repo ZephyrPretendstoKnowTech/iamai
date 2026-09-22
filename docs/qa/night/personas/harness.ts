@@ -225,8 +225,12 @@ export function decide(t: Tenant, stepId: string, input: StepDecisionInput, at =
   return next
 }
 
-/** A Direction step's answers, in the shape Approve saves them. */
-export const answers = (values: Record<string, DirectionAnswer>): StepDecisionInput => directionDecisionOf(values)
+/**
+ * A Direction step's answers, in the shape Approve saves them — with the basis
+ * each answer was given against, which Approve saves beside it
+ * (DirectionQuestions.tsx approve()).
+ */
+export const answers = (values: Record<string, DirectionAnswer>, basis: Record<string, string> = {}): StepDecisionInput => directionDecisionOf(values, basis)
 
 /**
  * The person goes to Entra and builds what the step told them to, then comes
@@ -395,10 +399,16 @@ export function configurePasskeys(t: Tenant): Tenant {
 export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepareEmergencyAccess(t))
 
 /**
- * The person works through Decide Your Tenant's Direction and takes IAMAI's own
- * recommendation on every question. `suggested` is the product's, read off the
- * step, so nothing is invented here: this is the careful administrator who reads
- * the evidence line, agrees with it, and saves.
+ * The person works through Decide Your Tenant's Direction and presses Approve
+ * answers on each of the four steps without changing a tile.
+ *
+ * What that saves is what the screen's draft starts from: every question's
+ * SAVED answer where it has one, else its suggestion (DirectionQuestions.tsx,
+ * `q.saved ?? q.suggested`), with the basis each answer was given against. This
+ * used to save `q.suggested` for every question, whatever was saved — which the
+ * screen never does. On Marcus's tenant that turned a saved "everyone works
+ * remotely, AU only" into a trusted office network and AU + NZ, and a persona
+ * filed the harness's overwrite as the product's (R4-13).
  *
  * A persona who would answer differently calls `decide()` for that question
  * instead — this is the baseline everyone else starts from.
@@ -409,8 +419,12 @@ export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
     const questions = step.directionQuestions ?? []
     if (questions.length === 0) continue
     const values: Record<string, DirectionAnswer> = {}
-    for (const q of questions) values[q.key] = { value: q.suggested.value, picked: [...q.suggested.picked] }
-    next = decide(next, step.id, answers(values))
+    for (const q of questions) {
+      const draft = q.saved ?? q.suggested
+      values[q.key] = { value: draft.value, picked: [...draft.picked] }
+    }
+    const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis as string]))
+    next = decide(next, step.id, answers(values, basis))
   }
   return next
 }
