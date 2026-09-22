@@ -52,6 +52,12 @@ import { tenant, plan, rescan, observations, deploy, days,
 - `days(t, n, {failures})` — n days pass: the clock moves, the scan's collected
   window moves with it, and everyone a report-only policy covers signs in during
   it. `failures` seeds sign-ins the policy would have stopped.
+- `lanes(t, run)` — the board's rows, tab by tab and group by group, each with
+  the `title` the row draws. **A Cleanup row (the drill, alerting,
+  consolidation) is a row with `step: null`**: read `row.id`, `row.title` and
+  `row.cleanup` (its kind). A script that reads `row.step.id` on every row
+  stops at the first Cleanup row — skip rows whose `step` is null, or read
+  `row.id`.
 - `deploy(t, step, 'exact' | 'enforced' | 'unconfigured', { held? })` — does what
   the step offers. An `update` operation (turning a policy on) patches the row its
   own `policyId` names, and merges `conditions` the way Graph does: a section the
@@ -112,6 +118,18 @@ finding that rests on one of them is the harness's until it is re-run.
   admin-portals policy) before anything reads them; the harness kept them, so
   personas rendered and filed a step no screen draws, and "Known walls" below
   named it. `plan()` and `rescan()` now drop them too.
+- **`lanes()` was not the board.** It built rows from the steps only, so the
+  Cleanup rows — the drill that holds every policy's enforcement among them —
+  were never listed, and a tile naming "Verify Emergency Access" pointed at a
+  row a persona could not find (R4-24, Nadia D6). It titled each row
+  `step.title`, the engine's goal statement, which no row draws: the board
+  draws `contentTitle(step)` ("Block Device Code Sign-in", not "Device-code
+  flow blocked"), and the two differ on 22 of 40 steps of `mid` (R4-40,
+  R4-47). It grouped by `step.kind` where the board reads the content kind,
+  named a prerequisite by `step.title` where Plan.tsx's `titleOf` reads
+  `plainTitle || title` (so `render()`'s tiles quoted goal statements too), and
+  read every Cleanup row as incomplete regardless of the emergency-access
+  answers. All five now match `Plan.tsx`.
 
 ## Rules
 
