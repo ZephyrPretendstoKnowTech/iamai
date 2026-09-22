@@ -164,11 +164,28 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   if (reading.resolution?.kind === 'review' && reading.resolution.review === 'partialRead') {
     raw.push({ key: 'read', label: 'Required settings', outcome: 'unknown', value: `Not fully read: ${reading.resolution.subjects.join(', ')}`, detail: reading.resolution.subjects.join(', ') + '. Scan again before changing restrictions.' })
   }
+  /**
+   * The reason behind a verdict, from the checks that produced it.
+   *
+   * "Passkey registration · Review required" and "Passkey protections · Needs
+   * correction" were rendered with an empty detail, on a step where every other
+   * tile carried a reason, and What to do read "Fix before continuing: Passkey
+   * protections: Needs correction. " with nothing after the stop. Each of these
+   * groups is built from checks that each state why they matter
+   * (roadmap/passkeySettings.ts findingsFor, whose fifth argument is that
+   * sentence) and the group threw them away. A reader with a verdict and no
+   * reason has nothing to act on.
+   */
+  // Two at most: the tile is a reason, and the rest of the evidence is already
+  // below it as the group's own items. Seven sentences ending in four AAGUIDs
+  // is a second list, not an explanation.
+  const reasonOf = (rows: typeof raw): string =>
+    [...new Set(rows.filter(f => f.outcome !== 'pass').map(f => f.detail.trim()).filter(d => d !== ''))].slice(0, 2).join(' ')
   const grouped = (key: string, label: string, include: (f: typeof raw[number]) => boolean): ConfigurationFinding => {
     const rows = raw.filter(include)
     const problems = rows.filter(f => f.outcome !== 'pass')
     return { key, label, outcome: problems.some(f => f.outcome === 'fail') ? 'fail' : problems.length || !rows.length ? 'unknown' : 'pass',
-      value: problems.length ? problems[0].value : rows.length ? 'Configured' : 'Not read', detail: '',
+      value: problems.length ? problems[0].value : rows.length ? 'Configured' : 'Not read', detail: reasonOf(rows),
       items: rows.map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })),
     }
   }
@@ -181,7 +198,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     : modelIssueOutcomes.includes('fail') && modelIssueOutcomes.includes('unknown') ? NEEDS_CORRECTION
       : modelIssueOutcomes.includes('fail') ? 'Needs a change'
         : 'Could not verify'
-  models.detail = ''
+  models.detail = reasonOf([...raw.filter(f => f.key.endsWith('.restrictions')), ...modelProblems])
   const modelStates = approvedPasskeyModels(snapshot, mapping).map(m => [...new Set(raw.filter(f => (f.key.startsWith('authenticator.') || f.key.startsWith('target.')) && f.detail.toLowerCase().includes(m.aaguid)).map(f => (f.key.startsWith('target.') ? f.detail.split(':')[0] + ': ' : '') + f.value))])
   const commonState = modelStates.length && modelStates.every(s => s.join('; ') === modelStates[0].join('; ')) ? modelStates[0].join('; ') : ''
   const plannedRestriction = reading.resolution?.kind === 'target'
@@ -202,7 +219,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     label: 'Passkey registration',
     value: availabilityRows.length && availabilityRows.every(f => f.outcome === 'pass') ? 'Configured' : availabilityRows.some(f => f.outcome === 'fail') ? 'Correction required' : 'Not fully verified',
     outcome: !availabilityRows.length ? 'unknown' : availabilityRows.some(f => f.outcome === 'fail') ? 'fail' : availabilityRows.some(f => f.outcome === 'unknown') ? 'unknown' : 'pass',
-    detail: '',
+    detail: reasonOf(availabilityRows),
     items: [
       ...availabilityRows.filter(f => !['targets', 'exclusions'].includes(f.key)).map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })),
       ...((reading.current && Array.isArray(reading.current.includeTargets) && reading.current.includeTargets.length) ? reading.current.includeTargets.map((target, index) => {
@@ -238,6 +255,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   const protectionOutcomes = [protection.outcome, models.outcome, ...restrictionProblems.map(row => row.outcome)]
   protection.outcome = protectionOutcomes.includes('fail') ? 'fail' : protectionOutcomes.includes('unknown') ? 'unknown' : 'pass'
   protection.value = protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? NEEDS_CORRECTION : 'Could not verify'
+  protection.detail = reasonOf([...raw.filter(f => f.key.endsWith('.types') || f.key.endsWith('.attestation')), ...restrictionProblems])
   const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
   const affectedFinding: ConfigurationFinding = {
     key: 'affected-passkeys',
@@ -248,7 +266,9 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
         ? 'No existing passkeys were identified as losing sign-in access under this change.'
         : 'Could not verify',
     outcome: affected.users.length ? 'fail' : affected.state === 'known' ? 'pass' : 'unknown',
-    detail: '',
+    // "Could not verify" with nothing after it. The projection already records
+    // what it could not read (`coverage`), and the tile dropped it.
+    detail: affected.users.length || affected.state === 'known' ? '' : affected.coverage.join(' '),
     items: affected.users.length ? affected.users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),
       value: `${method.displayName} · ${method.aaguid ?? 'AAGUID could not be verified'} · ${method.passkeyType ?? 'Storage type could not be verified'}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}`,
