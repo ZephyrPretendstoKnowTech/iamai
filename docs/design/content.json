@@ -4449,7 +4449,7 @@
       "id": "guests-mfa",
       "preparation": [
         "Read the Tasks Remaining cards above to see which guest-policy settings or prerequisites need attention.",
-        "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.",
+        "Your answer about partner or MSP technicians decides whether the service-provider external-user type is included; it does not configure partner MFA trust.",
         "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."
       ],
       "kind": "policy",
