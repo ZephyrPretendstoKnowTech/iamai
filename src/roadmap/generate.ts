@@ -1578,6 +1578,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // over yet. Attaching the gate early made `stepEffects` return nothing for a
     // held step, which turned every one of those readings into its unknown.
     let readinessGate: NonNullable<Action['readinessGate']> | null = null
+    let enforcedBelowReadiness: NonNullable<Action['enforcedBelowReadiness']> | null = null
     let namingNote: { name: string; note: string | null } | null = null
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
@@ -1875,50 +1876,62 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
 
     // Gating (roadmap.md §6).
+    const threshold =
+      readiness.family === 'mfa' || readiness.family === 'guest'
+        ? READINESS_THRESHOLD_MFA_PERCENT
+        : readiness.family === 'admin'
+          ? READINESS_THRESHOLD_ADMINS_PERCENT
+          : readiness.family === 'device'
+            ? READINESS_THRESHOLD_DEVICES_PERCENT
+            : null
+    // A readiness threshold the plan itself says to wait for, unmet — or never
+    // measured, which is not the same as met. The gate used to require a
+    // number: a family with a threshold whose readiness the scan could not
+    // work out produced no blocker at all, so a tenant IAMAI knew least about
+    // was the one it held back least.
+    // Below the line, or never read. Not "nobody in scope": a threshold there
+    // is nothing to measure against is not one anybody can reach, and holding
+    // a step whose policy reaches nobody would wait for a number that can
+    // never arrive (roadmap/readiness.ts `unmeasured`).
+    const unmet = threshold !== null && (readiness.percent === null ? readiness.unmeasured === 'unreadable' : readiness.percent < threshold)
+    // The reading of that threshold, as the gate states it.
+    const thresholdReading = (): NonNullable<Action['readinessGate']> => {
+      // A floor where the scan proved one (roadmap/readiness.ts `atLeast`):
+      // "at least 68%" is strictly more than "not measured" and never wrong,
+      // and it is what stopped this step reading as a contradiction of the
+      // sibling measuring the same people. It changes no gate: `unmet` above
+      // is computed from the percentage and the unmeasured reason, both
+      // untouched, so unknown still holds enforcement exactly as before.
+      const floor = readiness.percent === null && readiness.atLeast !== undefined
+      return {
+        measure: READINESS_MEASURE[readiness.family] ?? 'readiness',
+        threshold: `${threshold}%`,
+        value: readiness.percent !== null ? `${readiness.percent}%` : floor ? `${readiness.atLeast}%` : engine.readiness.notMeasured,
+        ...(floor ? { floor: true as const } : {}),
+        // And what the scan could not see, where a source is the reason the
+        // number is missing. "It is not measured yet" is true and names
+        // nothing to go and do; this names the source, its recorded reason,
+        // the permission that reads it and the licence it needs.
+        ...(readiness.percent === null ? (() => { const blind = blindSourceOf(readiness.family, snapshot); return blind === null ? {} : { blind } })() : {}),
+      }
+    }
+    // The same threshold, unmet, on a step that is already finished. The gate
+    // below is computed only for an unfinished step, so a policy enforced in
+    // the portal while IAMAI was holding it back lost every trace of the hold:
+    // the admin policy went on with neither admin's method readable, the step
+    // read Completed with its Done-when satisfied, and nothing said the
+    // threshold had never been met (Priya D3). A gate that congratulates you
+    // for walking around it is not a gate. It holds nothing — the work is done
+    // — and it is a fact about the tenant.
+    if (state.satisfied && unmet) enforcedBelowReadiness = thresholdReading()
     if (!state.satisfied) {
-      const threshold =
-        readiness.family === 'mfa' || readiness.family === 'guest'
-          ? READINESS_THRESHOLD_MFA_PERCENT
-          : readiness.family === 'admin'
-            ? READINESS_THRESHOLD_ADMINS_PERCENT
-            : readiness.family === 'device'
-              ? READINESS_THRESHOLD_DEVICES_PERCENT
-              : null
-      // A readiness threshold the plan itself says to wait for, unmet — or never
-      // measured, which is not the same as met. The gate used to require a
-      // number: a family with a threshold whose readiness the scan could not
-      // work out produced no blocker at all, so a tenant IAMAI knew least about
-      // was the one it held back least.
-      //
       // The blocker is the word; `action.readinessGate` is the fact, and it is
       // what holds the enforcement (roadmap/operations.ts policyResult,
       // enforcementHeld). The step read "Blocked · when device readiness reaches
       // 80% (now 29%)" with four dated rings, an enforcement event, a calendar
       // entry and every implementation channel beside it.
-      // Below the line, or never read. Not "nobody in scope": a threshold there
-      // is nothing to measure against is not one anybody can reach, and holding
-      // a step whose policy reaches nobody would wait for a number that can
-      // never arrive (roadmap/readiness.ts `unmeasured`).
-      const unmet = threshold !== null && (readiness.percent === null ? readiness.unmeasured === 'unreadable' : readiness.percent < threshold)
       if (unmet) {
-        // A floor where the scan proved one (roadmap/readiness.ts `atLeast`):
-        // "at least 68%" is strictly more than "not measured" and never wrong,
-        // and it is what stopped this step reading as a contradiction of the
-        // sibling measuring the same people. It changes no gate: `unmet` above
-        // is computed from the percentage and the unmeasured reason, both
-        // untouched, so unknown still holds enforcement exactly as before.
-        const floor = readiness.percent === null && readiness.atLeast !== undefined
-        readinessGate = {
-          measure: READINESS_MEASURE[readiness.family] ?? 'readiness',
-          threshold: `${threshold}%`,
-          value: readiness.percent !== null ? `${readiness.percent}%` : floor ? `${readiness.atLeast}%` : engine.readiness.notMeasured,
-          ...(floor ? { floor: true as const } : {}),
-          // And what the scan could not see, where a source is the reason the
-          // number is missing. "It is not measured yet" is true and names
-          // nothing to go and do; this names the source, its recorded reason,
-          // the permission that reads it and the licence it needs.
-          ...(readiness.percent === null ? (() => { const blind = blindSourceOf(readiness.family, snapshot); return blind === null ? {} : { blind } })() : {}),
-        }
+        readinessGate = thresholdReading()
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }
       }
@@ -2200,6 +2213,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       action = { ...action, widerThan: impl.expectedWho.kind }
     }
     if (readinessGate) action = { ...action, readinessGate }
+    if (enforcedBelowReadiness) action = { ...action, enforcedBelowReadiness }
 
     steps.push({
       id: stepId,
@@ -2798,6 +2812,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (open.every((input) => input.prefilled)) s.unsavedInputsPrefilled = true
   }
   annotateStateReasons(steps)
+  // The finished reading belongs to a finished step (types.ts
+  // `enforcedBelowReadiness`). It is set where the gate is, while the goal
+  // reads satisfied, and several later passes take satisfaction back (a guest
+  // goal an all-users policy covers is held for its own questions): left on,
+  // it is a guest percentage measured over everybody, waiting for a reader.
+  for (const s of steps) if (!s.state.satisfied && s.action.enforcedBelowReadiness) { const { enforcedBelowReadiness: _, ...rest } = s.action; s.action = rest }
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.
   const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })

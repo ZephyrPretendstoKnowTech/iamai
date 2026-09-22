@@ -279,7 +279,12 @@ test('a rollout that finished short of its own readiness says so, and keeps the 
 // have a registered method" because its registration source is switched off, and
 // "this policy is enforced and nobody can satisfy it" over that is a claim about
 // forty people made from having looked at none. Found by a persona run.
-test('a finished rollout says nothing about people the scan could not look at', () => {
+//
+// What it DOES say is that the plan's threshold was never shown met (Priya D3):
+// the gate is computed only for an unfinished step, so an enforced policy whose
+// people nobody could read lost every trace of the hold and read Completed. The
+// tile states the threshold and "Not measured", and makes no count of people.
+test('a finished rollout makes no claim about people the scan could not look at, and says its threshold was never shown met', () => {
   const f = fixture('hostile')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const ctx = ctxOf(f, r, f.snapshot)
@@ -297,8 +302,11 @@ test('a finished rollout says nothing about people the scan could not look at', 
     const nobodyReady = /^0 of [0-9]+/.test(line) || /^None of the [0-9]+ people in scope could be judged/.test(line)
     if (step.readiness.unmeasured !== 'unreadable' || !nobodyReady) continue
     blind += 1
-    const tiles = readinessOf(step, stepContract(step, ctx)).tiles
-    assert.equal(tiles.some((t) => t.key === 'enforced-readiness'), false, `${step.id}: a reading drawn from nobody — ${line}`)
+    const tile = readinessOf(step, stepContract(step, ctx)).tiles.find((t) => t.key === 'enforced-readiness')
+    assert.ok(tile, `${step.id}: enforced below a threshold nothing showed met, and the finished step is silent`)
+    assert.equal(tile.value, 'Not measured', `${step.id}: a reading drawn from nobody — ${tile.value}`)
+    assert.doesNotMatch(tile.note ?? '', /This policy is enforced, and [0-9]+ of|nobody can/, `${step.id}: a claim about people nobody looked at — ${tile.note}`)
+    assert.match(tile.note ?? '', /nothing has shown that threshold met/, `${step.id}: ${tile.note}`)
   }
   assert.ok(blind > 0, 'the premise: this tenant enforces a policy whose people it could not read')
 })

@@ -325,6 +325,18 @@ export type Action = {
     blind?: string
   }
   /**
+   * The readiness threshold the plan holds enforcement behind, unmet, on a
+   * step that is already finished (generate.ts). `readinessGate` is machinery
+   * for holding an unfinished rollout and is never set once the policy is on,
+   * so a policy enforced in the portal while IAMAI was holding it back lost
+   * every trace of the hold: the step read Completed, its Done-when satisfied,
+   * over an admin policy neither admin's method could be read for (Priya D3).
+   *
+   * Same reading as the gate; it holds nothing. The work is done, and this is
+   * a fact about the tenant, which the finished step states.
+   */
+  enforcedBelowReadiness?: Omit<NonNullable<Action['readinessGate']>, 'route' | 'routeShortfall'>
+  /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the
    * break-glass accounts, or the exclusions group. Set only on a step that can

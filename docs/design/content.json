@@ -1713,6 +1713,11 @@
           "foundReadinessUnmeasured": "Enforcement waits for {measure} to reach {threshold}. It is not measured yet: {line}",
           "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
           "foundEnforcedShort": "This policy is enforced, and {line} Anyone it does not accept is refused where it applies until they register a method it does.",
+          "$commentFoundEnforcedUnmeasured": "The readiness gate is computed only for an unfinished step, so a policy enforced in the portal while IAMAI was holding it back lost every trace of the hold. A reader enforced the admin policy with neither admin's method readable (the registration source was 403); the step read Completed, its Done-when satisfied, and nothing said the threshold had never been met - a gate that congratulates you for walking around it. The finished step now states the threshold and that nothing showed it met. It holds nothing: the work is done, and this is a fact about the tenant. It claims nothing about WHEN the policy went on, which IAMAI cannot know for a policy it found already enforced.",
+          "foundEnforcedUnmeasured": "This policy is enforced. The plan holds enforcement until {measure} reaches {threshold}, and IAMAI cannot measure it, so nothing has shown that threshold met. Anyone it does not accept is refused where it applies until they register a method it does.",
+          "$commentFoundEnforcedBelowThreshold": "Said after foundEnforcedShort where the reading is below the plan's own threshold, which the finished step otherwise never named once the gate was gone. The value now, never when the policy went on.",
+          "foundEnforcedBelowThreshold": "The plan holds enforcement until {measure} reaches {threshold}; it is {value} now.",
+          "foundEnforcedBelowThresholdFloor": "The plan holds enforcement until {measure} reaches {threshold}; it is at least {value} now.",
           "readinessScope": {
             "$comment": "Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE), in the enforced policy's informational threshold sentence (U22).",
             "mfa": "people in scope",
@@ -1886,6 +1891,7 @@
               "peopleStepNote": "These are the accounts this step asks you to review. Check the listed evidence before deciding what each account needs.",
               "$commentCoverageUnreadable": "A goal an existing policy already delivers reads In place / Completed, and said nothing about whether the people it covers can actually satisfy it. On a tenant whose registration source returned 403 the step read Completed beside a readiness of \"0 of 40 people have a registered method allowed by the target policies. Method compatibility is not yet established for 40\" - which the engine had computed and the completed step did not show. In place describes the policy; it is not a finding about the people, and a reader takes Completed as protection.",
               "coverageUnreadable": "IAMAI could not read whether the people it covers can satisfy it: {line} This describes the policy, not the people.",
+              "notMeasured": "Not measured",
               "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
               "awaitingReview": "Waiting on you",
               "awaitingReviewNote": "The policy is enforced and IAMAI is finished with it. What is left is yours to record: test the workflows below and confirm the outcome on this step."

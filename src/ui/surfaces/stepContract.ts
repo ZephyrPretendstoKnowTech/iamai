@@ -115,6 +115,12 @@ type ContractWords = {
   foundReadinessUnmeasured: string
   /** What a finished rollout left behind, where it finished short of its own readiness. */
   foundEnforcedShort: string
+  /** A finished rollout whose readiness the plan's threshold waits for and IAMAI cannot measure (Action.enforcedBelowReadiness). */
+  foundEnforcedUnmeasured: string
+  /** After foundEnforcedShort, where the reading is below the plan's own threshold. */
+  foundEnforcedBelowThreshold: string
+  /** The same, where the value is a floor the scan could prove (readiness.atLeast). */
+  foundEnforcedBelowThresholdFloor: string
   /** The threshold where the scan could prove only a floor under the value. */
   foundReadinessFloor: string
   /** That floor, wrapped before the family template. */
@@ -617,7 +623,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
   // And on a step that has finished short of it, where the gate is already gone.
-  else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', fillText(CONTRACT.foundEnforcedShort, { line: short.line }))) }
+  else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
   // A policy this plan tagged, switched off, on a step that is proposing to
   // create one.
   //
@@ -1552,23 +1558,41 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
  * `step.readiness` — the measurement, which survives — and holds nothing: the
  * step stays Completed, and says what it left behind.
  *
- * Only where the reading is a count short of its own denominator. "6 of 6" is
- * not a finding, and a reading that is not a count cannot be compared.
+ * Where the reading is a count short of its own denominator. "6 of 6" is not a
+ * finding, and a reading that is not a count cannot be compared.
+ *
+ * And where it cannot be counted at all but the plan's own threshold waits for
+ * it (Action.enforcedBelowReadiness). The admin policy went on in the portal
+ * while IAMAI was holding it back, with neither admin's method readable; the
+ * step read Completed, its Done-when satisfied, and the one trace of the hold
+ * was half a sentence inside the green coverage tile (Priya D3). The generator
+ * carries the threshold onto the finished step, and this states it.
  */
-function shortReadingOf(step: Step): { value: string; line: string } | null {
+function shortReadingOf(step: Step): { value: string; note: string } | null {
   if (!step.state.satisfied || step.state.lifecycle !== 'enforced') return null
+  const below = step.action.enforcedBelowReadiness
   const line = step.readiness?.lines?.[0]
-  if (typeof line !== 'string') return null
-  const m = /([0-9]+) of ([0-9]+)/.exec(line)
-  if (m === null || Number(m[1]) >= Number(m[2])) return null
-  // Nor where nobody could be judged at all. A tenant whose registration source
-  // is switched off reads "0 of 40 people have a registered method", and saying
-  // "this policy is enforced and nobody can satisfy it" over that is a claim
-  // about forty people made from having looked at none of them. Where some were
-  // judged — "22 of 33, one not established" — the count is a reading and stands.
-  if (step.readiness?.unmeasured === 'unreadable' && Number(m[1]) === 0) return null
-  const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
-  return { value: `${m[1]} of ${m[2]} ${scope}`, line }
+  const m = typeof line === 'string' ? /([0-9]+) of ([0-9]+)/.exec(line) : null
+  // Not a count where nobody could be judged at all. A tenant whose
+  // registration source is switched off reads "0 of 40 people have a
+  // registered method", and saying "this policy is enforced and nobody can
+  // satisfy it" over that is a claim about forty people made from having
+  // looked at none of them. Where some were judged — "22 of 33, one not
+  // established" — the count is a reading and stands.
+  const counted = m !== null && typeof line === 'string' && Number(m[1]) < Number(m[2]) && !(step.readiness?.unmeasured === 'unreadable' && Number(m[1]) === 0)
+  if (counted) {
+    const scope = CONTRACT.readinessScope[step.readiness?.family ?? ''] ?? CONTRACT.readinessScope.mfa
+    const short = fillText(CONTRACT.foundEnforcedShort, { line })
+    // The plan's own threshold, where the reading is under it: the gate the
+    // finished step otherwise stopped naming the moment the policy went on.
+    const threshold = below === undefined ? null : fillText(below.floor === true ? CONTRACT.foundEnforcedBelowThresholdFloor : CONTRACT.foundEnforcedBelowThreshold, { ...below })
+    return { value: `${m[1]} of ${m[2]} ${scope}`, note: threshold === null ? short : `${short} ${threshold}` }
+  }
+  if (below === undefined) return null
+  // Never read: the threshold, that nothing showed it met, why (the reading's
+  // own line, where it has one) and what would open the source.
+  const said = [fillText(CONTRACT.foundEnforcedUnmeasured, { measure: below.measure, threshold: below.threshold }), typeof line === 'string' ? line : null, below.blind ?? null]
+  return { value: R().tiles.notMeasured, note: said.filter((x): x is string => x !== null && x.length > 0).join(' ') }
 }
 
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
@@ -1578,7 +1602,7 @@ export const FINISHED_READING = 'enforced-readiness'
 function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
   if (short === null) return null
-  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: fillText(CONTRACT.foundEnforcedShort, { line: short.line }) }
+  return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
 }
 
 /** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
@@ -1630,7 +1654,9 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
     // target policies" — computed by the engine, shown nowhere on the finished
     // step. In place is a fact about the POLICY, and a reader takes Completed
     // as protection.
-    const unreadable = step.readiness?.unmeasured === 'unreadable' ? fillText(notes.coverageUnreadable, { line: step.readiness.lines?.[0] ?? '' }).trim() : null
+    // Once, where the finished reading's own tile does not already say it
+    // (shortReadingOf): the same unread count twice on one step was two sources.
+    const unreadable = step.readiness?.unmeasured === 'unreadable' && shortReadingOf(step) === null ? fillText(notes.coverageUnreadable, { line: step.readiness.lines?.[0] ?? '' }).trim() : null
     const found = c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote
     return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: unreadable === null ? found : `${found} ${unreadable}` }
   }
