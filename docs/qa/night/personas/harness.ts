@@ -34,14 +34,30 @@ import { methodAvailability } from '../../../../src/roadmap/methodAvailability.t
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
 import { activePeopleIds } from '../../../../src/derive/population.ts'
 import { setDisplayTimeZone } from '../../../../src/copy/dates.ts'
+import { pinnedPackage } from '../../../../src/baseline/pinned.ts'
 import type { StepObservationRecord } from '../../../../src/roadmap/observation.ts'
 import type { Step } from '../../../../src/roadmap/types.ts'
 
 export type Tenant = Fixture
 
-/** A persona's tenant: a shipped fixture as the starting shape, then whatever this persona's situation changes. */
-export function tenant(base: FixtureName, mutate: (t: Tenant) => void = () => {}): Tenant {
+/**
+ * A persona's tenant: a shipped fixture as the starting shape, on the baseline
+ * the product ships, then whatever this persona's situation changes.
+ *
+ * The product loads one baseline, the pinned package (src/ui/baseline.ts). The
+ * fixtures do not: every one but the demo builds on an eight-policy synthetic
+ * stand-in (fixtures/index.ts `syntheticBaseline`), which the unit tests are
+ * written against and which no administrator ever sees. Every round-4 persona
+ * but the demo's ran on it, so a finding about what a policy contains — its
+ * apps, its filter, its name — described a policy that never ships (R4-10:
+ * token protection's JSON tab against a three-app catalogue template the pin
+ * does not have; R4-23). So a persona's tenant is re-based on the pin unless
+ * the persona asks otherwise: `{ baseline: 'fixture' }` keeps the fixture's
+ * own, for a run that means to reproduce what a unit test sees.
+ */
+export function tenant(base: FixtureName, mutate: (t: Tenant) => void = () => {}, opts: { baseline?: 'pinned' | 'fixture' } = {}): Tenant {
   const t = structuredClone(fixture(base)) as Tenant
+  if ((opts.baseline ?? 'pinned') === 'pinned') t.baseline = pinnedPackage()
   mutate(t)
   return t
 }
