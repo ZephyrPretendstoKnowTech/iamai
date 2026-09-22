@@ -90,9 +90,13 @@ test('an open observation says why it has not completed: the people it stopped, 
   assert.equal(blind.status, 'insufficient')
   assert.equal(blind.lines.length, 1, 'an unreadable source says nothing about itself')
   assert.ok(blind.lines[0].includes('no sign-in records could be read'), `the recorded reason is not in the line: ${blind.lines[0]}`)
-  assert.ok(blind.lines[0].includes('cannot complete'), 'the line does not say the window cannot complete')
-  // And the reason on its own, for a policy already enforced, where "time in
-  // report-only" is the wrong sentence (stepContract.ts, the awaiting-review tile).
+  // That waiting does not complete it, in words that hold on a policy already
+  // enforced too: the sentence reaches the AI briefing of every lifecycle, and it
+  // said "Time in report-only cannot complete it" on policies past report-only.
+  assert.ok(blind.lines[0].includes('however long the policy runs'), `the line does not say waiting cannot complete it: ${blind.lines[0]}`)
+  assert.doesNotMatch(blind.lines[0], /report-only/i, blind.lines[0])
+  // And the reason on its own, for a surface that says it in its own context
+  // (stepContract.ts, the device code decision tile).
   assert.equal(blind.unreadable, 'no sign-in records could be read')
 
   // 2. The records were read, and they are what holds the gate shut. The count
@@ -112,4 +116,32 @@ test('an open observation says why it has not completed: the people it stopped, 
   assert.equal(clean.status, 'ok')
   assert.deepEqual(clean.lines, [], 'an ordinary open window states a reason it does not have')
   assert.equal(clean.unreadable, undefined, 'records that were read are not unreadable')
+})
+
+test('the unread sign-in records sentence holds for a read that stopped short, and names a reason where the source gave none', () => {
+  // The sentence said "IAMAI could not read" the records, and the fixtures only
+  // ever gave it a source that had read nothing. A production read that stops
+  // short of 24 hours is 'insufficient' with the rows it did read kept — usage,
+  // per-user and policy results (graph/collect/laneBCore.ts) — so "could not
+  // read" was false exactly where it mattered. And a source with no reason of its
+  // own filled the sentence with its bare status: "— pending —".
+  const large = fixture('large').snapshot
+  const withSource = (signInEvidence: TenantSnapshot['sources']['signInEvidence']): TenantSnapshot =>
+    ({ ...large, sources: { ...large.sources, signInEvidence } } as TenantSnapshot)
+
+  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
+  assert.ok(large.evidenceUsage, 'the premise: the usage a short read keeps is on the snapshot')
+  const short = evidenceFor('block-device-code', withSource({ status: 'insufficient', reason, coveredWindow: null, asOf: large.asOf }), [])
+  assert.equal(short.unreadable, reason)
+  assert.equal(short.lines.length, 1)
+  assert.ok(short.lines[0].includes(`— ${reason} —`), short.lines[0])
+  assert.doesNotMatch(short.lines[0], /could not read|has seen none|report-only/i, short.lines[0])
+
+  // No source at all, and a source that failed without saying why: words, never the status.
+  const none = evidenceFor('block-device-code', withSource(undefined as unknown as TenantSnapshot['sources']['signInEvidence']), [])
+  assert.equal(none.unreadable, engine.evidence.status.pending)
+  assert.doesNotMatch(none.lines[0], /— pending —/, none.lines[0])
+  const failed = evidenceFor('block-device-code', withSource({ status: 'error', reason: null, coveredWindow: null, asOf: large.asOf }), [])
+  assert.equal(failed.unreadable, engine.evidence.status.error)
+  assert.doesNotMatch(failed.lines[0], /— error —/, failed.lines[0])
 })

@@ -72,10 +72,11 @@ export type Evidence = {
   lines: string[]
   affectedUserIds: string[]
   /**
-   * Why the sign-in records could not be read, where they could not (the source's
-   * own reason, else its status); absent where they were read. `lines` states it
-   * in report-only words ("time in report-only cannot complete it"), which are
-   * wrong for a policy already enforced, so the fact travels on its own.
+   * Why IAMAI does not hold enough of the sign-in records to rely on, where it
+   * does not (the source's own reason, else its status in words); absent where
+   * they were read. `lines` states it in the engine's one sentence for it
+   * (evidence.ts unreadLine); the reason travels on its own for a surface that
+   * says it in its own context (the device code decision tile).
    */
   unreadable?: string
 }

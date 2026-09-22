@@ -291,8 +291,15 @@ test('s-goal-block-device-code: on a tenant whose sign-in records IAMAI could no
   // miss infrequent CLI, shared-device and enrollment workflows." IAMAI had read no
   // record at all: the engine held the reason on the step (Evidence.unreadable) and
   // the tile stated a coverage that did not exist, beside the very question the
-  // records were supposed to help answer. It says what IAMAI could not read, and why.
+  // records were supposed to help answer. It says what IAMAI does not hold, and why.
   // The tenant whose records were read keeps the step's own note (the test above, on mid).
+  //
+  // The words hold for every status that sets the reason. They said "IAMAI could
+  // not read the sign-in records … so nothing here shows whether anything uses
+  // device code sign-in", and a production read that stops short of 24 hours is
+  // 'insufficient' with the rows it did read kept (graph/collect/laneBCore.ts):
+  // there, "could not read" is false, and the rows can show use. What they cannot
+  // show is that nothing uses it.
   const DEVICE = 's-goal-block-device-code'
   const body = bodiesOf(fixture('hostile')).get(DEVICE)
   assert.ok(body, 'the hostile plan has the device code step')
@@ -300,5 +307,26 @@ test('s-goal-block-device-code: on a tenant whose sign-in records IAMAI could no
   assert.ok(tile, 'the premise: hostile has not saved the device code decision')
   assert.equal(tile.value, 'Confirm no legitimate use')
   assert.doesNotMatch(String(tile.note), /records cover observed use/, String(tile.note))
-  assert.match(String(tile.note), /^IAMAI could not read the sign-in records in this tenant — no sign-in records could be read — so nothing here shows whether anything uses device code sign-in\./, String(tile.note))
+  assert.match(String(tile.note), /^IAMAI does not hold enough of this tenant's sign-in records to rely on — no sign-in records could be read — so they cannot show that nothing uses device code sign-in\./, String(tile.note))
+
+  // A production-shaped short read: some hours read, two people seen using device code.
+  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
+  const mid = fixture('mid')
+  const usage = mid.snapshot.evidenceUsage
+  assert.ok(usage, 'the premise: mid carries the usage a short read keeps')
+  const short: Fixture = {
+    ...mid,
+    snapshot: {
+      ...mid.snapshot,
+      sources: { ...mid.snapshot.sources, signInEvidence: { ...mid.snapshot.sources.signInEvidence!, status: 'insufficient', reason } },
+      evidenceUsage: { ...usage, deviceCode: { ...usage.deviceCode, count: 3, userIds: mid.snapshot.users.slice(0, 2).map((u) => u.id) } },
+    },
+  }
+  const shortBody = bodiesOf(short).get(DEVICE)
+  assert.ok(shortBody, 'the short-read plan has the device code step')
+  const shortTile = tilesOf(shortBody).find((t) => t.key === 'unsaved:Device code sign-in')
+  assert.ok(shortTile, 'the premise: the short-read plan has not saved the device code decision')
+  const note = String(shortTile.note)
+  assert.ok(note.startsWith(`IAMAI does not hold enough of this tenant's sign-in records to rely on — ${reason} — so they cannot show that nothing uses device code sign-in.`), note)
+  assert.doesNotMatch(note, /could not read|nothing here shows whether|records cover observed use/, note)
 })

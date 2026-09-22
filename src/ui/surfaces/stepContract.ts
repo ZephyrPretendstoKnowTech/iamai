@@ -31,6 +31,7 @@ import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
+import { unreadLine } from '../../roadmap/evidence.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
@@ -1764,10 +1765,13 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // device-code block and a guest-MFA policy the first scan found enforced, in a
   // tenant whose sign-in records could not be read at all: no report-only period
   // watched, no sign-in seen, and the reason on the step reaching only the AI
-  // briefing (Priya D4). Where the records were not read, the tile says so and why.
+  // briefing (Priya D4). Where IAMAI does not hold enough of the records, the tile
+  // says so and why, in the engine's one sentence for it (evidence.ts unreadLine):
+  // a second sentence of its own said "could not read" and "has seen none" over
+  // a read that had stopped short of 24 hours with some records read.
   if (awaitsWorkflowRecord(step)) {
-    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string; awaitingReviewUnread: string }
-    const unread = step.evidence.unreadable === undefined ? null : fillText(t2.awaitingReviewUnread, { reason: step.evidence.unreadable })
+    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string }
+    const unread = step.evidence.unreadable === undefined ? null : unreadLine(step.evidence.unreadable)
     return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? t2.awaitingReviewNote : `${t2.awaitingReviewNote} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
@@ -2175,8 +2179,8 @@ type Noted = { tileNote?: unknown; tileNoteUnread?: unknown }
 /** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
 function unsavedTiles(step: Step): ReadinessTile[] {
   const d = (contentStepFor(step) as { decision?: Noted & { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: Noted & { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
-  // A note that reads the sign-in records has its own words where IAMAI could not
-  // read them (tileNoteUnread, with the source's own reason). The device code tile
+  // A note that reads the sign-in records has its own words where IAMAI does not
+  // hold enough of them (tileNoteUnread, with the source's own reason). The device code tile
   // said "The sign-in records cover observed use" on a tenant whose sign-in source
   // refused every read: a coverage that did not exist, beside the question the
   // records were meant to help answer. The engine held the reason on the step
