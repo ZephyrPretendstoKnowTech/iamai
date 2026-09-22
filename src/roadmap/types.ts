@@ -544,8 +544,12 @@ export type Step = {
    * list); `activityUnreadIds` the ones whose sign-in activity was not read at all.
    */
   preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[]; dormantIds?: string[]; activityUnreadIds?: string[] }
-  /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
-  methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; staleIds?: string[]; completeScope: boolean }
+  /**
+   * Actual target-policy method cohort; distinct from generic phishing-resistant proof.
+   * Its one shape is the producer's (roadmap/methodReadiness.ts): a copy of it
+   * here had no slot for offIds, so what the engine knew had no type on the step.
+   */
+  methodPreparation?: import('./methodReadiness.ts').MethodPreparation
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string
