@@ -15,6 +15,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { WaveSchedule } from '../../roadmap/schedule.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { inWave } from '../../derive/phases.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 
 /**
  * The phases the Plan and the printed plan draw: the finished plan's phases, read
@@ -109,4 +110,18 @@ export function phaseRows(steps: readonly Step[], wave: { stepIds: string[] }): 
   return wave.stepIds
     .map((id) => byId.get(id))
     .filter((s): s is Step => s !== undefined && inWave(s) && !floor.has(s.id))
+}
+
+/**
+ * A printed list of steps (the printed plan's timeline cell), each by the one
+ * title the board row and the opened step show (content/stepTitle.ts).
+ *
+ * The timeline used to print `Step.title`, the engine's goal statement, while
+ * the same document's step sections, the board and the opened step all print
+ * the content title: a change board handed the PDF read "Every user satisfies
+ * MFA on every app" in the table and "Require MFA for Everyone" two pages on,
+ * and could not tell they were one step (R4-40, R4-47).
+ */
+export function stepListOf(rows: readonly Step[]): string {
+  return rows.map((s) => contentTitle(s)).join('; ')
 }

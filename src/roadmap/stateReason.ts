@@ -11,6 +11,7 @@ import type { Blocker, Step } from './types.ts'
 import { holdOf, markHoldChains } from './holds.ts'
 import { unavailableReason } from './operations.ts'
 import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 
 function thresholdFor(family: Step['readiness']['family']): number | null {
   if (family === 'mfa' || family === 'guest') return READINESS_THRESHOLD_MFA_PERCENT
@@ -27,7 +28,7 @@ function thresholdFor(family: Step['readiness']['family']): number | null {
  * dependency has to clear before a threshold can matter.
  */
 export function blockedReasonFor(step: Step, stepById: Map<string, Step>): string {
-  const titleOf = (dep: Step): string => dep.plainTitle || dep.title
+  const titleOf = (dep: Step): string => contentTitle(dep)
   // A baseline that defines the policy two ways binds before any dependency: no
   // prerequisite in the tenant can clear it, so the row must not read as one
   // (roadmap/baselineConflict.ts).
@@ -70,7 +71,7 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
   if (hold === null || hold.kind === 'review' || hold.kind === 'evidence') return null
   const titleOf = (id: string | null | undefined): string | null => {
     const dep = id ? stepById.get(id) : undefined
-    return dep ? dep.plainTitle || dep.title : null
+    return dep ? contentTitle(dep) : null
   }
   const after = (id: string | null | undefined): string | null => {
     const t = titleOf(id)

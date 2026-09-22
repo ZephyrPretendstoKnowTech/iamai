@@ -22,7 +22,8 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { completedRows, deferredRows, floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { completedRows, deferredRows, floorRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import { LANE_ORDER, laneReadings } from './planLanes.ts'
 import { doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
@@ -99,7 +100,7 @@ export function PrintPlan({
   const readings = laneReadings(steps, cleanupInputs)
   const laneTitleOf = (id: string): string | null => {
     const s = steps.find((x) => x.id === id)
-    return s ? s.plainTitle || s.title : null
+    return s ? contentTitle(s) : null
   }
   const laneOf = (id: string): LaneView => {
     const r = readings.get(id)
@@ -144,11 +145,13 @@ export function PrintPlan({
   // Page 1 is the posture summary an MSP hands a client (prompt 50 item 8,
   // target-state §7): in place / to do / doesn't apply by goal name, the plan's
   // one-line header, and no pace, baseline pin or pace sentence.
-  const inPlaceNames = done.map((s) => s.plainTitle || s.title)
-  const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => s.plainTitle || s.title)
+  // Every step is named by the one content title (content/stepTitle.ts), as the
+  // board and the opened step name it (R4-40, R4-47).
+  const inPlaceNames = done.map((s) => contentTitle(s))
+  const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => contentTitle(s))
   // Over the goals the baseline holds: an absent goal never renders (walk-51 item 9).
   // Not licensed is its own count and sentence (§5), not a name in this list.
-  const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => r.goal.shortName || r.goal.name)
+  const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => contentTitle({ id: r.goal.id, goalId: r.goal.id, title: r.goal.shortName || r.goal.name }))
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
@@ -160,7 +163,7 @@ export function PrintPlan({
   const weeks = planWeeks(finish, schedule)
   // What holds the plan, as the Plan header names it: a readiness number where one
   // does, else the held steps and the step each waits on (derive/finish.ts).
-  const titleOf = (id: string): string => steps.find((s) => s.id === id)?.title ?? id
+  const titleOf = (id: string): string => laneTitleOf(id) ?? id
   const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
   const cannotFinish = finish.held
@@ -241,7 +244,7 @@ export function PrintPlan({
                 <tr>
                   <td>{waveTitle(w)}</td>
                   <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
-                  <td>{phaseSteps(w).map((s) => s.title).join('; ')}</td>
+                  <td>{stepListOf(phaseSteps(w))}</td>
                 </tr>
                 {w.wave === 0 && schedule.verification.days > 0 && (
                   <tr key="verification">
@@ -310,7 +313,7 @@ export function PrintPlan({
           <ul className="print-lane-rows">
             {g.rows.map((s) => (
               <li key={s.id}>
-                <span className="step-title">{s.plainTitle || s.title}</span> · {laneOf(s.id).label}
+                <span className="step-title">{contentTitle(s)}</span> · {laneOf(s.id).label}
               </li>
             ))}
           </ul>
