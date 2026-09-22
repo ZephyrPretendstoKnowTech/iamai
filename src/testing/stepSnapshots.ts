@@ -18,13 +18,9 @@
 import { fixture } from '../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { cleanupComplete } from '../roadmap/cleanupDone.ts'
-import { cleanupEntry } from '../ui/surfaces/cleanupExport.ts'
 import type { Step } from '../roadmap/types.ts'
 import { setDisplayTimeZone } from '../copy/dates.ts'
-import { contentTitle } from '../content/stepTitle.ts'
-import { boardReasonOf, boardWhenOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
-import { laneReadings } from '../ui/surfaces/planLanes.ts'
+import { boardReadingsOf, boardReasonOf, boardWhenOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { badgeLabel, factOf } from '../ui/surfaces/stepContract.ts'
 import type { LaneView, PrerequisiteBlocker } from '../ui/surfaces/stepContract.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
@@ -90,12 +86,9 @@ export function stepSnapshotsOf(name: FixtureName): Record<string, StepSnapshot>
 function snapshotsOf(f: Fixture, r: ReturnType<typeof runFixture>): Record<string, StepSnapshot> {
   const steps = r.steps
   const answers = f.mapping.breakGlassAnswers ?? null
-  const cleanup = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, answers) }))
-  const readings = laneReadings(steps, cleanup)
-  const titleOf = (id: string): string | null => {
-    const s = steps.find((x) => x.id === id)
-    return s ? contentTitle(s) : null
-  }
+  // The board's own readings and titles (planBoard.ts boardReadingsOf), so a
+  // snapshot records what the Plan draws.
+  const { readings, titleOf } = boardReadingsOf(steps, r.schedule.cleanup, answers)
   const prerequisiteLabel = prerequisiteLabelFor(readings)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const dates = planDates(steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)

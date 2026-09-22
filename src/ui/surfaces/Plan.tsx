@@ -18,15 +18,13 @@ import { app, engine, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { planFinish, planWeeks, projectedFinish } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
-import { laneReadings } from './planLanes.ts'
+import { ALL_WORK_TAB, BOARD, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardReadingsOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewOf, partitionPinnedGroups, pinnedBoardGroups, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, splitPinned, waveStartOf, workTypeOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -35,7 +33,7 @@ import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
 import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
-import { cleanupTitleOf, factOf } from './stepContract.ts'
+import { factOf } from './stepContract.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
@@ -187,25 +185,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
-  const stepsById = new Map(c.steps.map((s) => [s.id, s]))
-  const titleOf = (id: string): string | null => {
-    const s = stepsById.get(id)
-    // A Cleanup row is a prerequisite like any other and its title lives
-    // somewhere else (content.cleanup, by kind). Without this the board knew
-    // the drill held every policy's enforcement — the dependency graph carries
-    // that edge for every CA step — and could only call it "Prerequisite on
-    // hold", which is what reached the enforce checklist where the condition
-    // "Emergency access is prepared and tested" needed naming.
-    return s ? contentTitle(s) : cleanupTitleOf(id)
-  }
-  // The Cleanup rows the plan draws (§5), by the id the board gives them; the
-  // drill is a Cleanup row and nothing else, so it counts once.
-  const cleanupRows = (cleanupPhase?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ row: r, id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
   // The lanes (planLanes.ts): the actionability engine read over the plan as
-  // this scan left it. A step's phase is not an input, so its tab cannot move
-  // when its dates do. A step the person said does not apply here is not a row
-  // (the footer holds it); a skipped step is a deferred one.
-  const readings = laneReadings(c.steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: ['alerting', 'consolidation', 'naming'].includes(r.row.kind) })))
+  // this scan left it, with the Cleanup rows the plan draws (§5) — the drill is
+  // a Cleanup row and nothing else, so it counts once. A step's phase is not an
+  // input, so its tab cannot move when its dates do. A step the person said does
+  // not apply here is not a row (the footer holds it); a skipped step is a
+  // deferred one. The one construction every surface that states a lane reads
+  // (planBoard.ts boardReadingsOf): the printed plan, the Export page and
+  // Connect's tile read exactly these readings and titles (R4-22).
+  const { readings, titleOf, cleanupRows } = boardReadingsOf(c.steps, cleanupPhase, answers)
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // A prerequisite tile's label is the prerequisite's own lane (decision 12).
   const prerequisiteLabel = prerequisiteLabelFor(readings)

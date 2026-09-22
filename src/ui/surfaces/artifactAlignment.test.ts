@@ -35,7 +35,7 @@ import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
 import { laneReadings } from './planLanes.ts'
-import { laneViewFor } from './planBoard.ts'
+import { boardReadingsOf, doesntApplyView, laneViewFor, laneViewOf } from './planBoard.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
@@ -62,8 +62,16 @@ function load(named: string | Fixture): Case {
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = once((s: Step): StepVarContext =>
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
-  // The lane read over the whole plan (planBoard.ts laneViewFor, A1c), as the Export page hands it down.
-  const lane = once((s: Step) => laneViewFor(s, run.steps))
+  // The lane read over the whole plan, as the Export page hands it down: the
+  // board's own readings, Cleanup rows included (planBoard.ts boardReadingsOf).
+  // This read `laneViewFor(s, run.steps)` — no Cleanup rows — which is the
+  // construction the Export page had, so the sweep agreed with the page's
+  // defect: a step the board held behind the drill exported another lane (R4-22).
+  const board = boardReadingsOf(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const lane = once((s: Step): ReturnType<typeof laneViewFor> => {
+    const r = board.readings.get(s.id)
+    return r ? laneViewOf(r, board.titleOf) : doesntApplyView()
+  })
   const view = once((s: Step) => stepExportView(s, ctx(s), lane(s)))
   let entries: Map<string, string> | null = null
   const entry = (s: Step): string | undefined => {
@@ -573,7 +581,9 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   // the print's three sections carry has a lane reading, and the Plan derives no
   // phase, undated or floor grouping of its own.
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
-  assert.match(plan, /const readings = laneReadings\(c\.steps, /, 'the Plan no longer reads the engine for its rows')
+  // The Plan reads the engine through the one board construction (R4-22), which
+  // the print, the Export page and Connect read too.
+  assert.match(plan, /const \{ readings, titleOf, cleanupRows \} = boardReadingsOf\(c\.steps, /, 'the Plan no longer reads the engine for its rows')
   assert.match(plan, /const rowSteps = c\.steps\.filter\(\(s\) => readings\.has\(s\.id\)\)/, 'the Plan decides its rows somewhere else')
   for (const own of ['phaseRows(', 'undatedRows(', 'floorRows(']) assert.equal(plan.includes(own), false, `the Plan still groups by ${own}`)
   for (const c of CASES) {
@@ -626,4 +636,43 @@ test('013.H: the printed document draws every step exactly once, and never dates
     const excluded = [...raw].filter((id) => !inPhase.has(id))
     assert.ok(excluded.length > 0, `${c.name}: no wave carries a row a phase must not draw — the rule is untested here`)
   }
+})
+
+// ---- R4-22: the Export page states the lane the board states ----
+
+// The Export page built its lane readings with no Cleanup rows, while the Plan,
+// the print and Connect passed them. The drill — the prerequisite every
+// policy's enforcement waits on — did not exist on the Export page, so the
+// calendar, the bundle and the prompt pack stated a lane the board did not: a
+// policy the board held Up Next behind the drill exported "Ready · Ready to
+// enforce", and a step the board held On Hold exported "Up Next". Each surface
+// now reads planBoard.ts boardReadingsOf, the one construction.
+test('R4-22: the Export page, the print, Connect and the Plan read the board through one construction', () => {
+  const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
+  for (const [file, call] of [
+    ['./Plan.tsx', 'boardReadingsOf(c.steps, cleanupPhase, answers)'],
+    ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
+    ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
+    ['./Connect.tsx', 'boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers)'],
+  ] as const) {
+    const src = read(file)
+    assert.ok(src.includes(call), `${file} does not read the board's one construction`)
+    assert.equal(src.includes('laneReadings('), false, `${file} builds lane readings of its own beside the board's`)
+    assert.equal(src.includes('cleanupComplete('), false, `${file} decides a Cleanup row's completion itself`)
+  }
+})
+
+test('R4-22: a step the board holds behind the drill exports the board\'s lane, not the one without it', () => {
+  // mid, first scan: Register Your Own Passkey waits on Verify Emergency
+  // Access (the drill, a Cleanup row). The board holds it On Hold; the Export
+  // page's old construction, with no Cleanup rows, read it Up Next.
+  const c = CASES.find((x) => x.name === 'mid')!
+  const step = c.run.steps.find((s) => s.id === 's-ladder-operator-passkey')!
+  assert.ok(step, 'the premise: mid carries the operator passkey step')
+  const withoutCleanup = laneReadings(c.run.steps).get(step.id)!
+  assert.equal(laneViewOf(withoutCleanup, () => null).label, 'Up Next', 'the premise: without the Cleanup rows the step reads another lane')
+  assert.equal(c.lane(step).label, 'On Hold', 'the board holds the step behind the drill')
+  assert.equal(c.view(step).state, 'On Hold', 'the export states a lane the board does not')
+  const ics = c.entry(step) ?? ''
+  assert.equal(ics.replace(/\r\n /g, '').includes('Up Next'), false, 'the calendar entry says Up Next where the board says On Hold')
 })

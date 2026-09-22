@@ -68,9 +68,8 @@ import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { usePlanData } from './planData.ts'
-import { laneCountsOf, laneReadings } from './planLanes.ts'
-import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import { cleanupEntry } from './cleanupExport.ts'
+import { laneCountsOf } from './planLanes.ts'
+import { boardReadingsOf } from './planBoard.ts'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -525,12 +524,11 @@ function SignedIn({
   const cleanupAnswers = plan.mapping?.breakGlassAnswers ?? null
   const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers) : null
   // The Completed lane's count, from the engine reading the Plan's own rows are
-  // built from (planLanes.ts laneReadings, A1c): the tile and the Plan header's
+  // built from (planBoard.ts boardReadingsOf, A1c): the tile and the Plan header's
   // Completed tile state one number, read once here for the tile's state line.
   const laneTileCounts = useMemo(() => {
     if (!computed || !steps) return null
-    const rows = (computed.schedule.cleanup?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ id: `cleanup-${r.kind}`, complete: cleanupComplete(r, cleanupAnswers) }))
-    return { steps: steps.steps, completed: laneCountsOf(laneReadings(computed.steps, rows)).Completed }
+    return { steps: steps.steps, completed: laneCountsOf(boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers).readings).Completed }
   }, [computed, steps?.steps, cleanupAnswers])
   // What the complete scan produced, for the step's meta row. Each number comes
   // from the authority that already owns it: derive/facts.ts for the people (the

@@ -571,8 +571,15 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   // word is the lane the engine read for the row (planBoard.ts laneViewOf, A1b
   // decision 1) on the Plan and in the print alike (A1c). Neither surface
   // writes the words.
+  // The completion is read once, inside the one board construction both
+  // surfaces call (planBoard.ts boardReadingsOf, R4-22): the Export page built
+  // its own readings with no Cleanup rows at all, and a surface that decides
+  // the completion itself is where that starts.
+  const board = read('src/ui/surfaces/planBoard.ts')
+  assert.ok(board.includes('cleanupComplete('), 'the board construction does not read the one Cleanup completion')
   for (const [name, src, word] of [['Plan', plan, 'laneViewOf('], ['PrintPlan', print, 'laneViewOf(']] as const) {
-    assert.ok(src.includes('cleanupComplete('), `${name} does not read the one Cleanup completion`)
+    assert.ok(src.includes('boardReadingsOf('), `${name} does not read the one board construction`)
+    assert.equal(src.includes('cleanupComplete('), false, `${name} decides a Cleanup row's completion itself`)
     assert.ok(src.includes(word), `${name} does not read the one Cleanup status word`)
     assert.equal(/word: 'In place'|word: 'Ready'/.test(src), false, `${name} writes a status word into its own JSX`)
   }

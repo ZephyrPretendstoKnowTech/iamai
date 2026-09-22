@@ -257,7 +257,8 @@ test('the lane order and grouping are still the engine\'s, not the row\'s', () =
   // planLanes.ts reads the lanes and their order off the engine (S3); the
   // restoration changed where a row's facts sit, not which rows exist or what
   // order they come in.
-  assert.match(PLAN, /const readings = laneReadings\(c\.steps, /)
+  // Through the one board construction (planBoard.ts boardReadingsOf, R4-22).
+  assert.match(PLAN, /const \{ readings, titleOf, cleanupRows \} = boardReadingsOf\(c\.steps, /)
   assert.match(PLAN, /order: reading\.order,/)
   // No sorting, filtering or grouping in the row component.
   for (const forbidden of ['.sort(', '.filter(', '.slice(']) {
