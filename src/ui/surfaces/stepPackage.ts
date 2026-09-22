@@ -23,7 +23,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { operationsOf, policyHold, policyResult } from '../../roadmap/operations.ts'
+import { operationsOf, policyHold, policyResult, unavailableReason } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
@@ -324,6 +324,12 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // work: a create would be the duplicate its hold rules out, and a correction
   // would name a policy it will not guess (review R2-N1).
   if (step.action.ambiguousTarget === true) return null
+  // A policy this plan tagged that the tenant switched off is not a policy to
+  // build: its package's missing-state projection is the create, and AI Info
+  // previewed it — "IAMAI did not find Block Device Code Sign-in… The next action
+  // is to create it in Report-only" — beside a step saying it is there, switched
+  // off (Jordan D6). Following it makes a second policy.
+  if (unavailableReason(step) === 'switched-off') return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy the plan has not finished is planned as its correction,

@@ -40,7 +40,7 @@ import { stepExportView } from './stepExport.ts'
 import { CONTRACT } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
-import { submitsEnforcementOnly } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { incompleteFieldsOf, plannedOperationsOf, policyBodiesOfChannel } from './stepPackage.ts'
 import { plannedPortalLines, portalNamesFor } from './stepPortal.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -144,7 +144,13 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     const names = portalNamesFor(i.ctx, i.ex, contentTitle(i.step))
     const planned = plannedOperationsOf(i.step)
     const turnOnOnly = planned.length > 0 && planned.every(submitsEnforcementOnly)
-    const lines = !offered && turnOnOnly ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
+    // A policy this plan tagged that the tenant switched off is not one to build:
+    // the operation the engine resolves for it is still a create, and the
+    // briefing stated "→ New policy, Name: …, Description: [IAMAI:plan-…]" beside
+    // a step saying the policy is there and switched off (Jordan D6). Following
+    // it makes a second policy.
+    const switchedOff = unavailableReason(i.step) === 'switched-off'
+    const lines = (!offered && turnOnOnly) || switchedOff ? [] : plannedPortalLines(i.step, offered ? names : { ...names, withholdTurnOn: true }, selected) ?? []
     intended.push(...lines)
     if (lines.length > 0 && !offered) intended.push(W.proposed)
     const open = [...new Set(plannedOperationsOf(i.step).flatMap((op) => [...incompleteFieldsOf(i.step, op)]))].sort()
