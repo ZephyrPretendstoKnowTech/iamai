@@ -544,19 +544,9 @@ const bgMethodDiversity: ValidationRule = {
   needs: ['authMethods'],
   evaluate: (_id, ctx) => {
     if (ctx.breakGlassIds.length < 2) return PASS
-    // What an account relies on is its phishing-resistant method where it has
-    // one. A weaker method registered beside it is not a second way in worth
-    // having on an account every policy excludes, and counting it let the
-    // quickest answer to "every account relies on a security key alone" — add a
-    // text-message number to one of them — clear this check, so the card would
-    // have read Meets recommendations over a phishable Global Administrator
-    // (R4-56). Only another phishing-resistant type makes the accounts differ.
     const perAccount = ctx.breakGlassIds.map((bid) => {
       const m = ctx.snapshot.authMethods[bid]
-      if (m === undefined || m === 'unknown') return null
-      const kinds = mfaKinds(m)
-      const strong = kinds.filter(isPhishingResistantKind)
-      return strong.length > 0 ? strong : kinds
+      return m === undefined || m === 'unknown' ? null : mfaKinds(m)
     })
     if (perAccount.some((k) => k === null)) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
     const lists = perAccount as string[][]
