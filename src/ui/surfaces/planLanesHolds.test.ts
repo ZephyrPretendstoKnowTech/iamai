@@ -12,7 +12,7 @@ import { unavailableReason } from '../../roadmap/operations.ts'
 import { blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { laneReadings, observe } from './planLanes.ts'
-import { laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -320,4 +320,31 @@ test('a row waiting on a list IAMAI filled asks for confirmation, not for an ans
     if (view.lane !== 'Ready') continue
     assert.match(String(view.waitingFor), /^Waiting on your answer: /, `${step.id}: a question read as a confirmation`)
   }
+})
+
+// R4-16 (Marcus D6). The board read every evidence gate as "Observing", so the
+// four report-only policies held on a readiness threshold — "when MFA readiness
+// reaches 90% (now 75%)", "when device readiness reaches 80% (now 32%)" — read
+// "Observing" as what they were waiting for, a wait that time delivers, and kept
+// reading it after the observation window closed. Nothing about watching a
+// report-only policy moves a readiness number. The row says the gate's own words.
+test('a report-only policy held on its readiness threshold names the threshold, not Observing', () => {
+  const step = cleanPolicy()
+  const binding = 'when MFA readiness reaches 90% (now 75%)'
+  step.blockers = [{ kind: 'readiness', label: 'readiness', binding }]
+  step.action = { ...step.action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '75%' } }
+  step.state = { ...step.state, lifecycle: 'report-only', condition: 'blocked' }
+  step.status = 'in-report-only'
+  const held = laneViewOf(readingOf(step), () => null)
+  assert.equal(held.lane, 'On Hold')
+  assert.equal(held.waitingFor, binding, 'the row says what it waits for')
+  assert.equal(held.tail, binding, 'and so does the opened step\'s bar, which reads the tail')
+  assert.notEqual(held.waitingFor, BOARD.blockers.evidence)
+  // The control: a report-only policy whose only open gate IS its observation window still reads Observing.
+  const watched = cleanPolicy()
+  watched.state = { ...watched.state, lifecycle: 'report-only' }
+  watched.status = 'in-report-only'
+  const reading = readingOf(watched)
+  assert.equal(reading.reason?.id, 'evidence:observation', 'the premise: only the window holds it')
+  assert.equal(laneViewOf(reading, () => null).waitingFor, BOARD.blockers.evidence)
 })
