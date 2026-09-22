@@ -32,6 +32,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { commsFor, stepLines } from '../ui/surfaces/stepExport.ts'
 import { stepById } from '../content/content.ts'
+import { phoneSignInIds } from '../derive/sets.ts'
 
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
   const nameOf = (id: string): string => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id
@@ -77,7 +78,8 @@ test('open: the step asks, phones are out of readiness, and only the device step
   // Open, it waits on a person: Needs decision, never Ready (owner, 2026-09-11).
   assert.equal(ds.status, 'blocked')
   assert.equal(ds.state.condition, 'needs-decision')
-  assert.ok((f.snapshot.scenarioEvidence?.phoneSignIns?.people.length ?? 0) >= 2, 'the demo signs in from two phones')
+  // Who signed in from a phone is read from the people's own records, the ones MFA Readiness reads (NEW-Nadia-D4).
+  assert.ok((phoneSignInIds(f.snapshot)?.length ?? 0) >= 2, 'the demo signs in from two phones')
   assert.match(ds.directionQuestions!.find((q) => q.key === 'phones')!.today ?? '', /^Today: \d+ people signed in from phones/)
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)
