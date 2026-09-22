@@ -5,6 +5,13 @@ import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTas
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import type { PasskeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { shared } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { count, list } from '../../copy/statements.ts'
+import { methodName } from '../../copy/inventory.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 
 const clean = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 const upnOf = (ctx: StepVarContext, id: string): string => clean(ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())?.userPrincipalName || ctx.nameOf(id) || id)
@@ -108,7 +115,7 @@ function aaguidSteps(currentIds: string[], targetIds: string[], required: readon
 const saved = (steps: string[]): string[] => steps.length && !/then \*\*Save\*\*\.$/.test(steps.at(-1)!) ? [...steps, 'Select **Save**.'] : steps
 
 /** One profile's differing values, in the order the profile page sets them. */
-function profileSteps(currentRaw: unknown, targetRaw: unknown, required: readonly string[], modelNames: ReadonlyMap<string, string>): string[] {
+function profileSteps(currentRaw: unknown, targetRaw: unknown, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
   const current = (currentRaw && typeof currentRaw === 'object' ? currentRaw : {}) as Record<string, any>
   const target = (targetRaw && typeof targetRaw === 'object' ? targetRaw : {}) as Record<string, any>
   const kr = current.keyRestrictions ?? {}
@@ -116,15 +123,16 @@ function profileSteps(currentRaw: unknown, targetRaw: unknown, required: readonl
   return saved([
     ...(samePasskeyValue(current.passkeyTypes, target.passkeyTypes, 'passkeyTypes') ? [] : [`Set **Passkey types** to **${typeWords(target.passkeyTypes)}**.`]),
     ...(samePasskeyValue(current.attestationEnforcement, target.attestationEnforcement) ? [] : [`Set **Enforce attestation** to **${target.attestationEnforcement === 'registrationOnly' ? 'Yes' : 'No'}**.`]),
-    ...(kr.isEnforced === tk.isEnforced && kr.enforcementType === tk.enforcementType ? [] : [tk.isEnforced === true ? `Select **Target specific AAGUIDs** and set **Behavior** to **${tk.enforcementType === 'block' ? 'Block' : 'Allow'}**.` : 'Clear **Target specific AAGUIDs**.']),
-    ...aaguidSteps(lowerIds(kr.aaGuids), lowerIds(tk.aaGuids), required, modelNames, true),
+    // The allow list, only where it is IAMAI's to hand over (roadmap/passkeyRestrictions.ts).
+    ...(!restrict || (kr.isEnforced === tk.isEnforced && kr.enforcementType === tk.enforcementType) ? [] : [tk.isEnforced === true ? `Select **Target specific AAGUIDs** and set **Behavior** to **${tk.enforcementType === 'block' ? 'Block' : 'Allow'}**.` : 'Clear **Target specific AAGUIDs**.']),
+    ...(restrict ? aaguidSteps(lowerIds(kr.aaGuids), lowerIds(tk.aaGuids), required, modelNames, true) : []),
   ])
 }
 
 /** A legacy (profile-less) configuration's differing values, on its Configure tab. */
-function legacySteps(fields: readonly string[], current: Record<string, any> | null, target: Record<string, any>, required: readonly string[], modelNames: ReadonlyMap<string, string>): string[] {
+function legacySteps(fields: readonly string[], current: Record<string, any> | null, target: Record<string, any>, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
   const yes = (value: unknown): string => value === true ? 'Yes' : 'No'
-  return saved(fields.flatMap(field => {
+  return saved(fields.filter(field => restrict || !field.startsWith('keyRestrictions.')).flatMap(field => {
     switch (field) {
       case 'isAttestationEnforced': return [`Set **Enforce attestation** to **${yes(target.isAttestationEnforced)}**.`]
       case 'keyRestrictions.isEnforced': return [`Set **Enforce key restrictions** to **${yes(target.keyRestrictions?.isEnforced)}**.`]
@@ -164,6 +172,10 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   const changedProfileNames = changedProfiles.map(raw => clean(String((raw as Record<string, unknown>).name || (raw as Record<string, unknown>).id || 'Passkey profile')))
   const correctionProfileInstruction = changedProfileNames.length === 1 ? `Open **${changedProfileNames[0]}**.` : changedProfileNames.length > 1 ? `Open only these profiles: ${changedProfileNames.map(name => `**${name}**`).join(', ')}.` : profileInstruction
   const affected = affectedPasskeysByProposedChange(ctx.snapshot, ctx.mapping, ctx.groups)
+  // Who the planned allow list would leave without a passkey it allows, and
+  // whether any of them would keep no way to sign in (roadmap/passkeyRestrictions.ts).
+  const restriction = passkeyRestrictionReading(ctx.snapshot, ctx.mapping, ctx.groups)
+  const withheld = restriction.lockedOut.length > 0
   const affectedFacts = affected.users.flatMap(user => user.methods.map(method => ({
     label: upnOf(ctx, user.accountId),
     value: `${method.displayName}${method.aaguid ? ` · ${method.aaguid}` : ''}${method.passkeyType ? ` · ${method.passkeyType}` : ''}${user.hasCompatibleAlternative ? ' · Compatible alternative registered' : ' · Replacement needed'}`,
@@ -180,10 +192,10 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   const protectionChanges = !resolution || !protectionFields.length ? []
     : changedProfiles.length ? changedProfiles.flatMap(raw => {
         const id = String((raw as Record<string, unknown>).id ?? '')
-        const changes = profileSteps(currentProfiles.get(id), raw, required, modelNames)
+        const changes = profileSteps(currentProfiles.get(id), raw, required, modelNames, !withheld)
         return changes.length ? [`Open **${clean(String((raw as Record<string, unknown>).name || id || 'Passkey profile'))}**.`, ...changes] : []
       })
-    : (() => { const changes = legacySteps(protectionFields, current as Record<string, any> | null, resolution.target as Record<string, any>, required, modelNames); return changes.length ? ['Open **Configure**.', ...changes] : [] })()
+    : (() => { const changes = legacySteps(protectionFields, current as Record<string, any> | null, resolution.target as Record<string, any>, required, modelNames, !withheld); return changes.length ? ['Open **Configure**.', ...changes] : [] })()
   const targetValue = (field: string): unknown => field === 'state' ? resolution?.target.state : field === 'includeTargets' ? resolution?.target.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? resolution?.target.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? resolution?.target.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? resolution?.target.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? resolution?.target.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? resolution?.target.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? resolution?.target.passkeyProfiles : undefined
   const currentValue = (field: string): unknown => field === 'state' ? current?.state : field === 'includeTargets' ? current?.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? current?.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? current?.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? current?.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? current?.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? current?.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? current?.passkeyProfiles : undefined
   const comparisonFields = [...new Set([...availabilityFields, ...protectionFields])]
@@ -214,9 +226,11 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     },
     {
       id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
-      required: affected.users.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
+      required: affected.users.length > 0 || restriction.stranded.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
       issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
-      steps: [affected.users.length
+      steps: [restriction.stranded.length > 0
+        ? strandedSentence(restriction, ctx, protectionFields.length > 0)
+        : affected.users.length
         ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
         // Could not judge is not the same as not affected, and saying the
         // second over the first is an unhedged all-clear before a change that
@@ -225,7 +239,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
         // the opposite four lines below it.
         : affected.unassessable.length
           ? `IAMAI could not tell whether the planned settings affect the passkeys on ${affected.unassessable.length} ${affected.unassessable.length === 1 ? 'account' : 'accounts'}, because it could not read their key model. Check those before applying restrictions, and keep the existing working method available.`
-          : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.', '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.'],
+          : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.', '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
       id: 'apply-passkey-settings', accountId: null, title: 'Configure passkey protections', subjectLabel: subject, targetUpn: null,
@@ -233,8 +247,36 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.
       readinessFacts: resolution ? (profileCorrections.length ? profileCorrections : protectionFields.flatMap(field => { const value = fieldAction(field, targetValue(field), modelNames).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] })) : [],
-      steps: [...(resolution && protectionFields.length ? ['Keep your working administrator session open.'] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...(resolution && protectionChanges.length ? protectionChanges : [protectionFields.length ? correctionProfileInstruction : profileInstruction, ...(resolution && protectionFields.length ? ['Apply the values listed in **Review passkey settings**. Preserve unrelated targeting and settings.', 'Select **Save**.'] : resolution ? ['Review storage type, attestation, authenticator restrictions, restriction mode, and approved models. No save is required.'] : ['Review the applicable profile. IAMAI has not established the change values for this scan; do not save guessed values.'])]), ...(resolution ? ['Return to IAMAI and select **Scan to update the plan**.'] : [])],
+      steps: [...(resolution && protectionFields.length ? ['Keep your working administrator session open.'] : []), ...(withheld && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...(resolution && protectionChanges.length ? protectionChanges : [protectionFields.length ? correctionProfileInstruction : profileInstruction, ...(resolution && protectionFields.length && !withheld ? ['Apply the values listed in **Review passkey settings**. Preserve unrelated targeting and settings.', 'Select **Save**.'] : resolution ? ['Review storage type, attestation, authenticator restrictions, restriction mode, and approved models. No save is required.'] : ['Review the applicable profile. IAMAI has not established the change values for this scan; do not save guessed values.'])]), ...(resolution ? ['Return to IAMAI and select **Scan to update the plan**.'] : [])],
     },
   ]
-  return { tasks, printAll: true, approvedModels: intendedModels }
+  // The step opens on Prepare while it is the thing to do first: somebody would be
+  // locked out, or somebody loses a passkey the change has not been made to yet.
+  const prepareFirst = withheld || (restriction.stranded.length > 0 && protectionFields.length > 0)
+  return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
+}
+
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; withheld: string; withheldTask: string; keptMany: string }
+const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
+
+/** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
+function namedAccounts(ids: readonly string[], ctx: StepVarContext): string {
+  const shown = ids.slice(0, NAMES_INLINE).map(id => `**${upnOf(ctx, id)}**`)
+  return list(ids.length > NAMES_INLINE ? [...shown, `${ids.length - NAMES_INLINE} more`] : shown)
+}
+
+/**
+ * The accounts the planned allow list would leave without a passkey it allows,
+ * named, with what each keeps — or, where one would keep nothing, why the
+ * restrictions are not handed over. The step said "IAMAI could not tell whether
+ * the planned settings affect the passkeys on 11 accounts… Check those before
+ * applying restrictions" over a Save that applied them, naming none (Jordan
+ * D13), and said "before applying restrictions" still after they were applied
+ * (Marcus D8).
+ */
+export function strandedSentence(r: PasskeyRestrictionReading, ctx: StepVarContext, beforeChange: boolean): string {
+  if (r.lockedOut.length > 0) return fillText(PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
+  const methods = [...new Set(r.keeps.map(k => methodName(k.method === 'phone' ? 'mobilephone' : k.method)))]
+  const kept = methods.length === 1 ? methods[0] : fillText(PR().keptMany, { methods: list(methods) })
+  return fillText(beforeChange ? PR().stranded : PR().strandedAfter, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx), kept })
 }

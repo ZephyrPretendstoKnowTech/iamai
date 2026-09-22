@@ -1,3 +1,5 @@
+import { passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { strandedSentence } from './emergencyPasskeyTasks.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { oneLine } from '../../content/implementation/project.ts'
@@ -168,8 +170,15 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
     const assigned = current ? assignedPasskeyProfiles(current) : null
     const profiles = assigned?.profiles ?? []
     const profileMode = !!current && (!!current.defaultPasskeyProfile || profiles.length > 0 || Array.isArray(current.passkeyProfiles) && current.passkeyProfiles.length > 0)
+    // The allow list is not handed over while somebody would be locked out by it
+    // (roadmap/passkeyRestrictions.ts): this channel said "apply the listed
+    // attestation and device-bound Allow restrictions" beside the same Tasks that
+    // hedged about the passkeys nobody could judge (Jordan D13).
+    const restriction = passkeyRestrictionReading(snapshot, mapping, ctx.groups)
     const configurationAction = !current || reading.state === 'unread'
       ? 'The current passkey configuration was not fully read. Resolve the named read failure and scan again before changing restrictions; use the intended list only to prepare account choices.'
+      : restriction.lockedOut.length > 0
+      ? `${profileMode ? 'In the applicable profiles named in Readiness, use device-bound passkeys and attestation as listed.' : 'In the existing legacy configuration, apply the listed attestation setting.'} ${strandedSentence(restriction, ctx, true)}`
       : profileMode
         ? `Open only the applicable profiles named in Readiness${profiles.length ? ` (${profiles.map(p => oneLine(p.name || p.id)).join(', ')})` : ''}. Use device-bound passkeys, attestation and Allow restrictions as listed. Add missing intended AAGUIDs to their applicable profiles while preserving each profile’s existing allowances and targeting.${assigned?.unknown.length ? ' Resolve the unread profile assignments before tightening them.' : ''}`
         : 'In the existing legacy configuration, apply the listed attestation and device-bound Allow restrictions. Retain approved existing entries; do not opt the tenant into profiles as part of this step.'
