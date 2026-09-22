@@ -57,7 +57,7 @@ export function evidenceFor(
   // steps sat behind the first for ten days naming nothing.
   if (!usable) {
     const reason = src?.reason ?? status
-    return { ...base, lines: [fillText(W.unreadable, { reason })] }
+    return { ...base, lines: [fillText(W.unreadable, { reason })], unreadable: reason }
   }
 
   const usage = snapshot.evidenceUsage

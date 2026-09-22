@@ -91,6 +91,9 @@ test('an open observation says why it has not completed: the people it stopped, 
   assert.equal(blind.lines.length, 1, 'an unreadable source says nothing about itself')
   assert.ok(blind.lines[0].includes('no sign-in records could be read'), `the recorded reason is not in the line: ${blind.lines[0]}`)
   assert.ok(blind.lines[0].includes('cannot complete'), 'the line does not say the window cannot complete')
+  // And the reason on its own, for a policy already enforced, where "time in
+  // report-only" is the wrong sentence (stepContract.ts, the awaiting-review tile).
+  assert.equal(blind.unreadable, 'no sign-in records could be read')
 
   // 2. The records were read, and they are what holds the gate shut. The count
   //    is the one number the reader needs; it was on the step and said nowhere.
@@ -108,4 +111,5 @@ test('an open observation says why it has not completed: the people it stopped, 
   const clean = evidenceFor('block-auth-transfer', base, [])
   assert.equal(clean.status, 'ok')
   assert.deepEqual(clean.lines, [], 'an ordinary open window states a reason it does not have')
+  assert.equal(clean.unreadable, undefined, 'records that were read are not unreadable')
 })

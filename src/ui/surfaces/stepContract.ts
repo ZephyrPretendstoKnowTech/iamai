@@ -1758,9 +1758,17 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // step, two of them on the same step id. Its Done-when listed five lines,
   // three that IAMAI checks for itself and two that are the reader's, with
   // nothing saying which remained. The step knew all along: `awaitsWorkflowRecord`.
+  //
+  // It says what the scan confirmed — the policy on, its configuration in place —
+  // and not that IAMAI is finished with it. That read as checks done on a
+  // device-code block and a guest-MFA policy the first scan found enforced, in a
+  // tenant whose sign-in records could not be read at all: no report-only period
+  // watched, no sign-in seen, and the reason on the step reaching only the AI
+  // briefing (Priya D4). Where the records were not read, the tile says so and why.
   if (awaitsWorkflowRecord(step)) {
-    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string }
-    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: t2.awaitingReviewNote }
+    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string; awaitingReviewUnread: string }
+    const unread = step.evidence.unreadable === undefined ? null : fillText(t2.awaitingReviewUnread, { reason: step.evidence.unreadable })
+    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: unread === null ? t2.awaitingReviewNote : `${t2.awaitingReviewNote} ${unread}` }
   }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
