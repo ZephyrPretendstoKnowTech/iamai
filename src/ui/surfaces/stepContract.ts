@@ -138,6 +138,8 @@ type ContractWords = {
   /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
   inventoryNames: string
   foundInPlaceWatched: string
+  foundInherited: string
+  foundInheritedTogether: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
   doneSatisfied: string
@@ -639,12 +641,20 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
     // other proof, and a stronger one: whatever is here now arrived after IAMAI
     // looked, whoever made it and however fast.
     const watched = watchedArrive(step)
+    // And the third case, which neither of the two above fits: a tenant IAMAI
+    // has planned before, whose policy carries this plan's own tag
+    // (tracking.matchedBy === 'tag'). "Already delivered ... so there is
+    // nothing to create" is the wording for coverage somebody else put there,
+    // and "IAMAI watched it get there" is false — this scan did not. A reader
+    // who took over an inherited tenant met six of these with nothing anywhere
+    // saying the plan had been run here before.
+    const inherited = !watched && step.tracking?.matchedBy === 'tag'
     const text =
       by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
         : by.together
-          ? fillText(watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
-          : fillText(watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
+          ? fillText(inherited ? CONTRACT.foundInheritedTogether : watched ? CONTRACT.foundInPlaceWatchedTogether : CONTRACT.foundInPlaceTogether, { policies: list(by.names), tenant })
+          : fillText(inherited ? CONTRACT.foundInherited : watched ? CONTRACT.foundInPlaceWatched : CONTRACT.foundInPlaceNamed, { policies: by.names[0], tenant })
     out.push(found('in-place', text))
   }
   // Who the goal does not reach, where it is delivered anyway (roadmap/types.ts

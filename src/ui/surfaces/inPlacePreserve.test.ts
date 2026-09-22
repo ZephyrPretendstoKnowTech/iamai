@@ -830,3 +830,39 @@ test('an enforced step waiting on the person says so, instead of rendering nothi
   assert.ok(review, `${waiting.id}: nothing says the step is waiting on the reader`)
   assert.match(String(review.note), /yours to record/, String(review.note))
 })
+
+// The third case: a tenant IAMAI has planned before.
+//
+// `midflight` arrives carrying six policies with IAMAI's own tag, and every
+// preserved one of them said "Already delivered by X, so there is nothing to
+// create" — the wording for coverage somebody else put there. Neither half of
+// the pair fits: this scan did not watch it arrive, and it is not a policy the
+// tenant happened to have. A reader who took over an inherited tenant read six
+// of these with nothing anywhere saying the plan had been run here before.
+test('a policy this plan wrote on an earlier run is named as inherited, not as fresh coverage', () => {
+  const f = structuredClone(fixture('midflight'))
+  const run = runFixture(f)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  let checked = 0
+  for (const step of run.steps) {
+    if (!isPreserved(step)) continue
+    if (step.tracking?.matchedBy !== 'tag') continue
+    checked++
+    const said = stepContract(step, ctx).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(String.fromCharCode(10))
+    assert.match(said, /carries this step's tag/, `${step.id}: ${said}`)
+    assert.doesNotMatch(said, /Already delivered by/, `${step.id}: still reads as somebody else's coverage`)
+    assert.doesNotMatch(said, /IAMAI watched it get there/, `${step.id}: claims a rollout this scan did not watch`)
+  }
+  assert.ok(checked > 0, 'no inherited policy is preserved on midflight')
+
+  // A tenant with no tag of ours is untouched: its coverage is somebody
+  // else's and still reads that way.
+  const g = structuredClone(fixture('mid'))
+  const other = runFixture(g)
+  const gctx = { snapshot: g.snapshot, mapping: g.mapping, groups: g.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: g.operatorId, now: g.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  for (const step of other.steps) {
+    if (!isPreserved(step) || step.tracking?.matchedBy === 'tag') continue
+    const said = stepContract(step, gctx).found.filter((x) => x.key === 'in-place').map((x) => x.text).join(String.fromCharCode(10))
+    assert.doesNotMatch(said, /carries this step's tag/, `mid/${step.id}: claims a tag it does not carry`)
+  }
+})
