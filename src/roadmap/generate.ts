@@ -88,7 +88,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { blindSourceOf, goalFamily, mfaReady, readinessFor, routeShortfallOf } from './readiness.ts'
+import { blindOf, goalFamily, mfaReady, readinessFor, routeShortfallOf } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -1982,6 +1982,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured
     }
+    // What the scan could not read, where a refused source is why the number is
+    // missing: the reading's own fact, worked out once (types.ts
+    // `Readiness.blind`). The gate below reads it rather than asking again.
+    const blindSource = blindOf(readiness, snapshot)
+    if (blindSource !== null) readiness.blind = blindSource
 
     // Gating (roadmap.md §6).
     const threshold =
@@ -2019,8 +2024,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // And what the scan could not see, where a source is the reason the
         // number is missing. "It is not measured yet" is true and names
         // nothing to go and do; this names the source, its recorded reason,
-        // the permission that reads it and the licence it needs.
-        ...(readiness.percent === null ? (() => { const blind = blindSourceOf(readiness.family, snapshot); return blind === null ? {} : { blind } })() : {}),
+        // the permission that reads it and the licence it needs. It is the
+        // reading's (above), never worked out a second time here.
+        ...(readiness.percent === null && readiness.blind !== undefined ? { blind: readiness.blind } : {}),
       }
     }
     // The same threshold, unmet, on a step that is already finished. The gate
@@ -2487,7 +2493,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const targetsKnown = (methodTargets.get('mfa-all-users')?.length ?? 0) > 0 && (!steps.some(s => s.id === 's-goal-admins-phishing-resistant') || (methodTargets.get('admins-phishing-resistant')?.length ?? 0) > 0)
     const preparedSet = new Set(targetsKnown ? preparation.readyIds : [])
     const registrationKnown = preparation.completeScope && preparation.unknownIds.length === 0 && targetsKnown
-    const verifyReadiness: Step['readiness'] = methodReadiness('mfa', { ...preparation, ids: preparationIds, readyIds: [...preparedSet], completeScope: preparation.completeScope && targetsKnown })
+    const campaignReading = methodReadiness('mfa', { ...preparation, ids: preparationIds, readyIds: [...preparedSet], completeScope: preparation.completeScope && targetsKnown })
+    // The campaign moves the number the policies wait on, and its reading
+    // carries what the scan could not read the same way theirs does (R4-20).
+    const campaignBlind = blindOf(campaignReading, snapshot)
+    const verifyReadiness: Step['readiness'] = campaignBlind === null ? campaignReading : { ...campaignReading, blind: campaignBlind }
     // Required whenever anyone enabled still has to be set up (ux-review-04 §2):
     // the Overview sentence, the blocked-step reasons and the pace all read
     // from this one number.

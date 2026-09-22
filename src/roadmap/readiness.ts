@@ -152,6 +152,16 @@ export function routeShortfallOf(
     : fillText(W.routeShortfallSome, { step, covered, short: short.length, rest: short.length - covered, threshold })
 }
 
+/**
+ * The blind source behind a reading that could not be worked out, for the
+ * reading itself (types.ts `Readiness.blind`). Null where the number was read,
+ * or where nobody is in scope: a missing number is blind only when it is
+ * unreadable, which is also the only missing number a threshold ever waits on.
+ */
+export function blindOf(reading: Pick<Readiness, 'family' | 'unmeasured'>, snapshot: TenantSnapshot): string | null {
+  return reading.unmeasured === 'unreadable' ? blindSourceOf(reading.family, snapshot) : null
+}
+
 export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnapshot): string | null {
   for (const key of BLIND_SOURCES[family] ?? []) {
     const source = snapshot.sources?.[key]
