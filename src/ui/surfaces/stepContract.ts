@@ -2169,11 +2169,22 @@ function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
   })
 }
 
+/** A decision input's tile note, and its words where IAMAI could not read the sign-in records the note speaks of. */
+type Noted = { tileNote?: unknown; tileNoteUnread?: unknown }
+
 /** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
 function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; tileNote?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown; tileNote?: unknown } } | null } | undefined)?.decision
+  const d = (contentStepFor(step) as { decision?: Noted & { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: Noted & { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
+  // A note that reads the sign-in records has its own words where IAMAI could not
+  // read them (tileNoteUnread, with the source's own reason). The device code tile
+  // said "The sign-in records cover observed use" on a tenant whose sign-in source
+  // refused every read: a coverage that did not exist, beside the question the
+  // records were meant to help answer. The engine held the reason on the step
+  // (Evidence.unreadable) and the tile never read it (R4-19, Priya D4).
+  const unread = step.evidence?.unreadable
+  const noteOf = (n: Noted): unknown => (unread !== undefined && typeof n.tileNoteUnread === 'string' ? fillText(n.tileNoteUnread, { reason: unread }) : n.tileNote)
   const ask = (label: string): string | null => {
-    const text = d?.question?.label === label ? (d.question.tileNote ?? d.question.text) : d?.label === label ? (d.tileNote ?? d.text ?? d.help) : null
+    const text = d?.question?.label === label ? (noteOf(d.question) ?? d.question.text) : d?.label === label ? (noteOf(d) ?? d.text ?? d.help) : null
     return typeof text === 'string' && whole(text, {}) ? text : null
   }
   // What the tile asks to confirm, where the input names it (content review S3); otherwise the shared word.

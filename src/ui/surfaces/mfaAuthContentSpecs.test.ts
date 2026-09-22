@@ -284,3 +284,21 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
   assert.doesNotMatch(packageOf(DEVICE).blocks['json.correct-conditions'].text, /\/\//)
   assert.match(packageOf(DEVICE).blocks['ai.correct'].text, /\{\{policy\.current\.semanticMismatches\}\}/)
 })
+
+test('s-goal-block-device-code: on a tenant whose sign-in records IAMAI could not read, the device code tile never says the records cover observed use', () => {
+  // R4-19 (c), Priya D4. On hostile, whose sign-in source refused every read, the
+  // unsaved decision's tile read "The sign-in records cover observed use; they can
+  // miss infrequent CLI, shared-device and enrollment workflows." IAMAI had read no
+  // record at all: the engine held the reason on the step (Evidence.unreadable) and
+  // the tile stated a coverage that did not exist, beside the very question the
+  // records were supposed to help answer. It says what IAMAI could not read, and why.
+  // The tenant whose records were read keeps the step's own note (the test above, on mid).
+  const DEVICE = 's-goal-block-device-code'
+  const body = bodiesOf(fixture('hostile')).get(DEVICE)
+  assert.ok(body, 'the hostile plan has the device code step')
+  const tile = tilesOf(body).find((t) => t.key === 'unsaved:Device code sign-in')
+  assert.ok(tile, 'the premise: hostile has not saved the device code decision')
+  assert.equal(tile.value, 'Confirm no legitimate use')
+  assert.doesNotMatch(String(tile.note), /records cover observed use/, String(tile.note))
+  assert.match(String(tile.note), /^IAMAI could not read the sign-in records in this tenant — no sign-in records could be read — so nothing here shows whether anything uses device code sign-in\./, String(tile.note))
+})
