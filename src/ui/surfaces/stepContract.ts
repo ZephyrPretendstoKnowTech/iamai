@@ -240,7 +240,7 @@ type ContractWords = {
   /** The rail's sub-line under a day the plan schedules, by the transition it is for (roadmap/stepSchedule.ts). */
   railTransition: Record<'createReportOnly' | 'change' | 'enforce', string>
   rollout: Record<string, string>
-  hardening: { heading: string; leadBlocked: string; leadDefer: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; minimumHeading: string; tiles: Record<string, string> }
+  hardening: { heading: string; leadBlocked: string; leadDefer: string; leadAdvisory: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; minimumHeading: string; tiles: Record<string, string> }
 }
 
 /**
@@ -993,8 +993,18 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // Read from the step's own findings rather than the hardening tally: the tally
   // counts only the checks EMERGENCY_ACCOUNT_RULES lists, so a recommendation
   // about the credential itself — the one that matters most here — is not in it.
-  const openHardening = !step.emergency?.deferredAt && (step.configurationFindings ?? []).some((f) => f.outcome !== 'pass')
-  if (openHardening && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: CONTRACT.hardening.leadDefer }
+  //
+  // Which words depends on what the plan can do with it (R4-56). leadDefer
+  // promises a Defer control and a Cleanup row, and those exist only for the
+  // hardening the tally counts. A finished step never carries any — it is
+  // finished because the tally is clear — so the lead promised them over a page
+  // with no defer control, no list and a Cleanup holding only the drill and the
+  // alerting: the one recommendation on the plan's one gate dropped out of view
+  // the moment the step read Completed. The recommendation it is actually about
+  // is shown where it is found, and the lead says where that is.
+  const open = (step.configurationFindings ?? []).filter((f) => f.outcome !== 'pass')
+  const openHardening = !step.emergency?.deferredAt && open.length > 0
+  if (openHardening && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: hardeningDeferrable(step) ? CONTRACT.hardening.leadDefer : fillText(CONTRACT.hardening.leadAdvisory, { findings: list(open.map((f) => f.label)) }) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
@@ -1301,7 +1311,13 @@ function hardeningOf(step: Step, cs: Record<string, unknown> | undefined, ex: Re
     groups.set(title, g)
     shown += 1
   }
-  return { groups: [...groups.values()], unchecked: Math.max(0, e.hardening - shown), basis: e.basis, deferredAt: e.deferredAt, canDefer: e.minimum === 0 }
+  return { groups: [...groups.values()], unchecked: Math.max(0, e.hardening - shown), basis: e.basis, deferredAt: e.deferredAt, canDefer: hardeningDeferrable(step) }
+}
+
+/** Whether the step carries hardening the operator can defer to Cleanup: the tally's own (roadmap/generate.ts `step.emergency`), with the minimum met. */
+function hardeningDeferrable(step: Step): boolean {
+  const e = step.emergency
+  return !!e && e.hardening > 0 && e.minimum === 0
 }
 
 /**
