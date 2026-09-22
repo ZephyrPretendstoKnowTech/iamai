@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
+import { populationLine } from '../derive/whoLine.ts'
 
 // A free tenant reduced to what the ladder actually reads.
 function freeSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
@@ -133,6 +134,20 @@ test('Authenticator replacement requires registration plus effective method targ
   assert.deepEqual(read().preparation?.missingIds, [snapshot.users[0].id])
   authenticator.excludeTargets = [{ id: 'unread-group', targetType: 'group' }]
   assert.deepEqual(read().preparation?.unknownIds, snapshot.users.map(u => u.id))
+})
+
+// R4-57: the rung carried its review list as a population with no active ids,
+// so its Affected people line read "No user impact" over two accounts to
+// review. It counts them through the one builder (derive/population.ts
+// namedAccounts): accounts, since the ladder on its own knows no active people.
+test('a rung that names accounts to review counts them as accounts', () => {
+  const snapshot = freeSnapshot()
+  snapshot.users = snapshot.users.filter(u => u.userType === 'member').slice(0, 2)
+  const step = ladderSteps(snapshot, mapping(), []).steps.find(s => s.id === ladderStepId('authenticator-over-sms'))!
+  assert.equal(step.population.ids.length, 2, 'the premise: the rung reviews two accounts')
+  const line = populationLine(step.population)
+  assert.doesNotMatch(line, /No user impact/, line)
+  assert.match(line, /^2 accounts( · |$)/, line)
 })
 
 test('separation review includes eligible role holders but excludes emergency accounts', () => {

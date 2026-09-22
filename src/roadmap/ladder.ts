@@ -20,6 +20,8 @@ import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import { stateFields } from './lifecycle.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import type { Step } from './types.ts'
+import { namedAccounts, populationIndex } from '../derive/population.ts'
+import type { PopulationIndex } from '../derive/population.ts'
 
 /** Microsoft's Global Administrator role template id; stable across every tenant. */
 export const GLOBAL_ADMIN_ROLE_ID = '62e90394-69f5-4237-9190-012177145e10'
@@ -179,8 +181,14 @@ export type LadderResult = {
  * The ladder as steps. `existingIds` are the phase 0 steps already generated:
  * where one covers a ladder item, that step takes the ladder's place and keeps
  * the ladder's position rather than being duplicated.
+ *
+ * `people` is the plan's population index (derive/population.ts): a rung that
+ * names accounts to review counts them through the one builder, namedAccounts.
+ * It carried them as a population with no active ids, and the line read "No
+ * user impact" over a review list (R4-57). A caller running the ladder on its
+ * own knows no active people, so a rung reads its accounts as accounts.
  */
-export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, existingIds: Iterable<string>, context: ScopeEvidence = {}): LadderResult {
+export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, existingIds: Iterable<string>, context: ScopeEvidence = {}, people: PopulationIndex = populationIndex(snapshot, [])): LadderResult {
   const have = new Set(existingIds)
   const f = ladderFacts(snapshot, context)
   const steps: Step[] = []
@@ -216,7 +224,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       blockedBy: [],
       blockers: [],
       unblockNotes: [],
-      population: { total: reviewIds.length, active: 0, admins: 0, guests: 0, ids: reviewIds, activeIds: [], inScope: reviewIds.length },
+      population: namedAccounts(reviewIds, people),
       readiness: { family: 'other', percent: null, lines: [] },
       evidence: { status: 'none', lines: [], affectedUserIds: [] },
       action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] },

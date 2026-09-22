@@ -5,7 +5,8 @@ import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { localHour, nobodyAffected, noticeDaysFor } from './timing.ts'
+import { NOTICE_WORKING_DAYS, localHour, nobodyAffected, noticeDaysFor } from './timing.ts'
+import { effectsOf } from './strand.ts'
 
 // The fixtures' display zone (fixtures/index.ts); each event is one instant.
 const ZONE = 'Australia/Sydney'
@@ -80,4 +81,21 @@ test('every step carries its content title', () => {
       assert.ok(s.plainTitle.length > 0, `${s.id} title`)
     }
   }
+})
+
+// R4-57, the service-account population. It was built by hand with every
+// service account counted as an active person, and the one builder counts none
+// of them as one: they are not people. The family reading read that count as
+// "affected", so an enforce step for the service-account policy, with sign-in
+// evidence read, would have been "nobody affected": one courtesy day of notice
+// and the zero batch, for a policy that blocks those accounts outside the
+// trusted network. What the step affects is the accounts it names.
+test('a step whose accounts are none of them active people is not "nobody affected"', () => {
+  const step = runFixture(fixture('demo')).steps.find((s) => s.id === 's-goal-service-accounts-trusted-network')
+  assert.ok(step && step.population.ids.length > 0, 'the premise: demo maps service accounts and plans their policy')
+  assert.equal(step.population.active, 0, 'the premise: none of them is an active person')
+  const enforce = { ...step, kind: 'enforce' as const, action: { ...step.action, kind: 'enforce' as const }, evidence: { status: 'ok' as const, lines: [], affectedUserIds: [] } }
+  assert.equal(effectsOf(enforce), null, 'the premise: the enforce step is read by its goal family')
+  assert.equal(nobodyAffected(enforce), false)
+  assert.equal(noticeDaysFor(enforce), NOTICE_WORKING_DAYS.medium)
 })

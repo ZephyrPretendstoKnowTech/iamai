@@ -55,6 +55,7 @@ import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
 import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
+import { affectedIds } from '../derive/whoLine.ts'
 import { lockoutCount } from './lockout.ts'
 import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
@@ -326,19 +327,27 @@ function announcementAudience(ids: readonly string[], admins: boolean, nameOf: (
   return { kind: 'everyone' }
 }
 
-/** The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1 of 4 active". */
-function activeGap(result: GoalResult, popActive: number, active: ReadonlySet<string>): string | null {
-  const base = result.gapSentence
-  if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
-  const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
-  const uncoveredActive = [...uncovered].filter((id) => active.has(id)).length
-  return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
+/**
+ * The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1
+ * of 4 active". Only over a population of people: one that names accounts that
+ * are not active people (the service accounts, derive/population.ts
+ * namedAccounts) keeps the goal's own count. Re-counted over the active people
+ * among three service accounts, a policy covering one of them read "covers 3 of
+ * 3 active" while the accounts were hand-built as active, and read "covers 0 of
+ * 0 active" once they were not.
+ */
+export function activeGap(result: GoalResult, pop: StepPopulation, active: ReadonlySet<string>): string | null {
+  return overActive(result.gapSentence, result, pop, active)
 }
 
 /** The row's short gap clause (prompt 50.1 item 9), over the active denominator like activeGap. */
-function activeGapShort(result: GoalResult, popActive: number, active: ReadonlySet<string>): string | null {
-  const base = result.gapClause
-  if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
+function activeGapShort(result: GoalResult, pop: StepPopulation, active: ReadonlySet<string>): string | null {
+  return overActive(result.gapClause, result, pop, active)
+}
+
+function overActive(base: string | null, result: GoalResult, pop: StepPopulation, active: ReadonlySet<string>): string | null {
+  if (!base || !/^covers \d+ of \d+ people$/.test(base) || pop.active < affectedIds(pop).length) return base
+  const popActive = pop.active
   const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
   const uncoveredActive = [...uncovered].filter((id) => active.has(id)).length
   return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
@@ -1169,7 +1178,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const step = prereq('s-shared-devices')
     // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
     step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Block', 'Shared devices outside trusted networks'], collapsed: 'Block shared devices outside trusted networks' }, naming).name, fromBaseline: null }
-    step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
+    step.population = namedAccounts(sharedDevices.map((u) => u.id), popIndex)
     if (sharedDevices.length === 0 && snapshot.sources.users?.status === 'ok') {
       step.doesntApply = (mapping.sharedDeviceUserIds?.length ?? 0) > 0 ? 'The selected shared accounts are no longer enabled in the directory. Previous test records remain history.' : 'No shared accounts are selected. No shared-device policy protection is claimed.'
       setState(step, { setAside: true, satisfied: false, inPlace: false })
@@ -1272,7 +1281,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The free-tier ladder is kept, dormant, behind this one constant — the owner
   // wants to compare it later, not delete it now. Re-enabling is this line.
   if (!canUseConditionalAccess && FREE_TIER_LADDER) {
-    const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id), { groupMembers: knownGroupMembers })
+    const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id), { groupMembers: knownGroupMembers }, popIndex)
     steps.push(...ladder.steps)
     for (const [id, index] of ladder.order) ladderOrder.set(id, index)
   }
@@ -1515,7 +1524,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       goalAccountsCache.set(whoKey, all.filter((id) => popIndex.enabled.has(id)))
     }
     const popIds = expectedCache.get(whoKey) ?? []
-    if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? { total: popIds.length, active: popIds.length, admins: 0, guests: 0, ids: popIds, activeIds: popIds, inScope: popIds.length } : population(popIds, popIndex))
+    if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? namedAccounts(popIds, popIndex) : population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
     let policyPreparation: Step['methodPreparation']
     const readinessKey = goalFamily(goal.id)
@@ -2059,7 +2068,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       : (evidenceUsable && (readiness.family === 'block' || readiness.family === 'risk') && evidence.affectedUserIds.length === 0) ||
         ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
         (readiness.family === 'device' && readiness.percent === 100) ||
-        pop.active === 0
+        // The accounts the step names, not the active people among them: the
+        // service-account policy changes those accounts whether or not any of
+        // them is a person (roadmap/timing.ts nobodyAffected reads the same).
+        affectedIds(pop).length === 0
     // The change itself decides the wording (prompt 17 §4): an adjust that
     // only tightens sessions gets session wording; a strength raise gets
     // passkey wording; a block names the affected users or needs none.
@@ -2246,8 +2258,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...EXTRAS,
       // After the defaults, or the default overwrites it: the gap a change step
       // closes, on the step so the plan row can show it (prompt 46 item 9).
-      gap: activeGap(result, pop.active, popIndex.active),
-      gapShort: activeGapShort(result, pop.active, popIndex.active),
+      gap: activeGap(result, pop, popIndex.active),
+      gapShort: activeGapShort(result, pop, popIndex.active),
       comms,
       learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,
       includesOperator,

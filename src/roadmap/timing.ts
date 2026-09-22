@@ -7,6 +7,7 @@ import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { enforcementHeld, unavailableReason } from './operations.ts'
 import { effectsOf, familyReading } from './strand.ts'
+import { affectedIds } from '../derive/whoLine.ts'
 
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
@@ -153,7 +154,12 @@ export function nobodyAffected(step: Step): boolean {
   const effects = effectsOf(step)
   if (effects === null) {
     const family = familyReading(step)
-    const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
+    // The accounts the step names (derive/whoLine.ts affectedIds), not the
+    // active people among them: a step that names service or shared-device
+    // accounts changes them, and none of them being a person who signs in
+    // interactively is no evidence that nobody is affected. For a population of
+    // people the two are the same count.
+    const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : affectedIds(step.population).length
     return step.evidence.status === 'ok' && affected === 0
   }
   // Work the plan cannot write proves nothing at all — least of all a zero.
