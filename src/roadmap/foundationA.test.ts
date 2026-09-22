@@ -1590,44 +1590,60 @@ test('an existing tenant policy that excludes an emergency account directly is p
   //    a carve-out it did not ask for. What it must not do is take the credit:
   //    its own operation adds no user exclusion, and the portal instructions say
   //    the accounts are members of the group rather than named on the policy.
-  //    The update is read from the operations the step declares, whether or
-  //    not today is their day: the one update on this fixture's first scan is
-  //    the switch of its report-only device policy, which device readiness holds.
-  //    It used to be offered as a Target resources correction that changed
-  //    nothing — the other, enforced device policies' narrower apps written onto
-  //    this one, which already held the baseline's (R4-11) — and this premise
-  //    rested on that.
+  //
+  //    What this protects is an update that writes part of `conditions` and not
+  //    its users: Graph merges the submitted `conditions` into the policy, so the
+  //    tenant's own users clause — the direct exclusion with it — survives, and
+  //    the policy the step says it leaves behind (the operation's `target`,
+  //    generate.ts withPatch) must say so too. A patch that carries only the
+  //    state cannot touch the users clause at all, and the two assertions below
+  //    would hold of it by construction.
+  //
+  //    So the premise is made, not found. On this fixture's first scan the one
+  //    update is the switch of its report-only device policy. It used to be a
+  //    Target resources correction that changed nothing — the other, enforced
+  //    device policies' narrower apps written onto this one, which already held
+  //    the baseline's (R4-11) — and this test rested on that inert correction.
+  //    Here the tenant's policy also leaves SharePoint Online out of the Office
+  //    365 it targets, which the baseline's does not, so the correction it owes
+  //    is real: its applications, and not its users.
   const declared = (s: Step): PolicyOperation[] => s.action.resolution?.policies ?? []
+  type Conditions = { conditions?: { users?: { excludeUsers?: string[] }; applications?: { includeApplications?: string[]; excludeApplications?: string[] } } }
   const { f, r } = runs.find((x) => x.f.name === 'large') as { f: Fixture; r: FixtureRun }
   const adjust = openPolicies(r.steps).find((s) => declared(s).some((o) => o.mode === 'update'))
   assert.ok(adjust, 'the fixture adjusts a policy the tenant already has')
   const update = declared(adjust as Step).find((o) => o.mode === 'update')!
-  const target = update.target as { conditions?: { users?: { excludeUsers?: string[] } } }
-  const patch = update.body as { conditions?: { users?: { excludeUsers?: string[] } } }
   const bg = f.mapping.breakGlassUserIds
-  // The tenant's own direct exclusion, added to the policy the step adjusts.
   const snapshot = structuredClone(f.snapshot)
   const rows = snapshot.config.caPolicies?.rows ?? []
-  const row = rows.find((p) => String((p as { id?: string }).id) === update.policyId) as { conditions?: { users?: { excludeUsers?: string[] } } } | undefined
+  const row = rows.find((p) => String((p as { id?: string }).id) === update.policyId) as Conditions | undefined
   assert.ok(row, 'the tenant policy the update names')
-  const users = ((row!.conditions ??= {}).users ??= {})
-  users.excludeUsers = [...bg]
+  // New objects, not edits: this fixture's policies share their conditions, and
+  // an edit in place would change every policy that shares them.
+  const conditions = row!.conditions ?? {}
+  row!.conditions = {
+    ...conditions,
+    // The tenant's own direct exclusion, on the policy the step adjusts.
+    users: { ...conditions.users, excludeUsers: [...bg] },
+    // And an application the baseline's policy does not leave out.
+    applications: { ...conditions.applications, excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] },
+  }
   const after = runFixture({ ...f, snapshot }, { snapshot })
   const s2 = after.steps.find((x) => x.id === (adjust as Step).id) as Step
   const op2 = declared(s2).find((o) => o.mode === 'update')
-  if (op2) {
-    const kept = (op2.target as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []
-    assert.deepEqual([...kept].sort(), [...bg].sort(), 'the policy the tenant is left with keeps the exclusion it already had')
-    const submitted = (op2.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers
-    assert.equal(submitted, undefined, 'and the request IAMAI submits does not write it')
-  }
+  assert.ok(op2, 'the step still updates the tenant policy')
+  const body = op2!.body as Conditions
+  assert.ok(body.conditions?.applications, `the update writes the policy's applications: ${JSON.stringify(op2!.body)}`)
+  const submitted = body.conditions?.users?.excludeUsers
+  assert.equal(body.conditions?.users, undefined, 'and not its users, so the tenant keeps the users clause it wrote')
+  const kept = (op2!.target as Conditions).conditions?.users?.excludeUsers ?? []
+  assert.deepEqual([...kept].sort(), [...bg].sort(), 'the policy the tenant is left with keeps the exclusion it already had')
+  assert.equal(submitted, undefined, 'and the request IAMAI submits does not write it')
   // Whether or not this operation still runs, nothing IAMAI submits names them.
   for (const o of s2.action.resolution?.policies ?? []) {
-    const u = ((o.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users ?? {}) as { excludeUsers?: string[] }
+    const u = ((o.body as Conditions).conditions?.users ?? {}) as { excludeUsers?: string[] }
     for (const id of u.excludeUsers ?? []) assert.equal(bg.includes(id), false, 'IAMAI submitted a direct emergency exclusion')
   }
-  void target
-  void patch
 })
 
 // ---- The escape hatch gates enforcement -------------------------------------
