@@ -429,6 +429,29 @@ test('a finished emergency step never promises a deferral or a Cleanup row it do
   assert.ok(!(run.schedule.cleanup?.rows ?? []).some(row => row.kind === 'hardening'), 'the premise: no Cleanup row holds it')
 })
 
+// The same lead, on a step it is not about. Any finished step with an open
+// finding took the emergency-hardening words, so on the Follow-up snapshot
+// Configure Passkey Settings, whose open finding is "Existing passkeys affected
+// · Could not verify" (ordinary users' passkeys the scan could not read), read
+// "Minimum emergency access is available, but less resilient than recommended.
+// This does not hold the rollout; see Existing passkeys affected for what would
+// make it stronger." The two tiers belong to the step that has them
+// (step.emergency, Prepare Emergency Access Accounts alone); another step says
+// what it says without the finding.
+test('the emergency-hardening lead stays on the step that has the two tiers', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const run = runFixture(f)
+  const step = run.steps.find(s => s.id === 's-prereq-passkey-settings')!
+  assert.equal(step.status, 'done', 'the premise: the passkey settings step is finished')
+  assert.equal(step.emergency ?? null, null, 'the premise: this step has no emergency tiers')
+  assert.ok((step.configurationFindings ?? []).some(x => x.key === 'affected-passkeys' && x.outcome !== 'pass'), 'the premise: an open finding about affected passkeys')
+  const text = stepContract(step, context(f)).whatToDo.text
+  assert.doesNotMatch(text, /emergency access|less resilient|stronger|defer|Cleanup/i, text)
+  // What the step says with every finding passing: the open finding does not swap the lead.
+  const passing = { ...step, configurationFindings: (step.configurationFindings ?? []).map(x => ({ ...x, outcome: 'pass' as const })) }
+  assert.equal(text, stepContract(passing, context(f)).whatToDo.text)
+})
+
 // R4-56 (Sam D14, Nadia D11), the words. The method-diversity finding printed
 // the Graph kind bare — "Every emergency account relies on fido2 alone.",
 // "… relies on microsoftAuthenticator alone." — on the card, the export and AI

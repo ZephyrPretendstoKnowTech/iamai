@@ -1002,8 +1002,19 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // alerting: the one recommendation on the plan's one gate dropped out of view
   // the moment the step read Completed. The recommendation it is actually about
   // is shown where it is found, and the lead says where that is.
+  //
+  // Only on the step that has the two tiers (`step.emergency`, set on Prepare
+  // Emergency Access Accounts alone). Any finished step with an open finding
+  // used to take these words, so on the Follow-up snapshot Configure Passkey
+  // Settings, whose open finding is "Existing passkeys affected · Could not
+  // verify" about ordinary users' passkeys, read "Minimum emergency access is
+  // available, but less resilient than recommended. This does not hold the
+  // rollout; see Existing passkeys affected for what would make it stronger." —
+  // an emergency-access verdict on a step about the passkey policy, and an
+  // unread impact on people called a way to make something stronger. A
+  // preserved policy step with an open finding would have read the same.
   const open = (step.configurationFindings ?? []).filter((f) => f.outcome !== 'pass')
-  const openHardening = !step.emergency?.deferredAt && open.length > 0
+  const openHardening = !!step.emergency && !step.emergency.deferredAt && open.length > 0
   if (openHardening && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: hardeningDeferrable(step) ? CONTRACT.hardening.leadDefer : fillText(CONTRACT.hardening.leadAdvisory, { findings: list(open.map((f) => f.label)) }) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
