@@ -623,6 +623,36 @@ test('G10: the per-user MFA tile counts through count() and says what its number
   assert.equal(oneUnread.detail, '1 account needs a per-user MFA state check: the scan could not read their state.')
 })
 
+// A partial read. The collector leaves a throttled or failed sub-request's state
+// 'unknown' (graph/collect/collectors.ts), so on a large tenant some states read
+// Enforced and others are never read. The tile read "3 accounts Enabled or
+// Enforced" over the three names and nothing about the 2,000 it did not read,
+// and the step deletes its manual review while any account reads on: the names
+// read as the complete list, and no line on the step said otherwise.
+test('G12: on a partial read the per-user MFA tile names what it read and counts what it did not', () => {
+  const f = structuredClone(fixture('large'))
+  const users = f.snapshot.users
+  f.snapshot.perUserMfa = Object.fromEntries(users.map((u, i) => [u.id, { state: i < 3 ? 'enforced' : i < 2003 ? 'unknown' : 'disabled', reason: null }])) as typeof f.snapshot.perUserMfa
+  const tile = runFixture(f).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+  assert.ok(tile, 'the premise: the step carries the tile')
+  assert.equal(tile.value, '3 accounts Enabled or Enforced')
+  for (const u of users.slice(0, 3)) assert.ok(tile.detail.includes(u.displayName!), `the tile names ${u.displayName}`)
+  assert.match(tile.detail, /\. 2,000 accounts need a per-user MFA state check: the scan could not read their state\.$/, tile.detail)
+  // One unread state reads as one.
+  f.snapshot.perUserMfa = Object.fromEntries(users.map((u, i) => [u.id, { state: i < 3 ? 'enforced' : i === 3 ? 'unknown' : 'disabled', reason: null }])) as typeof f.snapshot.perUserMfa
+  const one = runFixture(f).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+  assert.match(one?.detail ?? '', /\. 1 account needs a per-user MFA state check: the scan could not read their state\.$/, one?.detail ?? 'no tile')
+  // An account list the scan did not fully read: the names, and that the tenant-wide state is not established.
+  const partialList = structuredClone(f)
+  partialList.snapshot.sources.users = { ...partialList.snapshot.sources.users, status: 'partial' }
+  const unlisted = runFixture(partialList).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+  assert.match(unlisted?.detail ?? '', /\. The account list was not fully read; the tenant-wide per-user MFA state is not established\.$/, unlisted?.detail ?? 'no tile')
+  // Every state read: the names alone, as before.
+  f.snapshot.perUserMfa = Object.fromEntries(users.map((u, i) => [u.id, { state: i < 3 ? 'enforced' : 'disabled', reason: null }])) as typeof f.snapshot.perUserMfa
+  const all = runFixture(f).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+  assert.equal(all?.detail, users.slice(0, 3).map((u) => u.displayName).join(', '))
+})
+
 // The step's action said "IAMAI cannot read those states, so it cannot list the
 // accounts for you" beside its own Legacy Per-User MFA tile listing, by name, the
 // accounts the scan read as Enabled or Enforced. IAMAI reads every account's

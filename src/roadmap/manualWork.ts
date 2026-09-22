@@ -318,8 +318,16 @@ function perUserMfaFinding(snapshot: TenantSnapshot, enabled: readonly UserRow[]
   const usersRead = snapshot.sources.users?.status === 'ok'
   const accounts = (n: number): string => count(n, 'account')
   const value = enabled.length ? fillText(W.valueOn, { accounts: accounts(enabled.length) }) : !usersRead || unknown.length ? W.valueUnread : W.valueOff
+  // The names are what the scan read as Enabled or Enforced. Where it could not
+  // read every state (the collector leaves a throttled or failed sub-request
+  // 'unknown', graph/collect/collectors.ts) the tile says how many it did not
+  // read beside them: "3 accounts Enabled or Enforced" over three names read as
+  // the complete list while 2,000 states were never read, and the step had no
+  // other line saying so.
+  const names = enabled.map(u => u.displayName || u.userPrincipalName).join(', ')
+  const notRead = !usersRead ? W.detailUsersUnread : unknown.length ? fillText(W.detailUnreadSome, { accounts: accounts(unknown.length) }) : null
   const detail = enabled.length
-    ? enabled.map(u => u.displayName || u.userPrincipalName).join(', ')
+    ? notRead === null ? names : `${names}. ${notRead}`
     : !usersRead
       ? W.detailUsersUnread
       : unknown.length
