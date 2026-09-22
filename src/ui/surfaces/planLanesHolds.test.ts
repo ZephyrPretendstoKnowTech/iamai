@@ -226,7 +226,7 @@ test('a step never states a Direction wait the prerequisite beside it already ca
   }
 })
 
-test('every held row names what it is waiting for, and never just repeats its badge', () => {
+test('every held or queued row names what it is waiting for, and never just repeats its badge', () => {
   // The collapsed row's badge is one word by design: `laneLabelOf` appends the
   // lane tail only on Ready, and `compactLane` in StepSections.tsx strips
   // `On Hold · After ` from the badge if one gets through. So before this, a
@@ -238,7 +238,7 @@ test('every held row names what it is waiting for, and never just repeats its ba
   const boards = (['small', 'mid', 'midflight', 'large'] as const).map((name) => {
     const run = runFixture(fixture(name))
     const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
-    return { name, held: [...laneReadings(run.steps)].filter(([, r]) => r.lane === 'On Hold').map(([id, r]) => ({ id, view: laneViewOf(r, titleOf) })) }
+    return { name, held: [...laneReadings(run.steps)].filter(([, r]) => r.lane === 'On Hold' || r.lane === 'Up Next').map(([id, r]) => ({ id, view: laneViewOf(r, titleOf) })) }
   })
 
   // The invariant, over every fixture: the badge is not the whole row. A held
@@ -246,7 +246,7 @@ test('every held row names what it is waiting for, and never just repeats its ba
   for (const { name, held } of boards) {
     assert.ok(held.length > 0, `${name}: the premise — the fixture holds something`)
     for (const { id, view } of held) {
-      assert.equal(view.label, 'On Hold', `${name}/${id}: the badge stopped being the bare lane, so this test is reading the wrong thing`)
+      assert.ok(view.label === 'On Hold' || view.label === 'Up Next', `${name}/${id}: the badge stopped being the bare lane, so this test is reading the wrong thing`)
       assert.ok(view.waitingFor, `${name}/${id}: a held row that names nothing`)
       assert.notEqual(view.waitingFor, view.label, `${name}/${id}: the row's reason repeats its badge`)
     }

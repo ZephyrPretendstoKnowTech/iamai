@@ -310,9 +310,16 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  * engine named no blocker at all, which `holdLabelOf` answers with the lane.
  */
 export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | null): string | null {
-  if (r.lane !== 'On Hold') return null
+  // Up Next as well as On Hold. `laneLabelOf` appends the tail only on Ready,
+  // so an Up Next row read the bare words "Up Next" and named the step it was
+  // queued behind nowhere — and one such row was a session policy over 283
+  // accounts, queued behind the step that takes the room-system account out of
+  // it. A reader working from the board turned it on with that prerequisite
+  // still open. A Ready row already carries its own tail and needs no second
+  // line.
+  if (r.lane !== 'On Hold' && r.lane !== 'Up Next') return null
   const label = holdLabelOf(r, titleOf)
-  return label === BOARD.lanes.onHold ? null : label
+  return label === BOARD.lanes.onHold || label === BOARD.lanes.upNext ? null : label
 }
 
 /** Held on a Direction answer nobody has saved (roadmap/direction.ts): the row reads Waiting on your direction, whichever of the four steps asks it. */
