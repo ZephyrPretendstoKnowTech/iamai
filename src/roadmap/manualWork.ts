@@ -1,4 +1,3 @@
-import { adminUserIds } from '../roles.ts'
 import { isLicenceGate } from '../graph/collect/roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
 import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
@@ -8,6 +7,8 @@ import { setState } from './lifecycle.ts'
 import type { Step } from './types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
+import { namedAccounts, population, populationIndex } from '../derive/population.ts'
+import type { PopulationIndex } from '../derive/population.ts'
 
 export const MANUAL_REVIEW_ID = 'manual-review'
 const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
@@ -292,7 +293,23 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
   return JSON.stringify(basis)
 }
 
-export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, mapping?: MappingState, activeReviewPeople?: ReadonlySet<string>): void {
+/**
+ * The plan's population index (derive/population.ts), or, for a caller running
+ * one step on its own, the directory's with the step's own active people.
+ */
+function indexFor(step: Step, snapshot: TenantSnapshot, index: PopulationIndex | undefined): PopulationIndex {
+  return index ?? { ...populationIndex(snapshot, []), active: new Set(step.population.activeIds ?? []) }
+}
+
+/**
+ * Every population below comes from the one builder (derive/population.ts
+ * `population`, or `namedAccounts` for a step that names accounts), so the
+ * admins and guests on a line are always counted over the ids its head counts.
+ * Each branch built its own by hand, and the per-user MFA step read two
+ * emergency accounts and seven dormant ones as "24 active people" with no
+ * admin among them (R4-57).
+ */
+export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}, mapping?: MappingState, index?: PopulationIndex): void {
   const accountCache = new Map<string, string>()
   for (const step of steps) {
     const item = step.id.replace('s-ladder-', '')
@@ -307,7 +324,10 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
       const enabled = snapshot.users.filter(u => ['enabled', 'enforced'].includes(snapshot.perUserMfa?.[u.id]?.state ?? 'unknown'))
       const unknown = snapshot.users.filter(u => !snapshot.perUserMfa?.[u.id] || snapshot.perUserMfa[u.id].state === 'unknown')
       step.configurationFindings = [{ key: 'per-user-mfa', label: 'Legacy Per-User MFA', value: enabled.length ? `${enabled.length} accounts enabled` : snapshot.sources.users?.status !== 'ok' || unknown.length ? 'Not fully read' : 'Disabled', detail: enabled.length ? enabled.map(u => u.displayName || u.userPrincipalName).join(', ') : snapshot.sources.users?.status !== 'ok' ? 'The account list was not fully read; the tenant-wide per-user MFA state is not established.' : unknown.length ? `${unknown.length} accounts need a per-user state check.` : 'No current account has legacy per-user MFA enabled or enforced.', outcome: enabled.length ? 'fail' : snapshot.sources.users?.status !== 'ok' || unknown.length ? 'unknown' : 'pass' }]
-      step.population = { ...step.population, ids: enabled.map(u => u.id), total: enabled.length, activeIds: enabled.filter(u => u.accountEnabled).map(u => u.id), active: enabled.filter(u => u.accountEnabled).length, inScope: enabled.length }
+      // The accounts the scan read as Enabled or Enforced, active or not, the
+      // emergency accounts among them: the step names them, and they are its
+      // impact (namedAccounts). "Active" here meant "the account is enabled".
+      step.population = namedAccounts(enabled.map(u => u.id), indexFor(step, snapshot, index))
       if (snapshot.sources.users?.status === 'ok' && unknown.length === 0 && enabled.length === 0) {
         delete step.manualReview
         step.deliveredBy = ['The scan read every account and found legacy per-user MFA disabled.']
@@ -326,29 +346,24 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     }
     if (ADMIN_SEPARATION.has(step.id)) {
       const ids = snapshot.users.filter(u => !mapping?.breakGlassUserIds.includes(u.id) && ((snapshot.roles.active[u.id]?.length ?? 0) > 0 || (snapshot.roles.eligible?.[u.id]?.length ?? 0) > 0)).map(u => u.id)
-      const activePeople = activeReviewPeople ?? new Set(step.population.activeIds ?? [])
-      const activeAdmins = adminUserIds(snapshot.roles)
-      const activeIds = ids.filter(id => activePeople.has(id))
       // Admins over the ACTIVE ids, as every other step counts them
-      // (generate.ts population: "admins and guests are the active ones too,
-      // so the line and the count cannot disagree"). Counted over all of them
-      // it read "51 active people - 60 admins" here and "51 active people -
-      // 51 admins" on the admin-session step, same tenant, same sixty
+      // (derive/population.ts population: "admins and guests are the active
+      // ones too, so the line and the count cannot disagree"). Counted over all
+      // of them it read "51 active people - 60 admins" here and "51 active
+      // people - 51 admins" on the admin-session step, same tenant, same sixty
       // accounts, and the review scope is already stated as its own figure
       // ("60 accounts to review") in the finding below.
-      step.population = { ...step.population, ids, total: ids.length, admins: activeIds.filter(id => activeAdmins.has(id)).length, inScope: ids.length, activeIds, active: activeIds.length }
+      step.population = population(ids, indexFor(step, snapshot, index))
       step.configurationFindings = [{ key: 'administrator-review-scope', label: 'Administrator Account Evidence', value: evidenceRead(step, snapshot) ? `${ids.length} accounts to review` : 'Account or role data not fully read', detail: evidenceRead(step, snapshot) ? 'Active and eligible roles identify the review scope. Mailbox licensing and business sign-ins are clues, not proof of dedicated use.' : [unreadSourceOf(snapshot), 'Active roles, eligible roles and registered methods must be readable to compare the saved review with the current configuration.'].filter((x): x is string => x !== null).join(' '), outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]
-      step.population.active = step.population.activeIds?.length ?? 0
       if (!ids.length && evidenceRead(step, snapshot)) { delete step.manualReview; step.deliveredBy = ['No non-emergency account currently holds an active or eligible directory role.']; setState(step, { satisfied: true, inPlace: true }); continue }
     }
     if (item === 'global-admin-count' || item === 'legacy-auth-inventory') {
       const ids = scopedPeople(step, snapshot)
       // Active is the people set's reading, not "the account is enabled" — the
       // administrator-separation branch above already reads it that way, and two
-      // readings of active is two denominators (V1 audit S4-21).
-      const activePeopleHere = activeReviewPeople ?? new Set(step.population.activeIds ?? [])
-      const activeIds = ids.filter(id => activePeopleHere.has(id))
-      step.population = { ...step.population, ids, total: ids.length, activeIds, active: activeIds.length, inScope: ids.length }
+      // readings of active is two denominators (V1 audit S4-21). The admins and
+      // guests were carried over from the population this replaced.
+      step.population = population(ids, indexFor(step, snapshot, index))
       if (item === 'global-admin-count') {
         const active = ids.filter(id => (snapshot.roles.active[id] ?? []).includes(GLOBAL_ADMIN_ROLE_ID)).length
         step.configurationFindings = [{ key: 'global-admin-scope', label: 'Global Administrator Assignments', value: `${active} active · ${ids.length - active} eligible only`, detail: 'Review the purpose of each assignment and preserve dedicated emergency access. The recommended account count is guidance, not proof that these assignments are appropriate.', outcome: evidenceRead(step, snapshot) ? 'pass' : 'unknown' }]

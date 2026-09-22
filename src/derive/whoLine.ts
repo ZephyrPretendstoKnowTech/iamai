@@ -82,8 +82,11 @@ export function whoLine(pop: StepPopulation, gap: string | null = null, none: st
 export function populationLine(pop: StepPopulation): string {
   const ids = affectedIds(pop)
   if (ids.length === 0) return IMPACT.noUserImpact
-  // "active people" when they are active; a naming step (dormant, shared) names accounts.
-  const bits = [pop.active > 0 ? count(ids.length, 'active person', 'active people') : count(ids.length, 'account')]
+  // "active people" only when every account the head counts is one; a naming
+  // step (dormant accounts, per-user MFA states) names accounts, active or not
+  // (derive/population.ts namedAccounts). "Any of them is active" called two
+  // emergency accounts and seven dormant ones "active people" (R4-57).
+  const bits = [pop.active >= ids.length ? count(ids.length, 'active person', 'active people') : count(ids.length, 'account')]
   if (pop.admins > 0) bits.push(count(pop.admins, 'admin'))
   if (pop.guests > 0) bits.push(count(pop.guests, 'guest'))
   let line = bits.join(' · ')

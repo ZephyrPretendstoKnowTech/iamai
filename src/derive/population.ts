@@ -13,6 +13,69 @@ import { adminUsers, enabledUsers, notPeopleIds, personAccounts } from './sets.t
 import { affectedIds } from './whoLine.ts'
 import { effectsOf } from '../roadmap/strand.ts'
 import type { StepPopulation } from '../roadmap/types.ts'
+import { adminUserIds } from '../roles.ts'
+
+/**
+ * What a step's population is counted against, built once per plan so 25,000
+ * users are not rescanned per step. `active` is the plan's active people
+ * (isActivePerson), `enabled` the accounts that can sign in (sets.ts
+ * enabledUsers reads the same field the same way: a null was not returned,
+ * never disabled).
+ */
+export type PopulationIndex = { active: ReadonlySet<string>; admins: ReadonlySet<string>; guests: ReadonlySet<string>; enabled: ReadonlySet<string> }
+
+export function populationIndex(snapshot: TenantSnapshot, viability: readonly MfaViability[]): PopulationIndex {
+  return {
+    // The plan's active people: a step's reach counts the people MFA Readiness counts.
+    active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
+    admins: adminUserIds(snapshot.roles),
+    guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
+    // "covers N enabled" counts these and nothing else.
+    enabled: new Set(snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id)),
+  }
+}
+
+/**
+ * A step's population, the one builder: the people it reaches.
+ *
+ * One denominator (target-state §8.1): the who-line and the population line
+ * count active people. admins and guests are the active ones too, so the line
+ * and the count cannot disagree. inScope keeps the enabled total for the
+ * "covers N enabled" suffix: the enabled accounts among the ids, never every
+ * id — a tenant that disabled nine of the eleven accounts a policy named read
+ * "covers 11 enabled" (NEW-Nadia-D3).
+ */
+export function population(ids: string[], index: PopulationIndex): StepPopulation {
+  const activeIds = ids.filter((id) => index.active.has(id))
+  return { ...counts(ids, activeIds, index), activeIds }
+}
+
+/**
+ * The population of a step that names accounts rather than reaching people: the
+ * dormant accounts to disable, the accounts still on per-user MFA. Every account
+ * it names is its impact, so the head counts them all ("24 accounts"), and the
+ * admins and guests beside it are counted over the same accounts. `active` is
+ * still the active people among them, which is how the population line knows
+ * whether it may call the head "active people" (derive/whoLine.ts).
+ *
+ * The per-user MFA step built this by hand with "active" meaning "the account is
+ * enabled": two emergency accounts and seven dormant ones read as "24 active
+ * people", and the admins among them were carried over as zero from a
+ * population nobody had counted (R4-57).
+ */
+export function namedAccounts(ids: string[], index: PopulationIndex): StepPopulation {
+  return { ...counts(ids, ids, index), active: ids.filter((id) => index.active.has(id)).length, activeIds: ids }
+}
+
+function counts(ids: string[], head: readonly string[], index: PopulationIndex): Omit<StepPopulation, 'activeIds'> {
+  let admins = 0
+  let guests = 0
+  for (const id of head) {
+    if (index.admins.has(id)) admins += 1
+    if (index.guests.has(id)) guests += 1
+  }
+  return { total: ids.length, active: head.length, admins, guests, ids, inScope: ids.filter((id) => index.enabled.has(id)).length }
+}
 
 export type StepPopulationView = {
   /** Active people the step acts on — the one denominator (enabled, signed in within 90 days). */

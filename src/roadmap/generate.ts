@@ -52,7 +52,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
-import { campaignIds, isActivePerson } from '../derive/population.ts'
+import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
 import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
@@ -312,20 +312,6 @@ import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STE
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
-type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string>; enabled: Set<string> }
-function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
-  return {
-    // The plan's active people (derive/population.ts isActivePerson): a step's reach counts the people MFA Readiness counts.
-    active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
-    admins: adminUserIds(snapshot.roles),
-    guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
-    // The accounts that can sign in (derive/sets.ts enabledUsers reads the same
-    // field the same way: a null was not returned, never disabled). "covers N
-    // enabled" counts these and nothing else.
-    enabled: new Set(snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id)),
-  }
-}
-/** Counts for a step's population; the index is built once per plan so 25,000 users are not rescanned per step. */
 /**
  * The audience a step announcement is written for (prompt 41 §4).
  *
@@ -340,25 +326,8 @@ function announcementAudience(ids: readonly string[], admins: boolean, nameOf: (
   return { kind: 'everyone' }
 }
 
-function population(ids: string[], index: PopulationIndex): StepPopulation {
-  // One denominator (target-state §8.1): the who-line and the population line
-  // count active people. admins and guests are the active ones too, so the
-  // line and the count cannot disagree. inScope keeps the enabled total for the
-  // "covers N enabled" suffix: the enabled accounts among the ids, never every
-  // id. It was ids.length, and a tenant that disabled nine of the eleven
-  // accounts a policy named still read "covers 11 enabled".
-  const activeIds = ids.filter((id) => index.active.has(id))
-  let admins = 0
-  let guests = 0
-  for (const id of activeIds) {
-    if (index.admins.has(id)) admins += 1
-    if (index.guests.has(id)) guests += 1
-  }
-  return { total: ids.length, active: activeIds.length, admins, guests, ids, activeIds, inScope: ids.filter((id) => index.enabled.has(id)).length }
-}
-
 /** The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1 of 4 active". */
-function activeGap(result: GoalResult, popActive: number, active: Set<string>): string | null {
+function activeGap(result: GoalResult, popActive: number, active: ReadonlySet<string>): string | null {
   const base = result.gapSentence
   if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
   const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
@@ -367,7 +336,7 @@ function activeGap(result: GoalResult, popActive: number, active: Set<string>): 
 }
 
 /** The row's short gap clause (prompt 50.1 item 9), over the active denominator like activeGap. */
-function activeGapShort(result: GoalResult, popActive: number, active: Set<string>): string | null {
+function activeGapShort(result: GoalResult, popActive: number, active: ReadonlySet<string>): string | null {
   const base = result.gapClause
   if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
   const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
@@ -1171,7 +1140,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
-    s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id), activeIds: dormant.map((u) => u.id), inScope: dormant.length }
+    s.population = namedAccounts(dormant.map((u) => u.id), popIndex)
     if (dormant.length === 0 && snapshot.sources.users?.status === 'ok') setState(s, { satisfied: true, inPlace: true })
     steps.push(s)
   }
@@ -2678,19 +2647,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds: input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id), nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
   }
-  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, new Set(campaignIds(viability, snapshot, mapping)))
+  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping, popIndex)
   for (const s of steps.filter(s => s.id === 's-check-dormant-accounts')) {
     const dormantIds = new Set(dormant.map(u => u.id))
     const reviewed = mapping.dormantAccountChoices ?? {}
     const accounts = snapshot.users.filter(u => dormantIds.has(u.id) || Object.hasOwn(reviewed, u.id))
     s.dormantChoices = accounts.map(u => ({ id: u.id, name: nameOf(u.id), outcome: reviewed[u.id]?.outcome ?? '', reason: reviewed[u.id]?.reason ?? '', disabled: u.accountEnabled === false }))
     const remaining = accounts.filter(u => dormantIds.has(u.id) && u.accountEnabled !== false && !(reviewed[u.id]?.outcome === 'keep' && reviewed[u.id].reason.trim()))
-    // The dormant step is the one place never-signed-in accounts are a
-    // population (§8.1, and line 1121 above sets it): `population()` derives
-    // activeIds from the active index, which is empty for dormant accounts by
-    // definition, and the who-line then read "No user impact" over a step naming
-    // N accounts to disable (V1 audit S4-21). The people it names are its impact.
-    s.population = { ...population(accounts.map(u => u.id), popIndex), activeIds: accounts.map(u => u.id) }
+    // The dormant step names never-signed-in accounts (§8.1, and the dormant
+    // step above sets the same builder): `population()` derives activeIds from
+    // the active index, which is empty for dormant accounts by definition, and
+    // the who-line then read "No user impact" over a step naming N accounts to
+    // disable (V1 audit S4-21). The accounts it names are its impact, and its
+    // admins and guests are counted over them (derive/population.ts namedAccounts).
+    s.population = namedAccounts(accounts.map(u => u.id), popIndex)
     delete s.manualReview
     const complete = remaining.length === 0 && snapshot.sources.users?.status === 'ok'
     setState(s, { satisfied: complete, inPlace: complete })
