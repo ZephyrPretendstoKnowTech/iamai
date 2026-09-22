@@ -71,7 +71,7 @@ import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket } from '../scoring/mfaViability.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
 import type { NameDirectory } from '../names.ts'
-import { collidingGuestIds } from '../names.ts'
+import { personLabels } from '../names.ts'
 import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate, displayZone } from '../copy/dates.ts'
 import { detectHighCare } from '../derive/highCare.ts'
@@ -728,12 +728,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // which nobody noticed until the dormant-accounts step named 3,671 people on
   // the 25,000-user fixture and the engine took 500 ms instead of 180.
   const userById = new Map(snapshot.users.map((u) => [u.id, u]))
-  // A guest sharing a display name carries a (guest) marker on every pre-baked string too (prompt 49 item 1).
-  const markedGuests = collidingGuestIds(snapshot.users)
+  // A display name two accounts share is told apart on every pre-baked string
+  // too, by the same rule the name directory uses (names.ts personLabels).
+  const personLabel = personLabels(snapshot.users)
   const nameOf = (id: string): string => {
     const u = userById.get(id)
-    const base = u?.displayName ?? u?.userPrincipalName ?? id
-    return u && markedGuests.has(u.id) ? `${base} (guest)` : base
+    return personLabel.get(id) ?? u?.displayName ?? u?.userPrincipalName ?? id
   }
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'your organisation'

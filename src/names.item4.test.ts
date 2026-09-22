@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { buildNameDirectory, UNNAMED } from './names.ts'
+import { buildNameDirectory, personLabels, UNNAMED } from './names.ts'
 import { fixture } from './roadmap/fixtures/index.ts'
 
 test('Azure Virtual Desktop and Windows 365 resolve, and the phrase is gone', () => {
@@ -29,4 +29,47 @@ test('Inforcer baseline label is not a first-party claim and tenant app names ta
   assert.equal(buildNameDirectory(snapshot).nameOf(id), 'Tenant Inforcer Application')
   snapshot.sources.appSignInSummary.status = 'error'
   assert.equal(buildNameDirectory(snapshot).nameOf(id), 'Inforcer (baseline name)', 'an unread source is not current naming evidence')
+})
+
+
+// A display name two people share, on a step that names one of them.
+//
+// "Kai Brown completed a phishing-resistant sign-in in the records" was read on
+// one step while another listed a different Kai Brown, with no address, no
+// marker and nothing else to tell them apart. The (guest) marker settled only
+// the guest-and-member case; two members with one name — Priya Taylor twice on
+// `messy`, one display name over twenty-six accounts on `large` — were both
+// rendered bare.
+test('a display name two accounts share is told apart, and a name nobody shares is left alone', () => {
+  const users = [
+    { id: 'a', displayName: 'Priya Taylor', userPrincipalName: 'priya@example.com', userType: 'member' as const },
+    { id: 'b', displayName: 'Priya Taylor', userPrincipalName: 'p.taylor@example.com', userType: 'member' as const },
+    { id: 'c', displayName: 'Sam Okafor', userPrincipalName: 'sam@example.com', userType: 'member' as const },
+    { id: 'd', displayName: 'Kai Brown', userPrincipalName: 'kai@example.com', userType: 'member' as const },
+    { id: 'e', displayName: 'Kai Brown', userPrincipalName: 'kai@partner.example.com', userType: 'guest' as const },
+  ]
+  const labels = personLabels(users)
+  assert.equal(labels.get('a'), 'Priya Taylor (priya@example.com)')
+  assert.equal(labels.get('b'), 'Priya Taylor (p.taylor@example.com)')
+  assert.equal(labels.get('c'), 'Sam Okafor', 'a name nobody shares picked up a marker it does not need')
+  // The guest marker still settles the case it was written for, on its own.
+  assert.equal(labels.get('d'), 'Kai Brown')
+  assert.equal(labels.get('e'), 'Kai Brown (guest)')
+})
+
+// And through the directory the surfaces read, on the shipped fixtures: no two
+// people ever render as the same string.
+test('no two people on a shipped tenant render as the same name', () => {
+  for (const name of ['small', 'mid', 'large', 'midflight', 'getiamai', 'hostile', 'demo', 'messy'] as const) {
+    const snapshot = fixture(name).snapshot
+    const dir = buildNameDirectory(snapshot)
+    const seen = new Map<string, string>()
+    for (const u of snapshot.users) {
+      const label = dir.nameOf(u.id)
+      if (label === null) continue
+      const first = seen.get(label)
+      assert.equal(first, undefined, `${name}: ${u.id} and ${first} both render as "${label}"`)
+      seen.set(label, u.id)
+    }
+  }
 })

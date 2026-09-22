@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Your review",
+      "state": "Waiting on you"
+    },
+    {
       "label": "Affected people",
       "state": "Not established"
     },

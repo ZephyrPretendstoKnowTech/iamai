@@ -152,7 +152,10 @@ test('A7: the step says its own outcome in every state, because {operator} resol
   // and this step carries none, so its Who line and its Completion Criteria
   // were both dropped for a hole and the step fell back to sentences about
   // accounts and assessed configuration.
-  for (const [name, want] of [['demo', 'Casey Kim'], ['messy', 'Priya Taylor']] as const) {
+  // `messy` has two Priya Taylors, which is why the operator carries their
+  // sign-in address here and the demo operator does not (names.ts
+  // personLabels): a step that names one person names which one.
+  for (const [name, want] of [['demo', 'Casey Kim'], ['messy', 'Priya Taylor (user0@messy.example.com)']] as const) {
     const b = bodiesOf(name).get(PASSKEY)!
     assert.deepEqual(b.contract.doneWhen, [`${want} completed a phishing-resistant sign-in in the records.`], name)
     assert.doesNotMatch(b.contract.doneWhen.join('\n'), /accounts this step names|assessed configuration in place/, name)
