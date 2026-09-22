@@ -38,9 +38,10 @@
     "policyDoneWhen": [
       "The required report-only period of {reportOnlyDays} days is complete, with no failures on this policy in the sign-in records.",
       "The available records show every active person in scope signing in during those days.",
-      "A later scan confirms the intended policy settings and enabled state.",
-      "Verify after the change: review sign-in failures for the people affected, and resolve any legitimate access problem you find."
+      "A later scan confirms the intended policy settings and enabled state."
     ],
+    "$commentPolicyVerifyAfter": "The person's own check once the policy has changed, and the one line of the policy block a finished policy still owes (ui/surfaces/doneWhen.ts, stepContract.ts doneWhenOf). It was the last line of policyDoneWhen, and a policy the scan found enforced and in place finished on 'The scan found the assessed configuration in place.' alone: on the scan that watched a sign-in-risk policy leave report-only, the check that catches a lockout - review the sign-in failures of the people it reaches - disappeared exactly when it applied, and the step read Completed. Every sign-in-records policy block still ends on it; a finished policy keeps it where IAMAI watched the change (observation.ts watchedArrive), and one the scan found already in place does not, because nobody watched a change to verify after.",
+    "policyVerifyAfter": "Verify after the change: review sign-in failures for the people affected, and resolve any legitimate access problem you find.",
     "changeDoneWhen": [
       "A later scan confirms the intended settings on the same policy.",
       "Verify after the change: review affected sign-ins and complete the step-specific checks."

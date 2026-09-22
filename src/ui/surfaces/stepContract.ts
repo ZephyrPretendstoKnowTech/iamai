@@ -46,7 +46,7 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
-import { doneWhenTemplates } from './doneWhen.ts'
+import { POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
@@ -1134,7 +1134,17 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
       // policy is not waiting out a report-only window, and listing that beside
       // the scan's sentence would be a second copy of work already done.
       const end = short !== null && typeof cs?.doneEnd === 'string' && whole(cs.doneEnd, ex) ? fillText(cs.doneEnd, ex) : null
-      return end !== null ? [end, fillText(CONTRACT.doneSatisfied, { tenant })] : [fillText(CONTRACT.doneSatisfied, { tenant })]
+      // The person's own check after the change is not work already done, and it
+      // stays where IAMAI watched the change. It went with the gates: on the scan
+      // that watched a sign-in-risk policy leave report-only, the one line that
+      // catches a lockout - review the sign-in failures of the people it reaches -
+      // disappeared exactly when it applied, the step read Completed, and its
+      // task pointed at these criteria for a check they no longer held (Marcus
+      // D2). A policy the scan found already in place had no change anybody
+      // watched, and says nothing about one (observation.ts watchedArrive, the
+      // same reading as "IAMAI watched it get there").
+      const after = step.state.lifecycle === 'enforced' && watchedArrive(step) && own.includes(POLICY_VERIFY_AFTER) ? [POLICY_VERIFY_AFTER] : []
+      return [...(end !== null ? [end] : []), fillText(CONTRACT.doneSatisfied, { tenant }), ...after]
     }
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
   }

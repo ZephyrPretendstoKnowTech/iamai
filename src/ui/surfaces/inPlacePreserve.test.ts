@@ -48,8 +48,9 @@ import { test } from 'node:test'
 import { holdOf } from '../../roadmap/holds.ts'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
+import { watchedArrive } from '../../roadmap/observation.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { goalCounts } from '../../derive/sets.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
@@ -60,7 +61,8 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
+import { POLICY_VERIFY_AFTER } from './doneWhen.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
@@ -888,6 +890,41 @@ test('an enforced step waiting on the person says so, instead of rendering nothi
   const review = all.find((x) => x.key === 'review')
   assert.ok(review, `${waiting.id}: nothing says the step is waiting on the reader`)
   assert.match(String(review.note), /yours to record/, String(review.note))
+})
+
+test('a finished policy IAMAI watched go on keeps the check after the change; one it found already on does not', () => {
+  // R4-03b (Marcus D2). On the scan that watched a sign-in-risk policy leave
+  // report-only, its Done-when became "The scan found the assessed configuration
+  // in place." and nothing else: "Verify after the change: review sign-in
+  // failures for the people affected, and resolve any legitimate access problem
+  // you find" — the one line that catches a lockout — went with the rollout gates,
+  // exactly when it applied, and the Completed step's task pointed at these
+  // criteria for a check they no longer held.
+  const f = withFoundationSettled(fixture('demo'))
+  const first = runFixture(f)
+  const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
+  // The person turns it on in the portal, and the next scan sees it.
+  const g = structuredClone(f)
+  const owned = (before.tracking?.members ?? []).map((m) => m.policyId)
+  for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
+  const next = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf)
+  const step = next.steps.find((s) => s.id === before.id)!
+  assert.equal(step.state.lifecycle, 'enforced')
+  assert.equal(step.state.satisfied, true, 'the premise: the step reads finished')
+  assert.equal(watchedArrive(step), true, 'the premise: IAMAI watched it go on')
+  const ctxOf = (h: Fixture): StepVarContext => ({ snapshot: h.snapshot, mapping: h.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: h.operatorId, now: h.snapshot.asOf, groups: h.groups })
+  const lines = stepContract(step, ctxOf(g)).doneWhen
+  assert.ok(lines.includes(POLICY_VERIFY_AFTER), `the check after the change is gone: ${lines.join(' | ')}`)
+  assert.ok(lines.includes(CONTRACT.doneSatisfied), lines.join(' | '))
+  assert.equal(lines.some((l) => /report-only period|during those days/.test(l)), false, 'a finished policy is not waiting out a report-only window')
+
+  // A policy the first scan found already enforced had no change anybody
+  // watched, and its finished step says nothing about one.
+  const m = fixture('mid')
+  const found = runFixture(m).steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  assert.equal(found.state.satisfied && found.state.lifecycle === 'enforced' && !watchedArrive(found), true, 'the premise: in place when IAMAI first looked')
+  assert.equal(stepContract(found, ctxOf(m)).doneWhen.includes(POLICY_VERIFY_AFTER), false)
 })
 
 // The third case: a tenant IAMAI has planned before.
