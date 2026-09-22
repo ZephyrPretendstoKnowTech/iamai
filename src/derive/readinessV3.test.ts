@@ -351,3 +351,18 @@ test('audit 29: every Plan handoff reads one scoring of the tenant, and a row bu
   const row = demoView.rows.find((r) => r.state !== null)!
   assert.equal(searchText(row), searchText(row))
 })
+
+// "Finish the migration in Authentication methods." Setting Migration complete
+// stops the legacy settings applying, so a method enabled only there stops
+// working: on messy nineteen people, both emergency accounts among them, held
+// only text or call, which the new policy did not turn on for them. The
+// instruction is the safe order — turn on what people use first — not a warning
+// beside the unsafe one.
+test('the migration check says to turn on the methods people use before completing it', () => {
+  const words = checkWords({ key: 'migration', outcome: 'fail', affects: 0, reason: null })
+  const enable = words.text.indexOf('first turn on every method people sign in with today')
+  const complete = words.text.indexOf('Migration complete')
+  assert.ok(enable >= 0, words.text)
+  assert.ok(complete > enable, `"Migration complete" comes before turning the methods on: ${words.text}`)
+  assert.match(words.text, /text message and voice call/)
+})
