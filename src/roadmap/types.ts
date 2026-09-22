@@ -12,7 +12,7 @@ export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforc
 export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'ready-to-enforce' | 'skipped'
 
 export type StepPopulation = {
-  /** Enabled accounts in scope (the "covers N enabled" count). */
+  /** Every account the population holds: ids.length. The "covers N enabled" count is inScope, never this. */
   total: number
   active: number
   admins: number

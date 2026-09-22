@@ -312,13 +312,17 @@ import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STE
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
-type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
+type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string>; enabled: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
   return {
     // The plan's active people (derive/population.ts isActivePerson): a step's reach counts the people MFA Readiness counts.
     active: new Set(viability.filter(isActivePerson).map((v) => v.userId)),
     admins: adminUserIds(snapshot.roles),
     guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
+    // The accounts that can sign in (derive/sets.ts enabledUsers reads the same
+    // field the same way: a null was not returned, never disabled). "covers N
+    // enabled" counts these and nothing else.
+    enabled: new Set(snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id)),
   }
 }
 /** Counts for a step's population; the index is built once per plan so 25,000 users are not rescanned per step. */
@@ -340,7 +344,9 @@ function population(ids: string[], index: PopulationIndex): StepPopulation {
   // One denominator (target-state §8.1): the who-line and the population line
   // count active people. admins and guests are the active ones too, so the
   // line and the count cannot disagree. inScope keeps the enabled total for the
-  // "covers N enabled" suffix.
+  // "covers N enabled" suffix: the enabled accounts among the ids, never every
+  // id. It was ids.length, and a tenant that disabled nine of the eleven
+  // accounts a policy named still read "covers 11 enabled".
   const activeIds = ids.filter((id) => index.active.has(id))
   let admins = 0
   let guests = 0
@@ -348,7 +354,7 @@ function population(ids: string[], index: PopulationIndex): StepPopulation {
     if (index.admins.has(id)) admins += 1
     if (index.guests.has(id)) guests += 1
   }
-  return { total: ids.length, active: activeIds.length, admins, guests, ids, activeIds, inScope: ids.length }
+  return { total: ids.length, active: activeIds.length, admins, guests, ids, activeIds, inScope: ids.filter((id) => index.enabled.has(id)).length }
 }
 
 /** The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1 of 4 active". */
@@ -912,7 +918,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // a policy filed under a broad goal that names four admins reaches four admins.
   //
   // Null where the scope could not be settled. Nothing then falls back.
-  const directoryIds = snapshot.users.map((u) => u.id)
+  //
+  // The directory's accounts that can sign in, and no others (StepPopulation.ids:
+  // "every enabled id in scope"). A policy reaches nobody through a disabled
+  // account: it is no ring member, no name an announcement greets, and not in
+  // "covers N enabled", which read every account the scope named, nine of them
+  // disabled, as enabled.
+  const directoryIds = snapshot.users.filter((u) => popIndex.enabled.has(u.id)).map((u) => u.id)
   // One answer per distinct scope, and one array behind it: steps whose policies
   // name the same people share the cohort, so the ring partition is computed once
   // for them (rings.ts partitionCache) instead of once per step.
