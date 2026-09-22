@@ -421,3 +421,48 @@ test('where a chain starts is a Ready step on it, or nothing', async () => {
   assert.equal(chainStartOf(readings, 'a'), null, 'a reciprocal pair does not loop')
   assert.equal(chainStartOf(readings, 'unknown'), null)
 })
+
+// R4-31 (Marcus D12). While the next action is the report-only create, every
+// readiness wait was dropped from the step: the registration policy read "Ready
+// · Create" with the MFA threshold on its card and nothing about the Temporary
+// Access Pass it cannot be turned on without. The engine held that wait the
+// whole time; the page showed it only once the policy had been built. Readiness
+// gates the enforcement and not the create (owner, 2026-09-11), so the wait is
+// shown as a wait on the turn-on and never listed as a fix before the create.
+// Headed "Prerequisites", the other turn-on waits ("when 1 trusted location
+// exists (now 0)") would read as the create's own prerequisites, the claim that
+// rule took out of Fix: every one is headed by what it holds.
+test('a written enforcement prerequisite is on the step before the create, as a wait on the turn-on', async () => {
+  const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
+  const { scheduleOf } = await import('../../roadmap/stepSchedule.ts')
+  const f = withFoundationSettled(fixture('mid'))
+  const { step, c, blockers, lane } = opened(f, 's-goal-register-info-protected')
+  assert.equal(scheduleOf(step).transition, 'createReportOnly', 'the premise: the next action is the report-only create')
+  assert.equal(lane.lane, 'Ready', 'the premise: the create can be done today')
+  assert.ok(step.blockers.some((b) => b.kind === 'readiness' && b.label === 'registration-no-tap'), 'the premise: no Temporary Access Pass, and the engine knows it')
+  const tiles = readinessOf(step, c, blockers).tiles
+  const tap = tiles.filter((t) => /Temporary Access Pass/.test(`${t.value} ${t.note ?? ''}`))
+  assert.equal(tap.length, 1, `the pass is named once on the create: ${JSON.stringify(tiles.map((t) => t.value))}`)
+  assert.equal(tap[0].tone, 'wait', 'a wait on the turn-on, not a warning that the create is blocked')
+  assert.match(tap[0].note ?? '', /before this policy is turned on/, 'and it says what it holds')
+  assert.equal(c.fix.some((x) => /Temporary Access Pass/.test(x.text)), false, 'never a fix before the create (owner, 2026-09-11)')
+  const waits = tiles.filter((t) => t.key.startsWith('readiness:'))
+  assert.ok(waits.length > 1, `the premise: more than the pass holds the turn-on — ${JSON.stringify(waits.map((t) => t.value))}`)
+  for (const t of waits) {
+    assert.equal(t.label, CONTRACT.readiness.tiles.beforeTurnOn, `${t.value}: a turn-on wait headed as a prerequisite of the create`)
+    assert.equal(t.tone, 'wait', t.value)
+  }
+  // The threshold is its own card, and is not said twice.
+  assert.equal(tiles.filter((t) => t.key === 'gate').length, 1)
+  assert.equal(tiles.some((t) => t.key === 'readiness:readiness'), false)
+  // Built in report-only, the same pass is what the turn-on waits on: still on the step, in the same words.
+  const built = structuredClone(step)
+  built.state = { ...built.state, lifecycle: 'report-only' }
+  built.status = 'in-report-only'
+  built.scheduled = undefined
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => x, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as StepVarContext
+  const after = readinessOf(built, stepContract(built, ctx), blockers).tiles.filter((t) => /Temporary Access Pass/.test(`${t.value} ${t.note ?? ''}`))
+  assert.equal(after.length, 1)
+  assert.equal(after[0].note, tap[0].note, 'one sentence for the pass at both stages')
+  assert.equal(after[0].label, CONTRACT.readiness.tiles.blockers, 'once the turn-on is the next action, the pass is its prerequisite')
+})
