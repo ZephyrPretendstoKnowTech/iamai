@@ -1,5 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { HEAD } from './stepHeadings.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { manualEvidenceLines, stepExportView } from './stepExport.ts'
@@ -216,4 +218,14 @@ test('a saved None on the device code decision is stated in the workflow check, 
       assert.match(text, /Move each required workflow to an alternative supported by that tool/, `${option ?? 'unsaved'} / ${where}: the check itself is gone`)
     }
   }
+})
+
+// The heading over those checks was an English literal in stepResources.ts,
+// written on the line d081ad8a rewrote, directly above the content-keyed lead.
+// It reads the step's headings now, the one place a section title is written.
+test('the workflow checks are headed by the headings\' own line, never a literal in the code', () => {
+  const { bodies } = opened('mid')
+  const portal = bodies.get(QUESTION_STEP.deviceCode)?.artifacts.find(a => a.id === 'portal')?.text() ?? ''
+  assert.ok(portal.split('\n').includes(HEAD.verifyWorkflow), portal)
+  assert.doesNotMatch(readFileSync('src/ui/surfaces/stepResources.ts', 'utf8'), /['"`]Verify the workflow:/)
 })

@@ -1888,7 +1888,9 @@
             "risks": "What could go wrong",
             "alsoPossible": "Also possible",
             "more": "More",
-            "namesHeld": "Named, for the record"
+            "namesHeld": "Named, for the record",
+            "$commentVerifyWorkflow": "The line that heads a step's workflow checks (steps[].whatToDo.verification) under its portal procedure and in the export built from it (ui/surfaces/stepResources.ts verificationResourceLines). It was an English literal in the code, directly above a content-keyed lead (whatToDo.verificationLead).",
+            "verifyWorkflow": "Verify the workflow:"
           },
           "attentionConflict": "Do not deploy this policy from the current baseline",
           "hardening": {

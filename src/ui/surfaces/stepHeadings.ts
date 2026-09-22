@@ -28,6 +28,8 @@ export type StepHeadings = {
   more: string
   /** In More: the names behind the counts the default step states. */
   namesHeld: string
+  /** The line heading a step's workflow checks under its portal procedure (stepResources.ts). */
+  verifyWorkflow: string
 }
 
 export const HEAD = (app.plan as unknown as { stepContract: { headings: StepHeadings } }).stepContract.headings

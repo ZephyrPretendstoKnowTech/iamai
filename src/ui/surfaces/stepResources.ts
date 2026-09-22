@@ -174,14 +174,15 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
  * answered: the answer reached the lane's condition (planLanes.ts) and nothing the
  * person reads (R4-29, Marcus D10). The checks themselves stay on every answer —
  * None is also what the decision asks to be saved once each workflow has moved
- * off, and the checks are the test of those moves.
+ * off, and the checks are the test of those moves. Their heading is the step's
+ * headings' own (HEAD.verifyWorkflow), not a literal written here.
  */
 export function verificationResourceLines(step: Step, mapping: Pick<MappingState, 'questionAnswers'>): string[] {
   const content = contentStepFor(step) as { whatToDo?: { verification?: unknown; verificationLead?: unknown } } | undefined
   const checks = content?.whatToDo?.verification
   if (!Array.isArray(checks) || checks.length === 0) return []
   const lead = effectLine(content?.whatToDo?.verificationLead, answerOf(mapping, step.id, 'decision'))
-  return ['Verify the workflow:', ...(lead === null ? [] : [lead]), ...checks.filter((line): line is string => typeof line === 'string').map((line, i) => `${i + 1}. ${line}`)]
+  return [HEAD.verifyWorkflow, ...(lead === null ? [] : [lead]), ...checks.filter((line): line is string => typeof line === 'string').map((line, i) => `${i + 1}. ${line}`)]
 }
 export function withWorkflowVerification(artifact: Artifact, step: Step, mapping: Pick<MappingState, 'questionAnswers'>): Artifact {
   const lines = artifact.id === 'portal' ? verificationResourceLines(step, mapping) : []
