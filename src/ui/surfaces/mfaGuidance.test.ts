@@ -33,6 +33,7 @@ import { GUIDE_POINTER, METHOD_GUIDES, PASSKEY_TARGET, TENANT_PREREQUISITE, USER
 import type { MethodGuideId } from '../../content/methodGuides.ts'
 import { classWord, deviceChips, methodsCell, nextCell, panelDevices, panelMethods, whyLine, deviceNoun } from './readinessCells.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
+import { rescanLinesOf } from './stepInstructions.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -468,8 +469,12 @@ test('the target and the tenant prerequisite are said once, outside every guide'
 })
 
 test('the step content the guidance replaced is gone, and its meaning is not', () => {
-  const cs = contentStepFor(campaignOf('demo')) as Record<string, any>
-  const steps = (cs.whatToDo.steps as string[]).join('\n')
+  const campaign = campaignOf('demo')
+  const cs = contentStepFor(campaign) as Record<string, any>
+  // The steps as a readable tenant reads them: the promise that the next scan
+  // shows the evidence follows them from whatToDo.rescan, and is left out only
+  // where the source it is read from was refused (R4-20).
+  const steps = [...(cs.whatToDo.steps as string[]), ...rescanLinesOf(campaign, cs).steps].join('\n')
   // The four per-state setup blocks the step used to carry.
   for (const gone of ['Add sign-in method → Passkey → in Microsoft Authenticator', 'Never seen or possibly broken', 'read it to them by phone']) {
     assert.ok(!steps.includes(gone), `the long setup line "${gone}" is not back on the Plan`)

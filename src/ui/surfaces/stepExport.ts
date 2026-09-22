@@ -16,7 +16,7 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
-import { instructionsHeld } from './stepInstructions.ts'
+import { instructionsHeld, rescanLinesOf } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
@@ -352,7 +352,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // the plan file all said a policy existed and none of them said which one.
   // Read from the frozen Step Contract's own finding, so the two cannot drift.
   else if (inPlace) lines.push(...contract.found.filter((x) => x.key === 'in-place').map((x) => x.text))
-  else if (!unearned && Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
+  // The steps' promise that a scan shows progress follows them while a scan can
+  // (stepInstructions.ts rescanLinesOf, R4-20), in the artifacts as on the screen.
+  else if (!unearned && Array.isArray(w.steps)) for (const l of [...w.steps, ...rescanLinesOf(step, cs).steps]) if (whole(l, ex)) lines.push(fillText(l, ex))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
   // is that same sentence; where it carries none the contract falls back to

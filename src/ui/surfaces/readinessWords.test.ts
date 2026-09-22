@@ -471,3 +471,38 @@ test('the campaign that moves an unreadable number names the source the scan cou
   const mid = bodiesOf(fixture('mid')).get('s-verify-mfa')!.readiness.tiles
   assert.equal(mid.some((t) => /could not read/.test(t.note ?? '')), false)
 })
+
+// R4-20 (Priya D5), the promises. Beside a registration source that returned
+// 403, Prepare Your Team for MFA still promised "the record shows it on the next
+// scan" and "the lists above shrink as people are seen", and headed its unknown
+// people "scan again before assessing readiness". Until the permission is
+// granted no scan changes any of it. The Readiness card now names the source
+// and what opens it. The promises are left out rather than warned about beside
+// it, and the people are still listed.
+test('the campaign promises nothing a scan cannot show while its source is refused', async () => {
+  const { stepExportView } = await import('./stepExport.ts')
+  const PROMISES = [/the record shows it on the next scan/, /the lists above shrink as people are seen/]
+  const read = (name: 'hostile' | 'mid') => {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const step = r.steps.find((s) => s.id === 's-verify-mfa')!
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null, groups: f.groups }
+    const body = stepBodyOf(step, ctx, {})
+    return { step, portal: body.artifacts.find((a) => a.id === 'portal')!.text(), who: body.whoFull.map((b) => b.lead).join('\n'), exported: stepExportView(step, ctx).whatToDo.join('\n') }
+  }
+  const hostile = read('hostile')
+  assert.notEqual(hostile.step.readiness.blind, undefined, 'the premise: the campaign\'s source was refused')
+  for (const p of PROMISES) {
+    assert.doesNotMatch(hostile.portal, p, 'the Entra list promises a scan will show progress')
+    assert.doesNotMatch(hostile.exported, p, 'the export promises a scan will show progress')
+  }
+  assert.doesNotMatch(hostile.who, /scan again before assessing readiness/)
+  assert.match(hostile.who, /^\d+ people with incomplete method or sign-in data:?$/m, 'the people are still listed')
+  // Where the sources are read, both promises stand, in their places.
+  const mid = read('mid')
+  assert.equal(mid.step.readiness.blind, undefined)
+  for (const p of PROMISES) assert.match(mid.portal, p)
+  assert.match(mid.portal, /phishing-resistant\.\n6\. Have each sign in once more/, 'the steps\' promise follows the steps')
+  assert.match(mid.portal, /reaches them\.\n10\. Scan to update the plan/, 'the list for everyone else ends with its own')
+  assert.match(mid.exported, PROMISES[0])
+})

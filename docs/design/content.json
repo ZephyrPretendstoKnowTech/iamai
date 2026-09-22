@@ -4092,6 +4092,8 @@
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
           "needsProof": "{n} people with a phishing-resistant method not confirmed in the last 30 days on every kind of device they use; ask each to sign in with it once on each:",
           "readinessUnknown": "{n} people with incomplete method or sign-in data; scan again before assessing readiness:",
+          "$commentReadinessUnknownBlind": "The same people where a source their readiness is read from was refused (Readiness.blind, R4-20 Priya D5). On a tenant whose registration details returned 403, the campaign told the reader to scan again before assessing readiness, and a scan changes nothing until the permission is granted. The step's Readiness card names the source and what opens it; this heading makes no promise a scan cannot keep.",
+          "readinessUnknownBlind": "{n} people with incomplete method or sign-in data:",
           "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
@@ -4119,15 +4121,22 @@
           "{methodGuidePointer}",
           "If a person has no usable registration method, use the approved Temporary Access Pass process to help them register.",
           "Text or call only: register the new method and test it first. Retire an older method only through the approved method-policy change, after checking recovery needs.",
-          "Admins: a passkey or a hardware security key; either is phishing-resistant.",
-          "Have each sign in once more; the record shows it on the next scan."
+          "Admins: a passkey or a hardware security key; either is phishing-resistant."
         ],
         "generic": [
           "Send the email below to everyone else; send the admin note to the admins.",
           "To prompt people during sign-in, open Entra ID → Authentication methods → Registration campaign → Edit. A campaign nudges one method at a time, either Passkey (FIDO2) or Microsoft Authenticator. Review the included and excluded users, set Days allowed to snooze and Limited number of snoozes, enable it, then reopen and verify those settings.",
-          "A passkey campaign does not nudge guests, because a guest cannot register a passkey here; the Authenticator campaign is the one that reaches them.",
-          "Scan to update the plan after each batch; the lists above shrink as people are seen."
-        ]
+          "A passkey campaign does not nudge guests, because a guest cannot register a passkey here; the Authenticator campaign is the one that reaches them."
+        ],
+        "$commentRescan": "The lines that promise a scan will show people's progress: after the steps, and after the lines for everyone else, where they stood. Said only while the scan can read what that progress is measured from (Readiness.blind, stepInstructions.ts rescanLinesOf). On a tenant whose registration details returned 403, Prepare Your Team for MFA promised that the record would show each sign-in and that its lists would shrink as people were seen; neither could happen until the permission was granted, and the step never said which permission (R4-20, Priya D5). There, the Readiness card names the source and what opens it instead.",
+        "rescan": {
+          "steps": [
+            "Have each sign in once more; the record shows it on the next scan."
+          ],
+          "generic": [
+            "Scan to update the plan after each batch; the lists above shrink as people are seen."
+          ]
+        }
       },
       "dates": null,
       "doneWhen": [

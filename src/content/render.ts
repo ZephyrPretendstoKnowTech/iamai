@@ -587,8 +587,11 @@ export function renderStep(st: Record<string, any>, title?: string): string {
   }
   parts.push(h(HEAD.whatToDo))
   if (w.lead) parts.push(p(w.lead, ex))
-  if (w.steps) parts.push(ol(w.steps, ex))
-  if (w.generic) parts.push('<p class="sub">For everyone else:</p>' + ol(w.generic, ex))
+  // Each list's promise that a scan shows progress follows it (whatToDo.rescan):
+  // the review renders the example's readable tenant, where the product says it
+  // too (stepInstructions.ts rescanLinesOf).
+  if (w.steps) parts.push(ol([...w.steps, ...(w.rescan?.steps ?? [])], ex))
+  if (w.generic) parts.push('<p class="sub">For everyone else:</p>' + ol([...w.generic, ...(w.rescan?.generic ?? [])], ex))
   if (w.new) parts.push('<p class="sub">If the policy does not exist yet:</p>' + ol(w.new, ex))
   if (w.createIfNeeded) parts.push(p(w.createIfNeeded, ex))
   if (w.create) parts.push('<p class="sub">Create:</p>' + ol(w.create, ex))
