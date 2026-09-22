@@ -79,6 +79,13 @@ export const UNKNOWN = {
   needs: (labels: string[]): string => `Missing scan evidence: ${list(labels)}`,
   /** The read succeeded; the answer was not in it (prompt 46 item 24). Never "could not be read". */
   readWithout: (label: string, field: string): string => `${label} was read but reports no ${field}`,
+  /**
+   * The sign-in records were read and hold nothing the check can decide on.
+   * `needs` is the note for a source the scan did not collect, and under a
+   * check that ran it read "Not Fully Read · Missing scan evidence: sign-in
+   * records": read, and missing, on one card (R4-58).
+   */
+  signInsShowNo: (what: string): string => `The sign-in records this scan read show no ${what}`,
   blocked: 'A check that cannot be run is treated as failed while it gates access.',
 }
 

@@ -1006,7 +1006,9 @@ const ctyIncludesOperator: ValidationRule = {
     // people who could lock themselves out of the portal, whoever ran the scan.
     const admins = Object.keys(ctx.snapshot.roles?.active ?? {})
     const seen = [...new Set(admins.flatMap((id) => ctx.snapshot.signInEvidence[id]?.countries ?? []))]
-    if (seen.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
+    // Read, and holding no administrator's country: the check ran and cannot
+    // decide, which is not a source the scan failed to collect (R4-58).
+    if (seen.length === 0) return unknown(UNKNOWN.signInsShowNo('administrator sign-in with a country'))
     const missing = seen.filter((c) => !ctx.allowedCountries.includes(c))
     // How many admins, not "admins": on a 51-admin tenant exactly one had
     // signed in from the country this names, and the plural read as a pattern
@@ -1035,7 +1037,7 @@ const ctySeenCountriesIncluded: ValidationRule = {
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
     const byCountry = ctx.snapshot.evidenceAggregates?.byCountry ?? null
-    if (byCountry === null) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
+    if (byCountry === null) return unknown(UNKNOWN.signInsShowNo('sign-in counts by country'))
     const missing = Object.keys(byCountry).filter((c) => c && !ctx.allowedCountries.includes(c))
     return missing.length === 0 ? PASS : fail(F.ctySeenMissing(missing))
   },
