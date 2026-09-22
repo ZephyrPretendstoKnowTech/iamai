@@ -6,14 +6,19 @@ import { fillText } from '../content/render.ts'
 const W = engine.readiness
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
-import { accountApplicability, tenantStrengthsOf } from './operations.ts'
+import { accountApplicability, tenantStrengthsOf, BUILT_IN_STRENGTHS, BUILT_IN_MFA_STRENGTH } from './operations.ts'
 import type { PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import { strengthSatisfaction } from './strand.ts'
 import { readinessPercent } from './readiness.ts'
 
 type Answer = 'yes' | 'no' | 'unknown'
-/** One person against one policy's method requirements; `stale` as MethodPreparation.staleIds. */
-type Judged = { answer: Answer; stale: boolean }
+/**
+ * One person against one policy's method requirements; `stale` as
+ * MethodPreparation.staleIds, `off` (on a 'no') as MethodPreparation.offIds:
+ * the policy would accept the methods they registered if the tenant's
+ * Authentication methods policy let them use them.
+ */
+type Judged = { answer: Answer; stale: boolean; off: boolean }
 /** The single-method strength combination a sign-in's method class satisfies on its own. */
 const PROOF_COMBINATION: Record<string, string> = { passkey: 'fido2', windowsHello: 'windowshelloforbusiness', certificate: 'x509certificatemultifactor' }
 export type MethodPreparation = {
@@ -51,6 +56,16 @@ export type MethodPreparation = {
    * measurement error (R4-41). On another, 38 people whose only method was text
    * were called unknowable (R4-15). What refuses them is not the policy the step
    * creates, and they need a method the tenant allows, not a first one.
+   *
+   * ONLY: every policy of the step that refused them would accept the methods
+   * they registered, if the methods policy let them use them, and no policy of
+   * the step left them unjudged — they would be counted. Refused by the methods
+   * policy is not the same as stopped by it. On a phishing-resistant admin step
+   * with text and voice off, five administrators who held only a phone were
+   * named as held back by the methods policy, and the one thing that reading
+   * invites — switching text back on for administrators — weakens the tenant
+   * and moves nobody: the strength refuses a phone either way. The line says
+   * the counterfactual (methodLineOff), so its count is exactly these people.
    */
   offIds?: string[]
   completeScope: boolean
@@ -77,8 +92,9 @@ export function createMethodPreparationCache(snapshot: TenantSnapshot, context: 
     combinationSets: new WeakMap<string[], Map<string, ReturnType<typeof strengthSatisfaction>>>(),
     unrestrictedStrengths: new Map<string, Map<string, Answer>>(),
     // A person's answer for one method requirement, with whether it is unknown
-    // only because their proof aged out: both belong to the answer, so a step
-    // that reads it from the cache reads both (R4-15).
+    // only because their proof aged out, or no only because the methods policy
+    // refuses what they registered: all belong to the answer, so a step that
+    // reads it from the cache reads all of them (R4-15, R4-41).
     scopeAnswers: new Map<string, Map<string, 'in' | 'out' | 'unknown'>>(), methodAnswers: new Map<string, Map<string, Judged>>(),
     methods: new Map<string, { usableMethods: string[]; possibleMethods: string[]; refused: boolean; signature: string }>(),
     strengths: tenantStrengthsOf(snapshot), registrations: new Map(snapshot.registrationDetails.map(r => [r.id, r])), users: new Map(snapshot.users.map(u => [u.id, u])) }
@@ -177,14 +193,23 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     }
     return registrationMethods
   }
-  const registered = (effect: PolicyEffect, id: string): Judged => {
-    if (effect.unknown.length > 0) return { answer: 'unknown', stale: false }
-    const row = registrations.get(id)
-    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false }
-    const registrationMethods = methodsOf(id, row)
-    const { usableMethods, possibleMethods } = registrationMethods
-    const answers = effect.requirements.map((requirement): Answer => {
-      if (requirement.kind === 'mfa') return !row.isMfaCapable || !row.methodsRegistered.length ? 'no' : usableMethods.length ? 'yes' : possibleMethods.length ? 'unknown' : 'no'
+  // The registrations Require MFA accepts: Microsoft's built-in Multifactor authentication strength.
+  const mfaCombinations = BUILT_IN_STRENGTHS.get(BUILT_IN_MFA_STRENGTH)!
+  /**
+   * One policy's method requirements against what one person registered.
+   * `methods` is what the tenant lets them use (usable) and might (possible).
+   * `ifAllowed` asks the other question: what the policy would answer if the
+   * tenant's Authentication methods policy let them use every method they
+   * registered — so a refusal is put down to the methods policy only where it
+   * is the refusal that stands between the person and the step (offIds).
+   */
+  const judge = (effect: PolicyEffect, id: string, row: TenantSnapshot['registrationDetails'][number], methods: { usableMethods: string[]; possibleMethods: string[]; signature: string }, ifAllowed: boolean): Answer[] => {
+    const { usableMethods, possibleMethods } = methods
+    // The registration report's own reading is made under the methods policy;
+    // with that policy set aside, the methods themselves say it.
+    const mfaCapable = ifAllowed ? strengthSatisfaction(mfaCombinations, row.methodsRegistered) === 'yes' : row.isMfaCapable
+    return effect.requirements.map((requirement): Answer => {
+      if (requirement.kind === 'mfa') return !mfaCapable || !row.methodsRegistered.length ? 'no' : usableMethods.length ? 'yes' : possibleMethods.length ? 'unknown' : 'no'
       if (requirement.kind !== 'strength') return 'unknown'
       const strength = strengths.get(requirement.id.toLowerCase())
       if (!strength) return 'unknown'
@@ -193,7 +218,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
         // method sets and the strength, not on which account registered them.
         let shared = cache.unrestrictedStrengths.get(requirement.id.toLowerCase())
         if (!shared) { shared = new Map(); cache.unrestrictedStrengths.set(requirement.id.toLowerCase(), shared) }
-        const signature = registrationMethods!.signature
+        const signature = methods.signature
         let answer = shared.get(signature)
         if (answer === undefined) {
           const usable = strength.allowedCombinations.length ? strengthSatisfaction(strength.allowedCombinations, usableMethods) : 'no'
@@ -219,7 +244,8 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
           const allowed = c.allowedAAGUIDs.map(v => String(v).toLowerCase())
           if (!Array.isArray(keys)) return 'unknown'
           const fido = keys.filter(k => k.kind === 'fido2' || k.kind === 'passkey')
-          if (fido.some(k => k.aaGuid && allowed.includes(k.aaGuid.toLowerCase()))) return availability.passkey(id, allowed)
+          // Whether the methods policy lets that key sign in is the question `ifAllowed` sets aside.
+          if (fido.some(k => k.aaGuid && allowed.includes(k.aaGuid.toLowerCase()))) return ifAllowed ? 'yes' : availability.passkey(id, allowed)
           return fido.some(k => !k.aaGuid) ? 'unknown' : 'no'
         })
         if (checks.every(a => a === 'yes')) return 'yes'
@@ -227,6 +253,13 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       }
       return unknown ? 'unknown' : 'no'
     })
+  }
+  const registered = (effect: PolicyEffect, id: string): Judged => {
+    if (effect.unknown.length > 0) return { answer: 'unknown', stale: false, off: false }
+    const row = registrations.get(id)
+    if (!row || !['ok', 'partial'].includes(snapshot.sources?.registrationDetails?.status ?? '')) return { answer: 'unknown', stale: false, off: false }
+    const registrationMethods = methodsOf(id, row)
+    const answers = judge(effect, id, row, registrationMethods, false)
     // The outcome settles what registration could not (prompt 62): a successful
     // sign-in in the last 30 days with a method this requirement accepts shows the
     // method works under the tenant's settings, so an unknown compatibility is not
@@ -234,7 +267,17 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     const proven = provenClasses(id)
     for (const [i, requirement] of effect.requirements.entries()) if (answers[i] === 'unknown' && settles(requirement, proven)) answers[i] = 'yes'
     const answer = combine(effect, answers)
-    if (answer !== 'unknown') return { answer, stale: false }
+    if (answer === 'no') {
+      // Refused, every method, by the methods policy; and would this policy
+      // take them if it were not? Only then is the methods policy what stopped
+      // them. Every method they registered is one it refuses, so "allowed" is
+      // all of them.
+      if (!registrationMethods.refused) return { answer, stale: false, off: false }
+      const all = row.methodsRegistered
+      const allowed = judge(effect, id, row, { usableMethods: all, possibleMethods: all, signature: JSON.stringify([all, all]) }, true)
+      return { answer, stale: false, off: combine(effect, allowed) === 'yes' }
+    }
+    if (answer !== 'unknown') return { answer, stale: false, off: false }
     // Whether the SAME settling would have happened on the sign-ins of any age.
     // If it would, this person is not "never confirmed" — the confirmation simply
     // got older than the window, and the readiness number fell without anything
@@ -242,12 +285,13 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     // settles nothing either, and saying it would is a promise the next scan breaks.
     const ever = everClasses(id)
     const aged = answers.map((a, i): Answer => (a === 'unknown' && settles(effect.requirements[i], ever) ? 'yes' : a))
-    return { answer, stale: combine(effect, aged) === 'yes' }
+    return { answer, stale: combine(effect, aged) === 'yes', off: false }
   }
   for (const id of [...new Set(candidates)]) {
     if (users.get(id)?.accountEnabled === false) continue
     // `aged`: every policy that left this person unknown did so only because their proof aged out.
-    let included = false, failed = false, unknown = false, aged = true
+    // `off`: every policy that refused this person would take them if the methods policy let them use what they registered.
+    let included = false, failed = false, unknown = false, aged = true, off = true
     for (const target of scopedTargets) {
       let scope = target.scopes.get(id)
       if (scope === undefined) { scope = applies(target.effect, id, snapshot, indexedContext); target.scopes.set(id, scope) }
@@ -256,7 +300,7 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
       included = true
       let judged = target.methods.get(id)
       if (judged === undefined) { judged = registered(target.effect, id); target.methods.set(id, judged) }
-      if (judged.answer === 'no') failed = true
+      if (judged.answer === 'no') { failed = true; if (!judged.off) off = false }
       else if (judged.answer === 'unknown') { unknown = true; if (!judged.stale) aged = false }
     }
     if (!included) continue
@@ -265,10 +309,10 @@ export function methodPreparation(effects: readonly PolicyEffect[], candidates: 
     else if (!failed) {
       result.unknownIds.push(id)
       if (aged) (result.staleIds ??= []).push(id)
-    } else {
-      // Not "registered nothing": registered, and refused by the tenant's methods policy.
-      const row = registrations.get(id)
-      if (row && methodsOf(id, row).refused) (result.offIds ??= []).push(id)
+    } else if (off && !unknown) {
+      // Not "registered nothing": registered, and held back by the tenant's
+      // methods policy alone — a policy that could not judge them leaves that unsaid.
+      (result.offIds ??= []).push(id)
     }
   }
   return result
@@ -314,9 +358,9 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
         // apply to, which is neither the step's active count nor its enabled
         // count, and a step can print all three (246, 283, 279 on one card).
         // Then, straight after it, how many of the people it did not count
-        // registered only methods the tenant does not let them use — the reason
-        // the engine has (MethodPreparation.offIds) and the reader could not
-        // see — and last, the people it could not judge.
+        // would be counted if the tenant allowed what they registered — the
+        // reason the engine has (MethodPreparation.offIds) and the reader could
+        // not see — and last, the people it could not judge.
         : [[
           fillText(W.methodLine, { ready: String(readyIds.length), total: String(ids.length) }),
           offIds.length === 0 ? null : fillText(offIds.length === short ? W.methodLineOffAll : W.methodLineOff, { off: String(offIds.length), short: String(short) }),
