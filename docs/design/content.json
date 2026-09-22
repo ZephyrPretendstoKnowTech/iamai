@@ -2531,8 +2531,11 @@
                 "hybrid": "Hybrid joined",
                 "unmanaged": "Left unmanaged"
               },
-              "today": "Today: {n} people signed in from computers that aren't joined.",
-              "todayNone": "Today: no sign-ins from unjoined computers were seen."
+              "$commentToday": "This line said \"{n} people signed in from computers that aren't joined\" and filled {n} from unjoinedComputers, which counts devices with NO trust type at all. A registered device is not joined — Entra has three trust types and only two are a join — so the sentence claimed a population far wider than the one it measured. On a 4,900-person tenant it read 3 where 2,339 people were on registered computers, and this question decides whether every company computer gets joined and enrolled: at 3 that is a Tuesday afternoon, at 2,339 it is a change board and a pilot. Both numbers are stated now, each saying what it counted.",
+              "today": "Today: {n} people signed in from computers IAMAI could not identify — not joined, not registered, not compliant, not managed.",
+              "todayNone": "Today: every computer sign-in came from a device IAMAI could identify.",
+              "todayRegistered": "Today: {n} people signed in from computers registered to the tenant but not joined. Managed means joined and enrolled, so these are in scope for this answer.",
+              "todayRegisteredNone": "No sign-ins came from registered-but-unjoined computers."
             },
             "phones": {
               "label": "Phones",

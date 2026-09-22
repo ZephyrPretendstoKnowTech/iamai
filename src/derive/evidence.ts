@@ -50,6 +50,18 @@ export type ScenarioEvidence = {
   phoneSignIns?: Derived
   /** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). Absent on snapshots from before it. */
   unjoinedComputers?: Derived
+  /**
+   * Computer sign-ins from devices REGISTERED to the tenant, by person and app.
+   *
+   * Registered is not joined. Entra has three trust types and only two of them
+   * are a join, so a registered computer is exactly what the device question is
+   * asking about: making it Managed means joining and enrolling it, which is
+   * work. `unjoinedComputers` counts devices with no trust at all, and stating
+   * that number alone under the words "computers that aren't joined" made a
+   * fleet of 2,339 read as 3 — which turns a quarter of work into a Tuesday
+   * afternoon. Absent on snapshots from before it.
+   */
+  registeredComputers?: Derived
   /** Mail and Teams sign-ins (Exchange, Outlook, Teams), by person and app: a directory-role holder among them uses the admin account for everyday work (E6). Absent on snapshots from before it. */
   officeSignIns?: PerPerson
   /** Azure management sign-ins (the Azure portal, the management API), by person and app: the people a block of the admin portals reaches beyond the admins (E9). Absent on snapshots from before it. */
@@ -242,6 +254,17 @@ export function unjoinedComputers(rows: Iterable<StoredSignIn>): Derived {
   return acc.out()
 }
 
+/** Computer sign-ins from devices registered to the tenant but not joined, by person and app. */
+export function registeredComputers(rows: Iterable<StoredSignIn>): Derived {
+  const acc = new Acc()
+  for (const row of rows) {
+    if (!hasDeviceLabels(row) || !COMPUTER_OS.has(row.os ?? '')) continue
+    if (row.trustType !== 'registered') continue
+    acc.hit(row, appName(row))
+  }
+  return acc.out()
+}
+
 const MAIL_OR_TEAMS = /exchange|outlook|teams/i
 const AZURE_APP_IDS = new Set(['c44b4083-3bb0-49c1-b47d-974e53cbdf3c', '797f4846-ba00-4fd7-ba43-dac1f8f63013'])
 const AZURE_APP = /azure portal|azure service management/i
@@ -337,6 +360,7 @@ export function deriveScenarioEvidence(rowsIn: Iterable<StoredSignIn>, compliant
     sharedDeviceOnly: sharedDeviceOnly(rows),
     phoneSignIns: phoneSignIns(rows),
     unjoinedComputers: unjoinedComputers(rows),
+    registeredComputers: registeredComputers(rows),
     officeSignIns: officeSignIns(rows),
     azureSignIns: azureSignIns(rows),
   }
@@ -360,6 +384,7 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     sharedDeviceOnly: empty(),
     phoneSignIns: empty(),
     unjoinedComputers: empty(),
+    registeredComputers: empty(),
     officeSignIns: { ...empty(), byPerson: {} },
     azureSignIns: empty(),
   }

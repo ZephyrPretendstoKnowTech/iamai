@@ -139,3 +139,34 @@ test('non-Microsoft apps are counted per person, and the detail counts people pe
   assert.deepEqual(e.nonMicrosoftApps.detail, { 'FortiClient VPN': 2, Salesforce: 1 })
   assert.deepEqual(e.nonMicrosoftApps.byPerson.b, ['FortiClient VPN'])
 })
+
+test('a registered computer is counted as not joined, and separately from one with no trust at all', () => {
+  // Entra has three device trust types and only two of them are a join, so a
+  // REGISTERED computer is a computer that is not joined. `unjoinedComputers`
+  // deliberately counts neither-joined-nor-registered-nor-compliant-nor-managed
+  // devices — devices with no identity the scan could read — and the question
+  // above it said "computers that aren't joined", which is a far wider
+  // population. The wording now matches what it counts, and the registered
+  // population, which is what "make them Managed" actually costs, is its own
+  // number instead of being silently folded away.
+  const rows = [
+    // No identity at all: the unjoined line's population.
+    row({ userId: 'u-unknown', trustType: 'none', isCompliant: false, isManaged: false }),
+    // Registered to the tenant, and not joined: work under a Managed answer.
+    row({ userId: 'u-registered-1', trustType: 'registered', isCompliant: false, isManaged: false }),
+    row({ userId: 'u-registered-2', trustType: 'registered', isCompliant: false, isManaged: false, os: 'macOS' }),
+    // Already joined, and a phone: neither line's business.
+    row({ userId: 'u-joined', trustType: 'joined' }),
+    row({ userId: 'u-phone', os: 'iOS', trustType: 'registered', isCompliant: false, isManaged: false }),
+  ]
+  const e = deriveScenarioEvidence(rows, new Set())
+
+  assert.deepEqual(e.unjoinedComputers?.people, ['u-unknown'], 'the unidentified line took in a device whose trust the scan could read')
+  assert.deepEqual(e.registeredComputers?.people, ['u-registered-1', 'u-registered-2'], 'the registered line is not the registered computers')
+  // A phone is not a computer on either line, whatever its trust.
+  for (const d of [e.unjoinedComputers, e.registeredComputers]) assert.equal(d?.people.includes('u-phone'), false, 'a phone is counted as a computer')
+  // The two populations are disjoint: a device is in one line or the other,
+  // never both, so the reader can add them without double-counting anyone.
+  const overlap = (e.registeredComputers?.people ?? []).filter((p) => (e.unjoinedComputers?.people ?? []).includes(p))
+  assert.deepEqual(overlap, [], 'a person is counted on both device lines')
+})
