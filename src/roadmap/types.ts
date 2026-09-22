@@ -475,7 +475,7 @@ export type Step = {
    */
   preparation?: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds?: string[]; guestIds: string[] }
   /** Actual target-policy method cohort; distinct from generic phishing-resistant proof. */
-  methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; completeScope: boolean }
+  methodPreparation?: { ids: string[]; readyIds: string[]; unknownIds: string[]; staleIds?: string[]; completeScope: boolean }
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean; fields?: import('./decisions.ts').ManualEvidenceField[]; record?: import('./decisions.ts').OwnerConfirmation; verification?: 'current' | 'unread' | 'changed' | 'incomplete' | 'historical'; staleReason?: string; pendingAccountIds?: string[] }
   id: string
