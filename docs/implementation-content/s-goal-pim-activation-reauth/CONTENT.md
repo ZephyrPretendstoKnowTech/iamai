@@ -2,7 +2,7 @@
 
 Do not parse headings for execution. Select blocks only by `META.json` block IDs.
 
-@@IAMAI-BEGIN {"id":"entra.context.prepare","channel":"entra","states":["contextMissing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"entra.context.prepare","channel":"entra","states":["contextMissing","missing"],"format":"markdown","kind":"template"}
 Entra admin center → Entra ID → Conditional Access → Authentication context. Create or update the IAMAI-resolved context ID/name `{{authContext.target.id}}` / `{{authContext.target.displayName}}`, set description to `Fresh strong authentication for privileged role activation.`, and publish it. Do not choose a different context ID merely because it is free.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.policy.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}

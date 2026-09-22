@@ -140,3 +140,31 @@ test('a request repeated once per role-management policy is reported as an unsup
   const stray = { meta: { stepId: 'x', projection: {} } as unknown as PackageMeta, blocks: { j: { meta: { id: 'j', channel: 'json', format: 'json', endpoint: 'https://graph.microsoft.com/v1.0/x/{missingId}' }, text: '{}\n' } } }
   assert.deepEqual(validatePackage(stray as unknown as CompiledPackage), ['j: endpoint names undeclared binding missingId'])
 })
+
+// R4-18, the first link of the package's own setup order. The create put the
+// policy on the context and nothing on the step said to create or publish the
+// context: in Entra a context that does not exist cannot be chosen under Target
+// resources, so the procedure stopped at step 3, and PIM can only ever be
+// pointed at a published one. The package authors that work as its own state
+// (`contextMissing`), which the runtime never enters because IAMAI reads no
+// authentication contexts and cannot tell a missing one from a published one.
+// The create carries it first instead; it is a create-or-update, so a context
+// already prepared is left as it is.
+test('the create prepares and publishes the context before the policy that targets it', () => {
+  const { body } = pimOn(pinnedMid())
+  const portal = channelText(body, 'portal')
+  const prepare = portal.indexOf('Conditional Access → Authentication context. Create or update the IAMAI-resolved context ID/name `c1` / `Privileged role activation`')
+  const create = portal.indexOf('Conditional Access → Policies → New policy')
+  assert.ok(prepare >= 0, portal)
+  assert.ok(create > prepare, 'the context is prepared after the policy that must select it')
+  assert.match(portal, /and publish it/)
+  // The Implementation Task reads the same procedure, context first.
+  const task = body.emergencyAccountTasks?.tasks[0]
+  assert.ok(task, 'the step draws no Implementation Task')
+  assert.match(task.steps[0], /Authentication context\. Create or update the IAMAI-resolved context ID\/name `c1`/)
+  // The script runs the same two modes in the same order.
+  const ps = channelText(body, 'ps')
+  const runs = [...ps.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1])
+  assert.deepEqual(runs, ['PrepareContext', 'Create'])
+  assert.match(ps, /-Mode 'PrepareContext' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
+})

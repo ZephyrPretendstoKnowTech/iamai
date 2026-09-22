@@ -53,7 +53,7 @@ Authentication-context ID/publication state; CA users/exclusions, authentication
 
 ## State variants
 - **Context missing:** create/publish only the dedicated authentication context, then rescan.
-- **Missing:** with the context resolved, create the CA policy in Report-only.
+- **Missing:** create or update and publish the dedicated authentication context, then create the CA policy in Report-only. IAMAI does not read authentication contexts, so it cannot tell a published context from a missing one and never enters **Context missing**; the context preparation is the create's first instruction until a scan can read contexts (R4-18).
 - **Partial:** correct only IAMAI-classified context/CA mismatches and keep/return the CA policy to Report-only while correcting.
 - **Report-only:** validate the canonical CA policy and authentication context; do **not** yet point PIM at it.
 - **Ready to enforce:** enable the canonical CA policy first and verify it remains resolvable.
