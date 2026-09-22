@@ -1258,8 +1258,8 @@
           "noState": "Nothing to migrate: Microsoft retired the legacy MFA and SSPR method settings, and this tenant reports no migration state",
           "pass": "The authentication-methods migration is complete",
           "fail": "The authentication-methods migration isn’t complete",
-          "$commentFailText": "It said only \"Finish the migration in Authentication methods.\" Setting Manage migration to Migration complete stops the legacy MFA and self-service password reset settings applying, so a method enabled only there stops working for everyone who relies on it. On one tenant nineteen people, both emergency accounts among them, held only text message or voice call, which the new policy did not turn on for them: following the line removed their only MFA method. The instruction is the safe order, not a warning beside the unsafe one.",
-          "failText": "Legacy MFA and self-service password reset settings still govern some methods. In Authentication methods → Policies, first turn on every method people sign in with today, for the people who use it (text message and voice call included); only then set Manage migration to Migration complete.",
+          "$commentFailText": "It said only \"Finish the migration in Authentication methods.\" Migration complete stops the legacy MFA and password-reset settings applying. A method enabled only there stops working. On one tenant, nineteen people held only text or voice, both emergency accounts among them. Following the line removed their only MFA method. The instruction is now the safe order, not a warning beside the unsafe one.",
+          "failText": "Legacy MFA and self-service password reset settings still govern some methods. First turn on every method people use today in Authentication methods → Policies, text and voice included. Then set Manage migration to Migration complete.",
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "step3": {

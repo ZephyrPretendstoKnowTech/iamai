@@ -360,9 +360,9 @@ test('audit 29: every Plan handoff reads one scoring of the tenant, and a row bu
 // beside the unsafe one.
 test('the migration check says to turn on the methods people use before completing it', () => {
   const words = checkWords({ key: 'migration', outcome: 'fail', affects: 0, reason: null })
-  const enable = words.text.indexOf('first turn on every method people sign in with today')
+  const enable = words.text.indexOf('First turn on every method people use today')
   const complete = words.text.indexOf('Migration complete')
   assert.ok(enable >= 0, words.text)
   assert.ok(complete > enable, `"Migration complete" comes before turning the methods on: ${words.text}`)
-  assert.match(words.text, /text message and voice call/)
+  assert.match(words.text, /text and voice included/)
 })
