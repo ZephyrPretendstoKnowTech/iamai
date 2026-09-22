@@ -12,7 +12,7 @@ import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage, PackageMeta } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING, normalizePackage, parseBlocks, validatePackage } from './protocol.ts'
-import { selectMismatches } from './project.ts'
+import { projectImplementation, selectMismatches } from './project.ts'
 import { readFileSync } from 'node:fs'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -253,6 +253,67 @@ test('a tenant’s own activation policy is named by the context ID it targets, 
   const portal = channelText(body, 'portal')
   assert.match(portal, /selecting the authentication context with ID `c7` \(`‹authentication context name›`\)/)
   assert.doesNotMatch(portal, /Privileged role activation/)
+})
+
+/**
+ * The PIM step with its policy already in the tenant, in report-only: the plan's
+ * own (its tag in the description), or — `own` — the tenant's, found by its
+ * settings with no tag, on context `context`.
+ */
+const reportOnlyOn = (context: string, own: boolean): Fixture =>
+  enforcedOn(PIM_STEP, (p) => {
+    p.state = 'enabledForReportingButNotEnforced'
+    if (own) {
+      delete p.description
+      p.displayName = 'Contoso PIM step-up'
+    }
+    ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = [context]
+  })
+
+// R4-18 review (blocking). "Privileged role activation" is the name the package
+// proposes for its own context — the one its create asks the reader to create —
+// and it was bound for every operation. A tenant's own activation policy on c7,
+// in report-only, read "Authentication context: Privileged role activation / c7"
+// in AI Info, and a correction of its context target would have said to select
+// `Privileged role activation` (`c7`): a context that may not exist, or another
+// one of that name. The same policy lost the name once enforced, where only that
+// path was gated. IAMAI reads no authentication contexts: the ID is read off the
+// policy, and the name is bound only on the policy the plan builds on its own
+// context.
+test('a tenant’s own policy in report-only names its context by ID and never by the name IAMAI proposes for its own', () => {
+  const { step, body, ctx } = pimOn(reportOnlyOn('c7', true))
+  assert.equal(step.state.lifecycle, 'report-only', 'the premise: the policy reads report-only')
+  const op = plannedOperationsOf(step)[0]
+  assert.equal(op?.mode, 'update', 'the premise: the step hands over an update of the tenant’s policy')
+  assert.equal(step.tracking?.members[0]?.matchedBy, 'operation-target', 'the premise: the tie is the operation’s, which says nothing of a tag')
+  const bindings = packageBindings(step, ctx, body.contract)
+  assert.equal(bindings['authContext.target.id'], 'c7')
+  assert.equal(bindings['authContext.target.displayName'], undefined)
+  assert.match(channelText(body, 'ai'), /^- Authentication context ID the policy targets: c7$/m)
+  for (const a of body.artifacts) assert.doesNotMatch(a.text(), /Privileged role activation/, a.id)
+  // The correction of that policy's context target names the context by its ID alone.
+  const corrected = projectImplementation(PIM, 'partial', { ...bindings, [CHANGED_FIELDS_BINDING]: ['conditions.applications'] })
+  const entra = corrected.channels.find((c) => c.channel === 'entra')?.text ?? ''
+  assert.match(entra, /Set Target resources to the single authentication context with ID `c7`\./, JSON.stringify(corrected.hold))
+  assert.doesNotMatch(entra, /Privileged role activation|‹/)
+  const ai = corrected.channels.find((c) => c.channel === 'aiInfo')?.text ?? ''
+  assert.match(ai, /Authentication context ID the policy targets: c7/)
+  assert.doesNotMatch(ai, /Privileged role activation/)
+})
+
+// The counterpart: the policy the plan's create built — its tag in the
+// description, on the package's own context — keeps the name the create asked
+// for, before and after enforcement, and says it is the plan's proposal.
+test('the plan’s own policy on its own context keeps the name the create proposed, as a proposal', () => {
+  const { step, body, ctx } = pimOn(reportOnlyOn('c1', false))
+  assert.equal(plannedOperationsOf(step)[0]?.mode, 'update', 'the premise: an update, whose tie says nothing of the tag')
+  assert.equal(packageBindings(step, ctx, body.contract)['authContext.target.displayName'], 'Privileged role activation')
+  assert.match(channelText(body, 'ai'), /^- Name this plan proposes for that context \(IAMAI does not read authentication contexts\): Privileged role activation$/m)
+  // The plan's tag on a policy the reader moved to another context proves the
+  // policy, not the context: c7 was never the context the create named.
+  const moved = pimOn(reportOnlyOn('c7', false))
+  assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.id'], 'c7')
+  assert.equal(packageBindings(moved.step, moved.ctx, moved.body.contract)['authContext.target.displayName'], undefined)
 })
 
 // The note is the package's answer, not the tile's: another step waiting on its

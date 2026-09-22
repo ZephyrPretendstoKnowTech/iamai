@@ -25,6 +25,7 @@ import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { awaitsWorkflowRecord, operationsOf, policyHold, policyResult, unavailableReason } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
+import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
@@ -734,6 +735,23 @@ function contextUsedElsewhere(step: Step, op: PolicyOperation | null, snapshot: 
   })
 }
 
+/**
+ * Whether the tenant policy a step works on carries this plan's own tag for the
+ * step — the policy the plan's create built — read the way the engine reads a tag
+ * (roadmap/generate.ts findTaggedPolicies). An update names its plan by the tag
+ * the create writes, which it carries as its intent; an enforced step with no
+ * operation left reads the engine's own tie of the policy to the step
+ * (roadmap/tracking.ts matchMembers). A policy tied by its settings, or only by
+ * IAMAI's record of an earlier scan, is the tenant's own.
+ */
+function planBuilt(step: Step, snapshot: TenantSnapshot | null, policyId: string): boolean {
+  const id = policyId.toLowerCase()
+  const tag = plannedOperationsOf(step).map((o) => (o.mode === 'create' ? o.body : o.intent) as { description?: unknown } | undefined).map((b) => b?.description).find((d): d is string => typeof d === 'string')
+  const planId = tag !== undefined ? /^\[IAMAI:([^:\]]+):/.exec(tag)?.[1] : undefined
+  if (planId !== undefined && snapshot !== null) return findTaggedPolicies(snapshot, planId, step.id).some((t) => t.policyId.toLowerCase() === id)
+  return (step.tracking?.members ?? []).some((m) => m.policyId?.toLowerCase() === id && (m.matchedBy === 'member-tag' || m.matchedBy === 'step-tag' || m.matchedBy === 'member-name'))
+}
+
 type PolicyShape = { displayName?: unknown; description?: unknown; conditions?: { users?: { excludeGroups?: unknown; excludeUsers?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
 
 /**
@@ -916,21 +934,30 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // operation: the policy IAMAI matched to the step is the delivered target
   // (operations.ts awaitsWorkflowRecord: enforced and healthy), so its own context
   // is the one the PIM role settings still have to require (setupAfterEnforcementOf).
-  // The ID is read off that policy. The name is not a reading: it is the
-  // proposal the create's first instruction asks the reader to give the context,
-  // so it is bound only where the policy carries this plan's own tag for the step
-  // — the policy that create built. One the scan tied to the step by its settings
-  // alone, or only by IAMAI's record of an earlier scan, targets a context the
-  // tenant named itself, and IAMAI does not read contexts: "selecting `Privileged
-  // role activation`" there named a context that may not exist, or another one.
+  // The ID is read off that policy.
+  //
+  // The name is never a reading: it is the package's own proposal for its own
+  // context (META `baselineAuthority`: the context ID, the name and the
+  // description the create's first instruction asks the reader to give it). So it
+  // is bound only on the policy the plan builds on that context — the create, or a
+  // policy carrying this plan's tag for the step (planBuilt) — and only where the
+  // policy targets the package's own context ID. It was bound for every operation,
+  // so a tenant's own activation policy on c7, in report-only, read "Authentication
+  // context: Privileged role activation / c7" in AI Info, and a correction of it
+  // would have said to select `Privileged role activation` (`c7`): a context that
+  // may not exist, or another one of that name. The same policy became nameless
+  // once enforced, where only that path was gated (R4-18 review).
   type Apps = { applications?: { includeAuthenticationContextClassReferences?: unknown } }
   const tracked = op === null && awaitsWorkflowRecord(step) ? (step.tracking?.policyId?.toLowerCase() ?? null) : null
   const delivered = tracked === null ? undefined : ((ctx.snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((row) => typeof row.id === 'string' && row.id.toLowerCase() === tracked)
   const contexts = ((op !== null ? settled('conditions.applications')?.conditions : delivered?.conditions) as Apps | undefined)?.applications?.includeAuthenticationContextClassReferences
   if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string' && !contextUsedElsewhere(step, op, ctx.snapshot, contexts[0])) {
     put('authContext.target.id', contexts[0])
-    const builtByPlan = delivered === undefined || (step.tracking?.members ?? []).some((m) => m.policyId?.toLowerCase() === tracked && (m.matchedBy === 'member-tag' || m.matchedBy === 'step-tag' || m.matchedBy === 'member-name'))
-    if (builtByPlan) put('authContext.target.displayName', CONTRACT.implementation.authContextName)
+    const authority = (declared?.baselineAuthority ?? {}) as { authenticationContextSourceId?: unknown; authenticationContextDisplayName?: unknown }
+    const ownContext = typeof authority.authenticationContextSourceId === 'string' && authority.authenticationContextSourceId.toLowerCase() === contexts[0].toLowerCase()
+    const policyId = op?.mode === 'update' ? op.policyId : delivered !== undefined ? tracked : null
+    const built = op?.mode === 'create' || (policyId !== null && planBuilt(step, ctx.snapshot, policyId))
+    if (ownContext && built) put('authContext.target.displayName', typeof authority.authenticationContextDisplayName === 'string' ? authority.authenticationContextDisplayName : undefined)
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)

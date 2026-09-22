@@ -226,8 +226,6 @@ type ContractWords = {
     aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; changedFields: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
     /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
     excludeUsersNone: string
-    /** The name IAMAI proposes for the authentication context a policy step targets (stepPackage.ts `authContext.target.displayName`). */
-    authContextName: string
     copy: string
     copyFailed: string
     expand: string
