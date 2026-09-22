@@ -29,7 +29,7 @@ import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { IMPACT, populationLine } from '../../derive/whoLine.ts'
@@ -1528,6 +1528,17 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
   if (s.setAside) return null
   if (step.manualReview?.confirmedAt) return { key: 'review', label: CONTRACT.foundLabel.observation, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
+  // Enforced, and the only thing left is the person's own record.
+  //
+  // Such a step drew Ready / Enforced, milestone "Review now", and ZERO
+  // readiness tiles and ZERO findings — three readers reported the same empty
+  // step, two of them on the same step id. Its Done-when listed five lines,
+  // three that IAMAI checks for itself and two that are the reader's, with
+  // nothing saying which remained. The step knew all along: `awaitsWorkflowRecord`.
+  if (awaitsWorkflowRecord(step)) {
+    const t2 = t as unknown as { awaitingReview: string; awaitingReviewNote: string }
+    return { key: 'review', label: CONTRACT.foundLabel.awaitingReview, tone: 'wait', value: t2.awaitingReview, note: t2.awaitingReviewNote }
+  }
   if (s.satisfied && step.directionQuestions) return { key: 'decision', label: t.decision, tone: 'good', value: s.lane?.label ?? s.stage, note: c.doneWhen.join(' ') }
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).

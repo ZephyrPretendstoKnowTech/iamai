@@ -1649,7 +1649,8 @@
             "wider": "Wider than this step",
             "shortfall": "Who it misses",
             "guestDirectory": "Guest Directory",
-            "directory-inventory": "Guest Directory"
+            "directory-inventory": "Guest Directory",
+            "awaitingReview": "Your review"
           },
           "condition": {
             "healthy": "Healthy",
@@ -1840,7 +1841,10 @@
               "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed.",
               "peopleStepNote": "These are the accounts this step asks you to review. Check the listed evidence before deciding what each account needs.",
               "$commentCoverageUnreadable": "A goal an existing policy already delivers reads In place / Completed, and said nothing about whether the people it covers can actually satisfy it. On a tenant whose registration source returned 403 the step read Completed beside a readiness of \"0 of 40 people have a registered method allowed by the target policies. Method compatibility is not yet established for 40\" - which the engine had computed and the completed step did not show. In place describes the policy; it is not a finding about the people, and a reader takes Completed as protection.",
-              "coverageUnreadable": "IAMAI could not read whether the people it covers can satisfy it: {line} This describes the policy, not the people."
+              "coverageUnreadable": "IAMAI could not read whether the people it covers can satisfy it: {line} This describes the policy, not the people.",
+              "$commentAwaitingReview": "A policy that is enforced and waiting on the person to record their workflow test rendered Ready / Enforced, milestone Review now, and ZERO readiness tiles and ZERO findings - three readers reported the same empty step, two of them on the same step id. Its Done-when listed five lines: three that IAMAI checks itself and two that are the person, with nothing saying which of them remained. The step knows: awaitsWorkflowRecord is true and manualReview.confirmedAt is not set.",
+              "awaitingReview": "Waiting on you",
+              "awaitingReviewNote": "The policy is enforced and IAMAI is finished with it. What is left is yours to record: test the workflows below and confirm the outcome on this step."
             },
             "bar": {
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
