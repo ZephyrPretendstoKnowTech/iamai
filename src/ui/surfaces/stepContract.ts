@@ -1553,7 +1553,7 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
     // target policies" — computed by the engine, shown nowhere on the finished
     // step. In place is a fact about the POLICY, and a reader takes Completed
     // as protection.
-    const unreadable = step.readiness.unmeasured === 'unreadable' ? fillText(notes.coverageUnreadable, { line: step.readiness.lines[0] ?? '' }).trim() : null
+    const unreadable = step.readiness?.unmeasured === 'unreadable' ? fillText(notes.coverageUnreadable, { line: step.readiness.lines?.[0] ?? '' }).trim() : null
     const found = c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote
     return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: unreadable === null ? found : `${found} ${unreadable}` }
   }
