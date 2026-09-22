@@ -55,12 +55,13 @@ const shared = content.shared as unknown as Record<string, string[]>
 // the walk reads that column, so the form is held here and nowhere else.
 const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
 const WALK_TIME = RE.gateTime
-// The evidence gate here accepts two forms more than the walk's own regex does,
-// neither of which any fixture the walk visits renders: the short-window line,
-// and the line for a sign-in source that refused the read outright (R4-48),
-// which states a reason and no count because nothing counted anybody. Every
-// form the walk accepts must be accepted here too, which the assertion below proves.
-const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days|the sign-in records could not be read in this tenant \(.+\), so nothing in this window has been checked and waiting will not change that)\./
+// The evidence gate here accepts three forms more than the walk's own regex does,
+// none of which any fixture the walk visits renders: the short-window line, the
+// line for a tenant that refused the sign-in read (R4-48), and the line for a
+// scan that reached no sign-in record without a refusal (R4-48 review). The last
+// two state a reason and no count because nothing counted anybody. Every form
+// the walk accepts must be accepted here too, which the assertion below proves.
+const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days|the sign-in records could not be read in this tenant \(.+\), so nothing in this window has been checked and waiting will not change that|this scan read no sign-in records \(.+\), so nothing in this window has been checked yet; scan again to read them)\./
 
 const trackedLine = (key: string, vals: Record<string, unknown>): string =>
   fillText((content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked[1], {
@@ -90,6 +91,13 @@ test('the evidence lines no walked fixture renders are accepted here too: a shor
   const refused = trackedLine('evidenceSourceUnread', { reason: 'no sign-in records could be read' })
   assert.match(refused, WALK_EVIDENCE)
   assert.doesNotMatch(refused, /\d+ of \d+ active people/, 'and it counts nobody')
+  // A scan that reached no record where the tenant refused nothing ("Graph 503
+  // after retries") has a line of its own, which does not call a fault that may
+  // pass a refusal by the tenant (R4-48 review).
+  const notRead = trackedLine('evidenceSourceNotRead', { reason: 'Graph 503 after retries' })
+  assert.match(notRead, WALK_EVIDENCE)
+  assert.doesNotMatch(notRead, /\d+ of \d+ active people/, 'and it counts nobody')
+  assert.doesNotMatch(notRead, /in this tenant|waiting will not change/, 'and claims no standing refusal')
 })
 
 /** A step's Done-when, filled, exactly as the opened step prints it. */
