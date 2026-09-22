@@ -26,14 +26,11 @@ import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
-import { laneReadings } from '../../../../src/ui/surfaces/planLanes.ts'
-import { asideGroupsFor, BOARD, groupsFor, laneViewOf, LANES, prerequisiteLabelFor, readinessBlockersOf, workTypeOf } from '../../../../src/ui/surfaces/planBoard.ts'
-import { badgeLabel, cleanupTitleOf } from '../../../../src/ui/surfaces/stepContract.ts'
-import { cleanupEntry } from '../../../../src/ui/surfaces/cleanupExport.ts'
-import { cleanupComplete } from '../../../../src/roadmap/cleanupDone.ts'
-import type { BoardItem } from '../../../../src/ui/surfaces/planBoard.ts'
+import { asideGroupsFor, BOARD, boardOf, groupsFor, LANES } from '../../../../src/ui/surfaces/planBoard.ts'
+import type { Board } from '../../../../src/ui/surfaces/planBoard.ts'
+import { badgeLabel } from '../../../../src/ui/surfaces/stepContract.ts'
 import { stepOperations } from '../../../../src/ui/surfaces/stepJson.ts'
-import { contentStepFor, contentTitle } from '../../../../src/content/stepTitle.ts'
+import { contentTitle } from '../../../../src/content/stepTitle.ts'
 import { passkeyReadingOf, requiredModels } from '../../../../src/roadmap/passkeySettings.ts'
 import { methodAvailability } from '../../../../src/roadmap/methodAvailability.ts'
 import { observationsOf } from '../../../../src/roadmap/tracking.ts'
@@ -158,38 +155,20 @@ export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
   }
 }
 
-/** One Cleanup row as the board holds it (Plan.tsx `cleanupRows`). */
-type BoardCleanupRow = { id: string; kind: string; title: string; complete: boolean }
-
 /**
- * The board's readings, built the way Plan.tsx builds them.
+ * The board the Plan draws: planBoard.ts `boardOf`, the one producer Plan.tsx,
+ * the printed plan, Export and Connect read, over the run's steps, its Cleanup
+ * rows and the emergency-access answers the plan holds.
  *
- * Plan.tsx passes the Cleanup rows into `laneReadings` and resolves a Cleanup
- * row's title through `cleanupTitleOf`; this did neither, so the drill — which
- * the dependency graph makes a hard prerequisite of EVERY CA policy
- * enforcement — was invisible here, and a blocker naming it came out as the
- * bare words "Prerequisite on hold".
- *
- * A step is named the way Plan.tsx's `titleOf` names it (`plainTitle || title`)
- * wherever a reason line or a tile names it. This read `step.title`, the
- * engine's goal statement, so a tile a persona quoted as "Legacy protocols
- * blocked · Prerequisite · Waiting" reads "Block Legacy Authentication" on the
- * screen (R4-40). A Cleanup row is complete as Plan.tsx reads it, with the
- * emergency-access answers the plan holds, not with none.
+ * This kept its own copy of Plan.tsx's board construction. The copy was wrong
+ * more than once: it left the Cleanup rows out, so the drill that holds every
+ * policy's enforcement was never a row; it titled rows with the engine's goal
+ * statement where the board draws the content title; it named a prerequisite
+ * by that statement too, grouped by the engine's kind, and read every Cleanup
+ * row as incomplete. A second copy of the board drifts whenever the first one
+ * changes, so there is none.
  */
-function boardReadings(r: FixtureRun): { readings: ReturnType<typeof laneReadings>; titleOf: (id: string) => string | null; cleanup: BoardCleanupRow[] } {
-  const answers = r.input.mapping.breakGlassAnswers ?? null
-  const cleanup = (r.schedule.cleanup?.rows ?? [])
-    .filter((row) => cleanupEntry(row.kind) !== null)
-    .map((row) => ({ id: `cleanup-${row.kind}`, kind: row.kind as string, title: cleanupEntry(row.kind)!.title, complete: cleanupComplete(row, answers) }))
-  const byId = new Map(r.steps.map((x) => [x.id, x]))
-  const titleOf = (id: string): string | null => {
-    const step = byId.get(id)
-    return step ? step.plainTitle || step.title : cleanupTitleOf(id)
-  }
-  const readings = laneReadings(r.steps, cleanup.map((row) => ({ id: row.id, complete: row.complete, afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) })))
-  return { readings, titleOf, cleanup }
-}
+const boardFor = (r: FixtureRun): Board => boardOf(r.steps, r.schedule.cleanup, r.input.mapping.breakGlassAnswers ?? null)
 
 /**
  * One row of the board. `title` is the text the row draws — `contentTitle(step)`
@@ -222,40 +201,16 @@ export type BoardRow = {
  */
 export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
   zoned(t)
-  const { readings, titleOf, cleanup } = boardReadings(r)
-  const byId = new Map(r.steps.map((s) => [s.id, s]))
-  const cleanupById = new Map(cleanup.map((row) => [row.id, row]))
-  // The rows Plan.tsx builds: every step the lane engine reads, titled
-  // `contentTitle(step)` and grouped by its CONTENT kind, then every Cleanup row
-  // (the drill among them) as a setup row under its own title. This built the
-  // step rows only, titled them `step.title` — the engine's goal statement, a
-  // name no row draws, on 22 of 40 steps of mid — and grouped them by
-  // `step.kind`, so a persona read "Device-code flow blocked" where the board
-  // says "Block Device Code Sign-in" (R4-40, R4-47), never saw the drill row
-  // that holds every enforcement, and could not find a prerequisite a tile
-  // named (R4-24).
-  const items: BoardItem[] = r.steps.flatMap((step) => {
-    const reading = readings.get(step.id)
-    if (!reading) return []
-    const view = laneViewOf(reading, titleOf)
-    return [{ id: step.id, title: contentTitle(step), lane: reading.lane, laneLabel: view.label, workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null), order: reading.order }]
-  })
-  if (r.schedule.cleanup) {
-    for (const row of cleanup) {
-      const reading = readings.get(row.id)!
-      items.push({ id: row.id, title: row.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, workType: 'setup', order: reading.order })
-    }
-  }
+  const board = boardFor(r)
+  const rows = new Map(board.rows.map((row) => [row.item.id, row]))
+  const items = board.rows.map((row) => row.item)
   const out: BoardRow[] = []
   const push = (tab: string, groups: ReturnType<typeof groupsFor>): void => {
     for (const group of groups) {
       for (const item of group.items) {
-        const reading = readings.get(item.id)
-        if (!reading) continue
-        const step = byId.get(item.id) ?? null
-        const row = cleanupById.get(item.id)
-        if (!step && !row) continue
-        out.push({ id: item.id, title: item.title, step, cleanup: row ? row.kind : null, lane: reading.lane, substatus: laneViewOf(reading, titleOf).substatus, tab, group: group.label })
+        const row = rows.get(item.id)
+        if (!row) continue
+        out.push({ id: item.id, title: item.title, step: row.step, cleanup: row.cleanup ? row.cleanup.row.kind : null, lane: row.reading.lane, substatus: row.lane.substatus, tab, group: group.label })
       }
     }
   }
@@ -272,8 +227,7 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
   const drawn = new Set(out.map((row) => row.id))
   for (const step of r.steps) {
     if (drawn.has(step.id)) continue
-    const reading = readings.get(step.id)
-    const view = reading ? laneViewOf(reading, titleOf) : null
+    const view = board.readings.has(step.id) ? board.laneOf(step.id) : null
     const ruledOut = step.doesntApply != null
     out.push({
       id: step.id,
@@ -302,24 +256,20 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
  */
 export function stepView(t: Tenant, r: FixtureRun, step: Step): ReturnType<typeof stepBodyOf> {
   zoned(t)
-  // WITH the lane, the readiness blockers and the prerequisite labels, because
-  // Plan.tsx passes all three (Plan.tsx -> ContentStep.tsx). Without them
-  // stepBody falls back to `laneViewFor(step)` — the lane engine run over a plan
-  // of ONE step — and the contract, the Done-when, the rail and the badge all
-  // follow that instead of the board. On a messy tenant that disagreed with the
-  // real board for 18 of 38 steps, so this harness was manufacturing exactly the
-  // phantom states it exists to catch. Found by the cautious-engineer run.
-  const { readings, titleOf, cleanup } = boardReadings(r)
-  const reading = readings.get(step.id)
-  const laneView = reading ? laneViewOf(reading, titleOf) : undefined
+  // WITH the lane, the readiness blockers, the prerequisite labels and the
+  // enforce waits, because Plan.tsx passes all four (Plan.tsx -> ContentStep.tsx).
+  // Without them stepBody falls back to `laneViewFor(step)` — the lane engine
+  // run over a plan of ONE step — and the contract, the Done-when, the rail and
+  // the badge all follow that instead of the board. On a messy tenant that
+  // disagreed with the real board for 18 of 38 steps.
+  const board = boardFor(r)
+  const onBoard = board.readings.has(step.id)
   return stepBodyOf(step, ctxOf(t, r, step), {
-    lane: laneView,
-    blockers: reading ? readinessBlockersOf(reading, titleOf) : undefined,
-    prerequisiteLabel: prerequisiteLabelFor(readings),
-    // What the enforce checklist's conditions wait on, as Plan.tsx passes it:
-    // the drill row while the board reads it incomplete.
-    enforceWaits: cleanup.filter((row) => row.kind === 'drill' && !row.complete).map((row) => row.title).filter((x) => x.length > 0),
-  } as never)
+    lane: onBoard ? board.laneOf(step.id) : undefined,
+    blockers: onBoard ? board.blockersOf(step.id) : undefined,
+    prerequisiteLabel: board.prerequisiteLabel,
+    enforceWaits: board.enforceWaits,
+  })
 }
 
 /**
