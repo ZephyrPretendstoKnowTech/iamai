@@ -41,7 +41,7 @@ import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import type { PlanStateFacts } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
-import type { LaneReading } from './planLanes.ts'
+import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
@@ -268,11 +268,11 @@ export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | nul
  * is theirs to do. Null on every other tab and wherever Ready has rows, so no
  * board that has work to offer says this.
  */
-export function nothingReadyLine(tab: BoardTab, lanes: Readonly<Record<LaneTab, number>>, tenant: string): string | null {
+export function nothingReadyLine(tab: BoardTab, lanes: Readonly<Record<LaneTab, number>>): string | null {
   if (tab !== 'ready' || lanes.ready > 0) return null
   const waiting = lanes.upNext + lanes.onHold
   if (waiting === 0) return null
-  return fillText(BOARD.nothingReady, { n: `${waiting} ${waiting === 1 ? 'step is' : 'steps are'}`, tenant })
+  return fillText(BOARD.nothingReady, { n: `${waiting} ${waiting === 1 ? 'step is' : 'steps are'}` })
 }
 
 /** The view of a step the person said does not apply here: the Deferred lane, said as Doesn't apply. */
@@ -285,9 +285,15 @@ export function doesntApplyView(): LaneView {
  * a step opened on its own in a test): the engine read over the steps given,
  * which is the whole plan where the caller has it and the step alone otherwise.
  */
-export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => steps.find((s) => s.id === id)?.title ?? null): LaneView {
+export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => steps.find((s) => s.id === id)?.title ?? null, rows: readonly LaneRowInput[] = []): LaneView {
   if (step.doesntApply != null) return doesntApplyView()
-  const reading = laneReadings(steps.some((s) => s.id === step.id) ? steps : [...steps, step]).get(step.id)
+  // The same inputs the board gives the engine, Cleanup rows included. Without
+  // them the drill is a prerequisite the engine has never heard of, so a step
+  // the board holds behind it read Up Next here — one step, two lanes, which is
+  // the one thing this module exists to prevent. It surfaced when the emergency
+  // accounts started completing on the shipped fixtures (G-F1) and the ladder
+  // step's nearest wait became the drill.
+  const reading = laneReadings(steps.some((s) => s.id === step.id) ? steps : [...steps, step], rows).get(step.id)
   return reading ? laneViewOf(reading, titleOf) : doesntApplyView()
 }
 

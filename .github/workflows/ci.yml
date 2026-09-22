@@ -1,6 +1,7 @@
-# Full validation runs on pull requests, on every push to main and on demand. A
-# push to main is published by deploy-pages.yml and never waits for this
-# workflow: it reports green or red beside the deploy, it does not gate it.
+# Full validation runs on pull requests, on every push to main and on demand.
+# deploy-pages.yml waits for this workflow and publishes only the commit it
+# passed on, so a red run here means nothing reaches the live site rather than
+# a report beside a deploy that already happened.
 name: ci
 on:
   pull_request:

@@ -455,7 +455,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
       {summaryFilter && <p className="actions"><strong>{fillText(summary.filter, { view: summary[summaryFilter] })}</strong><Button variant="tertiary" onClick={() => selectSummary(null)}>{summary.all}</Button></p>}
       {pinnedActive.map((g) => <div key={g.key} className="plan-board plan-board-foundation">{drawGroup('pinned')(g)}</div>)}
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
-        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{pinnedActive.length > 0 && !focusActive(focus) ? 'No other items in this lane.' : focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes, tenantName) ?? BOARD.emptyLane}</p>}
+        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{pinnedActive.length > 0 && !focusActive(focus) ? 'No other items in this lane.' : focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes) ?? BOARD.emptyLane}</p>}
         {groups.map(drawGroup(tab))}
       </div>
       {(aside.length > 0 || pinnedCompleted.length > 0) && <div className="plan-board plan-board-aside">{pinnedCompleted.map(drawGroup('aside'))}{aside.map(drawGroup('aside'))}</div>}

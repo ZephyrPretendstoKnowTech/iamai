@@ -157,7 +157,10 @@ test('the package’s gates merge without a cap: unresolved after the runtime’
 test('the printed step and the screen read the same blockers, the row hands them to the step, and a tile’s link opens its step under its own tab', () => {
   assert.match(read('src/ui/surfaces/PrintPlan.tsx'), /blockers=\{blockersOf\(s\)\}/)
   const plan = read('src/ui/surfaces/Plan.tsx')
-  assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
+  // `enforceWaits` sits between them now: the Cleanup work the enforce
+  // checklist's own conditions depend on, which is not a prerequisite of this
+  // step's next action and so is not among `blockers` (stepBody.ts).
+  assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} enforceWaits=\{enforceWaits\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
   // A prerequisite in another lane: the tab follows the step the link opened, or the link
   // would open nothing on screen. The fourth tab (All work) shows every lane, so a step
   // opened there is already on screen and the tab stays where the operator put it.

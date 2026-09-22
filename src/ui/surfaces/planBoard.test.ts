@@ -590,18 +590,18 @@ test('the board vocabulary is one record, and Ready is the default tab', () => {
 // declining a step is theirs to do.
 test('an empty Ready tab with work left elsewhere says so, and where nothing is left it does not', () => {
   const none = { ready: 0, upNext: 3, onHold: 9 }
-  const said = nothingReadyLine('ready', none, 'Contoso')
+  const said = nothingReadyLine('ready', none)
   assert.ok(said, 'an empty Ready tab beside twelve waiting rows says nothing')
   assert.match(said, /12 steps are/)
   assert.match(said, /Doesn't apply here/, 'the reader is not told the one thing that is theirs to do')
 
   // One waiting row reads as one.
-  assert.match(String(nothingReadyLine('ready', { ready: 0, upNext: 0, onHold: 1 }, 'Contoso')), /1 step is/)
+  assert.match(String(nothingReadyLine('ready', { ready: 0, upNext: 0, onHold: 1 })), /1 step is/)
 
   // Never where the board has work to offer, never on another tab, and never
   // on a plan with nothing left at all.
-  assert.equal(nothingReadyLine('ready', { ready: 2, upNext: 3, onHold: 9 }, 'Contoso'), null)
-  assert.equal(nothingReadyLine('onHold', none, 'Contoso'), null)
-  assert.equal(nothingReadyLine('upNext', none, 'Contoso'), null)
-  assert.equal(nothingReadyLine('ready', { ready: 0, upNext: 0, onHold: 0 }, 'Contoso'), null)
+  assert.equal(nothingReadyLine('ready', { ready: 2, upNext: 3, onHold: 9 }), null)
+  assert.equal(nothingReadyLine('onHold', none), null)
+  assert.equal(nothingReadyLine('upNext', none), null)
+  assert.equal(nothingReadyLine('ready', { ready: 0, upNext: 0, onHold: 0 }), null)
 })

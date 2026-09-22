@@ -12,12 +12,13 @@
 // nothing, keeps its own. Pure.
 import type { Step } from '../../roadmap/types.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { content } from '../../content/content.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { createsNewPolicy } from './stepJson.ts'
 import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 
-export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: { trustedLocationIds: readonly string[] }): unknown[] {
+export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pick<MappingState, 'trustedLocationIds' | 'wizardAnswered' | 'assumed'>): unknown[] {
   const shared = content.shared as Record<string, string[]>
   // The completion follows the answer.
   //
@@ -28,7 +29,17 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: { t
   // Completed, beside a disclosure that the tenant DOES hold a trusted
   // location this answer leaves out. The answer is the mapping's, which is
   // what roadmap/generate.ts reads to write the tile.
-  if (step.id === PREREQ_STEP_ID.trustedLocation && mapping && mapping.trustedLocationIds.length === 0) {
+  // Answered, not merely unanswered. "No office network is selected" is the
+  // tile's reading only once the person has SAID so (generate.ts: the answer is
+  // `wizardAnswered.trustedLocations` and not a detected assumption); an
+  // unanswered step has an empty list too, and swapping its completion told a
+  // tenant that had not decided yet that it had decided to be remote. CI caught
+  // it on the demo fixture, whose step is still Ready - Create.
+  const answeredRemote = mapping !== undefined
+    && mapping.trustedLocationIds.length === 0
+    && mapping.wizardAnswered?.trustedLocations === true
+    && mapping.assumed?.trustedLocations !== 'detected'
+  if (step.id === PREREQ_STEP_ID.trustedLocation && answeredRemote) {
     return [...shared.trustedNetworkRemoteDoneWhen]
   }
   // A policy whose gates have closed is ready to enforce and not enforced, and

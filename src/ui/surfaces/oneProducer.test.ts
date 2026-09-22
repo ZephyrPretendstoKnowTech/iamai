@@ -57,9 +57,10 @@ function deferOne(source: readonly Step[], at: string): { steps: Step[]; id: str
 const ctxOf = ({ f, r }: Run): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
 
 /** The board as Plan.tsx composes it: every row's lane reading and view, in the engine's order. */
-function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<string, LaneView>; items: BoardItem[]; titleOf: (id: string) => string | null } {
+function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<string, LaneView>; items: BoardItem[]; titleOf: (id: string) => string | null; rows: { id: string; complete: boolean }[] } {
   const cleanup = (run.r.schedule.cleanup?.rows ?? []).map((row) => ({ row, id: `cleanup-${row.kind}`, complete: cleanupComplete(row, run.f.mapping.breakGlassAnswers ?? null) }))
-  const readings = laneReadings(run.steps, cleanup.map((c) => ({ id: c.id, complete: c.complete })))
+  const rows = cleanup.map((c) => ({ id: c.id, complete: c.complete }))
+  const readings = laneReadings(run.steps, rows)
   const titleOf = (id: string): string | null => {
     const s = run.steps.find((x) => x.id === id)
     return s ? s.plainTitle || s.title : null
@@ -71,7 +72,7 @@ function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<str
     views.set(id, view)
     items.push({ id, title: titleOf(id) ?? id, lane: reading.lane, laneLabel: view.label, workType: 'ca', order: reading.order })
   }
-  return { readings, views, items, titleOf }
+  return { readings, views, items, titleOf, rows }
 }
 
 const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
@@ -84,7 +85,7 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
   const lanes = new Set<string>()
   for (const run of runs()) {
     const ctx = ctxOf(run)
-    const { readings, views, titleOf } = boardOf(run)
+    const { readings, views, titleOf, rows } = boardOf(run)
     for (const step of run.steps) {
       const where = `${run.name}/${step.id}`
       const reading = readings.get(step.id)
@@ -97,7 +98,8 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       lanes.add(lane.lane)
       // The row: the lane label, and the label is the lane word or `Lane · tail`.
       assert.equal(lane.label, lane.tail === null || lane.lane !== 'Ready' ? BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]] : `${BOARD.lanes[({ Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' } as const)[lane.lane]]} · ${lane.tail}`, where)
-      assert.equal(laneViewFor(step, run.steps, titleOf).label, lane.label, `${where}: the step opened on its own reads a different lane from the board's`)
+      // With the board's own inputs, Cleanup rows included: one step, one lane.
+      assert.equal(laneViewFor(step, run.steps, titleOf, rows).label, lane.label, `${where}: the step opened on its own reads a different lane from the board's`)
       if (lane.lane === 'Ready') assert.equal(lane.tail, lane.substatus ? SUBSTATUS_WORD[lane.substatus] : null, `${where}: a Ready row's tail is not its substatus word`)
       if (lane.lane === 'Completed' || lane.lane === 'Deferred') assert.equal(lane.tail, null, `${where}: a ${lane.lane} row carries a tail`)
       // The chip: a tenant fact or nothing (decision 2).

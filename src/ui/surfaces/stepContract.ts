@@ -986,7 +986,7 @@ function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>):
 export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['baseline-conflict', 'no-operation', 'unmatched-pair'])
 
 /** The completion, always concrete and never absent. */
-function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: { trustedLocationIds: readonly string[] }): string[] {
+function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping']): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).

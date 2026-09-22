@@ -1,9 +1,18 @@
-# Publish the exact commit pushed to main. The successful production build is
-# the release gate: if dependencies cannot install or the site cannot compile,
-# no Pages artifact is deployed.
+# Publish the exact commit ci validated. The build is still a gate — a commit
+# that cannot compile deploys nothing — but it is no longer the ONLY one: this
+# waits for ci to pass on that same commit and deploys nothing otherwise.
+#
+# It used to run on push, beside ci and never waiting for it, and the workflow
+# said so in as many words. That made branch protection the only thing standing
+# between a red suite and production, so an admin push with the required check
+# bypassed put 61 unvalidated commits on the live site; ci then failed on eight
+# unit tests and a smoke check, on code already serving. The push stays instant;
+# what waits is the deploy.
 name: deploy-pages
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 permissions:
@@ -15,6 +24,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    # A manual run deploys what it is pointed at; a ci run deploys only a green one.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
@@ -23,7 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          # The commit ci validated, not the tip of main: a second push while ci
+          # runs must not ride out on the first one's green.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
