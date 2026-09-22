@@ -396,7 +396,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // duplicate this whole reason exists to prevent.
   const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
   if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
-  lines.push(...verificationResourceLines(step))
+  lines.push(...verificationResourceLines(step, ctx.mapping))
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
   // What the action waits on, beside the action, where the action is the wait

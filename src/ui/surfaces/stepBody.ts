@@ -442,7 +442,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     const ai = produced.find(a => a.id === 'ai')
     if (ai) ai.text = () => emergencyAccountAiInfo(step, ctx, accountTasks)
   }
-  const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step))
+  const artifacts: Artifact[] = CHANNEL_TABS.filter(t => supported.has(t.id as Channel)).flatMap(t => produced.filter(a => a.id === t.id).slice(0, 1)).map(a => withWorkflowVerification(namedPortalResource(a, ctx), step, ctx.mapping))
   // Every step that carries work draws the Emergency Access task anatomy
   // (policyTasks.ts, owner 2026-09-19): its Implementation Tasks are the portal
   // procedure the channel above already carries — the policy create, the portal

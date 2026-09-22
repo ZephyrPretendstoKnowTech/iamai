@@ -7,7 +7,8 @@ import type { Channel, Artifact } from './stepBody.ts'
 import { contentTitle, contentStepFor } from '../../content/stepTitle.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { devicePlanOf, travelCountriesOf } from '../../roadmap/answers.ts'
+import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
 
 /** The same resource remains useful when a task moves from preparation to verification. */
@@ -162,14 +163,28 @@ export function namedPortalResource(artifact: Artifact, ctx: StepVarContext): Ar
   return { ...artifact, lines: artifact.lines.map(fill), text: () => text }
 }
 
-/** Concrete workflow checks accompany the setting procedure and its exported copy. */
-export function verificationResourceLines(step: Step): string[] {
-  const content = contentStepFor(step) as { whatToDo?: { verification?: unknown } } | undefined
+/**
+ * Concrete workflow checks accompany the setting procedure and its exported copy.
+ *
+ * They open on what the person recorded, where the step's content says it for
+ * that answer (whatToDo.verificationLead, one entry per decision option, read as
+ * a decision's per-option effect is read). With "None" saved on the device code
+ * decision the checks still opened on "Identify the legitimate tools or devices
+ * using device code. Move each required workflow…" as if nothing had been
+ * answered: the answer reached the lane's condition (planLanes.ts) and nothing the
+ * person reads (R4-29, Marcus D10). The checks themselves stay on every answer —
+ * None is also what the decision asks to be saved once each workflow has moved
+ * off, and the checks are the test of those moves.
+ */
+export function verificationResourceLines(step: Step, mapping: Pick<MappingState, 'questionAnswers'>): string[] {
+  const content = contentStepFor(step) as { whatToDo?: { verification?: unknown; verificationLead?: unknown } } | undefined
   const checks = content?.whatToDo?.verification
-  return Array.isArray(checks) && checks.length ? ['Verify the workflow:', ...checks.filter((line): line is string => typeof line === 'string').map((line, i) => `${i + 1}. ${line}`)] : []
+  if (!Array.isArray(checks) || checks.length === 0) return []
+  const lead = effectLine(content?.whatToDo?.verificationLead, answerOf(mapping, step.id, 'decision'))
+  return ['Verify the workflow:', ...(lead === null ? [] : [lead]), ...checks.filter((line): line is string => typeof line === 'string').map((line, i) => `${i + 1}. ${line}`)]
 }
-export function withWorkflowVerification(artifact: Artifact, step: Step): Artifact {
-  const lines = artifact.id === 'portal' ? verificationResourceLines(step) : []
+export function withWorkflowVerification(artifact: Artifact, step: Step, mapping: Pick<MappingState, 'questionAnswers'>): Artifact {
+  const lines = artifact.id === 'portal' ? verificationResourceLines(step, mapping) : []
   if (!lines.length) return artifact
   const text = `${artifact.text()}\n\n${lines.join('\n')}`
   return { ...artifact, form: 'markdown', lines: [], text: () => text }
