@@ -404,6 +404,24 @@ test('the Prepared passkeys summary names every account a clause is true of, and
   assert.ok(four.detail.includes(`${upn(shared, a)} and ${upn(shared, b)} — `), `the clause both accounts share names both: ${four.detail}`)
 })
 
+// One name per account on the card. The summary and the rows name each account
+// by its sign-in name, but the shared-device clause named the other account by
+// its display name, so the card read "bg1@… — the Authenticator device
+// "SM-S918U" is also registered by Break-glass 2": two names for the second
+// account in one sentence, and on a real tenant nothing to say they are the
+// same account.
+test('the shared-device clause names the other account by the sign-in name the card uses', () => {
+  const shared = tenant()
+  const [a, b] = shared.mapping.breakGlassUserIds
+  for (const id of [a, b]) shared.snapshot.authMethods[id] = [{ kind: 'microsoftAuthenticator', id: `app-${id}`, displayName: 'SM-S918U' }] as never
+  const user = (id: string) => shared.snapshot.users.find(u => u.id === id)!
+  assert.ok(user(b).displayName && user(b).displayName !== user(b).userPrincipalName, 'the premise: the display name differs from the sign-in name')
+  const card = runFixture(shared).steps.find(s => s.id === 's-prereq-break-glass')!.configurationFindings!.find(x => x.key === 'recovery-methods')!
+  assert.ok(card.detail.includes(`also registered by ${user(b).userPrincipalName}:`), card.detail)
+  assert.ok(card.detail.includes(`also registered by ${user(a).userPrincipalName}:`), card.detail)
+  for (const id of [a, b]) assert.ok(!card.detail.includes(user(id).displayName!), `a display name on the card: ${card.detail}`)
+})
+
 // R4-56 (Sam D14, Nadia D11). Two readings of emergency-access hardening
 // disagreed. The step's tally (step.emergency.hardening, which is what gates,
 // lists fix lines, offers Defer and puts a row in Cleanup) counts only the
