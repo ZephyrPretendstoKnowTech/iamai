@@ -8,6 +8,7 @@ import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
 import { oneLine } from '../../content/implementation/project.ts'
+import { app } from '../../content/content.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -79,6 +80,9 @@ export type EmergencyTaskProjection = {
   accounts?: EmergencyAccountStatus[]
   printAll?: boolean
 }
+
+/** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -243,7 +247,17 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   type ConfigureCheck = 'initialDomain' | 'enabled' | 'permanentGlobalAdministrator'
   const needs = (check: ConfigureCheck): string[] => selected.filter(id => preparations.get(id)?.checks.cloudOnly !== false && preparations.get(id)?.checks[check] === false).map(id => targetOf(ctx, id))
   const named = (upns: string[]): string => upns.map(upn => `**${upn}**`).join(', ')
-  const configureNeeded = (['initialDomain', 'enabled', 'permanentGlobalAdministrator'] as const).some(check => needs(check).length > 0)
+  const CONFIGURE_CHECKS = ['initialDomain', 'enabled', 'permanentGlobalAdministrator'] as const
+  const configureNeeded = CONFIGURE_CHECKS.some(check => needs(check).length > 0)
+  // "No selected account needs a change" is a finding about the selected
+  // accounts, so it stands only where there are some and this procedure's three
+  // checks were read for each. With nobody selected it was vacuously true: the
+  // tile above it said "Select the intended accounts", and the print and the
+  // export carried it as step 3 of the work (R4-44). An unread check is not a
+  // pass either. Without the line the three changes stand as they are, for
+  // whoever needs them.
+  const configureClear = selected.length > 0 && !configureNeeded
+    && selected.every(id => preparations.get(id)?.checks.cloudOnly === false || CONFIGURE_CHECKS.every(check => preparations.get(id)?.checks[check] != null))
   const approvedModels = approvedPasskeyModels(ctx.snapshot, ctx.mapping)
   const variants = emergencyRegistrationVariants(registrationTarget).map(variant => ({
     ...variant,
@@ -272,7 +286,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       // saying a passkey is missing, and a reader takes it for the step's
       // all-clear and closes the step. These three changes are the sign-in
       // address, the enabled state and the role; the passkey is its own task.
-      ...(configureNeeded ? [] : ['No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference.']),
+      ...(configureClear ? [WORDS.configureNotNeeded] : []),
       ...(!configureNeeded || needs('initialDomain').length ? [`${needs('initialDomain').length ? `Open ${named(needs('initialDomain'))}` : 'To change a sign-in address, open the account'}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`] : []),
       ...(!configureNeeded || needs('enabled').length ? [`${needs('enabled').length ? `Open ${named(needs('enabled'))}` : 'To enable an account, open the account'}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
       ...(!configureNeeded || needs('permanentGlobalAdministrator').length ? [
