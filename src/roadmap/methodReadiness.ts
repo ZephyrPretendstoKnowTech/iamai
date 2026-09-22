@@ -208,5 +208,8 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
       ? ['The target policy scope must be resolved before method readiness can be measured.']
       : readyIds.length === 0 && ids.length > 0 && unknownIds.length === ids.length
         ? [fillText(W.noneJudged, { n: ids.length })]
-        : [`${readyIds.length} of ${ids.length} people have a registered method allowed by the target policies.${unknownIds.length > 0 ? ` Method compatibility is not yet established for ${unknownIds.length}.` : ''}`] }
+        // Which people the denominator counts: the ones the target policies
+        // apply to, which is neither the step's active count nor its enabled
+        // count, and a step can print all three (246, 283, 279 on one card).
+        : [fillText(unknownIds.length > 0 ? W.methodLineUnknown : W.methodLine, { ready: String(readyIds.length), total: String(ids.length), unknown: String(unknownIds.length) })] }
 }
