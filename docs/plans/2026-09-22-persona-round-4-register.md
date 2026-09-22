@@ -57,7 +57,7 @@ the harness — the withdrawals matter as much as the fixes.
 | R4-47 | 2 | Marcus D13 | The board and the step page use different names for the same row | |
 | R4-48 | 2 | Priya D11 | A total source refusal is described as partial coverage | |
 | R4-49 | 2 | Priya D12 | The same refusal is disclosed tenant-specifically on one step and reduced to a generic maybe on another | |
-| R4-50 | 2 | Priya D13 | "34 active people" and "no sign-in records could be read" sit on the same step, unreconciled | |
+| R4-50 | 2 | Priya D13 | "34 active people" and "no sign-in records could be read" sit on the same step, unreconciled | **Partly fixed.** Reproduced: AI Info carried "Time in report-only cannot complete it" under "Who this touches" on every step, finished policies included, while the screen shows the line only while an observation is open. The briefing now carries it only where an enforcement is still to come. Open: the line still does not say that "active" is read from the directory's last sign-in, which was read (evidence.ts; with the evidence branch). |
 | R4-51 | 2 | Priya D15 | A procedure headed by a sentence saying nobody needs it | |
 | R4-52 | 2 | Sam D10 | "Prepare Your Team for MFA" carries the population line of a different population | |
 | R4-53 | 2 | Sam D11 | A decision note on steps that have no decision, including the cutover | |
@@ -76,4 +76,4 @@ the harness — the withdrawals matter as much as the fixes.
 5. **Dormant admins stay in Prepare Your Team for MFA (R4-52)**, named on their own line — only where their sign-in activity was actually read, never assumed.
 6. **Only the recovery drill and security defaults hold a policy's turn-on** in every channel; the graph's other hard prerequisites stay the lane engine's to sequence (readiness thresholds already gate the MFA campaign).
 7. **One passkey per emergency account.** Redundancy is the second account, not a second method; nothing may ask for a second method on an emergency account. The per-account "method diversity" change (0c2bcd9e) stays reverted; a cross-account concern (both accounts on one device) remains a hint.
-8. **Authentication context c1 (R4-18):** explain on the step, in plain words, what an authentication context is and why PIM needs it; no confirmation checkbox. A collision with another use of c1 costs extra MFA prompts, not access.
+8. **Authentication context c1 (R4-18): PENDING the owner.** The owner has run PIM and Conditional Access but never needed authentication contexts, asked for a real-world scenario, and ruled that nothing load-bearing is added without their direct consent. The PIM branch (fix/pim) is held until they decide.

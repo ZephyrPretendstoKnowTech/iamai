@@ -19,7 +19,7 @@ import type { StepVarContext } from './stepVars.ts'
 const F = CONTRACT.implementation.aiFacts
 type Opened = { f: Fixture; run: ReturnType<typeof runFixture>; ctx: StepVarContext; step: Step; ai: string; unavailable: boolean }
 const runs = new Map<string, { f: Fixture; run: ReturnType<typeof runFixture> }>()
-function opened(name: 'demo' | 'demo-week2' | 'messy', id: string): Opened {
+function opened(name: 'demo' | 'demo-week2' | 'messy' | 'hostile', id: string): Opened {
   if (!runs.has(name)) {
     const f = fixture(name)
     runs.set(name, { f, run: runFixture(f, {}, null, f.snapshot.asOf) })
@@ -114,4 +114,23 @@ test('the prompt pack and the AI Info share one reading of the step, and the cop
     // Copy reads the artifact's text; a second opening draws the same bytes.
     assert.equal(opened(name, id).ai, o.ai)
   }
+})
+
+// The evidence line — "This check reads the sign-in records, which IAMAI could
+// not read in this tenant… Time in report-only cannot complete it until they can
+// be read." — is a reason an enforcement cannot yet be earned. The briefing
+// carried it on every step, a policy already enforced and in place included,
+// under "Who this touches", while the screen showed it only while an observation
+// was open (Priya D13).
+test('the unread-records line rides only on a briefing with an enforcement still to come', () => {
+  const done = opened('hostile', 's-goal-mfa-all-users')
+  assert.equal(done.step.status, 'done', 'the premise: an existing policy delivers this goal')
+  assert.ok(done.step.evidence.lines.length > 0, 'the premise: the step carries the unread-records line')
+  for (const line of done.step.evidence.lines) assert.equal(split(done.ai).facts.includes(line), false, `a finished policy's briefing says: ${line}`)
+  // An open policy on the same tenant still carries it, beside its preconditions.
+  const { run } = runs.get('hostile')!
+  const open = run.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped' && !s.state.satisfied && s.evidence.lines.length > 0)
+  assert.ok(open, 'the premise: an open policy on hostile carries the line')
+  const o = opened('hostile', open.id)
+  assert.ok(split(o.ai).facts.includes(open.evidence.lines[0]), `${open.id}: the open policy lost the line`)
 })

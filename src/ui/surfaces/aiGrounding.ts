@@ -186,7 +186,12 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     // because no failures are listed when there is nothing to list. It is the
     // one line in the product that can walk somebody through an enforcement
     // believing it was observed.
-    ...i.step.evidence.lines,
+    // Only while there is an enforcement still to come: on a policy already
+    // enforced or in place it read "Time in report-only cannot complete it"
+    // under the step's own Completed — a report-only sentence on a finished
+    // policy, which the screen, gating the same line on an open observation,
+    // never showed (Priya D13).
+    ...(i.step.status !== 'done' && i.step.status !== 'skipped' && !i.step.state.satisfied ? i.step.evidence.lines : []),
   ]
   const who = (i.cs.who ?? {}) as Record<string, unknown>
   const { inline, held } = whoBlocks(who, i.ex as never)
