@@ -105,6 +105,20 @@ export type StepObservation = {
   lastSeenAt: string
   /** Microsoft's own evidence for when the state began, where the tenant proves it; null when the first sighting is all that is known. */
   evidenceAt: string | null
+  /**
+   * True where THIS policy object was first seen already enforced, with no
+   * report-only state IAMAI ever recorded for it.
+   *
+   * It is durable on purpose. The note that says so is written by comparing
+   * against the immediately prior sighting, so it appeared on exactly one scan
+   * and was gone by the next — on eight steps of one tenant, five of which the
+   * board was already calling Completed. But "nobody watched this go live"
+   * never stops being true of the object it happened to, and it is the only
+   * thing distinguishing a rollout done in one afternoon from one that was
+   * watched. It travels with the artifact and is dropped when the artifact is
+   * not provably the same one, exactly as `evidenceAt` is.
+   */
+  neverObserved?: true
 }
 
 /**
@@ -466,7 +480,7 @@ const STATE_WORD: Record<ObservedState, string> = {
  * to. The continuity itself is unchanged: unknown either way, and the window
  * starts again either way.
  */
-function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean, priorState: ObservedState | null = null): string {
+function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean, priorState: ObservedState | null = null, neverObserved = false): string {
   // A policy the last scan recorded as NOT DEPLOYED is the one history IAMAI can
   // speak to without qualification: it was not there, and it is here now.
   // `continuityUnknown` below would call that "no record", because the prior
@@ -477,6 +491,11 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
   if (priorState === 'absent' && (state === 'enforced' || state === 'report-only')) {
     return fillText(state === 'enforced' ? OBS.appearedEnforced : OBS.appearedReportOnly, { date })
   }
+  // And on every scan after the first. The note above compares against the
+  // immediately prior sighting, so it appeared once and was gone by the next
+  // scan - on eight steps of one tenant, five of which the board was already
+  // calling Completed. The fact travels with the object now (neverObserved).
+  if (neverObserved && state === 'enforced') return fillText(OBS.appearedEnforced, { date })
   // What happened to the object comes first: a different policy delivering this
   // now, or a record that cannot say which one it watched, is the fact about the
   // history, whatever else moved with it.
@@ -539,7 +558,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   const differs = unwritten.length > 0 ? fillText(OBS.differs, { fields: dimensionWords(unwritten) }) : null
   if (!prior) {
     return {
-      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt },
+      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' ? { neverObserved: true as const } : {}) },
       prior: null,
       changed: 'first-scan',
       // A first sighting is nothing the plan can claim to have asked for.
@@ -627,6 +646,11 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       // carried in from the prior record is about the prior object, so it is
       // dropped the moment the object is not provably the same one.
       evidenceAt: earliest(moved || artifactAnswer !== 'same' ? null : prior.evidenceAt, admit(evidenceAt, firstSeenAt, since)),
+      // Carried with the object, and dropped with it. A policy that arrived
+      // already enforced never had a window anybody could have watched, and a
+      // later scan seeing it enforced again does not make that untrue.
+      ...(artifactAnswer === 'same' && !moved && prior.neverObserved ? { neverObserved: true as const } : {}),
+      ...(prior.state === 'absent' && state === 'enforced' ? { neverObserved: true as const } : {}),
     },
     prior,
     changed,
@@ -634,7 +658,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     continuity,
     reviewRequired,
     unwritten,
-    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state),
+    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state, artifactAnswer === 'same' && !moved && prior.neverObserved === true),
   }
 }
 
@@ -672,6 +696,10 @@ function readObservation(raw: unknown): StepObservation | null {
     since: o.since === 'observed-change' ? 'observed-change' : 'first-scan',
     lastSeenAt: typeof o.lastSeenAt === 'string' && !Number.isNaN(Date.parse(o.lastSeenAt)) ? o.lastSeenAt : firstSeenAt,
     evidenceAt: typeof o.evidenceAt === 'string' && !Number.isNaN(Date.parse(o.evidenceAt)) ? o.evidenceAt : null,
+    // A record written before this field existed carries none, and that absence
+    // is not a claim that the policy WAS observed - it is simply unrecorded, so
+    // it stays absent rather than becoming false.
+    ...(o.neverObserved === true ? { neverObserved: true as const } : {}),
   }
 }
 
