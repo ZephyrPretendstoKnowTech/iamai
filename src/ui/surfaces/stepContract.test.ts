@@ -564,3 +564,31 @@ test('a step with nothing to write over existing coverage names the policy, not 
   }
   assert.ok(checked > 0, 'no fixture reaches the case')
 })
+
+// A completion no scan can reach.
+//
+// "A scan rebuilds this step with a policy IAMAI can write" was the Done-when
+// on fourteen rows across five tenants whose goal is ALREADY ENFORCED by a
+// policy the step itself names. There is nothing to rebuild, so those rows
+// could be neither finished nor declined: an operator scanned, read the
+// identical page, and left them open for the life of the plan.
+test('a step whose goal is already delivered does not wait on a scan that cannot help it', () => {
+  let checked = 0
+  for (const name of ['mid', 'large', 'midflight', 'messy', 'hostile'] as const) {
+    const f = structuredClone(fixture(name))
+    const run = runFixture(f)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+    for (const step of run.steps) {
+      if (unavailableReason(step) !== 'no-operation') continue
+      const by = step.satisfiedBy
+      if (!by || by.policies.length === 0) continue
+      checked++
+      const done = stepContract(step, ctx).doneWhen.join(String.fromCharCode(10))
+      assert.doesNotMatch(done, /A scan rebuilds this step/, `${name}/${step.id}: an unfinishable completion`)
+      assert.ok(done.includes(by.sufficient ?? by.policies[0]), `${name}/${step.id}: the policy delivering it is not named`)
+      // And the way out is stated, because there is one.
+      assert.match(done, /does not apply/, `${name}/${step.id}: no way to decline`)
+    }
+  }
+  assert.ok(checked > 3, `only ${checked} rows reach the case`)
+})
