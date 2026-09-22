@@ -1730,6 +1730,16 @@ function enforcedReadingTile(step: Step): ReadinessTile | null {
   return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
 }
 
+/**
+ * The step the gate's sentence names as the one that moves its number, where it
+ * names one (readinessSentence): the generator's route, while the policy still
+ * waits, and never beside a source the scan could not read.
+ */
+function gateRouteOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): { id: string; title: string } | null {
+  if (step.state.lifecycle === 'enforced' || gate.blind !== undefined || gate.route === undefined || gate.routeId === undefined) return null
+  return { id: gate.routeId, title: gate.route }
+}
+
 /** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
 const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
 
@@ -1799,7 +1809,13 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate) }
+  if (gate && step.status !== 'done' && step.status !== 'skipped') {
+    // The step its sentence names opens from the card, as every prerequisite
+    // tile's step does (R4-24): a title with nothing to click sent the reader to
+    // search the board for it.
+    const route = gateRouteOf(step, gate)
+    return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate), ...(route !== null ? { link: stepLink(route.id, route.title) } : {}) }
+  }
   // An observation with no date says WHY it has no date, where the step knows:
   // the people the policy stopped in report-only, or the records that could not
   // be read at all (roadmap/evidence.ts). Both were computed onto the step and

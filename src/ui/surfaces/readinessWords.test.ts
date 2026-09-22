@@ -412,3 +412,32 @@ test('a tenant whose methods cannot be read states no floor, and no zero percent
   }
   assert.ok(checked > 1, `gates on the unreadable tenant: ${checked}`)
 })
+
+// R4-24 (Jordan D14). The four policies waiting on MFA readiness said "The step
+// that moves this number is “Prepare Your Team for MFA”" and gave nothing to
+// click: the generator stored the route's title and dropped its id, so the one
+// card on the step that named a step was the one that could not open it. Every
+// prerequisite tile beside it links to its step.
+test('a readiness gate that names the step moving its number links to that step', () => {
+  let checked = 0
+  for (const name of ['midflight', 'mid', 'demo'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+    const readings = laneReadings(r.steps, [])
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate?.route || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
+      checked++
+      const route = r.steps.find((s) => s.title === gate.route)!
+      assert.equal(gate.routeId, route.id, `${name}/${step.id}: the gate names "${gate.route}" and carries a different id`)
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null, groups: f.groups }
+      const tile = stepBodyOf(step, ctx, { lane: laneViewOf(readings.get(step.id)!, titleOf), blockers: readinessBlockersOf(readings.get(step.id), titleOf) }).readiness!.tiles.find((t) => t.key === 'gate')
+      assert.ok(tile, `${name}/${step.id}: no Threshold card`)
+      assert.ok(tile.note!.includes(gate.route), `${name}/${step.id}: the card does not name the route`)
+      assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card names "${gate.route}" and does not link to it`)
+      assert.equal(tile.link.href, '#/plan/s-verify-mfa')
+    }
+  }
+  assert.ok(checked >= 4, `only ${checked} gates named a route`)
+})

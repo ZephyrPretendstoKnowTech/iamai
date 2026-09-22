@@ -2587,7 +2587,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const shortfall = cohort && mine && Number.isFinite(threshold)
         ? routeShortfallOf(mine, cohort, verifyStep.title, threshold)
         : null
-      s.action = { ...s.action, readinessGate: { ...gate, ...(shortfall === null ? { route: verifyStep.title } : { routeShortfall: shortfall }) } }
+      s.action = { ...s.action, readinessGate: { ...gate, ...(shortfall === null ? { route: verifyStep.title, routeId: verifyStep.id } : { routeShortfall: shortfall }) } }
     }
   }
 
