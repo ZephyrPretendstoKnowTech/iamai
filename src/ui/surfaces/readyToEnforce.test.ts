@@ -787,7 +787,7 @@ test('007.7b: report-only is the rollback of the state-only enforcement and of n
       const where = `${f.name}/${step.id}`
       const cs = contentStepFor(step) as Record<string, unknown> | undefined
       if (!cs) continue
-      const line = ifWrongLineFor(step, cs)
+      const line = ifWrongLineFor(step, cs, {})
       if (line === '{enforceIfWrong}') {
         // "Set the policy back to report-only" is only the inverse of a change
         // that turned the policy on and touched nothing else. Anywhere else it
@@ -817,7 +817,7 @@ test('007.7c: a correction to a policy the tenant already enforces is put back b
   assert.ok(ops.length > 0, 'the correction is still handed over')
   assert.equal(updatesExistingPolicy(c.step), true, 'and it is an update, not a create')
   assert.equal(enforcesByStateOnly(c.step), false, 'it changes settings and submits no state')
-  assert.equal(ifWrongLineFor(c.step, contentStepFor(c.step) as Record<string, unknown>), '{changeIfWrong}')
+  assert.equal(ifWrongLineFor(c.step, contentStepFor(c.step) as Record<string, unknown>, {}), '{changeIfWrong}')
   const ifWrong = c.view(c.step).ifWrong
   assert.ok(ifWrong, 'a step that hands over a change has a rollback')
   assert.match(ifWrong!, /put the settings back/i)

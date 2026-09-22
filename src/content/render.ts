@@ -346,10 +346,51 @@ const btn = (t: string, primary = false): string => `<span class="btn${primary ?
  * off, the step read Completed beside a Done-when naming a policy that did not
  * exist (R4-38). A read state's Done-when claims what completes the step there.
  */
-export function doneWhenFor(st: { doneWhen?: unknown; doneWhenWhen?: unknown } | null | undefined, ex: Ex): unknown[] {
-  const when = st?.doneWhenWhen as Record<string, unknown> | null | undefined
-  if (when) for (const [fact, lines] of Object.entries(when)) if (!fact.startsWith('$') && Array.isArray(lines) && truthy(ex?.[fact])) return lines
-  return Array.isArray(st?.doneWhen) ? st.doneWhen : []
+export function doneWhenFor(st: object | null | undefined, ex: Ex): unknown[] {
+  const lines = forReadState(st, 'doneWhen', ex)
+  return Array.isArray(lines) ? lines : []
+}
+
+/**
+ * A step field for the state the scan read: `<field>When` maps a fact to the
+ * value that replaces the field where the fact holds (the first that holds),
+ * and the step's own value stands where none does. A variant may be null,
+ * which says the field has nothing for that state. doneWhenFor, whatToDoFor
+ * and ifWrongFor are this one choice, so a step's procedure, completion and
+ * way back cannot describe two different tenants.
+ */
+function forReadState(st: object | null | undefined, field: 'doneWhen' | 'whatToDo' | 'ifWrong', ex: Ex): unknown {
+  const s = (st ?? {}) as Record<string, unknown>
+  const when = s[`${field}When`] as Record<string, unknown> | null | undefined
+  if (when) for (const fact of Object.keys(when)) if (!fact.startsWith('$') && truthy(ex?.[fact])) return when[fact]
+  return s[field]
+}
+
+/**
+ * A step's What to do for the state the scan read (steps[].whatToDoWhen): the
+ * lead and the procedure the screen, every export and the review page draw.
+ *
+ * Turn Off Security Defaults is the cutover, and its procedure ended "Right
+ * after saving, enable Require MFA for Everyone, … and Require
+ * Phishing-Resistant MFA for Admins in the same change window". On a tenant
+ * whose scan read security defaults already off the step is Completed, and its
+ * Implementation Tasks — reference, but readable — still told the reader to
+ * turn on an admin policy that was Not deployed and held by its own readiness
+ * gate (R4-38). The read state's procedure replaces the cutover there.
+ */
+export function whatToDoFor(st: object | null | undefined, ex: Ex): Record<string, any> | null {
+  const w = forReadState(st, 'whatToDo', ex)
+  return w && typeof w === 'object' && !Array.isArray(w) ? (w as Record<string, any>) : null
+}
+
+/**
+ * A step's If-it-goes-wrong line for the state the scan read
+ * (steps[].ifWrongWhen), or null where that state has none: where security
+ * defaults were read already off there was no changeover here to fail.
+ */
+export function ifWrongFor(st: object | null | undefined, ex: Ex): string | null {
+  const line = forReadState(st, 'ifWrong', ex)
+  return typeof line === 'string' ? line : null
 }
 
 function doneWhen(items: string[], ex: Ex): string {
@@ -518,13 +559,13 @@ export function renderStep(st: Record<string, any>, title?: string): string {
     if (d.strict) parts.push(`<div class="dlabel">${esc(d.strict.label)}</div>` + p(d.strict.help, ex, 'dhelp') + `<div class="picker"><label><input type="checkbox" disabled> ${fill(d.strict.option, ex)}</label></div>`)
     parts.push(btn(d.save || 'Save') + '</div>')
   }
-  // What to do
-  let w = st.whatToDo || {}
+  // What to do, for the state the example reads (whatToDoFor), as the product draws it.
+  let w = whatToDoFor(st, ex) || {}
   if (kind === 'policy') {
     // A policy step's own whatToDo carries a lead and the "before" lines (a
     // setting to change before the policy is created), which the product keeps
     // above the translator's portal lines; the review renders them the same way.
-    const own = st.whatToDo || {}
+    const own = whatToDoFor(st, ex) || {}
     const before: string[] = Array.isArray(own.before) ? own.before : []
     const tr = TRANSLATED[st.id]
     if (tr) w = { lead: own.lead ?? (st.whatToDoReference || {}).lead, steps: [...before, ...(tr.steps || tr)] }
@@ -573,10 +614,11 @@ export function renderStep(st: Record<string, any>, title?: string): string {
   // Done when
   parts.push(h(HEAD.doneWhen))
   parts.push(doneWhen(doneWhenFor(st, ex) as string[], ex))
-  // If it goes wrong
-  if (st.ifWrong) {
+  // If it goes wrong, for the state the example reads (ifWrongFor).
+  const ifWrong = ifWrongFor(st, ex)
+  if (ifWrong) {
     parts.push(h(HEAD.ifWrong))
-    parts.push(p(st.ifWrong, ex))
+    parts.push(p(ifWrong, ex))
   }
   if (st.lockedOut) {
     const lo = st.lockedOut

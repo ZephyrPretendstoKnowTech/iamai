@@ -49,7 +49,7 @@ import { answerParts, answerText, optionsOf, questionFor, valueSource } from './
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { SPECIAL_CARE_STEP_ID, answerOf, effectLine } from '../../roadmap/answers.ts'
-import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
+import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
@@ -266,7 +266,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
+  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -574,7 +574,7 @@ export function ContentStep({
                   ex={ex}
                   step={step}
                   contractWho={whoHeld}
-                  ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
+                  ifWrong={ifWrong}
                   comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
                   onSkip={onSkip}
                   onUnskip={onUnskip}
@@ -659,7 +659,7 @@ export function ContentStep({
               <MoreReading
                 cs={cs}
                 ex={ex}
-                ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
+                ifWrong={ifWrong}
                 comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
                 copy={copy}
                 copied={copied}

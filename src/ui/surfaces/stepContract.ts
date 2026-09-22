@@ -37,7 +37,7 @@ import { app, cleanup, directionWords, engine, pages, shared, stepById, scheduli
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionStepsAnswering, directionTitleOf } from '../../roadmap/direction.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { doneWhenFor, fillText, whole } from '../../content/render.ts'
+import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, READINESS_MEASURE } from '../../copy/reasons.ts'
@@ -1004,7 +1004,8 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // are the action where it has them — "Fix each failing check. 3 of 34 fail
   // today." says more than "Make the object this step names.", and saying both
   // would be the same instruction twice.
-  const lead = (cs?.whatToDo as Record<string, unknown> | undefined)?.lead
+  // The lead for the state the scan read (content/render.ts whatToDoFor).
+  const lead = whatToDoFor(cs, ex)?.lead
   if (typeof lead === 'string' && whole(lead, ex)) return { kind: milestone.kind, text: fillText(lead, ex) }
   return { kind: milestone.kind, text: milestoneSentence(milestone) }
 }

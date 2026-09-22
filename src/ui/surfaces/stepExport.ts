@@ -12,7 +12,7 @@ import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { dimensionWords } from '../../roadmap/observation.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { SHARED_REF_KEYS, fillText, listCountVars, whole } from '../../content/render.ts'
+import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
@@ -99,8 +99,11 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
  * line is kept for a step that changes a policy the tenant already had —
  * "delete it" would delete the tenant's own policy.
  */
-export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string | null {
-  const line = typeof cs.ifWrong === 'string' ? cs.ifWrong : null
+export function ifWrongLineFor(step: Step, cs: Record<string, unknown>, ex: Record<string, unknown>): string | null {
+  // The line for the state the scan read (content/render.ts ifWrongFor): where
+  // security defaults were read already off, Turn Off Security Defaults made no
+  // changeover here, so it has no way back to describe.
+  const line = ifWrongFor(cs, ex)
   // A goal the tenant already delivers has no way back, because nothing went
   // forward: this step creates no policy and submits no change, so there is no
   // inverse to describe. Every rollback line the content offers is written for a
@@ -283,7 +286,8 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const escapeHatch = reason === 'escape-hatch-unverified'
   const readinessHeld = reason === 'readiness-unmet'
   const inPlace = suppressed && reason === null && isPreserved(step)
-  const w = (cs.whatToDo ?? {}) as Record<string, unknown>
+  // The What to do for the state the scan read (content/render.ts whatToDoFor).
+  const w = (whatToDoFor(cs, ex) ?? {}) as Record<string, unknown>
   const lines: string[] = []
   // The lead and the "before" lines are part of implementing the policy — a
   // setting to change before it is created. While it cannot be written they say
@@ -401,7 +405,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     ...shell,
     whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,
-    ifWrong: reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) ? fillText(ifWrongLineFor(step, cs), ex) : null,
+    ifWrong: ((line) => (reason === null && line && whole(line, ex) ? fillText(line, ex) : null))(ifWrongLineFor(step, cs, ex)),
     dates: reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
@@ -630,7 +634,8 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   add(d.label)
   add(decisionLine(d, answerOf(ctx.mapping, step.id, 'decision')))
   for (const o of Array.isArray(d.options) ? d.options : []) add(o)
-  const w = (cs.whatToDo ?? {}) as Record<string, unknown>
+  // The What to do for the state the scan read (content/render.ts whatToDoFor).
+  const w = (whatToDoFor(cs, ex) ?? {}) as Record<string, unknown>
   if (ex.createIfNeeded && typeof w.createIfNeeded === 'string') add(w.createIfNeeded)
   if ((ex.needsCreate || ex.createIfNeeded) && Array.isArray(w.create)) for (const l of w.create) add(l)
   const fixes = (w.checkFixes ?? {}) as Record<string, string>

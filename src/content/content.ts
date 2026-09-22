@@ -38,6 +38,8 @@ export type ContentStep = {
   who?: Record<string, unknown> | null
   decision?: Record<string, unknown> | null
   whatToDo?: Record<string, unknown> | null
+  /** The What to do for a read state (render.ts whatToDoFor): a fact the scan read, and the object that replaces `whatToDo` where it holds. */
+  whatToDoWhen?: Record<string, Record<string, unknown>> | null
   dates?: string | null
   doneWhen?: string[] | null
   /** The Done-when for a read state (render.ts doneWhenFor): a fact the scan read, and the lines that replace `doneWhen` where it holds. */
@@ -54,6 +56,8 @@ export type ContentStep = {
   /** A held policy's end state in this step's own words (stepContract.ts doneWhenOf), else the shared one. */
   doneEnd?: string | null
   ifWrong?: string | null
+  /** The If-it-goes-wrong line for a read state (render.ts ifWrongFor): a fact the scan read, and the line — or null, none — that replaces `ifWrong` where it holds. */
+  ifWrongWhen?: Record<string, string | null> | null
   lockedOut?: { label: string; steps: string[] } | null
   comms?: Record<string, unknown> | null
   doesntApply?: boolean

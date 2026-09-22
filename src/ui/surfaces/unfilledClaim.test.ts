@@ -19,7 +19,9 @@ import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { WHO_UNRESOLVED, whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
+import { WHO_UNRESOLVED, stepExportView, whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
+import { boardReadingsOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { stepBodyOf } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -232,6 +234,55 @@ test('the security-defaults step claims only what completes it, in the state the
   const unread = structuredClone(fixture('messy'))
   unread.snapshot.config.securityDefaults = { ...unread.snapshot.config.securityDefaults!, status: 'error', rows: [] } as typeof unread.snapshot.config.securityDefaults
   assert.deepEqual(contractOf(unread).c.doneWhen, sd.doneWhen, 'an unread state took the Done-when for security defaults off')
+})
+
+// R4-38, the procedure. The Done-when above was only half of it: the step's
+// What to do and its If-it-goes-wrong line were the cutover's too, whatever
+// the scan read. On small and hostile, where security defaults were read
+// already off and the step is Completed, its Implementation Tasks — drawn as
+// reference, still readable — said "Right after saving, enable Require MFA for
+// Everyone, … and Require Phishing-Resistant MFA for Admins in the same change
+// window", on a tenant (hostile) whose admin policy was Not deployed and held
+// by its own readiness gate; and "If the changeover fails … Re-enabling
+// Security Defaults" offered to undo a change IAMAI cannot know was made. The
+// warning that they must have run in report-only first stood two lines above
+// the instruction; the instruction is what goes. The why is the step's purpose
+// in general and stays.
+test('a security-defaults step read already off tells nobody to turn a replacement on, and offers no way back from a changeover', () => {
+  const sd = stepById['s-prereq-security-defaults'] as unknown as { whatToDoWhen: { securityDefaultsOff: { steps: string[] } } }
+  const CUTOVER = /Right after saving|same change window|changeover/
+  // The step as the Plan draws it: the board's lane and blockers, the opened
+  // body, and the export every artifact reads.
+  const drawn = (name: 'small' | 'hostile' | 'messy') => {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === 's-prereq-security-defaults')!
+    const { readings, titleOf } = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    const reading = readings.get(step.id)!
+    const lane = laneViewOf(reading, titleOf)
+    const ctx = ctxFor(f, r)
+    const b = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) })
+    const view = stepExportView(step, ctx, lane)
+    const portal = b.artifacts.find((a) => a.id === 'portal')
+    const procedure = [...(portal?.lines ?? []), ...(b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? []), ...view.whatToDo]
+    return { lane, b, view, portal, procedure: procedure.filter((l): l is string => typeof l === 'string') }
+  }
+  for (const name of ['small', 'hostile'] as const) {
+    const { lane, b, view, portal, procedure } = drawn(name)
+    assert.equal(lane.lane, 'Completed', `${name}: the premise: the step is complete on security defaults read off`)
+    assert.deepEqual(portal?.lines, sd.whatToDoWhen.securityDefaultsOff.steps, `${name}: the procedure is not the read state's`)
+    for (const line of [...procedure, b.contract.whatToDo.text, ...b.contract.doneWhen]) assert.doesNotMatch(line, CUTOVER, `${name}: "${line}" is the cutover, on a tenant where nothing is cut over`)
+    // Nothing in any channel tells the reader to turn a replacement on today.
+    for (const a of b.artifacts) assert.doesNotMatch(a.text(), /Right after saving|same change window/, `${name}: the ${a.id} channel carries the cutover`)
+    assert.equal(b.ifWrong, null, `${name}: the opened step offers a way back from a changeover`)
+    assert.equal(view.ifWrong, null, `${name}: the export offers a way back from a changeover`)
+  }
+  // Read on: the cutover this step performs, all three parts of it.
+  const on = drawn('messy')
+  assert.ok(on.procedure.some((l) => /Right after saving/.test(l)), 'the cutover lost its procedure')
+  assert.ok(on.procedure.some((l) => /same change window/.test(l)), 'the cutover lost its change window')
+  assert.match(on.b.ifWrong ?? '', /changeover/, 'the cutover lost its way back')
+  assert.match(on.view.ifWrong ?? '', /changeover/, 'the export lost the cutover\'s way back')
 })
 
 /**

@@ -33,7 +33,7 @@
 //
 // Pure: no DOM, no network.
 import { policyHold, unavailableReason } from '../../roadmap/operations.ts'
-import { fillText, whole } from '../../content/render.ts'
+import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { stepPortalLines } from './stepPortal.ts'
 import type { PortalNames } from './stepPortal.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -67,7 +67,8 @@ export type StepInstructions = {
  * the export view makes about them.
  */
 export function stepInstructions(step: Step, cs: ContentStepLike, ex: Record<string, unknown>, names: PortalNames): StepInstructions {
-  const w = (cs?.whatToDo ?? {}) as Record<string, unknown>
+  // The What to do for the state the scan read (content/render.ts whatToDoFor).
+  const w = (whatToDoFor(cs, ex) ?? {}) as Record<string, unknown>
   const held = instructionsHeld(step, cs)
   // The translator withholds its own lines on the same reading (stepPortal.ts,
   // roadmap/operations.ts implementationOffered), so a held step has none.
