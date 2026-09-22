@@ -27,7 +27,7 @@ import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason, validOperations } from './operations.ts'
-import { readinessFor, readyNeeded } from './readiness.ts'
+import { readinessFor, readyNeeded, routeShortfallOf } from './readiness.ts'
 import { methodReadiness } from './methodReadiness.ts'
 import { pages } from '../content/content.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
@@ -416,4 +416,19 @@ test('R4-14: a readiness reading below the threshold never reads as the threshol
   assert.equal(met.readiness.percent, 90)
   assert.equal(met.action.readinessGate, undefined, 'the gate is not met at 90.2%')
   assert.equal(met.blockers.some((b) => b.kind === 'readiness' && b.label === 'readiness'), false)
+})
+
+// The R4-14 review. The shortfall check beside the gate counted the people it
+// needs itself, as Math.ceil((threshold / 100) * people), while the gate opens
+// at readyNeeded. In floating point 55% of 100 is 55.00000000000001: the check
+// asked for 56 people where the gate opens at 55, and told the reader that
+// finishing the campaign would not reach a threshold it reaches. One count now.
+test('R4-14: the shortfall check asks for the people the gate opens at, not a second count of them', () => {
+  const ids = Array.from({ length: 100 }, (_, i) => `u${i}`)
+  const gate = { ids, readyIds: [] as string[] }
+  // The campaign has 55 of them still to prepare.
+  const campaign = { ids: ids.slice(0, 55), readyIds: [] as string[] }
+  assert.equal(readyNeeded(100, 55), 55, 'the premise: the gate opens at 55 of 100')
+  assert.equal(routeShortfallOf(gate, campaign, 'Prepare Your Team for MFA', 55), null, 'the campaign reaches the threshold, and is named')
+  assert.notEqual(routeShortfallOf(gate, { ids: ids.slice(0, 54), readyIds: [] }, 'Prepare Your Team for MFA', 55), null, 'and one fewer does not')
 })
