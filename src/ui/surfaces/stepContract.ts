@@ -989,9 +989,10 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // held by it, and the rollout continues, but "No change needed." over an open
   // recommendation is the step contradicting the card beneath it. The two-tier
   // rule's own words say it instead — minimum available, less resilient than
-  // recommended, fix or defer. On an emergency account whose only recovery
-  // credential is a passkey on somebody's phone, "No change needed" was the
-  // loudest sentence on the page and the wrongest.
+  // recommended — then either fix or defer (leadDefer) or where the
+  // recommendation is (leadAdvisory), as below. On an emergency account whose
+  // only recovery credential is a passkey on somebody's phone, "No change
+  // needed" was the loudest sentence on the page and the wrongest.
   // Read from the step's own findings rather than the hardening tally: the tally
   // counts only the checks EMERGENCY_ACCOUNT_RULES lists, so a recommendation
   // about the credential itself — the one that matters most here — is not in it.
@@ -1004,6 +1005,13 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // alerting: the one recommendation on the plan's one gate dropped out of view
   // the moment the step read Completed. The recommendation it is actually about
   // is shown where it is found, and the lead says where that is.
+  //
+  // leadAdvisory's "This does not hold the rollout" is true of the code: these
+  // checks are outside the tally, and nothing holds on them. It is not yet the
+  // owner's rule. validation/emergencyTiers.ts says of resilience hardening
+  // "The rollout waits until each is fixed or the operator defers them", and
+  // whether the credential checks belong in the tally is an open owner question
+  // (R4-56). If they are counted, leadDefer covers them and the sentence goes.
   //
   // Only on the step that has the two tiers (`step.emergency`, set on Prepare
   // Emergency Access Accounts alone). Any finished step with an open finding
