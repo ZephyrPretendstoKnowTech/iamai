@@ -28,7 +28,7 @@ import { schedulingWords } from '../../content/content.ts'
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { Step } from '../../roadmap/types.ts'
-import type { Lane, Substatus } from '../../actionability/lanes.ts'
+import type { HoldBlocker, Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
@@ -375,10 +375,14 @@ const waitsOnDirection = (r: LaneReading): boolean => r.reason?.kind === 'decisi
  */
 export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
   if (!r) return []
-  return r.blockers.map((b) => {
+  const read = (b: HoldBlocker, overtaken: boolean): PrerequisiteBlocker => {
     const direction = b.kind === 'decision' && isDirectionStep(b.id)
-    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null }
-  })
+    return { kind: b.kind, id: b.id, abnormal: b.abnormal, label: direction ? directionWords.waiting : BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' || direction ? titleOf(b.id) : null, milestone: b.milestone ?? null, ...(overtaken ? { overtaken: true as const } : {}) }
+  }
+  // A completed step's own prerequisites that the scan still finds unmet: not
+  // work on this step any more, but the reader is owed the fact that it went
+  // ahead of them (Marcus D2 — ten policies enforced, the drill never done).
+  return [...r.blockers.map((b) => read(b, false)), ...(r.overtaken ?? []).map((b) => read(b, true))]
 }
 
 /**

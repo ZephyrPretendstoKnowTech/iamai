@@ -291,7 +291,8 @@
         "firstScan": "first seen by IAMAI in {state} on {date}",
         "unchanged": "still in {state}, unchanged since the last scan",
         "stateChanged": "changed to {state} by {date}, and the plan did not ask for it",
-        "stateChangedExpected": "moved to {state} by {date}, as the plan asked",
+        "$commentStateChangedExpected": "\"As the plan asked\" reads as the plan endorsing what was done. It only ever meant that the policy reached the state this step targets — it says nothing about the order the plan asked for, and a reader who enforced ten policies with the emergency-access drill still undone read it on all ten. It now names the target and nothing more; whether the plan's own order was followed is the prerequisite tile's to say.",
+        "stateChangedExpected": "moved to {state} by {date}, the state this step targets",
         "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
         "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
         "$commentAppeared": "A policy the previous scan recorded as NOT DEPLOYED is not a gap in the record — it is the record. Saying \"this plan does not record which policy it watched\" for it reads as ignorance where IAMAI holds the most useful fact it can have about that policy: it was not there, and now it is. Where it arrives already enforced, nobody watched it in report-only, and the step says so rather than leaving the plan's summary to imply a rollout that happened.",
@@ -1779,6 +1780,8 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
+          "$commentFixStepOvertaken": "Completed answers \"what is left to do\", so a completed step carried no prerequisites and the record of one going unmet was erased. A reader enforced ten policies in the portal with the emergency-access drill still undone — every \"Prerequisite · To do\" tile disappeared as the last one went on, the steps read \"moved to enforced, as the plan asked\", and nothing anywhere said the recovery path had never been verified. The prerequisite is not work on the completed step any more, but it is still unmet, and the order not followed is a fact about the tenant.",
+          "fixStepOvertaken": "The plan asks for {step} before this one. This step is finished and {step} is not, so that order was not followed.",
           "$commentFixStepAt": "A prerequisite is not always waited on until it is FINISHED (src/actionability/dependency-data.json carries the milestone on every edge). Turn Off Security Defaults waits for the replacement policies to be ready to enforce; those policies wait for it to be complete. Both tiles said \"Finish the other first\", so the pair read as a deadlock that the data does not contain — and the way out of an apparent deadlock is to turn security defaults off, which is the one thing the step's own words say not to do yet.",
           "fixStepAt": {
             "ready-to-enforce": "{step} needs to be ready to enforce first — not finished, just ready.",

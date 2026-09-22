@@ -149,6 +149,8 @@ export type LaneResult = {
   gates: EvidenceGate[]
   /** §14 rule 1: distinct not-yet-completed steps before the next action is executable. */
   layers: number
+  /** Completed: hard prerequisites of the action it already took that the scan still finds unmet. */
+  unmetPrerequisites: Blocker[]
 }
 
 const BLOCKER_ORDER: readonly BlockerKind[] = [
@@ -348,6 +350,25 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
   return out
 }
 
+/**
+ * The hard prerequisites of the action a completed step already took, that the
+ * scan still finds unmet. Conditional edges are left out: their condition may
+ * simply not apply. Evidence edges are gates on enforcement, not facts (§7).
+ */
+function completedWithout(ctx: Ctx, id: string): Blocker[] {
+  const kind = kindOf(ctx, id)
+  const action: Action = kind === 'policy' ? 'enforce' : kind === 'decision' ? 'decide' : 'complete'
+  const out: Blocker[] = []
+  for (const e of edgesOf(ctx, id)) {
+    if (e.action !== action || e.edgeKind !== 'hard' || isEvidenceEdge(e)) continue
+    if (e.prerequisite === id || edgeSatisfied(ctx, e)) continue
+    const kindOfBlocker = e.prerequisiteKind === 'step' ? 'step' : nonStepKind(e, prerequisiteState(ctx, e.prerequisite))
+    if (out.some((b) => b.kind === kindOfBlocker && b.id === e.prerequisite)) continue
+    out.push(blocker(kindOfBlocker, e.prerequisite, e, true))
+  }
+  return out.sort(byTaxonomy)
+}
+
 function byTaxonomy(a: Blocker, b: Blocker): number {
   return BLOCKER_ORDER.indexOf(a.kind) - BLOCKER_ORDER.indexOf(b.kind) || a.id.localeCompare(b.id)
 }
@@ -389,7 +410,7 @@ function layersOf(ctx: Ctx, id: string, action: Action): number {
 }
 
 function result(lane: Lane, partial: Partial<LaneResult> = {}): LaneResult {
-  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, ...partial }
+  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, unmetPrerequisites: [], ...partial }
 }
 
 function derive(ctx: Ctx, id: string): LaneResult {
@@ -410,7 +431,15 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const kind = kindOf(ctx, id)
 
   // 1. Terminal intended outcome reached this scan.
-  if (isComplete(ctx, id)) return result('Completed')
+  //
+  // Completed answers "what is left to do", so it carried no blockers, and a
+  // step enforced AHEAD of a hard prerequisite lost the record of it: ten
+  // policies went on with the emergency-access drill still undone, every
+  // "Prerequisite · To do" tile vanished with the last of them, and nothing
+  // anywhere said the recovery path had never been verified. The prerequisite
+  // is not work on this step any more, but it is still unmet, and that is a
+  // fact about the tenant the reader is owed.
+  if (isComplete(ctx, id)) return result('Completed', { unmetPrerequisites: completedWithout(ctx, id) })
   // 2. Owner-deferred.
   if (ctx.owner.deferred?.includes(id)) return result('Deferred')
 

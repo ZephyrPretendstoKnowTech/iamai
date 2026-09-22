@@ -166,6 +166,8 @@ type ContractWords = {
   setAsideAction: string
   fixStep: string
   fixStepAt: Record<string, string>
+  /** A completed step whose own hard prerequisite the scan still finds unmet. */
+  fixStepOvertaken: string
   fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
@@ -1438,7 +1440,9 @@ export type ReadinessTile = {
  * defaults waits for the replacements to be ready to enforce, they wait for it
  * to be complete — into an apparent deadlock with no way out.
  */
-export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null }
+export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
+  /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
+  overtaken?: true }
 
 export type ContractReadiness = {
   /**
@@ -1801,7 +1805,8 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
       // (Register Your Own Passkey waiting on Verify Emergency Access,
       // docs/plans/protect-admins-spec.md section 2).
       const title = stepById[b.id]?.title ?? b.title ?? cleanupTitleOf(b.id) ?? b.id
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone, value: prerequisiteLabel(b.id) ?? b.label, note: fixStepNote(title, b.milestone), link: stepLink(b.id, title) })
+      const note = b.overtaken ? fillText(CONTRACT.fixStepOvertaken, { step: title }) : fixStepNote(title, b.milestone)
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: title, tone: b.overtaken ? 'warn' : tone, value: prerequisiteLabel(b.id) ?? b.label, note, link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {
