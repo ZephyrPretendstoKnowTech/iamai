@@ -44,9 +44,7 @@ import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { stepExportView } from './stepExport.ts'
-import { laneReadings } from './planLanes.ts'
-import { doesntApplyView, laneViewOf } from './planBoard.ts'
-import { contentTitle } from '../../content/stepTitle.ts'
+import { boardReadingsOf, doesntApplyView, laneViewOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
@@ -239,13 +237,13 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // the same variables the Plan builds for a step, then the same view.
   const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot)
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: data.groups, directory: data.directory, naming: coverage.organisation.naming })
-  // The lane engine's reading over the whole plan (planLanes.ts), the same the
-  // Plan makes for its rows: every export states a step's lane label (A1c).
-  const readings = laneReadings(steps)
-  const titleOf = (id: string): string | null => {
-    const s = steps.find((x) => x.id === id)
-    return s ? contentTitle(s) : null
-  }
+  // The lane engine's reading over the whole plan, built by the one construction
+  // the Plan builds its rows with (planBoard.ts boardReadingsOf): every export
+  // states a step's lane label (A1c). It passed no Cleanup rows, so the drill
+  // every policy's enforcement waits on did not exist here, and the calendar
+  // and runbook said "Ready · Ready to enforce" where the board said Up Next
+  // (R4-22).
+  const { readings, titleOf } = boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)
   const laneOf = (s: typeof steps[number]): LaneView => {
     const r = readings.get(s.id)
     return r ? laneViewOf(r, titleOf) : doesntApplyView()

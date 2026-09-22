@@ -13,7 +13,6 @@ import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
-import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { notReady, stepFacts } from '../../derive/facts.ts'
@@ -24,8 +23,8 @@ import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { completedRows, deferredRows, floorRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { LANE_ORDER, laneReadings } from './planLanes.ts'
-import { doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { LANE_ORDER } from './planLanes.ts'
+import { boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
@@ -92,16 +91,12 @@ export function PrintPlan({
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
-  // The lane engine's reading over the whole plan, the Cleanup rows included
-  // (planLanes.ts), exactly as the Plan builds its rows: every printed state word
-  // is a lane word (A1c, decision 1) — the badge, the bar, the rail, the
-  // Readiness tiles and the Cleanup rows' heads all read this one reading.
-  const cleanupInputs = (schedule.cleanup?.rows ?? []).map((r) => ({ id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
-  const readings = laneReadings(steps, cleanupInputs)
-  const laneTitleOf = (id: string): string | null => {
-    const s = steps.find((x) => x.id === id)
-    return s ? contentTitle(s) : null
-  }
+  // The lane engine's reading over the whole plan, the Cleanup rows included,
+  // built by the one construction the Plan builds its rows with (planBoard.ts
+  // boardReadingsOf, R4-22): every printed state word is a lane word (A1c,
+  // decision 1) — the badge, the bar, the rail, the Readiness tiles and the
+  // Cleanup rows' heads all read this one reading.
+  const { readings, titleOf: laneTitleOf } = boardReadingsOf(steps, schedule.cleanup, answers)
   const laneOf = (id: string): LaneView => {
     const r = readings.get(id)
     return r ? laneViewOf(r, laneTitleOf) : doesntApplyView()

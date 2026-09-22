@@ -45,6 +45,10 @@ import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
+import { cleanupEntry } from './cleanupExport.ts'
+import { cleanupTitleOf } from './stepContract.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
@@ -279,6 +283,46 @@ export function nothingReadyLine(tab: BoardTab, lanes: Readonly<Record<LaneTab, 
 /** The view of a step the person said does not apply here: the Deferred lane, said as Doesn't apply. */
 export function doesntApplyView(): LaneView {
   return { lane: 'Deferred', substatus: null, label: BOARD.lanes.doesntApply, tail: null, waitingFor: null, tone: LANE_TONE.Deferred }
+}
+
+/** A Cleanup row as the board holds it: the phase's row, the id the board gives it, and whether it is complete (roadmap/cleanupDone.ts). */
+export type BoardCleanupRow = { row: CleanupPhase['rows'][number]; id: string; complete: boolean }
+
+/** The Cleanup rows that wait for the security rollout to finish: after it, never beside it (planLanes.ts `afterRollout`). */
+const AFTER_ROLLOUT: ReadonlySet<string> = new Set(['alerting', 'consolidation', 'naming'])
+
+/**
+ * The board's reading of the whole plan, built one way for every surface that
+ * states a step's state: the Plan's rows, the printed plan, the Export page
+ * (its calendar, bundle and prompt pack), Connect's Plan tile and the step
+ * snapshots. It returns the readings, the title each names a prerequisite by,
+ * and the Cleanup rows the board draws.
+ *
+ * Four surfaces built this themselves, four ways. The Export page passed no
+ * Cleanup rows at all, so the emergency-access drill — a prerequisite of every
+ * policy's enforcement — did not exist there: a policy the board held Up Next
+ * behind the drill exported "Ready · Ready to enforce" into the calendar and
+ * the runbook, and a step the board held On Hold exported "Up Next" (R4-22).
+ * The print passed the rows without the after-rollout rule, so its Cleanup
+ * heads could read a lane the Plan's rows did not. One step, two states, on
+ * the one thing an operator acts on. There is now one construction.
+ */
+export function boardReadingsOf(
+  steps: readonly Step[],
+  cleanup: CleanupPhase | null | undefined,
+  answers: { signInMonitoring: boolean | null } | null | undefined,
+): { readings: Map<string, LaneReading>; titleOf: (id: string) => string | null; cleanupRows: BoardCleanupRow[] } {
+  const cleanupRows = (cleanup?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ row: r, id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
+  const readings = laneReadings(steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: AFTER_ROLLOUT.has(r.row.kind) })))
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  // A Cleanup row is a prerequisite like any other and its title lives under
+  // content.cleanup, by kind: without it the drill's tile could only say
+  // "Prerequisite on hold" where "Verify Emergency Access" needed naming.
+  const titleOf = (id: string): string | null => {
+    const s = byId.get(id)
+    return s ? contentTitle(s) : cleanupTitleOf(id)
+  }
+  return { readings, titleOf, cleanupRows }
 }
 
 /**
