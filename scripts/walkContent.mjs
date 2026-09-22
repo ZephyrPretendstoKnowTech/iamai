@@ -24,7 +24,11 @@ const TICK = /\b(un)?tick(ed|s|ing)?\b/i
 export function strings(node, path = '', out = []) {
   if (typeof node === 'string') out.push([path, node])
   else if (Array.isArray(node)) node.forEach((v, i) => strings(v, `${path}[${i}]`, out))
-  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (k !== 'example' && k !== '$comment') strings(v, path ? `${path}.${k}` : k, out)
+  // An author's note is never a rendered sentence, whatever it is keyed as.
+  // The file's convention is a `$comment` sibling named after what it explains
+  // ($commentAppeared, $commentReference), and this knew only the bare name — so
+  // a note dated for the record tripped the no-hard-dates rule meant for copy.
+  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (k !== 'example' && !k.startsWith('$comment')) strings(v, path ? `${path}.${k}` : k, out)
   return out
 }
 

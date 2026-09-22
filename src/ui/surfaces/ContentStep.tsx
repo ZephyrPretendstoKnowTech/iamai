@@ -266,7 +266,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
+  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, implementationReference, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -529,6 +529,7 @@ export function ContentStep({
               onChooseTask={isTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isTaskStep ? emergencyTaskPreferenceKey : null}
               taskSettings={isOwnTaskStep}
+              reference={implementationReference}
               heading={taskHead?.implementation}
             />
           )}
@@ -728,7 +729,7 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, taskSettings = false, reference = false, emptyTaskText, heading }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
@@ -757,6 +758,13 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   taskPreferenceKey?: string | null
   /** The one policy the owner is judging the resolved settings on (policyTasks.ts): its task's facts stand under the procedure, folded. */
   taskSettings?: boolean
+  /**
+   * The step is finished, so its procedures are reference (stepBody.ts
+   * implementationReference; owner decision 2026-09-22, option A). Every word
+   * stays; the block opens closed and says what it is, because on a step
+   * reading Completed three blocks of imperative lines read as work remaining.
+   */
+  reference?: boolean
   emptyTaskText?: string
   heading?: string
 }) {
@@ -854,17 +862,10 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       })
     }}>{activeTask.variants.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
   </> : null
-  return (
-    <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
-      <h4>{heading ?? W.heading}</h4>
-      {/* Every channel is a tab (content review D2). Where none has content, the
-          truthful reason stands over them as a note, never as a box beside a strip. */}
-      {artifacts.every((a) => a.unavailable === true) && (
-        <div className="impl-empty-note" data-empty={empty.key}>
-          <strong>{empty.title}</strong>
-          <span>{empty.text}</span>
-        </div>
-      )}
+  // The channels, the preview and the expanded viewer. Named so the one
+  // decision below — whether a finished step opens them closed — is made in
+  // one place and changes nothing inside them.
+  const channels = (
         <>
           {tasks ? <div className="emergency-channel-toolbar no-print"><TabList base={base} tabs={tabs} active={tab} onSelect={(id) => chooseChannel(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs" />{tab !== 'portal' && <div className="emergency-channel-actions">{copyControl}<button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}><Icon name="external-link" size={14} /></button></div>}</div> : <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => chooseChannel(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />}
           <div className="impl-preview" data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(base, tab)}>
@@ -896,6 +897,22 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
             <div data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(dialogBase, tab)}>{body('dialog-code', true)}</div>
           </StepDialog>
         </>
+  )
+
+  return (
+    <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
+      <h4>{heading ?? W.heading}</h4>
+      {/* Every channel is a tab (content review D2). Where none has content, the
+          truthful reason stands over them as a note, never as a box beside a strip. */}
+      {artifacts.every((a) => a.unavailable === true) && (
+        <div className="impl-empty-note" data-empty={empty.key}>
+          <strong>{empty.title}</strong>
+          <span>{empty.text}</span>
+        </div>
+      )}
+        {reference && !printing
+          ? <details className="impl-reference"><summary>{W.reference}</summary>{channels}</details>
+          : channels}
       {/* The support line (S6): Microsoft Learn · Troubleshooting on the left,
           the package's run note beside them, and the source-checked date on the
           right — or nothing at all where the step has none of them. */}

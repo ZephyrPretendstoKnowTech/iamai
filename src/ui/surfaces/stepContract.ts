@@ -185,6 +185,8 @@ type ContractWords = {
   implementation: {
     heading: string
     tabsLabel: string
+    /** The summary over a finished step's procedures, which are reference rather than instructions (owner, 2026-09-22). */
+    reference: string
     ai: string
     email: string
     aiWarning: string
