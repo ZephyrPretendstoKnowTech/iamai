@@ -965,10 +965,20 @@ try {
   check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => ${DEMO_CHUNK}.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
-  // RUN-CONTEXT-B decision 10: a row draws no reason line under its title; the
-  // lane label is its reason, and a readiness threshold is the opened step's tile.
+  // RUN-CONTEXT-B decision 10 said a row draws no reason line, because "the
+  // lane label is the row's reason". That premise stopped being true in
+  // 8f440021: `laneLabelOf` appends the lane tail only on Ready, and
+  // `compactLane` in StepSections.tsx strips "On Hold · After " from the badge,
+  // so fifteen rows of one plan waited on an unanswered question and eleven on
+  // one named step and every one of them read the bare words "On Hold". The
+  // owner resolved the contradiction in favour of the reason line; this check
+  // carries the new decision rather than the old one, as its sibling in
+  // src/ui/accessibility.test.ts already does.
+  //
+  // What it pins now: a row that is waiting says so, and no row says it twice.
   const reasonLines = (await acrossLanes(`[document.querySelectorAll('main.page .plan-row .plan-row-reason').length]`)).reduce((n, x) => n + Number(x), 0)
-  check('Demo: no row draws a reason line under its title', reasonLines === 0, `reason lines=${reasonLines}`)
+  const doubled = (await acrossLanes(`[[...document.querySelectorAll('main.page .plan-row')].filter((r) => r.querySelectorAll('.plan-row-reason').length > 1).length]`)).reduce((n, x) => n + Number(x), 0)
+  check('Demo: a waiting row names what it waits for, once', reasonLines > 0 && doubled === 0, `reason lines=${reasonLines}, rows with more than one=${doubled}`)
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
