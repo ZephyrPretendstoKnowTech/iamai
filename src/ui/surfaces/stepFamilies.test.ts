@@ -27,7 +27,10 @@ import { app, pages } from '../../content/content.ts'
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
 const CONTRACT_SRC = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8').replace(/\r\n/g, '\n')
+// The handoff is the component and the pure preview it draws (mfaHandoffPreview.ts),
+// which moved out of the component so the names it shows can be tested (Nadia §3
+// item 10): the rules below read both, as they read the one component before.
+const HANDOFF = (readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8') + readFileSync('src/ui/surfaces/mfaHandoffPreview.ts', 'utf8')).replace(/\r\n/g, '\n')
 const CSS = readFileSync('src/ui/app.css', 'utf8')
 
 const FAMILIES: StepFamily[] = ['policy', 'supporting', 'mfa', 'in-place', 'decision', 'resolution']
@@ -384,10 +387,11 @@ test('the MFA preview consumes existing readiness truth and computes none of its
   // step's own hold, what they have is their registered methods in the shared
   // method words, and what they need is the step's own words (app.plan.mfaPreview).
   assert.match(HANDOFF, /import \{ classWord, listWords \} from '\.\/readinessCells\.ts'/, 'the preview reads cells beyond the shared method words')
-  assert.match(HANDOFF, /listWords\(methods\.map\(classWord\)\)/, 'the methods are not the shared method words')
-  assert.match(HANDOFF, /const methods = methodClassesOf\(snapshot, u\.id\)/, 'the methods are not the directory reading every surface shares')
+  assert.match(HANDOFF, /listWords\(p\.methods\.map\(classWord\)\)/, 'the methods are not the shared method words')
+  assert.match(HANDOFF, /methods: methodClassesOf\(snapshot, id\)/, 'the methods are not the directory reading every surface shares')
   assert.match(HANDOFF, /\(P as unknown as \{ mfaPreview:/, 'the preview does not read its own words')
-  assert.match(HANDOFF, /unknown\.has\(u\.id\) \? W\.checkCompat : W\.needsMethod/, 'what a person needs is not the step\'s own requirement')
+  assert.match(HANDOFF, /checkCompat: unknown\.has\(id\)/, 'what a person needs is not the step\'s own requirement')
+  assert.match(HANDOFF, /p\.checkCompat \? W\.checkCompat : W\.needsMethod/, 'what a person needs is not the step\'s own words')
   // It never shows MFA Readiness's state words or its higher bar's next step: the
   // Plan never calls somebody short of a phishing-resistant method while the step
   // counts them as prepared.

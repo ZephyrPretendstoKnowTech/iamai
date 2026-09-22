@@ -18,6 +18,12 @@ import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { packageBindings } from './stepPackage.ts'
 import { stepContract } from './stepContract.ts'
+import { handoffPreview } from './mfaHandoffPreview.ts'
+import { scoredPeople } from '../../derive/mfaReadiness.ts'
+import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
+import { applyManualReviews } from '../../roadmap/manualWork.ts'
+import type { Step } from '../../roadmap/types.ts'
+import { readFileSync } from 'node:fs'
 
 const f = fixture('getiamai')
 const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -55,4 +61,57 @@ test('the dormant-account review names the guest Kai Brown as every other surfac
   const alex = f.snapshot.users.find((u) => u.displayName === 'Alex Morgan')!
   assert.ok(summary.includes(`Alex Morgan (${alex.userPrincipalName})`), summary)
   for (const line of everyLine('s-check-dormant-accounts').filter((l) => /Kai Brown/.test(l))) assert.match(line, /Kai Brown \(guest, /, line)
+})
+
+// Review of Nadia §3 item 10. The rule reached the step text and the name
+// directory, and other consumers still named a person `displayName ??
+// userPrincipalName` on their own. The MFA handoff under the admin step
+// previewed the administrator by the bare name, and under the MFA, admin portal,
+// guest and device-registration steps previewed the guest the same way, without
+// even its marker: which Kai Brown to help register, again. The account picker a
+// separate-admin-accounts review is recorded with offered the bare name too, and
+// ManualReviewForm draws an option with no second line; the per-user MFA finding
+// listed the accounts still enabled by the bare name.
+test('the MFA handoff, the review picker and the per-user MFA finding name a shared Kai Brown by the account', () => {
+  const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+  const previewed = new Set<string>()
+  for (const step of r.steps) {
+    const hold = stepMfaHold(step, scored)
+    if (!hold) continue
+    for (const person of handoffPreview(step, hold.ids, f.snapshot)) {
+      assert.notEqual(person.name, 'Kai Brown', `${step.id}: a bare Kai Brown in the handoff preview`)
+      if (person.id === member.id) assert.equal(person.name, `Kai Brown (${member.userPrincipalName})`, step.id)
+      if (person.id === guest.id) assert.equal(person.name, `Kai Brown (guest, ${guest.userPrincipalName})`, step.id)
+      if (person.id === member.id || person.id === guest.id) previewed.add(step.id)
+    }
+  }
+  // The premise: the admin step previews the member, four more preview the guest.
+  assert.ok(previewed.has('s-goal-admins-phishing-resistant') && previewed.size >= 5, [...previewed].join(', '))
+
+  const options = r.steps.flatMap((step) => (step.manualReview?.fields ?? []).flatMap((field) => (field.key === 'accountIds' ? (field.options ?? []) : [])))
+  const kaiOptions = options.filter((o) => o.value === member.id || o.value === guest.id)
+  assert.ok(kaiOptions.length > 0, 'the premise: a review picker offers a Kai Brown')
+  for (const o of kaiOptions) assert.equal(o.label, r.input.names!.label(o.value), 'the picker names the account as the directory does')
+  assert.ok(kaiOptions.every((o) => o.label !== 'Kai Brown'), kaiOptions.map((o) => o.label).join('; '))
+  // A name nobody shares stays bare, as it always did.
+  const alex = f.snapshot.users.find((u) => u.displayName === 'Alex Morgan')!
+  for (const o of options.filter((x) => x.value === alex.id)) assert.equal(o.label, 'Alex Morgan')
+
+  // The per-user MFA finding, with both accounts still enabled for per-user MFA.
+  const perUser = structuredClone(r.steps.find((st) => st.id === 's-prereq-per-user-mfa')!) as Step
+  const snapshot = { ...f.snapshot, perUserMfa: { [member.id]: { state: 'enabled' as const, reason: null }, [guest.id]: { state: 'enforced' as const, reason: null } } }
+  applyManualReviews([perUser], snapshot)
+  const detail = perUser.configurationFindings?.find((x) => x.key === 'per-user-mfa')?.detail ?? ''
+  assert.ok(detail.includes(`Kai Brown (${member.userPrincipalName})`) && detail.includes(`Kai Brown (guest, ${guest.userPrincipalName})`), detail)
+})
+
+// The Inventory's Devices tab names device owners and Authenticator registrants
+// through the page's name directory, as the devices CSV does (inventoryTables.ts),
+// not by the bare display name; the registrant list drops a repeated entry, so
+// two people of one name were one.
+test('the Inventory devices tab names people through the name directory', () => {
+  const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
+  const devices = page.slice(page.indexOf('function DevicesTab('), page.indexOf('// ---------- Roles'))
+  assert.match(devices, /names\.label\(id\)/)
+  assert.doesNotMatch(devices, /userById\.get\([a-zA-Z]+\)\?\.displayName/)
 })

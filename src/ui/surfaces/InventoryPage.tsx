@@ -92,7 +92,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} /> },
           { id: 'people', label: C.tabs.people, badge: snapshot.users.length, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} /> },
           { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} showGroups /> },
-          { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} userById={userById} /> },
+          { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} userById={userById} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
           { id: 'licensing', label: C.tabs.licensing, render: () => <LicensingTab snapshot={snapshot} /> },
@@ -495,10 +495,16 @@ function PeopleTab({
 
 // ---------- Devices ----------
 
-function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById: Map<string, UserRow> }) {
+function DevicesTab({ snapshot, userById, names }: { snapshot: TenantSnapshot; userById: Map<string, UserRow>; names: ReturnType<typeof buildNameDirectory> }) {
   const D = C.devices
   const yn = (v: boolean | null) => (v === null ? D.unknown : v ? D.yes : D.no)
-  const owner = (ids: string[]) => ids.map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? '').filter(Boolean).join(', ')
+  // A person by the one rule for naming a person (names.ts personLabels), as the
+  // devices CSV names the same owners (inventoryTables.ts): a display name another
+  // account shares carries its sign-in address. Both lists used to read the bare
+  // display name, and the registrant list, which drops a repeated entry, folded
+  // two people of one name into one.
+  const person = (id: string): string | null => (userById.has(id) ? names.label(id) : null)
+  const owner = (ids: string[]) => ids.map(person).filter(Boolean).join(', ')
   // Authenticator registrations by device name (ux-review-03 §A6): the name
   // is a model code, so every account with the same name is listed.
   const byDeviceName = useMemo(() => {
@@ -507,7 +513,7 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
       if (methods === 'unknown') continue
       for (const m of methods) {
         if (m.kind !== 'microsoftAuthenticator' || !m.displayName) continue
-        const who = userById.get(userId)?.displayName ?? userById.get(userId)?.userPrincipalName ?? null
+        const who = person(userId)
         if (!who) continue
         const list = map.get(m.displayName) ?? []
         if (!list.includes(who)) list.push(who)
@@ -515,7 +521,7 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
       }
     }
     return map
-  }, [snapshot, userById])
+  }, [snapshot, userById, names])
   const registrations = (name: string | null) => (name ? (byDeviceName.get(name) ?? []).join(', ') : '')
   return (
     <div>

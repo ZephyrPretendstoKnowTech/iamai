@@ -14,7 +14,6 @@ import type { ScopeEvidence } from './operations.ts'
 // setting at all, the step says so and the instructions say where to look.
 // Pure: no DOM, no network.
 import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
-import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import { stateFields } from './lifecycle.ts'
@@ -60,15 +59,11 @@ export function ladderStepId(itemId: string): string {
 type Facts = {
   enabledUsers: number
   adminIds: string[]
-  adminNames: string[]
-  globalAdminNames: string[]
   globalAdmins: number
-  adminsWithMailbox: string[]
   securityDefaults: boolean | null
   migrationState: string | null
   guests: number
   pendingInvites: number
-  guestNames: string[]
   unlicensedEnabled: number
   weakMethodsOn: string[]
   weakMethodsOff: boolean
@@ -77,10 +72,6 @@ type Facts = {
   methodsReadable: boolean
   rolesReadable: boolean
   replacement: { ids: string[]; readyIds: string[]; missingIds: string[]; unknownIds: string[]; complete: boolean }
-}
-
-function nameOf(u: UserRow): string {
-  return u.displayName ?? u.userPrincipalName ?? u.id
 }
 
 const METHOD_LABEL: Record<string, string> = {
@@ -95,7 +86,6 @@ export function ladderFacts(snapshot: TenantSnapshot, context: ScopeEvidence = {
   const active = snapshot.roles?.active ?? {}
   const adminIds = [...new Set([...Object.keys(active), ...Object.keys(snapshot.roles?.eligible ?? {})])].filter(id => byId.has(id) && ((active[id]?.length ?? 0) > 0 || (snapshot.roles?.eligible?.[id]?.length ?? 0) > 0))
   const licensed = (u: UserRow): boolean => u.assignedPlans.some((p) => p.capabilityStatus === 'Enabled')
-  const hasMailbox = (u: UserRow): boolean => u.assignedPlans.some((p) => p.capabilityStatus === 'Enabled' && EXCHANGE_PLANS.has(p.servicePlanId))
   const guests = snapshot.users.filter((u) => u.userType === 'guest')
 
   const secRow = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
@@ -127,15 +117,11 @@ export function ladderFacts(snapshot: TenantSnapshot, context: ScopeEvidence = {
     rolesReadable: snapshot.sources.users?.status === 'ok' && snapshot.config.roleAssignments?.status === 'ok' && snapshot.config.pimEligibility?.status === 'ok',
     replacement,
     adminIds,
-    adminNames: adminIds.map((id) => nameOf(byId.get(id) as UserRow)),
-    globalAdminNames: adminIds.filter((id) => active[id]?.includes(GLOBAL_ADMIN_ROLE_ID)).map((id) => nameOf(byId.get(id) as UserRow)),
     globalAdmins: adminIds.filter((id) => active[id]?.includes(GLOBAL_ADMIN_ROLE_ID)).length,
-    adminsWithMailbox: adminIds.filter((id) => hasMailbox(byId.get(id) as UserRow)).map((id) => nameOf(byId.get(id) as UserRow)),
     securityDefaults,
     migrationState: methodsReadable ? (methodsRow?.policyMigrationState ?? null) : null,
     guests: guests.length,
     pendingInvites: guests.filter((u) => u.externalUserState === 'PendingAcceptance').length,
-    guestNames: guests.map(nameOf),
     unlicensedEnabled: enabled.filter((u) => !licensed(u)).length,
     weakMethodsOn,
     weakMethodsOff: ['Sms', 'Voice'].every((id) => stateOf(id) === 'disabled'),
