@@ -1,0 +1,144 @@
+// R4-11, the path the review of fix/patch found (docs/qa/night/personas/review-patch-2.ts).
+//
+// On the demo tenants the compliant-device step creates its policy with the
+// device decision's platforms left out (phones), the person turns it on as the
+// step asks, and on the next scan coverage reads that policy as applying only
+// under narrower conditions than the baseline: device platforms. A condition
+// has no section an update writes (generate.ts CHANGED_SECTION), and the policy
+// already holds every section this step does write, so the update came out as
+// `{}`. An empty patch is no operation, and the step said "This step has no
+// policy for IAMAI to write in this plan. Scan Contoso Pty Ltd again to rebuild
+// it.", with the Done-when "A scan rebuilds this step with a policy IAMAI can
+// write." and the row reason "until a scan rebuilds this step". All three were
+// false: the policy is there, and every scan rebuilt the same `{}`. A tenant
+// whose own compliant-device policy leaves phones out, as its device decision
+// does, has the same step on its first scan. (Without that decision the same
+// policy is not what the plan asks for in its device platforms, and the step
+// says a person corrects it: 'manual-correction', which promises no rebuild.)
+//
+// The step now names the policy, says there is nothing to submit, names the
+// gap no update writes, and promises no rescan — on the screen, on the row and
+// in the exports, which read the screen's reason line.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { fixture } from './fixtures/index.ts'
+import type { Fixture } from './fixtures/index.ts'
+import { runFixture } from './fixtures/run.ts'
+import type { FixtureRun } from './fixtures/run.ts'
+import { unavailableReason } from './operations.ts'
+import { applyStepDecisions } from './decisions.ts'
+import type { StepDecision } from './decisions.ts'
+import { directionDecisionOf } from './directionAnswers.ts'
+import type { DirectionAnswer } from './directionAnswers.ts'
+import { excludedPlatforms } from './deviations.ts'
+import { BLOCKED_REASON } from '../copy/reasons.ts'
+import { stepContract } from '../ui/surfaces/stepContract.ts'
+import { stepExportView } from '../ui/surfaces/stepExport.ts'
+import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
+import type { Step } from './types.ts'
+
+const DEVICE = 's-goal-require-managed-device'
+const POLICY = 'c0100000-0000-4000-8000-0000000000d1'
+const REBUILD = /rebuild/i
+
+type Row = Record<string, unknown> & { conditions?: Record<string, unknown> }
+
+/** Every Direction question answered with IAMAI's own suggestion, the way the careful administrator saves them. */
+function directionAccepted(f: Fixture): Fixture {
+  const r = runFixture(f)
+  const decisions: Record<string, StepDecision> = {}
+  for (const step of r.steps) {
+    const questions = step.directionQuestions ?? []
+    if (questions.length === 0) continue
+    const values: Record<string, DirectionAnswer> = {}
+    for (const q of questions) values[q.key] = { value: q.suggested.value, picked: [...q.suggested.picked] }
+    decisions[step.id] = { ...directionDecisionOf(values), at: f.snapshot.asOf }
+  }
+  return { ...f, decisions, mapping: applyStepDecisions(f.mapping, decisions) } as Fixture
+}
+
+/** The tenant with `row` among its policies, scanned. */
+function scanned(f: Fixture, row: Row): { f: Fixture; r: FixtureRun; step: Step; ctx: StepVarContext } {
+  const ca = f.snapshot.config.caPolicies!
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...ca.rows, row] } } } as Fixture['snapshot']
+  const t = { ...f, snapshot }
+  const r = runFixture(t, { snapshot, mapping: f.mapping } as never)
+  const step = r.steps.find((s) => s.id === DEVICE)!
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  return { f: t, r, step, ctx }
+}
+
+/** The device step's own policy body on this tenant, as the step would create it. */
+function created(f: Fixture): Row {
+  const step = runFixture(f).steps.find((s) => s.id === DEVICE)
+  const op = step?.action.resolution?.policies.find((o) => o.mode === 'create')
+  assert.ok(op, 'the device step creates its policy on this tenant')
+  return structuredClone(op.body) as Row
+}
+
+/** What the step says about itself: the reason line, the completion, the row, and the export's next lines. */
+function said(run: ReturnType<typeof scanned>): { because: string; doneWhen: string; row: string; exported: string } {
+  const c = stepContract(run.step, run.ctx)
+  const view = stepExportView(run.step, run.ctx)
+  return {
+    because: c.implementation.offered ? '' : c.implementation.because ?? '',
+    doneWhen: c.doneWhen.join(' '),
+    row: run.step.blockedReason ?? '',
+    exported: view.whatToDo.join(' '),
+  }
+}
+
+function assertHeld(run: ReturnType<typeof scanned>, name: string, label: string): void {
+  const ops = run.step.action.resolution?.policies ?? []
+  // The premise: an update to the policy, with nothing in it, and a goal still
+  // short of the baseline in a condition.
+  assert.deepEqual(ops.map((o) => [o.mode, o.policyId, o.body]), [['update', POLICY, {}]], `${label}: premise — the update is empty`)
+  assert.equal(unavailableReason(run.step), 'no-operation', `${label}: premise — no operation`)
+  const cov = run.r.coverage.results.find((x) => x.goal.id === run.step.goalId)!
+  assert.ok(cov.reasons.some((x) => x.kind === 'conditions-narrower' && !x.expected), `${label}: premise — narrower conditions: ${JSON.stringify(cov.reasons.map((x) => x.kind))}`)
+
+  const s = said(run)
+  // The policy by name, and nothing to submit.
+  assert.ok(s.because.includes(name), `${label}: the reason names the policy: ${s.because}`)
+  assert.match(s.because, /nothing to submit/, label)
+  // The gap no update writes, in the classifier's own words.
+  assert.match(s.because, /narrower conditions than the baseline: device platforms/, `${label}: the gap is named: ${s.because}`)
+  // No rescan promised, anywhere the step is read.
+  assert.doesNotMatch(s.because, REBUILD, `${label}: the reason still promises a rescan`)
+  assert.doesNotMatch(s.doneWhen, REBUILD, `${label}: the completion still promises a rescan`)
+  assert.equal(s.row, BLOCKED_REASON.noOperationHeld, `${label}: the row reason`)
+  assert.doesNotMatch(s.row, REBUILD, label)
+  assert.doesNotMatch(s.exported, REBUILD, `${label}: the export still promises a rescan: ${s.exported}`)
+  assert.ok(s.exported.includes(s.because), `${label}: the export reads the screen's reason line`)
+}
+
+test('R4-11: the demo\'s device policy, turned on as the step asked, is not a step a scan rebuilds', () => {
+  // The device decision (IAMAI's own suggestion) leaves phones out of the policy.
+  const f = directionAccepted(fixture('demo-week2'))
+  assert.deepEqual(excludedPlatforms(f.mapping), ['android', 'iOS'], 'premise: the decision leaves phones out')
+  const body = created(f)
+  assert.deepEqual((body.conditions?.platforms as { excludePlatforms?: string[] } | undefined)?.excludePlatforms, ['android', 'iOS'], 'premise: the step writes the decision')
+  // The person built it, turned it on, and scanned again.
+  const run = scanned(f, { ...body, id: POLICY, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  assertHeld(run, String(body.displayName), 'the plan\'s own policy')
+})
+
+test('R4-11: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, says the same on its first scan', () => {
+  const f = directionAccepted(fixture('demo-week2'))
+  const body = created(f)
+  const name = 'Contoso - Compliant device, computers'
+  const conditions = { ...(body.conditions ?? {}), platforms: { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] } }
+  const run = scanned(f, { ...body, id: POLICY, displayName: name, description: '', state: 'enabled', conditions, createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  assertHeld(run, name, 'the tenant\'s own policy')
+})
+
+test('a step with no operations at all still asks for the scan that rebuilds it', () => {
+  // The generic words stay where they are true: a step from an older plan file,
+  // with a body and no operations, is rebuilt by a fresh scan (operations.test.ts).
+  const f = fixture('demo-week2')
+  const run = scanned(f, { id: POLICY, displayName: 'Unrelated', state: 'disabled', conditions: { users: { includeUsers: ['None'] }, applications: { includeApplications: ['None'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+  const stale = { ...run.step, action: { ...run.step.action, json: '{"displayName":"stale"}', resolution: undefined, nothingOwed: undefined } } as unknown as Step
+  assert.equal(unavailableReason(stale), 'no-operation')
+  const c = stepContract(stale, run.ctx)
+  assert.match(c.implementation.offered ? '' : c.implementation.because ?? '', REBUILD)
+})

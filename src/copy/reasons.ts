@@ -52,7 +52,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -82,6 +82,8 @@ export const BLOCKED_REASON = {
   /** Several tenant policies the goal could correct that nothing tells apart (coverage.ts ownCandidate): the step will not guess. */
   targetAmbiguous: BLOCKED.targetAmbiguous,
   noOperation: BLOCKED.noOperation,
+  /** An update the tenant's policy already holds in full (types.ts Action.nothingOwed): no scan rebuilds it into anything else. */
+  noOperationHeld: BLOCKED.noOperationHeld,
   /** A deployed policy that is not what the plan asked for in a part IAMAI does not write (roadmap/operations.ts `manual-correction`): a person corrects it. */
   manualCorrection: BLOCKED.manualCorrection,
   /** A group a policy names that this scan could not read (roadmap/generate.ts): the goal's coverage cannot be settled until it can. */

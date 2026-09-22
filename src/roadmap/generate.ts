@@ -1861,6 +1861,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           action = changesFor(built, sections, firstUpdate)
         }
       }
+      // Every update empty: the policies it targets already hold each section
+      // this step writes. What still keeps the goal short is then something no
+      // update writes — a narrower condition, which has no section (CHANGED_SECTION)
+      // — and the step names it (types.ts `nothingOwed`) rather than asking for a
+      // scan that rebuilds the same empty update.
+      const ops = action.resolution?.policies ?? []
+      if (ops.length > 0 && ops.every((o) => o.mode === 'update' && Object.keys(o.body).length === 0)) {
+        action = { ...action, nothingOwed: { gaps: result.reasons.filter((r) => !r.expected && r.kind === 'conditions-narrower').map((r) => r.detail) } }
+      }
       if (action.kind === 'create') namingNote = uniqueName(goal, stepId)
     }
 
