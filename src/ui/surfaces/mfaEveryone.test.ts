@@ -383,7 +383,12 @@ test('F1a: the lead names the direction that blocks — security defaults off be
 test('F2: the replacement list is four policies wherever it is said', () => {
   const FOUR = /Require MFA for Everyone, Block Legacy Authentication, Block Device Code Sign-in and Require Phishing-Resistant MFA for Admins/
   assert.match(whatToDoOf(SECURITY_DEFAULTS), FOUR)
-  const b = bodiesOf('demo').get(SECURITY_DEFAULTS)!
+  // The cutover's Done-when, read where the cutover is still to come: messy's
+  // scan read security defaults on. This read demo, whose scan read them
+  // already off; there the step is complete on that fact alone and its
+  // Done-when claims only it (R4-38, eb099c8c), so demo no longer names the
+  // four — rightly, since nothing checked them.
+  const b = bodiesOf('messy').get(SECURITY_DEFAULTS)!
   assert.ok(b.contract.doneWhen.some((d) => FOUR.test(d)), b.contract.doneWhen.join('\n'))
   assert.match(aboutOf(b) + everyString((stepById[SECURITY_DEFAULTS] as unknown as { who?: unknown }).who).join('\n'), /block device code sign-in today/)
 })
