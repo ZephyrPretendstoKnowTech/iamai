@@ -234,7 +234,10 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // Foundation A could not settle — the same steps the contract's `who` says
     // it does not know. An unknown reach is never written down as a number.
     population: stepPopulation(step)?.active ?? null,
-    fix: [...new Set([...contract.fix.map((f) => f.text), ...(step.configurationFindings ?? []).filter(f => f.outcome !== 'pass').map(f => `${f.label}: ${f.value}. ${f.detail}`)])],
+    // A finding with no detail ended "Passkey protections: Needs correction. " —
+    // a stop and a space with nothing after them. The detail joins the verdict
+    // only when there is one to join.
+    fix: [...new Set([...contract.fix.map((f) => f.text), ...(step.configurationFindings ?? []).filter(f => f.outcome !== 'pass').map(f => [`${f.label}: ${f.value}.`, f.detail.trim()].filter(part => part !== '').join(' '))])],
     implementation: contract.implementation.offered,
   }
   if (!cs) {

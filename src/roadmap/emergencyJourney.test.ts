@@ -302,3 +302,29 @@ test(`an emergency account's passkey is named by its model, never by its identif
   }
   assert.ok(named > 0, 'no model resolved on a tenant whose keys are approved ones')
 })
+
+
+// A verdict with no reason.
+//
+// "Passkey registration · Review required" and "Passkey protections · Needs
+// correction" rendered with an empty detail on a step where every other tile
+// carried one, and What to do read "Fix before continuing: Passkey
+// protections: Needs correction. " — a stop and a space with nothing after
+// them. Each of these groups is assembled from checks that state why they
+// matter (passkeySettings.ts findingsFor, fifth argument) and the group threw
+// the sentence away.
+test('a passkey verdict that is not a pass says what it is a verdict about', () => {
+  let checked = 0
+  for (const name of ['midflight', 'hostile', 'messy', 'getiamai', 'large'] as const) {
+    const step = runFixture(fixture(name)).steps.find(s => s.id === 's-prereq-passkey-settings')
+    if (!step) continue
+    for (const f of step.configurationFindings ?? []) {
+      if (f.outcome === 'pass') continue
+      checked++
+      assert.notEqual(f.detail.trim(), '', `${name}/${f.label}: "${f.value}" with no reason`)
+      // A reason, not a second list: the group's items carry the evidence.
+      assert.ok(f.detail.split('. ').length <= 3, `${name}/${f.label}: the reason is a list`)
+    }
+  }
+  assert.ok(checked > 0, 'no fixture produced a passkey verdict short of a pass')
+})
