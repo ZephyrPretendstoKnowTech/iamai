@@ -204,6 +204,7 @@ export function ContentStep({
   onUnconfirm,
   saveStatus,
   baselineCommit = BASELINE_COMMIT,
+  enforceWaits,
   printing = false,
   lane = null,
   blockers = NO_BLOCKERS,
@@ -250,6 +251,8 @@ export function ContentStep({
    * pinned to that package's own baseline would.
    */
   baselineCommit?: string
+  /** Work the enforce checklist's conditions depend on that is not a prerequisite of this step's next action (stepBody.ts enforceWaits). */
+  enforceWaits?: readonly string[]
   /** Printing: the evidence and More stand open on the page, so every step prints in full (§7). */
   printing?: boolean
 }) {
@@ -262,7 +265,7 @@ export function ContentStep({
   // channels, the package's projection and readiness, the Readiness tiles, which
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
-  const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit })
+  const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
   const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
