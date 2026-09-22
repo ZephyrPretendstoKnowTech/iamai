@@ -25,7 +25,7 @@ import { appliedMapping } from '../../../../src/ui/surfaces/pickerRows.ts'
 import { customerPlanSteps } from '../../../../src/ui/surfaces/customerPlanSteps.ts'
 import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
-import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { asideGroupsFor, BOARD, boardOf, groupsFor, LANES } from '../../../../src/ui/surfaces/planBoard.ts'
 import type { Board } from '../../../../src/ui/surfaces/planBoard.ts'
@@ -587,6 +587,12 @@ export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepar
  *
  * A persona who would answer differently calls `decide()` for that question
  * instead — this is the baseline everyone else starts from.
+ *
+ * A step whose draft is not complete is left unanswered, as the screen leaves
+ * it: Approve is disabled while a question that takes a list has none
+ * (`directionAnswerComplete`). This saved it anyway, so a countries question
+ * with no suggested country was approved as "no countries" here, where on
+ * the screen nobody could press the button.
  */
 export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
   let next = t
@@ -598,6 +604,7 @@ export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
       const draft = q.saved ?? q.suggested
       values[q.key] = { value: draft.value, picked: [...draft.picked] }
     }
+    if (!questions.every((q) => directionAnswerComplete(q, values[q.key]))) continue
     const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis as string]))
     next = decide(next, step.id, answers(values, basis))
   }
