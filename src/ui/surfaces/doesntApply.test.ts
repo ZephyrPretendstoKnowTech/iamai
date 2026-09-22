@@ -12,6 +12,8 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { inWave } from '../../derive/phases.ts'
+import { stepContract } from './stepContract.ts'
+import type { StepVarContext } from './stepVars.ts'
 
 const ID = 's-prereq-trusted-location'
 const REASON = 'No office network: everyone works from home'
@@ -47,4 +49,38 @@ test('demo: the trusted-network step takes a reason, sits in the footer with it,
   // Never on a foundation.
   const foundation = run({ ...f.mapping, notApplicable: { 's-prereq-exclusion-group': 'no' } }).steps.find((s) => s.id === 's-prereq-exclusion-group')!
   assert.ok(!foundation.doesntApply && foundation.status !== 'skipped', 'the exclusions group stays')
+})
+
+// The completion follows the answer.
+//
+// Answered "everyone is remote" — no network selected — the step was marked
+// Completed and still read "An IP named location in the tenant holds exactly
+// the public ranges the network owner approved, and it is marked as trusted",
+// a criterion its own tile denies, beside a disclosure that the tenant DOES
+// hold a trusted location this answer leaves out.
+test('with no office network selected the step states that answer, not the other one', () => {
+  let checked = 0
+  for (const name of ['mid', 'large', 'midflight', 'messy', 'hostile'] as const) {
+    const f = structuredClone(fixture(name))
+    const run = runFixture(f)
+    const step = run.steps.find((s) => s.id === ID)
+    if (!step) continue
+    if ((f.mapping.trustedLocationIds ?? []).length > 0) continue
+    checked++
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+    const done = stepContract(step, ctx).doneWhen.join(String.fromCharCode(10))
+    assert.doesNotMatch(done, /marked as trusted/, `${name}: the other completion is still stated`)
+    assert.match(done, /No office network is selected/, `${name}: ${done}`)
+  }
+  assert.ok(checked > 0, 'no fixture answers this step everyone-is-remote')
+})
+
+// And a tenant that did select one keeps the original completion.
+test('with a network selected the original completion stands', () => {
+  const f = structuredClone(fixture('demo'))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === ID)!
+  const mapping = { ...f.mapping, trustedLocationIds: ['a-location-id'] }
+  const ctx = { snapshot: f.snapshot, mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  assert.match(stepContract(step, ctx).doneWhen.join(String.fromCharCode(10)), /marked as trusted/)
 })
