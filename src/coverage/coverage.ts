@@ -2,7 +2,7 @@
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
-import { guestKindsReached, matchesSignature, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
+import { guestKindsReached, matchesSignature, narrowerApps, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
 import { engine } from '../content/content.ts'
 import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
@@ -405,7 +405,9 @@ function evaluateGoal(
 
   for (const c of candidates) {
     const caveats: string[] = []
-    if (impl.expectedApps === 'all' && !c.apps.all) caveats.push('apps-narrower')
+    // Fewer resources than the reference targets: the policy the step writes,
+    // never the catalogue's label for it (classify.ts narrowerApps).
+    if (narrowerApps(c, reference)) caveats.push('apps-narrower')
     // Resource scope the baseline member does not give away: applications this
     // policy excludes and the baseline member does not, or an application filter
     // whose rule IAMAI does not evaluate (exact or unknown, never assumed equal).

@@ -2,7 +2,7 @@
 // copied tenant data.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { computeCoverage } from './coverage.ts'
+import { CATALOGUE, computeCoverage } from './coverage.ts'
 import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -391,4 +391,33 @@ test('14: guests excluded from the all-users policy plus a separate guests polic
   assert.equal(g.status, 'enforced')
   assert.match(g.statement, /MFA Members/)
   assert.match(g.statement, /MFA Guests/)
+})
+
+test('a goal\'s own template, switched on where the baseline holds no policy for the goal, never reads as covering fewer applications', () => {
+  // Nadia D7 / R4-10: coverage judged a candidate's resources against the
+  // catalogue's `expectedApps` label, not against the policy the step writes.
+  // token-protection's first implementation expected "all" over a template that
+  // names three resources (token protection cannot target All resources), and
+  // require-managed-device expected "all" over a template on Office 365 (the
+  // template now carries All resources, the scope the goal is judged by). So the
+  // policy the step itself built, once switched on, read "covers fewer apps
+  // than the goal expects" and was offered an update to the resources it
+  // already had, a correction that could never finish the step. Where no
+  // baseline policy stands for the goal, its template is the reference
+  // (coverage.ts), and a policy equal to the reference is never narrower.
+  const on = { enabled: true, seats: 10, consumed: 0 }
+  const snapshot = mkSnapshot({ capabilities: { entraP1: on, entraP2: on, intune: on, workloadIdPremium: on, globalSecureAccess: on, defenderForCloudApps: on, purviewInsiderRisk: on } })
+  const judged: string[] = []
+  const narrower: string[] = []
+  for (const g of CATALOGUE) {
+    const impl = g.implementations[0]
+    if (impl?.kind !== 'ca') continue
+    const tenant = { ...structuredClone(impl.template), id: `tenant-${g.id}`, state: 'enabled' }
+    const own = goal(run([tenant], { snapshot }), g.id).candidates.find((c) => c.policyId === tenant.id)
+    if (!own) continue
+    judged.push(g.id)
+    if (own.caveats.includes('apps-narrower')) narrower.push(g.id)
+  }
+  assert.ok(judged.includes('token-protection') && judged.includes('require-managed-device'), `the goals the defect was found on were not judged: ${judged.join(', ')}`)
+  assert.deepEqual(narrower, [], 'a policy exactly as the goal\'s own template writes it reads as covering fewer applications than the goal')
 })

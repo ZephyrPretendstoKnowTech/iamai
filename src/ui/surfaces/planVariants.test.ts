@@ -409,7 +409,12 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-inforcer-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-guests-mfa
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
-  'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large+owes-correction/s-goal-require-managed-device (as shipped, large reached it only through a correction that changed nothing: R4-11)
+  // large/s-goal-require-managed-device rendered 'policy · adjust · report-only ·
+  // blocked · open · do:observe · track · implementation · found · fix ·
+  // one-policy · who-known' only through the Nadia D7 defect: its tenant's
+  // Office 365 policies equal the fixture baseline's, and goals.json's "all
+  // applications" read them as narrower and offered an update to the target they
+  // already had. They are the goal in place now, and nothing else renders it.
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // a tenant whose emergency keys are now readable reaches this with its reach settled (G-F1)
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
