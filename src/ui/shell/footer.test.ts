@@ -48,5 +48,5 @@ test('"people" on MFA Readiness, the Plan and Connect; "user" only for an Entra 
   const words = JSON.stringify(strings({ readiness: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })).replaceAll(JSON.stringify((pages.plan as { impact: { noUserImpact: string } }).impact.noUserImpact), '""').replace(/All users/g, 'Everyone').replace(/Per-user MFA/g, 'MFA').replace(/user accounts/g, 'accounts')
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
-  assert.ok(JSON.stringify(consentRows()).includes("Read all users' basic profiles"))
+  assert.ok(JSON.stringify(consentRows()).includes("Read all users' authentication methods"))
 })

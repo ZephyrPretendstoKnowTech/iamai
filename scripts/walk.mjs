@@ -854,11 +854,11 @@ async function walkFixture(fx) {
             const perm = await evaluate(`(() => { const d = document.querySelector('main.page details.permissions'); if (!d) return null; return { lead: ((d.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), rows: [...d.querySelectorAll('.tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim()), last: (((ps) => ps[ps.length - 1])([...d.querySelectorAll('p')]) || {}).textContent || '', tables: d.querySelectorAll('table').length } })()`)
             if (!perm) add('P0', `${label}: the permissions collapsible did not open`)
             else {
-              const m = perm.lead.match(/^Microsoft's consent screen will list these (\d+), in this order:$/)
+              const m = perm.lead.match(/^Microsoft's consent screen will list these (\d+) directory permissions, plus signing you in and keeping you signed in:$/)
               if (!m) add('P0', `${label}: the consent lead reads "${perm.lead}"`)
               else if (Number(m[1]) !== perm.rows.length) add('P0', `${label}: the consent lead counts ${m[1]} and ${perm.rows.length} rows follow`)
               if (perm.rows.length < 5) add('P0', `${label}: ${perm.rows.length} consent rows; every requested scope, in Microsoft's wording`)
-              if (!/^Read all users' basic profiles \/ Read directory data/.test(perm.rows[0] || '')) add('P0', `${label}: the first consent row reads "${perm.rows[0]}"`)
+              if (!/^Read directory data/.test(perm.rows[0] || '')) add('P0', `${label}: the first consent row reads "${perm.rows[0]}"`)
               if (perm.tables > 0) add('P0', `${label}: the permissions collapsible still renders a table`)
               if (!/^Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete\. Nothing it read leaves this browser unless you export it\.$/.test(perm.last.replace(/\s+/g, ' ').trim())) add('P0', `${label}: the collapsible does not end with the removal line: "${perm.last}"`)
             }
