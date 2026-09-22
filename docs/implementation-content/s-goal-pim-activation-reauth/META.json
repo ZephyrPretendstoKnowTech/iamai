@@ -89,17 +89,23 @@
     "missing": {
       "requires": [
         "authContext.target.id",
+        "authContext.target.displayName",
         "authStrength.target.id",
         "policy.target.displayName",
         "policy.target.excludeGroups"
       ],
       "entra": [
+        "entra.context.prepare",
         "entra.policy.create"
       ],
       "json": [
         "json.policy.create"
       ],
       "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "PrepareContext"
+        },
         {
           "block": "powershell.run",
           "mode": "Create"
