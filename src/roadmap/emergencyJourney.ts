@@ -374,9 +374,24 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   // less loudly than before the check existed. The generic requirement stands
   // only where nothing specific is outstanding.
   const sentence = (t: string): string => `${t.charAt(0).toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? '' : '.'}`
+  // A finding about one account names that account.
+  //
+  // "The Authenticator device \"SM-S918U\" is also registered by Break-glass 2"
+  // was read with no first party anywhere on the card: the second account is
+  // named and the one the sentence is ABOUT was dropped. The item carries it —
+  // every per-account check is built against a target — and only the summary
+  // threw it away, so on a two-account tenant both halves of the same pair
+  // rendered as two unattributed sentences naming each other. A set-level check
+  // ("every emergency account relies on ... alone") is about all of them and
+  // takes no prefix.
+  const stop = (t: string): string => `${t}${/[.!?]$/.test(t) ? '' : '.'}`
   const openHardening = [...new Set((authChecks.items ?? [])
     .filter(item => item.outcome !== 'pass' && typeof item.value === 'string' && item.value.trim().length > 0)
-    .map(item => sentence(String(item.value).trim())))].slice(0, 2)
+    .map(item => {
+      const clause = String(item.value).trim()
+      const subject = item.accountId ? item.subjectLabel ?? item.label : null
+      return subject ? `${subject} — ${stop(clause)}` : sentence(clause)
+    }))].slice(0, 2)
   authentication.detail = authentication.outcome !== 'pass' && openHardening.length > 0
     ? openHardening.join(' ')
     : 'Each selected account needs a registered approved passkey compatible with the current and planned settings.'

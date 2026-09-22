@@ -121,9 +121,21 @@ export function emergencyAccountPowerShell(observedInitialDomain: string | null)
  * importing final-verification or next-step requirements. */
 export function emergencyAccountAiInfo(step: Step, ctx: StepVarContext, projected: EmergencyAccountTasks): string {
   const accounts = ctx.mapping.breakGlassUserIds.map(id => oneLine(ctx.nameOf(id))).filter(Boolean)
+  // The step's own readiness, not the task list.
+  //
+  // "No account preparation action is currently projected." was read on a card
+  // whose tile beside it said "Prepared passkeys · Needs correction · ... no
+  // phishing-resistant method registered". No emergency account task is ever
+  // built `required`, so this was not a reading of anything: the branch was
+  // unreachable and the sentence unconditional. The findings are what the
+  // tiles draw, so taking the work from them is what makes the two agree.
+  const outstanding = (step.configurationFindings ?? []).filter(f => f.outcome !== 'pass')
   const required = projected.tasks.filter(task => task.required)
-  const work = required.length
-    ? required.map(task => `- ${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}${task.evidence ? `: ${task.evidence}` : ''}`).join('\n')
+  const work = required.length || outstanding.length
+    ? [
+        ...required.map(task => `- ${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}${task.evidence ? `: ${task.evidence}` : ''}`),
+        ...outstanding.map(f => `- ${f.label}: ${f.value}${f.detail.trim() ? `. ${f.detail.trim()}` : ''}`),
+      ].join('\n')
     : '- No account preparation action is currently projected. Rescan after any tenant change.'
   const models = projected.approvedModels.map(model => `- ${model.name} — ${model.aaguid}`).join('\n')
   return [

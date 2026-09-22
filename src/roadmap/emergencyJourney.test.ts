@@ -328,3 +328,33 @@ test('a passkey verdict that is not a pass says what it is a verdict about', () 
   }
   assert.ok(checked > 0, 'no fixture produced a passkey verdict short of a pass')
 })
+
+// One step, three channels, three different answers: the tile said "Prepared
+// passkeys · Needs correction · ... no phishing-resistant method registered",
+// the AI brief said "No account preparation action is currently projected."
+// and the portal procedure said "No selected account currently needs
+// configuration." Nothing on the card told the reader which to believe.
+test('the AI brief never says nothing is projected while a tile says otherwise', () => {
+  for (const name of ['getiamai', 'mid', 'midflight', 'demo', 'hostile'] as const) {
+    const f = structuredClone(fixture(name))
+    const run = runFixture(f)
+    const step = run.steps.find(s => s.id === 's-prereq-break-glass')
+    if (!step) continue
+    const outstanding = (step.configurationFindings ?? []).filter(item => item.outcome !== 'pass')
+    const ai = stepBodyOf(step, context(f)).artifacts.find(a => a.id === 'ai')
+    assert.ok(ai, `${name}: no AI channel`)
+    const text = ai.text()
+    if (outstanding.length === 0) continue
+    assert.doesNotMatch(text, /No account preparation action is currently projected/, `${name}: ${outstanding.map(i => `${i.label}: ${i.value}`).join('; ')}`)
+    // And it names them, so the two channels are the same reading.
+    for (const item of outstanding) assert.ok(text.includes(item.label), `${name}: the brief does not mention ${item.label}`)
+  }
+})
+
+// The configuration procedure says what it is about, because the step has
+// another tile that can be asking for a passkey at the same time.
+test('the configuration procedure claims nothing wider than the three changes it makes', () => {
+  const step = runFixture(structuredClone(fixture('demo'))).steps.find(s => s.id === 's-prereq-break-glass')!
+  const text = stepBodyOf(step, context(structuredClone(fixture('demo')))).artifacts.find(a => a.id === 'portal')!.text()
+  assert.doesNotMatch(text, /No selected account currently needs configuration/)
+})
