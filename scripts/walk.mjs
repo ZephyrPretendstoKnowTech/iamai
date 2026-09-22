@@ -808,7 +808,7 @@ async function walkFixture(fx) {
           const tabs = await evaluate(`[...document.querySelectorAll('header.app nav a')].map((a) => (a.textContent || '').trim())`)
           if (tabs.join(' · ') !== HEADER_TABS) add('P0', `${label}: the header tabs read ${tabs.join(' · ')}; ${HEADER_TABS}`)
         }
-        const CONSENT = /The first sign-in in a tenant needs an account that can grant consent \(a Global Administrator, once\); every sign-in after that can be Global Reader\./
+        const CONSENT = /Before anyone in a tenant can use IAMAI, a Global Administrator approves it once by ticking “Consent on behalf of your organization” on Microsoft's screen; after that, Global Reader is enough\./
         const READER = /Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can\. It writes nothing\./
         // 1 Signed in, or Sign in, or (in the demo) the sample tenant. Nobody
         // is signed in during the demo, so tile 1 says so and offers the way
@@ -833,7 +833,7 @@ async function walkFixture(fx) {
           expectBtn(t1, /^Sign out$/, 'tertiary', 'tile 1')
         }
         if (t1 && signedOut) {
-          const want1 = { signedOut: { state: 'no tenant connected', cls: null, lead: null, primary: 'Sign in with Microsoft' }, consent: { state: 'Microsoft asked for admin approval', cls: 'wait', lead: /^This is the first sign-in for contoso\.com, and consent has to be granted once by a Global Administrator\. Sign in with that account this one time, or send them this link; after that, Global Reader is enough\.$/, primary: 'Sign in with Microsoft' }, personal: { state: 'that is a personal Microsoft account', cls: 'stop', lead: /^someone@outlook\.com is a personal account\. IAMAI reads a Microsoft Entra tenant, so it needs a work or school account that belongs to one\.$/, primary: 'Sign in with a work or school account' }, cancelled: { state: 'sign-in was cancelled', cls: null, lead: null, primary: 'Sign in with Microsoft' } }[fx.mock]
+          const want1 = { signedOut: { state: 'no tenant connected', cls: null, lead: null, primary: 'Sign in with Microsoft' }, consent: { state: 'Microsoft asked for admin approval', cls: 'wait', lead: /^IAMAI is not yet approved in contoso\.com\. A Global Administrator approves it once: sign in with that account and tick “Consent on behalf of your organization” on Microsoft's screen\. After that, Global Reader is enough\.$/, primary: 'Sign in with Microsoft' }, personal: { state: 'that is a personal Microsoft account', cls: 'stop', lead: /^someone@outlook\.com is a personal account\. IAMAI reads a Microsoft Entra tenant, so it needs a work or school account that belongs to one\.$/, primary: 'Sign in with a work or school account' }, cancelled: { state: 'sign-in was cancelled', cls: null, lead: null, primary: 'Sign in with Microsoft' } }[fx.mock]
           if (!/^Sign in /.test(t1.h2) || t1.state !== want1.state) add('P0', `${label}: tile 1 reads "${t1.h2}"; Sign in · ${want1.state}`)
           if (want1.cls && !new RegExp('\\b' + want1.cls + '\\b').test(t1.cls)) add('P0', `${label}: tile 1's badge does not carry the ${want1.cls} colour (${t1.cls})`)
           if (!want1.cls && /\b(done|wait|stop)\b/.test(t1.cls)) add('P0', `${label}: tile 1 carries a state colour (${t1.cls}) in the ${fx.mock} state`)
