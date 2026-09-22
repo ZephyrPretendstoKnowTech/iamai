@@ -17,6 +17,7 @@ import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../roadmap/fixtures/run.ts'
 import { operationsOf } from '../roadmap/operations.ts'
+import { changedFieldsOf } from '../roadmap/changedFields.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { rowReason } from '../ui/surfaces/rowWhen.ts'
@@ -534,4 +535,39 @@ test('demo week two: its token-protection policy, switched On exactly as the ste
   const s = goalStep(run, 'token-protection')
   assert.equal(s.status, 'done', 'the enforced policy is still asked for a correction')
   assert.equal(operationsOf(s).some((o) => o.mode === 'update'), false, 'an update is offered for a policy already as the plan built it')
+})
+
+test('no step, on the fixtures the D7 defect reached, proposes an update that changes nothing on the policy it names', () => {
+  // Nadia D7 / R4-10 as a class: coverage reads a tenant policy as short of the
+  // goal, the correction it proposes is the policy's own settings back, and the
+  // step sits at "Correct" for ever. The base had six such updates here: the
+  // demo token-protection policy switched on, and the large tenant's Office 365
+  // compliant-device policy that equals its fixture baseline's. An update that
+  // writes no material field (roadmap/changedFields.ts) and no state is never
+  // the answer to a gap, so wherever one appears, coverage and the correction
+  // disagree about the same policy. Each fixture runs as shipped and with every
+  // report-only policy switched on.
+  const noop: string[] = []
+  let updates = 0
+  for (const name of ['demo-week2', 'large'] as const) {
+    for (const settled of [false, true]) {
+      for (const on of [false, true]) {
+        const f = structuredClone(settled ? withFoundationSettled(fixture(name)) : fixture(name))
+        const rows = rowsOf(f)
+        if (on) for (const r of rows) if (r.state === 'enabledForReportingButNotEnforced') r.state = 'enabled'
+        for (const step of runFixture(f).steps) {
+          for (const op of step.action.resolution?.policies ?? []) {
+            if (op.mode !== 'update') continue
+            updates += 1
+            const current = (rows.find((r) => r.id === op.policyId) ?? null) as Record<string, unknown> | null
+            const state = (op.body as { state?: unknown }).state
+            if (changedFieldsOf(op.body as Record<string, unknown>, current).length > 0 || (state !== undefined && state !== current?.state)) continue
+            noop.push(`${name}${settled ? '+settled' : ''}${on ? '+on' : ''}/${step.id}: ${JSON.stringify(op.body).slice(0, 120)}`)
+          }
+        }
+      }
+    }
+  }
+  assert.ok(updates > 0, 'the sweep reached no update at all')
+  assert.deepEqual(noop, [], 'a correction that changes nothing is offered for a policy coverage reads as short of its goal')
 })
