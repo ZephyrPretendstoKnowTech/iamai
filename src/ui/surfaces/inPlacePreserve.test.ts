@@ -62,6 +62,8 @@ import { inWave } from '../../derive/phases.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { unreadLine } from '../../roadmap/evidence.ts'
 import { POLICY_VERIFY_AFTER } from './doneWhen.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
@@ -885,9 +887,12 @@ test('an enforced step waiting on the person says so, instead of rendering nothi
   assert.match(String(review.note), /yours to record/, String(review.note))
 })
 
-/** The review tile of the first step waiting on a workflow record, on a shipped tenant with its foundation settled. */
-function reviewTileOf(name: Parameters<typeof fixture>[0]): { id: string; note: string | null } | null {
-  const f = withFoundationSettled(fixture(name))
+/**
+ * The review tile of the first step waiting on a workflow record, on a shipped
+ * tenant with its foundation settled — and, where given, its scan changed after.
+ */
+function reviewTileOf(name: Parameters<typeof fixture>[0], scan: (f: Fixture) => Fixture = (f) => f): { id: string; note: string | null } | null {
+  const f = scan(withFoundationSettled(fixture(name)))
   const run = runFixture(f)
   const waiting = run.steps.find((s) => awaitsWorkflowRecord(s))
   assert.ok(waiting, `the premise: a step on ${name} waits on a workflow record`)
@@ -914,14 +919,64 @@ test('an enforced step waiting on the person says what the scan confirmed, and n
   assert.ok(blind, 'the premise: hostile has a review tile')
   assert.doesNotMatch(String(blind.note), /finished with it/, `${blind.id}: ${blind.note}`)
   assert.match(String(blind.note), /the assessed configuration in place/, `${blind.id}: ${blind.note}`)
-  assert.match(String(blind.note), /could not read the sign-in records in this tenant — no sign-in records could be read — so it has seen none/, `${blind.id}: ${blind.note}`)
+  // The engine's one sentence for records IAMAI does not hold enough of. The tile
+  // had a sentence of its own, "IAMAI could not read the sign-in records in this
+  // tenant — {reason} — so it has seen none of the sign-ins this policy applies
+  // to", which a production read that stopped short of 24 hours makes false (below).
+  assert.ok(String(blind.note).endsWith(unreadLine('no sign-in records could be read')), `${blind.id}: ${blind.note}`)
   assert.match(String(blind.note), /yours to record/, `${blind.id}: ${blind.note}`)
 
   // A tenant whose records were read carries no such sentence: it is a fact about
   // that tenant, not a hedge on every enforced policy.
   const read = reviewTileOf('mid')
   assert.ok(read, 'the premise: mid has a review tile')
-  assert.doesNotMatch(String(read.note), /finished with it|could not read the sign-in records/, `${read.id}: ${read.note}`)
+  assert.doesNotMatch(String(read.note), /finished with it|could not read the sign-in records|does not hold enough/, `${read.id}: ${read.note}`)
+
+  // A production-shaped short read (graph/collect/laneBCore.ts 'insufficient'):
+  // some hours read, the rows kept. "Could not read" and "has seen none" are both
+  // false there; the tile says IAMAI does not hold enough, and why.
+  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
+  const short = reviewTileOf('mid', (f) => ({ ...f, snapshot: { ...f.snapshot, sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason } } } }))
+  assert.ok(short, 'the premise: the short read still has a review tile')
+  assert.ok(String(short.note).endsWith(unreadLine(reason)), `${short.id}: ${short.note}`)
+  assert.doesNotMatch(String(short.note), /could not read|has seen none/, `${short.id}: ${short.note}`)
+})
+
+test('the AI briefing of a policy past report-only never says time in report-only completes a check, and one still to run keeps the unread sentence', () => {
+  // The briefing carries the step's evidence line (aiGrounding.ts), and on a
+  // tenant whose sign-in records could not be read it said "This check reads the
+  // sign-in records, which IAMAI could not read in this tenant … Time in
+  // report-only cannot complete it until they can be read" — on the device code
+  // block and guest MFA the first scan found enforced, and on MFA for all users
+  // and legacy authentication already in place: policies past report-only, beside
+  // a review tile that had been corrected. The sentence now holds on every
+  // lifecycle, and it still reaches a policy whose report-only period is to come,
+  // where its enable conditions would otherwise read "no failures" as met.
+  const f = withFoundationSettled(fixture('hostile'))
+  const run = runFixture(f)
+  const briefOf = (step: Step): string => {
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (i: string) => run.input.names!.label(i), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as unknown as StepVarContext
+    const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
+    return ai === undefined || ai.unavailable === true ? '' : ai.text()
+  }
+  const unread = unreadLine('no sign-in records could be read')
+  const past: string[] = []
+  let toRun: string | null = null
+  for (const step of run.steps) {
+    if (step.evidence.unreadable === undefined) continue
+    const brief = briefOf(step)
+    if (brief === '') continue
+    assert.doesNotMatch(brief, /Time in report-only|sign-in records, which IAMAI could not read/, step.id)
+    if (step.state.lifecycle === 'enforced') {
+      past.push(step.id)
+      assert.ok(brief.includes(unread), `${step.id} (enforced): the briefing lost the unread sentence`)
+    } else if (step.state.lifecycle === 'not-deployed' && toRun === null) {
+      toRun = step.id
+      assert.ok(brief.includes(unread), `${step.id} (not deployed): the briefing lost the unread sentence`)
+    }
+  }
+  assert.ok(past.includes('s-goal-block-device-code') && past.includes('s-goal-guests-mfa'), `the premise: the enforced briefings on hostile (${past.join(', ')})`)
+  assert.ok(toRun, 'the premise: a policy on hostile still to run has a briefing')
 })
 
 test('a finished policy IAMAI watched go on keeps the check after the change; one it found already on does not', () => {

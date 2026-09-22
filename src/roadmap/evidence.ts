@@ -11,6 +11,19 @@ import { fillText } from '../content/render.ts'
 /** Why an observation has not completed, where the reason is known (shared.engine.evidence). */
 const W = engine.evidence
 
+/**
+ * The one sentence for sign-in records IAMAI does not hold enough of, with the
+ * reason: in Evidence.lines for the AI briefing and the observation tile, and on
+ * the awaiting-review tile (stepContract.ts). Its words hold on every lifecycle
+ * and every status that sets `Evidence.unreadable`. It said "Time in report-only
+ * cannot complete it" in the briefing of policies already enforced or in place,
+ * and "could not read" over a production read that stopped short of 24 hours
+ * with some records read (graph/collect/laneBCore.ts 'insufficient').
+ */
+export function unreadLine(reason: string): string {
+  return fillText(W.unreadable, { reason })
+}
+
 const RISK_HIGH_GOALS = new Set(['sign-in-risk', 'user-risk'])
 const RISK_MEDIUM_GOALS = new Set(['sign-in-risk-medium', 'user-risk-medium'])
 
@@ -55,9 +68,13 @@ export function evidenceFor(
   // complete, and over a tenant where the policy had stopped four hundred
   // people in report-only, which is precisely what refused the gate. Twelve
   // steps sat behind the first for ten days naming nothing.
+  //
+  // The reason is the source's own, else what its status means in words: the
+  // bare status word filled the sentence, so a scan with no sign-in source read
+  // "— pending —".
   if (!usable) {
-    const reason = src?.reason ?? status
-    return { ...base, lines: [fillText(W.unreadable, { reason })], unreadable: reason }
+    const reason = src?.reason || W.status[status as keyof typeof W.status] || status
+    return { ...base, lines: [unreadLine(reason)], unreadable: reason }
   }
 
   const usage = snapshot.evidenceUsage
