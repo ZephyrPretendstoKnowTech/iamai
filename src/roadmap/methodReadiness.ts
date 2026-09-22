@@ -247,8 +247,15 @@ export function methodReadiness(family: Readiness['family'], preparation: Method
     // which kind of zero they were looking at.
     lines: !completeScope
       ? ['The target policy scope must be resolved before method readiness can be measured.']
-      : readyIds.length === 0 && ids.length > 0 && unknownIds.length === ids.length
-        ? [fillText(W.noneJudged, { n: ids.length })]
+      // Nobody to count is not a reading: "0 of 0 people in scope of these
+      // policies have a registered method" stood on a guest step of a tenant
+      // with no guests.
+      : ids.length === 0
+        ? []
+      : readyIds.length === 0 && unknownIds.length === ids.length
+        // One person reads as one: "None of the 1 person in scope" was the
+        // count-of-one rule applied to a sentence written for many.
+        ? [ids.length === 1 ? W.noneJudgedOne : fillText(W.noneJudged, { n: ids.length })]
         // Which people the denominator counts: the ones the target policies
         // apply to, which is neither the step's active count nor its enabled
         // count, and a step can print all three (246, 283, 279 on one card).
