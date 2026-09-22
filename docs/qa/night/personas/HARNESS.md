@@ -144,76 +144,73 @@ and badge followed that rather than the board — a different lane for 18 of 38
 steps on a messy tenant. It now passes `{lane, blockers, prerequisiteLabel}` the
 way `Plan.tsx` does. Any reading taken from `render()` before this is suspect.
 
-## Fixed 2026-09-22: what round 4's validators caught the harness saying
+## Fixed 2026-09-22: where the harness said what the screen does not
 
-Each of these made a persona read something the screen never shows. A round-4
-finding that rests on one of them is the harness's until it is re-run.
+Each of these had the harness say something the screen never shows. A reading
+taken with the harness before 2026-09-22 may rest on one of them: take it again
+before relying on it. Each has an assertion in `src/testing/personaHarness.test.ts`.
 
 - **`acceptDirection` overwrote saved answers.** It saved `q.suggested` for
-  every question; the screen's Approve saves `q.saved ?? q.suggested`. On
-  Marcus's tenant that turned a saved "everyone works remotely, AU only" into a
-  trusted office network and AU + NZ (R4-13). It now saves what Approve saves.
+  every question; the screen's Approve saves `q.saved ?? q.suggested`, so a
+  saved "everyone works remotely, one country" became the suggested office
+  network and two countries. It now saves what Approve saves, and only where
+  Approve can be pressed.
 - **`plan()` derived from the stored mapping.** `planData.ts` derives the plan
   from `appliedMapping(stored, saved decisions)`; the harness handed
   `runFixture` the stored record, skipping the detected defaults, and
   `decide()` wrote each save back into that record, re-applying every earlier
-  one over it. So a Direction question the product shows as a suggestion read
-  as saved (Marcus's service accounts, R4-13's second example). `plan()` and
-  `rescan()` now derive from `mappingOf(t)`, `ctxOf` renders with the run's
-  mapping, and `decide()` only saves.
+  one over it. So a Direction question the product shows as a suggestion could
+  read as saved. `plan()` and `rescan()` now derive from `mappingOf(t)`,
+  `ctxOf` renders with the run's mapping, and `decide()` only saves.
 - **`plan()` showed a step the product withholds.** `planData.ts` drops the
   steps `customerPlanSteps` withholds from every customer surface (today the
-  admin-portals policy) before anything reads them; the harness kept them, so
-  personas rendered and filed a step no screen draws, and "Known walls" above
-  named it. `plan()` and `rescan()` now drop them too.
+  admin-portals policy) before anything reads them; the harness kept them, so a
+  script could read and render a step no screen draws. `plan()` and
+  `rescan()` now drop them too.
 - **`lanes()` was not the board.** It built rows from the steps only, so the
   Cleanup rows — the drill that holds every policy's enforcement among them —
   were never listed, and a tile naming "Verify Emergency Access" pointed at a
-  row a persona could not find (R4-24, Nadia D6). It titled each row
-  `step.title`, the engine's goal statement, which no row draws: the board
-  draws `contentTitle(step)` ("Block Device Code Sign-in", not "Device-code
-  flow blocked"), and the two differ on 22 of 40 steps of `mid` (R4-40,
-  R4-47). It grouped by `step.kind` where the board reads the content kind,
-  named a prerequisite by `step.title` where Plan.tsx's `titleOf` reads
-  `plainTitle || title` (so `render()`'s tiles quoted goal statements too), and
-  read every Cleanup row as incomplete regardless of the emergency-access
-  answers. All five now match `Plan.tsx`.
+  row the harness did not list. It titled each row `step.title`, the engine's
+  goal statement, which no row draws: the board draws `contentTitle(step)`
+  ("Block Device Code Sign-in", not "Device-code flow blocked"). It grouped by
+  `step.kind` where the board reads the content kind, named a prerequisite by
+  `step.title` where the board reads `plainTitle || title` (so `render()`'s
+  tiles quoted goal statements too), and read every Cleanup row as incomplete
+  regardless of the emergency-access answers. `lanes()` and `stepView()` now
+  read `boardOf` (planBoard.ts), the board the Plan draws, and copy none of it.
 - **`render().state` was a state no screen draws.** It was
-  `contract.state.word / stage`, and persona libraries that copied the board
-  readings printed `contract.state.badge`. The head draws `badgeLabel(contract)`,
-  which reads the lane first: Sam's security-defaults, per-user MFA and
-  Prepare Your Team steps read "Ready" to the persona and "On Hold" on the
-  screen and the board (R4-22, R4-33). `render()` now returns `badge` and
-  `fact`, and `stepView()` gives scripts the body without copying the board.
+  `contract.state.word / stage`, and scripts that copied the board readings
+  printed `contract.state.badge`. The head draws `badgeLabel(contract)`, which
+  reads the lane first, so a step could read "Ready" to a script and "On Hold"
+  on the screen and the board. `render()` now returns `badge` and `fact`, and
+  `stepView()` gives scripts the body without copying the board.
 - **Every date was in the machine's time zone.** The product formats every
   date in the plan's display zone, which planData.ts sets from the stored
   mapping before it derives or draws anything. The harness never set it, so a
   Sydney tenant's 7:00 PM scan read as 3:00 AM on a Denver machine, and a date
   near midnight moved a day. `plan`, `rescan`, `lanes`, `render`,
-  `stepView` and `ctxOf` now set the tenant's zone first. Dates quoted by
-  round-4 personas were in the machine zone (R4-55's note, r4-sam-05).
+  `stepView` and `ctxOf` now set the tenant's zone first.
 - **`enrolMfa` never enrolled people whose only method is turned off.** It
   skipped anyone with any registered method, so a person holding only a phone
   number, in a tenant with text and voice disabled, never registered the method
-  the campaign asks for. On Sam's tenant that is 669 people, and the readiness
-  gate stopped at 86% however often it ran (R4-41). It now enrols them, by the
-  product's own reading of which methods the tenant allows.
+  the campaign asks for, and the readiness gate stopped short of its threshold
+  however often it ran. It now enrols them, by the product's own reading of
+  which methods the tenant allows.
 - **Every persona tenant but the demo ran on a baseline that never ships.**
   `fixture()` builds every non-demo tenant on an eight-policy synthetic
   baseline (fixtures/index.ts, whose comment said the opposite until
-  2026-09-22); the product loads only the pinned package. Jordan, Marcus, Sam,
-  Nadia and Priya all ran on the stand-in, so **every round-4 finding about
-  policy content — apps, filters, names, JSON bodies — needs re-running on the
-  pin before it is worked** (R4-10, R4-23). `tenant()` now re-bases on the pin
-  by default.
+  2026-09-22); the product loads only the pinned package. A reading about a
+  policy's content — apps, filters, names, JSON bodies — taken on the stand-in
+  describes a policy that never ships. `tenant()` now re-bases on the pin by
+  default, and says so when a run asks for the stand-in.
 - **`days()` and `enrolMfa()` counted people without a clock.** They called
-  `activePeopleIds(snapshot)` with no time and no exclusions, so on Marcus's
-  tenant 284 accounts counted as active where the product counts 246: 33
-  dormant, 3 service accounts, 2 emergency accounts. Those signed in on every
-  day of every report-only window and were enrolled with the team.
-  `activePeople(t)` is now the product's reading (the scan's clock, service and
-  emergency accounts out), and both use it. Found fixing the harness, not by a
-  validator.
+  `activePeopleIds(snapshot)` with no time and no exclusions, so dormant
+  accounts, service accounts and emergency accounts counted as active: they
+  signed in on every day of every report-only window and were enrolled with the
+  team. `activePeople(t)` is now the product's reading (the scan's clock,
+  service and emergency accounts out), and both use it.
+- **The recovery test could not be recorded**, so nothing could be enforced
+  (see `recordDrill` above).
 
 ## Rules
 
@@ -227,5 +224,5 @@ finding that rests on one of them is the harness's until it is re-run.
   CI runs it with the suite. A fix to the harness adds its assertion there.
 - Quote what the product renders. `render()` reads the same `stepBodyOf` the
   screen does.
-- Before reporting a defect, check it is not the harness. The last run reported
-  a class of them that were.
+- Before reporting a defect, check it is not the harness: the list above is
+  what the harness has got wrong before.

@@ -50,9 +50,8 @@ export type Tenant = Fixture
  * the scan's own clock, without the accounts the plan says are not people
  * (service and emergency accounts), exactly as planData.ts and runFixture call
  * it. `days()` and `enrolMfa()` called it with the snapshot alone, so with no
- * clock and no exclusions it counted 284 active on Marcus's tenant where the
- * product counts 246: 33 accounts the clock makes dormant, 3 service accounts
- * and 2 emergency accounts, all of whom then signed in on every day of
+ * clock and no exclusions it counted dormant accounts, service accounts and
+ * emergency accounts as active, all of whom then signed in on every day of
  * every report-only window, and were enrolled with the team wherever they held
  * no method.
  */
@@ -65,11 +64,9 @@ export const activePeople = (t: Tenant): string[] => activePeopleIds(t.snapshot,
  * The product loads one baseline, the pinned package (src/ui/baseline.ts). The
  * fixtures do not: every one but the demo builds on an eight-policy synthetic
  * stand-in (fixtures/index.ts `syntheticBaseline`), which the unit tests are
- * written against and which no administrator ever sees. Every round-4 persona
- * but the demo's ran on it, so a finding about what a policy contains — its
- * apps, its filter, its name — described a policy that never ships (R4-10:
- * token protection's JSON tab against a three-app catalogue template the pin
- * does not have; R4-23). So a persona's tenant is re-based on the pin unless
+ * written against and which no administrator ever sees. A tenant built on it
+ * describes policies that never ship — their apps, their filters, their names,
+ * their JSON. So a persona's tenant is re-based on the pin unless
  * the persona asks otherwise: `{ baseline: 'fixture' }` keeps the fixture's
  * own, for a run that means to reproduce what a unit test sees.
  *
@@ -144,8 +141,8 @@ const derived = (t: Tenant): Tenant => {
 /**
  * The steps the plan surfaces show: planData.ts takes the steps the engine
  * withholds from every customer surface out (customerPlanSteps.ts) before
- * anything reads them. The harness showed them, so a persona read, rendered and
- * filed a step the product never draws (the admin-portals policy). The product
+ * anything reads them. The harness showed them, so a script could read and
+ * render a step the product never draws (the admin-portals policy). The product
  * removes them before tracking and this after; no other step refers to them, so
  * no reading differs.
  */
@@ -274,8 +271,8 @@ export function lanes(t: Tenant, r: FixtureRun): BoardRow[] {
  * The opened step's body exactly as ContentStep.tsx receives it: `stepBodyOf`
  * with the board's lane, blockers, prerequisite labels and enforce waits. A
  * script that needs a section `render()` does not flatten reads it here rather
- * than copying the board's readings — the copies in the round-4 persona libs
- * carried the harness's old titles and Cleanup completion with them.
+ * than copying the board's readings: a copy carries whatever the board said
+ * when it was made.
  *
  * The badge the page draws is `badgeLabel(view.contract)`, never
  * `contract.state.badge` or `contract.state.word`: those are inputs to it, and
@@ -307,8 +304,8 @@ export function stepView(t: Tenant, r: FixtureRun, step: Step): ReturnType<typeo
  * `badge` is the state badge the step's head draws (`badgeLabel`, as
  * ContentStep.tsx draws it) and `fact` the tenant-fact chip beside it. There is
  * no `state`: it was `contract.state.word / stage`, which the head never draws,
- * and personas quoted it as the step's state — "Ready" on a step whose badge
- * and board row both read On Hold (R4-22, R4-33). Reading it now throws, so a
+ * and it read as the step's state — "Ready" on a step whose badge and board
+ * row both read On Hold. Reading it now throws, so a
  * script written against the old shape stops instead of printing the wrong
  * word.
  */
@@ -607,9 +604,8 @@ export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepar
  * SAVED answer where it has one, else its suggestion (DirectionQuestions.tsx,
  * `q.saved ?? q.suggested`), with the basis each answer was given against. This
  * used to save `q.suggested` for every question, whatever was saved — which the
- * screen never does. On Marcus's tenant that turned a saved "everyone works
- * remotely, AU only" into a trusted office network and AU + NZ, and a persona
- * filed the harness's overwrite as the product's (R4-13).
+ * screen never does: a saved "everyone works remotely, one country" became the
+ * suggested office network and two countries.
  *
  * A persona who would answer differently calls `decide()` for that question
  * instead — this is the baseline everyone else starts from.
@@ -721,12 +717,11 @@ export function days(t: Tenant, n: number, opts: { signIns?: boolean; failures?:
  * A person holding a method whose availability the product cannot read is left
  * alone: the harness does not know more than the scan does.
  *
- * It used to skip anyone with any method at all, so the phone-only people on
- * Sam's tenant (669 of them, text and voice disabled) never enrolled, the gate
- * stopped at 86% however often it ran, and a persona filed the ceiling as a
- * product defect (R4-41). Before that it set the flags and left
- * `methodsRegistered` empty, which the product reads as 'no' — a severity-5
- * defect that was this function.
+ * It used to skip anyone with any method at all, so on a tenant with text and
+ * voice disabled the people holding only a phone number never enrolled, and
+ * the readiness gate stopped short of its threshold however often it ran.
+ * Before that it set the flags and left `methodsRegistered` empty, which the
+ * product reads as 'no'.
  *
  * The donor is never an emergency account: its hardware key is not what the
  * team registers.
