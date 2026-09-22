@@ -3,7 +3,7 @@
 Do not parse headings for execution. Select blocks only by `META.json` block IDs.
 
 @@IAMAI-BEGIN {"id":"entra.context.prepare","channel":"entra","states":["contextMissing","missing"],"format":"markdown","kind":"template"}
-Entra admin center → Entra ID → Conditional Access → Authentication context. Create or update the IAMAI-resolved context ID/name `{{authContext.target.id}}` / `{{authContext.target.displayName}}`, set description to `Fresh strong authentication for privileged role activation.`, and publish it. Do not choose a different context ID merely because it is free.
+Entra admin center → Entra ID → Conditional Access → Authentication context. If no context has ID `{{authContext.target.id}}`, create it with that ID, the name `{{authContext.target.displayName}}` and the description `Fresh strong authentication for privileged role activation.`, and publish it. If one with that ID already exists under exactly this name and description, publish it if it is not published. If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create. Do not choose a different context ID either: this plan's policy targets `{{authContext.target.id}}`.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.policy.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 Create this policy in Report-only. It will not enforce its access rule until you enable it. PIM role settings are not changed in this step.
@@ -100,7 +100,7 @@ Verify after the change: use a controlled eligible admin or test account to acti
 @@IAMAI-BEGIN {"id":"json.pim.auth-context-rule","channel":"json","states":["pimSettingsPending"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{roleManagementPolicyId}/rules/AuthenticationContext_EndUser_Assignment","repeatForBinding":"pim.roleManagementPolicyIds"}
 {"@odata.type":"#microsoft.graph.unifiedRoleManagementPolicyAuthenticationContextRule","id":"AuthenticationContext_EndUser_Assignment","isEnabled":true,"claimValue":"{{authContext.target.id}}"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["contextMissing","missing","partial","reportOnly","readyToEnforce","pimSettingsPending","verificationPending"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"AuthenticationContextId":{"binding":"authContext.target.id","modes":["PrepareContext","Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM","VerifyPIM"]},"AuthenticationContextDisplayName":{"binding":"authContext.target.displayName","modes":["PrepareContext","Verify","ConfigurePIM"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify","ConfigurePIM"]},"RoleManagementPolicyIds":{"binding":"pim.roleManagementPolicyIds","modes":["ConfigurePIM","VerifyPIM"]}},"withheldModes":{"EnforceCA":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["contextMissing","missing","partial","reportOnly","readyToEnforce","pimSettingsPending","verificationPending"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"AuthenticationContextId":{"binding":"authContext.target.id","modes":["PrepareContext","Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM","VerifyPIM"]},"AuthenticationContextDisplayName":{"binding":"authContext.target.displayName","modes":["PrepareContext","Create","Verify","ConfigurePIM"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify","ConfigurePIM"]},"RoleManagementPolicyIds":{"binding":"pim.roleManagementPolicyIds","modes":["ConfigurePIM","VerifyPIM"]}},"withheldModes":{"EnforceCA":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require MFA at Every Role Activation
 # Module: Microsoft.Graph.Authentication
@@ -152,6 +152,16 @@ function New-Conditions {
 }
 function New-Grant { Assert-Inputs; return @{operator='OR';builtInControls=@();customAuthenticationFactors=@();termsOfUse=@();authenticationStrength=@{id=$AuthenticationStrengthId}} }
 function New-Session { return @{signInFrequency=@{isEnabled=$true;frequencyInterval='everyTime';authenticationType='primaryAndSecondaryAuthentication';type=$null;value=$null};persistentBrowser=$null;applicationEnforcedRestrictions=$null;cloudAppSecurity=$null;disableResilienceDefaults=$null} }
+function Get-ContextIfPresent {
+  try { return Invoke-MgGraphRequest -Method GET -Uri "$ContextBase/$AuthenticationContextId" }
+  catch {
+    $err = $_
+    $status = $null
+    try { $status = [int]$err.Exception.Response.StatusCode } catch { $status = $null }
+    if ($status -eq 404 -or "$($err.Exception.Message)" -match 'NotFound') { return $null }
+    throw $err
+  }
+}
 function Get-Context {
   $c=Invoke-MgGraphRequest -Method GET -Uri "$ContextBase/$AuthenticationContextId"
   if ($c.id -ne $AuthenticationContextId) { throw 'Authentication-context stable-ID readback failed.' }
@@ -195,14 +205,18 @@ function Assert-ContextCanonical($c) {
 switch ($Mode) {
   'PrepareContext' {
     Connect-Scopes @('AuthenticationContext.ReadWrite.All')
-    Invoke-MgGraphRequest -Method PATCH -Uri "$ContextBase/$AuthenticationContextId" -Body ((New-ContextBody) | ConvertTo-Json) -ContentType 'application/json' | Out-Null
+    $body = New-ContextBody
+    $existing = Get-ContextIfPresent
+    if ($null -ne $existing -and ($existing.displayName -ne $AuthenticationContextDisplayName -or $existing.description -ne $ContextDescription)) { throw "Authentication context $AuthenticationContextId already exists as '$($existing.displayName)'. This step does not rename, republish or reuse a context it did not create. Stop: do not create the policy on this context." }
+    Invoke-MgGraphRequest -Method PATCH -Uri "$ContextBase/$AuthenticationContextId" -Body ($body | ConvertTo-Json) -ContentType 'application/json' | Out-Null
     Assert-ContextCanonical (Get-Context)
     Write-Host 'Authentication context prepared/published. Rescan IAMAI.'
   }
   'Create' {
-    Connect-Scopes @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')
+    Connect-Scopes @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess','AuthenticationContext.Read.All')
     Assert-Inputs
     if ([string]::IsNullOrWhiteSpace($PolicyDisplayName)) { throw 'PolicyDisplayName required.' }
+    Assert-ContextCanonical (Get-Context)
     $escaped=$PolicyDisplayName.Replace("'","''"); $filter=[uri]::EscapeDataString("displayName eq '$escaped'")
     if (@((Invoke-MgGraphRequest -Method GET -Uri "$CaBase?`$filter=$filter").value).Count -gt 0) { throw 'Exact display-name collision. Rescan IAMAI; do not create a duplicate.' }
     $body=@{displayName=$PolicyDisplayName;state='enabledForReportingButNotEnforced';conditions=(New-Conditions);grantControls=(New-Grant);sessionControls=(New-Session)}
