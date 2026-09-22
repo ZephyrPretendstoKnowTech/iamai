@@ -55,6 +55,7 @@ function grantOfStepForTest(step: Step): 'mfa' | 'phishingResistant' | 'block' |
   return null
 }
 import { reached, stepPopulation } from '../derive/population.ts'
+import { populationLine } from '../derive/whoLine.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -110,8 +111,10 @@ test('a rollout is the people the policy names, even where the goal is filed und
 
   const cohort = cohortOf(step)
   assert.ok(cohort !== null, 'whose scope the scan can settle')
-  const named = f.snapshot.users.filter((u) => effects.some((e) => accountApplicability(e.scope, u.id, f.snapshot as never, membersOf(f)) === 'in')).map((u) => u.id)
-  assert.deepEqual(cohort, named.slice().sort(), 'the cohort is exactly the accounts the policy names')
+  // The accounts that can sign in: a disabled account is out of every rollout
+  // (the next test). GetIAMAI has none, so this reads the same as before.
+  const named = f.snapshot.users.filter((u) => u.accountEnabled !== false && effects.some((e) => accountApplicability(e.scope, u.id, f.snapshot as never, membersOf(f)) === 'in')).map((u) => u.id)
+  assert.deepEqual(cohort, named.slice().sort(), 'the cohort is exactly the enabled accounts the policy names')
 
   // The goal's own population is narrower, and decides none of it.
   assert.ok(step.population.ids.length < cohort.length, `the goal lists fewer (${step.population.ids.length}) than the policy names (${cohort.length})`)
@@ -128,6 +131,34 @@ test('a rollout is the people the policy names, even where the goal is filed und
   const view = stepPopulation(step)
   assert.ok(view !== null && view.active > 0, 'the surfaces count the people the policy names')
   assert.notEqual(rowWho(step), 'No user impact', 'and the row does not report a rollout of nobody')
+})
+
+// NEW-Nadia-D3. GetIAMAI's all-users policy names eleven accounts. The operator
+// disabled nine of them, as the dormant-accounts step asked, and the Affected
+// people tile still read "2 active people · 1 admin · covers 11 enabled": the
+// cohort's universe was every account in the directory, disabled ones included,
+// and "covers N enabled" was the count of every id in it. A disabled account
+// cannot sign in, so no policy reaches anybody through it.
+test('a disabled account is in no rollout and never counted under "enabled"', () => {
+  const f = structuredClone(fixture('getiamai'))
+  const bg = new Set(f.mapping.breakGlassUserIds)
+  const before = runFixture(f).steps.find((x) => x.id === 's-goal-mfa-all-users') as Step
+  const named = (before.cohort?.ids ?? []).filter((id) => !bg.has(id))
+  const keep = new Set((before.cohort?.activeIds ?? []).slice(0, 2))
+  const disable = named.filter((id) => !keep.has(id))
+  assert.ok(disable.length >= 5 && keep.size === 2, `the premise: the policy names several accounts beyond the two kept (${named.length})`)
+  for (const u of f.snapshot.users) if (disable.includes(u.id)) u.accountEnabled = false
+  const after = runFixture(f).steps.find((x) => x.id === 's-goal-mfa-all-users') as Step
+  const cohort = after.cohort
+  assert.ok(cohort !== undefined, 'the scope is still settled')
+  for (const id of disable) assert.equal(cohort.ids.includes(id), false, `${id}: a disabled account is not in the cohort`)
+  assert.equal(after.rings.some((r) => r.targeting.suggestedMemberIds.some((id) => disable.includes(id))), false, 'nor in any ring')
+  const enabled = new Set(f.snapshot.users.filter((u) => u.accountEnabled !== false).map((u) => u.id))
+  assert.equal(cohort.inScope, cohort.ids.filter((id) => enabled.has(id)).length, 'inScope is the enabled accounts in scope')
+  const line = populationLine(reached(after) as NonNullable<ReturnType<typeof reached>>)
+  const covers = /covers ([\d,]+) enabled/.exec(line)
+  assert.ok(covers === null || Number(covers[1].replace(/,/g, '')) <= enabled.size, `the tile claims more enabled accounts than the tenant has: ${line}`)
+  assert.doesNotMatch(line, new RegExp(`covers ${named.length} enabled`), `the tile still counts the disabled accounts: ${line}`)
 })
 
 test('the same policy under a different goal population rolls out to the same people and says the same thing', () => {
