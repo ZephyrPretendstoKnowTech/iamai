@@ -320,6 +320,14 @@ export type Action = {
      */
     route?: string
     /**
+     * The id of that same step, set with `route` and never without it. The gate
+     * kept the title and dropped the id, so the four policy steps whose Threshold
+     * card said "The step that moves this number is “Prepare Your Team for MFA”"
+     * could not link to it, while every prerequisite tile beside them opened its
+     * step (R4-24, Jordan D14).
+     */
+    routeId?: string
+    /**
      * Said instead of `route` where the campaign provably cannot reach this
      * threshold (roadmap/readiness.ts routeShortfallOf): the two are exclusive.
      *
@@ -352,7 +360,7 @@ export type Action = {
    * Same reading as the gate; it holds nothing. The work is done, and this is
    * a fact about the tenant, which the finished step states.
    */
-  enforcedBelowReadiness?: Omit<NonNullable<Action['readinessGate']>, 'route' | 'routeShortfall'>
+  enforcedBelowReadiness?: Omit<NonNullable<Action['readinessGate']>, 'route' | 'routeId' | 'routeShortfall'>
   /**
    * The plan's own prerequisites of turning this policy on that are not met yet
    * (generate.ts, from the enforce edges of src/actionability/dependency-data.json):
