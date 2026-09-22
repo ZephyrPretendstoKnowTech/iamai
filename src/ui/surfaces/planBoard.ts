@@ -48,7 +48,7 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
-const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the fourth tab brought with it (pages.app.plan.board): its label, and the line a group drawn whole reads. */
 const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
@@ -120,6 +120,8 @@ export const BOARD = {
   columns: { number: '#', state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
   /** What a row is short of when a conditional input has no saved answer (roadmap/answers.ts unsavedInputsOf). */
   unsavedAnswer: LANE_WORDS.unsavedAnswer,
+  /** The same, where the input is one IAMAI filled and is waiting to have confirmed. */
+  unsavedConfirm: LANE_WORDS.unsavedConfirm,
   /** What an empty Ready tab means where rows remain elsewhere (LANE_WORDS.nothingReady). */
   nothingReady: LANE_WORDS.nothingReady,
   collapseGroup: 'Collapse group',
@@ -347,7 +349,9 @@ export function waitingForOf(r: LaneReading, titleOf: (id: string) => string | n
   // Decision" and "Not scheduled" all at once with the missing answer named
   // nowhere.
   const unsaved = (): string | null =>
-    (r.unsaved ?? []).length > 0 ? fillText(BOARD.unsavedAnswer, { inputs: list([...(r.unsaved ?? [])]) }) : null
+    (r.unsaved ?? []).length > 0
+      ? fillText(r.unsavedPrefilled === true ? BOARD.unsavedConfirm : BOARD.unsavedAnswer, { inputs: list([...(r.unsaved ?? [])]) })
+      : null
   if (r.lane !== 'On Hold' && r.lane !== 'Up Next') return unsaved()
   const label = holdLabelOf(r, titleOf)
   return label === BOARD.lanes.onHold || label === BOARD.lanes.upNext ? unsaved() : label

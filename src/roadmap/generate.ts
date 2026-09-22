@@ -99,7 +99,7 @@ import { recoveryAccountBasis, recoveryCandidateReadings, recoveryPreparation, r
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
-import { devicePlanOf, devicePlanComplete, deviceScopeOf, travelCountriesOf, unsavedInputsOf } from './answers.ts'
+import { devicePlanOf, devicePlanComplete, deviceScopeOf, openInputsOf, travelCountriesOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -2788,8 +2788,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // A conditional input nobody saved (U28): the step names it, and the lane
   // engine keeps the step short of Completed and Ready to enforce until a Save.
   for (const s of steps) {
-    const unsaved = unsavedInputsOf(s.id, mapping)
-    if (unsaved.length > 0) s.unsavedInputs = unsaved
+    const open = openInputsOf(s.id, mapping)
+    if (open.length === 0) continue
+    s.unsavedInputs = open.map((input) => input.label)
+    // Whether the row should say "confirm" or "answer": IAMAI filled the
+    // campaign's support list from readiness and is waiting on a Save, and a
+    // row reading "waiting on your answer" over ten names IAMAI worked out
+    // itself names the wrong party.
+    if (open.every((input) => input.prefilled)) s.unsavedInputsPrefilled = true
   }
   annotateStateReasons(steps)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a

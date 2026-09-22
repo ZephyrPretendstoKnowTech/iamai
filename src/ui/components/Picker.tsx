@@ -39,6 +39,7 @@ export function Picker({
   single = false,
   loading = false,
   labelledBy,
+  readOnly = false,
 }: {
   selected: PickerOption[]
   options: PickerOption[] // results for the current query (caller filters/searches)
@@ -50,6 +51,17 @@ export function Picker({
   loading?: boolean
   /** The id of the label above the picker (a decision's `.dlabel`), where there is one. */
   labelledBy?: string
+  /**
+   * The list is IAMAI's and the person confirms it, rather than composing one.
+   *
+   * The campaign's support list is computed from the readiness the plan already
+   * holds — every active admin, everyone with no method, everyone on SMS alone
+   * — and a person adding somebody the evidence does not put there changes who
+   * the plan says needs help, which is a number other steps read. So the chips
+   * show and Save confirms them; there is nothing to type into and nothing to
+   * take off (owner, 2026-09-22).
+   */
+  readOnly?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -95,14 +107,14 @@ export function Picker({
             <span key={s.id} className="chip-select">
               <span className="chip-name">{s.name}</span>
               {s.badge && <span className="chip-badge">{s.badge}</span>}
-              <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => remove(s.id)}>
+              {!readOnly && <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => remove(s.id)}>
                 <Icon name="close" size={12} />
-              </button>
+              </button>}
             </span>
           ))}
         </div>
       )}
-      <div className="picker-search">
+      {!readOnly && <div className="picker-search">
         <Icon name="search" className="picker-search-icon" />
         <input
           type="search"
@@ -146,8 +158,8 @@ export function Picker({
             }
           }}
         />
-      </div>
-      {showList && (
+      </div>}
+      {!readOnly && showList && (
         <div className="picker-list">
           {empty && list.length > 0 && <div className="picker-heading">{T.suggestions}</div>}
           {loading && <div className="picker-footer">{T.searching}</div>}

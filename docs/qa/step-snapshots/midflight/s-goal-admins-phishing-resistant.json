@@ -1,7 +1,7 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "when admin readiness reaches 100% (now 33%)",
   "fact": "Report-only",
   "badge": "On Hold",
   "bar": "Observing",
@@ -18,7 +18,11 @@
       "state": "33% of admins phishing-resistant"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Prerequisites",
+      "state": "Your safe way in"
+    },
+    {
+      "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     }
   ],

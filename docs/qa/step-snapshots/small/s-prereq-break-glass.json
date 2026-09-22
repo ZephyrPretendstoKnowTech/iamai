@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Correct",
+  "lane": "Completed",
+  "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
-  "rail": "Aug 31, 2026",
+  "badge": "Completed",
+  "bar": "In place",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Prepared passkeys",
-      "state": "Could not verify"
+      "state": "Minimum met · hardening open"
     }
   ],
   "channels": [
@@ -24,5 +24,5 @@
     "JSON",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Already in place"
 }

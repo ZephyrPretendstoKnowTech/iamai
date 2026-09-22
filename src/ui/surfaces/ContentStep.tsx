@@ -48,7 +48,7 @@ import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
-import { answerOf, effectLine } from '../../roadmap/answers.ts'
+import { SPECIAL_CARE_STEP_ID, answerOf, effectLine } from '../../roadmap/answers.ts'
 import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -1140,7 +1140,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {!isExclusionsGroup && typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {isNetwork && <label className="remote-choice"><input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)} />Everyone Is Remote</label>}
-        {(hasPicker || isNetwork) && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {/* The campaign's support list is IAMAI's: the person confirms it,
+            rather than composing one. It is computed from the readiness the
+            plan already holds — every active admin, everyone with no method,
+            everyone on SMS alone (derive/contentLists.ts specialCareIds) —
+            and somebody added by hand changes who the plan says needs help,
+            which is a number other steps read (owner, 2026-09-22). */}
+        {(hasPicker || isNetwork) && !remote && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} />}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>

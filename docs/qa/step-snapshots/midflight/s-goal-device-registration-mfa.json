@@ -4,7 +4,7 @@
   "reason": "when MFA readiness reaches 90% (now 72%)",
   "fact": null,
   "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
+  "bar": "After Configure Passkey Authentication",
   "rail": "Aug 31, 2026",
   "headings": [
     "About this Step",
@@ -18,7 +18,7 @@
       "state": "At least 72% MFA-ready"
     },
     {
-      "label": "Prepare Emergency Access Accounts",
+      "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     },
     {

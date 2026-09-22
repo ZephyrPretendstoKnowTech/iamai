@@ -9,7 +9,7 @@ import { RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from '../c
 
 const AZURE_PORTAL = '797f4846-ba00-4fd7-ba43-dac1f8f63013'
 /** The approved security key the prepared accounts hold (a YubiKey 5 model). */
-const APPROVED_KEY = 'a25342c0-3cdc-4414-8e46-f4807fca511c'
+export const APPROVED_KEY = 'a25342c0-3cdc-4414-8e46-f4807fca511c'
 
 /**
  * Completed passkey preparation: the intended passkey settings applied to all

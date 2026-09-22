@@ -22,7 +22,7 @@ import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
 import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
-import { observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
+import { APPROVED_KEY, observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
 import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
@@ -320,7 +320,19 @@ export function buildFixture(spec: Spec): Fixture {
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${seed}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     // The demo's two accounts use two method kinds, so what its emergency-access
     // step has left to fix is the one exclusion below, not method diversity.
-    authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : spec.demo && k === 1 ? [{ kind: 'windowsHelloForBusiness' }] : [{ kind: 'fido2' }]
+    // A method record Entra actually returns. `{ kind: 'fido2' }` with no id,
+    // aaGuid or passkeyType is a shape no tenant produces, and the product
+    // reads a key with no id as unreadable — correctly. The consequence was
+    // that every fixture but the demo shipped its emergency accounts with an
+    // unjudgeable key, which dead-ended the one gate holding thirteen steps
+    // on `midflight` and cost an audit round a wall that is not in the
+    // product (G-F1). The model is an approved one, as a prepared account's
+    // is (fixtures/recoveryRecords.ts withPreparedPasskeys).
+    authMethods[id] = spec.breakGlassSmsOnly
+      ? [{ kind: 'phone', phoneType: 'mobile' }]
+      : spec.demo && k === 1
+        ? [{ kind: 'windowsHelloForBusiness' }]
+        : [{ kind: 'fido2', id: `${seed}-emergency-key-${k + 1}`, aaGuid: APPROVED_KEY, passkeyType: 'deviceBound', attestationLevel: 'attested' }]
     rolesActive[id] = [GA]
   }
   // Service accounts: legacy-auth users with no MFA.

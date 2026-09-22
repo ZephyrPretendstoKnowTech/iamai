@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Configure Passkey Authentication",
-      "state": "Prerequisite · Waiting"
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [

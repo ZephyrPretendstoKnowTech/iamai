@@ -1069,6 +1069,12 @@ test('a policy IAMAI cannot read in full waits on everything, is watched in full
     ['named-location', 's-prereq-trusted-location'],
   ] as const) {
     if (!ids.has(id)) continue
+    // A prerequisite this tenant has already met is not a wait, and the graph
+    // is right to carry no edge for it. `small`'s emergency accounts became
+    // satisfiable when their key records were given the shape Entra returns
+    // (G-F1), which is the whole point of that fix — so the assertion is about
+    // the prerequisites that are still open.
+    if (plan.find((s) => s.id === id)?.status === 'done') continue
     assert.ok(waitsOn(reason, id), `${f.name} ${held.id}: waits on ${reason} (${[...reasons].join(', ') || 'nothing'})`)
   }
   assert.equal(nobodyAffected(held), false, 'it is no zero')

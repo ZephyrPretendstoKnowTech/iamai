@@ -84,6 +84,8 @@ export type LaneReading = {
    * missing.
    */
   unsaved?: readonly string[]
+  /** True where those inputs are IAMAI's to have confirmed rather than its questions (Step.unsavedInputsPrefilled). */
+  unsavedPrefilled?: boolean
 }
 
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */
@@ -418,7 +420,7 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   for (const step of steps) {
     const unsaved = step.doesntApply == null ? step.unsavedInputs ?? [] : []
     const own = out.get(step.id)
-    if (own && unsaved.length > 0) out.set(step.id, { ...own, unsaved })
+    if (own && unsaved.length > 0) out.set(step.id, { ...own, unsaved, unsavedPrefilled: step.unsavedInputsPrefilled === true })
   }
   for (const step of steps) {
     const reading = out.get(step.id)
