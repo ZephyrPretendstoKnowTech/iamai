@@ -1833,7 +1833,12 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // states the policy's own next stage, and what Report-only does not do is the
   // Entra procedure's own line, once.
   const satisfied = facts.filter((t) => !unresolved(t))
-  return { tiles, satisfied, bar: barOf(c) }
+  // The same card, said once. directOnly above dedupes tiles that name the same
+  // STEP; two tiles built from different checks can still come out byte for byte
+  // identical, and one step drew "Allowed countries · Not Fully Read · Missing
+  // scan evidence: sign-in records" twice from two keys. A reader counts two
+  // problems where there is one, and rightly wonders what else is doubled.
+  return { tiles: sameCardOnce(tiles), satisfied: sameCardOnce(satisfied), bar: barOf(c) }
 }
 
 /** The emergency-access gate step and the exclusions-group step (roadmap/blockerSteps.ts), by their subject. */
@@ -1882,6 +1887,30 @@ function tileStepOf(t: ReadinessTile): string | null {
  * is untouched and still draws both. A step named twice (a fix for the object it
  * makes and the edge on it) is one tile: the first, which says why.
  */
+/**
+ * Two CHECKS that come out as the same card are one finding.
+ *
+ * Scoped to the per-check configuration tiles on purpose. One step drew
+ * "Allowed countries · Not Fully Read · Missing scan evidence: sign-in records"
+ * twice — from cty.includesOperator and cty.seenCountriesIncluded, two real and
+ * different checks that both came out as "the source is unreadable", because it
+ * was the same source. To a reader that is one problem said twice, and it
+ * invites the question of what else on the page is doubled.
+ *
+ * Not applied to the rest: two pending source mappings are two objects to
+ * identify, and collapsing them would hide work rather than repetition.
+ */
+function sameCardOnce(tiles: ReadinessTile[]): ReadinessTile[] {
+  const seen = new Set<string>()
+  return tiles.filter((t) => {
+    if (!t.key.startsWith('configuration:')) return true
+    const key = JSON.stringify([t.label, t.value, t.note])
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
   const named = [...new Set(tiles.map(tileStepOf).filter((id): id is string => id !== null))]
   const waitingOnAnother = new Set(named.filter((a) => named.some((b) => b !== a && dependentsOf(b).has(a) && !dependentsOf(a).has(b))))
