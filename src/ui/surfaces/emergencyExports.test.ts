@@ -11,6 +11,8 @@ import { stepExportView } from './stepExport.ts'
 import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { app } from '../../content/content.ts'
 
 const flat = (text: string): string[] => text.replace(/\*\*/g, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
 
@@ -31,3 +33,37 @@ for (const [stepId, tasksOf] of [['s-prereq-exclusion-group', emergencyGroupTask
     assert.doesNotMatch(exported.join('\n'), /leave them off/)
   })
 }
+
+// R4-32 (Marcus D14). The screen offers each registration method behind a
+// picker; the export, AI Info and the Entra artifact took the default alone,
+// unlabelled and numbered on as mandatory, so a reader briefed from them was
+// told to register a YubiKey on 33 ordinary accounts and the Authenticator
+// procedures were gone. Every alternative is written out under its own label.
+test('the flattened emergency tasks carry every alternative under its label, never the default alone', () => {
+  const f = structuredClone(fixture('mid'))
+  const run = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const LABELS = ['YubiKey security key', 'Microsoft Authenticator on iPhone/iPad', 'Microsoft Authenticator on Android']
+  const lead = (app.plan as unknown as { emergencyTasks: { variantsLead: string } }).emergencyTasks.variantsLead
+  const passkeys = run.steps.find(s => s.id === 's-prereq-passkey-settings')!
+  assert.ok(emergencyPasskeyTasksOf(passkeys, ctx).tasks.some(task => task.id === 'prepare-affected-passkeys' && (task.variants?.length ?? 0) > 1), 'the premise: the passkey step offers alternatives')
+  const accounts = run.steps.find(s => s.id === 's-prereq-break-glass')!
+  const channels: [string, string][] = [
+    ['passkey export', stepExportView(passkeys, ctx).whatToDo.join('\n')],
+    ['passkey AI Info', stepBodyOf(passkeys, ctx).artifacts.find(a => a.id === 'ai')!.text()],
+    ['accounts export', stepExportView(accounts, ctx).whatToDo.join('\n')],
+    ['accounts Entra', stepBodyOf(accounts, ctx).artifacts.find(a => a.id === 'portal')!.text()],
+  ]
+  for (const [where, text] of channels) {
+    assert.ok(text.includes(lead), `${where}: no alternatives`)
+    for (const label of LABELS) assert.ok(text.includes(label), `${where}: ${label} is missing`)
+    // The YubiKey steps appear only inside their labelled alternative.
+    for (const chunk of text.split(lead)) {
+      const at = chunk.indexOf('Connect the approved YubiKey')
+      if (at < 0) continue
+      const labelAt = chunk.indexOf(LABELS[0])
+      assert.ok(labelAt >= 0 && labelAt < at && chunk.indexOf(LABELS[1]) > at, `${where}: a YubiKey step outside its label`)
+    }
+    assert.ok(!text.split(lead)[0].includes('Connect the approved YubiKey'), `${where}: a YubiKey step before the alternatives`)
+  }
+})
