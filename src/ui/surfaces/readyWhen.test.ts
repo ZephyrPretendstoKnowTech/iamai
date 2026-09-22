@@ -55,24 +55,41 @@ const shared = content.shared as unknown as Record<string, string[]>
 // the walk reads that column, so the form is held here and nowhere else.
 const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
 const WALK_TIME = RE.gateTime
-// The evidence gate here accepts one form more than the walk's own regex does:
-// the short-window line, which no fixture the walk visits renders. Every form the
-// walk accepts must be accepted here too, which the assertion below proves.
-const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days)\./
+// The evidence gate here accepts two forms more than the walk's own regex does,
+// neither of which any fixture the walk visits renders: the short-window line,
+// and the line for a sign-in source that refused the read outright (R4-48),
+// which states a reason and no count because nothing counted anybody. Every
+// form the walk accepts must be accepted here too, which the assertion below proves.
+const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days|the sign-in records could not be read in this tenant \(.+\), so nothing in this window has been checked and waiting will not change that)\./
+
+const trackedLine = (key: string, vals: Record<string, unknown>): string =>
+  fillText((content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked[1], {
+    reportOnly: '12 Aug',
+    evidenceGate: fillText((content.shared as { engine: { tracking: Record<string, string> } }).engine.tracking[key], vals),
+  })
 
 test('every evidence line the walk accepts is accepted here', () => {
-  const tracked = (content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked
-  const gate = (key: string, vals: Record<string, unknown>): string =>
-    fillText((content.shared as { engine: { tracking: Record<string, string> } }).engine.tracking[key], vals)
   for (const [key, vals] of [
     ['readyNow', { n: 14 }],
     ['evidenceToday', { failures: 2, seen: 3, people: 4, n: 14 }],
     ['evidenceTodayUnread', { seen: 3, people: 4, n: 14 }],
   ] as [string, Record<string, unknown>][]) {
-    const line = fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate(key, vals) })
+    const line = trackedLine(key, vals)
     assert.match(line, RE.gateEvidence, `the walk reads the ${key} evidence line`)
     assert.match(line, WALK_EVIDENCE, `and so does this file's regex`)
   }
+})
+
+test('the evidence lines no walked fixture renders are accepted here too: a short window, and a source that refused the read (R4-48)', () => {
+  // R4-48 gave the evidence gate a form of its own for a sign-in source that
+  // read nothing (derive/readyWhen.ts sourceUnread), in place of the
+  // short-window line with a count nobody took. This file's regex is the one
+  // statement of every form the Done-when's evidence line takes, and it did
+  // not know that one.
+  assert.match(trackedLine('evidenceWindowShort', { seen: 3, people: 4, n: 14 }), WALK_EVIDENCE)
+  const refused = trackedLine('evidenceSourceUnread', { reason: 'no sign-in records could be read' })
+  assert.match(refused, WALK_EVIDENCE)
+  assert.doesNotMatch(refused, /\d+ of \d+ active people/, 'and it counts nobody')
 })
 
 /** A step's Done-when, filled, exactly as the opened step prints it. */
