@@ -148,25 +148,45 @@ test('a request repeated once per role-management policy is reported as an unsup
 // pointed at a published one. The package authors that work as its own state
 // (`contextMissing`), which the runtime never enters because IAMAI reads no
 // authentication contexts and cannot tell a missing one from a published one.
-// The create carries it first instead; it is a create-or-update, so a context
-// already prepared is left as it is.
-test('the create prepares and publishes the context before the policy that targets it', () => {
+// The create carries it first instead.
+//
+// R4-18 review: it carried it as the package wrote it for a context IAMAI had
+// read as its own — "Create or update … c1 / Privileged role activation … and
+// publish it", a blind PATCH of name, description and published state. IAMAI has
+// read nothing here, and c1 is the baseline author's ID, not one resolved against
+// this tenant: a c1 that exists for something else (sensitivity labels, Defender
+// for Cloud Apps, a context left unpublished) was renamed and published, and once
+// enforced this All-users policy gates whatever requests it. The preparation only
+// creates: a context under any other name or description stops the step, in the
+// procedure and in the script, whose Create refuses a context it did not prepare.
+test('the create prepares the context only where there is none, before the policy that targets it', () => {
   const { body } = pimOn(pinnedMid())
   const portal = channelText(body, 'portal')
-  const prepare = portal.indexOf('Conditional Access → Authentication context. Create or update the IAMAI-resolved context ID/name `c1` / `Privileged role activation`')
+  const prepare = portal.indexOf('Conditional Access → Authentication context. If no context has ID `c1`, create it with that ID, the name `Privileged role activation` and the description `Fresh strong authentication for privileged role activation.`, and publish it.')
   const create = portal.indexOf('Conditional Access → Policies → New policy')
   assert.ok(prepare >= 0, portal)
   assert.ok(create > prepare, 'the context is prepared after the policy that must select it')
-  assert.match(portal, /and publish it/)
+  assert.match(portal, /If it exists under any other name or description, stop here: something in your tenant may already request that context, and this step does not rename, republish or reuse a context it did not create\./)
+  assert.doesNotMatch(portal, /Create or update|IAMAI-resolved context/)
   // The Implementation Task reads the same procedure, context first.
   const task = body.emergencyAccountTasks?.tasks[0]
   assert.ok(task, 'the step draws no Implementation Task')
-  assert.match(task.steps[0], /Authentication context\. Create or update the IAMAI-resolved context ID\/name `c1`/)
-  // The script runs the same two modes in the same order.
+  assert.match(task.steps[0], /Authentication context\. If no context has ID `c1`, create it/)
+  // The script runs the same two modes in the same order, and reads before it writes.
   const ps = channelText(body, 'ps')
   const runs = [...ps.matchAll(/^Invoke-IAMAIStep -Mode '(\w+)'/gm)].map((m) => m[1])
   assert.deepEqual(runs, ['PrepareContext', 'Create'])
   assert.match(ps, /-Mode 'PrepareContext' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
+  assert.match(ps, /-Mode 'Create' -AuthenticationContextId 'c1' -AuthenticationContextDisplayName 'Privileged role activation'/)
+  const arm = (mode: string): string => ps.slice(ps.indexOf(`  '${mode}' {`), ps.indexOf('\n  }', ps.indexOf(`  '${mode}' {`)))
+  const prepareArm = arm('PrepareContext')
+  const read = prepareArm.indexOf('$existing = Get-ContextIfPresent')
+  const refuse = prepareArm.indexOf("throw \"Authentication context $AuthenticationContextId already exists as")
+  const write = prepareArm.indexOf('-Method PATCH')
+  assert.ok(read >= 0 && refuse > read && write > refuse, `PrepareContext writes before it reads the context:\n${prepareArm}`)
+  assert.match(prepareArm, /\$existing\.displayName -ne \$AuthenticationContextDisplayName -or \$existing\.description -ne \$ContextDescription/)
+  const createArm = arm('Create')
+  assert.ok(createArm.indexOf('Assert-ContextCanonical (Get-Context)') >= 0 && createArm.indexOf('Assert-ContextCanonical (Get-Context)') < createArm.indexOf('-Method POST'), `Create posts the policy before it checks the context:\n${createArm}`)
 })
 
 // R4-18, secondary. On a plan whose PIM policy is the goal's own template
