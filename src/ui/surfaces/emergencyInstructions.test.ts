@@ -89,6 +89,35 @@ test('Step 1: with no account needing configuration the procedure stays availabl
   assert.ok(steps.some(line => line.startsWith('To change a sign-in address, open the account, select')))
 })
 
+// NEW-Nadia-D12. The configuration procedure said it was not needed and the
+// create procedure never did: with two verified accounts selected, the printed
+// plan and the task list offered "Create an emergency account" as work beside
+// the one task that remained. It says so where the selection holds two or more
+// accounts, every one read as cloud-only — and nowhere a new account is needed.
+test('Step 1: with enough cloud-only accounts selected the create procedure says no new account is needed', () => {
+  const REFERENCE = /^No new emergency account is needed: \d+ cloud-only accounts are selected\. The steps below stay here as a reference\.$/
+  const createOf = (value: Fixture) => tasksOf(value).get('s-prereq-break-glass')!.find(task => task.id === 'create-account')!.steps
+  const verified = structuredClone(fixture('demo-week2'))
+  assert.equal(verified.mapping.breakGlassUserIds.length, 2, 'the premise: two accounts selected')
+  const steps = createOf(verified)
+  assert.equal(steps[0], KEEP)
+  assert.match(steps[1], REFERENCE)
+  assert.ok(steps.some(line => /New user → Create new user/.test(line)), 'the procedure stays as a reference')
+
+  // One account selected: a second is needed.
+  const one = structuredClone(fixture('demo-week2'))
+  one.mapping.breakGlassUserIds = one.mapping.breakGlassUserIds.slice(0, 1)
+  assert.ok(!createOf(one).some(line => REFERENCE.test(line)))
+  // A synchronized account: it has to be replaced.
+  const synced = structuredClone(fixture('demo-week2'))
+  synced.snapshot.users.find(user => user.id === synced.mapping.breakGlassUserIds[0])!.onPremisesSyncEnabled = true
+  assert.ok(!createOf(synced).some(line => REFERENCE.test(line)))
+  // Nobody selected.
+  const none = structuredClone(fixture('demo-week2'))
+  none.mapping.breakGlassUserIds = []
+  assert.ok(!createOf(none).some(line => REFERENCE.test(line)))
+})
+
 test('Step 2: nothing wrong reads as nothing to change, with the group named', () => {
   const tasks = tasksOf(structuredClone(fixture('demo-week2'))).get('s-prereq-exclusion-group')!
   const membership = tasks.find(task => task.id === 'manage-emergency-membership')!.steps

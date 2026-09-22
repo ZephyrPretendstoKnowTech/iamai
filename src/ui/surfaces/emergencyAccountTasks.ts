@@ -84,7 +84,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'createNotNeeded', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -286,8 +286,20 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       'Return to IAMAI and select **Scan to update the plan**.',
     ],
   })
+  // A new account is needed while fewer than two are selected, or one selected
+  // is synchronized (the account card sends it here). Where the selection holds
+  // two or more, every one read as cloud-only, nothing here is needed, and the
+  // procedure says so as the configuration procedure does. It never did, so
+  // with two verified accounts the printed plan and the task list offered
+  // "Create an emergency account" as work beside the one task that remained
+  // (NEW-Nadia-D12). An unread source is not cloud-only: no line then.
+  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true)
+  const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
+  // After the session reminder where there is one: the reminder leads every task.
+  const createAt = create[0] === 'Keep your working administrator session open.' ? 1 : 0
+  if (createClear) create.splice(createAt, 0, fillText(WORDS.createNotNeeded, { n: selected.length }))
   const tasks: EmergencyAccountTask[] = [
-    task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.'] }),
+    task({ id: 'create-account', accountId: null, title: 'Create an emergency account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open creation instructions', steps: create }),
     task({ id: 'configure-account', accountId: null, title: 'Configure an existing account', targetUpn: null, required: false, readinessKey: 'account-setup', evidence: null, actionLabel: 'Open configuration instructions', steps: [
       'Keep your working administrator session open.',
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
