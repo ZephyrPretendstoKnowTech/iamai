@@ -363,3 +363,34 @@ test('the office network has a third answer, and answering it keeps the trusted-
   assert.match(note, /Define the Trusted Network/)
   assert.match(note, /does not read sign-in addresses/)
 })
+
+test('the device code question claims no window and no absence over a sign-in read IAMAI cannot rely on', () => {
+  // A production read that stops short of 24 hours is 'insufficient' and keeps
+  // the rows it read (graph/collect/laneBCore.ts). The question said "2 people
+  // used device code sign-in in the last 30 days" over six hours of records, and
+  // "No device code sign-ins in the last 30 days" where those six hours held
+  // none — a measured absence beside the suggestion that builds the block, while
+  // the device code step's own tile said the records could not be relied on.
+  const reason = 'stopped at time budget with only 6 h covered (minimum 24 h)'
+  const shortRead = (count: number, userIds: string[]): DirectionQuestion => {
+    const f = fixture('demo')
+    f.snapshot.sources.signInEvidence = { ...f.snapshot.sources.signInEvidence, status: 'insufficient', reason }
+    f.snapshot.evidenceUsage = { ...f.snapshot.evidenceUsage!, deviceCode: { count, userIds, byDetail: {} } }
+    return q(stepOf(stepsOf(f), DIRECTION_STEP.use), 'deviceCode')
+  }
+  // Use the rows show is use: the suggestion keeps it, and the window is not claimed.
+  const seen = shortRead(3, ['u1', 'u2'])
+  assert.equal(seen.suggested.value, 'used')
+  assert.match(seen.evidence, /^2 people used device code sign-in in the sign-in records IAMAI read\./, seen.evidence)
+  assert.doesNotMatch(seen.evidence, /in the last 30 days/, seen.evidence)
+  // No use in a short read is not an absence: the suggestion is the default, and says so.
+  const quiet = shortRead(0, [])
+  assert.equal(quiet.evidence, W.defaultEvidence, quiet.evidence)
+  assert.notEqual(quiet.evidence, W.questions.deviceCode.notSeen)
+
+  // A read IAMAI relies on keeps its window and its absence.
+  const f = fixture('demo')
+  f.snapshot.evidenceUsage = { ...f.snapshot.evidenceUsage!, deviceCode: { count: 0, userIds: [], byDetail: {} } }
+  assert.equal(f.snapshot.sources.signInEvidence.status, 'ok', 'the premise: demo read its sign-in records')
+  assert.equal(q(stepOf(stepsOf(f), DIRECTION_STEP.use), 'deviceCode').evidence, W.questions.deviceCode.notSeen)
+})

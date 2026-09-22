@@ -97,11 +97,21 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     suggested: senders.length > 0 ? answer('some', senders) : answer('none'),
     evidence: legacy === null ? W.defaultEvidence : senders.length > 0 ? fillText(Q.mailDevices.seen, { n: senders.length }) : Q.mailDevices.notSeen,
   }))
+  // Use the records show is use, however few of them were read, and keeps its
+  // suggestion. What a read IAMAI cannot rely on (neither ok nor partial) cannot
+  // say is the window, or that nothing uses it: a production read that stops
+  // short of 24 hours is 'insufficient' and keeps the rows it read
+  // (graph/collect/laneBCore.ts), and this said "No device code sign-ins in the
+  // last 30 days" over six hours of records, beside the suggestion that builds
+  // the block — while the step's own tile said the records could not be relied
+  // on. The same gate the mail-sending and partner questions read.
   const code = snapshot.evidenceUsage?.deviceCode ?? null
+  const read = signInsRead(snapshot)
+  const codeUsers = code === null ? 0 : code.userIds.length || code.count
   out.push(question('deviceCode', ctx, {
     label: Q.deviceCode.label, control: 'choice', options: optionsOf(Q.deviceCode.options),
     suggested: answer(code !== null && code.count > 0 ? 'used' : 'unused'),
-    evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(Q.deviceCode.seen, { n: code.userIds.length || code.count }) : Q.deviceCode.notSeen,
+    evidence: code === null ? W.defaultEvidence : code.count > 0 ? fillText(read ? Q.deviceCode.seen : Q.deviceCode.seenShort, { n: codeUsers }) : read ? Q.deviceCode.notSeen : W.defaultEvidence,
     // What the answer does, which the question never said (owner, 2026-09-20).
     // The policy step carries protocol tracking as a risk
     // (docs/plans/close-doors-spec.md section 4, ms-auth-flows); the question

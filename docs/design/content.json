@@ -2622,6 +2622,8 @@
               },
               "seen": "{n} people used device code sign-in in the last 30 days.",
               "notSeen": "No device code sign-ins in the last 30 days.",
+              "$commentSeenShort": "What the question says where IAMAI does not hold enough of the sign-in records to rely on (roadmap/direction.ts, the source neither ok nor partial) and the rows it did read show device code use. A production read that stops short of 24 hours is insufficient and keeps those rows (graph/collect/laneBCore.ts), and the question said \"2 people used device code sign-in in the last 30 days\" over six hours of records, and \"No device code sign-ins in the last 30 days\" where six hours held none - a measured absence beside the suggestion that builds the block. Use the rows show is still use, so it keeps its suggestion; the window is not claimed, and an absence over a short read is the default it is (defaultEvidence).",
+              "seenShort": "{n} people used device code sign-in in the sign-in records IAMAI read. Those do not cover the last 30 days, so there may be others.",
               "note": "Answering Not used builds the policy that blocks it. A session that once used device code stays tracked, so later requests in it can be blocked too, and a device can be signed out."
             },
             "partner": {
