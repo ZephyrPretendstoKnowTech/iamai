@@ -71,7 +71,17 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
         'Keep your working administrator session open.',
         ...(groupId ? [`Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → ${groupName} → Members**. Check object ID **${groupId}**.`] : ['Select and save an exclusions group in IAMAI first.']),
         ...(missing.length ? [`Select **Add members**, choose ${missing.map(id => `**${upnOf(ctx, id)}**`).join(', ')}, then select **Select** to confirm.`] : []),
-        ...(extra.length ? [`Verify the intended recovery accounts work before removal. Select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, then confirm.`] : []),
+        // The consequence goes WITH the instruction, not four paragraphs away.
+        //
+        // These accounts are "extra" only because they are not in the saved
+        // emergency selection — so on a tenant nobody has made that selection
+        // in, the accounts named here for removal are the break-glass accounts
+        // themselves. One reader got lucky: they were called "Break-glass 1"
+        // and "Break-glass 2", so he ticked them instead of removing them.
+        // Named `svc-admin-01`, he follows the task list and locks himself out.
+        // The portal channel does explain it, in its fourth paragraph, which is
+        // not where somebody working down a numbered list is looking.
+        ...(extra.length ? [`First confirm any of these that is a genuinely dedicated emergency account, in the emergency accounts step: removing one puts it back inside every policy this group is excluded from. Then, for the rest only: select ${extra.map(id => `**${directObject(id)}**`).join(', ')}, choose **Remove**, and confirm. Remove a few at a time and check their next sign-in before the next few.`] : []),
         ...(groupId && completeMembers && !missing.length && !extra.length ? ['No membership change is needed.'] : []),
         `Confirm ${accounts} appear as direct members.`,
         'Reopen **Members** and verify the intended list. Return to IAMAI and select **Scan to update the plan**.',
