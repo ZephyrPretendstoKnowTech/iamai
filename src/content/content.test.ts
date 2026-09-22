@@ -278,6 +278,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // (planBoard.ts waitingForOf): a runtime reading of the plan's own state,
   // and the review page draws rows from the file with no state to read.
   '.pages.plan.unsavedAnswer',
+  // The trusted-location step's completion under its other answer
+  // (doneWhen.ts): the review page draws each step once, under the answer the
+  // example records, and the example records a selected network.
+  '.shared.trustedNetworkRemoteDoneWhen[0]',
+  '.shared.trustedNetworkRemoteDoneWhen[1]',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52

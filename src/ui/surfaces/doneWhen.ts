@@ -11,13 +11,26 @@
 // content was written with. A step that changes an existing policy, or submits
 // nothing, keeps its own. Pure.
 import type { Step } from '../../roadmap/types.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { content } from '../../content/content.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { createsNewPolicy } from './stepJson.ts'
 import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 
-export function doneWhenTemplates(step: Step, doneWhen: unknown[]): unknown[] {
+export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: { trustedLocationIds: readonly string[] }): unknown[] {
   const shared = content.shared as Record<string, string[]>
+  // The completion follows the answer.
+  //
+  // The trusted-location step has two answers and had one completion.
+  // Answered "everyone is remote" it still read "An IP named location in the
+  // tenant holds exactly the public ranges the network owner approved, and it
+  // is marked as trusted" — a criterion its own tile denies — on a step marked
+  // Completed, beside a disclosure that the tenant DOES hold a trusted
+  // location this answer leaves out. The answer is the mapping's, which is
+  // what roadmap/generate.ts reads to write the tile.
+  if (step.id === PREREQ_STEP_ID.trustedLocation && mapping && mapping.trustedLocationIds.length === 0) {
+    return [...shared.trustedNetworkRemoteDoneWhen]
+  }
   // A policy whose gates have closed is ready to enforce and not enforced, and
   // its completion says so: the two gates with today's numbers are what it has
   // earned, and what finishes it is a later scan finding the policy on. Without

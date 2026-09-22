@@ -957,14 +957,14 @@ function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>):
 export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['baseline-conflict', 'no-operation', 'unmatched-pair'])
 
 /** The completion, always concrete and never absent. */
-function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string): string[] {
+function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: { trustedLocationIds: readonly string[] }): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
-  const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
+  const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[], mapping)
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
   // A manual task keeps its actual completion criteria while prerequisites wait.
@@ -1118,7 +1118,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     inventory,
     whatToDo,
     fix,
-    doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant),
+    doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant, ctx.mapping),
     members,
     multiPolicy: members.length > 1,
     existing: existingOf(step),

@@ -432,6 +432,11 @@
       "modelRestricted": "No registered key was confirmed allowed by the model restriction. Preserve other working recovery methods while correcting this.",
       "eligible": "Targeting and the global model restriction allow at least one registered key. This does not prove recovery works; perform and record a controlled sign-in test."
     },
+    "$commentTrustedNetworkRemoteDoneWhen": "The trusted-location step has two answers and had one completion. Answered \"everyone is remote\" it still read \"An IP named location in the tenant holds exactly the public ranges the network owner approved, and it is marked as trusted\" - a criterion its own tile denies, on a step marked Completed, beside a disclosure that the tenant DOES hold a trusted location this answer leaves out. The completion follows the answer.",
+    "trustedNetworkRemoteDoneWhen": [
+      "No office network is selected, so no policy of this plan makes a location-based exception.",
+      "Any trusted named location the tenant already holds is left as it is, and outside this plan: this step claims nothing about it."
+    ],
     "csvNotice": "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
     "planPromptTitle": "Explain this plan",
     "proposedNameFollowsConvention": "This follows the convention {tenant} already uses.",
