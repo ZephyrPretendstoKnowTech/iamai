@@ -353,3 +353,71 @@ test('the prerequisite the row names is on the opened step, beside the one that 
   const marked = readinessBlockersOf(reading as never, () => null)
   assert.deepEqual(marked.filter((b) => b.primary === true).map((b) => b.id), ['s-verify-mfa'])
 })
+
+// R4-33 (Marcus D15). The Threshold card said "The step that moves this number
+// is “Prepare Your Team for MFA”", and that step was On Hold behind Register Your
+// Own Passkey, which was Up Next behind Verify Emergency Access: the reader was
+// sent to a held step and had three hops across three tabs to find the first
+// thing anybody could do. The board's own readings know the chain. Rendered with
+// them, as the Plan renders it, the card names where the chain starts and opens
+// it; where the campaign itself can be done today it names the campaign alone.
+test('a Threshold card whose campaign is held names where its chain starts, and opens it', async () => {
+  const { cleanupComplete } = await import('../../roadmap/cleanupDone.ts')
+  const { cleanupEntry } = await import('./cleanupExport.ts')
+  const { chainStartOf, prerequisiteLabelFor } = await import('./planBoard.ts')
+  const { cleanupTitleOf } = await import('./stepContract.ts')
+  const seen = { held: 0, clear: 0 }
+  for (const name of ['demo', 'mid', 'midflight'] as const) {
+    const f = fixture(name)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
+    const readings = laneReadings(r.steps, rows)
+    const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? cleanupTitleOf(x)
+    for (const step of r.steps) {
+      const gate = step.action.readinessGate
+      if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
+      const reading = readings.get(step.id)!
+      const c = stepContract(step, ctx, undefined, laneViewOf(reading, titleOf))
+      const tile = readinessOf(step, c, readinessBlockersOf(reading, titleOf), prerequisiteLabelFor(readings)).tiles.find((t) => t.key === 'gate')!
+      assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card opens nothing`)
+      const start = chainStartOf(readings, gate.routeId)
+      if (readings.get(gate.routeId)!.lane === 'Ready') {
+        seen.clear++
+        assert.equal(start, null)
+        assert.ok(tile.note!.endsWith(`“${gate.route}”.`), `${name}/${step.id}: a campaign that can be done today is named alone — ${tile.note}`)
+        assert.equal(tile.link.href, returnToStep(gate.routeId))
+        continue
+      }
+      seen.held++
+      assert.ok(start !== null, `${name}/${step.id}: the campaign is held and the board found no start — ${JSON.stringify(readings.get(gate.routeId)!.reason)}`)
+      assert.equal(readings.get(start)!.lane, 'Ready', `${name}/${step.id}: "where to start" is not a step anybody can do today`)
+      const first = titleOf(start)!
+      assert.ok(tile.note!.includes(`“${gate.route}”; it waits on “${first}”, which is where to start.`), `${name}/${step.id}: ${tile.note}`)
+      assert.equal(tile.link.href, returnToStep(start), `${name}/${step.id}: the card opens the held campaign, not where to start`)
+    }
+  }
+  assert.ok(seen.held > 0 && seen.clear > 0, `the premise: both a held and a clear campaign — ${JSON.stringify(seen)}`)
+})
+
+// The chain is the engine's own reasons, and it ends where a step does: a chain
+// that runs into a mapping or a decision has no step to send anybody to (that
+// step's own page names what holds it), and a reciprocal pair never loops.
+test('where a chain starts is a Ready step on it, or nothing', async () => {
+  const { chainStartOf } = await import('./planBoard.ts')
+  const on = (lane: string, reason: { kind: string; id: string } | null) => ({ lane, substatus: lane === 'Ready' ? 'Review' : null, reason: reason && { ...reason, milestone: null, condition: null, abnormal: reason.kind !== 'step', ordinal: 5 }, blockers: [], gates: [], order: 0, fromEngine: true })
+  const readings = new Map<string, unknown>([
+    ['campaign', on('On Hold', { kind: 'step', id: 'ladder' })],
+    ['ladder', on('Up Next', { kind: 'step', id: 'drill' })],
+    ['drill', on('Ready', null)],
+    ['mapped', on('On Hold', { kind: 'sourceMapping', id: 'sourceMapping:x' })],
+    ['a', on('Up Next', { kind: 'step', id: 'b' })],
+    ['b', on('Up Next', { kind: 'step', id: 'a' })],
+  ]) as never
+  assert.equal(chainStartOf(readings, 'campaign'), 'drill')
+  assert.equal(chainStartOf(readings, 'ladder'), 'drill')
+  assert.equal(chainStartOf(readings, 'drill'), null, 'a Ready step is where to start: nothing further to name')
+  assert.equal(chainStartOf(readings, 'mapped'), null)
+  assert.equal(chainStartOf(readings, 'a'), null, 'a reciprocal pair does not loop')
+  assert.equal(chainStartOf(readings, 'unknown'), null)
+})

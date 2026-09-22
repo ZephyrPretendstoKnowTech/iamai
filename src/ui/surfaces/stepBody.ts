@@ -36,7 +36,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
-import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
+import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
@@ -142,7 +142,7 @@ export type StepBodyOptions = {
   /** The engine's unresolved prerequisites of this step's next action (planBoard.ts readinessBlockersOf). */
   blockers?: readonly PrerequisiteBlocker[]
   /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor, decision 12); null keeps the tiles' own labels. */
-  prerequisiteLabel?: ((id: string) => string | null) | null
+  prerequisiteLabel?: PrerequisiteLabel | null
   /** This step's owner confirmations of the checks IAMAI cannot read, by prerequisite id (roadmap/decisions.ts). */
   confirmations?: Readonly<Record<string, OwnerConfirmation>>
   /** The baseline commit implementation content is matched against: this build's pin, always, on every product surface. */
