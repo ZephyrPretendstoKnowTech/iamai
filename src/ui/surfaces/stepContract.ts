@@ -1566,7 +1566,9 @@ export type ReadinessTile = {
  */
 export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null; milestone?: string | null
   /** The step is finished and this prerequisite of it is not: a fact, not work left on this step (lanes.ts `unmetPrerequisites`). */
-  overtaken?: true }
+  overtaken?: true
+  /** The engine's reason for the step's lane (lanes.ts `reason`): the prerequisite the board's row names (planBoard.ts holdLabelOf). */
+  primary?: true }
 
 export type ContractReadiness = {
   /**
@@ -2068,7 +2070,8 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
   const lead = facts.filter(unresolved)
   const effectiveBlockers = configuration.length ? blockers.filter(b => !/passkey.*(?:review|settings)|profile.*review/i.test(b.label)) : blockers
-  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)])
+  const rowNamed = effectiveBlockers.find((b) => b.primary === true && (b.kind === 'step' || b.kind === 'suspendedPrerequisite'))?.id ?? null
+  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, effectiveBlockers, present, prerequisiteLabel)], rowNamed)
   // A "Before enforcement" tile used to be relabelled here, with a sentence
   // composed in code — "Ready for report-only deployment. Complete X before
   // enforcement. Creating this policy in Report-only does not enforce access
@@ -2160,9 +2163,16 @@ function sameCardOnce(tiles: ReadinessTile[]): ReadinessTile[] {
   })
 }
 
-function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
+function directOnly(tiles: ReadinessTile[], rowNamed: string | null = null): ReadinessTile[] {
   const named = [...new Set(tiles.map(tileStepOf).filter((id): id is string => id !== null))]
-  const waitingOnAnother = new Set(named.filter((a) => named.some((b) => b !== a && dependentsOf(b).has(a) && !dependentsOf(a).has(b))))
+  // Except the prerequisite the step's own row names (the lane's reason,
+  // planBoard.ts holdLabelOf). The board read "On Hold · After Prepare Your Team
+  // for MFA" over four risk policies, and each one opened on a single tile,
+  // "Verify Emergency Access · To do", because Prepare Your Team for MFA itself
+  // waits on the drill (R4-16, Marcus D6): one row and its page naming different
+  // prerequisites, and the one the row named findable nowhere on the page. The
+  // tile that can be done today is still drawn beside it.
+  const waitingOnAnother = new Set(named.filter((a) => a !== rowNamed && named.some((b) => b !== a && dependentsOf(b).has(a) && !dependentsOf(a).has(b))))
   const drawn = new Set<string>()
   return tiles.filter((t) => {
     const id = tileStepOf(t)
