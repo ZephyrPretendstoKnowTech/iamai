@@ -436,8 +436,7 @@ test('a finished emergency step never promises a deferral or a Cleanup row it do
 // "Minimum emergency access is available, but less resilient than recommended.
 // This does not hold the rollout; see Existing passkeys affected for what would
 // make it stronger." The two tiers belong to the step that has them
-// (step.emergency, Prepare Emergency Access Accounts alone); another step says
-// what it says without the finding.
+// (step.emergency, Prepare Emergency Access Accounts alone).
 test('the emergency-hardening lead stays on the step that has the two tiers', () => {
   const f = structuredClone(fixture('demo-week2'))
   const run = runFixture(f)
@@ -447,9 +446,32 @@ test('the emergency-hardening lead stays on the step that has the two tiers', ()
   assert.ok((step.configurationFindings ?? []).some(x => x.key === 'affected-passkeys' && x.outcome !== 'pass'), 'the premise: an open finding about affected passkeys')
   const text = stepContract(step, context(f)).whatToDo.text
   assert.doesNotMatch(text, /emergency access|less resilient|stronger|defer|Cleanup/i, text)
-  // What the step says with every finding passing: the open finding does not swap the lead.
+})
+
+// And no all-clear over a check IAMAI could not make. Taking the emergency
+// words away left this step saying its milestone, "No change needed.", over the
+// tile "Existing passkeys affected · Could not verify · Some users' registered
+// authentication methods were not readable." — the step contradicting the card
+// beneath it, and an absolute claim over an impact IAMAI did not read. Where
+// every open finding is unread, the lead scopes the all-clear to what was read
+// and names the check that was not; with every finding passing it says its
+// milestone, as it did.
+test('a finished step does not say "No change needed." over a check it could not verify', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const run = runFixture(f)
+  const step = run.steps.find(s => s.id === 's-prereq-passkey-settings')!
+  const open = (step.configurationFindings ?? []).filter(x => x.outcome !== 'pass')
+  assert.deepEqual(open.map(x => [x.label, x.outcome]), [['Existing passkeys affected', 'unknown']], 'the premise: one unread finding is open')
+  const text = stepContract(step, context(f)).whatToDo.text
+  assert.doesNotMatch(text, /^No change needed\.|Nothing left to do\./, text)
+  assert.ok(text.includes('could not verify Existing passkeys affected'), `the lead does not name the unread check: ${text}`)
+  assert.match(text, /^Nothing IAMAI could read here needs a change\./)
+
   const passing = { ...step, configurationFindings: (step.configurationFindings ?? []).map(x => ({ ...x, outcome: 'pass' as const })) }
-  assert.equal(text, stepContract(passing, context(f)).whatToDo.text)
+  assert.equal(stepContract(passing, context(f)).whatToDo.text, 'No change needed.')
+  // A failing finding is not an unread one: this lead does not speak for it.
+  const failing = { ...step, configurationFindings: (step.configurationFindings ?? []).map(x => x.outcome === 'unknown' ? { ...x, outcome: 'fail' as const } : x) }
+  assert.doesNotMatch(stepContract(failing, context(f)).whatToDo.text, /could not verify/)
 })
 
 // R4-56 (Sam D14, Nadia D11), the words. The method-diversity finding printed

@@ -181,6 +181,8 @@ type ContractWords = {
   doneDeploy: string
   doneSetAside: string
   setAsideAction: string
+  /** A finished step's lead where every open finding is unread (actionOf). */
+  leadUnverified: string
   fixStep: string
   fixStepAt: Record<string, string>
   /** A completed step whose own hard prerequisite the scan still finds unmet. */
@@ -1016,6 +1018,15 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   const open = (step.configurationFindings ?? []).filter((f) => f.outcome !== 'pass')
   const openHardening = !!step.emergency && !step.emergency.deferredAt && open.length > 0
   if (openHardening && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: hardeningDeferrable(step) ? CONTRACT.hardening.leadDefer : fillText(CONTRACT.hardening.leadAdvisory, { findings: list(open.map((f) => f.label)) }) }
+  // Any other finished step whose open findings are all unread said its
+  // milestone, "No change needed.", over a tile saying Could not verify — on the
+  // Follow-up snapshot Configure Passkey Settings over "Existing passkeys
+  // affected · Could not verify". IAMAI cannot give an all-clear over a check it
+  // could not make: the lead scopes it to what was read and names the check that
+  // was not. An open failing finding on such a step keeps the milestone words
+  // for now; what it should lead with is an owner question.
+  const unverified = !step.emergency && open.length > 0 && open.every((f) => f.outcome === 'unknown')
+  if (unverified && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: fillText(CONTRACT.leadUnverified, { findings: list(open.map((f) => f.label)) }) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
