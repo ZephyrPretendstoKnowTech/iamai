@@ -16,7 +16,7 @@ import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whol
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
-import { instructionsHeld, rescanLinesOf } from './stepInstructions.ts'
+import { instructionsHeld, rescanLinesOf, wholeLines } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
@@ -328,7 +328,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // nothing here either, on any surface that reads this view (the exports, the
   // print, the prompts, the grounding bundle): the next action stands alone.
   if (!held && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
-  if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
+  if (!held) lines.push(...wholeLines(w.before, ex))
   // The screen draws these lines only in the channel strip, and only while the
   // implementation is the step's current action (stepBody.ts `deployNow`). An
   // enforced block policy held on emergency access exported the correction that
@@ -363,7 +363,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   else if (inPlace) lines.push(...contract.found.filter((x) => x.key === 'in-place').map((x) => x.text))
   // The steps' promise that a scan shows progress follows them while a scan can
   // (stepInstructions.ts rescanLinesOf, R4-20), in the artifacts as on the screen.
-  else if (!unearned && Array.isArray(w.steps)) for (const l of [...w.steps, ...rescanLinesOf(step, cs).steps]) if (whole(l, ex)) lines.push(fillText(l, ex))
+  else if (!unearned && Array.isArray(w.steps)) lines.push(...wholeLines([...w.steps, ...rescanLinesOf(step, cs).steps], ex))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
   // is that same sentence; where it carries none the contract falls back to
