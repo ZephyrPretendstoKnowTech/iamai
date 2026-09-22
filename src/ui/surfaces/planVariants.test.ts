@@ -374,7 +374,10 @@ const INVENTORY: string[] = [
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-block-device-code
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-verify-mfa
   'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small/s-goal-guests-mfa
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // a tenant that switched a tracked policy off (operations.ts switched-off)
+  // No finding: the step's own reason says the policy is there and switched off;
+  // the tagged-disabled finding said the same and "follow the instructions below"
+  // over no instructions (Jordan D6).
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // a tenant that switched a tracked policy off (operations.ts switched-off)
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected

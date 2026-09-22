@@ -42,7 +42,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
@@ -127,7 +127,13 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // holds confirmed accounts (they are on the tenant) or its minimum is met;
   // anything else exists when it is delivered.
   const emergency = step.emergency ?? null
-  const exists = policy ? lifecycle !== null && lifecycle !== 'not-deployed' : emergency ? emergency.accounts.length > 0 : done
+  // A policy this plan tagged that the tenant switched off exists: its lifecycle
+  // reads not-deployed because a disabled policy enforces nothing, and the board
+  // read "Ready · Create" over a step whose own words said the policy is already
+  // there and turning it back on is the change, not a new policy (Jordan D6). The
+  // next action corrects it.
+  const switchedOff = policy && !done && switchedOffPolicy(step) !== null
+  const exists = policy ? (lifecycle !== null && lifecycle !== 'not-deployed') || switchedOff : emergency ? emergency.accounts.length > 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
@@ -143,7 +149,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const enforcedShort = policy && lifecycle === 'enforced' && driftOutcomeOf(step) !== null
   // Accounts that exist and fail a minimum check are started work drifted from
   // the target: the next action corrects them, it does not create them.
-  const drift = !done && (enforcedShort || step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
+  const drift = !done && (switchedOff || enforcedShort || step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
   const kind = step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
   const action = nextActionOf(kind, { exists, drift })
   // The plan's own waits (the legacy `prerequisite` hold), each in the engine's terms: a

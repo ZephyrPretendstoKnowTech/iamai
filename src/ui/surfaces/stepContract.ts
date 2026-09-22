@@ -539,8 +539,16 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
       return fillText(app.plan.escapeHatchHeld, { tenant, steps: heldByTitle(step) })
     case 'readiness-unmet':
       return fillText(app.plan.readinessHeld, { tenant, ...(step.action.readinessGate ?? {}) })
-    case 'switched-off':
-      return fillText(app.plan.switchedOff, { tenant, policy: switchedOffPolicy(step)?.name ?? '' })
+    case 'switched-off': {
+      // Turning it back on enforces it the moment it is saved, so it waits for
+      // the plan's own prerequisites of enforcement like every other turn-on
+      // (roadmap/enforceWaits.ts): the recovery test, and security defaults off.
+      const waits = step.action.enforceWaitsOn ?? []
+      const policy = switchedOffPolicy(step)?.name ?? ''
+      return waits.length === 0
+        ? fillText(app.plan.switchedOff, { tenant, policy })
+        : fillText(waits.length === 1 ? app.plan.switchedOffWaitsOne : app.plan.switchedOffWaitsMany, { tenant, policy, items: list(waits.map((w) => w.title)) })
+    }
     case 'baseline-conflict':
       // Foundation B's own milestone for a baseline that contradicts itself. The
       // step's full explanation is its own `baselineConflict` paragraph and is
@@ -634,7 +642,11 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // never been planned. The tracking holds the whole answer: the name, that
   // the match was by tag, and the state.
   const tag = step.tracking
-  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step)) {
+  // Not where the step's own reason already says it (unavailable `switched-off`):
+  // that line says turning it back on is the change, and this one said "or
+  // follow the instructions below and leave it switched off" over no
+  // instructions — two sources for one fact, disagreeing (Jordan D6).
+  if (tag && tag.state === 'disabled' && tag.matchedBy === 'tag' && tag.policyName && !isPreserved(step) && unavailableReason(step) !== 'switched-off') {
     out.push(found('tagged-disabled', fillText(CONTRACT.foundTaggedDisabled, { policy: tag.policyName, tenant })))
   }
   // A goal the tenant already delivers, and *which* policy delivers it. The
