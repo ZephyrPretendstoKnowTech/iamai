@@ -83,7 +83,17 @@ function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean; ow
   // With the plan's foundation settled (roadmap/foundations.ts): a case about
   // what a readiness threshold holds cannot start behind the gate that holds
   // every policy until both pinned groups are settled.
-  const f = withFoundationSettled(fixture('large'))
+  //
+  // The baseline's compliant-device policy targets All resources, as the pinned
+  // one does, so the tenant's Office 365 policies are genuinely narrower and the
+  // correction widens them. This case used to run on the fixture's own baseline
+  // policy, on Office 365 like the tenant's, and the change it held was the
+  // Nadia D7 defect: an update whose body was the Office 365 target the policy
+  // already had, offered because goals.json said the goal expected all
+  // applications. A policy as the baseline has it now owes nothing
+  // (coverage/classify.ts narrowerApps), so the premise is a real widening.
+  const f0 = withFoundationSettled(fixture('large'))
+  const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => {
     if (!/Compliant device for Office/.test(String(p.displayName))) return p

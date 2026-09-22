@@ -511,3 +511,27 @@ test('audit, live-shaped guests: with no guests, a policy excluding guests does 
   assert.equal(s1.manualReview?.confirmedAt, null)
   assert.equal(s1.satisfiedBy?.sufficient, rowsOf(base).find((p) => p.id === guestId)?.displayName)
 })
+
+test('demo week two: its token-protection policy, switched On exactly as the step built it, is in place and owes no correction', () => {
+  // Nadia D7 / R4-10, on the demo tenant visitors see (the pinned baseline): the
+  // tenant's token-protection policy carries the pinned five resources and the
+  // Cloud PC filter. In report-only it is watched; switched On unchanged it read
+  // "covers fewer apps than the goal expects" and the step came back Ready ·
+  // Correct with an update to its target resources whose material changes were
+  // none — goals.json's first token-protection implementation expected "all"
+  // applications, which token protection cannot target. Nothing the step said
+  // could finish it.
+  const f = fixture('demo-week2')
+  const row = rowsOf(f).find((p) => /token protection/i.test(String(p.displayName)))
+  assert.ok(row, 'the demo tenant has a token-protection policy')
+  assert.equal(row.state, 'enabledForReportingButNotEnforced', 'the premise: it is watched in report-only')
+  row.state = 'enabled'
+  const run = runFixture(f)
+  const r = resultOf(run, 'token-protection')
+  assert.equal(r.reasons.some((x) => x.kind === 'apps-narrower'), false, 'the pinned resources read as fewer than the goal expects')
+  assert.equal(r.status, 'enforced')
+  assert.equal(r.verdict, 'inPlace')
+  const s = goalStep(run, 'token-protection')
+  assert.equal(s.status, 'done', 'the enforced policy is still asked for a correction')
+  assert.equal(operationsOf(s).some((o) => o.mode === 'update'), false, 'an update is offered for a policy already as the plan built it')
+})

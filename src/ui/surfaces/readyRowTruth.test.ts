@@ -113,13 +113,12 @@ test('a correction that changes anything other than exclusions is still held by 
   // The large tenant's compliant-device policy, already enforced, with device
   // readiness at 29% against the 80% its own step asks for: the change is not
   // bounded, so nothing about it moves (roadmap/readinessGate.test.ts case 1).
-  //
-  // The change is one the policy really owes: it also leaves SharePoint Online
-  // out of the Office 365 it targets, which the baseline's does not. As shipped,
-  // the enforced policy already holds everything the step writes, and its
-  // update is empty rather than the Target resources patch identical to what it
-  // holds that this case used to rest on (R4-11, generate.ts settleSections).
-  const f = withFoundationSettled(curatedFixture('large'))
+  // As there, the baseline's compliant-device policy targets All resources, as
+  // the pinned one does, so the change is a real widening: on the fixture's own
+  // Office 365 baseline policy it was the Nadia D7 defect, an update to the
+  // Office 365 target the policy already had.
+  const f0 = withFoundationSettled(curatedFixture('large'))
+  const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => {
     if (!/Compliant device for Office/.test(String(p.displayName))) return p

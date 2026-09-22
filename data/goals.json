@@ -914,7 +914,7 @@
               },
               "applications": {
                 "includeApplications": [
-                  "Office365"
+                  "All"
                 ]
               },
               "clientAppTypes": [
@@ -1395,63 +1395,6 @@
       "baseEffort": 3,
       "applicability": null,
       "implementations": [
-        {
-          "tier": "p1",
-          "kind": "ca",
-          "signature": {
-            "secureSignInSession": true,
-            "platformsIncludeWindows": true
-          },
-          "expectedWho": {
-            "kind": "all"
-          },
-          "expectedApps": "all",
-          "floor": {
-            "session": {
-              "secureSignInSession": true
-            }
-          },
-          "allowedExclusions": [
-            "breakGlass",
-            "globalExclusion",
-            "serviceAccounts"
-          ],
-          "template": {
-            "displayName": "{namePrefix} - Session - Token protection",
-            "conditions": {
-              "users": {
-                "includeUsers": [
-                  "All"
-                ],
-                "excludeGroups": [
-                  "{exclusionsGroup}",
-                  "{serviceAccountsGroup}"
-                ]
-              },
-              "applications": {
-                "includeApplications": [
-                  "00000002-0000-0ff1-ce00-000000000000",
-                  "00000003-0000-0ff1-ce00-000000000000",
-                  "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe"
-                ]
-              },
-              "platforms": {
-                "includePlatforms": [
-                  "windows"
-                ]
-              },
-              "clientAppTypes": [
-                "mobileAppsAndDesktopClients"
-              ]
-            },
-            "grantControls": null,
-            "sessionControls": {
-              "secureSignInSession": {
-                "isEnabled": true
-              }
-            }
-          }
-        },
         {
           "tier": "p1",
           "kind": "ca",

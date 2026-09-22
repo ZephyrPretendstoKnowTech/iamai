@@ -1599,26 +1599,26 @@ test('an existing tenant policy that excludes an emergency account directly is p
   //    its own operation adds no user exclusion, and the portal instructions say
   //    the accounts are members of the group rather than named on the policy.
   //
-  //    What this protects is an update that writes part of `conditions` and not
-  //    its users: Graph merges the submitted `conditions` into the policy, so the
-  //    tenant's own users clause — the direct exclusion with it — survives, and
-  //    the policy the step says it leaves behind (the operation's `target`,
-  //    generate.ts withPatch) must say so too. A patch that carries only the
-  //    state cannot touch the users clause at all, and the two assertions below
-  //    would hold of it by construction.
-  //
-  //    So the premise is made, not found. On this fixture's first scan the one
-  //    update is the switch of its report-only device policy. It used to be a
-  //    Target resources correction that changed nothing — the other, enforced
-  //    device policies' narrower apps written onto this one, which already held
-  //    the baseline's (R4-11) — and this test rested on that inert correction.
-  //    Here the tenant's policy also leaves SharePoint Online out of the Office
-  //    365 it targets, which the baseline's does not, so the correction it owes
-  //    is real: its applications, and not its users.
+  // The different reason is a real one: the tenant's all-users MFA policies
+  // leave one more application out than the baseline does, and the update puts
+  // it back, writing the target resources only. This case used to take the
+  // first update the large fixture offered as found, and that update was the
+  // Nadia D7 / R4-10 defect: a compliant-device "correction" whose body was the
+  // Office 365 target the policy already had, because goals.json said the goal
+  // expected all applications. A policy as the baseline has it owes nothing now
+  // (coverage/classify.ts narrowerApps), so the premise is a difference the
+  // correction genuinely writes.
   const declared = (s: Step): PolicyOperation[] => s.action.resolution?.policies ?? []
   type Conditions = { conditions?: { users?: { excludeUsers?: string[] }; applications?: { includeApplications?: string[]; excludeApplications?: string[] } } }
-  const { f, r } = runs.find((x) => x.f.name === 'large') as { f: Fixture; r: FixtureRun }
-  const adjust = openPolicies(r.steps).find((s) => declared(s).some((o) => o.mode === 'update'))
+  const f = fixture('large')
+  const rows0 = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string; conditions?: { applications?: { excludeApplications?: string[] } } }[]
+  const mfa = (runs.find((x) => x.f.name === 'large') as { r: FixtureRun }).r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')
+  for (const c of mfa?.candidates.filter((x) => x.state === 'enabled') ?? []) {
+    const apps = (rows0.find((p) => p.id === c.policyId)?.conditions ?? {}).applications
+    if (apps) apps.excludeApplications = [...(apps.excludeApplications ?? []), 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe']
+  }
+  const r = runFixture(f)
+  const adjust = openPolicies(r.steps).find((s) => operationsOf(s).some((o) => o.mode === 'update'))
   assert.ok(adjust, 'the fixture adjusts a policy the tenant already has')
   const update = declared(adjust as Step).find((o) => o.mode === 'update')!
   const bg = f.mapping.breakGlassUserIds

@@ -812,16 +812,14 @@ test('007.7c: a correction to a policy the tenant already enforces is put back b
   // policy into report-only would weaken an active control in answer to a change
   // that never turned it on, and would leave the corrected setting in place.
   //
-  // The correction is one the policy really owes: it has also lost one of the
-  // resources the step targets. This case used to rest on the policy as the step
-  // left it, whose remaining "correction" was a Target resources patch identical
-  // to what it held; an enforced policy's update no longer carries a section the
-  // policy already holds (R4-11, generate.ts settleSections), so that one is gone.
-  const c = laterScan({ edit: (row) => {
-    row.state = 'enabled'
-    const apps = (row.conditions as Row).applications as Row
-    apps.includeApplications = (apps.includeApplications as string[]).slice(0, -1)
-  } })
+  // The correction is a real one: the exclusions group has gone from the policy
+  // as well. This case used to switch the policy on and nothing else, and the
+  // correction it found was the Nadia D7 / R4-10 defect — an update to the
+  // target resources that asked for the five the policy already had, because
+  // goals.json expected token protection to cover "all" applications. A policy
+  // on exactly as the step built it now owes nothing (policyTruth.test.ts), so
+  // the premise is made by a difference the correction genuinely writes.
+  const c = laterScan({ edit: (row) => { row.state = 'enabled'; (row.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups = [] } })
   assert.equal(c.step.state.lifecycle, 'enforced')
   const ops = operationsOf(c.step)
   assert.ok(ops.length > 0, 'the correction is still handed over')

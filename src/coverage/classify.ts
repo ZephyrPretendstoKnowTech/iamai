@@ -295,6 +295,39 @@ const platformsNarrow = (f: PolicyFacts): boolean => f.platforms !== null && (f.
 const clientAppsNarrow = (f: PolicyFacts): boolean => f.clientApps.size > 0 && !f.clientApps.has('all')
 
 /**
+ * True when a tenant policy targets fewer resources than the goal's reference
+ * policy (the baseline member the goal is evaluated against, else the goal's own
+ * template). A policy on All resources covers every one. Otherwise:
+ *  - a reference on All resources is wider than it;
+ *  - a reference on a Microsoft application group (the Office 365 suite, the
+ *    admin portals) is wider when the policy leaves that group out. The group is
+ *    what the goal is about; the applications the reference names beside it are
+ *    not compared, which is how coverage has always read such a goal (an owner
+ *    question: the pinned admin-portal policy also names four applications, and
+ *    requiring them would ask a tenant to widen its own portal policy);
+ *  - a reference that names applications alone is wider when it names one the
+ *    policy does not.
+ *
+ * The reference is what the step writes, so a policy built from the step can
+ * never read as narrower than it. The catalogue's `expectedApps` said the same
+ * thing a second time and disagreed: token protection expected "all" resources,
+ * which token protection cannot target, so a policy exactly as the pinned
+ * baseline has it read as narrower and was "corrected" into itself (Nadia D7,
+ * R4-10). `expectedApps` is goal identity's (goalIdentity.ts appsClass), never
+ * coverage's. User actions and authentication contexts are what the goal's own
+ * signature matches on, so they are not compared here.
+ */
+export function narrowerApps(f: PolicyFacts, reference: PolicyFacts): boolean {
+  if (f.apps.all) return false
+  if (reference.apps.all) return true
+  if (reference.apps.office365 || reference.apps.adminPortals) {
+    return (reference.apps.office365 && !f.apps.office365) || (reference.apps.adminPortals && !f.apps.adminPortals)
+  }
+  const named = lowerSet(f.apps.ids)
+  return [...reference.apps.ids].some((id) => !named.has(id.toLowerCase()))
+}
+
+/**
  * The conditions that confine a tenant policy to fewer sign-ins than the goal's
  * reference policy (the baseline member the goal is evaluated against, else the
  * goal's own template), by dimension. Empty when the policy applies wherever the

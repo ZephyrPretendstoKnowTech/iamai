@@ -16,7 +16,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { policyResult } from '../roadmap/operations.ts'
 import { nextMilestone } from '../roadmap/lifecycle.ts'
-import { computeCoverage } from './coverage.ts'
+import { CATALOGUE, computeCoverage } from './coverage.ts'
 import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GroupMembers } from './population.ts'
@@ -431,4 +431,98 @@ test('whole path: pinned member to goal identity to classification to coverage t
   const step = after.steps.find((s) => s.id === 's-goal-mfa-all-users')
   assert.ok(step, 'the step is still in the plan')
   assert.notEqual(step.status, 'done', 'the Plan still reads the goal as finished on a narrower policy')
+})
+
+// ------------------------------------------- 8. the applications a goal expects
+
+// Nadia D7 / R4-10: a token-protection policy switched On exactly as the step
+// asked came back "Ready · Correct" with the gap "covers fewer apps than the
+// baseline", and the correction offered was an update to its target resources
+// whose body was the resources it already had. goals.json carried two
+// token-protection implementations identical but for `expectedApps`: "all" on
+// the first — the one coverage reads — over a template that names three
+// resources, and "specific" on the second. Token protection cannot target All
+// resources, so every token-protection policy, the pinned one included, read as
+// narrower than the goal, and the correction could never close the gap. Coverage
+// now judges resources against the policy the goal is evaluated against
+// (classify.ts narrowerApps), and the duplicate is gone. The goal's own template
+// is held to the same rule in coverage.test.ts.
+
+test('no implementation expects all applications while its own template names fewer', () => {
+  // require-managed-device had the same disagreement: it expects All resources
+  // (the pinned policy's scope, prompt 51) over a template on Office 365. Where
+  // a baseline holds no compliant-device policy that template is the reference,
+  // so it must carry the scope the goal is judged by, or a policy on Office 365
+  // alone would read as the goal in place.
+  const wrong: string[] = []
+  for (const goal of CATALOGUE) {
+    for (const [i, impl] of goal.implementations.entries()) {
+      if (impl.kind !== 'ca' || impl.expectedApps !== 'all') continue
+      const apps = (impl.template as { conditions?: { applications?: { includeApplications?: unknown } } }).conditions?.applications?.includeApplications
+      if (!(Array.isArray(apps) && apps.length === 1 && apps[0] === 'All')) wrong.push(`${goal.id}[${i}]: ${JSON.stringify(apps)}`)
+    }
+  }
+  assert.deepEqual(wrong, [], 'a goal expects all applications of a policy its own template scopes to fewer')
+})
+
+test('every pinned member, switched on in the tenant as it stands, is never read as covering fewer applications than its goal expects', () => {
+  const on = (enabled: boolean) => ({ enabled, seats: 10, consumed: 0 })
+  const snapshot = mkSnapshot({ capabilities: { entraP1: on(true), entraP2: on(true), intune: on(true), workloadIdPremium: on(true), globalSecureAccess: on(true), defenderForCloudApps: on(true), purviewInsiderRisk: on(true) } })
+  const judged: string[] = []
+  const narrower: string[] = []
+  for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
+    const tenantPolicies = PINNED_POLICIES.filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
+    const r = computeCoverage({
+      snapshot,
+      tenantPolicies,
+      baselinePolicies: PINNED_POLICIES,
+      baselineUnusable: [],
+      strengths: buildStrengthLookup([]),
+      groupMembers: new Map() as GroupMembers,
+      goalMap: PINNED_GOAL_MAP,
+    })
+    const goal = r.results.find((x) => x.goal.id === goalId)
+    assert.ok(goal, `${goalId} is evaluated`)
+    // A workload goal (no people) and one about confirmed service accounts (none
+    // here) do not apply; every other goal reads its own member as its candidate.
+    if (goal.status === 'not-applicable') continue
+    const own = goal.candidates.filter((c) => tenantPolicies.some((t) => t.id === c.policyId))
+    assert.equal(own.length, tenantPolicies.length, `${goalId}: the goal's own pinned policy is not its candidate`)
+    judged.push(goalId)
+    for (const c of own) if (c.caveats.includes('apps-narrower')) narrower.push(`${goalId}: ${c.policyName}`)
+  }
+  assert.ok(judged.includes('token-protection'), 'the token-protection member was not judged at all')
+  assert.ok(judged.length >= 20, `only ${judged.length} goals were judged`)
+  assert.deepEqual(narrower, [], 'the baseline\'s own policy reads as covering fewer apps than its goal expects, so following the step can never finish it')
+})
+
+test('an enforced tenant policy equal to the pinned token-protection member is the goal in place', () => {
+  const member = PINNED_POLICIES.find((p) => p.displayName === 'IAC - GLOBAL - SESSION - Windows - TokenProtection')!
+  const tenant = { ...structuredClone(member), id: 'tenant-token-protection', displayName: 'Tenant token protection', state: 'enabled', conditions: { ...structuredClone(member.conditions), users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] } } } as unknown as Raw
+  const r = cover([tenant], { baselinePolicies: [member], goalMap: { 'token-protection': [policyKey(member)] } })
+  const g = r.results.find((x) => x.goal.id === 'token-protection')
+  assert.ok(g, 'the token-protection goal is evaluated')
+  assert.equal(g.reasons.some((x) => x.kind === 'apps-narrower'), false, 'the five resources the baseline names read as fewer than the goal expects')
+  assert.equal(g.status, 'enforced')
+  assert.equal(g.gapSentence, null)
+})
+
+test('resources are judged against the pinned member: fewer token-protection resources are narrower, the admin portals alone are not', () => {
+  // The other side of the rule. A token-protection policy on Exchange alone
+  // leaves four of the pinned five out and is narrower. A portal policy on the
+  // Microsoft Admin Portals is the goal's own scope: the pinned policy also names
+  // four applications beside the group, and coverage has never asked a tenant's
+  // portal policy to add them (classify.ts narrowerApps; an owner question).
+  const users = { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] }
+  const token = PINNED_POLICIES.find((p) => p.displayName === 'IAC - GLOBAL - SESSION - Windows - TokenProtection')!
+  const exchangeOnly = { ...structuredClone(token), id: 'tenant-token-exchange', displayName: 'Tenant token protection', state: 'enabled', conditions: { ...structuredClone(token.conditions), users, applications: { includeApplications: ['00000002-0000-0ff1-ce00-000000000000'], excludeApplications: [] } } } as unknown as Raw
+  const t = cover([exchangeOnly], { baselinePolicies: [token], goalMap: { 'token-protection': [policyKey(token)] } }).results.find((x) => x.goal.id === 'token-protection')
+  assert.ok(t?.candidates.find((c) => c.policyId === 'tenant-token-exchange')?.caveats.includes('apps-narrower'), 'a policy on one of the five resources reads as covering them all')
+
+  const portal = PINNED_POLICIES.find((p) => /Admin Portal/.test(p.displayName))!
+  const portalsOnly = { ...structuredClone(portal), id: 'tenant-admin-portals', displayName: 'Tenant admin portals', state: 'enabled', conditions: { ...structuredClone(portal.conditions), users, applications: { includeApplications: ['MicrosoftAdminPortals'], excludeApplications: [] } } } as unknown as Raw
+  const a = cover([portalsOnly], { baselinePolicies: [portal], goalMap: { 'admin-portals-protected': [policyKey(portal)] } }).results.find((x) => x.goal.id === 'admin-portals-protected')
+  const own = a?.candidates.find((c) => c.policyId === 'tenant-admin-portals')
+  assert.ok(own, 'the portal policy is the goal\'s candidate')
+  assert.equal(own.caveats.includes('apps-narrower'), false, 'a portal policy is told to add the applications the pinned policy names beside the portals')
 })
