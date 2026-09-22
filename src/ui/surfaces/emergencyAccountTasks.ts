@@ -267,7 +267,12 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
       'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users**.',
       // Each change names the selected accounts that need it; with none needing
       // any, every change stays available as a reference.
-      ...(configureNeeded ? [] : ['No selected account currently needs configuration.']),
+      // What this procedure is about, and nothing wider. "No selected account
+      // currently needs configuration." sits on a step whose other tile can be
+      // saying a passkey is missing, and a reader takes it for the step's
+      // all-clear and closes the step. These three changes are the sign-in
+      // address, the enabled state and the role; the passkey is its own task.
+      ...(configureNeeded ? [] : ['No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference.']),
       ...(!configureNeeded || needs('initialDomain').length ? [`${needs('initialDomain').length ? `Open ${named(needs('initialDomain'))}` : 'To change a sign-in address, open the account'}, select **Properties → Edit properties**, change **User principal name** to the tenant’s initial domain${domain ? ` **${safe(domain)}**` : ''}, and save. Do not use this to convert a synchronized identity.`] : []),
       ...(!configureNeeded || needs('enabled').length ? [`${needs('enabled').length ? `Open ${named(needs('enabled'))}` : 'To enable an account, open the account'}, select **Properties → Edit properties → Settings**, set **Account enabled** to **Yes**, and save.`] : []),
       ...(!configureNeeded || needs('permanentGlobalAdministrator').length ? [

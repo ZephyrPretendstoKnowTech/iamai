@@ -82,7 +82,10 @@ test('Step 1: configuring an existing account names the account and only the cha
 
 test('Step 1: with no account needing configuration the procedure stays available and says so', () => {
   const steps = tasksOf(structuredClone(fixture('demo-week2'))).get('s-prereq-break-glass')!.find(task => task.id === 'configure-account')!.steps
-  assert.equal(steps[2], 'No selected account currently needs configuration.')
+  // And says what it is saying it about: this procedure is the sign-in
+  // address, the enabled state and the role, and the step has another tile
+  // that can be asking for a passkey at the same time.
+  assert.equal(steps[2], 'No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference.')
   assert.ok(steps.some(line => line.startsWith('To change a sign-in address, open the account, select')))
 })
 
