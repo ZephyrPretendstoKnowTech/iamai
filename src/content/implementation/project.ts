@@ -140,22 +140,50 @@ export const UNRESOLVED = /\{\{(?:json:)?[A-Za-z0-9_.-]+\}\}|\[omit (?:this line
  * its text. A line naming an optional value IAMAI does not have disappears whole,
  * marker and all; a missing required value refuses the block rather than printing
  * a placeholder.
+ *
+ * A line that introduces indented lines — it ends in a colon — goes with them
+ * when every one of them has gone, and a numbered list below it closes the gap.
+ * The managed-device create read "5. Conditions → set only what IAMAI resolved,
+ * and set each one through its own Configure toggle:" and then "6. Grant", on a
+ * target with no location or platform condition: an instruction to set a list
+ * of conditions that lists none (Priya D9). With no condition to set, there is
+ * no step for Conditions, and every condition stays at its default.
  */
 export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY): { text: string } | { missing: string[] } {
   const missing = new Set<string>()
-  const out: string[] = []
-  for (const line of text.split('\n')) {
+  const lines = text.split('\n')
+  const out: (string | null)[] = []
+  for (const line of lines) {
     const used = [...line.matchAll(BINDING)].map((m) => ({ json: m[1] !== undefined, key: m[2] }))
     // A whole JSON value may be null; a word in a sentence may not.
     const absent = used.filter((u) => (u.json ? !bound(bindings, u.key, emptyOk) : !present(bindings[u.key]))).map((u) => u.key)
     if (absent.length > 0) {
       for (const b of absent) if (required.has(b)) missing.add(b)
+      out.push(null)
       continue
     }
     out.push(line.replace(BINDING, (_m, json: string | undefined, key: string) => (json ? JSON.stringify(bindings[key]) : formatValue(bindings[key]))).replace(OMIT, ''))
   }
   if (missing.size > 0) return { missing: [...missing] }
-  return { text: out.join('\n').replace(/\s+$/, '') }
+  for (let i = 0; i < lines.length; i++) {
+    const intro = out[i]
+    if (intro === null || !/:\s*$/.test(intro)) continue
+    let end = i + 1
+    while (end < lines.length && /^[ \t]+\S/.test(lines[end])) end++
+    if (end === i + 1 || out.slice(i + 1, end).some((l) => l !== null)) continue
+    out[i] = null
+    const at = /^(\d+)\.\s/.exec(intro)
+    if (at === null) continue
+    // The numbered lines that follow it in the same list, each one earlier.
+    for (let k = end; k < lines.length; k++) {
+      const l = out[k]
+      if (l === null || l.trim() === '' || /^[ \t]/.test(l)) continue
+      const n = /^(\d+)\.(\s)/.exec(l)
+      if (n === null) break
+      if (Number(n[1]) > Number(at[1])) out[k] = `${Number(n[1]) - 1}.${l.slice(n[1].length + 1)}`
+    }
+  }
+  return { text: out.filter((l): l is string => l !== null).join('\n').replace(/\s+$/, '') }
 }
 
 /** An endpoint with its single-brace identity filled (`/policies/{policy.current.id}`), or the bindings it lacks. */
