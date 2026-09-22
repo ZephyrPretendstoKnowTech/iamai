@@ -183,13 +183,13 @@ finding that rests on one of them is the harness's until it is re-run.
 ## Rules
 
 - This directory is gitignored except the harness core — `harness.ts`, this
-  file, `r3-tenants.ts`, `r3-journey.ts` and the `tsconfig.json` that
-  typechecks them — which is tracked (.gitignore says why). Scripts, probes
-  and round reports stay untracked. Nothing here ships, and `npm run verify`
-  does not typecheck the core: after changing one of its files, run
-  `npx tsc -p docs/qa/night/personas` from the repository root. (Plain
-  `npx tsc --noEmit` checks `src/` and `scripts/` and passes whatever the
-  harness holds; naming a file on the command line stops with TS5112.)
+  file, `r3-tenants.ts` and `r3-journey.ts` — which is tracked (.gitignore
+  says why). Scripts, probes and round reports stay untracked. Nothing here
+  ships. The core's self-check is `src/testing/personaHarness.test.ts`: it
+  imports the three `.ts` files, so the project's typecheck covers them, and
+  it asserts each thing the harness once said that the screen does not. After
+  changing the core, run `npm run verify -- src/testing/personaHarness.test.ts`;
+  CI runs it with the suite. A fix to the harness adds its assertion there.
 - Quote what the product renders. `render()` reads the same `stepBodyOf` the
   screen does.
 - Before reporting a defect, check it is not the harness. The last run reported

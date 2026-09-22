@@ -11,13 +11,12 @@ docs/qa/night/personas/*
 # audit, committed so the loop survives a clone. The fixtures are synthetic and
 # contain no tenant data. Scratch probes and round reports stay ignored, so a
 # future ground-zero agent cannot read what an earlier round concluded.
+# src/testing/personaHarness.test.ts imports the three .ts files, which is what
+# typechecks them and checks what they say.
 !docs/qa/night/personas/HARNESS.md
 !docs/qa/night/personas/harness.ts
 !docs/qa/night/personas/r3-tenants.ts
 !docs/qa/night/personas/r3-journey.ts
-# What typechecks the four above (npx tsc -p docs/qa/night/personas): the
-# project's typecheck covers src/ and scripts/ only.
-!docs/qa/night/personas/tsconfig.json
 
 fixtures/private/
 # The overnight walk harness output (prompt 53 Unit 0): captures and screenshots, never committed.
