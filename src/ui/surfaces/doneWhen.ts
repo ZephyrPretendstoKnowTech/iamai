@@ -18,6 +18,14 @@ import { readyWhen } from '../../derive/readyWhen.ts'
 import { createsNewPolicy } from './stepJson.ts'
 import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 
+/**
+ * The person's own check once the policy has changed (shared.policyVerifyAfter):
+ * the last line of the sign-in-records policy block, and the one line of it a
+ * finished policy IAMAI watched change still owes (stepContract.ts doneWhenOf).
+ * Its own key, so the two places that state it read one sentence.
+ */
+export const POLICY_VERIFY_AFTER: string = (content.shared as unknown as { policyVerifyAfter: string }).policyVerifyAfter
+
 export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pick<MappingState, 'trustedLocationIds' | 'wizardAnswered' | 'assumed'>): unknown[] {
   const shared = content.shared as Record<string, string[]>
   // The completion follows the answer.
@@ -66,13 +74,9 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[], mapping?: Pic
   // all. The lines after the gates stay: the scan that confirms the policy and the
   // person's own check.
   const enforced = step.state.lifecycle === 'enforced'
-  const policy = configured
-    ? shared.policyDoneWhenConfiguration
-    : readyWhen(step)
-      ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
-      : enforced
-        ? shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)
-        : shared.policyDoneWhen
+  const afterGates = shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)
+  const rollout = readyWhen(step) ? [...tracked, ...afterGates] : enforced ? afterGates : shared.policyDoneWhen
+  const policy = configured ? shared.policyDoneWhenConfiguration : [...rollout, POLICY_VERIFY_AFTER]
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
   const change = createsNewPolicy(step) ? policy : shared.changeDoneWhen
