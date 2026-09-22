@@ -44,7 +44,7 @@ test('no step string carries a phrase the step surfaces forbid', () => {
     } else if (Array.isArray(node)) {
       node.forEach((v, i) => scan(v, `${path}[${i}]`))
     } else if (node && typeof node === 'object') {
-      for (const [k, v] of Object.entries(node)) if (k !== 'example' && k !== '$comment') scan(v, path ? `${path}.${k}` : k)
+      for (const [k, v] of Object.entries(node)) if (k !== 'example' && !k.startsWith('$comment')) scan(v, path ? `${path}.${k}` : k)
     }
   }
   scan({ steps: content.steps, cleanup: content.cleanup, shared: { ...content.shared, engine: undefined } }, '')
@@ -271,6 +271,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // example tenant's own policy names agree on a convention, so the name follows
   // it and the documented-pattern sentence does not render here.
   '.shared.proposedNameDocumented',
+  // The third of them (stepVars.ts proposedNameNote): the example tenant has
+  // policies, so the no-policies case cannot render here either.
+  '.shared.proposedNameNoPolicies',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
@@ -310,7 +313,7 @@ test('no orphan content string: every non-structural key renders, or is a known 
     }
     if (node && typeof node === 'object') {
       for (const [k, v] of Object.entries(node)) {
-        if (k === 'example' || k === '$comment' || k === 'version') continue
+        if (k === 'example' || k.startsWith('$comment') || k === 'version') continue
         walk(v, `${path}.${k}`)
       }
     }
@@ -339,7 +342,7 @@ test('no rendered string starts with "Shown on"', () => {
     } else if (Array.isArray(node)) {
       node.forEach((v, i) => walk(v, `${path}[${i}]`))
     } else if (node && typeof node === 'object') {
-      for (const [k, v] of Object.entries(node)) if (k !== 'example' && k !== '$comment') walk(v, `${path}.${k}`)
+      for (const [k, v] of Object.entries(node)) if (k !== 'example' && !k.startsWith('$comment')) walk(v, `${path}.${k}`)
     }
   }
   walk(content, '')
