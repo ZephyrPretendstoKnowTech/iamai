@@ -15,7 +15,8 @@ import { runFixture } from '../../../../src/roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../../../src/roadmap/fixtures/run.ts'
 import { stepBodyOf } from '../../../../src/ui/surfaces/stepBody.ts'
 import type { StepVarContext } from '../../../../src/ui/surfaces/stepVars.ts'
-import { applyStepDecisions } from '../../../../src/roadmap/decisions.ts'
+import { appliedMapping } from '../../../../src/ui/surfaces/pickerRows.ts'
+import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
 import { directionDecisionOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
@@ -42,10 +43,31 @@ export function tenant(base: FixtureName, mutate: (t: Tenant) => void = () => {}
 }
 
 /**
+ * The mapping every surface reads: the tenant's STORED mapping record, with
+ * every picker's detected default applied as the plan's decision and then every
+ * decision the person saved over it (pickerRows.ts `appliedMapping`, which
+ * planData.ts runs before it derives anything). `t.mapping` is the stored
+ * record and `t.decisions` the saved step decisions, as the app keeps them in
+ * two places; neither alone is what the plan is derived from.
+ *
+ * `plan()` and `rescan()` used to hand `runFixture` the stored record as it
+ * stood, so the detected defaults (the service accounts the signals nominate,
+ * the special-care people) were never applied and a question the product shows
+ * as a suggestion read to a persona as saved.
+ */
+export function mappingOf(t: Tenant): Tenant['mapping'] {
+  const nameOf = (id: string): string => t.groups.get(id)?.displayName ?? id
+  return appliedMapping({ snapshot: t.snapshot, mapping: t.mapping, nameOf, groups: t.groups, now: t.snapshot.asOf }, t.decisions ?? null)
+}
+
+/** The tenant as planData.ts derives it: the same scan, over the applied mapping. */
+const derived = (t: Tenant): Tenant => ({ ...t, mapping: mappingOf(t) })
+
+/**
  * The person's FIRST scan of this tenant. Nothing was watched before it, so it
  * carries no prior record: everything it sees, it sees for the first time.
  */
-export const plan = (t: Tenant): FixtureRun => runFixture(t)
+export const plan = (t: Tenant): FixtureRun => runFixture(derived(t))
 
 /**
  * What the plan recorded about the tenant's policies, to hand to the next scan.
@@ -56,10 +78,14 @@ export const plan = (t: Tenant): FixtureRun => runFixture(t)
 export const observations = (r: FixtureRun, prior: Record<string, StepObservationRecord> | null = null): Record<string, StepObservationRecord> =>
   observationsOf(r.steps, prior)
 
-/** The context the opened step is rendered with — the same one Plan.tsx builds. */
+/**
+ * The context the opened step is rendered with — the same one Plan.tsx builds.
+ * Its mapping is the one the run was derived from (planData.ts hands the page
+ * `applied`), never the stored record.
+ */
 export function ctxOf(t: Tenant, r: FixtureRun, step: Step): StepVarContext {
   return {
-    snapshot: t.snapshot, mapping: t.mapping,
+    snapshot: t.snapshot, mapping: r.input.mapping,
     nameOf: (id: string) => r.input.names?.label(id) ?? id,
     signature: 'IT', operatorId: t.operatorId, now: t.snapshot.asOf, groups: t.groups,
     reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
@@ -209,19 +235,29 @@ export function render(t: Tenant, r: FixtureRun, step: Step): {
 /** The person saves an answer on a step. Direction steps expand into the decisions their answers have always been saved as. */
 export function decide(t: Tenant, stepId: string, input: StepDecisionInput, at = '2026-09-01T09:00:00.000Z'): Tenant {
   const next = structuredClone(t) as Tenant
+  // A custody answer about the previous emergency accounts cannot vouch for a
+  // new set, so saving a different set clears it in the stored record — the one
+  // write a decision makes to the mapping (planData.ts onDecide).
+  if (stepId === BREAK_GLASS_STEP_ID && input.picked) {
+    const same = [...input.picked].sort().join('|') === [...mappingOf(t).breakGlassUserIds].sort().join('|')
+    if (!same) next.mapping = { ...next.mapping, breakGlassAnswers: { ...(next.mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }), credentialStorage: null }, breakGlassCustodyBasis: {} }
+  }
   // Save it the way the product saves it: the decision is stored under the step
   // the person was on, and `expandDirectionDecisions` is the ONE door that turns
   // a Direction approval into the decisions its answers have always been stored
   // as. An earlier version of this harness expanded first and stored the
   // expansion too, so applying re-expanded it and picked ids were lost — which
   // looked exactly like a product defect. It was not.
+  //
+  // It is NOT applied to `t.mapping`. The product keeps the stored record and
+  // the saved decisions apart and applies them, over the detected defaults, on
+  // every derivation (`mappingOf`). This used to write
+  // `applyStepDecisions(t.mapping, decisions)` back into `t.mapping`, so each
+  // save re-applied every earlier decision over a record that already held
+  // them — and `applyStepDecisions` reads the record it is given (a device
+  // restriction is kept only while the stored answer matches), so the result
+  // was not what the product derives.
   next.decisions = { ...(next.decisions ?? {}), [stepId]: { ...input, at } }
-  // Hand over the RAW saved decisions. `applyStepDecisions` expands Direction
-  // approvals itself (decisions.ts:195); expanding here as well applied the
-  // step's own record a second time, and that record carries the answer without
-  // its picked ids — so the ids were clobbered and a trusted location vanished.
-  // That looked like a product defect and was not.
-  next.mapping = applyStepDecisions(t.mapping, next.decisions as never)
   return next
 }
 
@@ -318,7 +354,7 @@ export function deploy(t: Tenant, step: Step, fidelity: 'exact' | 'enforced' | '
  * `now` moves the clock: a scan a week later is how a report-only window passes.
  */
 export const rescan = (t: Tenant, prior: Record<string, StepObservationRecord> | null = null, now: string | null = null): FixtureRun =>
-  runFixture(t, {}, prior, now)
+  runFixture(derived(t), {}, prior, now)
 
 /**
  * The person goes and prepares emergency access: registers an approved recovery
@@ -345,9 +381,12 @@ export function prepareEmergencyAccess(t: Tenant): Tenant {
   // reason Establish Emergency Access keeps the security key. Taking
   // requiredModels[0] here registered a Microsoft Authenticator passkey and
   // called it device-bound, and the product correctly refused it.
-  const models = requiredModels(next.mapping)
+  // The emergency accounts and approved models the plan reads: the applied
+  // mapping, where a saved emergency-access decision lands.
+  const mapping = mappingOf(next)
+  const models = requiredModels(mapping)
   const model = models.find((m) => /yubikey|security key/i.test(m.name)) ?? models[models.length - 1]
-  for (const [i, id] of next.mapping.breakGlassUserIds.entries()) {
+  for (const [i, id] of mapping.breakGlassUserIds.entries()) {
     const existing = Array.isArray(next.snapshot.authMethods[id]) ? next.snapshot.authMethods[id] : []
     const others = (existing as { kind: string }[]).filter((m) => m.kind !== 'fido2' && m.kind !== 'passkey')
     next.snapshot.authMethods[id] = [
@@ -377,7 +416,7 @@ export function prepareEmergencyAccess(t: Tenant): Tenant {
  */
 export function configurePasskeys(t: Tenant): Tenant {
   const next = structuredClone(t) as Tenant
-  const reading = passkeyReadingOf(next.snapshot, next.mapping)
+  const reading = passkeyReadingOf(next.snapshot, mappingOf(next))
   if (reading.resolution?.kind !== 'target') return next
   const section = next.snapshot.config.authMethodsPolicy
   const rows = (section?.rows ?? []) as Record<string, unknown>[]

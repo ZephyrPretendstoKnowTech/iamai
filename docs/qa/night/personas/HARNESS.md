@@ -21,8 +21,15 @@ mostly stopped by a gate the harness could not clear — not by a product defect
 import { tenant, plan, rescan, observations, deploy, days,
          settleAll, settleFoundations, prepareEmergencyAccess,
          configurePasskeys, acceptDirection, enrolMfa,
-         decide, answers, render, lanes, ctxOf } from './harness.ts'
+         decide, answers, render, lanes, ctxOf, mappingOf } from './harness.ts'
 ```
+
+- `t.mapping` is the tenant's STORED mapping record and `t.decisions` the
+  step decisions the person saved — two records, as the app keeps them. What
+  every surface reads is `mappingOf(t)` (= `run.input.mapping`): the stored
+  record with the detected defaults applied, then the saved decisions over it
+  (`appliedMapping`, as `planData.ts` derives it). `decide()` saves a
+  decision and does not touch `t.mapping`; read `mappingOf(t)` after it.
 
 - `plan(t)` — the FIRST scan. No prior record, by definition.
 - `observations(run, prior?)` — what that scan recorded, to hand to the next one.
@@ -91,6 +98,14 @@ finding that rests on one of them is the harness's until it is re-run.
   every question; the screen's Approve saves `q.saved ?? q.suggested`. On
   Marcus's tenant that turned a saved "everyone works remotely, AU only" into a
   trusted office network and AU + NZ (R4-13). It now saves what Approve saves.
+- **`plan()` derived from the stored mapping.** `planData.ts` derives the plan
+  from `appliedMapping(stored, saved decisions)`; the harness handed
+  `runFixture` the stored record, skipping the detected defaults, and
+  `decide()` wrote each save back into that record, re-applying every earlier
+  one over it. So a Direction question the product shows as a suggestion read
+  as saved (Marcus's service accounts, R4-13's second example). `plan()` and
+  `rescan()` now derive from `mappingOf(t)`, `ctxOf` renders with the run's
+  mapping, and `decide()` only saves.
 
 ## Rules
 
