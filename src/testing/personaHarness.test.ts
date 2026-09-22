@@ -29,6 +29,7 @@ import { contentTitle } from '../content/stepTitle.ts'
 import { facts } from '../derive/facts.ts'
 import { activePeopleIds } from '../derive/population.ts'
 import { methodAvailability } from '../roadmap/methodAvailability.ts'
+import { directionAnswerComplete } from '../roadmap/directionAnswers.ts'
 import { absolute, setDisplayTimeZone } from '../copy/dates.ts'
 
 // The harness sets the plan's display time zone, as planData.ts does. The suite
@@ -188,4 +189,18 @@ test('the recovery test can be recorded, and with it the policies ready to enfor
   const enforced = stage(drilled.stages, 'enforced what was ready')
   assert.equal(enforced['ready-to-enforce'] ?? 0, 0, 'a policy ready to enforce was not turned on')
   assert.ok(enforced.done > stage(drilled.stages, 'report-only window').done, 'turning the policies on completed none of them')
+})
+
+test('Approve answers is pressed only where the screen lets it be pressed', () => {
+  // Approve is disabled while a question that takes a list has none
+  // (directionAnswerComplete). acceptDirection saved such a step anyway: a
+  // countries question with no country suggested was approved as none.
+  const t = tenant('mid')
+  const r = plan(t)
+  const incomplete = { ...r, steps: r.steps.map((s) => (s.id !== LOCATIONS ? s : { ...s, directionQuestions: s.directionQuestions!.map((q) => (q.key !== 'workCountries' ? q : { ...q, saved: null, suggested: { value: q.suggested.value, picked: [] } })) })) }
+  const q = incomplete.steps.find((s) => s.id === LOCATIONS)!.directionQuestions!.find((x) => x.key === 'workCountries')!
+  assert.equal(directionAnswerComplete(q, q.suggested), false, 'an empty countries answer is approvable: this proves nothing')
+  const approved = acceptDirection(t, incomplete)
+  assert.equal(approved.decisions?.[LOCATIONS], undefined, 'the harness approved a step whose Approve button is disabled')
+  assert.ok(approved.decisions?.['s-direction-use'], 'the steps that could be approved were not')
 })

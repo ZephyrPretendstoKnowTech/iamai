@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { directionDecisionOf } from '../../roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf } from '../../roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf, answeredInOf } from '../../roadmap/direction.ts'
 import { directionWords } from '../../content/content.ts'
@@ -42,8 +42,6 @@ function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   return []
 }
 
-/** An answer that carries a list carries at least one item. */
-const complete = (q: DirectionQuestion, a: DirectionAnswer): boolean => (q.control === 'countries' || (q.pickedWith !== null && a.value === q.pickedWith) ? a.picked.length > 0 : true)
 
 function QuestionTile({ q, answer, onAnswer, ctx, printing }: { q: DirectionQuestion; answer: DirectionAnswer; onAnswer: (a: DirectionAnswer) => void; ctx: StepVarContext; printing: boolean }) {
   const universe = useMemo(() => universeOf(q, ctx), [q, ctx])
@@ -92,7 +90,7 @@ export function DirectionQuestions({ step, ctx, heading, onDecide, printing = fa
   const questions = step.directionQuestions ?? []
   const [draft, setDraft] = useState<Record<string, DirectionAnswer>>(() => Object.fromEntries(questions.map((q) => [q.key, q.saved ?? q.suggested])))
   const answerOf = (q: DirectionQuestion): DirectionAnswer => draft[q.key] ?? q.saved ?? q.suggested
-  const ready = questions.every((q) => complete(q, answerOf(q)))
+  const ready = questions.every((q) => directionAnswerComplete(q, answerOf(q)))
   const approve = (): void => {
     if (!ready) return
     const answers = Object.fromEntries(questions.map((q) => [q.key, answerOf(q)]))
