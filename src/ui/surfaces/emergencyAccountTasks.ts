@@ -84,7 +84,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'createNotNeeded', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'configureNotNeeded' | 'passkeyNotNeeded' | 'passkeyUnreadOne' | 'passkeyUnreadMany' | 'createNotNeeded' | 'variantsLead', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -363,10 +363,49 @@ export function emergencyTaskText(task: EmergencyAccountTask, variantId?: string
   return `${heading}${facts}\n\n${emergencyTaskSteps(task, variantId).map((line, index) => `${index + 1}. ${line}`).join('\n')}`
 }
 
-/** Deterministic flattened output for exports and the Entra artifact. */
+/**
+ * A task as text for a reader who cannot pick an alternative: every one the
+ * screen offers, each under its own label.
+ *
+ * The screen puts the method choices behind a picker (YubiKey security key,
+ * Microsoft Authenticator on iPhone/iPad, on Android, an additional approved
+ * key). The flattened text used to take the default alone, unlabelled and
+ * numbered on from the shared steps, so the export, AI Info and the Entra
+ * artifact told whoever read them to register a YubiKey on thirty-three
+ * ordinary accounts, and the Authenticator procedures were gone (R4-32). The
+ * lines every alternative shares at its start are said once; each alternative
+ * then carries the rest of its own procedure, numbered on from the shared
+ * lines as the screen numbers the one it shows. A task with one way to do it
+ * reads as before.
+ */
+export function emergencyTaskAlternativesText(task: EmergencyAccountTask): string {
+  const variants = task.variants ?? []
+  if (variants.length < 2) return emergencyTaskText(task, task.defaultVariantId)
+  const renderings = variants.map(variant => emergencyTaskSteps(task, variant.id))
+  const shortest = Math.min(...renderings.map(steps => steps.length))
+  let shared = 0
+  while (shared < shortest - 1 && renderings.every(steps => steps[shared] === renderings[0][shared])) shared++
+  const factLines = (rows: { label: string; value: string }[]): string => rows.map(row => `- **${row.label}:** ${row.value}`).join('\n')
+  const numbered = (lines: string[], from: number): string => lines.map((line, index) => `${from + index + 1}. ${line}`).join('\n')
+  const common = task.facts ?? []
+  const own = (rows: { label: string; value: string }[] | undefined) => (rows ?? []).filter(row => !common.some(other => other.label === row.label && other.value === row.value))
+  return [
+    `**${task.title}**${task.targetUpn ? `\n\nTarget: ${task.targetUpn}` : ''}`,
+    ...(common.length ? [factLines(common)] : []),
+    ...(shared ? [numbered(renderings[0].slice(0, shared), 0)] : []),
+    WORDS.variantsLead,
+    ...variants.flatMap((variant, index) => [
+      `**${variant.label}**`,
+      ...(own(variant.facts).length ? [factLines(own(variant.facts))] : []),
+      numbered(renderings[index].slice(shared), shared),
+    ]),
+  ].join('\n\n')
+}
+
+/** Deterministic flattened output for exports and the Entra artifact: every task, and every alternative within one. */
 export function emergencyAccountTasksText(value: Pick<EmergencyAccountTasks, 'tasks' | 'printAll'>): string {
   const required = value.printAll ? value.tasks : value.tasks.filter(item => item.required)
   return required.length
-    ? required.map(item => emergencyTaskText(item, item.defaultVariantId)).join('\n\n')
+    ? required.map(item => emergencyTaskAlternativesText(item)).join('\n\n')
     : 'No Entra action is currently identified. Review Readiness.'
 }

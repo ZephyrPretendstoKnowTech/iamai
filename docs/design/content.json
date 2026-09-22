@@ -1656,7 +1656,9 @@
           "passkeyUnreadOne": "IAMAI could not confirm that {account} has an approved passkey. Follow these steps if it has none.",
           "passkeyUnreadMany": "IAMAI could not confirm that {accounts} have an approved passkey. Follow these steps for each one that has none.",
           "$commentCreate": "The create procedure's line when the selection needs no new account (NEW-Nadia-D12): two or more selected, every one read as cloud-only. The configuration procedure said it was not needed and this one never did, so with two verified accounts selected a printed plan and the task list offered \"Create an emergency account\" as work at the same weight as the one task that remained.",
-          "createNotNeeded": "No new emergency account is needed: {n} cloud-only accounts are selected. The steps below stay here as a reference."
+          "createNotNeeded": "No new emergency account is needed: {n} cloud-only accounts are selected. The steps below stay here as a reference.",
+          "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
+          "variantsLead": "Use the steps for the authenticator being registered:"
         },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
