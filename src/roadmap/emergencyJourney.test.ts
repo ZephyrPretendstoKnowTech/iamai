@@ -403,3 +403,28 @@ test('the Prepared passkeys summary names every account a clause is true of, and
   for (const r of results) assert.ok(four.detail.includes(r.finding!.replace(/[.]$/, '')), `dropped: ${r.finding}`)
   assert.ok(four.detail.includes(`${upn(shared, a)} and ${upn(shared, b)} — `), `the clause both accounts share names both: ${four.detail}`)
 })
+
+// R4-56 (Sam D14, Nadia D11). Two readings of emergency-access hardening
+// disagreed. The step's tally (step.emergency.hardening, which is what gates,
+// lists fix lines, offers Defer and puts a row in Cleanup) counts only the
+// account checks; the credential checks — both accounts on one method type,
+// accounts sharing an Authenticator device — show on Prepared passkeys as
+// "Minimum met · hardening open" and hold nothing. A finished step's lead read
+// "Fix these, or defer them: the rollout continues, and they stay in Cleanup
+// until they pass" over no defer control, no list and no Cleanup row. The lead
+// promises deferral only where the tally has something to defer, and otherwise
+// says the rollout does not wait on it and where the recommendation is.
+test('a finished emergency step never promises a deferral or a Cleanup row it does not have', () => {
+  const f = tenant()
+  const run = runFixture(f)
+  const step = run.steps.find(s => s.id === 's-prereq-break-glass')!
+  assert.equal(step.status, 'done', 'the premise: two approved hardware keys finish the step')
+  const methods = step.configurationFindings!.find(x => x.key === 'recovery-methods')!
+  assert.equal(methods.value, 'Minimum met · hardening open', 'the premise: a credential recommendation is open')
+  const c = stepContract(step, context(f))
+  assert.equal(c.hardening, null, 'the premise: the tally has nothing to defer')
+  assert.doesNotMatch(c.whatToDo.text, /defer|Cleanup/i, c.whatToDo.text)
+  assert.match(c.whatToDo.text, /less resilient than recommended/)
+  assert.ok(c.whatToDo.text.includes('Prepared passkeys'), `the lead does not say where the recommendation is: ${c.whatToDo.text}`)
+  assert.ok(!(run.schedule.cleanup?.rows ?? []).some(row => row.kind === 'hardening'), 'the premise: no Cleanup row holds it')
+})
