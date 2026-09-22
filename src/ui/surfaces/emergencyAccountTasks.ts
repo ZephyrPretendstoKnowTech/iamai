@@ -292,8 +292,13 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
   // procedure says so as the configuration procedure does. It never did, so
   // with two verified accounts the printed plan and the task list offered
   // "Create an emergency account" as work beside the one task that remained
-  // (NEW-Nadia-D12). An unread source is not cloud-only: no line then.
-  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true)
+  // (NEW-Nadia-D12). An unread source is not cloud-only: no line then. Nor
+  // where a selected account carries the dedicated-account signal (signed in to
+  // IAMAI now, or a job title, department or office): its card says it may be
+  // someone's daily account and bg.notPersonal's fix is a new one, so saying no
+  // new account is needed would steer the reader to keep it.
+  const notes = dedicatedAccountNotes(step)
+  const createClear = selected.length >= 2 && selected.every(id => preparations.get(id)?.checks.cloudOnly === true && !notes.has(id.toLowerCase()))
   const create = domain ? createSteps(domain, false) : [...tenantLead(ctx), 'Open **Entra ID → Custom domain names** and note the tenant’s initial **onmicrosoft.com** domain.', 'Open **Entra ID → Users → New user → Create new user** and create a cloud-only emergency account on that domain.', 'Return to IAMAI and select **Scan to update the plan**.']
   // After the session reminder where there is one: the reminder leads every task.
   const createAt = create[0] === 'Keep your working administrator session open.' ? 1 : 0
@@ -322,7 +327,7 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
     ] }),
     task({ id: 'set-up-passkey', accountId: null, title: 'Set up an approved passkey', targetUpn: null, required: false, readinessKey: 'recovery-methods', evidence: null, actionLabel: 'Open passkey instructions', steps: variants[0].steps, variants, defaultVariantId: variants[0].id }),
   ]
-  const accounts = accountStatuses(ctx, preparations, dedicatedAccountNotes(step))
+  const accounts = accountStatuses(ctx, preparations, notes)
   const confirmedPriority = (row: EmergencyAccountStatus): number => row.accountId === null ? 0
     : row.title === 'Use a cloud-only account' ? 1
       : row.title === 'Change the sign-in address' ? 2
