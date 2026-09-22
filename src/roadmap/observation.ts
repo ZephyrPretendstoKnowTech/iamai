@@ -422,11 +422,21 @@ export function unwrittenDifferences(intent: Record<string, unknown> | null | un
   const out: string[] = []
   for (const d of new Set([...Object.keys(wanted), ...Object.keys(held)])) {
     if (written.has(d)) continue
-    const a = material(canonical(wanted[d]))
-    const b = material(canonical(held[d]))
-    if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) out.push(d)
+    if (!sameDimension(wanted[d], held[d])) out.push(d)
   }
   return out.sort((x, y) => dimensionRank(x) - dimensionRank(y) || x.localeCompare(y))
+}
+
+/**
+ * Whether two values of one policy dimension mean the same thing: the list order
+ * Graph does not promise, and the empty lists and nulls it answers where a body
+ * says nothing, do not count (`material`). The one comparison of a dimension
+ * against what a tenant holds: `unwrittenDifferences` makes it, and so does the
+ * update that asks whether its patch changes anything about the policy it
+ * targets (generate.ts `settleSections`).
+ */
+export function sameDimension(a: unknown, b: unknown): boolean {
+  return JSON.stringify(material(canonical(a)) ?? null) === JSON.stringify(material(canonical(b)) ?? null)
 }
 
 /** The dimensions in the operator's words, from shared.engine.observation.dimensions, in one list. */

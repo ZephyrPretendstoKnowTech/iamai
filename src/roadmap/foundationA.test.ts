@@ -71,7 +71,7 @@ import type { Fixture } from './fixtures/index.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { lockoutCount } from './lockout.ts'
 import { OBSERVATION_DAYS } from './constants.ts'
-import type { Step } from './types.ts'
+import type { PolicyOperation, Step } from './types.ts'
 import PINNED from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 
 const FAMILIES: Step['readiness']['family'][] = ['mfa', 'admin', 'device', 'guest', 'block', 'location', 'risk', 'other']
@@ -1590,10 +1590,18 @@ test('an existing tenant policy that excludes an emergency account directly is p
   //    a carve-out it did not ask for. What it must not do is take the credit:
   //    its own operation adds no user exclusion, and the portal instructions say
   //    the accounts are members of the group rather than named on the policy.
+  //    The update is read from the operations the step declares, whether or
+  //    not today is their day: the one update on this fixture's first scan is
+  //    the switch of its report-only device policy, which device readiness holds.
+  //    It used to be offered as a Target resources correction that changed
+  //    nothing — the other, enforced device policies' narrower apps written onto
+  //    this one, which already held the baseline's (R4-11) — and this premise
+  //    rested on that.
+  const declared = (s: Step): PolicyOperation[] => s.action.resolution?.policies ?? []
   const { f, r } = runs.find((x) => x.f.name === 'large') as { f: Fixture; r: FixtureRun }
-  const adjust = openPolicies(r.steps).find((s) => operationsOf(s).some((o) => o.mode === 'update'))
+  const adjust = openPolicies(r.steps).find((s) => declared(s).some((o) => o.mode === 'update'))
   assert.ok(adjust, 'the fixture adjusts a policy the tenant already has')
-  const update = operationsOf(adjust as Step).find((o) => o.mode === 'update')!
+  const update = declared(adjust as Step).find((o) => o.mode === 'update')!
   const target = update.target as { conditions?: { users?: { excludeUsers?: string[] } } }
   const patch = update.body as { conditions?: { users?: { excludeUsers?: string[] } } }
   const bg = f.mapping.breakGlassUserIds
@@ -1606,7 +1614,7 @@ test('an existing tenant policy that excludes an emergency account directly is p
   users.excludeUsers = [...bg]
   const after = runFixture({ ...f, snapshot }, { snapshot })
   const s2 = after.steps.find((x) => x.id === (adjust as Step).id) as Step
-  const op2 = operationsOf(s2).find((o) => o.mode === 'update')
+  const op2 = declared(s2).find((o) => o.mode === 'update')
   if (op2) {
     const kept = (op2.target as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []
     assert.deepEqual([...kept].sort(), [...bg].sort(), 'the policy the tenant is left with keeps the exclusion it already had')
