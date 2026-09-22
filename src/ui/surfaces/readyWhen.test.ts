@@ -30,7 +30,7 @@ import { statusOf } from './statusWord.ts'
 import { laneReadings } from './planLanes.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { doneWhenTemplates } from './doneWhen.ts'
+import { POLICY_UNOBSERVED, POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { content } from '../../content/content.ts'
 import { RE } from '../../content/contentChecks.ts'
@@ -359,4 +359,36 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
   const notYet = week2.steps.find((s) => s.state.lifecycle === 'not-deployed' && stepEvidenceStrategy(s) === 'sign-in-records')
   assert.ok(notYet, 'the premise: a policy not yet deployed')
   assert.deepEqual(doneWhenTemplates(notYet, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2), `${notYet.id} lost the report-only gates it has still to run`)
+})
+
+test('an enforced policy IAMAI watched no report-only period for says so where the gates were; one it watched does not', () => {
+  // R4-19 (a). An enforced policy is past its report-only gates, and they left
+  // its Done-when — silently. Nothing then recorded that no window had been
+  // watched: a device-code block and a guest-MFA policy the first scan found
+  // enforced, and a policy an administrator created On and skipped report-only
+  // with, finished on the same lines as a policy IAMAI had watched through its
+  // period. The unmet gate had been the only line that said otherwise.
+  const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+  const hostile = withFoundationSettled(plainFixture('hostile'))
+  const run = runFixture(hostile)
+  for (const id of ['s-goal-block-device-code', 's-goal-guests-mfa']) {
+    const step = run.steps.find((s) => s.id === id)
+    assert.ok(step && step.state.lifecycle === 'enforced' && awaitsWorkflowRecord(step), `the premise: ${id} is enforced and waits on the person`)
+    const lines = stepContract(step, ctxOf(hostile)).doneWhen
+    assert.equal(lines[0], POLICY_UNOBSERVED, `${id}: ${lines.join(' | ')}`)
+    assert.ok(lines.includes(shared.policyDoneWhen[2]), `${id} lost the scan that confirms the policy`)
+    for (const line of lines) assert.doesNotMatch(line, /required report-only period|during those days/, `${id}: ${line}`)
+  }
+
+  // Watched in report-only, then turned on: it had its window, and nothing says it missed one.
+  const f = withFoundationSettled(plainFixture('demo'))
+  const first = runFixture(f)
+  const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')
+  const g = structuredClone(f)
+  const owned = (before.tracking?.members ?? []).map((m) => m.policyId)
+  for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
+  const watched = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf).steps.find((s) => s.id === before.id)!
+  assert.equal(watched.state.lifecycle, 'enforced', 'the premise: the next scan finds it on')
+  assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']), [shared.policyDoneWhen[2], POLICY_VERIFY_AFTER])
 })
