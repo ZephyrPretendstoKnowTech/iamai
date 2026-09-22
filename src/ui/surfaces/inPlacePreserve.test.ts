@@ -325,7 +325,7 @@ test('a preserved step is given no report-only date, no enforcement instant, no 
 test('a preserved step offers no rollback: there is nothing to put back, and "delete it" is the tenant\'s own policy', () => {
   const { step, ctx, view } = canonical()
   const cs = contentStepFor(step) as Record<string, unknown>
-  assert.equal(ifWrongLineFor(step, cs), null, 'the If-it-goes-wrong line is withheld')
+  assert.equal(ifWrongLineFor(step, cs, {}), null, 'the If-it-goes-wrong line is withheld')
   assert.equal(view.ifWrong, null)
   for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, UNDOING, `a preserved step offers to undo a change it never made: ${line}`)
 })
@@ -397,7 +397,7 @@ test('a stronger policy that still covers the required scope is preserved, and n
   assert.equal(operationsOf(step).length, 0, 'an operation here would rewrite a stronger control')
   assert.equal(implementationOffered(step), false)
   assert.equal(jsonOffered(step), false)
-  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>), null)
+  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>, {}), null)
   for (const line of stepLines(step, ctx)) {
     assert.doesNotMatch(line, CREATING, `a stronger policy drew a create instruction: ${line}`)
     assert.doesNotMatch(line, UNDOING, `a stronger policy drew a rollback instruction: ${line}`)
@@ -640,7 +640,7 @@ test('across every fixture, a done step names what satisfied it, says which outc
       const cs = contentStepFor(step) as Record<string, unknown> | undefined
       if (!cs) continue
       // No way back, because nothing went forward.
-      if (ifWrongLineFor(step, cs) !== null) wrong.push(`${where}: a preserved step offers a rollback`)
+      if (ifWrongLineFor(step, cs, {}) !== null) wrong.push(`${where}: a preserved step offers a rollback`)
       // The word matches the provenance: a policy this plan tagged means the
       // plan drove it, and nothing else may read In place.
       const tagged = findTaggedPolicies(run.input.snapshot, run.input.planId, step.id).length > 0

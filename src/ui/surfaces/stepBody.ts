@@ -22,7 +22,7 @@ import { initialDomain } from '../../validation/rules.ts'
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, whatToDoFor } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
@@ -30,7 +30,7 @@ import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
-import { stepExportView } from './stepExport.ts'
+import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
@@ -187,7 +187,8 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const learn = cs.learn || {}
   const who = cs.who || {}
   const d = cs.decision
-  const w = cs.whatToDo || {}
+  // The What to do for the state the scan read (content/render.ts whatToDoFor).
+  const w = whatToDoFor(cs, ex) || {}
   // The tenant's objects behind the baseline's placeholders (a saved decision
   // included), or the names the plan proposes for them, so every line is a name.
   const portalNames = portalNamesFor(ctx, ex, title)
@@ -504,6 +505,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // of Why on every step (RUN-CONTEXT-B decision 14), and under Implementation,
   // beside Troubleshooting, where the region is drawn (S6).
   const learnUrl: string | null = typeof learn.url === 'string' && learn.url !== '' ? learn.url : null
+  // The way back, for the state the scan read (stepExport.ts ifWrongLineFor):
+  // decided here once, so the opened step and its printed copy draw the line the
+  // exports carry. None while a reason holds the policy: nothing is rolled out.
+  const ifWrong = reason === null ? ifWrongLineFor(step, cs, ex as Record<string, unknown>) : null
   return {
     cs,
     ex,
@@ -546,6 +551,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     empty,
     sourceLine,
     learnUrl,
+    ifWrong,
   }
 }
 

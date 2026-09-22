@@ -211,6 +211,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // complete there and claims only that. The example's security defaults are
   // on, so the review page draws the cutover's own lines, as the product does.
   '.steps[7].doneWhenWhen.securityDefaultsOff[0]',
+  // Its procedure for the same read state (whatToDoWhen): nothing to turn off,
+  // each replacement from its own step. The example's are on, so the review
+  // page draws the cutover's procedure, as the product does.
+  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[0]',
+  '.steps[7].whatToDoWhen.securityDefaultsOff.steps[1]',
   '.steps[10].who.match',
   '.steps[13].who.groups.noMethod',
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.

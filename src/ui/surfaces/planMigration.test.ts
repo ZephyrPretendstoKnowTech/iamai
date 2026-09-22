@@ -361,7 +361,7 @@ test('the two families the engine words carry no policy rollout, no policy compl
     }
     assert.notEqual(o.contract.whatToDo.text, 'Make the object this step names.', `${where}: the generic deploy action`)
     assert.equal(datesLineFor(o.step, o.cs), null, `${where}: a rollout date`)
-    assert.equal(ifWrongLineFor(o.step, o.cs), null, `${where}: a rollback for a change nobody submits`)
+    assert.equal(ifWrongLineFor(o.step, o.cs, {}), null, `${where}: a rollback for a change nobody submits`)
   }
   // Neither family reaches a fixture plan any more, so the loop above is a guard
   // rather than a proof, and the count says which gap is which rather than

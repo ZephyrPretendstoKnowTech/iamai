@@ -290,7 +290,7 @@ test('004.9: the export view says what the screen says about this case', () => {
   // content was written with: a created policy has a report-only deployment to
   // date and no settings to put back.
   assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesDeploy}')
-  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>), '{policyIfWrong}')
+  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>, {}), '{policyIfWrong}')
   assert.doesNotMatch(String(v.dates), /Change /, 'a create deploys to report-only; it does not "Change"')
   assert.match(String(v.ifWrong), /return the affected policy to Report-only/)
   assert.doesNotMatch(String(v.ifWrong), /back to what they were/, 'a created policy has no previous settings to restore')
