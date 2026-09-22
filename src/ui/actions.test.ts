@@ -510,6 +510,27 @@ test('opening a saved plan directly restores the unchosen default baseline witho
   assert.equal(saves, 0)
 })
 
+test('R4-37: a scan saved before the PIM capability existed reopens with it, from the licence rows that scan read', async () => {
+  // `pim` (licensing/capabilities.ts) arrived after scans were being kept. A
+  // kept scan has no entry for it, and every reading of
+  // `capabilities.pim.enabled` threw on it; read as absent, a P2 tenant's PIM
+  // goal would have left its plan until it scanned again.
+  const h = hydration()
+  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+  const p2 = { capabilityStatus: 'Enabled', prepaidUnits: { enabled: 5 }, consumedUnits: 2, servicePlans: [{ servicePlanId: 'eec0eb4f-6444-4f95-aba0-50c24d67f998', servicePlanName: 'AAD_PREMIUM_P2' }] }
+  const enabled = { enabled: true, seats: 5, consumed: 2 }
+  const off = { enabled: false, seats: 0, consumed: 0 }
+  const kept = { snapshot: { tenantId: 't-1', capabilities: { entraP1: off, entraP2: enabled, intune: off, workloadIdPremium: off, globalSecureAccess: off, defenderForCloudApps: off, purviewInsiderRisk: off }, config: { subscribedSkus: { status: 'ok', reason: null, rows: [p2] } } }, at: record.at }
+  const restoring = actions.restoreSession(account)
+  h.name.settle('Contoso')
+  h.snapshot.settle(kept)
+  h.origin.settle(null)
+  await restoring
+  const caps = getSession().lastScan?.snapshot.capabilities
+  assert.equal(caps?.pim?.enabled, true)
+  assert.equal(caps?.entraP2, enabled, 'what the scan recorded is kept as it was')
+})
+
 test('signing out during default baseline restoration does not repopulate the signed-out session', async () => {
   const h = hydration()
   const pending = deferred<BaselineResult>()

@@ -68,7 +68,7 @@ B = sign-in evidence, on-demand = after baseline selection).
 | 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Active admin roles per user for admin-targeting intents; role names for display. | `/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)` | v1.0 | RoleManagement.Read.Directory | Global Reader | none |
-| 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Global Reader | Entra ID P2 |
+| 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Global Reader | Entra ID P2 or Microsoft Entra ID Governance |
 | 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | Directory Readers | none |
 | 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | Directory Readers | none |
 | 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | Directory.Read.All | Directory Readers | none |
@@ -257,7 +257,7 @@ tenant gets a complete plan for a free tenant.
 
 Mechanics:
 
-- Tenant capabilities (`entraP1`, `entraP2`, `intune`, `workloadIdPremium`,
+- Tenant capabilities (`entraP1`, `entraP2`, `pim`, `intune`, `workloadIdPremium`,
   `globalSecureAccess`, `defenderForCloudApps`, `purviewInsiderRisk`) derive
   from `subscribedSkus` service plans with enabled seat counts and consumed
   units (`data/service-plans.json`, refreshed by

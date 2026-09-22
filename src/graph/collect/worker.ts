@@ -10,7 +10,7 @@ import {
   simulatedCapabilities,
 } from '../../licensing/capabilities.ts'
 import type { LicenceProfile } from '../../licensing/capabilities.ts'
-import { COLLECTOR_REGISTRY } from './registry.ts'
+import { COLLECTOR_REGISTRY, licenceGateReason } from './registry.ts'
 import { EVIDENCE_WINDOW_DAYS, LANE_A_CONCURRENCY } from './constants.ts'
 import { collectSignInEvidence, readTargeted } from './laneB.ts'
 import { targetedReadCandidates } from './laneBCore.ts'
@@ -210,18 +210,19 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
   // verdict. Licence-gated sections are attempted; a real 403 disables them.
   const licenceKnown = licenceOverride !== undefined || config.subscribedSkus?.status === 'ok'
 
-  const CAP_LABEL: Record<string, string> = { entraP1: 'Entra ID P1', entraP2: 'Entra ID P2' }
-  const missingCapability = (key: ConfigSectionKey): string | null => {
+  // The licence a skipped section needed, in the one sentence every reader of
+  // it shares (registry.ts licenceGateReason).
+  const licenceGateOf = (key: ConfigSectionKey): string | null => {
     if (!licenceKnown) return null
     const rc = COLLECTOR_REGISTRY.find((s) => s.configKey === key)?.requiredCapability
-    if (rc && !caps[rc].enabled) return CAP_LABEL[rc] ?? rc
+    if (rc && !caps[rc].enabled) return licenceGateReason(rc)
     return null
   }
 
   const lane0Tasks = CONFIG_KEYS.filter((k) => k !== 'subscribedSkus').map((key) => async () => {
-    const missing = missingCapability(key)
-    if (missing) {
-      config[key] = { status: 'disabled', reason: `not available on this licence (needs ${missing})`, rows: [] }
+    const gated = licenceGateOf(key)
+    if (gated) {
+      config[key] = { status: 'disabled', reason: gated, rows: [] }
       post({ type: 'section', source: `config:${key}`, status: 'disabled', reason: config[key].reason ?? undefined })
       return
     }
@@ -238,7 +239,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
         : Promise.resolve().then(() => {
             snapshot.sources.registrationDetails = sourceState(
               'disabled',
-              'not available on this licence (needs Entra ID P1)',
+              licenceGateReason('entraP1'),
             )
             post({
               type: 'section',
@@ -329,7 +330,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
   // Lane B runs alongside Lanes 0/A: strictly serialized internally
   // (concurrency 1), independent of the aggregate pool. Licence-gated on P1.
   if (!caps.entraP1.enabled) {
-    snapshot.sources.signInEvidence = sourceState('disabled', 'not available on this licence (needs Entra ID P1)')
+    snapshot.sources.signInEvidence = sourceState('disabled', licenceGateReason('entraP1'))
     post({
       type: 'section',
       source: 'signInEvidence',

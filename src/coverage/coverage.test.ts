@@ -48,6 +48,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     capabilities: {
       entraP1: caps(true),
       entraP2: caps(true),
+      pim: caps(true),
       intune: caps(false),
       workloadIdPremium: caps(false),
       globalSecureAccess: caps(false),
@@ -343,12 +344,31 @@ test('11: facet off → not-applicable; facet on → evaluated', () => {
 test('12: P2 goal on a P1 tenant → licence-limited, excluded from score', () => {
   const r = run([], {
     snapshot: mkSnapshot({
-      capabilities: { ...mkSnapshot().capabilities, entraP2: { enabled: false, seats: 0, consumed: 0 } },
+      // A P1 tenant holds neither P2 nor a PIM licence (R4-37 split PIM from P2).
+      capabilities: { ...mkSnapshot().capabilities, entraP2: { enabled: false, seats: 0, consumed: 0 }, pim: { enabled: false, seats: 0, consumed: 0 } },
     }),
   })
   const g = goal(r, 'sign-in-risk')
   assert.equal(g.status, 'licence-limited')
   assert.equal(r.summary.licenceLimited >= 2, true) // sign-in-risk + user-risk
+  // The PIM goal names both licences that would make it available.
+  assert.equal(goal(r, 'pim-activation-reauth').status, 'licence-limited')
+  assert.match(goal(r, 'pim-activation-reauth').statement, /needs a licence this tenant does not hold: Entra ID P2 or Microsoft Entra ID Governance\./)
+})
+
+test('12b (R4-37): the PIM activation goal on a P1 tenant holding Microsoft Entra ID Governance is available, the risk goals are not', () => {
+  // The defect: the goal's tier was Entra ID P2, and Governance, which also
+  // licenses Privileged Identity Management and is sold to P1 tenants, carries
+  // no P2 plan. The goal read "needs a licence this tenant does not hold: Entra
+  // ID P2" and left the plan on a tenant entitled to it.
+  const r = run([], {
+    snapshot: mkSnapshot({
+      capabilities: { ...mkSnapshot().capabilities, entraP2: { enabled: false, seats: 0, consumed: 0 }, pim: { enabled: true, seats: 10, consumed: 4 } },
+    }),
+  })
+  assert.notEqual(goal(r, 'pim-activation-reauth').status, 'licence-limited')
+  assert.doesNotMatch(goal(r, 'pim-activation-reauth').statement, /Entra ID P2/)
+  assert.equal(goal(r, 'sign-in-risk').status, 'licence-limited', 'ID Protection still needs P2')
 })
 
 test('13: unclassifiable baseline policy → not assessed, never a goal (prompt 46 item 14)', () => {

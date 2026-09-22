@@ -24,7 +24,7 @@ export const INVENTORY = {
     people: { title: 'Where this comes from', text: 'The user list (/users) with sign-in activity, plus MFA state and strongest method from registered methods and sign-in records.' },
     groups: { title: 'Where this comes from', text: 'Every group any policy includes or excludes, with members read on demand (/groups/{id}/transitiveMembers).' },
     devices: { title: 'Where this comes from', text: 'Registered devices (/devices) with compliance, management, trust type, and registered owners.' },
-    roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 is present.' },
+    roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 or Microsoft Entra ID Governance is present.' },
     licensing: { title: 'Where this comes from', text: 'Subscribed SKUs (/subscribedSkus): seats, assigned units, and the service plans that unlock each capability.' },
     apps: { title: 'Where this comes from', text: 'Aggregated app sign-in summary and service principal sign-in activity (/reports, 30 days). Detected workloads drive which goals apply.' },
     signIns: { title: 'Where this comes from', text: 'Counts derived from the interactive sign-in records collected for the window. Raw records stay in the browser and are never shown.' },

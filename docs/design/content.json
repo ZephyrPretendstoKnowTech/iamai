@@ -2864,6 +2864,8 @@
         "caps": {
           "entraP1": "Entra ID P1",
           "entraP2": "Entra ID P2",
+          "$commentPim": "Privileged Identity Management: Microsoft licenses it with Entra ID P2 or Microsoft Entra ID Governance, which P1 tenants buy without P2 (src/licensing/capabilities.ts, data/service-plans.json). It was read as Entra ID P2, so a P1 tenant holding Governance was told its eligible role assignments needed P2 and never had them read (R4-37). The Inventory licensing table names it with the other capabilities.",
+          "pim": "Privileged Identity Management",
           "intune": "Intune",
           "workloadIdPremium": "Workload Identities Premium",
           "globalSecureAccess": "Global Secure Access",
@@ -6090,7 +6092,7 @@
     {
       "id": "pim-activation-reauth",
       "kind": "policy",
-      "licence": "Microsoft Entra ID P2",
+      "licence": "Microsoft Entra ID P2 or Microsoft Entra ID Governance",
       "title": "Require MFA at Every Role Activation",
       "changeLine": null,
       "why": "Role activation is a useful point to verify the person requesting privileged access. Checking the context, policy and role settings together helps catch a requirement that was configured but is never invoked.",
