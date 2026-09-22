@@ -46,6 +46,7 @@ import { PrintPlan } from './PrintPlan.tsx'
 import { stepExportView } from './stepExport.ts'
 import { laneReadings } from './planLanes.ts'
 import { doesntApplyView, laneViewOf } from './planBoard.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import type { LaneView } from './stepContract.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
 import { planDates } from './stepVars.ts'
@@ -243,7 +244,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const readings = laneReadings(steps)
   const titleOf = (id: string): string | null => {
     const s = steps.find((x) => x.id === id)
-    return s ? s.plainTitle || s.title : null
+    return s ? contentTitle(s) : null
   }
   const laneOf = (s: typeof steps[number]): LaneView => {
     const r = readings.get(s.id)

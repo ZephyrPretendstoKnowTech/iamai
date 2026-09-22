@@ -196,7 +196,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // that edge for every CA step — and could only call it "Prerequisite on
     // hold", which is what reached the enforce checklist where the condition
     // "Emergency access is prepared and tested" needed naming.
-    return s ? s.plainTitle || s.title : cleanupTitleOf(id)
+    return s ? contentTitle(s) : cleanupTitleOf(id)
   }
   // The Cleanup rows the plan draws (§5), by the id the board gives them; the
   // drill is a Cleanup row and nothing else, so it counts once.

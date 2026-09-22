@@ -22,6 +22,7 @@ import { cleanupComplete } from '../roadmap/cleanupDone.ts'
 import { cleanupEntry } from '../ui/surfaces/cleanupExport.ts'
 import type { Step } from '../roadmap/types.ts'
 import { setDisplayTimeZone } from '../copy/dates.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import { boardReasonOf, boardWhenOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { badgeLabel, factOf } from '../ui/surfaces/stepContract.ts'
@@ -93,7 +94,7 @@ function snapshotsOf(f: Fixture, r: ReturnType<typeof runFixture>): Record<strin
   const readings = laneReadings(steps, cleanup)
   const titleOf = (id: string): string | null => {
     const s = steps.find((x) => x.id === id)
-    return s ? s.plainTitle || s.title : null
+    return s ? contentTitle(s) : null
   }
   const prerequisiteLabel = prerequisiteLabelFor(readings)
   const nameOf = (id: string): string => r.input.names!.label(id)

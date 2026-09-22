@@ -44,6 +44,7 @@ import { laneReadings } from './planLanes.ts'
 import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
@@ -285,7 +286,7 @@ export function doesntApplyView(): LaneView {
  * a step opened on its own in a test): the engine read over the steps given,
  * which is the whole plan where the caller has it and the step alone otherwise.
  */
-export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => steps.find((s) => s.id === id)?.title ?? null, rows: readonly LaneRowInput[] = []): LaneView {
+export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => { const s = steps.find((x) => x.id === id); return s ? contentTitle(s) : null }, rows: readonly LaneRowInput[] = []): LaneView {
   if (step.doesntApply != null) return doesntApplyView()
   // The same inputs the board gives the engine, Cleanup rows included. Without
   // them the drill is a prerequisite the engine has never heard of, so a step
