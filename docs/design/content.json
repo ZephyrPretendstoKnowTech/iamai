@@ -1426,7 +1426,7 @@
       ],
       "workLabel": "What it does",
       "workHeading": "See what needs doing, and what needs to happen first.",
-      "workLead": "Start with the tenant you have. IAMAI compares it with your chosen baseline, shows the gaps it can assess, and puts the work in order.",
+      "workLead": "Start with the tenant you have. IAMAI compares it with the Defense in Depth baseline, shows the gaps it can assess, and puts the work in order.",
       "work": [
         {
           "verb": "Check",
@@ -1445,7 +1445,7 @@
       "baselineName": "Defense in Depth",
       "baseline": "The default is Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
       "baselineGoal": "It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.",
-      "baselineNote": "You can inspect the baseline version IAMAI uses or load your own. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
+      "baselineNote": "You can inspect the baseline version IAMAI uses. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
       "catchesLabel": "What it catches",
       "catchesHeading": "A few things worth checking before you deploy.",
       "catches": [
