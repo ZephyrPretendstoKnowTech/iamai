@@ -409,9 +409,15 @@ test('a step whose own tagged policy is switched off proposes no duplicate, and 
   assert.doesNotMatch(rendered, /\(2\)/, 'the step still instructs a duplicate policy')
   assert.ok(rendered.includes(String(step.tracking?.policyName)), 'nothing on the step names the policy that is already there')
 
-  const found = body.contract.found.find((item) => item.key === 'tagged-disabled')
-  assert.ok(found, 'the card says nothing about a tenant this plan has already written to')
-  assert.match(found.text, /switched off/)
+  // Said once, by the step's own reason: the policy is there, switched off, and
+  // turning it back on is the change. The tagged-disabled finding said the same
+  // and "or follow the instructions below and leave it switched off" over no
+  // instructions — two sources for one fact, disagreeing (Jordan D6) — so it
+  // stands down where the reason says it.
+  assert.equal(unavailableReason(step), 'switched-off', 'the premise: the step reads its own policy as switched off')
+  assert.match(body.contract.whatToDo.text, /already in .* and switched off/, 'the card says nothing about a tenant this plan has already written to')
+  assert.ok(body.contract.whatToDo.text.includes(String(step.tracking?.policyName)), body.contract.whatToDo.text)
+  assert.equal(body.contract.found.some((item) => item.key === 'tagged-disabled'), false, 'the fact is said twice')
 })
 
 // A policy the tenant switched off is not a policy to create.
