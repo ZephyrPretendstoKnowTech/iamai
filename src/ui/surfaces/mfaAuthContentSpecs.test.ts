@@ -177,7 +177,8 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.ok(demo, 'the demo plan has the admin step')
   const gate = tilesOf(demo).find((t) => t.key === 'gate')
   assert.ok(gate, 'the demo admin step has no threshold tile')
-  assert.equal(gate.value, '67% of admins phishing-resistant')
+  // Two of three admins, read down to 66% (R4-14: never above the reading).
+  assert.equal(gate.value, '66% of admins phishing-resistant')
   // Where the scan could not work out which admins are held.
   const P = app.plan as unknown as Record<string, Record<string, string>>
   assert.equal(P.mfaReadinessHoldUnknown.admin, "Check which admins don't have a phishing-resistant method yet:")

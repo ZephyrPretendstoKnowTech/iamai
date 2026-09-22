@@ -24,7 +24,7 @@ import { mergeMfaHistory } from './mfaHistory.ts'
 import type { AuthMethodSummary } from './mfaViability.ts'
 import type { StoredSignIn, TenantSnapshot } from '../graph/collect/types.ts'
 import { aggregate } from '../graph/collect/laneBCore.ts'
-import { mfaReady, readinessFor, readyNeeded } from '../roadmap/readiness.ts'
+import { mfaReady, readinessFor, readinessPercent, readyNeeded } from '../roadmap/readiness.ts'
 import { readinessView, showKeyOf, shows } from '../derive/mfaReadiness.ts'
 import { campaignIds } from '../derive/population.ts'
 import { contentLists } from '../derive/contentLists.ts'
@@ -401,7 +401,9 @@ test('the page and the campaign share one readiness; Plan gates use their actual
       const preparation = step.methodPreparation!
       assert.equal(preparation.completeScope, true)
       assert.deepEqual(preparation.unknownIds, [])
-      assert.equal(step.readiness.percent, Math.round(preparation.readyIds.length / preparation.ids.length * 100), `${where}: actual target method readiness`)
+      // The one rounding a readiness percentage has (readiness.ts readinessPercent):
+      // down, so a reading never states, or meets, a threshold it has not reached (R4-14).
+      assert.equal(step.readiness.percent, readinessPercent(preparation.readyIds.length, preparation.ids.length), `${where}: actual target method readiness`)
     }
     const gate = readinessFor('mfa-all-users', [...view.ladder.viability.keys()], [...view.ladder.viability.values()], f.snapshot)
     if (gate.percent !== null) {

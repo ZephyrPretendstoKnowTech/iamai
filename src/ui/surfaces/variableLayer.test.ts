@@ -18,6 +18,7 @@ import { strengthForGoal, strengthNameOf } from './stepPortal.ts'
 import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
+import { readinessPercent } from '../../roadmap/readiness.ts'
 import { content } from '../../content/content.ts'
 
 test('a count of one singularises the noun that follows it', () => {
@@ -178,7 +179,8 @@ test('target-specific readiness and one active-people count, on the demo and Get
       const cohort = step.methodPreparation
       if (!cohort) continue
       const expected = cohort.completeScope && cohort.unknownIds.length === 0 && cohort.ids.length > 0
-        ? Math.round(cohort.readyIds.length / cohort.ids.length * 100) : null
+        // Rounded down (R4-14, roadmap/readiness.ts readinessPercent): never above the reading.
+        ? readinessPercent(cohort.readyIds.length, cohort.ids.length) : null
       assert.equal(step.readiness.percent, expected, `${f.name}/${step.id}: readiness uses its actual target and cohort`)
     }
     const camp = run.steps.find((s) => s.id === 's-verify-mfa')

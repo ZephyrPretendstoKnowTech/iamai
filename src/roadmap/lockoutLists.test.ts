@@ -57,15 +57,16 @@ test('step 15 names the admins not yet Ready for phishing-resistant MFA on the d
   assert.equal(ex.adminsWithoutCount, undefined)
   // The line names a day to register before, and there is no such day while the
   // plan is holding the enforcement behind the very readiness these admins are
-  // short of (roadmap/operations.ts readinessGate): the demo's admins are 67% of
+  // short of (roadmap/operations.ts readinessGate): the demo's admins are 66% of
   // the way to the 100% the step asks for, so nothing about it is dated and the
   // line does not render. The list itself is unchanged, and the row says what it
   // is waiting for.
   const lines = stepLines(s, ctxFor(f, r))
-  assert.equal(s.action.readinessGate?.value, '67%', 'the step waits on admin readiness')
+  // Two of three is 66.7%, read down to 66% (R4-14: a reading is never rounded up to a number it has not reached).
+  assert.equal(s.action.readinessGate?.value, '66%', 'the step waits on admin readiness')
   assert.ok(!s.events, 'so nothing about it is dated')
   assert.deepEqual(lines.filter((l) => /not yet Ready for phishing-resistant MFA/.test(l)), [], 'and a line that names a deadline does not invent one')
-  assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 67%)'), JSON.stringify(s.blockers))
+  assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 66%)'), JSON.stringify(s.blockers))
   // With the prerequisite met the enforcement is dated again, and the line comes
   // back counting whatever list is left.
   const readySnapshot = structuredClone(snapshot)
