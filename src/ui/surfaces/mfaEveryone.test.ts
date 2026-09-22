@@ -593,6 +593,34 @@ test('G8: the step shows a source line at all, dated', () => {
   }
 })
 
+// R4-54. On the large tenant, with no per-user state read, the tile said "Not
+// fully read · 4902 accounts need a per-user state check." while every other
+// count on the plan said 4,900: per-user MFA is a state of every account, the two
+// emergency accounts included, and nothing on the tile said so. The words were
+// inline template strings, so the number had no separator and one account would
+// have read "1 accounts enabled".
+test('G10: the per-user MFA tile counts through count() and says what its number is', () => {
+  const tileOf = (f: Fixture) => runFixture(f).steps.find((s) => s.id === PER_USER)?.configurationFindings?.find((x) => x.key === 'per-user-mfa')
+  const large = structuredClone(fixture('large'))
+  assert.equal(large.snapshot.perUserMfa, undefined, 'the premise: the large tenant read no per-user state')
+  const unread = tileOf(large)
+  assert.ok(unread, 'the premise: the step carries the tile')
+  assert.equal(unread.value, 'Not fully read')
+  const all = large.snapshot.users.length.toLocaleString('en')
+  assert.equal(unread.detail, `The scan read no per-user MFA state, so every account in the directory needs a check: all ${all} accounts, the emergency accounts included.`)
+
+  const demo = structuredClone(fixture('demo'))
+  const [first, second] = demo.snapshot.users
+  demo.snapshot.perUserMfa = Object.fromEntries(demo.snapshot.users.map((u) => [u.id, { state: u.id === first.id ? 'enforced' : 'disabled', reason: null }])) as typeof demo.snapshot.perUserMfa
+  const one = tileOf(demo)
+  assert.ok(one)
+  assert.equal(one.value, '1 account Enabled or Enforced')
+  demo.snapshot.perUserMfa = Object.fromEntries(demo.snapshot.users.map((u) => [u.id, { state: u.id === second.id ? 'unknown' : 'disabled', reason: null }])) as typeof demo.snapshot.perUserMfa
+  const oneUnread = tileOf(demo)
+  assert.ok(oneUnread)
+  assert.equal(oneUnread.detail, '1 account needs a per-user MFA state check: the scan could not read their state.')
+})
+
 test('G9: per-user MFA is never called retired; no Learn page gives it an end date', () => {
   const { example: _example, ...authored } = stepById[PER_USER] as unknown as Record<string, unknown>
   for (const s of everyString(authored)) {

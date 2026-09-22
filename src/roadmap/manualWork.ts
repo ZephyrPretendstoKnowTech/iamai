@@ -1,10 +1,13 @@
 import { isLicenceGate } from '../graph/collect/roles.ts'
 import { GLOBAL_ADMIN_ROLE_ID } from './ladder.ts'
 import { SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
-import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { OwnerConfirmation, ManualEvidenceField } from './decisions.ts'
 import { setState } from './lifecycle.ts'
-import type { Step } from './types.ts'
+import type { ConfigurationFinding, Step } from './types.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+import { count } from '../copy/statements.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { QUESTION_STEP, answerOf, mailDevicesOf } from './answers.ts'
 import { namedAccounts, population, populationIndex } from '../derive/population.ts'
@@ -302,6 +305,30 @@ function indexFor(step: Step, snapshot: TenantSnapshot, index: PopulationIndex |
 }
 
 /**
+ * The Legacy Per-User MFA tile, in content.json's words (shared.engine.perUserMfa)
+ * with its counts through count(). Per-user MFA is a state of every account in
+ * the directory, the emergency accounts included, so where the scan read none of
+ * them the count is the whole directory, and the tile says that is what it is:
+ * "4902 accounts need a per-user state check" sat beside 4,900 on every other
+ * step with nothing to say why, no separator, and "1 accounts" waiting for a
+ * directory of one (R4-54).
+ */
+function perUserMfaFinding(snapshot: TenantSnapshot, enabled: readonly UserRow[], unknown: readonly UserRow[]): ConfigurationFinding {
+  const W = engine.perUserMfa
+  const usersRead = snapshot.sources.users?.status === 'ok'
+  const accounts = (n: number): string => count(n, 'account')
+  const value = enabled.length ? fillText(W.valueOn, { accounts: accounts(enabled.length) }) : !usersRead || unknown.length ? W.valueUnread : W.valueOff
+  const detail = enabled.length
+    ? enabled.map(u => u.displayName || u.userPrincipalName).join(', ')
+    : !usersRead
+      ? W.detailUsersUnread
+      : unknown.length
+        ? fillText(unknown.length === snapshot.users.length ? W.detailUnreadAll : W.detailUnreadSome, { accounts: accounts(unknown.length) })
+        : W.detailOff
+  return { key: 'per-user-mfa', label: W.label, value, detail, outcome: enabled.length ? 'fail' : !usersRead || unknown.length ? 'unknown' : 'pass' }
+}
+
+/**
  * Every population below comes from the one builder (derive/population.ts
  * `population`, or `namedAccounts` for a step that names accounts), so the
  * admins and guests on a line are always counted over the ids its head counts.
@@ -323,7 +350,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
     if (perUser) {
       const enabled = snapshot.users.filter(u => ['enabled', 'enforced'].includes(snapshot.perUserMfa?.[u.id]?.state ?? 'unknown'))
       const unknown = snapshot.users.filter(u => !snapshot.perUserMfa?.[u.id] || snapshot.perUserMfa[u.id].state === 'unknown')
-      step.configurationFindings = [{ key: 'per-user-mfa', label: 'Legacy Per-User MFA', value: enabled.length ? `${enabled.length} accounts enabled` : snapshot.sources.users?.status !== 'ok' || unknown.length ? 'Not fully read' : 'Disabled', detail: enabled.length ? enabled.map(u => u.displayName || u.userPrincipalName).join(', ') : snapshot.sources.users?.status !== 'ok' ? 'The account list was not fully read; the tenant-wide per-user MFA state is not established.' : unknown.length ? `${unknown.length} accounts need a per-user state check.` : 'No current account has legacy per-user MFA enabled or enforced.', outcome: enabled.length ? 'fail' : snapshot.sources.users?.status !== 'ok' || unknown.length ? 'unknown' : 'pass' }]
+      step.configurationFindings = [perUserMfaFinding(snapshot, enabled, unknown)]
       // The accounts the scan read as Enabled or Enforced, active or not, the
       // emergency accounts among them: the step names them, and they are its
       // impact (namedAccounts). "Active" here meant "the account is enabled".
