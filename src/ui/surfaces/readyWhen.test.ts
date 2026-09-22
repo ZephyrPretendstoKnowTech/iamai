@@ -353,9 +353,16 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
   assert.ok(enforced > 0 && awaiting > 0, `the premise: enforced steps (${enforced}) and steps waiting on a workflow record (${awaiting})`)
 
   // A policy still in report-only keeps both gates: this is about the enforced one only.
+  //
+  // It keeps them as the two gates with today's numbers (policyDoneWhenTracked),
+  // which is what a report-only step's readyWhen gives it. This looked for a
+  // report-only step with NO readyWhen, which demo-week2 does not have, and
+  // checked it only if found — so the half of the control about report-only
+  // passed on nothing. It now names the step it checks.
   const week2 = runFixture(fixture('demo-week2'))
-  const watched = week2.steps.find((s) => s.state.lifecycle === 'report-only' && readyWhen(s) === null && stepEvidenceStrategy(s) === 'sign-in-records')
-  if (watched) assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2))
+  const watched = week2.steps.find((s) => s.state.lifecycle === 'report-only' && readyWhen(s) !== null && stepEvidenceStrategy(s) === 'sign-in-records')
+  assert.ok(watched, 'the premise: a policy in report-only on its sign-in records')
+  assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhenTracked, `${watched.id} lost the report-only gates it is running`)
   const notYet = week2.steps.find((s) => s.state.lifecycle === 'not-deployed' && stepEvidenceStrategy(s) === 'sign-in-records')
   assert.ok(notYet, 'the premise: a policy not yet deployed')
   assert.deepEqual(doneWhenTemplates(notYet, ['{policyDoneWhen}']).slice(0, 2), shared.policyDoneWhen.slice(0, 2), `${notYet.id} lost the report-only gates it has still to run`)
