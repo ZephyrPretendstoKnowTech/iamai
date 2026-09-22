@@ -190,3 +190,30 @@ test('every numbered line of the passkey preparation is a thing to do', () => {
   assert.deepEqual(numbers, numbers.map((_, i) => i + 1))
   assert.equal(numbers.length, lines.length)
 })
+
+// R4-43: a Ready-tab row whose one open input is a question that moved to
+// Direction drew "Mail-sending devices · Not confirmed" with no link, while
+// every other wait on a Direction answer links to the step that asks it and
+// the engine already knew which step that is (directionStepsAnswering). The
+// card is the step's one outstanding item, so it is the one that has to lead
+// somewhere.
+test('an unsaved question that moved to Direction links to the Direction step that asks it', () => {
+  const f = fixture('midflight')
+  const r = runFixture(f)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as StepVarContext
+  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  assert.deepEqual(legacy.unsavedInputs, ['Mail-sending devices'], 'the premise: the mail-devices answer is unsaved on a first scan')
+  const tile = stepBodyOf(legacy, ctx).readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices')
+  assert.ok(tile, 'the unsaved question has no tile')
+  assert.ok(tile!.link && 'href' in tile!.link, 'the unsaved question\'s tile leads nowhere')
+  assert.equal((tile!.link as { href: string }).href, '#/plan/s-direction-use')
+  // Every step whose question moved: its unsaved tile links to the one step that answers it.
+  let checked = 0
+  for (const step of r.steps.filter((s) => ANSWERED_IN[s.id] && (s.unsavedInputs ?? []).length > 0)) {
+    for (const t of stepBodyOf(step, ctx).readiness.tiles.filter((x) => x.key.startsWith('unsaved:'))) {
+      assert.ok(t.link && 'href' in t.link && t.link.href.startsWith('#/plan/s-direction-'), `${step.id}: ${t.key} does not link to a Direction step`)
+      checked++
+    }
+  }
+  assert.ok(checked >= 1, `only ${checked} unsaved Direction tiles checked`)
+})
