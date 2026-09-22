@@ -80,10 +80,43 @@ const packageByEntry = (step: { id: string; goalId: string }): CompiledPackage |
  * or left the baseline since it was reviewed — does not apply: its guidance was
  * written for a policy the baseline no longer asks for, and the step draws the
  * baseline's own channels (packageReviewFor says why). Only that package.
+ *
+ * So does a package of several members none of which is a policy this step
+ * resolves (resolvesNoMember): its words describe those members, and the step
+ * would hand over something else.
  */
-export function implementationPackageFor(step: { id: string; goalId: string }): CompiledPackage | null {
+export function implementationPackageFor(step: { id: string; goalId: string } | Step): CompiledPackage | null {
   const pkg = packageByEntry(step)
-  return pkg !== null && (REVIEWS[pkg.meta.stepId]?.status ?? 'current') === 'current' ? pkg : null
+  if (pkg === null || (REVIEWS[pkg.meta.stepId]?.status ?? 'current') !== 'current') return null
+  return 'action' in step && resolvesNoMember(pkg, step) ? null : pkg
+}
+
+/**
+ * Whether a package of several members describes none of the policies the step
+ * resolves.
+ *
+ * The guests package is a pair: a strong-authentication policy and a built-in
+ * MFA policy, each named by the pinned baseline's stable id. On getiamai the
+ * guests goal resolves one create of a different source policy, one that
+ * reaches the whole tenant. Neither member matched, so nothing bound, and the
+ * pair's procedure was drawn anyway: "Create the two guest policies separately",
+ * each policy named by a raw stand-in (‹policies guests strong target
+ * displayName›), a script "for this step" when the step offered only read-only
+ * inspection, and an AI briefing describing a Graph batch of two policies. The
+ * step's own operation, the one policy IAMAI would recognise by its plan tag,
+ * was nowhere in its Implementation.
+ *
+ * The members and the operations meet at the member key, as memberBindings
+ * meets them. A step that resolves no operation yet keeps its package: that is
+ * the planning preview's case, and nothing there contradicts the package. A
+ * package whose members carry no stable id cannot be compared and is kept.
+ */
+function resolvesNoMember(pkg: CompiledPackage, step: Step): boolean {
+  const members = pkg.meta.baselineAuthority?.members ?? []
+  if (members.length < 2) return false
+  const keys = new Set(members.flatMap((m) => (typeof m.memberStableId === 'string' && m.memberStableId !== '' ? [memberKeyOf(m.memberStableId, 0)] : [])))
+  const ops = plannedOperationsOf(step)
+  return keys.size > 0 && ops.length > 0 && !ops.some((o) => keys.has(o.memberKey))
 }
 
 /** The review that sets a step's package aside, or null where the step's package applies or it has none. */
