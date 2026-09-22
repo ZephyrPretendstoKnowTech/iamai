@@ -392,8 +392,26 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
   const memberLabels: Record<string, string> = { 'xg.containsEmergency': 'Selected emergency accounts', 'xg.membersApproved': 'Other members', 'xg.noExtraAdmins': 'Other active administrators', 'xg.sizeReasonable': 'Members' }
   const memberPending = memberResults.filter(result => result.outcome !== 'pass')
   const members: ConfigurationFinding = {
-    key: 'group-members', label: 'Emergency account membership', value: memberPending.some(result => result.outcome === 'fail') ? NEEDS_CORRECTION : memberPending.length ? 'Could not verify' : 'Membership verified',
-    outcome: memberPending.some(result => result.outcome === 'fail') ? 'fail' : memberPending.length ? 'unknown' : 'pass', detail: '',
+    key: 'group-members', label: 'Emergency account membership',
+    // No check having run is not the same as every check having passed.
+    //
+    // "Membership verified" was said over a tenant whose group membership the
+    // scan never read — `groups` empty, `meMemberOf` with no rows — and over a
+    // step whose own Done-when claims "the scan verifies the selected group's
+    // configuration, membership and required policy exclusions". With no
+    // results at all there is nothing pending, and nothing pending read as
+    // verified. A reader took it as confirmation that their break-glass
+    // accounts were in the exclusions group.
+    // With no emergency accounts selected there is nobody whose membership
+    // could have been checked: the underlying rule passes vacuously (it is a
+    // blocker, so its outcome stays as it is and gating does not move), and the
+    // tile stops calling that verification.
+    value: memberResults.length === 0 || accountIds.length === 0
+      ? 'Not checked yet'
+      : memberPending.some(result => result.outcome === 'fail')
+        ? NEEDS_CORRECTION
+        : memberPending.length ? 'Could not verify' : 'Membership verified',
+    outcome: memberResults.length === 0 || accountIds.length === 0 ? 'unknown' : memberPending.some(result => result.outcome === 'fail') ? 'fail' : memberPending.length ? 'unknown' : 'pass', detail: '',
     items: [
       { label: 'Direct member count', factLabel: 'Direct member count', subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: groupReading?.directMembers === 'complete' ? String(groupReading.directMemberIds?.length ?? 0) : 'Could not verify', outcome: groupReading?.directMembers === 'complete' ? 'pass' as const : 'unknown' as const, issueKeys: ['group:memberCount'] },
       ...memberResults.map(result => ({ label: memberLabels[result.id], factLabel: memberLabels[result.id], subjectId: groupSubject, subjectLabel: name || groupId || 'Selected group', value: result.outcome === 'pass' ? result.id === 'xg.containsEmergency' ? 'All present' : result.id === 'xg.sizeReasonable' ? result.finding || 'Verified' : 'None' : result.outcome === 'unknown' ? 'Could not verify' : result.finding || 'Needs a change', outcome: result.outcome, issueKeys: [`group:${result.id}`] })),
@@ -419,7 +437,17 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
     })
     const pending = policies.items.filter(item => item.outcome !== 'pass')
     policies.outcome = pending.some(item => item.outcome === 'fail') ? 'fail' : pending.length ? 'unknown' : 'pass'
-    policies.value = policies.outcome === 'fail' ? NEEDS_CORRECTION : policies.outcome === 'unknown' ? 'Could not verify' : 'Required references present'
+    // "Required references present" over a tenant with NO policies reaching the
+    // emergency accounts is vacuously true and reads as verification: one
+    // reader met it beside zero Conditional Access policies, checked, and
+    // stopped trusting the tile. Nothing to check is its own answer.
+    policies.value = policies.outcome === 'fail'
+      ? NEEDS_CORRECTION
+      : policies.outcome === 'unknown'
+        ? 'Could not verify'
+        : needing.length === 0
+          ? 'Nothing to exclude yet'
+          : 'Required references present'
   }
   return [choice, members, policies]
 }
