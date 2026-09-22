@@ -1648,6 +1648,10 @@
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
+        "emergencyTasks": {
+          "$comment": "What the Emergency Access procedures (src/ui/surfaces/emergencyAccountTasks.ts) say about whether a selected account needs them. Each procedure stays available as a reference when none does, and says so only where there is something to say it of: accounts selected, and the checks this procedure makes read for each. With nobody selected, \"No selected account needs a change\" was vacuously true, sat under a tile asking for accounts to be selected, and was printed and exported as step 3 of the work (R4-44).",
+          "configureNotNeeded": "No selected account needs a change to its sign-in address, enabled state or role. The steps below stay here as a reference."
+        },
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instruction being withheld is the one that turns the policy on; the rest of this step stays available, and turning it on comes back when {measure} reaches {threshold}.",
         "footerJson": "JSON",

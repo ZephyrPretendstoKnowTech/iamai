@@ -8,6 +8,8 @@ import { emergencyAccountTasksOf, emergencyAccountTasksText, emergencyTaskText }
 import { stepBodyOf } from './stepBody.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewOf } from './planBoard.ts'
+import { stepExportView } from './stepExport.ts'
+import { app } from '../../content/content.ts'
 
 /** The opened step as the board hands it over: the lane reading included, because that is what decides whether a step's procedures are reference. */
 function bodyOf(name: Parameters<typeof fixture>[0], id: string) {
@@ -281,4 +283,35 @@ test('the procedures on a finished step are reference, and on an open one they a
   const open = bodyOf('demo', 's-prereq-break-glass')
   assert.notEqual(open.laneView.lane, 'Completed', 'the premise: this one is not finished')
   assert.equal(open.implementationReference, false, 'an open step folded away its own instructions')
+})
+
+// R4-44 (Jordan D11). "No selected account needs a change to its sign-in
+// address, enabled state or role." was said with nobody selected: vacuously
+// true, under a tile asking for accounts to be selected, and printed and
+// exported as step 3 of the work. An account whose checks were not read is not
+// one that needs nothing either. The line stands only over selected accounts
+// whose three checks were read, and says it in the content's words.
+test('the configuration procedure says no account needs it only over selected accounts it could read', () => {
+  const noLine = (steps: string[]) => steps.filter(line => /^No selected account/.test(line))
+  const configure = (edit: (value: Fixture) => void) => project(edit).projected.tasks.find(task => task.id === 'configure-account')!.steps
+
+  // Nobody selected: no negation, and the three changes stand as the procedure.
+  const empty = configure(value => { value.mapping.breakGlassUserIds = [] })
+  assert.deepEqual(noLine(empty), [])
+  assert.ok(empty.some(line => /User principal name/.test(line)) && empty.some(line => /Account enabled/.test(line)) && empty.some(line => /Global Administrator/.test(line)))
+
+  // Selected, but one account's enabled state was not read: not "no change needed".
+  assert.deepEqual(noLine(configure(value => { delete (value.snapshot.users.find(user => user.id === value.mapping.breakGlassUserIds[0]) as { accountEnabled?: boolean }).accountEnabled })), [])
+
+  // Selected and read, nothing to change: the line stands, from content.json.
+  const read = configure(() => {})
+  assert.deepEqual(noLine(read), [(app.plan as unknown as { emergencyTasks: { configureNotNeeded: string } }).emergencyTasks.configureNotNeeded])
+
+  // And the export of a tenant with nobody selected carries no negation either.
+  const value = structuredClone(fixture('small'))
+  value.mapping.breakGlassUserIds = []
+  const run = runFixture(value)
+  const step = run.steps.find(item => item.id === STEP)!
+  const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  assert.deepEqual(stepExportView(step, ctx).whatToDo.filter(line => /No selected account/.test(line)), [])
 })
