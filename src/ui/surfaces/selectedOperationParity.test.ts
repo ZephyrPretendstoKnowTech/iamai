@@ -89,7 +89,11 @@ test("Medium user risk on mid: the export states the guest exclusion and no sess
   // (CLAUDE.md, owner 2026-09-20): every channel builds the pin's pair, the procedure and
   // the settings block name that one pair, and the caveat is gone.
   assert.match(text, /Grant: Grant access → Require authentication strength: .+ and Require password change → Require all selected controls\./)
-  assert.match(text, /^- Grant → Require authentication strength: .+, Require password change; Require all the selected controls$/m)
+  // The settings line names the pair. This stand-in resolves no strength (the
+  // premise above), so it names none: it used to read "…: Multifactor
+  // authentication", the built-in strength's name for a different object (R4-18,
+  // roadmap/portalLines.ts grantLine).
+  assert.match(text, /^- Grant → Require authentication strength, Require password change; Require all the selected controls$/m)
   assert.doesNotMatch(text, /Require multifactor authentication|built-in `mfa`|JSON and PowerShell outputs/)
 })
 

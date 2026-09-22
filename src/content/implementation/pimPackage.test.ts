@@ -174,13 +174,15 @@ test('the create prepares and publishes the context before the policy that targe
 // planning preview's settings read "Grant → Require authentication strength:
 // Multifactor authentication": a strength IAMAI did not resolve, named as
 // Microsoft's built-in one, beside a procedure asking for "IAMAI-resolved
-// target strength". The preview now keeps the marker that says it is unresolved.
+// target strength". The preview states the requirement and names no strength —
+// not its ‹…› stand-in either, which is a placeholder the portal of a held step
+// never carries (ui/surfaces/stepResources.test.ts).
 test('the preview names no strength IAMAI did not resolve', () => {
   const { body, ctx, step } = pimOn(withFoundationSettled(structuredClone(fixture('mid'))))
   assert.equal(packageBindings(step, ctx, body.contract)['authStrength.target.id'], undefined, 'the premise: the strength is unresolved here')
   const portal = channelText(body, 'portal')
-  assert.match(portal, /Grant → Require authentication strength: ‹authentication strength›/)
-  assert.doesNotMatch(portal, /Multifactor authentication/)
+  assert.match(portal, /^- Grant → Require authentication strength$/m)
+  assert.doesNotMatch(portal, /Multifactor authentication|‹authentication strength›/)
 })
 
 /**
