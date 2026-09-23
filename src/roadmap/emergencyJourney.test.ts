@@ -252,7 +252,7 @@ test('Step 4 says what it is waiting on: a sign-in since the most recent change,
   assert.doesNotMatch(line, /Follow Verify emergency sign-in/, 'the tile adds the action once')
   assert.equal(recoveryWaitingLine(changed, [], null, 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nLast change: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
   // A start IAMAI did not see change (where the audit log began) is not called a change.
-  assert.equal(recoveryWaitingLine({ at: start, changeObserved: false }, [], null, 'UTC'), 'Sign in with this account’s passkey since the most recent change.\nNo change seen since: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
+  assert.equal(recoveryWaitingLine({ at: start, changeObserved: false }, [], null, 'UTC'), 'Sign in with this account’s passkey.\nNo change seen since: Sep 18, 2026, 6:37 PM UTC\nLast sign-in: none seen')
   assert.equal(recoveryWaitingLine(null, [], null, 'UTC'), 'Sign in with this account’s passkey once the configuration checks pass.')
   // A sign-in after the change that still did not count is one the dates cannot
   // explain, so its reason stays, on a line of its own.
@@ -302,7 +302,7 @@ test('Step 4 says "Last change" only for a change IAMAI read in the audit log', 
   const logStart = time(plus(-30 * 24))
   const scanned = scan(first, [])
   assert.deepEqual(Object.keys(scanned).sort(), [...ids].sort())
-  for (const lines of Object.values(scanned)) assert.deepEqual(lines.slice(0, 2), ['Sign in with this account’s passkey since the most recent change.', `No change seen since: ${logStart}`])
+  for (const lines of Object.values(scanned)) assert.deepEqual(lines.slice(0, 2), ['Sign in with this account’s passkey.', `No change seen since: ${logStart}`])
   // A day on, still nothing: the start stays where the log began, and is still not called a change.
   for (const lines of Object.values(scan(plus(24), []))) {
     assert.equal(lines[1], `No change seen since: ${logStart}`)
