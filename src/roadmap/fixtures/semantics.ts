@@ -266,6 +266,38 @@ export function setAsideCase(): Case | null {
   return { label: 'mid (one step set aside)', fixture: f, run, steps: run.steps, viability: run.viability, readiness: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
 }
 
+/**
+ * The same tenant with the policy that delivers one of its goals excluding one
+ * more group, which the scan could read only a sample of (over the member cap).
+ *
+ * The delivered variant of an unsettled reach: the step stays Completed, and who
+ * its policy reaches is not established (derive/population.ts reached), so
+ * every assertion about `unknownReach` runs against a delivered step too. No
+ * curated tenant has one; a scan of a tenant with a group over the member cap
+ * does. The step is chosen by state, never by name: the first the tenant's own
+ * policy delivers with a reach the scan settled, and the policy its tracking
+ * matched. The group holds the emergency accounts, so read in full it would
+ * change nothing.
+ *
+ * Null where no fixture offers such a step, so a change to the fixtures shows up
+ * as a corpus gap rather than as a silently skipped scenario.
+ */
+export function deliveredUnsettledCase(): Case | null {
+  const f = structuredClone(curatedFixture('mid'))
+  const delivered = runFixture(f).steps.find((s) => s.state.satisfied && s.deliveredReach && typeof s.tracking?.policyId === 'string')
+  const target = delivered?.tracking?.policyId
+  if (target === undefined) return null
+  const policy = ((f.snapshot.config.caPolicies?.rows ?? []) as { id?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]).find((p) => p.id === target)
+  const users = policy?.conditions?.users
+  if (!users) return null
+  // A group no fixture holds, so nothing it names is an object the fixture moves.
+  const group = 'corpus-sampled-exclusion-group'
+  users.excludeGroups = [...(users.excludeGroups ?? []), group]
+  const members = [...f.mapping.breakGlassUserIds]
+  f.groups.set(group, { memberIds: members, directMemberIds: members, memberCount: 30_000, sampled: true, displayName: 'Contractors' } as never)
+  return caseOf(f, 'mid (a delivering policy excludes a group the scan could only sample)')
+}
+
 function caseOf(f: Fixture, label: string): Case {
   const run = runFixture(f)
   return { label, fixture: f, run, steps: run.steps, viability: run.viability, readiness: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
@@ -302,7 +334,7 @@ let cached: Case[] | null = null
  */
 export function corpus(): Case[] {
   if (cached) return cached
-  const extra = [reviewHeldCase(), setAsideCase()].filter((c): c is Case => c !== null)
+  const extra = [reviewHeldCase(), setAsideCase(), deliveredUnsettledCase()].filter((c): c is Case => c !== null)
   cached = [...allCuratedFixtures().map((f) => caseOf(f, f.name)), unansweredSafetyCase(), collidingNamesCase(), ...extra]
   return cached
 }

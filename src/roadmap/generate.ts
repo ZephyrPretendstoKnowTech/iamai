@@ -14,7 +14,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import { accountApplicability, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -2180,12 +2180,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // population minus the plan's exclusions, so enforcing a policy the plan had
     // just watched in report-only moved its tile from "covers 283 enabled" to
     // "covers 279 enabled" with the policy unchanged. Null where their scope
-    // cannot be settled: the step then keeps the goal's population, as before.
+    // cannot be settled, and carried as null: that reach is not established,
+    // and nothing stands in for it (Foundation A). The step kept the goal's
+    // population there, a count nothing measured for those policies, which
+    // moved to their real reach the scan the group was read. Undefined where no
+    // tenant policy delivers the goal: there is no scope to read.
     // Its own field, never `cohort`: a delivered step reopened later in this
     // run (an unestablished Inforcer application, a workload identity) is an
     // open policy again, and its cohort is its own operation's scope or nothing.
-    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : null
-    const reach = cohort ?? deliveredReach
+    const deliveredReach = cohort === null && deliveringEffects !== null && deliveringEffects.length > 0 ? cohortFor(deliveringEffects) : undefined
+    const reach = cohort ?? deliveredReach ?? null
+    // Whether the delivering policies reach the signed-in account, asked of
+    // them for this one account where their reach as a whole is not established
+    // (deliveredReach null), from the same user scope. An answer they cannot
+    // give counts as reaching it, the convention an open policy follows above;
+    // a group read in full that excludes the account still settles it. The
+    // operator line reads it on a step still delivered when it is read
+    // (ui/surfaces/stepVars.ts operatorInScope, through derive/population.ts
+    // reached). It is its own field, never `includesOperator`: that one decides
+    // the operator's safety verdict and reads the people the step lists, and a
+    // step this run reopens later keeps its deliveredReach. Read there, the
+    // guests step, reopened as a policy to create, took the reach of the
+    // policies that had delivered it, said the signed-in member account was in
+    // scope, and on small was given a stranding verdict it never had.
+    const deliveredReachesOperator = deliveredReach === null && operatorId !== null
+      ? (deliveringEffects ?? []).some((e) => accountApplicability(e.scope, operatorId, snapshot as never, strandContext) !== 'out')
+      : undefined
     // The denominator. A goal can be delivered and still reach a fraction of the
     // tenant: a policy excluding a group that holds 116 of 122 accounts delivers
     // it for six people, and the step said "already delivered, so there is
@@ -2447,7 +2467,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes,
       population: pop,
       ...(cohort !== null ? { cohort: { ...cohort } } : {}),
-      ...(deliveredReach !== null ? { deliveredReach: { ...deliveredReach } } : {}),
+      ...(deliveredReach !== undefined ? { deliveredReach: deliveredReach === null ? null : { ...deliveredReach } } : {}),
+      ...(deliveredReachesOperator !== undefined ? { deliveredReachesOperator } : {}),
       ...(coverageShortfall !== null ? { coverageShortfall } : {}),
       readiness,
       ...(policyPreparation ? { methodPreparation: policyPreparation } : {}),

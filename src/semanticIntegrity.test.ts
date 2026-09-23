@@ -407,6 +407,10 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
 // ---- 11. unknown does not become safe through a presentation fallback ----
 
 test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a pass', () => {
+  // A delivered step's reach is the delivering policies' own, and unsettled the
+  // same way an open policy's is (deliveredUnsettledCase): the corpus has one,
+  // or every line below says nothing about it.
+  assert.ok(stepsIn('unknownReach').some(({ step }) => step.state.satisfied && step.status === 'done'), 'no delivered step with an unsettled reach in the corpus')
   for (const { c, step } of stepsIn('unknownReach')) {
     const ctx = ctxFor(c, step)
     const contract = stepContract(step, ctx)
