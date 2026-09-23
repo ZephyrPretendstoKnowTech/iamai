@@ -851,7 +851,7 @@ try {
   await evaluate(`[...document.querySelectorAll('details.how-reference > summary')].find((s) => /Every check/.test(s.textContent)).click()`)
   check('Checks: the disclosure opens the registry', await waitFor(`/Field practice/.test(document.body.innerText)`))
   t = await text()
-  check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
+  check('Checks: the reference page lists the registry by subject', t.includes(CONTENT_PAGES.app.how.checksIntro) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
   check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))
   check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
   // Every check names its source, and the ones nobody documents say so (audit-program 6).

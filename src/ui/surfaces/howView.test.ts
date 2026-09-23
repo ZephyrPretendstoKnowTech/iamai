@@ -269,6 +269,20 @@ test('Every check lists the plan’s authentication-strength prerequisite, which
   assert.ok(row.why.includes(title), `the row names the step the policies wait on, by its title: ${row.why}`)
 })
 
+// "Every check IAMAI runs, generated from the rules the code runs from": the plan
+// runs checks How does not list (s-prereq-passkey-settings holds 17 steps on mid,
+// and is not a row), and the prerequisite and static rows are written in content,
+// not generated (Phase 2 review, round 2). The intro claims only what the tables
+// hold: the rules' checks and the one prerequisite that is not a rule.
+test('How’s checks intro claims only what the tables list', () => {
+  const intro = app.how.checksIntro
+  assert.doesNotMatch(intro, /\bevery\b|\ball\b|generated/i, intro)
+  assert.match(intro, /rules/, 'it says the rows are what the rules check')
+  const prerequisites = howCheckTables().find((t) => t.key === 'prerequisites')
+  assert.deepEqual(prerequisites?.rows.map((r) => r.id), [PREREQ_STEP_ID.authStrength], 'a prerequisite row added to How is named in the intro too')
+  assert.match(intro, /authentication strength/, 'it names the one prerequisite the tables list')
+})
+
 // The app-protection rule (roadmap/staticRules.ts) tests the grant
 // 'compliantApplication', which Microsoft labels "Require app protection policy";
 // 'approvedApplication' is the approved client app. The Plan's Housekeeping line
