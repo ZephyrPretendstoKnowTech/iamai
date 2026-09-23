@@ -7,7 +7,7 @@ import { engine, stepById } from '../../content/content.ts'
 import { REGISTRY } from '../../validation/rules.ts'
 import type { RuleResult } from '../../validation/rules.ts'
 import { emergencyTierOf } from '../../validation/emergencyTiers.ts'
-import { SEVERITY } from '../../copy/validation.ts'
+import { ATTESTATION_RULES, NEED_LABEL, SEVERITY } from '../../copy/validation.ts'
 
 // "Every check IAMAI runs" listed seven pilot-group rows and three
 // authentication-strength rows that no plan evaluates (generate.ts builds
@@ -93,4 +93,23 @@ test('How’s migration-state check says why the migration matters, and where pe
   assert.match(row.why, /migration/)
   const title = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
   assert.ok(row.why.includes(title), `the why names the step that reads per-user MFA: ${title}`)
+})
+
+// Two emergency-access checks pass on the operator's own answer, and IAMAI reads
+// no alerting system; How presented the sign-in alert as something IAMAI checks,
+// needing "nothing". The licence check fails only on an enabled mailbox plan, and
+// How said it looks for any licence nothing needs and a mailbox "in daily use",
+// which IAMAI cannot see (Phase 2 audit, How).
+test('How says which emergency-access checks are the operator’s confirmation, and what the licence check reads', () => {
+  const rows = howCheckTables().flatMap((t) => t.rows)
+  for (const id of ATTESTATION_RULES) {
+    const row = rows.find((r) => r.id === id)
+    assert.ok(row)
+    assert.equal(row.needs, NEED_LABEL.answers, `${id} rests on an answer given on the plan`)
+  }
+  assert.match(rows.find((r) => r.id === 'bg.signInMonitoring')?.what ?? '', /^You confirm/)
+  const licence = rows.find((r) => r.id === 'bg.noLicenceNeeded')
+  assert.ok(licence)
+  assert.match(licence.what, /mailbox/)
+  assert.doesNotMatch(licence.what, /daily use|unless something needs one/)
 })

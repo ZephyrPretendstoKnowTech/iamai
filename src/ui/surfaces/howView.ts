@@ -6,7 +6,7 @@
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import type { RuleSeverity } from '../../validation/rules.ts'
 import { EVALUATED_SUBJECTS } from '../../validation/report.ts'
-import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
+import { ATTESTATION_RULES, SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { STATIC_RULE_READS } from '../../roadmap/staticRules.ts'
 import { app } from '../../content/content.ts'
 
@@ -48,7 +48,9 @@ export function howCheckTables(): HowCheckTable[] {
         severity: r.severity,
         severityLabel: SEVERITY[r.severity as RuleSeverity],
         why: ruleText(r.id).why,
-        needs: needsOf(r.needs),
+        // A check that passes on the operator's own answer reads nothing from the
+        // tenant; "nothing" read as a fact IAMAI checks (Phase 2 audit).
+        needs: ATTESTATION_RULES.has(r.id) ? NEED_LABEL.answers : needsOf(r.needs),
         source: !c || c === FIELD_PRACTICE ? { label: CITATION.fieldPracticeShort, url: null } : { label: c.label, url: c.url },
       }
     }),

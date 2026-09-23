@@ -268,7 +268,9 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: "Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on Finish Moving Off Per-User MFA.",
   },
   'bg.noLicenceNeeded': {
-    what: 'No licence is assigned unless something needs one, and no mailbox is in daily use.',
+    // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).
+    // It cannot see whether a mailbox is used, or whether a licence is needed (Phase 2 audit).
+    what: 'No licence that includes a mailbox is assigned.',
     why: 'A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread.',
   },
   'bg.drilled': {
@@ -280,7 +282,8 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An emergency account whose passphrase lives only in one head or one laptop is not available in an emergency.',
   },
   'bg.signInMonitoring': {
-    what: 'A sign-in by an emergency account raises an alert.',
+    // The operator's answer, not something IAMAI reads (Phase 2 audit).
+    what: 'You confirm that a sign-in by an emergency account raises an alert.',
     why: 'These accounts should sign in almost never, so a sign-in is either a drill or an incident, and both are worth knowing about.',
   },
   'bg.nameIdentifiesPurpose': {
