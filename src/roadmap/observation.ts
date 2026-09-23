@@ -557,6 +557,8 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
   // can begin and end between two scans. Then the note says only the move it
   // saw, as any other change of state reads.
   if (priorState === 'absent' && state === 'report-only') return fillText(OBS.appearedReportOnly, { date })
+  // Created switched Off: the move it saw, as any other change of state reads.
+  if (priorState === 'absent' && state === 'disabled') return fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date })
   if (priorState === 'absent' && state === 'enforced') {
     return recorded ? fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date }) : fillText(OBS.appearedEnforced, { date })
   }
