@@ -805,9 +805,12 @@ try {
   check('Unlicensed tenant: no plan is drawn — no step count, no board', !/[0-9]+ steps/.test(t) && !(await evaluate(`document.querySelector('main.page .plan-row') !== null`)), t.replace(/\s+/g, ' ').slice(0, 160))
   check('Unlicensed tenant: no progress tiles around an empty plan', !(await evaluate(`document.querySelector('main.page .plan-progress') !== null`)))
   await send('Page.navigate', { url: `${BASE}&licence=free#/readiness` })
-  await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && /no sign-in records/.test(document.body.innerText)`)
+  // The words are the page's own (app.readiness.lineNoRecordsReason) with the reason
+  // App.tsx sets for licence=free; the smoke holds no copy of the sentence.
+  const noRecordsLine = CONTENT_PAGES.app.readiness.lineNoRecordsReason.replace('{reason}', 'needs Entra ID P1 or P2')
+  await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && document.body.innerText.includes(${JSON.stringify(noRecordsLine)})`)
   t = await text()
-  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(new RegExp('[^' + String.fromCharCode(10) + ']*sign-in records[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
+  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', t.includes(noRecordsLine),(t.match(new RegExp('[^' + String.fromCharCode(10) + ']*sign-in records[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
   // Without sign-in records nobody can be confirmed: the legend names no Ready or Seamless people.
   check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })

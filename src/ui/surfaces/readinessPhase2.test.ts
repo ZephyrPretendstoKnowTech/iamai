@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
@@ -393,6 +393,15 @@ test('the evidence tile says no sign-in records were read in one sentence, with 
   assert.ok(m.includes(micro?.reason ?? '__'), 'a reason that says something new is kept')
   assert.doesNotMatch(page(), /<dt>0<\/dt>/, 'no "0" beside it')
   assert.match(page(), /noRecordsWords\(source\)/)
+  // The smoke's unlicensed tenant (licence=free) reads this sentence from the
+  // content with the reason App.tsx sets, and holds no copy of its own.
+  const unlicensed = noRecordsWords({ status: 'disabled', reason: 'needs Entra ID P1 or P2' })
+  const smoke = readFileSync('scripts/smoke.mjs', 'utf8')
+  const built = (smoke.match(/const noRecordsLine = CONTENT_PAGES\.app\.readiness\.lineNoRecordsReason\.replace\('\{reason\}', '([^']+)'\)/) ?? [])[1]
+  assert.ok(built, 'the smoke builds its expected line from app.readiness.lineNoRecordsReason')
+  assert.equal(fillText(app.readiness.lineNoRecordsReason, { reason: built }), unlicensed, 'and it is the line the page draws')
+  assert.ok(readFileSync('src/ui/App.tsx', 'utf8').includes(`reason: '${built}'`), 'with the reason App.tsx sets')
+  assert.doesNotMatch(smoke, /no sign-in records \\\(needs/, 'no copy of the old words')
 })
 
 test('a method an earlier scan saw and that is gone is set up again, never "restored"', () => {
