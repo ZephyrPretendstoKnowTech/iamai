@@ -3342,6 +3342,10 @@ footer.app a {
   .print-page h3 { font-size: var(--t-4); margin: 6mm 0 2mm; }
   .print-page h4 { font-size: var(--t-3); margin: 4mm 0 1mm; }
   .print-step { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 3mm; margin-top: 4mm; }
+  /* A finished step's warnings, under its Completed line (printPlan.ts completedLinesOf). */
+  .print-warnings { margin: 1mm 0 2mm 4mm; }
+  .print-warnings dt { font-weight: var(--weight-strong); margin-top: 1mm; }
+  .print-warnings dd { margin: 0; }
   /* The screen's attached frame is a screen idea: on paper a step is a section
      under a heading, in one column, with no card, no shadow and no rail beside
      it. The rail's own blocks still print, under the main column, because they
