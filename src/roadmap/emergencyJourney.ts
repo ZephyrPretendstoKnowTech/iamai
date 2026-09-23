@@ -594,10 +594,9 @@ export function journeyRecoveryFindings(report: SubjectReport, snapshot: TenantS
   }
   const showSignInRows = configurationOutcome === 'pass' || snapshot.sources.signInEvidence?.status !== 'ok'
   const signInFinding: ConfigurationFinding = { key: 'recovery-sign-ins', label: 'Sign-in evidence', value: !ids.length ? 'Select emergency accounts' : confirmationPassed ? 'Verified' : 'Evidence needed', outcome: confirmationPassed ? 'pass' : 'unknown', detail: '', items: showSignInRows ? tests.map(({ label, action, value, current }, index) => ({ label: action, factLabel: action, value, subjectId: ids[index], subjectLabel: label, accountId: ids[index], outcome: current ? 'pass' as const : 'unknown' as const, issueKeys: [`recovery-sign-in:${ids[index].toLowerCase()}`] })) : [] }
-  const confirmation: ConfigurationFinding = { key: 'recovery-confirmation', label: 'Verification results', value: confirmationPassed ? 'Passed' : 'Verification needed', outcome: confirmationPassed ? 'pass' : configurationOutcome === 'fail' ? 'fail' : 'unknown', detail: '', items: [] }
-  return [
-    configuration,
-    signInFinding,
-    confirmation,
-  ]
+  // Two findings, not three. A third, "Verification results", said Passed or
+  // Verification needed: the Sign-in evidence verdict under another name, and a
+  // failure that was the Configuration finding's. The owner removed it
+  // (2026-09-23): the account cards already say who still has to sign in.
+  return [configuration, signInFinding]
 }
