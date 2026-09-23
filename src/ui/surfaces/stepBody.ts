@@ -33,7 +33,7 @@ import { policyJsonText, stepOperations } from './stepJson.ts'
 import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { portalNamesFor } from './stepPortal.ts'
+import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { rescanLinesOf, stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
@@ -428,6 +428,19 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   if (supported.has('portal') && !produced.some(a => a.id === 'portal')) {
     const lines = portalLines.length ? portalLines : policyInspectionLines(step)
     produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null })
+  }
+  // A part of the policy IAMAI does not write that the scan found is not what the
+  // plan asked for: the portal names it, with the plan's value where the plan
+  // sets one, before whatever else it says (stepPortal.ts unwrittenCorrectionLines).
+  const correction = machine ? unwrittenCorrectionLines(step, portalNames, String(ex.tenant ?? '')) : []
+  const portalArtifact = produced.find((a) => a.id === 'portal')
+  if (correction.length > 0 && portalArtifact) {
+    const original = portalArtifact.text
+    if (portalArtifact.form === 'list') {
+      const lines = [...correction, ...portalArtifact.lines]
+      portalArtifact.lines = lines
+      portalArtifact.text = () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n')
+    } else portalArtifact.text = () => `${correction.join('\n\n')}\n\n${original()}`
   }
   const accountTasks = step.id === 's-prereq-break-glass' ? emergencyAccountTasksOf(step, ctx) : null
   const emergencyAccountTasks = accountTasks

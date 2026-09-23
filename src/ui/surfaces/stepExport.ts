@@ -15,7 +15,7 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { SHARED_REF_KEYS, fillText, ifWrongFor, listCountVars, whatToDoFor, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { stepPortalLines, portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { instructionsHeld, rescanLinesOf } from './stepInstructions.ts'
 import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, proceduresAreReference, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
@@ -401,6 +401,12 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // duplicate this whole reason exists to prevent.
   const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
   if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  // The correction a person owes in a part IAMAI does not write, as the screen's
+  // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
+  if (cs.kind === 'policy') {
+    const correction = unwrittenCorrectionLines(step, names, String(ex.tenant ?? ''))
+    lines.unshift(...correction.filter((l) => !lines.includes(l)))
+  }
   lines.push(...verificationResourceLines(step, ctx.mapping))
   const action = contract.whatToDo.text
   if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)

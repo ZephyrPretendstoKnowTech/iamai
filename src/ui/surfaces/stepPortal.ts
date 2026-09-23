@@ -37,7 +37,8 @@ import type { PortalSection } from '../../roadmap/portalLines.ts'
 import { implementationOffered } from './stepJson.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
-import { shared } from '../../content/content.ts'
+import { app, shared } from '../../content/content.ts'
+import { dimensionWords } from '../../roadmap/observation.ts'
 import { fillText } from '../../content/render.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -256,6 +257,49 @@ export function strengthForGoal(goalId: string): string | null {
     if (typeof s === 'string' && s.length > 0) return s
   }
   return null
+}
+
+/** Where each condition a person may be told to correct opens in the portal: the heads conditionLines writes (roadmap/portalLines.ts). */
+const CONDITION_HEAD: Record<string, string> = {
+  'conditions.locations': 'Conditions → Locations →',
+  'conditions.clientAppTypes': 'Conditions → Client apps →',
+  'conditions.authenticationFlows': 'Conditions → Authentication flows →',
+  'conditions.platforms': 'Conditions → Device platforms →',
+  'conditions.devices': 'Conditions → Filter for devices →',
+  'conditions.signInRiskLevels': 'Conditions → Sign-in risk →',
+  'conditions.userRiskLevels': 'Conditions → User risk →',
+}
+
+/**
+ * The correction a person owes where the scan found the tenant's policy is not
+ * what the plan asked for in a part IAMAI does not write (the step's
+ * `observation.unwritten`, roadmap/observation.ts unwrittenDifferences): the
+ * manual-correction sentence naming where to look, then, for each such condition
+ * the plan's own policy sets, the portal line that sets it — read from the whole
+ * policy the plan writes (`PolicyOperation.intent`, on the step's one update),
+ * in the translator's words. A condition the plan's policy does not have has no
+ * line to give: the sentence alone names it.
+ *
+ * IAMAI hands over no write for such a part (stepPackage.ts correctionFieldsOf),
+ * and these lines are what a person follows instead. Before them the portal
+ * named nothing: a report-only token-protection policy without its Cloud PC
+ * filter was told only to keep observing (review of R4-10 B). Empty on a
+ * finished step and where nothing differs.
+ */
+export function unwrittenCorrectionLines(step: Step, names: PortalNames, tenant: string): string[] {
+  const unwritten = step.state?.observation?.unwritten ?? []
+  if (unwritten.length === 0 || step.state.satisfied) return []
+  const lines = [fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(unwritten) })]
+  const ops = step.action.resolution?.policies ?? []
+  const intent = ops.length === 1 && ops[0].mode === 'update' ? ops[0].intent : undefined
+  if (!intent) return lines
+  const p = intent as unknown as PinnedPolicy
+  const set = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, step.action.resolution?.tenant ?? { exclusionsGroupId: null, serviceAccountsGroupId: null }), { only: new Set<PortalSection>(['conditions']) })
+  for (const d of unwritten) {
+    const head = CONDITION_HEAD[d]
+    if (head) lines.push(...set.filter((l) => l.startsWith(head)))
+  }
+  return lines
 }
 
 /**

@@ -152,17 +152,20 @@ export function plannedOperationsOf(step: Step): PolicyOperation[] {
  * operation the step resolves and the tenant policy each names — held or not, so a
  * correction a prerequisite still holds can be planned from what it will change.
  *
- * With them, the parts of the policy the scan found are not what the plan asked
- * for and the update does not write (roadmap/observation.ts unwrittenDifferences,
- * `observation.unwritten`): a person corrects those, and the correction is still
- * the step's to describe. They used to be left out, so a token-protection policy
- * without the Cloud PC device filter was told "a person corrects it" while its
- * package's own device-filter correction never drew, and the portal said only
- * to keep observing (R4-10).
+ * Only what the update writes. A part of the policy the scan found is not what
+ * the plan asked for, where the update does not write it (roadmap/observation.ts
+ * unwrittenDifferences, `observation.unwritten`), is a person's correction, and
+ * IAMAI hands over no write for it (`unwrittenCorrectionLines` names it in the
+ * portal). Selecting package modules from it drew a module's executable channels
+ * for a write the note says IAMAI does not make: a token-protection policy
+ * without its Cloud PC filter was handed a PATCH that replaces every condition,
+ * direct exclusions included, and a legacy-authentication block with a
+ * trusted-location exclusion was handed a "make sure" checklist that never
+ * mentions locations, ending "click Save; rescan" (review of R4-10 B).
  */
 export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null): string[] {
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
-  const out = new Set<string>(unwrittenFieldsOf(step))
+  const out = new Set<string>()
   for (const op of plannedOperationsOf(step)) {
     if (op.mode !== 'update' || typeof op.policyId !== 'string') continue
     const current = rows.find((r) => r.id === op.policyId) ?? null
