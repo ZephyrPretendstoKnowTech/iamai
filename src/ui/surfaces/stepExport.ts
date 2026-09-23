@@ -308,7 +308,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     // finish it — and none of the engine's prose, exactly as the screen does.
     return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text, gateLine(contract.whatToDo.gatedBy)].filter((l): l is string => l !== null), doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
-  const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step) : stepVars(step, ctx)
+  const ex = undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
   // The settings the lines state are the ones the step's package selects for its JSON
   // (stepPackage.ts selectedPolicyBodiesOf), read only where the lines are handed over.

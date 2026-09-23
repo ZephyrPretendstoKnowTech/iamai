@@ -19,7 +19,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
-import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { announcementDraft, groundingBundle } from '../../roadmap/prompts.ts'
@@ -35,7 +35,8 @@ import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
 import { WHO_UNRESOLVED, commsFor, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
 import { aiGroundingText } from './aiGrounding.ts'
-import { planDates } from './stepVars.ts'
+import { planDates, stepVars } from './stepVars.ts'
+import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 /** Any day as the product prints one: the short form, and the long form an email names ("Monday, September 14"). */
@@ -69,6 +70,8 @@ const CASES: [string, () => Fixture][] = [
   ...(['small', 'mid', 'midflight', 'demo'] as FixtureName[]).map((n): [string, () => Fixture] => [n, () => fixture(n)]),
   ['mid, security defaults on', () => withSecurityDefaultsOn(fixture('mid'))],
   ...TURN_ON_HELD,
+  // Prepare Your Team for MFA On Hold while Require MFA for Everyone has no turn-on day: its email borrowed another policy's.
+  ['getiamai, foundation settled', () => withFoundationSettled(curatedFixture('getiamai'))],
 ]
 
 /** Every day the plan scheduled for a step, as the product prints it: the day its row would read, and its announce and change days. */
@@ -407,4 +410,68 @@ test('a day the board reads as an estimate is never printed bare: the lead, the 
     }
   }
   assert.ok(estimates > 0 && booked > 0, `the premise: rows the board reads as an estimate (${estimates}), booked in the calendar (${booked})`)
+})
+
+// The plan-wide MFA day (stepVars.ts mfaEnforce) fell back to the plan's first
+// enforcement wherever planDates said there was none: `ctx.mfaEnforce ??
+// ctx.firstEnforce` read null - Require MFA for Everyone held, no day on which
+// anyone will be asked for MFA - as unset. On getiamai with the foundation
+// settled, Prepare Your Team for MFA sat On Hold, "After prerequisites", and its
+// email told everyone that signing in "is planned to ask for an approved sign-in
+// method from Monday, September 7" - Block Authentication Transfer's turn-on. And
+// withoutScheduleDates, which takes a held step's days off, left every plan-wide
+// day on it, and the device sentence already filled from one.
+const heldCampaignOf = (f: Fixture) => {
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const onBoard = (s: Step): boolean => boardHolds(s, laneViewFor(s, board))
+  const step = r.steps.find((s) => s.id === 's-verify-mfa')!
+  const mfa = r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')!
+  const ctxWith = (dates: Partial<StepVarContext>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
+  const bodyOf = (ctx: StepVarContext) => stepBodyOf(step, ctx, { lane: laneViewFor(step, board), blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+  return { r, step, mfa, onBoard, ctxWith, bodyOf, lane: laneViewFor(step, board) }
+}
+
+test('Prepare Your Team for MFA, held while Require MFA for Everyone has no day, sends the undated email', () => {
+  const f = withFoundationSettled(curatedFixture('getiamai'))
+  const { r, step, mfa, onBoard, ctxWith, bodyOf, lane } = heldCampaignOf(f)
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, onBoard)
+  assert.equal(boardHolds(step, lane), true, 'the premise: the board holds the campaign')
+  assert.equal(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.waiting, 'the premise: its row reads After prerequisites')
+  assert.equal(dates.mfaEnforce, null, `the premise: ${mfa.id} has no turn-on day`)
+  assert.ok(typeof dates.firstEnforce === 'string', 'the premise: another policy has one')
+  const ex = bodyOf(ctxWith(dates)).ex as Record<string, unknown>
+  const cs = (contentStepFor(step) ?? {}) as { comms: { bodyUndated: string } }
+  const comms = commsFor(cs as unknown as Record<string, unknown>, ex, step)
+  assert.ok(comms, 'the campaign still sends its email')
+  assert.equal(comms!.body, fillText(cs.comms.bodyUndated, ex), `the held campaign's email is not the undated one: ${comms!.body}`)
+  assert.doesNotMatch([comms!.body, ...comms!.extra].join('\n'), DATE, 'a day in the held campaign\'s email')
+})
+
+test('a device line names no MFA day where Require MFA for Everyone has none, and a held step loses the day its device line was filled with', () => {
+  const base = withFoundationSettled(curatedFixture('getiamai'))
+  const f: Fixture = { ...base, mapping: { ...base.mapping, questionAnswers: { ...base.mapping.questionAnswers, [answerKey(QUESTION_STEP.devices, DEVICE_ANSWER_KEYS.phoneManagement)]: 'enrolled' } } }
+  assert.equal(devicePlanOf(f.mapping)?.phones, 'enrol', 'the premise: phones are enrolled, the one device line that names the MFA day')
+  const { r, step, mfa, onBoard, ctxWith, bodyOf, lane } = heldCampaignOf(f)
+  /** No day, and no clause left hanging on the day it lost ("…app before." / "…app before:"). */
+  const undated = (text: unknown, where: string): void => {
+    assert.equal(typeof text, 'string', `${where}: the premise, a device line`)
+    assert.doesNotMatch(text as string, DATE, `${where}: names a day: ${text}`)
+    assert.doesNotMatch(text as string, /\bbefore\s*(?:[.:;,]|$)/, `${where}: ends on "before": ${text}`)
+  }
+  // Forged: Require MFA for Everyone held, so it has no day, while another policy has one.
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, (s) => s.id === mfa.id || onBoard(s))
+  assert.equal(dates.mfaEnforce, null, 'the premise: the MFA policy is held')
+  assert.ok(typeof dates.firstEnforce === 'string', 'the premise: another policy has a day')
+  const open = stepVars(step, ctxWith(dates))
+  undated(open.deviceSentence, 'the email\'s device sentence')
+  undated(open.deviceIntro, 'the device list\'s lead')
+  // The held step: Require MFA for Everyone has a day (forged), and the board holds the campaign, so its words name none.
+  const mfaDay = '2026-09-20T00:00:00.000Z'
+  assert.equal(boardHolds(step, lane), true, 'the premise: the board holds the campaign')
+  assert.match(String(stepVars(step, ctxWith({ ...dates, mfaEnforce: mfaDay })).deviceSentence), DATE, 'the premise: the dated device sentence names the MFA day')
+  const ex = bodyOf(ctxWith({ ...dates, mfaEnforce: mfaDay, passkeyEnforce: mfaDay })).ex as Record<string, unknown>
+  for (const key of ['mfaEnforce', 'mfaEnforceLong', 'enrollBy', 'enrolWindowDays', 'passkeyEnforceLong']) assert.equal(ex[key], undefined, `the held campaign keeps {${key}}: ${ex[key]}`)
+  undated(ex.deviceSentence, 'the held campaign\'s device sentence')
+  undated(ex.deviceIntro, 'the held campaign\'s device list lead')
 })

@@ -179,7 +179,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // lose the days the plan scheduled for it and its contract names none (owner
   // decision 2, 2026-09-22). A step opened with no board is never held.
   const undated = boardHolds(step, lane)
-  const ex = (undated ? withoutScheduleDates(stepVars(step, ctx), step) : stepVars(step, ctx)) as Ex
+  const ex = (undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)) as Ex
   // The Step Contract (stepContract.ts): the state, the next milestone, the one
   // action, the blockers and the completion, worked out once from Foundations A,
   // B and C, with the lane engine's reading of the step as its one state (A1b).
