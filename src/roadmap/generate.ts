@@ -47,6 +47,7 @@ import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
+import { satisfiesFloor } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -702,10 +703,15 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  * correction owed, and where nothing else is owed the update is the switch
  * alone.
  *
- * Never for a policy the goal reads below its floor (`belowFloor`, coverage's
- * `meetsFloor`): its grant is the finding (gap 4), and a grant the plan cannot
- * raise is not turned on by this rule. A report-only policy of that kind keeps
- * the update it had.
+ * Also for a policy the goal reads below its floor (`belowFloor`, coverage's
+ * `meetsFloor`) once it holds the grant the plan writes. It was held back: its
+ * grant was the finding (gap 4), and the "correction" it kept was that same
+ * grant, so the pinned baseline's admin policy, built exactly as written, was
+ * handed its own grant on every scan and never the switch (R4-11 on the pin).
+ * The pinned baseline wins (owner, 2026-09-22): it is turned on as written, and
+ * the step states that its grant is weaker than the goal's floor
+ * (Action.belowGoalFloor). A below-floor policy that does not yet hold the plan's
+ * grant still takes the correction first.
  *
  * An enforced policy is read the same way, with no switch to offer: a section it
  * already holds is not submitted. It used to stay, and the update was a
@@ -738,7 +744,7 @@ function settleSections(sections: Set<ChangedSection>, built: Action, current: R
     return !(updates.length > 0 && updates.every((u) => sameDimension(at(u.body), at(u.held))))
   })
   const reportOnly = updates.some((u) => u.held.state === 'enabledForReportingButNotEnforced')
-  const switchable = reportOnly && !updates.some((u) => belowFloor(u.id))
+  const switchable = reportOnly
   if (owed.length === 0 && switchable) {
     sections.clear()
     sections.add('state')
@@ -2411,6 +2417,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       action = { ...action, widerThan: impl.expectedWho.kind }
     }
     if (readinessGate) action = { ...action, readinessGate }
+    // What the plan writes, against the goal's own grant floor: the pinned
+    // baseline can ask for less than the goal it is filed under, and the step
+    // says so (Action.belowGoalFloor). One policy, and a grant floor, or nothing.
+    {
+      const floorGrant = goal.implementations[0]?.floor.grant
+      const writes = (action.resolution?.policies ?? []).map((o) => (o.mode === 'create' ? o.body : o.intent ?? null)).filter((b): b is Record<string, unknown> => b !== null && typeof b === 'object')
+      if (floorGrant !== undefined && writes.length === 1 && (kind === 'create' || kind === 'adjust')) {
+        const facts = policyFacts(writes[0], input.strengths)
+        if (!satisfiesFloor(facts.grant, facts.session, { grant: floorGrant })) {
+          const grant = (writes[0].grantControls ?? {}) as { authenticationStrength?: { id?: string } | null; builtInControls?: string[] }
+          action = { ...action, belowGoalFloor: { strengthId: grant.authenticationStrength?.id ?? null, builtIn: grant.builtInControls ?? [], floor: floorGrant } }
+        }
+      }
+    }
     if (enforcedBelowReadiness) action = { ...action, enforcedBelowReadiness }
 
     steps.push({
