@@ -209,7 +209,7 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
     users: counted('users', () => snapshot.users.length),
     enabled: counted('users', () => snapshot.users.filter((u) => u.accountEnabled !== false).length),
     guests: counted('users', () => snapshot.users.filter((u) => u.userType === 'guest').length),
-    admins: Object.keys(snapshot.roles.active).length,
+    admins: counted('roleAssignments', () => Object.keys(snapshot.roles.active).length),
     policies: counted('caPolicies', () => (snapshot.config.caPolicies?.rows ?? []).length),
     capabilities: Object.fromEntries(Object.entries(snapshot.capabilities).map(([k, v]) => [k, v.enabled])),
     signInEvidence: snapshot.sources.signInEvidence?.status ?? 'unknown',
