@@ -157,7 +157,8 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
     case 'cancelled':
       return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
     case 'failed':
-      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: fillText(S.errors.failed.lead, { message: error.message }), note: null, actions: [signIn, demo] }
+      // "Microsoft answered:" only over something Microsoft said.
+      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: null, actions: [signIn, demo] }
   }
 }
 
