@@ -391,9 +391,12 @@ export function PrintPlan({
       {sections.map((sec) =>
         sec.line !== null ? (
           <section key={sec.key ?? 'rows'} className="print-section-done">
-            <p className="print-section-line">
+            {/* A heading, not a paragraph: printed straight under the last row of
+                the section above, a bare number and a line read as that section's
+                next row. */}
+            <h2 className="print-section-line">
               <span className="print-number">{sec.number}</span> {sec.line}
-            </p>
+            </h2>
             {finishedRowsOf(sec, printBoard, stepCtx).map(printRow)}
           </section>
         ) : (
