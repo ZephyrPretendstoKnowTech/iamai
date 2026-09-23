@@ -92,10 +92,18 @@ export function cleanupEvidenceLines(phase: CleanupPhase, row: CleanupPhase['row
  */
 export type CleanupBoardRead = { undated: boolean; laneOf: (id: string) => LaneView | null }
 
-/** The row's When column on the board, from its reading (the Plan's CleanupRow reads it the same way). */
+/**
+ * The row's When column from the board's lane for it: the one mapping of a lane
+ * to cleanupWhen's flags, read by the Plan's CleanupRow and by every export
+ * (cleanupWhenOnBoard), so the screen and a file cannot say two Whens.
+ */
+export function cleanupWhenOf(row: CleanupPhase['rows'][number], undated: boolean, lane: LaneView | null): string {
+  return cleanupWhen(row, undated, lane?.lane === 'Completed', lane?.lane === 'Ready' && lane.substatus === 'Review')
+}
+
+/** The row's When column on the board, from its reading (the Plan's CleanupRow reads cleanupWhenOf too). */
 export function cleanupWhenOnBoard(row: CleanupPhase['rows'][number], read: CleanupBoardRead | null): string {
-  const lane = read?.laneOf(`cleanup-${row.kind}`) ?? null
-  return cleanupWhen(row, read?.undated ?? false, lane?.lane === 'Completed', lane?.lane === 'Ready' && lane.substatus === 'Review')
+  return cleanupWhenOf(row, read?.undated ?? false, read?.laneOf(`cleanup-${row.kind}`) ?? null)
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */

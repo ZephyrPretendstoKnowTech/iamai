@@ -12,7 +12,8 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
-import { stepExportView } from './stepExport.ts'
+import { exportCleanupViewsOf, stepExportView } from './stepExport.ts'
+import { boardReadingsOf } from './planBoard.ts'
 import { cleanupExportView, cleanupExportViews } from './cleanupExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -31,8 +32,10 @@ test('every Cleanup row is a calendar entry on its day, with what the row says',
   // Cleanup follows the last enforcement. While the plan holds work it requires,
   // that end has no date, and neither has anything after it (roadmap/holds.ts).
   assert.ok(r.steps.some((s) => !s.floor && isHeld(s)), 'the premise: the demo holds work')
-  assert.ok(!buildIcs(r.steps, 'Contoso', f.planId, view, cleanup).includes('-cleanup-'), 'a plan that cannot finish books no Cleanup')
-  // The same plan with nothing held books each row on its day.
+  // The Export page's views say so (stepExport.ts exportCleanupViewsOf, off the board).
+  const onBoard = exportCleanupViewsOf(boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null), r.steps, r.schedule.cleanup)
+  assert.ok(!buildIcs(r.steps, 'Contoso', f.planId, view, onBoard).includes('-cleanup-'), 'a plan that cannot finish books no Cleanup')
+  // The same plan with nothing held books each row on its day (a view with no board reading dates its row).
   const ics = buildIcs(r.steps.filter((s) => !isHeld(s)), 'Contoso', f.planId, view, cleanup)
   for (const c of cleanup) {
     const uid = `UID:${f.planId}-cleanup-${c.kind}@iamai`

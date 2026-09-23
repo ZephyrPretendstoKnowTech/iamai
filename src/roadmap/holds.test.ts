@@ -39,14 +39,13 @@ import { readyWhen } from '../derive/readyWhen.ts'
 import { absoluteDate, calendarDay } from '../copy/dates.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { rowReason, rowWhen, rowWhenWraps } from '../ui/surfaces/rowWhen.ts'
-import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
+import { datesLineFor, exportCleanupViewsOf, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, planPhases, undatedRows } from '../ui/surfaces/planRows.ts'
 import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
-import { WHEN, boardWhenOf } from '../ui/surfaces/planBoard.ts'
+import { WHEN, boardReadingsOf, boardWhenOf } from '../ui/surfaces/planBoard.ts'
 import { planStateOf } from '../ui/surfaces/planState.ts'
-import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
 import { demoTenant } from '../ui/demo.ts'
 
@@ -65,7 +64,9 @@ function planOf(f: Fixture, over: Parameters<typeof runFixture>[1] = {}, record?
     reportOnlyAt: r.schedule.reportOnlyAt[s.id] ?? null,
     naming: r.coverage.organisation.naming,
   })
-  const ics = buildIcs(r.steps, 'Tenant', 'plan-s4', (s) => stepExportView(s, ctx(s)), cleanupExportViews(r.schedule.cleanup))
+  // The Cleanup views as the Export page builds them, off the board (stepExport.ts exportCleanupViewsOf).
+  const cleanup = exportCleanupViewsOf(boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null), r.steps, r.schedule.cleanup)
+  const ics = buildIcs(r.steps, 'Tenant', 'plan-s4', (s) => stepExportView(s, ctx(s)), cleanup)
   return { f, r, ctx, ics }
 }
 
