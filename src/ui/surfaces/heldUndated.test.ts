@@ -545,3 +545,15 @@ test('an undated who-line says what happens once the policy is on, never what it
   assert.match(formOf('unmanaged-browser'), /they will see the limited experience once this policy is on/)
   assert.match(formOf('session-lifetime'), /once this policy is on, their browser sessions stop persisting/)
 })
+
+// The opened step's Dates section and the printed page's draw the same line.
+// A held step keeps the days the scan read ({reportOnly}, {readyOn}), so the
+// line can still fill whole after withoutScheduleDates: the gate asks the board
+// (contract.undated), as the export's Dates line does, and never relies on a
+// hole in the line.
+test('a step the board holds draws no Dates section on the opened step or the printed page', () => {
+  const src = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
+  const gates = src.match(/\{[^{}\n]*datesLineFor\(step, cs\) && whole\(datesLineFor\(step, cs\), ex\) && \(/g) ?? []
+  assert.ok(gates.length >= 2, 'the premise: the Dates section is drawn in two places')
+  for (const g of gates) assert.match(g, /!contract\.undated/, g)
+})
