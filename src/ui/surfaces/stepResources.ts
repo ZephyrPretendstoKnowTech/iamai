@@ -10,8 +10,11 @@ import { countryName } from '../../mapping/countries.ts'
 import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { app } from '../../content/content.ts'
+import { app, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { reportOnlyPatchOf, switchedOffPolicy, unavailableReason } from '../../roadmap/operations.ts'
+import type { PolicyOperation } from '../../roadmap/types.ts'
+import { powershellFor } from './stepPowerShell.ts'
 
 /**
  * Where a lifecycle resource would print a value IAMAI does not hold: U+E000, the
@@ -131,6 +134,44 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
   const text = EMAILS.mfaPreparation.map((m) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, m.paragraphs, ctx)).join('\n\n')
   return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
+}
+
+/**
+ * A policy this plan tracks that the tenant has switched off, set to Report-only
+ * (pages.app.plan.switchedOffSteps): open the one that is there, check it, set
+ * Enable policy to Report-only, scan. Never On, and never a second policy; the
+ * step's ordinary report-only watch decides the turn-on after the next scan.
+ * Null on every other step.
+ */
+export function switchedOffLines(step: Step, tenant: string): string[] | null {
+  const off = unavailableReason(step) === 'switched-off' ? switchedOffPolicy(step) : null
+  if (off === null) return null
+  return structuralWords.switchedOffSteps.map((line) => fillText(line, { policy: off.name, id: off.id, tenant }))
+}
+
+/** The Graph request a switched-off step hands over: the one-field patch to its own policy (operations.ts reportOnlyPatchOf). */
+export function switchedOffRequest(step: Step, ctx: StepVarContext): { op: PolicyOperation; text: string; method: string; endpoint: string } | null {
+  const op = reportOnlyPatchOf(step, (ctx.snapshot.config.caPolicies?.rows ?? []) as unknown[])
+  if (op === null || op.mode !== 'update') return null
+  return { op, text: JSON.stringify(op.body, null, 2), method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${op.policyId}` }
+}
+
+/**
+ * The channels a switched-off step draws, all saying the same change: the
+ * portal lines, and the patch as JSON and as PowerShell. Empty on every other
+ * step. Where the scan does not hold the policy's own object the patch cannot
+ * be stated, and the JSON and PowerShell fall back to inspecting it.
+ */
+export function switchedOffResources(step: Step, ctx: StepVarContext, tenant: string): Artifact[] {
+  const lines = switchedOffLines(step, tenant)
+  if (lines === null) return []
+  const out: Artifact[] = [{ id: 'portal', form: 'list', lines, text: () => lines.map((line, i) => `${i + 1}. ${line}`).join('\n'), note: null }]
+  const request = switchedOffRequest(step, ctx)
+  if (request === null) return out
+  const ps = powershellFor([request.op])
+  out.push({ id: 'ps', form: 'code', lines: [], text: () => ps, note: null })
+  out.push({ id: 'json', form: 'code', lines: [], text: () => request.text, note: `${request.method} ${request.endpoint}` })
+  return out
 }
 
 /** Read-only portal work when an executable policy target is not yet resolved. */

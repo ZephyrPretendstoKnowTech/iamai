@@ -37,7 +37,7 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
+import { namedPortalResource, policyInspectionLines, lifecycleResources, switchedOffLines, verificationResourceLines } from './stepResources.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
@@ -488,8 +488,11 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // Policies > New policy. 2. Name: ...". That is the channel most likely to be
   // pasted into an assistant, which would then confidently instruct the
   // duplicate this whole reason exists to prevent.
+  // What it hands over is the screen's own procedure for it: set that policy to
+  // Report-only, never straight to On (stepResources.ts switchedOffLines).
   const switchedOff = cs.kind === 'policy' && unavailableReason(step) === 'switched-off'
-  if (switchedOff || (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step)))) lines.splice(0, lines.length, ...policyInspectionLines(step))
+  if (switchedOff) lines.splice(0, lines.length, ...(switchedOffLines(step, String(ex.tenant ?? '')) ?? policyInspectionLines(step)))
+  else if (!conflicted && !inPlace && !hasPackagePortal && cs.kind === 'policy' && !(portal?.length && implementationIsCurrent(step))) lines.splice(0, lines.length, ...policyInspectionLines(step))
   // The correction a person owes in a part IAMAI does not write, as the screen's
   // portal carries it (stepPortal.ts unwrittenCorrectionLines), once.
   if (cs.kind === 'policy') {

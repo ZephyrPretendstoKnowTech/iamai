@@ -429,7 +429,7 @@ test('a step whose own tagged policy is switched off proposes no duplicate, and 
 // finish from. It reproduces whenever somebody switches a policy off after it
 // breaks something, which is the ordinary response to a policy breaking
 // something.
-test('a policy the tenant switched off says turn it on, and hands over nothing that builds a second', () => {
+test('a policy the tenant switched off says set it to Report-only, and hands over nothing that builds a second', () => {
   const ID = 's-goal-block-legacy-auth'
   const f = withFoundationSettled(structuredClone(fixture('midflight')))
   const first = runFixture(f)
@@ -453,6 +453,7 @@ test('a policy the tenant switched off says turn it on, and hands over nothing t
   const said = body.contract.whatToDo.text
   assert.match(said, /switched off/)
   assert.match(said, /not a new policy/)
+  assert.match(said, /set Enable policy to Report-only/, `a switched-off policy is not sent back through Report-only: ${said}`)
   assert.ok(said.includes(String(before.tracking!.policyName)), `the policy is not named: ${said}`)
 
   // And nothing anywhere walks the reader into building a second one.
@@ -463,26 +464,6 @@ test('a policy the tenant switched off says turn it on, and hands over nothing t
   }
 })
 
-// The safety case: turning a policy on enforces, so a threshold the plan is
-// waiting for outranks "turn it on" and the step says that instead.
-test('a switched-off policy whose readiness is unmet says so, and does not say turn it on', () => {
-  let checked = 0
-  for (const ID of ['s-goal-admins-phishing-resistant', 's-goal-mfa-all-users']) {
-    const f = withFoundationSettled(structuredClone(fixture('midflight')))
-    const first = runFixture(f)
-    const before = first.steps.find((s) => s.id === ID)
-    if (!before?.tracking?.policyName) continue
-    const prior = observationsOf(first.steps, undefined)
-    const g = structuredClone(f)
-    const rows = (g.snapshot.config.caPolicies!.rows ?? []) as Record<string, unknown>[]
-    const row = rows.find((r) => String(r.displayName) === before.tracking!.policyName)
-    if (!row) continue
-    row.state = 'disabled'
-    g.snapshot.asOf = new Date(Date.parse(g.snapshot.asOf) + 7 * 864e5).toISOString()
-    const after = runFixture(g, {}, prior, g.snapshot.asOf).steps.find((s) => s.id === ID)!
-    if (!enforcementHeld(after)) continue
-    checked++
-    assert.equal(unavailableReason(after), 'readiness-unmet', `${ID}: a threshold stopped outranking the switch`)
-  }
-  assert.ok(checked > 0, 'no gated step reached the case')
-})
+// The readiness threshold no longer outranks it: setting the policy to
+// Report-only changes nothing anybody has to do, so the threshold holds the
+// turn-on after it and not this (ui/surfaces/switchedOff.test.ts).
