@@ -281,7 +281,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { source: 'config:caPolicies', partial: false, refused: false },
     { source: 'signInEvidence', partial: false, refused: true },
   ])
-  const t = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: last })
+  const t = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: last, readsEverything: false })
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')
   assert.equal(t.tone, 'wait')
@@ -297,7 +297,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { label: 'Sign in with another account', weight: 'primary', does: 'signInAnother' },
     { label: 'Scan again', weight: 'secondary', does: 'scanAgain' },
   ])
-  const first = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null })
+  const first = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything: false })
   assert.equal(first.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
   assert.deepEqual(first.actions, t.actions, 'the last full plan is the Plan tile\'s, not this one\'s')
   scanOnlyItsOwn(t)
@@ -329,7 +329,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.doesNotMatch(said(busy), /this account|Global Reader/)
   assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }])
   // A refusal is the account's: that row says so, and the ask and the other account stay.
-  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
+  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null, readsEverything: false })
   assert.deepEqual(refused.rows, [
     { name: 'Conditional Access policies', value: 'not read' },
     { name: 'Sign-in records', value: 'refused to this account' },
@@ -342,7 +342,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   const denied = structuredClone(small)
   denied.sources.registrationDetails = { ...denied.sources.registrationDetails, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
   denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
-  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied) })
+  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: false })
   assert.deepEqual(built.rows, [
     { name: 'MFA registration', value: 'refused to this account' },
     { name: 'Devices', value: 'refused to this account' },
@@ -377,16 +377,38 @@ test('a refused section asks a Global Reader or a Global Administrator for no ro
   const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true })
   assert.deepEqual(built.rows, [{ name: 'Devices', value: 'refused to this account' }])
   assert.equal(built.ask, undefined)
-  // Without those roles, or with none known, the ask stays.
+  // Without those roles the ask stays.
   assert.equal(scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything: false }).ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.')
-  assert.equal(scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied) }).learn?.label, 'Microsoft: Global Reader')
+  assert.equal(scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: false }).learn?.label, 'Microsoft: Global Reader')
   // The one reading of the token (tokenRoles.ts), the rule that also lets the scan start.
   assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Global Reader']))), true)
   assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Global Administrator']))), true)
   assert.equal(holdsReadEverything(rolesInToken(tokenWithRoles(['Security Reader']))), false)
   assert.equal(holdsReadEverything(null), false, 'a token without the claim says nothing about roles')
   const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
-  assert.equal(CONNECT.match(/readsEverything: holdsReadEverything\(roleIds\)/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
+  assert.match(CONNECT, /const readsEverything = roleIds === null \? null : holdsReadEverything\(roleIds\)/, 'Connect reads the token once, and says unknown until it is read')
+  assert.equal(CONNECT.match(/, readsEverything \}/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
+})
+
+// Phase 2 review, round 2: the token's roles are read after the first render
+// (a silent token call), and until they arrived Connect said the account did
+// not read everything. A Global Reader or Global Administrator with a refused
+// section saw the Global Reader ask and its link, then saw both disappear. Roles
+// not yet known, or a token that carries none, ask for nothing: only roles read
+// and found short ask.
+test('a refused section asks for no role while the token’s roles are not known', () => {
+  const unread = unreadSources(gapsSnapshot())
+  const denied = structuredClone(fixture('small').snapshot)
+  denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  for (const readsEverything of [null, undefined]) {
+    const gaps = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything })
+    assert.equal(gaps.ask, undefined, `${readsEverything}: no ask before the roles are read`)
+    assert.equal(gaps.learn, undefined)
+    assert.ok(gaps.rows?.some((r) => r.value === 'refused to this account'), 'the refusal is still stated')
+    const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything })
+    assert.equal(built.ask, undefined)
+    assert.equal(built.learn, undefined)
+  }
 })
 
 // Phase 2 review, round 1: the gaps tile came to offer Scan again alone where no
