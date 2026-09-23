@@ -783,10 +783,10 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
     // the two cases either — it is set both for a policy the first scan found
     // enforced and for one deployed straight to enforced under the watch.
     //
-    // So the sentence claims only what the tag actually proves. Where the
-    // rollout itself went unwatched, the observation note says so in its own
-    // words ("it went live without a report-only period IAMAI could watch"),
-    // which is a different fact and renders beside this one.
+    // So the sentence claims only what the tag actually proves. Where IAMAI
+    // watched the rollout itself go On with no report-only period
+    // (observation.ts `skippedWindow`), the Readiness tile says so
+    // (unwatchedTile), which is a different fact and renders beside this one.
     const inherited = !watched && step.tracking?.matchedBy === 'tag'
     const text =
       by === null
@@ -1943,9 +1943,9 @@ export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING,
  * A finished policy this plan owns that went live with no report-only period
  * IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3, 2026-09-22;
  * R4-12): it stays Completed, and this warning says so. Built straight to On,
- * four policies filed under Completed with nothing in Readiness, and the one
- * note that said nobody watched them sat under New evidence. The tile states
- * the fact; the Done-when keeps the check after the change (doneWhenOf).
+ * policies filed under Completed with nothing in Readiness, and the one note
+ * that said nobody watched them sat under New evidence. The tile states the
+ * fact; the Done-when keeps the check after the change (doneWhenOf).
  */
 function unwatchedTile(step: Step): ReadinessTile | null {
   if (!enforcedUnwatched(step)) return null
