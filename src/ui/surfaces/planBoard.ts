@@ -813,10 +813,33 @@ export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id
  * otherwise where the board draws it closed (a finished section on All work),
  * unless it holds the open step — a link that opens a step inside a finished
  * section opens the section — or a search or filter is on, which must not
- * match rows inside a section nobody can see.
+ * match rows inside a section nobody can see. The press outranks the open step
+ * while it stands; a link or a tile lets go of it (releaseFor).
  */
 export function groupClosed(g: BoardGroup, open: string | null, pressed: boolean | undefined, filtered: boolean): boolean {
   return pressed ?? (g.closed && !(open !== null && g.items.some((i) => i.id === open)) && !filtered)
+}
+
+/**
+ * The key a person's fold of a drawn group is kept under: the view it is drawn
+ * in (a tab, or `aside` for a lane tab's Completed and Deferred groups) and the
+ * group, so folding a section under Ready does not fold it under On Hold.
+ */
+export const pressKeyOf = (scope: string, g: Pick<BoardGroup, 'key'>): string => `${scope}:${g.key}`
+
+/**
+ * The folds left once a link or a tile opens a step on the view the person is
+ * on (owner, roadmap flow V2 item 7: the step is scrolled into view). The press
+ * that folded the section holding the step is let go, because a step opened
+ * inside a folded section opens out of sight: its row reads expanded inside a
+ * hidden block and the page cannot move to it. Every other press stays. `drawn`
+ * is each group the view draws with the scope it is drawn under (pressKeyOf).
+ * Pure.
+ */
+export function releaseFor(pressed: Readonly<Record<string, boolean>>, open: string, drawn: readonly (readonly [scope: string, group: BoardGroup])[]): Record<string, boolean> {
+  const out = { ...pressed }
+  for (const [scope, g] of drawn) if (g.items.some((i) => i.id === open)) delete out[pressKeyOf(scope, g)]
+  return out
 }
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */

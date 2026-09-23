@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, groupClosed, readyToCreateOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, groupClosed, pressKeyOf, readyToCreateOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -115,13 +115,16 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }, [])
   // Approving a Direction step's answers moves to the next Direction step still
   // open, once the plan has re-rendered with the saved answers; the page would
-  // otherwise stay where the completed step's row used to be.
+  // otherwise stay where the completed step's row used to be. A link moves to
+  // its step the same way (TabFollowsOpenStep).
   const moveTo = useRef<string | null>(null)
   useEffect(() => {
     const id = moveTo.current
     if (id === null) return
     const row = document.querySelector(`.plan-row[data-step="${id}"]`)
-    if (!row) return
+    // A row inside a folded section is in the document and not on screen, and
+    // scrolling it moves nothing: wait for the render that unfolds it (planBoard.ts releaseFor).
+    if (!row || row.closest('[hidden]') !== null) return
     moveTo.current = null
     row.scrollIntoView({ block: 'start' })
   })
@@ -276,7 +279,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the Ready tab stays on screen.
   const follow = open !== null ? followOpenStep(open, shown) : null
   const onFollow = (follow: BoardTab): void => { setSummaryFilter(null); setTab(follow); setFocus(NO_FOCUS); setToggled({}); moveTo.current = open }
-  const onShow = (): void => { moveTo.current = open }
+  // On the view that draws it, a link lets go of the fold the person put over
+  // the step's section (planBoard.ts releaseFor): a step opened inside a folded
+  // section opened out of sight. Each group is keyed by the scope it is drawn
+  // under, as drawGroup keys it.
+  const drawn = [...groups.map((g) => [tab, g] as const), ...aside.map((g) => ['aside', g] as const)]
+  const onShow = (): void => { if (open !== null) setToggled((t) => releaseFor(t, open, drawn)); moveTo.current = open }
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
@@ -284,12 +292,13 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // so every section's rows are in the badges.
   const counts = focusCounts(items)
   const drawGroup = (scope: string) => (g: BoardGroup) => {
-    const key = `${scope}:${g.key}`
+    const key = pressKeyOf(scope, g)
     // A group holding the open step is not collapsed by default: switching
     // tab must not fold the step the operator is working on out of sight, and
     // a search must not match rows inside a section nobody can see. An
     // explicit collapse still wins — the operator's own press is the one thing
-    // that outranks the default (planBoard.ts groupClosed).
+    // that outranks the default (planBoard.ts groupClosed) — until a link opens
+    // a step under it (releaseFor).
     const closed = groupClosed(g, open, toggled[key], focusActive(focus))
     return (
       <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
