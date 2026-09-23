@@ -8,6 +8,9 @@ The owner, 2026-09-23:
 - **A step we keep:** only its dependencies and its order may change. Its wording, tasks, instructions, Readiness cards, completion criteria and exports stay exactly as they are, except where the owner approved a change (list below).
 - **A step that merges into another** (countries into 6.3, each medium risk step into its high partner): its content moves across word for word and is combined, not rewritten. If two versions of the same sentence clash, keep both, or ask; never write a third.
 - **Anything that must go:** retired Direction questions, and duplicates. Its text is removed only after it is confirmed to be either a word-for-word duplicate or a retirement the owner approved.
+- **A sentence the new order made false:** a renamed section's old name, an "after X" or "before Y" that no longer holds, a step placed in a section it has left. Each gets the smallest edit that makes it true, and every such edit is listed at merge.
+
+The owner, on whether this limits the work: "I don't want to make it so you can't deliver a quality product. I just don't want to get too focused on content, when our focus right now is on order, flow, and the actual journey." This is a guardrail, not a freeze. Flow work doesn't need rewording; polishing merged steps waits for the content pass.
 
 ## Baseline
 **Pre-restructure baseline: `d884e60f`** (main after the large-tenant sign-in read, before any roadmap stage merged).
