@@ -43,9 +43,14 @@ import { tenant, plan, rescan, observations, deploy, days,
 - `days(t, n, {failures})` — n days pass: the clock moves, the scan's collected
   window moves with it, and everyone a report-only policy covers signs in during
   it. `failures` seeds sign-ins the policy would have stopped.
-- `deploy(t, step, 'exact' | 'enforced' | 'unconfigured')` — does what the step
-  says. An `update` operation (turning a policy on) patches the row the step's
-  member already owns.
+- `deploy(t, step, 'exact' | 'enforced' | 'unconfigured', { held? })` — does what
+  the step offers. An `update` operation (turning a policy on) patches the row its
+  own `policyId` names, and merges `conditions` the way Graph does: a section the
+  patch carries replaces that section, one it leaves out stays. `'enforced'` also
+  turns an updated policy on. `{ held: true }` applies what the step declares and
+  withholds today as well (a switch a readiness threshold holds): without it an
+  "everything on" stage never applies a held switch, and never reaches what
+  follows one.
 
 ## The journey that now works, on `mid`
 
