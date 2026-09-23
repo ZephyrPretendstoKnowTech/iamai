@@ -450,7 +450,15 @@ test('the Needs a device group is titled by the gap, over rows that sign in with
   const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'device')
   assert.ok(rows.some((r) => r.readiness?.next.kind === 'confirm'), 'the premise: a row whose step is to sign in with the passkey they hold')
   assert.doesNotMatch(G.device.title, /^(Add|Set up)/, G.device.title)
-  for (const seen of ['windows', 'mac', 'both', 'none'] as const) assert.doesNotMatch(groupBodyLine('device', seen) ?? '', /^Each sets up/, seen)
+  // The title names the gap itself, not an "it" with nothing before it.
+  assert.match(G.device.title, /without a phishing-resistant method$/, G.device.title)
+  for (const seen of ['windows', 'mac', 'both', 'none'] as const) {
+    const body = groupBodyLine('device', seen) ?? ''
+    assert.doesNotMatch(body, /^Each sets up/, seen)
+    // A row's step may be a sign-in, so the option is named only where the step is a setup.
+    assert.doesNotMatch(body, /On a phone that is/, `${seen}: "that" would be the row's step: ${body}`)
+    assert.match(body, /Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator/, `${seen}: ${body}`)
+  }
 })
 
 test('the opening line and group bodies name a synced passkey only where one would be offered', () => {
