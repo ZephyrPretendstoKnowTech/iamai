@@ -826,6 +826,9 @@ try {
   // an account is not for want of a role, so the tile asks for none
   // (tokenRoles.ts holdsReadEverything), and it names no other role.
   check('Scan with gaps: a Global Administrator is asked for no role it already holds', await waitFor(`/refused to this account/.test(document.body.innerText) && !/Ask whoever administers the tenant/.test(document.body.innerText)`) && !/Security Reader|Reports Reader/.test(t))
+  // Nor another account: another role reads nothing more for it, so Scan again
+  // leads (connectView.ts scanTile, the gaps state). Tile 1 keeps its own.
+  check('Scan with gaps: a Global Administrator is offered Scan again alone', await evaluate(`(() => { const step = [...document.querySelectorAll('main.page .connect-step')].find((s) => /finished with gaps/.test(s.textContent || '')); const b = step ? [...step.querySelectorAll('.connect-step-actions button')] : []; return b.length === 1 && (b[0].textContent || '').trim() === 'Scan again' && /btn-primary/.test(b[0].className) })()`))
   check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))

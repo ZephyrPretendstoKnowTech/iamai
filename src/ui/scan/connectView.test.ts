@@ -320,14 +320,14 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')
   assert.equal(stopped.ask, undefined)
   assert.equal(stopped.learn, undefined)
-  assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }], 'another account reads nothing more')
+  assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }], 'another account reads nothing more')
   // Microsoft throttled the read and the retries ran out.
   const throttled = structuredClone(small)
   throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
   const busy = scanTile({ kind: 'gaps', gaps: coreGaps(throttled), unread: unreadSources(throttled), lastScan: null })
   assert.deepEqual(busy.rows, [{ name: 'Sign-in records', value: 'not read' }])
   assert.doesNotMatch(said(busy), /this account|Global Reader/)
-  assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }])
+  assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }])
   // A refusal is the account's: that row says so, and the ask and the other account stay.
   const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null, readsEverything: false })
   assert.deepEqual(refused.rows, [
@@ -423,7 +423,7 @@ test('every Scan action names what it does, and Connect wires each by that, neve
   throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
   const alone = scanTile({ kind: 'gaps', gaps: coreGaps(throttled), unread: unreadSources(throttled), lastScan: null })
   assert.deepEqual(alone.actions.map((a) => [a.label, a.does]), [['Scan again', 'scanAgain']], 'the one button scans again')
-  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
+  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null, readsEverything: false })
   assert.deepEqual(refused.actions.map((a) => [a.label, a.does]), [
     ['Sign in with another account', 'signInAnother'],
     ['Scan again', 'scanAgain'],
@@ -438,6 +438,37 @@ test('every Scan action names what it does, and Connect wires each by that, neve
   const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
   assert.doesNotMatch(CONNECT, /t3\.actions\[/, 'Connect picks a Scan action by its place in the list')
   assert.match(CONNECT, /t3\.actions\.map\(\(a\) => <Act key=\{a\.label\} action=\{a\} onClick=\{scanDoes\[a\.does\]\} \/>\)/, 'Connect wires a Scan action by what it does')
+})
+
+// Phase 2 review, round 2: the gaps tile offered Sign in with another account,
+// as its primary action, wherever any unread row was a refusal: to a Global
+// Reader or Global Administrator, whom another role reads nothing more for, and
+// on hostile, whose one blocking section (sign-in records, "no sign-in records
+// could be read") is no refusal at all, so the button could not unblock the plan.
+// Another account is offered only where a section the plan needs was refused to
+// an account whose roles were read and found short; otherwise Scan again leads.
+test('another account is offered only where a section the plan needs was refused to an account without the roles', () => {
+  const hostile = fixture('hostile').snapshot
+  const h = scanTile({ kind: 'gaps', gaps: coreGaps(hostile), unread: unreadSources(hostile), lastScan: null, readsEverything: false })
+  assert.deepEqual(h.rows, [{ name: 'Sign-in records', value: 'not read' }], 'the premise: the one section the plan needs was not refused')
+  assert.deepEqual(h.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }], 'another account cannot unblock a plan no refusal stopped')
+  assert.equal(h.ask, 'Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing.', 'the refused sections the plan can be built without still carry the ask')
+  const unread = unreadSources(gapsSnapshot())
+  const short = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything: false })
+  assert.deepEqual(short.actions, [
+    { label: 'Sign in with another account', weight: 'primary', does: 'signInAnother' },
+    { label: 'Scan again', weight: 'secondary', does: 'scanAgain' },
+  ], 'a section the plan needs was refused to an account without the roles')
+  for (const readsEverything of [true, null, undefined]) {
+    const t = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null, readsEverything })
+    assert.deepEqual(t.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }], `${readsEverything}: another account is offered only once the roles are read and found short`)
+  }
+  // The gaps mock signs in as a Global Administrator (ui/App.tsx): smoke and the walk read Scan again alone, primary.
+  const SMOKE = readFileSync('scripts/smoke.mjs', 'utf8')
+  assert.match(SMOKE, /Scan with gaps: a Global Administrator is offered Scan again alone/)
+  const WALK = readFileSync('scripts/walk.mjs', 'utf8')
+  assert.match(WALK, /expectBtn\(t3, \/\^Scan again\$\/, 'primary', 'the gaps tile'\)/)
+  assert.doesNotMatch(WALK, /expectBtn\(t3, \/\^Sign in with another account\$\/, 'primary', 'the gaps tile'\)/)
 })
 
 // Phase 2 audit (Connect): the likeliest gaps scan, sign-in records alone,

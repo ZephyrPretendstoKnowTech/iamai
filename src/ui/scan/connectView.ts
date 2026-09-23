@@ -491,8 +491,11 @@ export function scanTile(input: ScanInput): ScanTile {
         rows: blocking.map(unreadRow),
         ...(others.length > 0 ? { more: { lead: fillText(G.others, { n: others.length }), rows: others.map(unreadRow) } } : {}),
         ...askFor(input.unread),
-        // Another account is offered only where one was refused: it reads nothing more otherwise.
-        actions: input.unread.some((u) => u.refused) ? [signInAnother, again] : [again],
+        // Another account is offered only where a section the plan needs was
+        // refused to an account whose roles were read and found short: it cannot
+        // unblock a plan no refusal stopped, and reads nothing more for a Global
+        // Reader or Global Administrator. Otherwise Scan again is the way on.
+        actions: blocking.some((u) => u.refused) && readsShort ? [signInAnother, again] : [{ ...again, weight: 'primary' }],
       }
     }
     case 'role': {
