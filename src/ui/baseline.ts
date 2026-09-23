@@ -55,8 +55,9 @@ export type AuthorHead = { updated: boolean; checked: boolean; pinned: string; h
 
 /**
  * The one runtime network call (prompt 51 decision 1): the author's current head
- * commit, compared with the pinned one. When it differs, Connect renders
- * pages.connectNoScan.baselineUpdated and taking the update re-derives the plan.
+ * commit, compared with the pinned one. When it differs, Connect renders the
+ * author's changes as a review (pages.connect.baseline.updated); no control takes
+ * an update yet, so IAMAI keeps the pinned version and the review says so.
  * Failures are swallowed to `updated: false` — a check that cannot reach the
  * network never blocks the plan — and carry `checked: false`, so the page can
  * say the check could not be made rather than read as nothing to report.

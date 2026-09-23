@@ -653,3 +653,13 @@ test('an author check that could not run says so in the source disclosure, never
   assert.match(CONNECT, /updateUnchecked: author\.unchecked/, 'Connect hands the tile the check that could not run')
   assert.match(CONNECT, /t2\.source\.unchecked &&/, 'Connect draws the line')
 })
+
+// Phase 2 audit (Connect): an incomplete author review said "Nothing changes
+// here until you take an update", and no control anywhere takes one (the
+// picker is held for V2). The note now says what is true: the review is
+// incomplete, and IAMAI keeps the pinned version.
+test('an incomplete author review names no action the page does not offer', () => {
+  const partial = baselineTile({ name: 'x', policyCount: 46, loading: null, update: { date: '2026-09-03T10:00:00Z', changes: [], incomplete: true }, stepsFor })
+  assert.equal(partial.update?.note, "IAMAI could not read every changed file in the author's repository, so this review is incomplete. IAMAI keeps the pinned version.")
+  for (const s of tileStrings(partial)) assert.doesNotMatch(s, /take an update/, s)
+})
