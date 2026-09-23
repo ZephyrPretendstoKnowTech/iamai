@@ -163,12 +163,11 @@ test('the printed step and the screen read the same blockers, the row hands them
   // checklist's own conditions depend on, which is not a prerequisite of this
   // step's next action and so is not among `blockers` (stepBody.ts).
   assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} enforceWaits=\{enforceWaits\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
-  // A prerequisite in another lane: the tab follows the step the link opened, or the link
-  // would open nothing on screen. The fourth tab (All work) shows every lane, so a step
-  // opened there is already on screen and the tab stays where the operator put it.
-  assert.match(plan, /const openTab = open && tab !== ALL_WORK_TAB \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
-  assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\}[^>]*\/>/)
-  assert.match(plan, /if \(open && openTab && openTab !== tab\) onTab\(openTab\)/)
+  // A prerequisite the view does not show: the link opens it on All work, in its own
+  // section (planBoard.ts followOpenStep, owner, roadmap flow V2), or the link would open
+  // nothing on screen. Where the view shows it, the tab stays where the operator put it.
+  assert.match(plan, /<TabFollowsOpenStep open=\{open\} lane=\{open \? readings\.get\(open\)\?\.lane : undefined\} follow=\{follow\}[^>]*\/>/)
+  assert.match(plan, /if \(follow !== null\) onFollow\(follow\)/)
   // Narrow widths: two across at the pack's first breakpoint, one at the second; nothing hidden.
   const narrow = (w: number): string => CSS.slice(CSS.indexOf(`@media (max-width: ${w}px)`))
   assert.match(narrow(940), /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3 \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)

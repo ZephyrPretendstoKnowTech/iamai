@@ -26,9 +26,8 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, finishedDayOf, followOpenStep, groupClosed } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
-import { TAB_OF } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { rowWho } from './rowWho.ts'
@@ -105,8 +104,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Close removes the panel, and with it the button that had focus. The link
   // that opened it is where focus belongs afterwards (task 017).
   const settingsLink = useRef<HTMLAnchorElement>(null)
+  // A step opened from a link (a Readiness tile's link to its prerequisite, a
+  // deep link) rather than by pressing its row: the page moves to it
+  // (TabFollowsOpenStep).
+  const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
-    const onHash = () => { setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
+    const onHash = () => { linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -261,13 +264,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // work and in a tile's list every row is already inside its section, so
   // there is no aside at all.
   const aside = summaryFilter || laneTab === null ? [] : asideGroupsFor(shown)
-  // A step opened by its hash — a Readiness tile's link to its prerequisite, a
-  // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
-  // tab follows the step; otherwise the link would open nothing on screen. All
-  // work shows every lane, so opening a step there follows no tab: the step is
-  // already on screen and moving would take the operator off the view they
-  // chose.
-  const openTab = open && tab !== ALL_WORK_TAB ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
+  // Where a step opened from a link or a tile is shown (planBoard.ts
+  // followOpenStep, owner, roadmap flow V2): the view the person is on, where
+  // it draws the step; otherwise All work, where every row is, with the focus
+  // cleared, the step's section open (groupClosed) and the page moved to it.
+  // It is read again when the open step's lane changes, so a step finished on
+  // the Ready tab stays on screen.
+  const follow = open !== null ? followOpenStep(open, shown) : null
+  const onFollow = (follow: BoardTab): void => { setSummaryFilter(null); setTab(follow); setFocus(NO_FOCUS); setToggled({}); moveTo.current = open }
+  const onShow = (): void => { moveTo.current = open }
   // The header's four tiles (A1b decision 11): every step (the one denominator,
   // derive/facts.ts, which the board's rows equal), the Completed lane counted
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
@@ -280,9 +285,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // tab must not fold the step the operator is working on out of sight, and
     // a search must not match rows inside a section nobody can see. An
     // explicit collapse still wins — the operator's own press is the one thing
-    // that outranks the default.
-    const holdsOpen = open !== null && g.items.some((i) => i.id === open)
-    const closed = toggled[key] ?? (g.closed && !holdsOpen && !focusActive(focus))
+    // that outranks the default (planBoard.ts groupClosed).
+    const closed = groupClosed(g, open, toggled[key], focusActive(focus))
     return (
       <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))} totals={groupTotals}>
         {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
@@ -401,7 +405,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
-      <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} openLane={open ? readings.get(open)?.lane : undefined} onFocus={setFocus} />
+      <TabFollowsOpenStep open={open} lane={open ? readings.get(open)?.lane : undefined} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -505,17 +509,20 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * column (roadmap/stepSchedule.ts), and a lane is not a phase.
  */
 /**
- * The tab follows the step the hash opened (a Readiness tile's link, a deep
- * link): where the open step's lane is under another tab, that tab is chosen.
- * A child with the one effect, because the Plan's rows are built after its
- * early returns and a hook cannot sit there.
+ * The view follows the step a link or a tile opened (planBoard.ts
+ * followOpenStep): where the view the person is on does not draw it, the board
+ * goes to All work with the step's section open; where it does and a link
+ * opened it, the page moves to it. A child with the one effect, because the
+ * Plan's rows are built after its early returns and a hook cannot sit there.
  */
-function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: BoardTab | null; tab: BoardTab; onTab: (t: BoardTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
+function TabFollowsOpenStep({ open, lane, follow, linked, onFollow, onShow }: { open: string | null; lane?: string; follow: BoardTab | null; linked: { current: boolean }; onFollow: (tab: BoardTab) => void; onShow: () => void }) {
   useEffect(() => {
-    if (open && openTab && openTab !== tab) onTab(openTab)
-    if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed' ? true : null, showDeferred: openLane === 'Deferred' ? true : null })
-    // Only when the opened step changes: choosing another tab afterwards is the person's.
-  }, [open, openTab, openLane])
+    if (open === null) { linked.current = false; return }
+    if (follow !== null) onFollow(follow)
+    else if (linked.current) onShow()
+    linked.current = false
+    // Only when the opened step or its lane changes: choosing another tab afterwards is the person's.
+  }, [open, lane])
   return null
 }
 

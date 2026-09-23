@@ -53,6 +53,8 @@ import {
   rowNumbersOf,
   sectionProgressOf,
   tileSections,
+  followOpenStep,
+  groupClosed,
   togglesOf,
   nothingReadyLine,
 } from './planBoard.ts'
@@ -608,6 +610,50 @@ test('Show completed and Show deferred start pressed on All work, and turning on
   assert.match(plan, /const shows = togglesOf\(focus, tab\)/, 'the toggles do not read the tab\'s default')
   assert.match(plan, /aria-pressed=\{shows\.completed\}/)
   assert.match(plan, /aria-pressed=\{shows\.deferred\}/)
+})
+
+test('a step opened from a link or a tile stays on the tab that shows it, and otherwise opens on All work in its own section', () => {
+  // Owner, roadmap flow V2: a link used to switch the board to the step's own
+  // lane tab. Now it keeps the view the person chose when the step is on it,
+  // and otherwise goes to All work, where every row is, with the step's
+  // section open.
+  const items = itemsFor('demo-week2')
+  const ready = items.find((i) => i.lane === 'Ready')!
+  const held = items.find((i) => i.lane === 'On Hold' || i.lane === 'Up Next')!
+  const done = items.find((i) => i.lane === 'Completed')!
+  assert.ok(ready && held && done, 'the premise: the Follow-up demo has Ready, waiting and completed rows')
+  // On the tab that shows it: stay.
+  assert.equal(followOpenStep(ready.id, applyFocus(items, 'ready', NO_FOCUS)), null, 'a link to a Ready step moved the Ready tab')
+  assert.equal(followOpenStep(held.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS)), null, 'a link moved All work')
+  assert.equal(followOpenStep(done.id, applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true })), null, 'a completed step drawn after the Ready panel moved the tab')
+  // Not on it: All work, whatever lane the step is in.
+  assert.equal(followOpenStep(held.id, applyFocus(items, 'ready', NO_FOCUS)), ALL_WORK_TAB, 'a link to a waiting step kept Ready, which does not show it')
+  assert.equal(followOpenStep(done.id, applyFocus(items, 'onHold', NO_FOCUS)), ALL_WORK_TAB)
+  assert.equal(followOpenStep(done.id, applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })), ALL_WORK_TAB, 'a completed step hidden by the toggle stayed hidden')
+  // There, with the focus cleared, the step is drawn in its own section, and
+  // that section is open even where it is finished and would otherwise fold.
+  for (const target of [held, done]) {
+    const drawn = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items)
+    const section = drawn.find((g) => g.items.some((i) => i.id === target.id))
+    assert.ok(section, `${target.id}: All work does not draw the step`)
+    assert.equal(groupKeyOf(section), groupOf(target.id)!.key, `${target.id}: drawn outside its own section`)
+    assert.equal(groupClosed(section, target.id, undefined, false), false, `${target.id}: its section stays folded over it`)
+    assert.equal(groupClosed({ ...section, closed: true }, target.id, undefined, false), false, 'a finished section folds over the open step')
+  }
+  // A finished section folds unless something opens it: the open step, a
+  // search, or the person's own press, which outranks both.
+  const finished = allWorkGroups(items, items).find((g) => g.closed)!
+  assert.ok(finished, 'the premise: the Follow-up demo has a finished section')
+  assert.equal(groupClosed(finished, null, undefined, false), true)
+  assert.equal(groupClosed(finished, null, undefined, true), false, 'a search matched rows in a section nobody can see')
+  assert.equal(groupClosed(finished, finished.items[0].id, true, false), true, 'the person\'s press did not outrank the open step')
+  // The Plan wires it: the rows the view draws decide, the switch goes to All
+  // work with the focus cleared, and the page moves to the step.
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const follow = open !== null \? followOpenStep\(open, shown\) : null/)
+  assert.match(plan, /setTab\(follow\); setFocus\(NO_FOCUS\); setToggled\(\{\}\); moveTo\.current = open/)
+  assert.match(plan, /const closed = groupClosed\(g, open, toggled\[key\], focusActive\(focus\)\)/)
+  assert.equal(plan.includes('const openTab'), false, 'a link still switches to the step\'s lane tab')
 })
 
 test('a header tile draws one list in section order: each section heading once, and each row once', () => {

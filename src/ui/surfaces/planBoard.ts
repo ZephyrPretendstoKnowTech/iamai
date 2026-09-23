@@ -784,6 +784,28 @@ export function groupTitleOf(group: StepGroup, complete: boolean): string {
   return words
 }
 
+/**
+ * Where a step opened from a link or a tile is shown (owner, roadmap flow V2):
+ * null — stay — where the view the person is on draws it (`shown`, the rows the
+ * tab and focus leave, or a tile's pick), else All work, where every row is.
+ * It used to switch to the step's own lane tab, which took a person off the
+ * view they chose for a step that was already on it.
+ */
+export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id'>[]): BoardTab | null {
+  return shown.some((i) => i.id === open) ? null : ALL_WORK_TAB
+}
+
+/**
+ * Whether a drawn group is folded: the person's own press where there is one;
+ * otherwise where the board draws it closed (a finished section on All work),
+ * unless it holds the open step — a link that opens a step inside a finished
+ * section opens the section — or a search or filter is on, which must not
+ * match rows inside a section nobody can see.
+ */
+export function groupClosed(g: BoardGroup, open: string | null, pressed: boolean | undefined, filtered: boolean): boolean {
+  return pressed ?? (g.closed && !(open !== null && g.items.some((i) => i.id === open)) && !filtered)
+}
+
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
   /** Stable key: `ready`, `upNext`, `hold-<n>`, `complete`, `deferred`. */
