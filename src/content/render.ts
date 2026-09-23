@@ -235,6 +235,10 @@ const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})
 // place · cannot finish until 16 steps wait" is two clauses, and the count in the
 // first does not conjugate the verb of the second.
 const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${[...new Set(Object.values(SINGULAR))].join('|')})|[A-Za-z-]+)(?= )([^.;:·]*)`, 'g')
+// A verb a modal, an auxiliary, "not" or "to" governs keeps its base form: "1
+// section could not be read", "1 person needs to register". The count's verb is
+// the modal, which does not bend (Phase 2 audit: "could not be reads").
+const GOVERNED_RE = /\b(?:be|been|being|can|cannot|could|will|would|may|might|must|shall|should|not|to)\s+$/i
 
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
@@ -254,13 +258,16 @@ function pluralise(text: string): string {
     // cohortWords). Its noun is singular; the verb stays with the whole subject.
     if (/^ and \d/.test(rest) || /\d[\d,]* [A-Za-z-]+ and $/.test(whole.slice(0, offset))) return m
     let first = true
+    // The first verb sat under a modal or "to": so does one joined to it by "and" ("can hold and use").
+    let governed = false
     const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
       const before = rest.slice(0, offset)
       // Only a verb directly after the subject, or joined to the first by "and".
       const joined = / and $/.test(before)
       if (first || joined) {
+        if (first) governed = GOVERNED_RE.test(before)
         first = false
-        return SINGULAR_VERB[v] ?? v
+        return governed ? v : (SINGULAR_VERB[v] ?? v)
       }
       return v
     })

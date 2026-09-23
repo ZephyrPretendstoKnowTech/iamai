@@ -675,8 +675,8 @@
         },
         "gaps": {
           "state": "finished with gaps · no plan built",
-          "lead": "{n} sections could not be read in full. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.",
-          "leadFirst": "{n} sections could not be read in full. The plan needs them, so IAMAI built nothing from this scan.",
+          "lead": "The plan needs {n} sections that could not be read in full, so IAMAI kept your last full plan and built nothing from this scan.",
+          "leadFirst": "The plan needs {n} sections that could not be read in full, so IAMAI built nothing from this scan.",
           "notRead": "not read",
           "partlyRead": "partly read",
           "$commentRefused": "Phase 2 audit (Connect): the leads said every unread section was unread \"with this account\", and the tile asked for Global Reader whatever the reason, so a read Microsoft throttled, or one stopped at the memory ceiling, was blamed on an account that already held Global Reader. Only a section Graph refused the account (roles.ts isPrivilegeDenial) is the account's doing: its row says so, and only then does the tile carry the Global Reader ask and another account (coreSections.ts UnreadSection.refused).",

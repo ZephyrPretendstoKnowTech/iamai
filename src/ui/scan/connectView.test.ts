@@ -23,6 +23,7 @@ import { readinessView } from '../../derive/mfaReadiness.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { readFileSync } from 'node:fs'
+import { fillText } from '../../content/render.ts'
 
 const upn = 'alex@example.com'
 const tenant = 'Contoso Pty Ltd'
@@ -264,7 +265,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')
   assert.equal(t.tone, 'wait')
-  assert.equal(t.lead, '2 sections could not be read in full. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.')
+  assert.equal(t.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI kept your last full plan and built nothing from this scan.')
   assert.deepEqual(t.rows, [
     { name: 'Conditional Access policies', value: 'not read' },
     { name: 'Sign-in records', value: 'refused to this account' },
@@ -277,7 +278,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { label: 'Scan again', weight: 'secondary' },
   ])
   const first = scanTile({ kind: 'gaps', unread, lastScan: null })
-  assert.equal(first.lead, '2 sections could not be read in full. The plan needs them, so IAMAI built nothing from this scan.')
+  assert.equal(first.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
   assert.deepEqual(first.actions, t.actions, 'the last full plan is the Plan tile\'s, not this one\'s')
   scanOnlyItsOwn(t)
 })
@@ -335,6 +336,26 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.ok((partly.rows ?? []).length > 0, 'the premise: the demo scan read a section in part')
   assert.doesNotMatch(said(partly), /this account|Global Reader/)
   assert.equal(partly.ask, undefined)
+})
+
+// Phase 2 audit (Connect): the likeliest gaps scan, sign-in records alone,
+// read "1 section could not be reads with this account. The plan needs them":
+// the pluraliser conjugated the verb after "could not be", and "them" counted
+// one section as many. A verb a modal or "to" governs keeps its base form, and
+// the lead names its count without a pronoun.
+test('a gaps scan with one section reads as one: no "be reads", no "them"', () => {
+  const one = [{ source: 'signInEvidence', partial: false, refused: false }]
+  const first = scanTile({ kind: 'gaps', unread: one, lastScan: null })
+  assert.equal(first.lead, 'The plan needs 1 section that could not be read in full, so IAMAI built nothing from this scan.')
+  const kept = scanTile({ kind: 'gaps', unread: one, lastScan: last })
+  assert.equal(kept.lead, 'The plan needs 1 section that could not be read in full, so IAMAI kept your last full plan and built nothing from this scan.')
+  const two = scanTile({ kind: 'gaps', unread: [...one, { source: 'config:caPolicies', partial: false, refused: false }], lastScan: null })
+  assert.equal(two.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
+  // The pluraliser, on every surface: a count of one conjugates its own verb, never one a modal, an auxiliary or "to" governs.
+  assert.equal(fillText('{n} sections could not be read', { n: 1 }), '1 section could not be read')
+  assert.equal(fillText('{n} people need to register a method', { n: 1 }), '1 person needs to register a method')
+  assert.equal(fillText('{n} people can hold and use it', { n: 1 }), '1 person can hold and use it')
+  assert.equal(fillText('{n} people hold a directory role and use that same account', { n: 1 }), '1 person holds a directory role and uses that same account', 'a verb the count governs still bends')
 })
 
 test('tile 3, not started: the account, one row asking for Global Reader, Sign in with another account (primary) alone, the red badge', () => {
