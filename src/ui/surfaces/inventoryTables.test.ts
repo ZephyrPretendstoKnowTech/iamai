@@ -336,3 +336,15 @@ test('the tab that lists every account is named for accounts, as its count is', 
   assert.equal(m.rows.length, s.users.length)
   assert.doesNotMatch(m.label, /people/i, 'the person word over a count of every account')
 })
+
+test('a read that returned nothing says so, not "yet" and not as a read that failed', () => {
+  // micro: the policies and the licences were read, and the tenant has none of either.
+  const micro = fixture('micro').snapshot
+  assert.equal(micro.config.caPolicies.status, 'ok')
+  assert.equal(policiesModel(micro, [], buildNameDirectory(micro)).empty, app.inventory.policiesNone)
+  assert.equal(licencesModel(micro).empty, app.inventory.licencesNone)
+  // demo: the records show no one blocked.
+  const demo = fixture('demo').snapshot
+  assert.equal(signInModels(demo, buildNameDirectory(demo)).blockedToday.empty, app.inventory.blockedNone)
+  for (const line of [app.inventory.policiesNone, app.inventory.licencesNone, app.inventory.blockedNone]) assert.doesNotMatch(line, /\byet\b|were read/)
+})
