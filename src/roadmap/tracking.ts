@@ -949,6 +949,13 @@ export function trackExecution(
         // The one transition a tenant can prove: a sign-in evaluated under the
         // policy in report-only says it was in report-only that day.
         evidenceAt: observedState === 'report-only' ? pr?.firstReportOnlyAt ?? null : null,
+        // The same proof, whatever the policy's state now: any sign-in this scan's
+        // window holds evaluated under it in report-only says it had a report-only
+        // period, so it did not skip one (observation.ts skippedWindow). Read from
+        // the counts, never `firstReportOnlyAt`, which the collector leaves null once
+        // an enforced record follows the report-only ones (laneBCore.ts
+        // derivePolicyResults).
+        reportOnlyRecords: pr !== undefined && pr.counts.reportOnlySuccess + pr.counts.reportOnlyFailure + pr.counts.reportOnlyInterrupted > 0,
         // *This* member's operation, and never another's. Comparing Policy B's
         // movement against Policy A's patch could call an unexpected rewrite
         // expected, or manufacture a review against a change nobody submitted.

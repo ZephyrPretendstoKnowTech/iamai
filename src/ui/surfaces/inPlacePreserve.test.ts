@@ -1034,12 +1034,18 @@ const UNWATCHED = /went live without a report-only period IAMAI could watch/
 
 type Scan = { label: string; h: Fixture; run: ReturnType<typeof runFixture> }
 
+/** Microsoft's sign-in records a scan holds for the created policy: how many were evaluated in report-only, and how many enforced. */
+type CreatedRecords = { reportOnlySuccess: number; enforcedSuccess: number }
+
 /**
  * demo's Block Unsupported Platforms, built from the step's own create
- * operation, and a scan per [day, Graph state] after the first scan, which
- * recorded it absent. Each scan carries the record the scans before it wrote.
+ * operation, and a scan per [day, Graph state, records] after the first scan,
+ * which recorded it absent. Each scan carries the record the scans before it
+ * wrote. Records, where given, are the scan's sign-in results for the created
+ * policy, in the shape the collector leaves a policy that has an enforced
+ * record: `firstReportOnlyAt` null.
  */
-function unsupportedOver(scans: readonly (readonly [number, string])[]): Scan[] {
+function unsupportedOver(scans: readonly (readonly [number, string, CreatedRecords?])[]): Scan[] {
   const DAY = 86_400_000
   const f = withFoundationSettled(fixture('demo'))
   const first = runFixture(f)
@@ -1048,10 +1054,19 @@ function unsupportedOver(scans: readonly (readonly [number, string])[]): Scan[] 
   const bodies = stepOperations(planned).filter((o) => o.mode === 'create').map((o, i) => ({ ...(structuredClone(o.body) as Record<string, unknown>), id: `0f0f0f0f-1111-4222-a333-44444444444${i}` }))
   assert.ok(bodies.length > 0, 'the premise: the step creates its policy')
   let prior = observationsOf(first.steps)
-  return scans.map(([days, state]) => {
+  return scans.map(([days, state, records]) => {
     const asOf = new Date(Date.parse(f.snapshot.asOf) + days * DAY).toISOString()
     const rows = [...((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]), ...bodies.map((r) => ({ ...r, state, createdDateTime: asOf, modifiedDateTime: asOf }))]
-    const h = { ...f, snapshot: { ...f.snapshot, asOf, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as typeof f.snapshot }
+    const results = records
+      ? bodies.map((r) => ({
+          policyId: String(r.id),
+          displayName: null,
+          counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: records.reportOnlySuccess, enforcedFailure: 0, enforcedSuccess: records.enforcedSuccess },
+          affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] },
+          firstReportOnlyAt: null,
+        }))
+      : []
+    const h = { ...f, snapshot: { ...f.snapshot, asOf, evidencePolicyResults: [...f.snapshot.evidencePolicyResults, ...results], config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as typeof f.snapshot }
     const run = runFixture(h, { snapshot: h.snapshot }, prior)
     prior = observationsOf(run.steps, prior)
     return { label: `day ${days}, ${state}`, h, run }
@@ -1162,6 +1177,34 @@ test('a policy created Off and switched straight On says it went live unwatched,
   assert.equal(offStep.state.members.every((m) => m.change.latest.state === 'disabled'), true, 'the premise: the scan after the first finds it Off')
   assert.deepEqual(unwatchedWarnings(offStep, unwatchedCtx(off.h, off.run)), [], 'a policy still Off went live nowhere')
   for (const scan of [arrived, after]) assertWentLiveUnwatched(scan, UNSUPPORTED)
+})
+
+test("a policy created in report-only and turned On between two scans is not said to have gone live unwatched when the scan's records show it in report-only", () => {
+  // The step's own workflow, with no scan in the middle of it. The first scan
+  // recorded Block Unsupported Platforms not deployed; the administrator created
+  // it in report-only as the step says, watched it, and turned it On; the next
+  // scan found it On, holding Microsoft's own records of it evaluated in
+  // report-only. The record read absent then On, and the step said "This policy
+  // went live without a report-only period IAMAI could watch", on its tile and
+  // in AI Info, about a policy whose report-only period the scan had in hand.
+  const [arrived, after] = unsupportedOver([[20, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 30 }], [23, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 60 }]])
+  for (const { label, h, run } of [arrived, after]) {
+    const step = run.steps.find((s) => s.id === UNSUPPORTED)!
+    assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${label}): the plan's own policy, enforced and finished`)
+    assert.equal(laneViewOf(laneReadings(run.steps).get(UNSUPPORTED)!, (x) => x).label, 'Completed', `${label}: it stays Completed`)
+    assert.equal(step.state.members.every((m) => m.change.latest.skippedWindow === undefined), true, `${label}: the record claims a skipped report-only period the scan's records disprove`)
+    const ctx = unwatchedCtx(h, run)
+    assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
+    // AI Info carries the tile's own words wherever the tile draws (aiGrounding.ts).
+    const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
+    assert.ok(ai, `${label}: the opened step has no AI Info`)
+    assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
+  }
+  // The scan after says it nowhere in AI Info. The arrival scan's New evidence
+  // note (observations.appearedEnforced) reads no sign-in records either, and
+  // is left to the owner rather than to this change.
+  const next = after.run.steps.find((s) => s.id === UNSUPPORTED)!
+  assert.equal(briefingTells(next, unwatchedCtx(after.h, after.run)), 0, `${after.label}: the AI Info briefing says it went live unwatched`)
 })
 
 test('a policy carrying this plan\'s tag, first seen On, is never said to have gone live unwatched', () => {

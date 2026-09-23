@@ -129,20 +129,28 @@ export type StepObservation = {
    * True where IAMAI WATCHED this policy object go On with no report-only state
    * between: the scan before recorded the step's policy not deployed, or Off
    * on this same object after a recorded absence (`offOnly`), and this scan
-   * found it enforced. The one reading that says a rollout skipped its
+   * found it enforced, and the scan's sign-in records show no report-only
+   * result for it. The one reading that says a rollout skipped its
    * report-only period (owner decision 3, 2026-09-22; R4-12), because it needs
    * a record that saw the policy not deployed: a first scan never sets it, nor
    * does a first sighting Off or a different object.
    *
+   * The records are the one proof the tenant gives of a report-only period
+   * (tracking.ts evidenceAt reads the same fact), and a period that began and
+   * ended between two scans is exactly what the step asks for: created in
+   * report-only, watched, and turned On, with no IAMAI scan in the middle.
+   *
    * Durable, and carried with the object exactly as `neverObserved` is: the
    * scan that saw the arrival compares against the one before it, and the fact
-   * stays true of the object on every scan after.
+   * stays true of the object on every scan after - until a scan's records show
+   * the same object in report-only, which disproves it.
    */
   skippedWindow?: true
   /**
    * True on an Off (disabled) observation of an object this record saw arrive
    * Off: created Off after a scan recorded the step's policy not deployed, and
-   * edited, if at all, while still Off. What lets a later move to On read
+   * edited, if at all, while still Off, and the scan's sign-in records show no
+   * report-only result for it. What lets a later move to On read
    * `skippedWindow`. Never on a first sighting Off: a policy IAMAI watched in
    * report-only from another browser, or before Forget, then turned Off, is
    * first seen Off by this record, and its report-only period was watched.
@@ -507,6 +515,8 @@ export type Sighting = {
   intent?: IntentSemantics | null
   /** The dimensions where the deployed policy is not what the plan asked for and the operation does not write (`unwrittenDifferences`); empty where none, or where the plan cannot tell. */
   unwritten?: readonly string[]
+  /** Microsoft's sign-in records show this object evaluated in report-only in the collected window. */
+  reportOnlyRecords?: boolean
 }
 
 const STATE_WORD: Record<ObservedState, string> = {
@@ -712,12 +722,19 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    * saw arrive Off after a recorded absence (`offOnly`). A first sighting Off,
    * Off after a report-only period IAMAI watched, a different object, and a
    * record that cannot say which object it watched all claim nothing.
+   *
+   * Nor does a scan whose sign-in records show this object evaluated in
+   * report-only (`reportOnlyRecords`): the step asks for exactly that period,
+   * and it can begin and end between two scans. Those records disprove a
+   * carried claim as well as a new one.
    */
+  const recorded = sighting.reportOnlyRecords === true
   const sightedNow = prior.state === 'absent'
-  const offOnly = state === 'disabled' && (sightedNow || (artifactAnswer === 'same' && prior.state === 'disabled' && prior.offOnly === true))
+  const offOnly = !recorded && state === 'disabled' && (sightedNow || (artifactAnswer === 'same' && prior.state === 'disabled' && prior.offOnly === true))
   const skippedWindow =
-    (state === 'enforced' && (prior.state === 'absent' || (prior.state === 'disabled' && artifactAnswer === 'same' && prior.offOnly === true))) ||
-    (artifactAnswer === 'same' && !moved && prior.skippedWindow === true)
+    !recorded &&
+    ((state === 'enforced' && (prior.state === 'absent' || (prior.state === 'disabled' && artifactAnswer === 'same' && prior.offOnly === true))) ||
+      (artifactAnswer === 'same' && !moved && prior.skippedWindow === true))
   return {
     latest: {
       artifact,
