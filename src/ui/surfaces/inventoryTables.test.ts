@@ -619,3 +619,8 @@ test('a service the scan did not see is said so in a sentence that agrees with a
   for (const r of reasons) assert.doesNotMatch(r, /(identities|OneDrive) does\b/, r)
   assert.ok(reasons.includes(fillText(E.notSeen, { service: (workflowWords.names as Record<string, string>).agents })), reasons.join('\n'))
 })
+
+test('a device filter is worded once, by its mode: no bare copy word is left beside the two', () => {
+  assert.equal((C.policies as Record<string, unknown>).deviceFilter, undefined)
+  assert.ok(app.inventory.deviceFilterInclude && app.inventory.deviceFilterExclude)
+})
