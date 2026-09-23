@@ -221,6 +221,10 @@ test('demo: Require a Managed Device found Off is not told to go to Report-only 
   const contract = stepContract(step, ctx)
   assert.doesNotMatch(contract.whatToDo.text, REPORT_ONLY, contract.whatToDo.text)
   assert.ok(!contract.implementation.offered && contract.implementation.because?.startsWith(CERTIFICATE), contract.implementation.offered ? 'offered' : String(contract.implementation.because))
+  // The reason says the policy was found switched off, not that creating it waits.
+  const because = String(contract.implementation.because)
+  assert.match(because, /already in .+, switched off\. So setting it to Report-only waits/, because)
+  assert.doesNotMatch(because, /creating this policy/i, because)
   const { body, whatToDo } = opened(f)
   for (const a of body.artifacts) assert.doesNotMatch(a.text(), REPORT_ONLY, `the ${a.id} tab says to set it to Report-only`)
   assert.doesNotMatch(whatToDo.join('\n'), REPORT_ONLY, 'the export says to set it to Report-only')

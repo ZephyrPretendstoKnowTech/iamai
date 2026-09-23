@@ -1294,11 +1294,12 @@ export function enforcementHeld(step: PolicyStep): boolean {
  *
  * A policy found Off is the same policy one patch from the same prompts: its
  * Report-only patch leaves the tenant exactly where the create would have, so
- * it waits on the same gate, and the step states the same fact (content
- * readinessHeldCreate). Where the step resolves no create for it (a pair's
- * member), the member's own update names it, and the tenant's policy it
- * leaves behind (`target`) says whether it requires a compliant device. Every
- * other policy found Off is still set to Report-only at once.
+ * it waits on the same gate, and the step states that fact for a policy it
+ * found (content readinessHeldSwitchedOff). Where the step resolves no create
+ * for it (a pair's member), the member's own update names it, and the tenant's
+ * policy it leaves behind (`target`) says whether it requires a compliant
+ * device. The wait is read for the whole step: every policy found Off on any
+ * other step is still set to Report-only at once.
  */
 export function createWaitsOnReadiness(step: PolicyStep): boolean {
   if (!enforcementHeld(step)) return false
