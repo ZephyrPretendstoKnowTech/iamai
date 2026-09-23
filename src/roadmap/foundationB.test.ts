@@ -456,6 +456,26 @@ test("a carried skipped report-only period drops when a later scan's records sho
   assert.equal(scanned(created, 'enforced', 6, true).skippedWindow, undefined, 'records of the same object in report-only disprove it')
 })
 
+test("a policy the scan's records show in report-only is not recorded as never watched in report-only, and its arrival note claims no missing period", () => {
+  // The arrival note (observations.appearedEnforced) and neverObserved, which
+  // the Done-when reads as "IAMAI watched no report-only period", said so of a
+  // policy whose report-only records the same scan held.
+  const absent = scanned(null, 'absent', 0)
+  const arrival = (reportOnlyRecords: boolean) => observe(absent, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at: recordDay(20), reportOnlyRecords })
+  assert.equal(arrival(false).latest.neverObserved, true, 'the premise: no records, and the arrival On was never watched in report-only')
+  assert.match(arrival(false).note, /without a report-only period IAMAI could watch/, 'the premise: and the note says so')
+  assert.equal(arrival(true).latest.neverObserved, undefined, 'the records show its report-only period')
+  assert.equal(/without a report-only period/.test(arrival(true).note), false, arrival(true).note)
+  assert.match(arrival(true).note, /moved to enforced by/, 'the note still reports the move it saw')
+  assert.equal(scanned(null, 'enforced', 0).neverObserved, true, 'the premise: a first scan finds it On')
+  assert.equal(scanned(null, 'enforced', 0, true).neverObserved, undefined, 'a first scan whose records show it in report-only')
+  const on = scanned(absent, 'enforced', 3)
+  assert.equal(scanned(on, 'enforced', 6).neverObserved, true, 'the premise: carried with the object')
+  const later = observe(on, { artifact: 'A', state: 'enforced', semantics: 'aaaa', at: recordDay(6), reportOnlyRecords: true })
+  assert.equal(later.latest.neverObserved, undefined, 'records of the same object in report-only disprove it')
+  assert.equal(/without a report-only period/.test(later.note), false, later.note)
+})
+
 test('observedStateOf reads Graph’s word, and a policy that is not there is not deployed', () => {
   assert.equal(observedStateOf('enabled'), 'enforced')
   assert.equal(observedStateOf('enabledForReportingButNotEnforced'), 'report-only')

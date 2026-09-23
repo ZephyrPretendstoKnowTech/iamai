@@ -66,7 +66,7 @@ import type { StoredSignIn } from '../../graph/collect/types.ts'
 import { CONTRACT, FINISHED_READING, readinessOf, stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
-import { POLICY_VERIFY_AFTER } from './doneWhen.ts'
+import { POLICY_UNOBSERVED, POLICY_VERIFY_AFTER } from './doneWhen.ts'
 import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
@@ -1233,11 +1233,44 @@ test("a policy created in report-only and turned On between two scans is not sai
     assert.ok(ai, `${label}: the opened step has no AI Info`)
     assert.equal(ai.text().includes(CONTRACT.foundEnforcedUnwatched), false, `${label}: the AI Info briefing carries the unwatched tile's words`)
   }
-  // The scan after says it nowhere in AI Info. The arrival scan's New evidence
-  // note (observations.appearedEnforced) reads no sign-in records either, and
-  // is left to the owner rather than to this change.
+  // The scan after says it nowhere in AI Info.
   const next = after.run.steps.find((s) => s.id === UNSUPPORTED)!
   assert.equal(briefingTells(next, unwatchedCtx(after.h, after.run)), 0, `${after.label}: the AI Info briefing says it went live unwatched`)
+})
+
+test("a policy whose scan's records show it in report-only is not said under New evidence, in AI Info or in its Done-when to have had no report-only period", () => {
+  // With the tile gone, the arrival scan's New evidence note still said "it went
+  // live without a report-only period IAMAI could watch"
+  // (observations.appearedEnforced), and AI Info repeated it. The Done-when
+  // said "IAMAI watched no report-only period for this policy before it found
+  // the policy enforced" on that scan and every one after (neverObserved), of
+  // a policy whose report-only records the same scan held.
+  const SKIPPED = /went live without a report-only period/
+  const cases: [string, Scan[]][] = [
+    ['reportOnlySuccess', unsupportedOver([[20, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 30 }], [23, 'enabled', { reportOnlySuccess: 120, enforcedSuccess: 60 }]])],
+    ['reportOnlyNotApplied', unsupportedOver([[20, 'enabled'], [23, 'enabled']], [[1, 15, 'reportOnlyNotApplied'], [16, 22, 'notApplied']])],
+  ]
+  for (const [records, scans] of cases) {
+    for (const { label, h, run } of scans) {
+      const at = `${records}, ${label}`
+      const step = run.steps.find((s) => s.id === UNSUPPORTED)!
+      assert.equal(step.state.lifecycle === 'enforced' && step.state.satisfied && !step.state.inPlace, true, `the premise (${at}): the plan's own policy, enforced and finished`)
+      const ctx = unwatchedCtx(h, run)
+      const contract = stepContract(step, ctx)
+      assert.deepEqual(contract.found.filter((x) => SKIPPED.test(x.text)).map((x) => x.text), [], `${at}: New evidence says it had no report-only period`)
+      const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
+      assert.ok(ai, `${at}: the opened step has no AI Info`)
+      assert.equal(SKIPPED.test(ai.text()), false, `${at}: AI Info says it went live without a report-only period`)
+      assert.equal(contract.doneWhen.includes(POLICY_UNOBSERVED), false, `${at}: the Done-when says IAMAI watched no report-only period: ${contract.doneWhen.join(' | ')}`)
+      assert.equal(ai.text().includes(POLICY_UNOBSERVED), false, `${at}: AI Info says IAMAI watched no report-only period`)
+      assert.equal(step.state.members.every((m) => m.change.latest.neverObserved === undefined), true, `${at}: the record says IAMAI recorded no report-only state for it`)
+    }
+    // The arrival scan still reports the arrival under New evidence, in words
+    // the records do not disprove.
+    const arrived = scans[0].run.steps.find((s) => s.id === UNSUPPORTED)!
+    const note = arrived.state.observation?.note ?? ''
+    assert.ok(stepContract(arrived, unwatchedCtx(scans[0].h, scans[0].run)).found.some((x) => x.text === note && note.length > 0), `${records}: the arrival is no longer reported under New evidence`)
+  }
 })
 
 test("a block policy whose only report-only records are reportOnlyNotApplied is not said to have gone live unwatched", () => {
