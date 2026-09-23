@@ -26,7 +26,7 @@ import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, 
 import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { absoluteDate, dateRange } from '../../copy/dates.ts'
+import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { planFinish, statedEstimate } from '../../derive/finish.ts'
@@ -328,4 +328,21 @@ test('the registration window\'s row states the people the window is sized for, 
   assert.equal(note, `5 of ${verify.preparation?.ids.length} people in Prepare Your Team for MFA have no usable registered MFA method yet.`)
   assert.equal(/104|106/.test(note), false, `the note counts another population: ${note}`)
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const verificationNote = verificationNoteOf\(steps\)/, 'the row words its own population')
+})
+
+// ---- Every printed date in the plan's format and zone ----
+
+test('the drill\'s recovery procedure dates the scan in the plan\'s format and display zone, as the cover does', () => {
+  // It printed "8/28/2026, 3:00:00 AM" (Date.toLocaleString: the machine's
+  // locale and zone) under a cover reading "Scanned / Aug 28, 2026".
+  const src = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+  assert.equal(src.includes('toLocaleString('), false, 'a Cleanup row formats a date in the machine\'s locale and zone')
+  assert.match(src, /reflect the scan at \{phase\.snapshotObservedAt \? absolute\(phase\.snapshotObservedAt\) :/, 'the scan time is not formatted by copy/dates.ts')
+  const at = '2026-08-28T03:00:00.000Z'
+  setDisplayTimeZone('Australia/Sydney')
+  try {
+    assert.ok(absolute(at).startsWith(`${absoluteDate(at)},`), `the scan time names another day than the cover: ${absolute(at)} / ${absoluteDate(at)}`)
+  } finally {
+    setDisplayTimeZone(null)
+  }
 })
