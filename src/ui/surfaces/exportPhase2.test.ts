@@ -22,6 +22,8 @@ import { absoluteDate, setDisplayTimeZone } from '../../copy/dates.ts'
 import { BOARD, boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { stepContract } from './stepContract.ts'
+import { packageBindings } from './stepPackage.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { copyBoxes, exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -453,13 +455,25 @@ test('the bundle\'s tenant profile draws no count from a section the scan did no
 // Finding 18 (severity 1, reproduced). AI Info's package words doubled the full
 // stop: "Known blockers and decisions: Finish Configure Passkey Authentication
 // first.. Resolve these …". The fixes bound into {{dependencies.blockers}} end
-// in a stop and every template adds its own.
+// in a stop and every template adds its own. A fix that is a clause with no
+// stop of its own ran into the next one: midflight Require Phishing-Resistant
+// MFA for Admins read "Blockers: when 1 safe way in for the signed-in account
+// exists (now 0) Finish Configure Passkey Authentication first."
 test('no channel the opened step hands over doubles a full stop', () => {
   let bound = 0
-  for (const name of ['demo', 'small', 'mid'] as FixtureName[]) {
+  let several = 0
+  for (const name of ['demo', 'small', 'mid', 'midflight'] as FixtureName[]) {
     const p = exportPage(fixture(name))
     for (const step of p.r.steps) {
-      const body = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) })
+      const lane = laneViewFor(step, p.board)
+      const body = stepBodyOf(step, p.ctxOf(step), { lane })
+      const contract = stepContract(step, p.ctxOf(step), undefined, lane)
+      const fixes = contract.fix.map((f) => f.text.trim())
+      const blockers = packageBindings(step, p.ctxOf(step), contract)['dependencies.blockers']
+      if (typeof blockers === 'string' && fixes.length > 1) {
+        several++
+        for (const fix of fixes.slice(0, -1)) assert.ok(blockers.includes(/[.!?]$/.test(fix) ? fix : `${fix}.`), `${name}/${step.id}: "${fix}" runs into the next blocker: ${blockers}`)
+      }
       for (const artifact of body.artifacts) {
         const text = artifact.text()
         if (/Blockers|blockers and decisions|blockers or decisions/.test(text)) bound++
@@ -469,6 +483,7 @@ test('no channel the opened step hands over doubles a full stop', () => {
     }
   }
   assert.ok(bound > 0, 'the premise: a channel that binds the blockers')
+  assert.ok(several > 0, 'the premise: a step with more than one blocker')
 })
 
 // Finding 19 (severity 1, reproduced). The masked bundle still named the groups

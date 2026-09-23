@@ -1069,8 +1069,10 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // stop ("Blockers: {{dependencies.blockers}}. Resolve …"), so they are bound
   // as one run of sentences without the last one's stop. Bound as a list they
   // read "Finish Configure Passkey Authentication first.. Resolve these …"
-  // (Phase 2 export finding 18).
-  put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).join(' ').replace(/\.$/, '') : undefined)
+  // (Phase 2 export finding 18). A fix with no stop of its own gets one, or it
+  // runs into the next: "… exists (now 0) Finish Configure Passkey
+  // Authentication first" (midflight).
+  put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text.trim()).map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(' ').replace(/\.$/, '') : undefined)
   return out
 }
 
