@@ -1193,6 +1193,8 @@
         "confirmOn": "Sign in once with {method} on {device}",
         "returnConfirm": "Confirm on return",
         "guest": "Set up Microsoft Authenticator; passkeys don’t work for guests yet",
+        "$commentGuestHasAuthenticator": "A guest who already holds Microsoft Authenticator was told to set it up. Nothing on the row can move a guest to Ready while passkeys don't work for guests, so the row states that.",
+        "guestHasAuthenticator": "Uses Microsoft Authenticator; passkeys don’t work for guests yet",
         "addDevice": "Add {option} on {device}",
         "updateOs": "Update {device} to {version}, or use a security key on it",
         "replaceKey": "Replace the key with an approved model",

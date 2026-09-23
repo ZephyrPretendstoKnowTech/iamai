@@ -50,7 +50,7 @@ type Words = {
   unusedKey: { never: string; stale: string }
   options: Record<SignInOption, string>
   next: {
-    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
+    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
@@ -327,8 +327,9 @@ export function nextCell(r: ReadinessRow): string {
   const rd = r.readiness
   if (!rd || r.state === null) return ''
   // A guest is in the campaign (owner, 2026-09-19): Microsoft Authenticator works
-  // for them and a passkey does not yet, so a guest is never asked to set one up.
-  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return T.next.guest
+  // for them and a passkey does not yet, so a guest is never asked to set one up;
+  // one who already holds Authenticator is told what they use, never to set it up again.
+  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
   if (signInsUnavailableFor(r)) return T.next.none
   if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
