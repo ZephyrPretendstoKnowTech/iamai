@@ -26,6 +26,8 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { LANE_ORDER } from './planLanes.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
+import { completedLinesOf } from './printPlan.ts'
+import type { PrintBoard } from './printPlan.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -103,6 +105,8 @@ export function PrintPlan({
   }
   const prerequisiteLabel = prerequisiteLabelFor(readings)
   const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), laneTitleOf)
+  // The same three the printed step bodies read, handed to the print's own view (printPlan.ts).
+  const printBoard: PrintBoard = { laneOf, blockersOf, prerequisiteLabel }
   const done = completedRows(steps)
   // A numbered phase's rows, the undated group and the floor group, all read
   // from the Plan's own rules (planRows.ts) and none of them recomputed here.
@@ -304,21 +308,47 @@ export function PrintPlan({
           ))}
         </section>
       )}
-      {/* Completed and Deferred (A1c): the rows the screen's two groups hold, as
-          a list under the lane's own word — the title and the lane label each row
-          shows — so the document states them once and dates neither. */}
-      {[{ lane: 'Completed' as const, rows: done }, { lane: 'Deferred' as const, rows: deferred }].filter((g) => g.rows.length > 0).map((g) => (
-        <section key={g.lane} className="print-page">
-          <h2>{laneWordOf(g.lane)}</h2>
+      {/* Completed (A1c): the rows the screen's Completed group holds, as a
+          list under the lane's own word — the title and the lane label each row
+          shows — dated by neither. A finished policy the opened step still warns
+          about (enforced below readiness, or ahead of a prerequisite) prints
+          those warnings under its line (printPlan.ts completedLinesOf). */}
+      {done.length > 0 && (
+        <section className="print-page">
+          <h2>{laneWordOf('Completed')}</h2>
           <ul className="print-lane-rows">
-            {g.rows.map((s) => (
+            {completedLinesOf(done, printBoard, stepCtx).map((l) => (
+              <li key={l.id}>
+                <span className="step-title">{l.title}</span> · {l.label}
+                {l.warnings.length > 0 && (
+                  <dl className="print-warnings">
+                    {l.warnings.map((t, i) => (
+                      <Fragment key={`${t.key}-${i}`}>
+                        <dt>{t.label}</dt>
+                        <dd>{t.value}</dd>
+                        {t.note && <dd>{t.note}</dd>}
+                      </Fragment>
+                    ))}
+                  </dl>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {/* Deferred (A1c, decision 3): each deferred step once, under the lane's own word. */}
+      {deferred.length > 0 && (
+        <section className="print-page">
+          <h2>{laneWordOf('Deferred')}</h2>
+          <ul className="print-lane-rows">
+            {deferred.map((s) => (
               <li key={s.id}>
                 <span className="step-title">{contentTitle(s)}</span> · {laneOf(s.id).label}
               </li>
             ))}
           </ul>
         </section>
-      ))}
+      )}
       {schedule.cleanup && (
         <section className="print-page">
           <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
