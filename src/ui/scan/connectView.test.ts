@@ -711,3 +711,26 @@ test('the strip and the baseline step read the same load in flight', () => {
   assert.doesNotMatch(tile, /useState<string \| null>\(null\)\s*\n\s*const \[error/, 'the tile keeps no load state of its own')
   assert.match(tile, /busy, setBusy/)
 })
+
+// Phase 2 audit (Connect): the scan's age ("complete · 3 days ago", "from the
+// scan 3 days ago") was formatted in the browser's default locale, so a
+// German browser read "complete · vor 3 Tagen" inside English sentences. The
+// relative formatter speaks the content's language, as monthDay already does.
+test('the scan age is English inside English sentences, whatever the browser locale', async () => {
+  const Real = Intl.RelativeTimeFormat
+  class BrowserDefault extends Real {
+    constructor(locale?: Intl.LocalesArgument, options?: Intl.RelativeTimeFormatOptions) {
+      super(locale ?? 'de-DE', options)
+    }
+  }
+  ;(Intl as unknown as { RelativeTimeFormat: unknown }).RelativeTimeFormat = BrowserDefault
+  try {
+    // A fresh copy of the formatter module, built under the German default.
+    const { relative } = (await import(new URL('../../copy/dates.ts?browser=de-DE', import.meta.url).href)) as { relative: (iso: string, now?: number) => string }
+    const at = '2026-09-08T00:00:00Z'
+    assert.equal(relative(at, Date.parse(at) + 3 * 86_400_000), '3 days ago')
+    assert.equal(relative(at, Date.parse(at) + 2 * 3_600_000), '2 hours ago')
+  } finally {
+    ;(Intl as unknown as { RelativeTimeFormat: typeof Real }).RelativeTimeFormat = Real
+  }
+})
