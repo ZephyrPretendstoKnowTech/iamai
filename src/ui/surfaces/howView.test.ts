@@ -47,3 +47,19 @@ test('How calls an emergency-access check Must fix only where the plan’s tier 
   // account confirmed and is hardening with one, and its row says so.
   assert.match(bg.rows.find((r) => r.id === 'bg.count')?.why ?? '', /deferred/)
 })
+
+// The owner's rule (validation/exclusionsGroupPolicies.ts): every applicable
+// policy, Report-only included, excludes the exclusions group, because a
+// Report-only policy is one mode change from enforcing; xg.usedConsistently
+// holds the plan on it. How's emergency-account row said "Microsoft does not
+// require the exclusion" for the same policy (Phase 2 audit, How).
+test('How reads a missing Report-only exclusion one way: the exclusions group is held to Report-only policies too', () => {
+  const tables = howCheckTables()
+  const row = (id: string) => tables.flatMap((t) => t.rows).find((r) => r.id === id)
+  const reportOnly = row('bg.excludedFromReportOnly')
+  assert.ok(reportOnly)
+  assert.doesNotMatch(reportOnly.why, /does not require/i, reportOnly.why)
+  assert.match(reportOnly.why, /Report-only/)
+  assert.match(reportOnly.why, /exclusions group/)
+  assert.match(row('xg.usedConsistently')?.what ?? '', /report-only/i)
+})
