@@ -1830,11 +1830,20 @@ const BLIND_READING = 'readiness-blind'
  * and a count of people. It never said that the number it exists to move
  * could not be read, or which permission would let a scan read it, while the
  * four policies waiting on that number each said both (R4-20, Priya D5).
+ *
+ * Only where the step's own reach is established. The reading counts "the
+ * people in scope", and on a step whose people card says its reach is Not
+ * established those people are somebody else's: on hostile the guests policy,
+ * enforced by the tenant's all-users policy, drew "None of the 40 people in
+ * scope could be judged" (the all-users population) directly above "Affected
+ * people · Not established". That is a count of a scope the same page says it
+ * does not know.
  */
 function blindReadingTile(step: Step, c: StepContract): ReadinessTile | null {
   const r = step.readiness
   if (r?.blind === undefined || step.status === 'skipped') return null
   if (step.action.readinessGate !== undefined || step.action.enforcedBelowReadiness !== undefined) return null
+  if (c.who === null || !c.who.known) return null
   if (c.state.setAside || c.state.condition === 'baseline-conflict') return null
   const note = [r.lines[0], r.blind].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' ')
   return { key: BLIND_READING, label: R().tiles.reading, tone: 'warn', value: R().tiles.notMeasured, note }

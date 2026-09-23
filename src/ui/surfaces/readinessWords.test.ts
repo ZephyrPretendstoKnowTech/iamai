@@ -472,6 +472,27 @@ test('the campaign that moves an unreadable number names the source the scan cou
   assert.equal(mid.some((t) => /could not read/.test(t.note ?? '')), false)
 })
 
+// Review of R4-20. The blind card drew on every step whose reading was blind,
+// not only on the campaign. On hostile the guests policy is enforced by the
+// tenant's "MFA for all users" and has no threshold, so it drew "Readiness ·
+// Not measured — None of the 40 people in scope could be judged…". The 40 is the
+// all-users policy's population, not a guest scope. Directly below it sat
+// "Affected people · Not established — Exact guest-policy reach needs…". The
+// card counted a scope the same page says it has not established. Before R4-20
+// that line showed nowhere on this step, and it does not now.
+test('a step whose reach is not established never counts the people in scope of its reading', () => {
+  const f = fixture('hostile')
+  const bodies = bodiesOf(f)
+  const guests = bodies.get('s-goal-guests-mfa')!
+  const tiles = allTiles(guests)
+  const people = tiles.find((t) => t.key === 'people')
+  assert.equal(people?.value, T.peopleUnknown, 'the premise: the guests policy\'s reach is not established')
+  const counted = tiles.filter((t) => /\d+ (?:people|person) in scope/.test(`${t.value} ${t.note ?? ''}`))
+  assert.deepEqual(counted.map((t) => `${t.label} · ${t.value}`), [], 'a count of people in scope beside "Not established"')
+  // The campaign's own reach is established, and it still names the source it could not read.
+  assert.ok(allTiles(bodies.get('s-verify-mfa')!).some((t) => t.value === T.notMeasured && /AuditLog\.Read\.All/.test(t.note ?? '')))
+})
+
 // R4-20 (Priya D5), the promises. Beside a registration source that returned
 // 403, Prepare Your Team for MFA still promised "the record shows it on the next
 // scan" and "the lists above shrink as people are seen", and headed its unknown
