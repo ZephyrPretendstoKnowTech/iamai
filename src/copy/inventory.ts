@@ -63,7 +63,6 @@ export const INVENTORY = {
     signInRisk: (s: string) => `sign-in risk: ${s}`,
     userRisk: (s: string) => `user risk: ${s}`,
     flows: (s: string) => `flows: ${s}`,
-    deviceFilter: 'device filter',
     block: 'Block',
     require: (s: string) => `Require ${s}`,
     strength: (name: string) => `strength: ${name}`,
