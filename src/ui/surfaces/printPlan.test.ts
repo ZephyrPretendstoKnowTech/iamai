@@ -23,7 +23,7 @@ import { boardOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows } from './planRows.ts'
-import { completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
+import { cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, laneGroupsOf, noPlanLine, postureOf } from './printPlan.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
@@ -264,4 +264,24 @@ test('a plan whose open work has no dates states no finish: the start alone, nev
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /estimate: statedEstimate\(steps, finish, schedule\)/, 'the cover states the pre-deferral estimate')
   assert.match(print, /coverDatesOf\(schedule\.start, finish, constraint\)/, 'the cover dates the plan itself')
+})
+
+// ---- Cleanup rows say what they wait for ----
+
+test('a printed Cleanup row says what the board says it waits for', () => {
+  // Demo: the board reads "On Hold · After Configure Passkey Authentication"
+  // for Verify Emergency Access and "On Hold · After security rollout" for the
+  // alerting row; the print said "On Hold" and then printed the full procedure.
+  const p = plan('demo')
+  const heads = cleanupHeadsOf(p.schedule.cleanup?.rows ?? [], p.board.laneOf)
+  const drill = heads.find((h) => h.kind === 'drill')
+  const alerting = heads.find((h) => h.kind === 'alerting')
+  assert.ok(drill && alerting, 'the premise: the demo carries the drill and the alerting rows')
+  assert.equal(drill.waitingFor, p.board.laneOf('cleanup-drill').waitingFor, 'the print states another wait from the board')
+  assert.match(drill.waitingFor ?? '', /Configure Passkey Authentication/, `the drill's wait: ${drill.waitingFor}`)
+  assert.match(alerting.waitingFor ?? '', /security rollout/, `the alerting row's wait: ${alerting.waitingFor}`)
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(print, /cleanupHeadsOf\(schedule\.cleanup\.rows, laneOf\)/, 'the print words the Cleanup heads itself')
+  assert.match(print, /status=\{\{ word: h\.word, tone: h\.tone, waitingFor: h\.waitingFor \}\}/, 'the Cleanup body is not handed the wait')
+  assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /sub=\{status\.waitingFor \? <p className="reason">\{status\.waitingFor\}<\/p> : null\}/, 'the Cleanup body does not draw the wait under its title')
 })
