@@ -78,13 +78,18 @@ function counts(ids: string[], head: readonly string[], index: PopulationIndex):
 }
 
 export type StepPopulationView = {
-  /** Active people the step acts on — the one denominator (enabled, signed in within 90 days). */
+  /**
+   * The count the step's line gives (whoLine affectedIds): its active people for
+   * a population of people, every account it names for one built by
+   * namedAccounts (the dormant accounts, the per-user MFA states, the campaign's
+   * cohort, the shared-device and service accounts).
+   */
   active: number
   admins: number
   guests: number
   /** Enabled accounts in scope, shown once as "covers N enabled"; ≥ active. */
   enabledCovered: number
-  /** The active in-scope ids, in order; callers resolve names through the directory. */
+  /** The ids that count, in order; callers resolve names through the directory. */
   names: string[]
 }
 

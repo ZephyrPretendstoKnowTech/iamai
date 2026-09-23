@@ -14,6 +14,15 @@ export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'read
 export type StepPopulation = {
   /** Every account the population holds: ids.length. The "covers N enabled" count is inScope, never this. */
   total: number
+  /**
+   * The active people among `ids` (derive/population.ts isActivePerson). A
+   * population of people counts only them (`activeIds`); one that names
+   * accounts (namedAccounts) counts every id, and this says how many of those
+   * are active people, which is how its line knows whether it may say "active
+   * people". Whether a step affects anybody is the ids its line counts
+   * (derive/whoLine.ts affectedIds), never this: a service account is changed by
+   * the policy that names it, and is no active person.
+   */
   active: number
   admins: number
   guests: number
