@@ -342,7 +342,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   const denied = structuredClone(small)
   denied.sources.registrationDetails = { ...denied.sources.registrationDetails, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
   denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
-  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: false })
+  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: false, byThisAccount: true })
   assert.deepEqual(built.rows, [
     { name: 'MFA registration', value: 'refused to this account' },
     { name: 'Devices', value: 'refused to this account' },
@@ -374,7 +374,7 @@ test('a refused section asks a Global Reader or a Global Administrator for no ro
   ], 'the refusal is still stated')
   const denied = structuredClone(fixture('small').snapshot)
   denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
-  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true })
+  const built = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true, byThisAccount: true })
   assert.deepEqual(built.rows, [{ name: 'Devices', value: 'refused to this account' }])
   assert.equal(built.ask, undefined)
   // Without those roles the ask stays.
@@ -387,7 +387,28 @@ test('a refused section asks a Global Reader or a Global Administrator for no ro
   assert.equal(holdsReadEverything(null), false, 'a token without the claim says nothing about roles')
   const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
   assert.match(CONNECT, /const readsEverything = roleIds === null \? null : holdsReadEverything\(roleIds\)/, 'Connect reads the token once, and says unknown until it is read')
-  assert.equal(CONNECT.match(/, readsEverything \}/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
+  assert.equal(CONNECT.match(/unread: (runner\.unread, lastScan|unreadSources\(lastScan\.snapshot\)), readsEverything\b/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
+})
+
+// Phase 2 review, round 2: a complete scan restored from the store labelled its
+// refused rows "refused to this account" whoever was signed in now. The path the
+// ask recommends makes that false: a Security Reader's scan is refused Devices,
+// the admin is given Global Reader and signs in with that account, and the Global
+// Reader account then read that Devices was refused to it. The row names this
+// account only when the scan's own /me row (derive/operator.ts) is this account.
+test('a stored scan says a section was refused to this account only when this account ran it', () => {
+  const denied = structuredClone(fixture('small').snapshot)
+  denied.sources.devices = { ...denied.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  const mine = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true, byThisAccount: true })
+  assert.deepEqual(mine.rows, [{ name: 'Devices', value: 'refused to this account' }])
+  for (const byThisAccount of [false, undefined]) {
+    const theirs = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(denied), readsEverything: true, byThisAccount })
+    assert.deepEqual(theirs.rows, [{ name: 'Devices', value: 'refused to the account that ran this scan' }], `${byThisAccount}: the refusal is the scan's, not this account's`)
+    assert.doesNotMatch(tileStrings(theirs).join('\n'), /this account/)
+  }
+  // Connect compares the scan's /me row with the account signed in now.
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.match(CONNECT, /byThisAccount: operatorUserId\(lastScan\.snapshot\) === account\.localAccountId/)
 })
 
 // Phase 2 review, round 2: the token's roles are read after the first render
@@ -844,7 +865,7 @@ test('a directory audit read that failed is listed with the sections the scan di
   assert.deepEqual(unreadSources(s), [], 'the premise: the fixture read everything')
   s.recoveryAuditSource = { status: 'error', reason: 'Directory audit evidence could not be read: access denied (403)', coveredWindow: null, asOf: s.asOf }
   assert.deepEqual(unreadSources(s), [{ source: 'recoveryAudit', partial: false, refused: true }])
-  const t = scanTile({ kind: 'complete', at: full.asOf, unread: unreadSources(s) })
+  const t = scanTile({ kind: 'complete', at: full.asOf, unread: unreadSources(s), byThisAccount: true })
   assert.deepEqual(t.rows, [{ name: 'Directory audit log', value: 'refused to this account' }])
   assert.match(t.lead ?? '', /^1 section was not read in full/)
   // A scan from before the read existed recorded no state for it, and is not said to have failed it.
