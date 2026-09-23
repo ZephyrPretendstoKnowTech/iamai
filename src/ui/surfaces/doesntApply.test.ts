@@ -9,7 +9,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { buildPlanFile, parsePlanFile } from '../../roadmap/plan.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { pages } from '../../content/content.ts'
+import { directionWords, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { inWave } from '../../derive/phases.ts'
 import { stepContract } from './stepContract.ts'
@@ -70,7 +70,9 @@ test('with no office network selected the step states that answer, not the other
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
     const done = stepContract(step, ctx).doneWhen.join(String.fromCharCode(10))
     assert.doesNotMatch(done, /marked as trusted/, `${name}: the other completion is still stated`)
-    assert.match(done, /No office network is selected/, `${name}: ${done}`)
+    // Stage 3 (V1 decision 6): the answer no longer completes a step that has
+    // nothing to build. The step does not apply, and the answer is its reason.
+    assert.equal(step.doesntApply, directionWords.questions.officeNetwork.options.remote, `${name}: ${done}`)
   }
   assert.ok(checked > 0, 'no fixture answers this step everyone-is-remote')
 })

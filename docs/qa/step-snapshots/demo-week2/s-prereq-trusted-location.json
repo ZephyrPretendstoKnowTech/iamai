@@ -1,11 +1,11 @@
 {
-  "lane": "Completed",
+  "lane": "Deferred",
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Completed",
-  "bar": "In place",
-  "rail": "Completed",
+  "badge": "Doesn't apply",
+  "bar": "Doesn't apply",
+  "rail": "Not scheduled",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -20,5 +20,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Already in place"
+  "when": "Not scheduled"
 }

@@ -165,8 +165,9 @@ test('T5: the step names every step that waits on it, which the board proves is 
 test('T6: the step shows the date its Microsoft sources were checked, on both scans', () => {
   assert.equal(checkedOn('s-prereq-trusted-location'), '2026-09-20')
   assert.equal(bodiesOf('demo').get('s-prereq-trusted-location')!.sourceLine, 'Source checked Sep 20, 2026')
-  // The follow-up scan has the object in place; the line is the same.
-  assert.equal(bodiesOf('demo-week2').get('s-prereq-trusted-location')!.sourceLine, 'Source checked Sep 20, 2026')
+  // The follow-up scan answered that everyone works remotely: the step does not
+  // apply there (Stage 3, V1 decision 6) and sits in the footer, with no body to date.
+  assert.equal(bodiesOf('demo-week2').has('s-prereq-trusted-location'), false)
 })
 
 test('T7: Done when opens on this step’s outcome, on screen', () => {
