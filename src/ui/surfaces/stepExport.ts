@@ -219,7 +219,7 @@ export function manualEvidenceLines(step: Step, ctx: StepVarContext): string[] {
  *
  * Only where the gate is the board's own words for a waiting row (the lane's
  * tail on Up Next or On Hold: "After Configure Passkey Authentication",
- * "Waiting on your direction"), which the row itself shows. The engine's
+ * "Waiting on your answers"), which the row itself shows. The engine's
  * milestone clause is not a sentence ("until both policies of the pair can be
  * matched", "when admin readiness reaches 100% (now 66%)"), and the board's
  * "Not supported" over a policy already in place is a group label, not an

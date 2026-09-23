@@ -4,7 +4,7 @@
   "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "After prerequisites",
   "headings": [
     "About this Step",
@@ -23,7 +23,7 @@
     },
     {
       "label": "Decide How People and Devices Sign In",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     },
     {
       "label": "Configure Emergency Exclusions",

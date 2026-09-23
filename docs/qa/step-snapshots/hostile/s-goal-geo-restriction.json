@@ -4,7 +4,7 @@
   "reason": "after: Create or Correct Allowed Countries Location",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Waiting on your direction",
+  "bar": "Waiting on your answers",
   "rail": "After prerequisites",
   "headings": [
     "About this Step",
@@ -27,7 +27,7 @@
     },
     {
       "label": "Confirm What You Use",
-      "state": "Waiting on your direction"
+      "state": "Waiting on your answers"
     }
   ],
   "channels": [
