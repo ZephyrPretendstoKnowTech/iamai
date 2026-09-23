@@ -2947,7 +2947,8 @@
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window."
       },
       "readiness": {
-        "lineNoRecordsReason": "no sign-in records ({reason})",
+        "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
+        "lineNoRecordsReason": "No sign-in records were read: {reason}.",
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
         "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."
