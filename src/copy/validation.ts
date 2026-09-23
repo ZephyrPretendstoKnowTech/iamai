@@ -234,7 +234,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   // ---- break-glass, warnings ----
   'bg.excludedFromReportOnly': {
     what: 'The account is also excluded from the report-only policies.',
-    why: 'A report-only policy denies nothing today, so Microsoft does not require the exclusion. It becomes required the moment somebody turns the policy on, which is usually the moment nobody is thinking about it.',
+    // The owner's all-policies rule (validation/exclusionsGroupPolicies.ts), which
+    // xg.usedConsistently holds the plan on. This said Microsoft does not require
+    // the exclusion, one row above a Must fix for the same policy (Phase 2 audit).
+    why: 'A Report-only policy is one mode change from enforcing, so the exclusions group is held to every On and Report-only policy (see The exclusions group).',
   },
   'bg.microsoftManaged': {
     what: 'The account is excluded from the policies Microsoft manages.',
