@@ -14,12 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Allowed countries",
-      "state": "Not Fully Read"
+      "label": "Administrator Sign-in Countries",
+      "state": "Not Read"
     },
     {
-      "label": "Allowed countries",
+      "label": "Work Countries Location",
       "state": "Needs Correction"
+    },
+    {
+      "label": "Countries People Sign In From",
+      "state": "Not Read"
     }
   ],
   "channels": [
