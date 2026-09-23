@@ -9,6 +9,7 @@ import { runLaneB } from './signInStream.ts'
 import type { LaneBDeps } from './signInStream.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import { memoryEvidenceStore } from '../../testing/memoryEvidenceStore.ts'
+import { RECOVERY_CANDIDATES_PER_PERSON } from './constants.ts'
 import type { StoredSignIn } from './types.ts'
 
 const NOW = Date.parse('2026-08-26T00:00:00Z')
@@ -277,6 +278,23 @@ test('recovery projection preserves the real-shaped target, authentication time 
   assert.equal(event.authenticationAt, '2026-09-16T10:01:00Z')
   assert.equal(event.resourceTenantId, 'tenant')
   assert.equal(event.freshMethod, true)
+})
+
+test('each person keeps only the newest passkey sign-ins as recovery candidates, whatever order the records come in', () => {
+  const n = RECOVERY_CANDIDATES_PER_PERSON
+  const passkey = (id: string, hoursAgo: number): StoredSignIn => row({ id, hoursAgo, userId: 'account', isInteractive: true, authenticationRequirement: 'multiFactorAuthentication', authenticationDetails: [{ succeeded: true, authenticationMethod: 'Passkey (device-bound)', authenticationStepDateTime: iso(hoursAgo), authenticationStepResultDetail: 'MFA successfully completed' }] })
+  // 67 is prime, so i * 7919 % 67 visits every index once.
+  const rows = Array.from({ length: 3 * n + 7 }, (_, i) => passkey(`pk-${i}`, i + 1))
+  const scrambled = rows.map((r, i) => ({ r, k: (i * 7919) % rows.length })).sort((a, b) => a.k - b.k).map((x) => x.r)
+  for (const order of [rows, [...rows].reverse(), scrambled]) {
+    const u = aggregate(order).account
+    assert.deepEqual(u.recoveryCandidates!.map((c) => c.eventId), rows.slice(0, n).map((r) => r.id))
+    assert.equal(u.signInCount, rows.length, 'every sign-in is still counted')
+  }
+  assert.equal(aggregate(rows.slice(0, 3)).account.recoveryCandidates!.length, 3)
+  // Within one second, the first records seen are kept, as a sort of every candidate would keep them.
+  const tied = Array.from({ length: 2 * n + 3 }, (_, i) => passkey(`tie-${i}`, 5))
+  assert.deepEqual(aggregate(tied).account.recoveryCandidates!.map((c) => c.eventId), tied.slice(0, n).map((r) => r.id))
 })
 
 test('the recovery audit read stays inside Entra directory-audit retention (30 days)', () => {

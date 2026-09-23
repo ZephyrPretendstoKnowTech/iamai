@@ -18,6 +18,14 @@ export const SIGN_IN_TIE_GROUP_MAX = 5_000
  * last whole second folded; this many failures in a row stop the read.
  */
 export const SIGN_IN_REANCHOR_MAX = 3
+/**
+ * The passkey sign-ins each person keeps as recovery candidates
+ * (UserEvidence.recoveryCandidates), newest first. Only emergency accounts'
+ * are read (Step 4), and they sign in a few times a month; without a cap, a
+ * tenant where everyone signs in with a passkey would carry one per sign-in
+ * into the snapshot.
+ */
+export const RECOVERY_CANDIDATES_PER_PERSON = 20
 export const SLOW_THRESHOLD_MS = 15_000
 export const PAGE_ABORT_MS = 125_000
 export const LANE_A_ABORT_MS = 30_000

@@ -12,12 +12,12 @@ import { runLaneB } from './signInStream.ts'
 import type { EvidenceStore, LaneBDeps } from './signInStream.ts'
 import { aggregateFold, aggregatesFold, blockedTodayFold, derivePolicyResults, lastEnforcedOf, mapRow, policyResultsFold, reportOnlyIdsFold, targetedReadCandidates, usageFold } from './laneBCore.ts'
 import type { SignInEvidence } from './laneBCore.ts'
-import { SIGN_IN_PAGE_SIZE } from './constants.ts'
+import { RECOVERY_CANDIDATES_PER_PERSON, SIGN_IN_PAGE_SIZE } from './constants.ts'
 import { SectionDisabledError } from './http.ts'
 import { scenarioFold } from '../../derive/evidence.ts'
 import { foldAll } from '../../derive/rowFold.ts'
 import { discardStore, memoryEvidenceStore } from '../../testing/memoryEvidenceStore.ts'
-import { RUN, fakeGraph, firstIndexAtOrBefore, rowTimeMs, whole } from '../../testing/signInSynth.ts'
+import { PEOPLE, RUN, fakeGraph, firstIndexAtOrBefore, rowTimeMs, whole } from '../../testing/signInSynth.ts'
 import type { StoredSignIn } from './types.ts'
 
 const NOW = Date.parse('2026-09-01T00:00:00Z')
@@ -92,6 +92,18 @@ test('the read holds no record: 311,040 sign-ins are read inside a 128 MB heap',
   assert.equal(result.status, 'ok')
   assert.equal(result.rows, 311_040)
   assert.ok(result.maxResidentRows <= 2 * SIGN_IN_PAGE_SIZE, `held ${result.maxResidentRows}`)
+})
+
+test('a tenant where every sign-in is a passkey sign-in is read inside a 128 MB heap, keeping a bounded number of recovery candidates', () => {
+  const probe = fileURLToPath(new URL('../../testing/laneBHeapProbe.ts', import.meta.url))
+  const out = spawnSync(process.execPath, ['--max-old-space-size=128', probe, 'passkey'], { encoding: 'utf8' })
+  assert.equal(out.status, 0, out.stderr.slice(-2_000))
+  const result = JSON.parse(out.stdout.trim().split('\n').pop() as string) as { status: string; rows: number; people: number; candidates: number; mostPerPerson: number }
+  assert.equal(result.status, 'ok')
+  assert.equal(result.rows, 311_040)
+  assert.ok(result.people > 0 && result.people <= PEOPLE)
+  assert.ok(result.candidates <= result.people * RECOVERY_CANDIDATES_PER_PERSON, `${result.candidates} candidates for ${result.people} people`)
+  assert.equal(result.mostPerPerson, RECOVERY_CANDIDATES_PER_PERSON, 'the passkey sign-ins are candidates, up to the cap')
 })
 
 test('a second scan fetches only the gap, reads the rest from the saved records, and folds each record once', async () => {
