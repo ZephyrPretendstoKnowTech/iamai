@@ -982,9 +982,10 @@ async function walkFixture(fx) {
             // such an account is not for want of a role, so the tile asks for none.
             if (/Ask whoever administers the tenant/.test(t3.text)) add('P0', `${label}: the gaps tile asks a Global Administrator for a role it already holds`)
             if (await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || ''))`)) add('P0', `${label}: the gaps tile links Global Reader for a Global Administrator`)
-            expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')
-            expectBtn(t3, /^Scan again$/, 'secondary', 'the gaps tile')
-            if (t3.buttons.length !== 2) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Sign in with another account and Scan again`)
+            // Nor another account: another role reads nothing more for it, so Scan
+            // again leads (connectView.ts scanTile, the gaps state).
+            expectBtn(t3, /^Scan again$/, 'primary', 'the gaps tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Scan again alone`)
             const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
             if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
           }
