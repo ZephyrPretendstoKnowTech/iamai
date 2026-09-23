@@ -244,6 +244,25 @@ test('Step 4: the last sign-in is the account’s last sign-in, and one after th
   assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 19, 2026, 10:00 AM GMT+10'])
 })
 
+// A passkey sign-in after the change that counts, but that IAMAI has not recorded
+// yet, read "Last change: Aug 21, 3:25 AM" then "Last sign-in: Aug 21, 8:00 PM"
+// under the instruction to sign in, with no reason: the dates said done while
+// the card said to sign in (review, 2026-09-23). It is recorded from a scan.
+test('Step 4: a passkey sign-in since the change that is not recorded yet asks for a scan, not another sign-in', () => {
+  const value = oneAccountWaiting()
+  const [, second] = value.mapping.breakGlassUserIds
+  const evidence = value.snapshot.signInEvidence[second]!
+  const at = '2026-08-21T10:00:00.000Z'
+  const counted = { ...evidence.recoveryCandidates![0], eventId: 'after-the-change', at, authenticationAt: at }
+  value.snapshot.signInEvidence[second] = { ...evidence, lastSignIn: at, recoveryCandidates: [...evidence.recoveryCandidates!, counted] }
+  const detailOf = () => recoveryOf(value).tiles.find(tile => tile.key === 'recovery-sign-ins')!.detail!.split('\n')
+  const head = ['Sign in with this account’s passkey since the most recent change.', 'Last change: Aug 21, 2026, 3:25 AM GMT+10']
+  assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 21, 2026, 8:00 PM GMT+10', 'Scan again to record the passkey sign-in.'])
+  // A later sign-in with another method does not undo the passkey sign-in: it still only needs recording.
+  value.snapshot.signInEvidence[second]!.lastSignIn = '2026-08-22T10:00:00.000Z'
+  assert.deepEqual(detailOf(), [...head, 'Last sign-in: Aug 22, 2026, 8:00 PM GMT+10', 'Scan again to record the passkey sign-in.'])
+})
+
 test('no channel of any emergency step asks for a sign-in after a date', () => {
   const after = /passkey after|did not count|after [A-Z][a-z]{2} \d{1,2}, \d{4}/
   const runs: [string, Fixture][] = [...FIXTURES.map((name): [string, Fixture] => [name, structuredClone(fixture(name))]), ['one account waiting', oneAccountWaiting()]]

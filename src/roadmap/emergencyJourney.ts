@@ -36,7 +36,7 @@ function recoveryTime(iso: string, timeZone: string | null | undefined): string 
   try { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: displayZone(timeZone) }).format(new Date(iso)) }
   catch { return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(iso)) }
 }
-const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'unconfigured', string> }).recoverySignIn
+const RECOVERY_SIGN_IN = (app.plan as unknown as { recoverySignIn: Record<'since' | 'lastChange' | 'noChangeSince' | 'lastSignIn' | 'lastSignInNone' | 'notPasskey' | 'recordPending' | 'unconfigured', string> }).recoverySignIn
 /** Where an account's recovery baseline starts, and whether that is a change
  * IAMAI read in the audit log or only where the log began (cleanupDone.ts recoveryEvidenceOf). */
 export type RecoveryBaseline = { at: string; changeObserved: boolean }
@@ -49,7 +49,8 @@ export type RecoveryBaseline = { at: string; changeObserved: boolean }
  * The last sign-in is the account's last sign-in of any kind (`lastSignIn`,
  * UserEvidence.lastSignIn), not only its latest passkey sign-in (`readings`):
  * a password or Authenticator sign-in after the change is the one a reader needs
- * to see, with the reason it did not count. */
+ * to see, with the reason it did not count. A passkey sign-in that already counts
+ * but is not recorded yet asks for a scan, since the dates alone read as done. */
 export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings: readonly RecoveryCandidateReading[], lastSignIn: string | null | undefined, timeZone: string | null | undefined): string {
   if (!baseline) return RECOVERY_SIGN_IN.unconfigured
   const configuredAt = baseline.at
@@ -58,7 +59,8 @@ export function recoveryWaitingLine(baseline: RecoveryBaseline | null, readings:
   const other = lastSignIn && Number.isFinite(Date.parse(lastSignIn)) && (!latest || Date.parse(lastSignIn) > Date.parse(latest.candidate.at)) ? lastSignIn : null
   const lastAt = other ?? latest?.candidate.at
   const afterChange = !!lastAt && Date.parse(lastAt) > Date.parse(configuredAt)
-  const reason = !afterChange ? null : other ? RECOVERY_SIGN_IN.notPasskey : latest && !latest.qualifies ? latest.reason : null
+  const pending = readings.some(reading => reading.qualifies)
+  const reason = pending ? RECOVERY_SIGN_IN.recordPending : !afterChange ? null : other ? RECOVERY_SIGN_IN.notPasskey : latest && !latest.qualifies ? latest.reason : null
   return [
     RECOVERY_SIGN_IN.since,
     fillText(baseline.changeObserved ? RECOVERY_SIGN_IN.lastChange : RECOVERY_SIGN_IN.noChangeSince, { date: recoveryTime(configuredAt, timeZone) }),
