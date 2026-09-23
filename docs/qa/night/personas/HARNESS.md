@@ -74,7 +74,9 @@ import { tenant, plan, rescan, observations, deploy, days,
 - `days(t, n, {failures})` — n days pass: the clock moves, the scan's collected
   window moves with it, and everyone a report-only policy covers signs in during
   it. `failures` seeds sign-ins the policy would have stopped.
-- `lanes(t, run)` — the board's rows, tab by tab and group by group, each with
+- `lanes(t, run)` — the board's rows in All work order (the Plan's default
+  view: section by section, in registry order), each naming its section and the
+  lane tab that would also show it, and each with
   the `title` the row draws. **A Cleanup row (the drill, alerting,
   consolidation) is a row with `step: null`**: read `row.id`, `row.title` and
   `row.cleanup` (its kind). A script that reads `row.step.id` on every row
