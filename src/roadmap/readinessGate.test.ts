@@ -444,3 +444,22 @@ test('R4-14: the shortfall check asks for the people the gate opens at, not a se
   assert.equal(routeShortfallOf(gate, campaign, 'Prepare Your Team for MFA', 55), null, 'the campaign reaches the threshold, and is named')
   assert.notEqual(routeShortfallOf(gate, { ids: ids.slice(0, 54), readyIds: [] }, 'Prepare Your Team for MFA', 55), null, 'and one fewer does not')
 })
+
+// Owner, 2026-09-22: a source IAMAI could not read says how to read it —
+// sign in with a Global Reader or Global Administrator account with every
+// permission approved — and never asks for a role to be assigned. The licence
+// is named only where the tenant lacks it: no account or consent reads what the
+// tenant is not licensed for.
+test('an unread source says to sign in with Global Reader or Global Administrator with every permission approved', async () => {
+  const { sourceReadFix } = await import('./readiness.ts')
+  const f = fixture('large')
+  const licensed = sourceReadFix('users', f.snapshot)
+  assert.match(licensed, /Sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again\./, licensed)
+  assert.doesNotMatch(licensed, /Reports Reader|assign/i, licensed)
+  const unlicensed = structuredClone(f.snapshot)
+  for (const k of Object.keys(unlicensed.capabilities ?? {})) (unlicensed.capabilities as Record<string, { enabled: boolean }>)[k].enabled = false
+  // The sign-in activity on the account list is what needs P1 (the dormant check).
+  const needs = sourceReadFix('users', unlicensed, 'entraP1')
+  assert.match(needs, /^It needs Entra ID P1/, needs)
+  assert.match(needs, /Global Reader or Global Administrator/, needs)
+})

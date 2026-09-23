@@ -9,6 +9,7 @@ import { signInProofsRecorded } from '../scoring/fromSnapshot.ts'
 import { isReady } from '../scoring/phishingResistant.ts'
 import type { SourceKey } from '../graph/collect/types.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
+import type { Capability } from '../graph/collect/registry.ts'
 import { app, engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import builtinStrengths from '../../data/builtin-strengths.json' with { type: 'json' }
@@ -235,9 +236,16 @@ export function blindSourceOf(family: Readiness['family'], snapshot: TenantSnaps
  * for it, so a gate blind to a source and a check that could not judge its
  * accounts name the same fix (R4-49). Empty for a source the registry does not know.
  */
-export function sourceReadFix(key: SourceKey, snapshot: TenantSnapshot): string {
-  const spec = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
-  if (!spec) return ''
+/**
+ * What reads an unread source. `needs` is a licence one part of the source
+ * needs beyond the source itself: the account list reads without Entra ID P1,
+ * and the sign-in activity on it does not (Microsoft Learn, user resource,
+ * signInActivity), so the dormant check names P1 where the tenant lacks it.
+ */
+export function sourceReadFix(key: SourceKey, snapshot: TenantSnapshot, needs: Capability | null = null): string {
+  const found = COLLECTOR_REGISTRY.find((c) => c.sourceKey === key)
+  if (!found) return ''
+  const spec = needs === null ? found : { ...found, requiredCapability: needs }
   // The licence, only where the tenant does not already hold it. This named
   // Entra ID P1 as something to put in place on a tenant holding P1 AND P2,
   // beside a permission that genuinely was missing - so the one actionable
