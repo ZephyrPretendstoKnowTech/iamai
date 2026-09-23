@@ -1102,8 +1102,9 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // Accounts Group for D2's service accounts — already states that wait. The
   // answer behind it is that step's own, and that step shows it. Saying both
   // gave a policy "Prerequisite · To do: Define the Trusted Network" and
-  // "Waiting on your answers: Decide Where People Sign In From" side by side:
-  // one fact in two vocabularies, and the nearest cause is the step.
+  // "Waiting on your direction: Decide Where People Sign In From" (the label
+  // then) side by side: one fact in two vocabularies, and the nearest cause is
+  // the step.
   const relayed = new Set(out.flatMap((f) => {
     const [kind, ...rest] = f.key.split(':')
     return kind === 'step' || kind === 'missing' ? [...directionStepsAnswering(rest.join(':'))] : []
