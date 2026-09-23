@@ -589,6 +589,25 @@ test('the Not counted tile names one account of a kind in the singular: never "1
   assert.match(page(), /countedKindWords\(k, view\.facts\.kinds\[k\]\)/)
 })
 
+test('the readiness page contract allows every group summary and every Not counted kind the page draws', () => {
+  // scripts/walk.mjs diffContract reports each summary and link missing from the
+  // contract's allow list as a P1, so the contract carries the page's own words.
+  type Contract = { id: string; allow: { summaries: string[]; links: string[] } }
+  const contract = (JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { surfaces: Contract[] }).surfaces.find((c) => c.id === 'readiness')
+  assert.ok(contract)
+  const allowed = (item: string, allow: string[]): boolean => allow.some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
+  const label = (pages.readiness as unknown as { nextLabel: string }).nextLabel
+  for (const [k, g] of Object.entries(G)) {
+    // The summary as the walk reads it: the next-check label where it is the next check, the title, the why and the count.
+    for (const item of [`${g.title}${g.why}3`, `${label}${g.title}${g.why}12`]) assert.ok(allowed(item, contract.allow.summaries), `${k}: "${item}"`)
+  }
+  const kinds = CNT as unknown as Record<string, string> & { one: Record<string, string> }
+  for (const [k, one] of Object.entries(kinds.one)) {
+    assert.ok(allowed(one, contract.allow.links), `${k}: one of a kind, "${one}"`)
+    assert.ok(allowed(kinds[k], contract.allow.links), `${k}: "${kinds[k]}"`)
+  }
+})
+
 test('the rule for when a synced passkey can register is written once, for the rows and the page words alike', () => {
   const src = readFileSync('src/scoring/phishingResistant.ts', 'utf8')
   assert.equal((src.match(/attestation === false && [\w.]*restriction === 'unrestricted'/g) ?? []).length, 1, 'one statement of the rule')
@@ -607,9 +626,12 @@ test('a sub-group of people whose sign-ins were not read is never titled "No sig
   assert.ok(rows.length > SUB_GROUP_AT, 'the premise: a group large enough to split')
   const none = subGroupsOf(rows, 'devices').filter((g) => !g.admins && g.platforms.length === 0)
   assert.ok(none.length > 0, 'the premise: people with no device read')
+  const contract = (JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { surfaces: { id: string; allow: { summaries: string[] } }[] }).surfaces.find((c) => c.id === 'readiness')
   for (const g of none) {
     assert.equal(subDevicesTitle(g), SUB.noDevicesUnread, g.key)
     for (const r of g.rows) assert.equal(noDevicesWord(r), W.chip.unread, `${r.user.id}: the row says the same`)
+    const summary = `${subDevicesTitle(g)}${g.rows.length}`
+    assert.ok(contract?.allow.summaries.some((a) => a.startsWith('re:') && new RegExp(a.slice(3)).test(summary)), `the walk's contract allows "${summary}"`)
   }
   // Where the records were read, the people with no sign-in keep their title.
   const read = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.state === 'method')
