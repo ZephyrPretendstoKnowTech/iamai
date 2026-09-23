@@ -9,7 +9,7 @@ import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, dev
 import { serviceReading } from '../../roadmap/workflows.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import { methodsCell } from './readinessCells.ts'
+import { methodsCell, methodsLine } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { app, directionWords, engine, pages, workflowWords } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
@@ -294,7 +294,7 @@ test('People: a person whose methods were not read is not "Possibly broken", and
   const m = peopleModel(micro, buildNameDirectory(micro))
   const cell = (model: typeof m, key: string, id: string) => String(model.columns.find((c) => c.key === key)!.cell(model.rows.find((r) => r.user.id === id)!))
   const rows = new Map(readinessView(micro, micro.asOf).rows.map((r) => [r.user.id, r]))
-  for (const u of micro.users) assert.equal(cell(m, 'method', u.id), methodsCell(rows.get(u.id)!).main, u.displayName ?? u.id)
+  for (const u of micro.users) assert.equal(cell(m, 'method', u.id), methodsLine(rows.get(u.id)!), u.displayName ?? u.id)
   assert.ok(micro.users.some((u) => cell(m, 'method', u.id) !== '—' && !/not read/.test(cell(m, 'method', u.id))), 'read methods are named')
   // mid: a method batch failed for one person, who has no registration row.
   const mid = structuredClone(fixture('mid').snapshot)
@@ -304,6 +304,21 @@ test('People: a person whose methods were not read is not "Possibly broken", and
   const p = peopleModel(mid, buildNameDirectory(mid))
   assert.equal(cell(p, 'mfa', person.id), unreadWord)
   assert.equal(cell(p, 'method', person.id), unreadWord)
+})
+
+test('People: a held passkey that today\'s passkey settings do not allow is named in the Methods cell, as MFA Readiness names it', () => {
+  // demo-week2: Jamie Brown holds a passkey and Authenticator, and today's passkey settings do not allow the passkey.
+  const s = fixture('demo-week2').snapshot
+  const jamie = s.users.find((u) => u.displayName === 'Jamie Brown')!
+  const row = readinessView(s, s.asOf).rows.find((r) => r.user.id === jamie.id)!
+  const shown = methodsCell(row)
+  assert.ok(shown.note !== '', 'MFA Readiness notes the passkey under the cell')
+  const m = peopleModel(s, buildNameDirectory(s))
+  const methods = String(m.columns.find((c) => c.key === 'method')!.cell(m.rows.find((r) => r.user.id === jamie.id)!))
+  assert.equal(methods, `${shown.main} · ${shown.note}`)
+  assert.match(methods, /Passkey held/)
+  const csv = inventoryTables(s, fixture('demo-week2').groups).find((t) => t.id === 'people')!
+  assert.equal(csv.rows[csv.rows.findIndex((r) => r.includes(jamie.userPrincipalName ?? ''))][csv.header.indexOf(C.people.columns.method)], methods, 'the CSV writes the same words')
 })
 
 test('Policies and sign-in rows name Graph values as the portal does, never by their keys', () => {
