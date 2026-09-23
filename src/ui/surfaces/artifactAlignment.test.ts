@@ -666,7 +666,9 @@ test('R4-22: the Export page, the print, Connect and the Plan read the board thr
     ['./Plan.tsx', 'boardOf(c.steps, cleanupPhase, answers)'],
     ['./PrintPlan.tsx', 'boardReadingsOf(steps, schedule.cleanup, answers)'],
     ['./Export.tsx', 'boardReadingsOf(steps, schedule.cleanup, data.mapping?.breakGlassAnswers ?? null)'],
-    ['./Connect.tsx', 'boardReadingsOf(computed.steps, computed.schedule.cleanup, cleanupAnswers)'],
+    // Connect's counts are derive/facts.ts stepFacts, which counts the board's rows.
+    ['./Connect.tsx', 'stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers)'],
+    ['../../derive/facts.ts', 'boardReadingsOf(steps, cleanup, answers)'],
   ] as const) {
     const src = read(file)
     assert.ok(src.includes(call), `${file} does not read the board's one construction`)

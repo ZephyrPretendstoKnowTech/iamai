@@ -10,7 +10,7 @@ import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
-import { engine, pages } from '../content/content.ts'
+import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
 export type PlanFinish = {
@@ -119,6 +119,24 @@ export function planWeeks(finish: PlanFinish, schedule: Pick<Schedule, 'start' |
 }
 
 /**
+ * The at-pace estimate a surface may state (A2): the schedule's estimate, except
+ * where the plan holds nothing and nothing still open is dated while some step
+ * is not done. Then every step that set the estimate is done or deferred (the
+ * generator draws the schedule before the operator's deferrals are applied,
+ * ui/surfaces/planData.ts), so it dates work nobody will do: mid with every
+ * deferrable step deferred printed "finishes Oct 4, 2026 at pace", from a
+ * reason naming a deferred step, and with every remaining step deferred it
+ * still did, over a Cleanup ending Oct 7. Only a plan whose every step is done
+ * keeps the estimate as it was. The Plan's Projected finish tile and the
+ * printed cover read this, so they state one date or none.
+ */
+export function statedEstimate(steps: readonly Step[], finish: PlanFinish, schedule: Pick<Schedule, 'estimate'>): string | null {
+  const estimate = schedule.estimate?.targetEnd ?? null
+  if (finish.held || finish.finish !== null) return estimate
+  return steps.some((s) => s.status !== 'done') ? null : estimate
+}
+
+/**
  * The Plan's projected finish (A2): the rollout's estimate, and the day the
  * calendar has committed to when that is a different day.
  *
@@ -149,10 +167,13 @@ export function projectedFinish(finish: string | null, estimate: string | null):
  * demo plan the header read as held, about 3 weeks once nothing is held
  * (Phase 2 export finding 2).
  */
-export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>): string {
+export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>): string | null {
   if (!finish.held) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
   const reason = schedule.estimate?.reason ?? null
-  if (!reason) return engine.critical.sentenceDone
+  // A held plan whose rollout placed none of the held work has no estimate
+  // (roadmap/forecast.ts), so it states no length: "Nothing is left to schedule."
+  // over held work was the false sentence the pack and the tile both carried.
+  if (!reason) return null
   // A count like any other: fillText's pluralise reads "1 weeks" as one week.
   const weeks = planWeeks(finish, schedule)
   return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} weeks`, constraint: reason })

@@ -155,7 +155,7 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
   // hold while work is held.
   const planSummary = planLengthSentence(planFinish(args.steps, args.schedule.cleanup?.end ?? null), args.schedule)
   const cleanup = args.cleanup ?? []
-  const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
+  const withFacts = (head: string, label: string, body: string | null, extra: [string, string][] = []) => [head, ...(body === null ? [] : [dataBlock(label, body)]), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
   // One block per Cleanup row, for the same reason each step gets one: the rows
   // shared a single block, and `dataBlock` clips a block at PROMPT_BLOCK_MAX, so
   // a plan whose earlier rows were long lost the later rows' words — and, past

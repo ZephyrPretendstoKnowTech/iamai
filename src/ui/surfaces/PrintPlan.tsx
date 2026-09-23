@@ -3,29 +3,29 @@
 import { Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { planFinish, planWeeks } from '../../derive/finish.ts'
-import { FINISH } from '../../copy/statements.ts'
+import { planFinish, planWeeks, statedEstimate } from '../../derive/finish.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { notReady, stepFacts } from '../../derive/facts.ts'
-import type { Facts } from '../../derive/facts.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
-import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { completedRows, deferredRows, floorRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
+import { completedRows, deferredRows, floorRows, openDoneRows, phaseRows, planPhases, stepListOf, undatedRows } from './planRows.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
-import { LANE_ORDER } from './planLanes.ts'
 import { boardHolds, boardReadingsOf, doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import type { LaneView } from './stepContract.ts'
+import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { PrintBoard } from './printPlan.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -55,55 +55,91 @@ export function PrintPlan({
   baselinePin = null,
   steps,
   schedule,
-  facts,
   scanAt,
   coverage,
   goalMap,
   stepCtx,
   answers = null,
+  tenant,
+  decisions,
 }: {
   tenantName: string
   baselineLabel: string
   operator: string
   baselinePin?: string | null
   steps: Step[]
-  /**
-   * The tenant's people counts (derive/facts.ts), for the verification window's
-   * own note. The note used to arrive pre-worded from Export.tsx, which built
-   * both of its sentences in JSX out of two rungs of the ladder: the only two
-   * sentences in the printed plan that existed in no content file, and a
-   * readiness claim made outside the readiness authorities (task 042). Null
-   * where the counts are not available, and then the row carries no note rather
-   * than the ready one.
-   */
-  facts: Facts | null
   schedule: Schedule
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
-  /** The goal verdicts, so page 1 can name what does not apply. */
+  /** The goal verdicts, so page 1 can count the controls a licence switched off. */
   coverage: CoverageReport
-  /** The baseline's goal map: page 1 names only goals the baseline holds (walk-51 item 9). */
+  /** The baseline's goal map: page 1 counts only goals the baseline holds (walk-51 item 9). */
   goalMap: GoalMap
   /** The step's variables for the content renderer, as the Plan builds them. */
   stepCtx: (step: Step) => StepVarContext
   /** The emergency-access attestations, so a Cleanup row the Plan calls In place is not Ready here (roadmap/cleanupDone.ts). */
   answers?: { signInMonitoring: boolean | null } | null
+  /**
+   * The scan's licences, so a tenant IAMAI gives no plan (no Entra ID P1) prints
+   * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine): the
+   * scanned snapshot. Required: while it was optional the Export page mounted
+   * the document without it, and micro printed a dated plan with Cleanup
+   * instructions.
+   */
+  tenant: Pick<TenantSnapshot, 'capabilities'>
+  /**
+   * The plan record's saved step decisions, by step id, as the Plan hands each
+   * opened step its own (Plan.tsx `data.stepDecisions`). Required: while it
+   * was optional the Export page mounted the document without it, and a saved
+   * support list printed as an empty People Needing Help. A picker nobody
+   * saved prints as IAMAI's suggestion, not saved (pickerRows.ts
+   * printedDefaultLine).
+   */
+  decisions: Readonly<Record<string, StepDecision>>
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
+  // No Entra ID P1: the Plan renders one sentence and no plan (owner,
+  // 2026-09-19/20), so the document is the cover's identity and that sentence.
+  // Nothing after it is drawn: no count, no finish, no phase and no Cleanup,
+  // and it is not titled a plan.
+  const licenceLine = noPlanLine(tenant)
+  if (licenceLine) return createPortal(
+    <div className="print-plan">
+      <div className="print-running">{fillText(C.runningHeaderNoPlan, { tenant: tenantName, date: today })}</div>
+      <section className="print-cover">
+        <BrandMark size={56} />
+        <h1>{fillText(C.titleNoPlan, { tenant: tenantName })}</h1>
+        <dl>
+          <dt>{C.cover.tenant}</dt>
+          <dd>{tenantName}</dd>
+          <dt>{C.cover.scanned}</dt>
+          <dd>{absoluteDate(scanAt)}</dd>
+          <dt>{C.cover.baseline}</dt>
+          <dd>{baselineLabel}</dd>
+        </dl>
+        <p className="print-statement">{licenceLine}</p>
+        <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
+      </section>
+    </div>,
+    document.body,
+  )
   // The lane engine's reading over the whole plan, the Cleanup rows included,
   // built by the one construction the Plan builds its rows with (planBoard.ts
   // boardReadingsOf, R4-22): every printed state word is a lane word (A1c,
   // decision 1) — the badge, the bar, the rail, the Readiness tiles and the
   // Cleanup rows' heads all read this one reading.
-  const { readings, titleOf: laneTitleOf } = boardReadingsOf(steps, schedule.cleanup, answers)
+  const { readings, titleOf: laneTitleOf, cleanupRows } = boardReadingsOf(steps, schedule.cleanup, answers)
   const laneOf = (id: string): LaneView => {
     const r = readings.get(id)
     return r ? laneViewOf(r, laneTitleOf) : doesntApplyView()
   }
   const prerequisiteLabel = prerequisiteLabelFor(readings)
   const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), laneTitleOf)
-  const done = completedRows(steps)
+  // The same three the printed step bodies read, handed to the print's own view (printPlan.ts).
+  const printBoard: PrintBoard = { laneOf, blockersOf, prerequisiteLabel }
+  // Completed is the board's lane (planRows.ts completedRows), never Step.status.
+  const done = completedRows(steps, laneOf)
   // A numbered phase's rows, the undated group and the floor group, all read
   // from the Plan's own rules (planRows.ts) and none of them recomputed here.
   //
@@ -118,22 +154,29 @@ export function PrintPlan({
   // screen reads it too, so a plan taken to PDF carries the same rows.
   const phaseList = planPhases(schedule)
   // A deferred step prints once, in the Deferred section under the lane's own
-  // word (A1c, decision 3), never under the phase that once dated it.
-  const deferred = deferredRows(steps)
-  const deferredIds = new Set(deferred.map((s) => s.id))
-  const notDeferred = (s: Step): boolean => !deferredIds.has(s.id)
+  // word (A1c, decision 3), never under the phase that once dated it. The
+  // board's Deferred lane (planRows.ts deferredRows): a deferred policy the
+  // tenant already enforces is Completed there, and prints once, under Completed.
+  const deferred = deferredRows(steps, laneOf)
+  // A row the document lists as a line, Completed or Deferred, never prints in
+  // full under a phase, the undated rows or the floor's group as well.
+  const listed = new Set([...done, ...deferred].map((s) => s.id))
+  const notListed = (s: Step): boolean => !listed.has(s.id)
   // A step the board holds prints with the undated rows, never under a phase's
   // dates (planBoard.ts boardHolds; owner decision 2, 2026-09-22): Turn Off
   // Security Defaults printed inside the Preparation phase, Aug 31 - Sep 28,
   // while its row read "After prerequisites" (R4-21).
   const boardHeld = (s: Step): boolean => boardHolds(s, laneOf(s.id))
-  const held = undatedRows(steps, phaseList, boardHeld).filter(notDeferred)
+  // With them, a delivered step the board still has work for (planRows.ts
+  // openDoneRows): no phase draws a done step, and its body is where the open
+  // question is stated.
+  const held = [...undatedRows(steps, phaseList, boardHeld), ...openDoneRows(steps, laneOf)].filter(notListed)
   // The undated rows under their own lane's word (A1c): the phase is a projection
   // the document may keep, and a step no phase dates is grouped by the state the
   // Plan shows for it, never under a heading of the document's own.
-  const heldByLane = LANE_ORDER.map((lane) => ({ lane, rows: held.filter((s) => laneOf(s.id).lane === lane) })).filter((g) => g.rows.length > 0)
-  const floor = floorRows(steps).filter(notDeferred)
-  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notDeferred)
+  const heldByLane = laneGroupsOf(held, laneOf)
+  const floor = floorRows(steps).filter(notListed)
+  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notListed)
   const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
@@ -147,29 +190,38 @@ export function PrintPlan({
   // one-line header, and no pace, baseline pin or pace sentence.
   // Every step is named by the one content title (content/stepTitle.ts), as the
   // board and the opened step name it (R4-40, R4-47).
-  const inPlaceNames = done.map((s) => contentTitle(s))
-  const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => contentTitle(s))
-  // Over the goals the baseline holds: an absent goal never renders (walk-51 item 9).
-  // Not licensed is its own count and sentence (§5), not a name in this list.
-  const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => contentTitle({ id: r.goal.id, goalId: r.goal.id, title: r.goal.shortName || r.goal.name }))
+  // The lists are the board's rows, the Cleanup rows included, by the lane it
+  // reads for each (printPlan.ts postureOf): the rows the header counts.
+  const posture = postureOf([...steps.map((s) => s.id), ...cleanupRows.map((r) => r.id)], laneOf, laneTitleOf)
+  const inPlaceNames = posture.completed
+  const toDoNames = posture.toDo
+  // The Plan footer's Doesn't apply here list, each step with the reason given
+  // (printPlan.ts doesntApplyLinesOf). Not licensed is its own count and
+  // sentence (§5), not a name in this list.
+  const doesntApply = doesntApplyLinesOf(steps)
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
-  // Who the registration and verification window is for, from the one people
-  // count (derive/facts.ts) and the content's own two sentences. Nothing is
-  // claimed where the counts are absent: an empty cell, never "everyone is
-  // ready" (task 042).
-  const verificationNote = facts === null ? '' : notReady(facts) > 0 ? fillText(C.verificationNote, { n: notReady(facts), active: facts.active }) : C.verificationNoteReady
+  // Who the registration and verification window is for: the people it is
+  // sized for, of everyone the campaign step prepares (printPlan.ts
+  // verificationNoteOf), never a count of another population beside it.
+  const verificationNote = verificationNoteOf(steps)
+  // Its dates: none while the board holds the campaign step (printPlan.ts verificationDatesOf).
+  const verificationDates = verificationDatesOf(steps, schedule.verification, laneOf)
   const weeks = planWeeks(finish, schedule)
-  // What holds the plan, as the Plan header names it: a readiness number where one
-  // does, else the held steps and the step each waits on (derive/finish.ts).
+  // What holds the plan: every readiness number that holds steps, and the steps
+  // held on other work with the step each waits on (derive/finish.ts), joined
+  // (printPlan.ts constraintOf) as the tail of the header's "cannot finish
+  // until …". The Plan dates line states the same holds as clauses of their own
+  // (printPlan.ts holdsOf).
   const titleOf = (id: string): string => laneTitleOf(id) ?? id
-  const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
+  const constraint = constraintOf(finish, titleOf)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
   const cannotFinish = finish.held
   // The Plan's header as one line (derive/planHeader.ts), without the anchored
   // start: the same estimate / committed pair the Projected finish tile shows (A2).
-  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: schedule.estimate?.targetEnd ?? null, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
+  // The at-pace estimate only where it measures work still on the plan (derive/finish.ts statedEstimate).
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: statedEstimate(steps, finish, schedule), weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
@@ -188,10 +240,7 @@ export function PrintPlan({
           <dt>{C.cover.baseline}</dt>
           <dd>{baselineLabel}</dd>
           <dt>{C.cover.dates}</dt>
-          <dd>
-            {cannotFinish ? absoluteDate(schedule.start) : dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
-            {cannotFinish && constraint && ` · ${constraint}`}
-          </dd>
+          <dd>{coverDatesOf(schedule.start, finish, holdsOf(finish, titleOf))}</dd>
         </dl>
         <p className="print-statement">{headerLine}</p>
         <div className="print-posture">
@@ -199,11 +248,18 @@ export function PrintPlan({
             <strong>{fillText(C.posture.inPlace, { n: inPlaceNames.length })}</strong> {inPlaceNames.length > 0 ? inPlaceNames.join(', ') : C.posture.noneYet}
           </p>
           <p>
-            <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.join(', ')}
+            <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.length > 0 ? toDoNames.join(', ') : C.posture.none}
           </p>
           <p>
-            <strong>{fillText(C.posture.doesntApply, { n: doesntApplyNames.length })}</strong> {doesntApplyNames.length > 0 ? doesntApplyNames.join(', ') : C.posture.none}
+            <strong>{fillText(C.posture.doesntApply, { n: doesntApply.length })}</strong> {doesntApply.length === 0 && C.posture.none}
           </p>
+          {doesntApply.length > 0 && (
+            <ul>
+              {doesntApply.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
           {notLicensedCount > 0 && <p>{notLicensedPrintLine(notLicensedCount)}</p>}
         </div>
         <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
@@ -213,7 +269,7 @@ export function PrintPlan({
       <section className="print-page">
         <h2>{C.contents}</h2>
         <ol>
-          <li>{C.summary}</li>
+          {waves.length > 0 && <li>{C.summary}</li>}
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
@@ -227,52 +283,56 @@ export function PrintPlan({
         </ol>
       </section>
 
-      <section className="print-page">
-        <h2>{C.summary}</h2>
-        <h3>{C.timeline}</h3>
-        <table className="datatable">
-          <thead>
-            <tr>
-              <th scope="col">{C.timelineColumns.wave}</th>
-              <th scope="col">{C.timelineColumns.dates}</th>
-              <th scope="col">{C.timelineColumns.steps}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {waves.map((w) => (
-              <Fragment key={w.wave}>
-                <tr>
-                  <td>{waveTitle(w)}</td>
-                  <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
-                  <td>{stepListOf(phaseSteps(w))}</td>
-                </tr>
-                {w.wave === 0 && schedule.verification.days > 0 && (
-                  <tr key="verification">
-                    <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
-                    <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
-                    <td>{verificationNote}</td>
+      {/* The timeline, where a phase has rows to date: a table of headers alone says nothing. */}
+      {waves.length > 0 && (
+        <section className="print-page">
+          <h2>{C.summary}</h2>
+          <h3>{C.timeline}</h3>
+          <table className="datatable">
+            <thead>
+              <tr>
+                <th scope="col">{C.timelineColumns.wave}</th>
+                <th scope="col">{C.timelineColumns.dates}</th>
+                <th scope="col">{C.timelineColumns.steps}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {waves.map((w) => (
+                <Fragment key={w.wave}>
+                  <tr>
+                    <td>{waveTitle(w)}</td>
+                    {/* The days the phase's rows state (printPlan.ts phaseDatesOf), never the wave's forecast window. */}
+                    <td>{phaseDatesOf(phaseSteps(w))}</td>
+                    <td>{stepListOf(phaseSteps(w))}</td>
                   </tr>
-                )}
-                {w.wave === 0 && schedule.observation.days > 0 && (
-                  <tr key="observation">
-                    <td>{fillText(C.observation, { days: schedule.observation.days })}</td>
-                    <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
-                    <td>{C.observationText}</td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </section>
+                  {w.wave === 0 && schedule.verification.days > 0 && (
+                    <tr key="verification">
+                      <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
+                      <td>{verificationDates}</td>
+                      <td>{verificationNote}</td>
+                    </tr>
+                  )}
+                  {w.wave === 0 && schedule.observation.days > 0 && (
+                    <tr key="observation">
+                      <td>{fillText(C.observation, { days: schedule.observation.days })}</td>
+                      <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
+                      <td>{C.observationText}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {waves.map((w) => (
         <section key={w.wave} className="print-page">
           <h2>{waveTitle(w)}</h2>
-          <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
+          {phaseDatesOf(phaseSteps(w)) && <p className="muted">{phaseDatesOf(phaseSteps(w))}</p>}
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -286,7 +346,7 @@ export function PrintPlan({
           <h2>{laneWordOf(g.lane)}</h2>
           {g.rows.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>
@@ -299,38 +359,62 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} decision={decisions[s.id] ?? null} printing />
             </article>
           ))}
         </section>
       )}
-      {/* Completed and Deferred (A1c): the rows the screen's two groups hold, as
-          a list under the lane's own word — the title and the lane label each row
-          shows — so the document states them once and dates neither. */}
-      {[{ lane: 'Completed' as const, rows: done }, { lane: 'Deferred' as const, rows: deferred }].filter((g) => g.rows.length > 0).map((g) => (
-        <section key={g.lane} className="print-page">
-          <h2>{laneWordOf(g.lane)}</h2>
+      {/* Completed (A1c): the rows the screen's Completed group holds, as a
+          list under the lane's own word — the title and the lane label each row
+          shows — dated by neither. A finished policy the opened step still warns
+          about (enforced below readiness, or ahead of a prerequisite) prints
+          those warnings under its line (printPlan.ts completedLinesOf). */}
+      {done.length > 0 && (
+        <section className="print-page">
+          <h2>{laneWordOf('Completed')}</h2>
           <ul className="print-lane-rows">
-            {g.rows.map((s) => (
+            {completedLinesOf(done, printBoard, stepCtx).map((l) => (
+              <li key={l.id}>
+                <span className="step-title">{l.title}</span> · {l.label}
+                {l.warnings.length > 0 && (
+                  <dl className="print-warnings">
+                    {l.warnings.map((t, i) => (
+                      <Fragment key={`${t.key}-${i}`}>
+                        <dt>{t.label}</dt>
+                        <dd>{t.value}</dd>
+                        {t.note && <dd>{t.note}</dd>}
+                      </Fragment>
+                    ))}
+                  </dl>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {/* Deferred (A1c, decision 3): each deferred step once, under the lane's own word. */}
+      {deferred.length > 0 && (
+        <section className="print-page">
+          <h2>{laneWordOf('Deferred')}</h2>
+          <ul className="print-lane-rows">
+            {deferred.map((s) => (
               <li key={s.id}>
                 <span className="step-title">{contentTitle(s)}</span> · {laneOf(s.id).label}
               </li>
             ))}
           </ul>
         </section>
-      ))}
+      )}
       {schedule.cleanup && (
         <section className="print-page">
-          <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
-          {schedule.cleanup.rows.map((r) => {
-            // The row's head says its lane (planBoard.ts laneViewOf), as the Plan's row does.
-            const lane = laneOf(`cleanup-${r.kind}`)
-            return (
-              <article key={r.kind} className="print-step">
-                <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: lane.label, tone: lane.tone }} />
-              </article>
-            )
-          })}
+          <h2>{cleanupHeadingOf(schedule.cleanup, cannotFinish)}</h2>
+          {cleanupHeadsOf(schedule.cleanup.rows, laneOf).map((h) => (
+            // The row's head says its lane and what it waits for (printPlan.ts
+            // cleanupHeadsOf over planBoard.ts laneViewOf), as the Plan's row does.
+            <article key={h.kind} className="print-step">
+              <CleanupBody phase={schedule.cleanup!} row={h.row} status={{ word: h.word, tone: h.tone, waitingFor: h.waitingFor }} />
+            </article>
+          ))}
         </section>
       )}
     </div>,

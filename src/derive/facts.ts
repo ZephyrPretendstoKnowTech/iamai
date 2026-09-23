@@ -9,12 +9,12 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import type { CleanupPhase } from '../roadmap/cleanupPhase.ts'
-import { cleanupComplete } from '../roadmap/cleanupDone.ts'
 import { READINESS_STATES } from '../scoring/phishingResistant.ts'
 import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { KINDS, ladder } from './ladder.ts'
 import type { Kind, Ladder, LadderMapping } from './ladder.ts'
-import { doneSteps, trackableSteps } from './sets.ts'
+import { boardReadingsOf } from '../ui/surfaces/planBoard.ts'
+import { laneCountsOf } from '../ui/surfaces/planLanes.ts'
 
 /** The tenant's people counts: the accounts, and the parts that sum to them; the four states sum to the active people. */
 export type Facts = {
@@ -45,31 +45,39 @@ export type StepFacts = { steps: number; done: number }
 
 /**
  * The counts the Plan header, the print cover and Connect's Plan tile share
- * (E4): the trackable steps plus the Cleanup rows (a step the person said does
- * not apply is out), and how many are done.
+ * (E4): the board's rows (ui/surfaces/planBoard.ts boardReadingsOf, the one
+ * reading the Plan draws its rows from), the Cleanup rows included, and how
+ * many of them are in the Completed lane. A Deferred row is out, and so is a
+ * step the person said does not apply, which has no row.
  *
- * A Cleanup row is in place exactly when the row itself reads In place, which is
- * `roadmap/cleanupDone.ts` `cleanupComplete(row, answers)` and not `row.done`:
- * the emergency-access sign-in-monitoring attestation completes the alerting row
- * without recording a date. Counting `row.done` here put the aggregate one
- * behind the rows it aggregates — a row saying In place under a header that had
- * not counted it (task 042 correction 1). `answers` is the mapping's
- * `breakGlassAnswers`, and it is required so that a caller decides rather than
- * forgets; absent or null is nothing recorded, which completes nothing.
+ * It counted the steps itself, by Step.status: a deferred step was out of both
+ * numbers. The board reads a deferred policy the tenant already enforces as
+ * Completed (a terminal outcome reached comes before a deferral,
+ * actionability/lanes.ts), so mid after the recovery test with every remaining
+ * step deferred printed "15 steps · 13 in place" over Completed (15) and To do
+ * (2), and the Plan's Completed tile, which counts the board's rows, said 15 of
+ * 17. Now the rows are counted where they are drawn.
+ *
+ * A Cleanup row is in place exactly when the row itself reads In place: the
+ * board completes it by `roadmap/cleanupDone.ts` `cleanupComplete` over the
+ * row and `answers`, not `row.done`, because the emergency-access sign-in-monitoring
+ * attestation completes the alerting row without recording a date (task 042
+ * correction 1). `answers` is the mapping's `breakGlassAnswers`, and it is
+ * required so that a caller decides rather than forgets; absent or null is
+ * nothing recorded, which completes nothing.
  */
 export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null | undefined, answers: CleanupAnswers): StepFacts {
-  const counted = steps.filter((s) => !s.doesntApply)
-  const rows = cleanup?.rows ?? []
-  return { steps: trackableSteps(counted).length + rows.length, done: doneSteps(counted).length + rows.filter((r) => cleanupComplete(r, answers)).length }
+  const lanes = laneCountsOf(boardReadingsOf(steps, cleanup, answers).readings)
+  return { steps: lanes.Ready + lanes['Up Next'] + lanes['On Hold'] + lanes.Completed, done: lanes.Completed }
 }
 
 /**
  * The active people who are not Ready yet: Needs proof, Needs setup and
- * Unknown. The population the registration and verification window exists
- * for, and the one the printed plan states beside it. A count over the one
- * readiness derivation, never a second score: the campaign's pace, the manager
- * line and this all count the same people (Step 7 unified three definitions of
- * "to set up").
+ * Unknown. A count over the one readiness derivation, never a second score.
+ * It is not the population the registration window is sized for (the campaign
+ * step's people with no usable method, roadmap/generate.ts registrationWindow),
+ * so the printed plan no longer states it beside that window
+ * (ui/surfaces/printPlan.ts verificationNoteOf).
  */
 export function notReady(f: Facts): number {
   return f.active - f.states.ready - f.states.seamless

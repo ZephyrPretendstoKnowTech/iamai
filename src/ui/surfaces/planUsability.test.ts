@@ -209,7 +209,8 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /onClick=\{t\.select\}/)
   assert.match(plan, /aria-label=\{`\$\{t\.label\}: \$\{t\.value\}`\}/)
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
+  // The estimate a surface may state (derive/finish.ts statedEstimate), which the printed cover reads too.
+  assert.match(plan, /projectedFinish\(finish\.finish, statedEstimate\(c\.steps, finish, c\.schedule\)\)/)
   // The tip is the one plan-length sentence (derive/finish.ts), which states the
   // schedule's critical path and what it relaxed once nothing is held.
   assert.match(plan, /planLengthSentence\(finish, c\.schedule\)/)

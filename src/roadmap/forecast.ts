@@ -32,6 +32,7 @@ import type { Schedule } from './schedule.ts'
 import { readBackPlacement } from './schedule.ts'
 import { policyHold } from './operations.ts'
 import { isHeld, markHoldChains } from './holds.ts'
+import { heldRequired } from '../derive/finish.ts'
 import { basisOf, createsWhileGated, settleSchedule } from './stepSchedule.ts'
 
 /** What a step's enforcement date is worth. */
@@ -254,8 +255,22 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
   const forecastOnly: Record<string, ForecastPlacement> = { ...(schedule.forecastOnly ?? {}) }
   // The rollout as the generator drew it, before anything is withdrawn: its length
   // if nothing held any of it. An estimate, never a step's date (derive/finish.ts planWeeks).
-  schedule.estimate ??= { weeks: schedule.weeks, targetEnd: schedule.targetEnd, reason: schedule.derivation.reason }
+  const drawn = { weeks: schedule.weeks, targetEnd: schedule.targetEnd, reason: schedule.derivation.reason }
   markHoldChains(steps)
+  // Unless the generator placed none of the work the plan holds. A policy it
+  // cannot write, or whose enforcement waits on a threshold, gets no rings and
+  // no place (roadmap/generate.ts), so where every held step is one of those,
+  // what it drew is the unheld work alone: on a first visit with no emergency
+  // accounts that was the Preparation week, reasoned "no enforcement is left to
+  // schedule", and the cover and the Projected finish tile stated its end as the
+  // plan's finish at pace. That is no estimate of the plan once nothing is held,
+  // so there is none (null), and the header says what holds the plan instead.
+  // Decided once, on the first pass: the second finds the placement withdrawn.
+  if (schedule.estimate === undefined) {
+    const held = heldRequired(steps)
+    const placed = (id: string): boolean => (schedule.placement ? schedule.placement.placed[id] !== undefined : schedule.waveOf[id] !== undefined) || schedule.forecastOnly?.[id] !== undefined
+    schedule.estimate = held.length > 0 && !held.some((s) => placed(s.id)) ? null : drawn
+  }
   const byId = new Map(steps.map((s) => [s.id, s]))
   for (const step of steps) {
     const held = isHeld(step)

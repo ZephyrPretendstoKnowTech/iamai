@@ -207,3 +207,19 @@ test('a strength nothing names is written by its own reference, never as the bui
   // A strength the context names is still named.
   assert.ok(portalLines(policyFacts(body(custom), EMPTY), { ...unnamed, strengthName: 'Modern MFA + TAP' }).includes('Grant → Require authentication strength: Modern MFA + TAP'))
 })
+
+// The pinned High-Risk Users policies grant riskRemediation with the baseline's
+// authentication strength. grantLine had no label for the control and dropped
+// it, so the step's task read "Grant → Require authentication strength": a
+// policy built from that line is not the pinned one and does not meet the
+// goal's floor (a password change or risk remediation, coverage/goalIdentity.ts).
+// Microsoft's portal: "Select Require risk remediation. The Require
+// authentication strength grant control is automatically selected."
+test('a grant with risk remediation says so on its Grant line', () => {
+  const risky = pinned.policies.filter((p) => ((p.grantControls as { builtInControls?: string[] } | null)?.builtInControls ?? []).includes('riskRemediation'))
+  assert.ok(risky.length > 0, 'the premise: the pin grants risk remediation')
+  for (const p of risky) {
+    const grant = portalLines(policyFacts(p as never, EMPTY), contextFor(p)).find((l) => l.startsWith('Grant → ')) ?? ''
+    assert.match(grant, /^Grant → Require risk remediation\b/, `${p.displayName}: ${grant}`)
+  }
+})

@@ -106,6 +106,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // read only in part (coreSections.ts unreadSources): the same reason again —
   // the review page's example scan read every section it asked for.
   '.pages.connect.scan.complete.unread',
+  // And a refused row of a stored complete scan that another account ran
+  // (connectView.ts unreadRow): the same reason again.
+  '.pages.connect.scan.gaps.refusedThatAccount',
   '.shared.enforceIfWrong',
   // The Dates line of a policy already in report-only with nothing left to
   // submit but the enforcement its window has not earned (stepExport.ts

@@ -16,6 +16,7 @@ import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import type { PlanComputed } from './planData.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import { doesntApplyRows } from './planRows.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
@@ -25,7 +26,7 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
   void nameOf
   // The steps the person said do not apply here (mapping.notApplicable), with
   // the reason as given and a way back; the engine's own not-applicable goals follow.
-  const said = computed.steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
+  const said = doesntApplyRows(computed.steps)
   // Doesn't apply here holds the person's answers only; a goal a licence switched
   // off is a Not licensed row (derive/notLicensed.ts).
   // The licence ladder as rows (prompt 52 Part 3): the content step's title and

@@ -934,7 +934,7 @@ async function walkFixture(fx) {
         // then exactly one of its states (docs/design/connect-mockup.html); the
         // number badge carries the state colour; nothing of the other states, and
         // nothing of the Plan tile's.
-        const SCAN_STATES = { complete: /^Scan complete · .+$/, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in · about a minute for a small tenant$/ }
+        const SCAN_STATES = { complete: /^Scan complete · .+$/, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in$/ }
         const want = signedOut ? 'sample' : ({ roles: 'role', gaps: 'gaps', free: 'complete', scanning: 'scanning', ready: 'ready' }[fx.mock] ?? 'complete')
         if (t3) {
           const seen = Object.entries(SCAN_STATES).filter(([, re]) => re.test(t3.h2)).map(([k]) => k)
@@ -955,17 +955,19 @@ async function walkFixture(fx) {
           const metaRow = await evaluate(`[...document.querySelectorAll('main.page .connect-step .meta-counts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
           if (want !== 'complete' && metaRow.length > 0) add('P0', `${label}: the scan step carries counts in the ${want} state: ${JSON.stringify(metaRow)}`)
           if (metaRow.length > 0) {
-            if (metaRow.map((m) => m.label).join(' · ') !== 'active people · baseline policies · plan steps') add('P0', `${label}: the scan counts read ${JSON.stringify(metaRow)}; active people · baseline policies · plan steps`)
-            else if (!metaRow.every((m) => /^\d+$/.test(m.value))) add('P0', `${label}: a scan count is not a number: ${JSON.stringify(metaRow)}`)
+            // Counted words (fillText): "1 active person", "4,169 active people".
+            if (!/^active (people|person) · baseline polic(ies|y) · plan steps?$/.test(metaRow.map((m) => m.label).join(' · '))) add('P0', `${label}: the scan counts read ${JSON.stringify(metaRow)}; active people · baseline policies · plan steps`)
+            else if (!metaRow.every((m) => /^\d{1,3}(,\d{3})*$/.test(m.value))) add('P0', `${label}: a scan count is not a number: ${JSON.stringify(metaRow)}`)
           }
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
           if (badge && !new RegExp('\\b' + badge + '\\b').test(t3.cls)) add('P0', `${label}: tile 3's number badge does not carry the ${want} state colour (class ${badge}); it has "${t3.cls}"`)
           if (!badge && /\b(done|wait|stop)\b/.test(t3.cls)) add('P0', `${label}: tile 3 in the ${want} state carries a state colour (${t3.cls})`)
-          const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/], sample: [/about a minute for a small tenant/] }
+          const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/has no active role that reads/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/The scan is processed in this browser/, /^Scan tenant$/], sample: [/after sign-in/] }
           for (const [k, res] of Object.entries(OTHER)) {
             if (k === want) continue
-            // Scan again belongs to the complete and the gaps state both.
-            for (const re of res) if (!(k === 'complete' && want === 'gaps' && String(re) === String(/^Scan again$/)) && (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t)))) add('P0', `${label}: tile 3 in the ${want} state carries the ${k} state's ${re}`)
+            // Scan again belongs to the complete and the gaps state both, and so
+            // does the Global Reader ask where a section was refused to the account.
+            for (const re of res) if (!(k === 'complete' && want === 'gaps' && String(re) === String(/^Scan again$/)) && !(k === 'gaps' && want === 'complete' && String(re) === String(/Ask whoever administers/)) && (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t)))) add('P0', `${label}: tile 3 in the ${want} state carries the ${k} state's ${re}`)
           }
           for (const re of [/Open the plan →/, /Open the last full plan/, /What the sample tenant produced/, /Open the sample plan/, /\d+ people \d+ policies/, /from the scan/]) if (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 3 carries the Plan tile's ${re}`)
           if (want === 'complete') {
@@ -975,17 +977,20 @@ async function walkFixture(fx) {
           if (want === 'gaps') {
             const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
-            if (!rows.some((r) => /^Sign-in records not read$/.test(r))) add('P0', `${label}: the sign-in records row is not marked not read: ${JSON.stringify(rows)}`)
-            if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t3.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
-            if (!(await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
-            expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')
-            expectBtn(t3, /^Scan again$/, 'secondary', 'the gaps tile')
-            if (t3.buttons.length !== 2) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Sign in with another account and Scan again`)
+            if (!rows.some((r) => /^Sign-in records refused to this account$/.test(r))) add('P0', `${label}: the sign-in records row is not marked refused to this account: ${JSON.stringify(rows)}`)
+            // The mock signs in as a Global Administrator (ui/App.tsx): Graph refusing
+            // such an account is not for want of a role, so the tile asks for none.
+            if (/Ask whoever administers the tenant/.test(t3.text)) add('P0', `${label}: the gaps tile asks a Global Administrator for a role it already holds`)
+            if (await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || ''))`)) add('P0', `${label}: the gaps tile links Global Reader for a Global Administrator`)
+            // Nor another account: another role reads nothing more for it, so Scan
+            // again leads (connectView.ts scanTile, the gaps state).
+            expectBtn(t3, /^Scan again$/, 'primary', 'the gaps tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Scan again alone`)
             const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
             if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
           }
           if (want === 'role') {
-            if (!/holds none of the roles that read Conditional Access policies, people and sign-in records\./.test(t3.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t3.text}"`)
+            if (!/has no active role that reads Conditional Access policies, people and sign-in records\./.test(t3.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t3.text}"`)
             const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (rows.length !== 1 || !/^Everything IAMAI needs, read-only ask for Global Reader$/.test(rows[0])) add('P0', `${label}: the role tile's rows read ${JSON.stringify(rows)}; one row asking for Global Reader`)
             expectBtn(t3, /^Sign in with another account$/, 'primary', 'the role tile')
@@ -1004,7 +1009,7 @@ async function walkFixture(fx) {
           if (want === 'ready') {
             expectBtn(t3, /^Scan tenant$/, 'primary', 'the ready tile')
             if (t3.buttons.length !== 1) add('P0', `${label}: the ready tile has ${t3.buttons.length} buttons; Scan tenant alone`)
-            if (!/About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
+            if (!/The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the in-browser line`)
           }
           if (want === 'sample' && t3.buttons.length !== 0) add('P0', `${label}: the signed-out Scan tile has ${t3.buttons.length} buttons; none`)
         }
@@ -1014,9 +1019,12 @@ async function walkFixture(fx) {
         // what the sample tenant produced. The scan's age is the one stored
         // timestamp's: it renders once as the Scan tile's state, and the Plan
         // tile's "from the scan" carries the same words; nothing says scanned.
-        const wantPlan = signedOut ? 'sample' : want === 'complete' ? 'ready' : want === 'gaps' ? 'last' : 'waiting'
+        // The destination reads what the Plan page would draw (connectView.ts planInputOf):
+        // no plan to offer without Entra ID P1, and the stored plan (the mock keeps one
+        // under the role and gaps states) while the current scan has none.
+        const wantPlan = signedOut ? 'sample' : fx.mock === 'free' ? 'none' : want === 'complete' ? 'ready' : want === 'gaps' || want === 'role' ? 'last' : 'waiting'
         // The ready state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html).
-        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ completed · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
+        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ completed · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, none: /^Plan no plan to offer$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
         if (t4) {
           if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
           // The approved pack tints the destination only when the plan is actually
@@ -1024,7 +1032,7 @@ async function walkFixture(fx) {
           // a readiness claim made in CSS (task 032).
           if (wantPlan === 'ready' && !/\bready\b/.test(t4.cls)) add('P0', `${label}: the ready Plan destination is not marked ready (${t4.cls})`)
           if (wantPlan !== 'ready' && /\bready\b/.test(t4.cls)) add('P0', `${label}: the ${wantPlan} Plan destination carries the ready treatment (${t4.cls})`)
-          const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
+          const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], none: [/no plan to offer/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
           for (const [k, res] of Object.entries(PLAN_OTHER)) {
             if (k === wantPlan) continue
             for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${wantPlan} state carries the ${k} state's ${re}`)
@@ -1139,12 +1147,15 @@ async function walkFixture(fx) {
         if (!cover) add('P0', `${label}: Print or save as PDF renders no cover`)
         else {
           const statement = await evaluate(`[...document.querySelectorAll('.print-plan .print-statement')].map((e) => e.textContent).join(' ')`)
+          // Without Entra ID P1 the document is the Plan's one licence sentence and
+          // no plan (printPlan.ts noPlanLine): no count and no Cleanup to check.
+          const licenceOnly = /^Conditional Access needs Entra ID P1/.test(statement.trim())
           const m = statement.match(/(\d+) steps · (\d+) (?:in place|done)/)
-          if (!m) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
-          else if (planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
+          if (!m && !licenceOnly) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
+          else if (m && planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
           // The print document is hidden on screen (print media shows it), so its innerText is empty: read textContent.
           const printText = await evaluate(`[...document.querySelectorAll('.print-plan h1, .print-plan h2, .print-plan h3, .print-plan p, .print-plan li, .print-plan td, .print-plan dd')].map((e) => e.textContent).join('\\n')`)
-          if (!/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
+          if (!licenceOnly && !/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
           checkText(`${label} (print)`, printText, { emails: true })
         }
         await evaluate(`window.dispatchEvent(new Event('afterprint'))`)

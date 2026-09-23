@@ -16,6 +16,7 @@ import type { WaveSchedule } from '../../roadmap/schedule.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { inWave } from '../../derive/phases.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import type { Lane } from '../../actionability/lanes.ts'
 
 /**
  * The phases the Plan and the printed plan draw: the finished plan's phases, read
@@ -63,21 +64,58 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
 
 /**
  * The rows the printed document's Deferred section draws (A1c, decision 3): the
- * steps the operator deferred. The screen's Deferred group is the lane engine's
- * (planLanes.ts, a skipped step is owner-deferred); this is the same fact read
- * for the document, which takes a deferred step out of its phase and prints it
- * once, under the lane's own word.
+ * steps the board reads Deferred (`laneOf`, planBoard.ts boardReadingsOf), the
+ * screen's Deferred group (planLanes.ts, a skipped step is owner-deferred). The
+ * document takes a deferred step out of its phase and prints it once, under
+ * the lane's own word.
+ *
+ * The board's lane and not `Step.status`: a deferred policy the tenant already
+ * enforces is Completed there (actionability/lanes.ts, a terminal outcome
+ * reached comes before a deferral), and read by status the document listed it
+ * under Completed and again under Deferred.
+ *
+ * A floor step the operator deferred is one of them. The rule used to read
+ * `inWave`, which leaves every floor step out, so a deferred floor step stayed
+ * in the floor's group and printed in full with a report-only date and live
+ * instructions for work the operator had taken off the plan. A step the person
+ * said does not apply here is the footer's, never this list's.
  */
-export function deferredRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => inWave(s) && s.status === 'skipped')
+export function deferredRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => !s.doesntApply && laneOf(s.id).lane === 'Deferred')
 }
 
 /**
- * The rows the printed document's Completed section draws: the finished steps,
- * which the screen's Completed group holds and no phase dates.
+ * The steps the person said do not apply here (mapping.notApplicable), each with
+ * the reason as given: the Plan footer's Doesn't apply here list and the printed
+ * cover's, one list. The cover had named the coverage verdicts instead, a
+ * different set from the footer's, and the steps set aside this way appeared on
+ * no printed line.
  */
-export function completedRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => s.status === 'done' && !s.doesntApply)
+export function doesntApplyRows(steps: readonly Step[]): Step[] {
+  return steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
+}
+
+/**
+ * The rows the printed document's Completed section draws: the steps the board
+ * reads Completed (`laneOf`, planBoard.ts boardReadingsOf), which the screen's
+ * Completed group holds and no phase dates. The board's lane and not
+ * `Step.status`: a delivered policy whose conditional input nobody saved is
+ * still Ready · Decision there (derive/sets.ts finished), and the document had
+ * listed it as Completed, a second definition beside the lane engine's.
+ */
+export function completedRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => !s.doesntApply && laneOf(s.id).lane === 'Completed')
+}
+
+/**
+ * The delivered steps the board still has work for: done, and not Completed on
+ * the board (a policy enforced with a question nobody answered). No phase and no
+ * undated group draws a done step (derive/phases.ts inWave), so without this the
+ * document printed its body, where that question is stated, nowhere. It prints
+ * in full under its own lane, with the undated rows.
+ */
+export function openDoneRows(steps: readonly Step[], laneOf: (id: string) => { lane: Lane }): Step[] {
+  return steps.filter((s) => s.status === 'done' && !s.doesntApply && laneOf(s.id).lane !== 'Completed')
 }
 
 /**
@@ -87,9 +125,11 @@ export function completedRows(steps: readonly Step[]): Step[] {
  * where the row is drawn, because a floor step under a numbered phase reads as
  * the baseline author's work. A schedule may still carry the step's id; the
  * group is where it renders, on the screen and in the printed document alike.
+ * A floor step the person said does not apply is in the Doesn't apply list
+ * (doesntApplyRows), and the floor's group does not draw it a second time.
  */
 export function floorRows(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => s.floor === true && s.status !== 'done')
+  return steps.filter((s) => s.floor === true && s.status !== 'done' && !s.doesntApply)
 }
 
 /**

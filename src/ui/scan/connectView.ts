@@ -20,6 +20,7 @@ import { fillText } from '../../content/render.ts'
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
+import { MIN_COVERAGE_HOURS } from '../../graph/collect/constants.ts'
 import { consentRows } from '../../copy/permissions.ts'
 import type { UnreadSection } from '../../graph/collect/coreSections.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
@@ -52,7 +53,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
-  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; load: string; howToMakeOne: string; updateUnknown: string }
   scan: {
     title: string
     limitsSummary: string
@@ -61,8 +62,8 @@ type Words = {
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; ask: string; learn: { label: string; url: string } }
-    role: { state: string; lead: string; row: string; ask: string }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; refusedThatAccount: string; shortWindow: string; others: string; ask: string; learn: { label: string; url: string } }
+    role: { state: string; lead: string; row: string; ask: string; note: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
     sample: { state: string }
@@ -71,6 +72,7 @@ type Words = {
     title: string
     ready: { state: string; stateCounted: string; lead: string; open: string }
     last: { state: string; open: string }
+    none: { state: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksEstimate: string; weeksValue: string; weeksOne: string; open: string }
   }
@@ -105,12 +107,21 @@ export function stages(done: readonly boolean[]): Stage[] {
  * with the next action and here is that stage's own state line. So the strip
  * cannot disagree with the step it points at, and no readiness is calculated
  * here that is not already calculated by the tiles.
+ *
+ * Nothing left to do is not the same as nothing to say: a complete scan that
+ * did not read every section, or read no sign-in proof, carries that as its
+ * `caveat`, and the strip says it instead of "scan … ready" (Phase 2 audit).
+ *
+ * A stage that is not finished and offers no action is not "next" either: a
+ * tenant without Entra ID P1 has no plan to offer and no way on, so the strip
+ * says that stage's title and state line alone, the tile's own words.
  */
 export type ConnectStatus = { tone: Tone; title: string; text: string }
-export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone }[]): ConnectStatus {
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; actions?: readonly unknown[] }[]): ConnectStatus {
   const current = done.indexOf(false)
-  if (current === -1) return { tone: 'done', title: W.status.ready, text: W.status.readyText }
+  if (current === -1) return { tone: 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
   const s = stagesOf[current]
+  if (s?.actions?.length === 0) return { tone: s.tone, title: s.title, text: s.state }
   return { tone: s?.tone ?? null, title: fillText(W.status.next, { stage: s?.title ?? '' }), text: s?.state ?? '' }
 }
 
@@ -152,7 +163,8 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
     case 'cancelled':
       return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
     case 'failed':
-      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: fillText(S.errors.failed.lead, { message: error.message }), note: null, actions: [signIn, demo] }
+      // "Microsoft answered:" only over something Microsoft said.
+      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: null, actions: [signIn, demo] }
   }
 }
 
@@ -229,7 +241,7 @@ export type BaselineTile = {
    * `version` is the revision IAMAI holds, both read from the loaded package's
    * own origin so there is no second version authority (task Step 1 C).
    */
-  source: { summary: string; text: string; link: { label: string; url: string } | null; version: string | null } | null
+  source: { summary: string; text: string; link: { label: string; url: string } | null; version: string | null; unchecked: string | null } | null
   /** The explaining copy when there is no card to nest it in (nothing loaded yet, or a load that failed). */
   paragraphs: string[]
   update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null
@@ -277,6 +289,7 @@ export function baselineTile({
   pin,
   loading,
   update,
+  updateUnchecked,
   stepsFor,
 }: {
   name: string | null
@@ -293,6 +306,8 @@ export function baselineTile({
   pin?: { repo: string; url: string; commit: string; readAt: string } | null
   loading: string | null
   update: BaselineUpdate | null
+  /** The author check could not run (ui/baseline.ts checkAuthorHead `checked: false`): the disclosure says so rather than reading as no update. */
+  updateUnchecked?: boolean
   /** The plan steps that policy stands behind, from the goal map by stable identity (derive/baselineDiff.ts stepsForChange). */
   stepsFor: (change: PolicyChange) => string[]
 }): BaselineTile {
@@ -321,7 +336,7 @@ export function baselineTile({
     state,
     tone: name ? 'done' : null,
     card,
-    source: card ? { summary: B.sourceSummary, text: B.pinned, ...sourceOf(version, pin) } : null,
+    source: card ? { summary: B.sourceSummary, text: B.pinned, ...sourceOf(version, pin), unchecked: updateUnchecked && version !== 'uploaded' ? B.updateUnknown : null } : null,
     paragraphs: card ? [] : [B.what, B.goal, B.pinned],
     update:
       update && (rows.length > 0 || incomplete)
@@ -331,7 +346,10 @@ export function baselineTile({
             rows,
           }
         : null,
-    actions: [{ label: B.change, weight: 'secondary' }],
+    // The one button the step draws: Load while nothing is loaded or loading. The
+    // custom-package picker ("Change baseline") is reserved for V2, so a loaded
+    // package offers nothing to press.
+    actions: name === null && loading === null ? [{ label: B.load, weight: 'secondary' }] : [],
   }
 }
 
@@ -350,14 +368,35 @@ export type ScanInput =
    * `degraded`: the scan finished, but a material source (sign-in proof) was not read, so MFA readiness is not measured.
    * `unread`: the sections it did not read in full — refused, errored, or read in part. The plan was built
    * (no core section was missing), so this is not a failure; it is what the plan was built without.
+   * `readsEverything`: whether the account's active roles read every section
+   * (tokenRoles.ts holdsReadEverything). True, a refusal is not for want of a role;
+   * null or absent, the roles are not known yet (the token is read after the first
+   * render) or the token carries none. Only false asks for a role.
+   * `byThisAccount`: the scan's own /me row (derive/operator.ts) is the account
+   * signed in now. A stored scan may be another account's, so only then is a
+   * refusal said to be this account's; absent, it is the scan's.
    */
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[] }
-  | { kind: 'gaps'; unread: UnreadSection[]; lastScan: { at: string } | null }
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean | null; byThisAccount?: boolean }
+  /**
+   * `gaps`: the core sections a plan cannot be built without (coreSections.ts
+   * coreGaps), the one reason no plan was built; `unread` is every section the
+   * scan did not read in full, those included. `readsEverything` as above.
+   */
+  | { kind: 'gaps'; gaps: readonly { source: string }[]; unread: UnreadSection[]; lastScan: { at: string } | null; readsEverything?: boolean | null }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
   | { kind: 'ready' }
-  /** Before sign-in: after sign-in · about a minute for a small tenant. */
+  /** Before sign-in: the scan comes after sign-in. */
   | { kind: 'sample' }
+/**
+ * What a Scan action does. The tile's buttons change with its state (the gaps
+ * state offers another account only where a section was refused), so Connect
+ * wires each one by what it does and never by its place in the list: a list
+ * one button shorter must not hand Scan again the other account's handler, or
+ * read a second button that is not there.
+ */
+export type ScanDoes = 'scan' | 'scanAgain' | 'signInAnother' | 'stop'
+export type ScanAction = Action & { does: ScanDoes }
 export type ScanTile = {
   n: 3
   kind: ScanInput['kind']
@@ -369,10 +408,25 @@ export type ScanTile = {
   meta?: { value: string; label: string }[]
   lead?: string
   rows?: { name: string; value: string }[]
+  /** The gaps state's other unread sections, apart from the ones that stop the plan, under a lead of their own. */
+  more?: { lead: string; rows: { name: string; value: string }[] }
   ask?: string
   learn?: { label: string; url: string }
   note?: string
-  actions: Action[]
+  /** A complete scan's own shortfall, its unread lead and its degraded note, for the status strip (connectStatus). */
+  caveat?: string
+  actions: ScanAction[]
+}
+
+/**
+ * One meta item, filled like every other count (content/render.ts fillText:
+ * the figure's separator, and the noun bent to it), then split so the figure
+ * can be set in bold: "4,169" · "active people", "1" · "active person".
+ */
+function counted(text: string, n: number): { value: string; label: string } {
+  const filled = fillText(text, { n })
+  const i = filled.indexOf(' ')
+  return { value: filled.slice(0, i), label: filled.slice(i + 1) }
 }
 
 /** The scan's age, from the one stored timestamp: the Scan and Plan tiles both read this. */
@@ -385,41 +439,75 @@ export function scanTile(input: ScanInput): ScanTile {
     title: S.title,
     limits: { summary: S.limitsSummary, lines: S.limits, more: S.limitsMore, link: { label: S.limitsLink, href: HOW_HREF } },
   }
-  const signInAnother: Action = { label: W.account.signInAnother, weight: 'primary' }
-  const again: Action = { label: S.complete.again, weight: 'secondary' }
+  const signInAnother: ScanAction = { label: W.account.signInAnother, weight: 'primary', does: 'signInAnother' }
+  const again: ScanAction = { label: S.complete.again, weight: 'secondary', does: 'scanAgain' }
   // One row per section the scan did not read in full, in both states. A section
   // read in PART says so: "not read" would understate what IAMAI holds, and the
-  // two are different problems to take to whoever administers the tenant.
-  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : S.gaps.notRead })
+  // two are different problems to take to whoever administers the tenant. A
+  // section Graph refused the account says that, and only a refusal is laid at
+  // the account's door: an error, a throttled read or a read stopped short is
+  // not something another account or role would change (coreSections.ts). The
+  // gaps state is the scan this account just ran; a complete scan may be a stored
+  // one another account ran, so it names this account only when it is this one's.
+  const thisAccount = input.kind !== 'complete' || input.byThisAccount === true
+  const unreadRow = (u: UnreadSection): { name: string; value: string } => ({ name: sectionLabel(u.source), value: u.partial ? S.gaps.partlyRead : u.refused ? (thisAccount ? S.gaps.refused : S.gaps.refusedThatAccount) : S.gaps.notRead })
+  // The Global Reader ask, and its Microsoft link, where a row is a refusal and
+  // nowhere else, and only to an account whose active roles were read and do not
+  // read every section: Graph refusing a Global Reader is not for want of a role,
+  // and roles not read yet are not roles found short.
+  const readsShort = (input.kind === 'complete' || input.kind === 'gaps') && input.readsEverything === false
+  const askFor = (rows: readonly UnreadSection[]): { ask: string; learn: { label: string; url: string } } | Record<string, never> =>
+    rows.some((u) => u.refused) && readsShort ? { ask: fillText(S.gaps.ask, { role: READ_EVERYTHING_ROLE }), learn: S.gaps.learn } : {}
   switch (input.kind) {
     case 'complete': {
       const c = input.counts
       // The plan was built, so the tile stays done and says complete. What it
       // was built without is listed under it rather than left unsaid (S4-7, S4-8).
       const unread = input.unread ?? []
+      const lead = unread.length > 0 ? fillText(S.complete.unread, { n: unread.length }) : null
+      const note = input.degraded ? S.complete.degraded : null
+      const caveat = [lead, note].filter((x): x is string => x !== null).join(' ')
       return {
         ...base,
         kind: 'complete',
         state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
-        meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
-        ...(unread.length > 0 ? { lead: fillText(S.complete.unread, { n: unread.length }), rows: unread.map(unreadRow) } : {}),
-        ...(input.degraded ? { note: S.complete.degraded } : {}),
+        meta: c ? [counted(S.meta.people, c.people), counted(S.meta.policies, c.policies), counted(S.meta.steps, c.steps)] : undefined,
+        ...(lead ? { lead, rows: unread.map(unreadRow) } : {}),
+        ...askFor(unread),
+        ...(note ? { note } : {}),
+        // The strip's line when every stage is done: the scan's own words, never "ready" over them.
+        ...(caveat ? { caveat } : {}),
         actions: [again],
       }
     }
     case 'gaps': {
       const G = S.gaps
+      // The lead counts the sections that stopped the plan (coreGaps) and no
+      // other: a section the plan can be built without is listed apart, so the
+      // one to fix is the one the lead names.
+      const blocks = (u: UnreadSection): boolean => input.gaps.some((g) => g.source === u.source)
+      const blocking = input.unread.filter(blocks)
+      const others = input.unread.filter((u) => !blocks(u))
+      // A sign-in read that stopped short of the minimum with some hours read is
+      // "partly read", and a part still builds a plan elsewhere: the tile says how
+      // many hours it read against the minimum a plan needs. A fact, no remedy.
+      const short = blocking.find((u) => u.source === 'signInEvidence' && u.coveredHours !== undefined)
       return {
         ...base,
         kind: 'gaps',
         state: G.state,
         tone: 'wait',
-        lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: input.unread.length }),
-        rows: input.unread.map(unreadRow),
-        ask: fillText(G.ask, { role: READ_EVERYTHING_ROLE }),
-        learn: G.learn,
-        actions: [signInAnother, again],
+        lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: blocking.length }),
+        rows: blocking.map(unreadRow),
+        ...(others.length > 0 ? { more: { lead: fillText(G.others, { n: others.length }), rows: others.map(unreadRow) } } : {}),
+        ...askFor(input.unread),
+        ...(short ? { note: fillText(G.shortWindow, { hours: short.coveredHours, minimum: MIN_COVERAGE_HOURS }) } : {}),
+        // Another account is offered only where a section the plan needs was
+        // refused to an account whose roles were read and found short: it cannot
+        // unblock a plan no refusal stopped, and reads nothing more for a Global
+        // Reader or Global Administrator. Otherwise Scan again is the way on.
+        actions: blocking.some((u) => u.refused) && readsShort ? [signInAnother, again] : [{ ...again, weight: 'primary' }],
       }
     }
     case 'role': {
@@ -431,13 +519,15 @@ export function scanTile(input: ScanInput): ScanTile {
         tone: 'stop',
         lead: fillText(R.lead, { upn: input.upn, sections: list(input.gap.sources.map((s) => midSentence(sectionLabel(s)))) }),
         rows: [{ name: R.row, value: fillText(R.ask, { role: READ_EVERYTHING_ROLE }) }],
+        // What the gate read: the roles active in this sign-in (tokenRoles.ts), so an eligible role not yet activated is not one it saw.
+        note: R.note,
         actions: [signInAnother],
       }
     }
     case 'scanning':
-      return { ...base, kind: 'scanning', state: fillText(S.scanning.state, { lane: lowerFirst(input.lane), elapsed: input.elapsed }), tone: null, actions: [{ label: S.scanning.stop, weight: 'tertiary' }] }
+      return { ...base, kind: 'scanning', state: fillText(S.scanning.state, { lane: lowerFirst(input.lane), elapsed: input.elapsed }), tone: null, actions: [{ label: S.scanning.stop, weight: 'tertiary', does: 'stop' }] }
     case 'ready':
-      return { ...base, kind: 'ready', state: S.ready.state, tone: null, note: S.ready.note, actions: [{ label: S.ready.start, weight: 'primary' }] }
+      return { ...base, kind: 'ready', state: S.ready.state, tone: null, note: S.ready.note, actions: [{ label: S.ready.start, weight: 'primary', does: 'scan' }] }
     case 'sample':
       return { ...base, kind: 'sample', state: S.sample.state, tone: null, actions: [] }
   }
@@ -447,8 +537,10 @@ export function scanTile(input: ScanInput): ScanTile {
 export type PlanInput =
   /** A complete scan: the state with the step counts once the plan has computed — every step, and the Completed lane's count (planLanes.ts laneCountsOf, A1c) — one line saying what was built, and Open the plan. The readiness ladder is MFA Readiness's, not Connect's (task 016). */
   | { kind: 'ready'; at: string; counts: { steps: number; completed: number } | null; now?: number }
-  /** A scan with gaps kept the last full plan. */
+  /** A stored full plan the Plan tab still opens, while the current scan has none: it ended with gaps, is running, or could not start. */
   | { kind: 'last'; at: string }
+  /** The Plan page offers this tenant no plan at all; `lead` is that page's own sentence (derive/notLicensed.ts conditionalAccessLicenceLine). */
+  | { kind: 'none'; lead: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
   | { kind: 'waiting' }
   /** Before sign-in: what the sample tenant produced. */
@@ -463,6 +555,35 @@ export type PlanTile = {
   /** The sample tenant's four facts, before sign-in. */
   facts?: { value: string; label: string }[]
   actions: Action[]
+}
+
+/**
+ * The destination's state, from what the Plan page would draw rather than from
+ * the scan alone (Phase 2 audit). The Plan page computes a plan only against a
+ * loaded baseline, offers a tenant without Entra ID P1 no plan at all
+ * (`noPlan`, its own gate), and opens the stored full plan whatever a newer
+ * scan is doing. So: nothing stored or no baseline, it waits; no plan to offer,
+ * it says so in the Plan page's sentence; a stored plan under a scan that has
+ * not completed (running, ended with gaps, or not started for want of a role)
+ * is the last full plan; and only a complete scan with a plan is ready.
+ */
+export function planInputOf({
+  scan,
+  lastScan,
+  baselineLoaded,
+  noPlan,
+  counts,
+}: {
+  scan: ScanInput['kind']
+  lastScan: { at: string } | null
+  baselineLoaded: boolean
+  noPlan: string | null
+  counts: { steps: number; completed: number } | null
+}): PlanInput {
+  if (!lastScan || !baselineLoaded) return { kind: 'waiting' }
+  if (noPlan) return { kind: 'none', lead: noPlan }
+  if (scan !== 'complete') return { kind: 'last', at: lastScan.at }
+  return { kind: 'ready', at: lastScan.at, counts }
 }
 
 export function planTile(input: PlanInput): PlanTile {
@@ -484,6 +605,9 @@ export function planTile(input: PlanInput): PlanTile {
     }
     case 'last':
       return { n: 4, kind: 'last', title: P.title, state: fillText(P.last.state, { date: monthDay(input.at) }), tone: null, actions: [{ label: fillText(P.last.open, { date: monthDay(input.at) }), weight: 'tertiary' }] }
+    case 'none':
+      // No counts and no way on: the Plan page draws this one sentence and nothing else.
+      return { n: 4, kind: 'none', title: P.title, state: P.none.state, tone: null, lead: input.lead, actions: [] }
     case 'waiting':
       return { n: 4, kind: 'waiting', title: P.title, state: P.waiting.state, tone: null, actions: [] }
     case 'sample': {
@@ -521,13 +645,14 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
   if ('paragraphs' in tile) {
     out.push(...tile.paragraphs)
     if (tile.card) out.push(tile.card.name, tile.card.source, ...tile.card.paragraphs)
-    if (tile.source) out.push(tile.source.summary, tile.source.text)
+    if (tile.source) out.push(tile.source.summary, tile.source.text, ...(tile.source.unchecked ? [tile.source.unchecked] : []))
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
   if ('limits' in tile) {
     out.push(tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
     for (const m of tile.meta ?? []) out.push(m.value, m.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
+    if (tile.more) out.push(tile.more.lead, ...tile.more.rows.flatMap((r) => [r.name, r.value]))
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)
   }
