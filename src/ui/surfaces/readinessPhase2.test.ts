@@ -19,6 +19,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { readinessTable } from './inventoryTables.ts'
+import { monthDay } from '../../copy/dates.ts'
 import { RE } from '../../content/contentChecks.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
@@ -387,4 +388,15 @@ test('the evidence tile says no sign-in records were read in one sentence, with 
   assert.ok(m.includes(micro?.reason ?? '__'), 'a reason that says something new is kept')
   assert.doesNotMatch(page(), /<dt>0<\/dt>/, 'no "0" beside it')
   assert.match(page(), /noRecordsWords\(source\)/)
+})
+
+test('a method an earlier scan saw and that is gone is set up again, never "restored"', () => {
+  const f = fixture('demo')
+  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => r.readiness?.next.kind === 'restore')
+  assert.ok(rows.length > 0, 'the premise: demo holds a passkey an earlier scan saw')
+  for (const r of rows) {
+    const words = nextCell(r)
+    assert.doesNotMatch(words, /^Restore/, words)
+    assert.ok(words.includes(monthDay(r.readiness!.lost[0].lastSeen)), `it says when it was last seen: ${words}`)
+  }
 })
