@@ -6,6 +6,7 @@ import firstPartyApps from '../data/first-party-apps.json' with { type: 'json' }
 import builtinStrengths from '../data/builtin-strengths.json' with { type: 'json' }
 import type { TenantSnapshot } from './graph/collect/types.ts'
 import type { GroupMembers } from './coverage/population.ts'
+import { engine } from './content/content.ts'
 
 /** Shown where a name is genuinely unknown. Never an id (CLAUDE.md: names, never IDs). */
 // Not "an account IAMAI could not name" (walk-51 item 4): most ids resolve
@@ -146,7 +147,10 @@ export function buildNameDirectory(
   }
   for (const [id, name] of extra) put(id, name)
 
-  // Every role holder that stays unresolved is a service principal, never a bare id (prompt 48.1 item 5).
+  // A role holder that stays unresolved is never a bare id (prompt 48.1 item 5),
+  // and never a kind the scan did not read: the v1.0 role read carries no
+  // principal type, so a group holding Global Administrator was "a service
+  // principal". Only a holder the assignment marks as one is named so (above).
   const roleHolders = new Set<string>()
   if (snapshot) for (const scope of [snapshot.roles?.active, snapshot.roles?.eligible]) for (const id of Object.keys(scope ?? {})) roleHolders.add(id.toLowerCase())
   const nameOf = (id: string): string | null => {
@@ -160,7 +164,7 @@ export function buildNameDirectory(
     // (prompt 37 §9, T9). An id a person cannot use is worse than saying
     // plainly that the name is missing, and the directory resolves most of
     // these a moment later anyway.
-    label: (id: string): string => nameOf(id) ?? (roleHolders.has(id.toLowerCase()) && GUID.test(id) ? SERVICE_PRINCIPAL : GUID.test(id) ? UNNAMED : id),
+    label: (id: string): string => nameOf(id) ?? (roleHolders.has(id.toLowerCase()) && GUID.test(id) ? engine.names.unnamedHolder : GUID.test(id) ? UNNAMED : id),
     unknown: (ids: Iterable<string>): string[] =>
       [...ids].filter((id) => GUID.test(id) && nameOf(id) === null),
   }

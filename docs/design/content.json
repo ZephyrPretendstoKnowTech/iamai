@@ -446,6 +446,10 @@
           "authenticationFlows": "authentication flows",
           "unread": "a condition IAMAI does not read"
         }
+      },
+      "names": {
+        "$comment": "The name directory's fallback for a role holder it holds no name for (src/names.ts label): a group, a service principal or an account that the roles read named by id alone, and that the on-demand lookup did not resolve. It said \"a service principal\" for every such holder, a kind IAMAI never read: a role-assignable group holding Global Administrator, whose every member is a Global Administrator, was dismissed as app plumbing. A holder the role assignment itself marks as a service principal is still named as one.",
+        "unnamedHolder": "an unnamed role holder"
       }
     },
     "policyDoneWhenConfiguration": [

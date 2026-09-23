@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { appsModel, authMethodsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, methodTargetGroupsOf, policiesModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, engine, pages } from '../../content/content.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
 
@@ -207,4 +207,21 @@ test('a method that excludes a group says so, as Emergency Access reads the same
   const cell = m.columns.find((c) => c.key === 'targets')!.cell(m.rows.find((r) => r.id.toLowerCase() === 'fido2')!)
   assert.equal(cell, `${C.authentication.allUsers} except ${f.groups.get(group)!.displayName}`)
   assert.ok(methodTargetGroupsOf(s).includes(group), 'the page reads the excluded group name too')
+})
+
+test('a role holder IAMAI could not look up is named without a kind it never read', () => {
+  const f = fixture('demo-week2')
+  const s = structuredClone(f.snapshot)
+  // A role-assignable group holds Global Administrator; the v1.0 read carries no principal type, and the lookup came back empty.
+  const holder = 'cc0e7c6a-1111-4222-8333-444455556666'
+  s.roles.active[holder] = ['62e90394-69f5-4237-9190-012177145e10']
+  const m = rolesModel(s, buildNameDirectory(s), new Map())
+  const ga = m.rows.find((r) => r.id === '62e90394-69f5-4237-9190-012177145e10')!
+  const active = String(m.columns.find((c) => c.key === 'active')!.cell(ga))
+  assert.ok(active.includes(engine.names.unnamedHolder), active)
+  assert.doesNotMatch(active, /service principal/)
+  // Where the assignment row says the holder is a service principal, it is named as one.
+  const sp = structuredClone(s)
+  sp.config.roleAssignments.rows = [...sp.config.roleAssignments.rows, { principalId: holder, principalType: 'ServicePrincipal', roleDefinitionId: '62e90394-69f5-4237-9190-012177145e10' }]
+  assert.equal(buildNameDirectory(sp).label(holder), 'a service principal')
 })
