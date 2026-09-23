@@ -1387,6 +1387,8 @@
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {cohort} {step} is waiting on.",
+        "$commentCovers": "A step that holds on nobody (Prepare Your Team for MFA) scopes the page to everyone it covers. \"Is waiting on\" said the step waited on all of them while it counted most of them ready.",
+        "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
         "uncounted": "{n} of them aren’t counted on this page: no sign-in in the last 90 days, or not a person’s account."

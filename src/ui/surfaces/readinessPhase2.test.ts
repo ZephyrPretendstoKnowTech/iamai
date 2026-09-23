@@ -14,7 +14,10 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords } from './readinessCells.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 
@@ -27,6 +30,7 @@ const G = (pages.readiness as unknown as { groups: Record<string, { title: strin
 const NX = (pages.readiness as unknown as { next: Record<string, string> }).next
 const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string> } }).panel.why
 const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).footer
+const PC = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
@@ -277,4 +281,22 @@ test('a guest who already holds Microsoft Authenticator is not told to set it up
   }
   assert.ok(held > 0, 'the premise: guests holding Authenticator were given a set-up step')
   assert.doesNotMatch(NX.guestHasAuthenticator, /^Set up|Add /, 'a fact, not an instruction')
+})
+
+test('opened from a step that holds on nobody, the page does not say the step is waiting on everyone', () => {
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === 's-verify-mfa')
+  assert.ok(step?.preparation, 'the premise: the campaign step carries its cohort')
+  assert.equal(stepMfaHold(step, run.viability ?? []), null, 'the premise: it holds on nobody')
+  assert.ok(step.preparation.readyIds.length > 0, 'the premise: the step counts some of them ready')
+  const title = contentTitle(step)
+  const line = scopeWords({ title, ids: step.preparation.ids, held: false }, 'the cohort')
+  assert.doesNotMatch(line, /waiting on/, line)
+  assert.equal(line, fillText(PC.covers, { cohort: 'the cohort', step: title }))
+  // A step that does hold on people keeps its words.
+  assert.equal(scopeWords({ title, ids: ['a'], held: true }, 'the cohort'), fillText(PC.filtered, { cohort: 'the cohort', step: title }))
+  assert.equal(scopeWords({ title, ids: null, held: true }, ''), fillText(PC.unknown, { step: title }))
+  assert.match(page(), /held: hold !== null/)
+  assert.match(page(), /scopeWords\(context, scopedCohort\)/)
 })

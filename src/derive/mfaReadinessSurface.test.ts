@@ -331,7 +331,9 @@ test('an unknown reach keeps the step it came from, and never becomes a tenant-w
   assert.equal(handoff.match(/href=\{readinessStepHref\(step\.id\)\}/g)?.length, 1, 'and the one it has is the step route')
   // And the page it lands on has the unknown state to render, and the way back.
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /context\.ids === null \? fillText\(T\.planContext\.unknown, \{ step: context\.title \}\)/, 'the step-scoped page says the reach is unknown')
+  assert.match(page, /scopeWords\(context, scopedCohort\)/, 'the step-scoped page says the reach is unknown')
+  const cells = readFileSync('src/ui/surfaces/readinessCells.ts', 'utf8')
+  assert.match(cells, /if \(context\.ids === null\) return fillText\(T\.planContext\.unknown, \{ step: context\.title \}\)/, 'scopeWords says the reach is unknown')
   assert.match(page, /T\.planContext\.back/, 'and offers the way back to the step')
 })
 
