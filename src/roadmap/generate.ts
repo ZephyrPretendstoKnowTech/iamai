@@ -667,13 +667,14 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  * about it: facts about that policy, never about the goal's coverage.
  * `changedSections` reads the goal's reasons, and the goal's 'report-only'
  * reason counts people, not policies: the people an enforced policy reaches
- * drop out of it (coverage.ts), whatever that policy is. So once another policy was switched on over the same people — a
- * platform block with a condition, a session-lifetime policy for the admins —
- * the reason went, 'state' went with it, and the update to the goal's own
- * report-only policy came out as `{}`. A patch with nothing in it is no
- * operation: the step read "no policy for IAMAI to write ... scan again to
- * rebuild it", every scan rebuilt the same `{}`, and the goal's MFA policy sat in
- * report-only for good (R4-11, Jordan D5).
+ * drop out of it (coverage.ts), whatever that policy is. So once another
+ * policy was switched on over the same people — a platform block with a
+ * condition, a session-lifetime policy for the admins — the reason went,
+ * 'state' went with it, and the update to the goal's own report-only policy
+ * came out as `{}`. A patch with nothing in it is no operation: the step read
+ * "no policy for IAMAI to write ... scan again to rebuild it", every scan
+ * rebuilt the same `{}`, and the goal's MFA policy sat in report-only for good
+ * (R4-11, Jordan D5).
  *
  * The update turns its policy on where that policy is in report-only and the
  * update changes nothing else about it. A report-only policy that still owes a
@@ -701,7 +702,22 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  *
  * Never for a policy the goal reads below its floor (`belowFloor`, coverage's
  * `meetsFloor`): its grant is the finding (gap 4), and a grant the plan cannot
- * raise is not turned on by this rule. That policy keeps the update it had.
+ * raise is not turned on by this rule. A report-only policy of that kind keeps
+ * the update it had.
+ *
+ * An enforced policy is read the same way, with no switch to offer: a section it
+ * already holds is not submitted. It used to stay, and the update was a
+ * correction that changed nothing. Token protection, enforced exactly as its
+ * step asked (getiamai, small, large, the demo's second week), came back on
+ * every scan as a Target resources patch identical to what the policy holds,
+ * in lane Ready and handed over as work; large's device policy, once on, came
+ * back as Office365 -> Office365, withheld behind a readiness tile about turning
+ * on a policy that was already on. Where the policy holds everything the step
+ * writes the update is empty, and the step says so (types.ts
+ * `Action.nothingOwed`). Not where the step also creates a policy: an empty
+ * update is no operation, and one invalid operation withholds the whole step's
+ * (operations.ts `validOperations`), the create with it — so a pair with a half
+ * still to create keeps the update it had.
  *
  * `built` is the action from these sections; `current` the tenant's own policy
  * under each update's id. True when the sections moved and the action has to be
@@ -709,7 +725,8 @@ function changedSections(result: GoalResult): Set<ChangedSection> {
  */
 function settleSections(sections: Set<ChangedSection>, built: Action, current: ReadonlyMap<string, RawPolicy>, belowFloor: (policyId: string) => boolean): boolean {
   const before = [...sections].sort().join()
-  const updates = (built.resolution?.policies ?? []).flatMap((o) => {
+  const operations = built.resolution?.policies ?? []
+  const updates = operations.flatMap((o) => {
     const held = o.mode === 'update' && typeof o.policyId === 'string' ? current.get(o.policyId) : undefined
     return held ? [{ id: o.policyId as string, body: o.body as RawPolicy, held }] : []
   })
@@ -718,10 +735,13 @@ function settleSections(sections: Set<ChangedSection>, built: Action, current: R
     const at = SECTION_VALUE[section as Exclude<ChangedSection, 'state'>]
     return !(updates.length > 0 && updates.every((u) => sameDimension(at(u.body), at(u.held))))
   })
-  const switchable = updates.some((u) => u.held.state === 'enabledForReportingButNotEnforced') && !updates.some((u) => belowFloor(u.id))
+  const reportOnly = updates.some((u) => u.held.state === 'enabledForReportingButNotEnforced')
+  const switchable = reportOnly && !updates.some((u) => belowFloor(u.id))
   if (owed.length === 0 && switchable) {
     sections.clear()
     sections.add('state')
+  } else if (updates.length > 0 && !reportOnly && operations.every((o) => o.mode === 'update')) {
+    for (const section of [...sections]) if (!owed.includes(section)) sections.delete(section)
   }
   return [...sections].sort().join() !== before
 }
