@@ -593,7 +593,7 @@ export function configurePasskeys(t: Tenant): Tenant {
 export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepareEmergencyAccess(t))
 
 /**
- * The person works through Decide Your Tenant's Direction and presses Approve
+ * The person works through Define Your Rollout Scope and presses Approve
  * answers on each of the four steps without changing a tile.
  *
  * What that saves is what the screen's draft starts from: every question's

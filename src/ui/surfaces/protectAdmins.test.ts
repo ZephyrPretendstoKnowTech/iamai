@@ -1,4 +1,4 @@
-// The "Protect Your Administrators" group, taken to the V1 standard:
+// The "Protect Your Administrators" steps, taken to the V1 standard:
 // docs/plans/protect-admins-spec.md holds the outcome, the Microsoft Learn page
 // behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.

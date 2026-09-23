@@ -1,4 +1,4 @@
-// The "Control Where People Sign In From" group, taken to the V1 standard:
+// The "Control Where People Sign In From" steps, taken to the V1 standard:
 // docs/plans/where-people-sign-in-spec.md holds the outcome, the Microsoft Learn
 // page behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.

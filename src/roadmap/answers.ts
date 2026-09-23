@@ -205,7 +205,7 @@ export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswe
 /**
  * The conditional inputs (U28): questions whose answer changes the plan and that
  * the scan can only suggest — the mail-sending devices, device code sign-in,
- * partner access. Each is asked in Decide Your Tenant's Direction (roadmap/
+ * partner access. Each is asked in Define Your Rollout Scope (roadmap/
  * direction.ts) and persists as questionAnswers[stepId:label] on the step it
  * changes; evidence may pre-fill one, and only an approval records it, "None"
  * included. Until then the step it changes is short of Completed.

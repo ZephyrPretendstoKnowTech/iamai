@@ -1,4 +1,4 @@
-// The "Respond to Risk and Limit Sessions" group, taken to the V1 standard:
+// The "Respond to Risk and Limit Sessions" steps, taken to the V1 standard:
 // docs/plans/risk-and-sessions-spec.md holds the outcome, the Microsoft Learn
 // page behind every technical claim and the date it was checked. One test per
 // acceptance item in that spec.

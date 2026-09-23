@@ -2834,7 +2834,7 @@
           }
         },
         "direction": {
-          "$comment": "Decide Your Tenant's Direction (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
+          "$comment": "Define Your Rollout Scope, the Direction steps (docs/plans/direction-spec.md): four decision steps, answers only. Question words, options and evidence lines; roadmap/direction.ts fills them.",
           "headings": {
             "why": "About this Step",
             "questions": "Questions",

@@ -1,4 +1,4 @@
-// Decide Your Tenant's Direction (docs/plans/direction-spec.md): the Plan's
+// Define Your Rollout Scope (docs/plans/direction-spec.md): the Plan's
 // second section, and with Emergency Access the plan's foundation. Four
 // decision steps, answers only; nothing changes in Entra.
 //
