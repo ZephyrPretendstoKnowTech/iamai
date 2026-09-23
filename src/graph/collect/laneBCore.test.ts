@@ -176,6 +176,30 @@ test('derived: per-policy applied results count classes and users', () => {
   assert.equal(p2?.counts.enforcedSuccess, 1)
 })
 
+test('derived: a policy whose records are only reportOnlyNotApplied is listed as seen in report-only, and counted nowhere', async () => {
+  // Microsoft records reportOnlyNotApplied for every sign-in a report-only
+  // policy's conditions do not match, and a block policy never records
+  // reportOnlySuccess. Block Unsupported Platforms in a tenant whose people sign
+  // in from supported platforms has only these, and the collector kept no trace
+  // of them: no result entry, so the scan read as holding no report-only record
+  // of a policy it had watched in report-only for two weeks.
+  const r = await runLaneB(
+    deps([
+      {
+        value: [
+          row({ userId: 'u1', hoursAgo: 1, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'notApplied' }, { id: 'p3', result: 'notApplied' }] }),
+          row({ userId: 'u1', hoursAgo: 30, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyNotApplied' }, { id: 'p2', result: 'reportOnlySuccess' }] }),
+          row({ userId: 'u2', hoursAgo: 60, appliedConditionalAccessPolicies: [{ id: 'p1', result: 'reportOnlyNotApplied' }, { id: 'p3', result: 'success' }] }),
+        ],
+      },
+    ]),
+  )
+  assert.deepEqual(r.reportOnlyPolicyIds, ['p1', 'p2'], 'the policies with any report-only result in the collected window')
+  assert.equal(r.policyResults.some((p) => p.policyId === 'p1'), false, 'no result entry: a policy with none of the counted results is still read as having no records')
+  assert.equal(r.policyResults.find((p) => p.policyId === 'p2')?.counts.reportOnlySuccess, 1, 'the counts are unchanged')
+  assert.equal(r.policyResults.find((p) => p.policyId === 'p3')?.counts.enforcedSuccess, 1)
+})
+
 test('derived: blocked today uses only the most recent sign-in per user', () => {
   const blocked = deriveBlockedToday([
     // u1 failed earlier but succeeded most recently → not blocked

@@ -18,7 +18,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { planStateOf } from './planState.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { WHEN, boardWhenOf, focusCounts, laneViewOf, waveStartOf } from './planBoard.ts'
+import { WHEN, boardHolds, boardWhenOf, focusCounts, laneViewOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -54,7 +54,9 @@ function boardOf({ f, r }: Run): { items: BoardItem[]; when: Map<string, string>
   const add = (step: Step): void => {
     const reading = readings.get(step.id)!
     items.push({ id: step.id, title: step.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, workType: 'ca', order: reading.order })
-    when.set(step.id, boardWhenOf(step, waveStartOf(step)))
+    // With the lane, as Plan.tsx reads the When: without it the column is the
+    // single-step guess, which never holds a row (planBoard.ts boardWhenOf).
+    when.set(step.id, boardWhenOf(step, waveStartOf(step), laneViewOf(reading, titleOf)))
   }
   for (const step of steps) add(step)
   for (const c of cleanup) {
@@ -93,9 +95,12 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
       const reading = readings.get(step.id)
       if (!label || !reading || !/\d{4}$/.test(label) || step.scheduled?.at == null) continue
       const lane = laneViewOf(reading, titleOf)
-      const rail = railOf(stepContract(step, ctx, undefined, lane))
-      // Every dated row's rail is its day, a decision's included (content review R1).
-      assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
+      // With the board's hold, as the step body builds the contract (stepBody.ts).
+      const rail = railOf(stepContract(step, ctx, undefined, lane, undefined, boardHolds(step, lane)))
+      // Every dated row's rail is its day, a decision's included (content review R1),
+      // and an estimate on the rail wherever the row reads one (R4-34): the rail
+      // reads what the row reads.
+      assert.equal(rail.metric, label, `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
       assert.equal(label.replace(/^Est\. /, ''), absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
       checked += 1
     }
@@ -113,7 +118,7 @@ test('an undated row reads the placeholder and so does its rail: the reason live
       const reading = readings.get(step.id)
       if (!reading || when.get(step.id) !== WHEN.none || step.status === 'done') continue
       const lane = laneViewOf(reading, titleOf)
-      const c = stepContract(step, ctx, undefined, lane)
+      const c = stepContract(step, ctx, undefined, lane, undefined, boardHolds(step, lane))
       if (c.milestone.at !== null) continue
       assert.equal(railOf(c).metric, 'Not scheduled', `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
       checked += 1

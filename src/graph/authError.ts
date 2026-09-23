@@ -20,14 +20,21 @@ export function classifyAuthError(e: { code: string; message: string }): SignInE
     return { kind: 'personal', account: m ? m[1] : null }
   }
   if (CANCELLED_RE.test(text)) return { kind: 'cancelled' }
-  return { kind: 'failed', message: e.message }
+  // Microsoft's words, else its error code: an empty message is not an answer
+  // to quote, and the code is the one fact left that helps.
+  return { kind: 'failed', message: e.message.trim() || e.code }
 }
 
-/** The MSAL error's code and message, whatever shape the library threw. */
+/**
+ * The MSAL error's code and message, whatever shape the library threw. MSAL
+ * leaves errorMessage empty when the server sent no description, so an empty
+ * one falls through to the error's own message.
+ */
 export function authErrorOf(e: unknown): { code: string; message: string } {
   const o = (e ?? {}) as { errorCode?: unknown; errorMessage?: unknown; message?: unknown }
+  const said = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v : null)
   return {
     code: typeof o.errorCode === 'string' ? o.errorCode : '',
-    message: typeof o.errorMessage === 'string' ? o.errorMessage : typeof o.message === 'string' ? o.message : String(e),
+    message: said(o.errorMessage) ?? said(o.message) ?? (typeof o.errorCode === 'string' || typeof o.message === 'string' ? '' : String(e)),
   }
 }

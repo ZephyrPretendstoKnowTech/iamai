@@ -10,6 +10,7 @@ import { fillText } from '../../content/render.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { ACCESS } from '../../copy/access.ts'
 import { isPrivilegeDenial, rolesForSource } from '../../graph/collect/roles.ts'
+import { CONFIG_KEYS, SOURCE_KEYS } from '../../graph/collect/coreSections.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { downloadScanDiagnostics } from '../diagnosticsDownload.ts'
@@ -21,7 +22,10 @@ import type { ScanState } from '../session.ts'
 const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
 const CONNECT = app.connect
 const SCAN = app.scan
-const TOTAL_SECTIONS = Object.keys(SCAN.sections).length
+// The sections the scan reads and reports progress for (coreSections.ts), not
+// every label: the directory audit read has a label for the unread list and no
+// progress row of its own.
+const TOTAL_SECTIONS = CONFIG_KEYS.length + SOURCE_KEYS.length
 
 /** A section label mid-sentence: "Conditional Access policies" keeps its capitals, "People" becomes "people". */
 const laneWords = (label: string): string => (/^[A-Z][a-z]+ [A-Z]/.test(label) ? label : lowerFirst(label))

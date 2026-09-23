@@ -6,6 +6,15 @@
 // produced them, never a rule id.
 import { count, list } from './statements.ts'
 import { methodName } from './inventory.ts'
+import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
+import { cleanup, stepById } from '../content/content.ts'
+
+/**
+ * The titles rule copy names steps by, from content: a copy written here would
+ * go stale when content renames the step (Phase 2 review).
+ */
+const DRILL_TITLE = cleanup.drill.title
+const PER_USER_MFA_TITLE = (stepById['s-prereq-per-user-mfa'] as unknown as { title: string }).title
 
 export const SEVERITY = {
   blocker: 'Must fix',
@@ -74,6 +83,10 @@ export const NEED_LABEL: Record<string, string> = {
   devices: 'devices',
   groupMembers: 'group membership',
   answers: 'an answer given on the plan',
+  // The Cleanup drill row's records (roadmap/cleanupDone.ts), which bg.drilled and
+  // bg.lastSignIn read. Always there to read, so never a missing need; How's Needs
+  // column said "the user list" for a check that reads these (Phase 2 audit).
+  recoveryTests: `the recovery tests recorded on ${DRILL_TITLE}`,
 }
 
 export const UNKNOWN = {
@@ -193,7 +206,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   // ---- break-glass, blockers ----
   'bg.count': {
     what: 'At least two emergency access accounts are nominated.',
-    why: 'One account is a single point of failure: a lost key or a forgotten passphrase leaves nobody able to get back in.',
+    why: 'One account is a single point of failure: a lost key or a forgotten passphrase leaves nobody able to get back in. With no account confirmed this holds the rollout; with one, the second is resilience hardening, which the rollout waits on until it is added or deferred to Cleanup.',
   },
   'bg.role.permanentGa': {
     what: 'Global Administrator is assigned permanently and active, not only eligible through PIM.',
@@ -234,7 +247,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   // ---- break-glass, warnings ----
   'bg.excludedFromReportOnly': {
     what: 'The account is also excluded from the report-only policies.',
-    why: 'A report-only policy denies nothing today, so Microsoft does not require the exclusion. It becomes required the moment somebody turns the policy on, which is usually the moment nobody is thinking about it.',
+    // The owner's all-policies rule (validation/exclusionsGroupPolicies.ts), which
+    // xg.usedConsistently holds the plan on. This said Microsoft does not require
+    // the exclusion, one row above a Must fix for the same policy (Phase 2 audit).
+    why: 'A Report-only policy is one mode change from enforcing, so the exclusions group is held to every On and Report-only policy (see The exclusions group).',
   },
   'bg.microsoftManaged': {
     what: 'The account is excluded from the policies Microsoft manages.',
@@ -254,22 +270,28 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
   },
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
-    why: 'Microsoft says not to enable or enforce per-user MFA when Conditional Access is in use: the legacy setting prompts on its own terms and can block the recovery sign-in Conditional Access would have allowed.',
+    // What the rule reads is the migration state. The why was about per-user MFA
+    // prompting, a fact this check never reads; the s-prereq-per-user-mfa step
+    // reads each account's own state (roadmap/manualWork.ts) (Phase 2 audit).
+    why: `Until the migration finishes, the legacy settings still decide which methods are offered. Each account's own per-user MFA state, the emergency accounts' included, is read on ${PER_USER_MFA_TITLE}.`,
   },
   'bg.noLicenceNeeded': {
-    what: 'No licence is assigned unless something needs one, and no mailbox is in daily use.',
+    // What the rule reads: an enabled mailbox service plan (rules.ts MAILBOX_PLANS).
+    // It cannot see whether a mailbox is used, or whether a licence is needed (Phase 2 audit).
+    what: 'No licence that includes a mailbox is assigned.',
     why: 'A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread.',
   },
   'bg.drilled': {
-    what: 'The account has signed in within the last 90 days.',
-    why: 'A passphrase nobody has used in a year is found to be wrong at the worst moment.',
+    what: `A recovery test is recorded for the account in the last ${BREAK_GLASS_DRILL_DAYS} days.`,
+    why: 'A passphrase nobody has used in a year is found to be wrong at the worst moment, and a sign-in alone does not show that recovery was tested.',
   },
   'bg.credentialStorage': {
     what: 'Where the credential is kept, and who can reach it, is recorded in the plan.',
     why: 'An emergency account whose passphrase lives only in one head or one laptop is not available in an emergency.',
   },
   'bg.signInMonitoring': {
-    what: 'A sign-in by an emergency account raises an alert.',
+    // The operator's answer, not something IAMAI reads (Phase 2 audit).
+    what: 'You confirm that a sign-in by an emergency account raises an alert.',
     why: 'These accounts should sign in almost never, so a sign-in is either a drill or an incident, and both are worth knowing about.',
   },
   'bg.nameIdentifiesPurpose': {
@@ -277,7 +299,13 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An unexplained Global Administrator is deleted in a tidy-up, or left alone when it should have been questioned.',
   },
   // ---- break-glass, notes ----
-  'bg.lastSignIn': { what: 'When the account last signed in.', why: 'Recorded so the drill history is visible without opening the portal.' },
+  // The rule reads one date, users[].lastSuccessfulSignIn: an earlier sign-in in
+  // the window is never seen, so this says what that one sign-in must be, not
+  // that the account made no other (Phase 2 review, round 2).
+  'bg.lastSignIn': {
+    what: `The account's most recent successful sign-in, if it falls in the last ${BREAK_GLASS_DRILL_DAYS} days, is a recorded recovery test.`,
+    why: 'These accounts should sign in almost never, so a sign-in that is not a recorded recovery test is one to account for: who signed in, and why.',
+  },
   'bg.signInCountries': { what: 'Countries the account has signed in from in the evidence window.', why: 'An emergency account signing in from an unexpected country is worth a question.' },
   'bg.mfaSeen': { what: 'Whether the account has completed MFA in the evidence window.', why: 'A registered method that has never been used is a method nobody has proved works.' },
   // ---- exclusions group ----
@@ -294,7 +322,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'An administrator excluded from every policy is the most valuable unprotected account in the tenant.',
   },
   'xg.notDynamic': {
-    what: 'The group is not dynamic.',
+    what: 'The group is a security group with assigned membership, not dynamic, and carries no licence.',
     why: 'A rule that adds members adds exclusions, without anybody deciding to.',
   },
   'xg.usedConsistently': {
@@ -306,7 +334,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string; label?: stri
     why: 'Each extra member is another account every policy will not apply to.',
   },
   'xg.notMailEnabled': {
-    what: 'The group is not mail-enabled and carries no licence.',
+    what: 'The group is not mail-enabled.',
     why: 'A mail-enabled exclusions group is a target that also delivers mail.',
   },
   // ---- trusted named location ----

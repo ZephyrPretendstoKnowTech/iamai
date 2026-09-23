@@ -113,7 +113,18 @@ export type AppWords = {
     /** The undated group the document prints after the phases, as the Plan draws it (planRows.ts). */
     held: { heading: string; lead: string }
   }
-  how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
+  how: Record<string, string> & {
+    limitsList: string[]
+    lanes: Record<string, string>
+    columns: Record<string, string>
+    /** The static rules on the tenant's own policies (roadmap/staticRules.ts), one row per engine.staticRules key. */
+    staticChecks: { caption: string; severity: string; rows: Record<string, { what: string; why: string }> }
+    /** The plan's prerequisite checks that are steps rather than registry rules, by step id ({step} is the step's title). */
+    prerequisiteChecks: { severity: string; rows: Record<string, { what: string; why: string }> }
+    /** "What IAMAI reads" in plain words, by registry read name (ui/surfaces/howView.ts howReadTables). */
+    readConditions: { licence: string; core: string; section: string }
+    readRows: Record<string, { why: string; note?: string }>
+  }
   /** The Inventory's words (ui/surfaces/inventoryTables.ts): capability names, and what a table says of a section the scan did not read in full. */
   inventory: {
     caps: Record<string, string>

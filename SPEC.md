@@ -46,7 +46,7 @@ re-scan — remain as decided in §2 and §4–§12.
 
 ## 4. Graph scopes (delegated, read-only) and gates
 
-`Policy.Read.All Directory.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
+`Policy.Read.All Policy.Read.AuthenticationMethod Directory.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
 
 The table below is **generated from the collector registry**
 (`src/graph/collect/registry.ts`) by `node scripts/spec-scopes.ts` — edit the
@@ -61,27 +61,33 @@ B = sign-in evidence, on-demand = after baseline selection).
 
 | Lane | Need | Endpoint | API | Scopes | Least role | Gate |
 |---|---|---|---|---|---|---|
+| on-demand | Actual legacy per-user MFA state, independent of authentication-method migration status. | `/users/{id}/authentication/requirements` | beta | Policy.Read.All | Security Reader | Read for every account as directory pages arrive, in batches of 20; failures stay unknown |
 | 0 | The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged. | `/identity/conditionalAccess/policies` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Trusted-location validation and location-based intents. | `/identity/conditionalAccess/namedLocations` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Resolve strength references in policies, incl. custom strengths and the configurations that restrict them. | `/policies/authenticationStrengthPolicies?$expand=combinationConfigurations` | v1.0 | Policy.Read.All | Security Reader | none |
-| 0 | Method availability, registrationEnforcement, policyMigrationState (read from beta when v1.0 returns none). | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Method availability and the Passkey (FIDO2) settings, registrationEnforcement, policyMigrationState (read from beta when v1.0 returns none). | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | Security Reader | Global Reader or Authentication Policy Administrator; a refused read holds the passkey settings step |
 | 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
-| 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Whether the tenant-wide device-registration MFA setting is on, which a Conditional Access user-action policy needs off. | `/policies/deviceRegistrationPolicy` | v1.0 | Policy.Read.All | Security Reader | Global Reader or a device administration role; otherwise unknown |
+| 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy`, `/policies/crossTenantAccessPolicy/default`, `/policies/crossTenantAccessPolicy/partners` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Active admin roles per user for admin-targeting intents; role names for display. | `/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)` | v1.0 | RoleManagement.Read.Directory | Global Reader | none |
+| 0 | Whether an active emergency administrator role is assigned permanently rather than eligible, activated, or time-limited. | `/roleManagement/directory/roleAssignmentScheduleInstances?$expand=roleDefinition($select=id,displayName)` | v1.0 | RoleManagement.Read.Directory | Global Reader | none |
 | 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Global Reader | Entra ID P2 or Microsoft Entra ID Governance |
 | 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | Directory Readers | none |
 | 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | Directory Readers | none |
-| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | Directory.Read.All | Directory Readers | none |
-| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | Directory.Read.All | Directory Readers | none |
+| 0 | The operator's directory id (derive/operator.ts), for bg.notPersonal, the operator-passkey step and the steps' "your own account" lines. The plan file records the signed-in MSAL account, not this read. | `/me` | v1.0 | Directory.Read.All | Directory Readers | none |
+| 0 | The groups the operator is in. Nothing reads config.meMemberOf yet; whether to keep the read is an owner question. | `/me/memberOf` | v1.0 | Directory.Read.All | Directory Readers | none |
 | A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Reports Reader | Entra ID P1/P2; a person whose method read still failed, and whom the tenant-wide read has no row for, is read alone (/{id}, $batch of 20) |
 | A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | Directory Readers + Reports Reader | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
 | A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | Directory Readers | none |
 | A | Workload identity usage for later phases. | `/reports/servicePrincipalSignInActivities` | beta | Reports.Read.All | Reports Reader | attempt and map the 403 (documented scope: Reports.Read.All) |
-| A | Registered method detail (values stripped; never phone numbers). | `/users/{id}/authentication/methods ($batch of 20)` | v1.0 | UserAuthenticationMethod.Read.All | Global Reader | inner 403 marks that user unknown |
+| A | Registered method inventory plus exact passkey model, AAGUID, type and attestation detail (values stripped; never phone numbers). | `/users/{id}/authentication/methods and /users/{id}/authentication/fido2Methods ($batch of 20), then beta /users/{id}/authentication/fido2Methods ($batch of 20) for accounts holding a passkey` | v1.0 | UserAuthenticationMethod.Read.All | Global Reader | a throttled or failed generic-method read is read again for that user alone, after the batch Retry-After; a user still unread is unknown and the registration report stands in; a failed FIDO2 detail read leaves credential fields unresolved |
 | A | Aggregated per-app usage for app-scoping decisions. | `/reports/applicationSignInDetailedSummary` | beta | Reports.Read.All | Reports Reader | attempt and map the 403 |
 | B | Interactive sign-in evidence for the replay engine and MFA verification. | `/auditLogs/signIns` | beta | AuditLog.Read.All | Reports Reader | Entra ID P1/P2; only the preview endpoint returns the fields needed; read newest-first and cut off in the browser |
-| on-demand | Group name, dynamic rule, affected-population counts and exclusion-group sanity checks. | `/groups/{id} ($select=id,displayName,membershipRule) + /groups/{id}/transitiveMembers (+ $count)` | v1.0 | Directory.Read.All | Directory Readers | runs only for groups the chosen baseline references; count-and-sample above 20k |
-| on-demand | Find the tenant group a baseline reference maps to. | `/groups?$filter=startswith(displayName,â€¦)` | v1.0 | Directory.Read.All | Directory Readers | runs only while the operator types in a Setup picker |
+| B | Each event's activity, category, result and the ids of the objects it changed, to date changes to the emergency accounts, their exclusions group, Conditional Access policies and the passkey policy. | `/auditLogs/directoryAudits` | beta | AuditLog.Read.All | Reports Reader | Entra ID P1/P2; read with the sign-in records, the last 30 days of every category |
+| on-demand | Read the complete FIDO2 configuration and assigned passkey profiles; failed reads remain explicit rather than disabled settings. | `/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/Fido2` | v1.0 | Policy.Read.AuthenticationMethod | Global Reader | Read during the authentication methods policy scan; Global Reader or Authentication Policy Administrator |
+| on-demand | Group type, assigned/dynamic state, license assignments, exact direct membership, optional owner diagnostics, and transitive affected-population evidence. | `/groups/{id} ($select=id,displayName,membershipRule,membershipRuleProcessingState,assignedLicenses,mailEnabled,securityEnabled,groupTypes,isAssignableToRole) + /groups/{id}/transitiveMembers (+ $count); saved exclusions group also reads beta /members and v1.0 /owners` | beta | Directory.Read.All | Directory Readers | mixed stable/beta read; exact direct members run only for the saved exclusions group; v1.0 owner results are diagnostic and coverage-limited because service principals may be omitted; transitive count-and-sample above 20k remains for other consumers |
+| on-demand | Resolve effective membership for the selected recovery identities without enumerating every user. | `/users/{id}/transitiveMemberOf/microsoft.graph.group` | v1.0 | Directory.Read.All | Directory Readers | runs only for selected emergency accounts when relevant group membership is sampled or unread |
+| on-demand | Find the tenant group a baseline reference maps to. | `/groups?$filter=startswith(displayName,…)` | v1.0 | Directory.Read.All | Directory Readers | runs only while the operator types in a group picker |
 | on-demand | Show display names instead of raw identifiers, everywhere. | `/directoryObjects/getByIds` | v1.0 | Directory.Read.All | Directory Readers | runs only for ids the UI would otherwise show raw |
 
 Planned but not yet in the registry: CA templates (beta), What If

@@ -4,7 +4,7 @@
 import { app } from '../content/content.ts'
 import { planFinish } from '../derive/finish.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
-import { scheduledEventOf } from './stepSchedule.ts'
+import { estimatedDay, scheduledEventOf, shownDay } from './stepSchedule.ts'
 import type { ScheduledTransition } from './stepSchedule.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
@@ -62,18 +62,28 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // carries, and no export dates a step any other way.
     const event = scheduledEventOf(s)
     if (event === null) continue
+    const v = view(s)
+    // A step the board holds books nothing, whatever day the schedule still
+    // carries for it (owner decision 2, 2026-09-22): Turn Off Security Defaults
+    // was booked for Aug 31, its cutover instructions as the entry, under a row
+    // that read "After prerequisites" (R4-21).
+    if (v.undated) continue
     const endExclusive = new Date(Date.parse(event.end) + 86_400_000).toISOString()
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-${s.id}@iamai`)
     lines.push(stamp())
     lines.push(`DTSTART;VALUE=DATE:${icsDate(event.start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
-    const v = view(s)
     // What the day is for, as the Plan rail says it: its transition's words, or
     // the step's lane label where the rail has none (A1c): the same state the
     // row and the badge show, never a sentence of the artifact's own.
     const action = TRANSITION[event.transition] ?? v.state
-    lines.push(fold(`SUMMARY:${escape(action ? `${v.title} · ${action}` : v.title)}`))
+    // A day that is an estimate is booked as one, in the words the board's row
+    // reads it in (stepSchedule.ts shownDay): the calendar booked Protect Sign-in
+    // Method Registration's report-only create on Aug 31 as a fixed day under a
+    // row reading "Est. Aug 31, 2026" (R4-34).
+    const estimate = estimatedDay(s) ? shownDay(event.start, true, 'label') : null
+    lines.push(fold(`SUMMARY:${escape([v.title, action, estimate].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · '))}`))
     // The calendar entry is the runbook: what the step says on screen, in the
     // order the screen states it (roadmap/artifactLines.ts). Where it is, what
     // comes next, who it reaches, its portal path, what is holding it, its

@@ -12,6 +12,8 @@
     "devicePlan": {
       "phone": {
         "enrol": "enroll it in Intune with the Company Portal app before {mfaEnforce}",
+        "$commentEnrolUndated": "The enrol line where Require MFA for Everyone has no turn-on day: that policy held, or the step naming it held (ui/surfaces/stepVars.ts deviceWords). The dated line lost only its day and read '...Company Portal app before.' in the campaign email and its device list.",
+        "enrolUndated": "enroll it in Intune with the Company Portal app",
         "apps": "use supported work apps and follow the company app-protection instructions",
         "none": "no company data on it; work from your computer"
       },
@@ -28,6 +30,10 @@
       "sentence": "On your phone, {phones}; on your computer, {computers}.",
       "sentencePhones": "On your phone, {phones}."
     },
+    "dates": {
+      "$commentEstimatedInSentence": "A day the plan gives a step that is an estimate (a person's review, a Direction step's questions: roadmap/stepSchedule.ts estimatedDay), where it sits inside a sentence: the lead, the Next line, the Dates line, a who-line. The board's label, pages.plan.when.estimate ('Est. {date}'), stays wherever a label is shown - the When cell, the rail, the observation tile, the calendar's summary; inside a sentence it read 'Create the policy in report-only on Est. Aug 31, 2026'. One formatter reads both (stepSchedule.ts shownDay).",
+      "estimatedInSentence": "{date} (estimated)"
+    },
     "scanControl": "Scan to update the plan",
     "doesntApplyControl": "Doesn't apply here",
     "doesntApplyPrompt": "Why does this not apply to {tenant}? One line; it goes on the plan.",
@@ -40,7 +46,7 @@
       "The available records show every active person in scope signing in during those days.",
       "A later scan confirms the intended policy settings and enabled state."
     ],
-    "$commentPolicyDoneWhenUnobserved": "What an enforced policy IAMAI watched no report-only period for says in place of the two report-only gates of policyDoneWhen (ui/surfaces/doneWhen.ts: every member first seen already enforced, observation.ts neverObserved). An enforced policy does not finish on a report-only period it is past, and the gates were dropped for it; dropped silently, nothing on the step recorded that no window had been watched. A policy an administrator created On, skipping report-only, then finished on the same lines as one IAMAI had watched through its period, and the unmet gate had been the only line that said otherwise (R4-19, Priya D4; the impatient administrator on Marcus's tenant). It says what IAMAI watched, and never when the policy went on, which IAMAI cannot know.",
+    "$commentPolicyDoneWhenUnobserved": "What an enforced policy IAMAI watched no report-only period for says in place of the two report-only gates of policyDoneWhen (ui/surfaces/doneWhen.ts: every member first seen already enforced, observation.ts neverObserved, with no scan's sign-in records showing it in report-only since). An enforced policy does not finish on a report-only period it is past, and the gates were dropped for it; dropped silently, nothing on the step recorded that no window had been watched. A policy an administrator created On, skipping report-only, then finished on the same lines as one IAMAI had watched through its period, and the unmet gate had been the only line that said otherwise (R4-19, Priya D4; the impatient administrator on Marcus's tenant). It says what IAMAI watched, and never when the policy went on, which IAMAI cannot know.",
     "policyDoneWhenUnobserved": "IAMAI watched no report-only period for this policy before it found the policy enforced, so none is part of finishing it.",
     "$commentPolicyVerifyAfter": "The person's own check once the policy has changed, and the one line of the policy block a finished policy still owes (ui/surfaces/doneWhen.ts, stepContract.ts doneWhenOf). It was the last line of policyDoneWhen, and a policy the scan found enforced and in place finished on 'The scan found the assessed configuration in place.' alone: on the scan that watched a sign-in-risk policy leave report-only, the check that catches a lockout - review the sign-in failures of the people it reaches - disappeared exactly when it applied, and the step read Completed. Every sign-in-records policy block still ends on it; a finished policy keeps it where IAMAI watched the change (observation.ts watchedArrive), and one the scan found already in place does not, because nobody watched a change to verify after.",
     "policyVerifyAfter": "Verify after the change: review sign-in failures for the people affected, and resolve any legitimate access problem you find.",
@@ -247,7 +253,7 @@
       },
       "staticRules": {
         "blockDependency": "{policy} blocks every resource but excludes none of the sign-in dependencies. Registration and enrollment break; exclude those four apps first.",
-        "appProtectionManaged": "{policy} requires an approved app but does not target unmanaged devices only, so scope it to personal devices.",
+        "appProtectionManaged": "{policy} requires an app protection policy but does not target unmanaged devices only, so scope it to personal devices.",
         "autopilot": "{policy} requires a compliant device over all resources, so new-device enrollment stops. Add the Autopilot carve-out."
       },
       "serviceSignals": {
@@ -320,7 +326,7 @@
         "stateChangedExpected": "moved to {state} by {date}, the state this step targets",
         "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
         "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
-        "$commentAppeared": "A policy the previous scan recorded as NOT DEPLOYED is not a gap in the record — it is the record. Saying \"this plan does not record which policy it watched\" for it reads as ignorance where IAMAI holds the most useful fact it can have about that policy: it was not there, and now it is. Where it arrives already enforced, nobody watched it in report-only, and the step says so rather than leaving the plan's summary to imply a rollout that happened.",
+        "$commentAppeared": "A policy the previous scan recorded as NOT DEPLOYED is not a gap in the record — it is the record. Saying \"this plan does not record which policy it watched\" for it reads as ignorance where IAMAI holds the most useful fact it can have about that policy: it was not there, and now it is. Where it arrives already enforced, nobody watched it in report-only, and the step says so rather than leaving the plan's summary to imply a rollout that happened. Not where the scan's sign-in records show it evaluated in report-only: that proves the period the step asks for, begun and ended between two scans, and the note then reads as any other change of state.",
         "appearedReportOnly": "not deployed at the last scan; created in report-only by {date}, and the observation window starts from here",
         "appearedEnforced": "not deployed at the last scan and enforced by {date}: it went live without a report-only period IAMAI could watch, so nothing here was observed before it started applying",
         "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
@@ -585,7 +591,8 @@
         "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
         "updated": "Updated by its author on {date} · {n} policies changed · review",
         "updatedPartial": "Updated by its author on {date} · IAMAI could not read every change · review",
-        "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. Nothing changes here until you take an update.",
+        "$commentIncomplete": "Phase 2 audit (Connect): this said \"Nothing changes here until you take an update\", and no control takes an update: the baseline picker is held for V2 (Connect.tsx). It now states what is true, that IAMAI keeps the pinned version. Restore an instruction only when the control ships.",
+        "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. IAMAI keeps the pinned version.",
         "diff": {
           "added": "added",
           "removed": "removed",
@@ -601,7 +608,8 @@
         "diffSet": "{field}: now {value}",
         "diffCleared": "{field}: cleared",
         "diffChanged": "{field}: changed",
-        "diffUnreviewed": "{field}: outside what IAMAI's baseline model reads, so this change is not reviewed",
+        "$commentDiffUnreviewed": "Phase 2 audit (Connect): a setting the baseline model does not represent has no plain name, so {field} is its Graph path (connectView.ts deltaLine). The line opened on that raw key; it now leads with words and keeps the path, the one precise name the setting has, as a detail in brackets.",
+        "diffUnreviewed": "A setting IAMAI's baseline model does not read changed ({field}), so this change is not reviewed.",
         "diffConflict": "The author's repository holds two copies of this that say different things, so IAMAI cannot tell what it now says.",
         "diffFields": {
           "state": "Policy state",
@@ -642,6 +650,8 @@
         "diffStep": "changes {step}",
         "diffNoStep": "no step changes",
         "change": "Change baseline",
+        "$commentLoad": "Phase 2 review, round 2 (F21): the Baseline step's one button while no package is loaded (connectView.ts baselineTile), which loads the pinned baseline. Connect.tsx wrote these words itself, beside a view model that offered \"Change baseline\", a button the page does not draw while the custom-package picker is reserved for V2.",
+        "load": "Load Defense in Depth",
         "howToMakeOne": "How to make one →",
         "pinned": "IAMAI pins a reviewed version of it and tells you when he updates it.",
         "$comment": "Task 032: the approved pack nests the baseline's own card inside the step (docs/design/approved/connect-v3.html), so the step's state word is the step's state and the package's name and size move into the card. `selected` is that word; `count` and the two version words are the card's quiet source line, from the loaded package and its origin — never a claim about the author.",
@@ -651,38 +661,50 @@
         "versionUploaded": "uploaded package",
         "sourceSummary": "Source and version",
         "sourceVersion": "Commit {commit}, read from that repository on {date}.",
-        "sourceUploaded": "This package came from files you uploaded, so IAMAI cannot name a source for it or tell you when its author changes it."
+        "sourceUploaded": "This package came from files you uploaded, so IAMAI cannot name a source for it or tell you when its author changes it.",
+        "$commentUpdateUnknown": "Phase 2 audit (Connect): `pinned` says IAMAI tells you when the author updates the baseline, and a check that could not run (GitHub's unauthenticated rate limit, no network) read exactly like no update. When ui/baseline.ts checkAuthorHead returns checked: false, the source-and-version disclosure says the check could not be made.",
+        "updateUnknown": "The check for an update in the author's repository could not run just now, so IAMAI cannot say whether he has changed it since."
       },
       "scan": {
         "title": "Scan",
         "limitsSummary": "IAMAI limitations",
+        "$commentLimits": "Phase 2 audit (Connect): the third limitation said to keep new blocks in report-only across a full cycle (a quarter, a year) while the plan turns them on after its observation window (7 days, 3 for legacy authentication: roadmap/schedule.ts observationDaysFor), two instructions for one act. It now states the fact, that a shorter report-only window cannot show a longer-cycle job either, and sets no report-only length the plan does not use. Whether to add a check with the owners of those jobs is the owner's decision.",
         "limits": [
           "Direct Send and connector-based SMTP relay do not sign in with user accounts, so these logs do not inventory them. A legacy-authentication block targets password-based sign-ins, not every mail-sending device. Confirm the sending method and test important jobs with their owners.",
           "Authentication that happens outside Entra (federation, third-party MFA, on-premises apps) is recorded as a sign-in but not as what the other system enforced.",
-          "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet; keep new blocks in report-only across a full cycle.",
+          "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet, and a report-only window shorter than its cycle cannot show it either.",
           "Credentials saved on equipment nobody has touched in years surface the day something blocks them; a walk through the comms room beats any report.",
           "A partner's own tenant enforces for their people; IAMAI sees their sign-ins here, never their controls."
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
         "limitsLink": "How IAMAI works →",
-        "$comment": "Task 032: the approved pack carries a compact meta row of what the scan produced (docs/design/approved/connect-v3.html). Every number comes from the one authority that already owns it — derive/facts.ts for the active people, the loaded package for the policies, derive/facts.ts stepFacts for the steps — so the row is a second RENDERING of a count, never a second count. It renders only when a complete scan has produced a computed plan.",
+        "$comment": "Task 032: the approved pack carries a compact meta row of what the scan produced (docs/design/approved/connect-v3.html). Every number comes from the one authority that already owns it — derive/facts.ts for the active people, the loaded package for the policies, derive/facts.ts stepFacts for the steps — so the row is a second RENDERING of a count, never a second count. It renders only when a complete scan has produced a computed plan. Each item is one counted string filled through fillText (Phase 2 audit: the row printed \"1 active people\" and \"4169\" beside \"4,169\" elsewhere), so one reads as one and a large count carries its separator; the view splits the figure from the words after filling.",
         "meta": {
-          "people": "active people",
-          "policies": "baseline policies",
-          "steps": "plan steps"
+          "people": "{n} active people",
+          "policies": "{n} baseline policies",
+          "steps": "{n} plan steps"
         },
         "complete": {
           "state": "complete · {age}",
           "again": "Scan again",
           "degraded": "Sign-in proof not read · MFA readiness not measured",
-          "unread": "{n} sections were not read in full with this account. The plan is built from what IAMAI did read, so check these before you act on it."
+          "$commentUnread": "Phase 2 review, round 2: the status strip carries this lead when every stage is done (connectView.ts connectStatus), and it ended \"so check these before you act on it\": in the strip, \"these\" pointed at rows drawn only in the Scan step, and with one section it counted one as many. The demo scan reads one section in part, so every beta visitor read it. It now names where the list is and reads the same with any count.",
+          "unread": "{n} sections were not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it."
         },
         "gaps": {
           "state": "finished with gaps · no plan built",
-          "lead": "{n} sections could not be read with this account. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.",
-          "leadFirst": "{n} sections could not be read with this account. The plan needs them, so IAMAI built nothing from this scan.",
+          "lead": "The plan needs {n} sections that could not be read in full, so IAMAI kept your last full plan and built nothing from this scan.",
+          "leadFirst": "The plan needs {n} sections that could not be read in full, so IAMAI built nothing from this scan.",
           "notRead": "not read",
           "partlyRead": "partly read",
+          "$commentRefused": "Phase 2 audit (Connect): the leads said every unread section was unread \"with this account\", and the tile asked for Global Reader whatever the reason, so a read Microsoft throttled, or one stopped at the memory ceiling, was blamed on an account that already held Global Reader. Only a section Graph refused the account (roles.ts isPrivilegeDenial) is the account's doing: its row says so, and only then does the tile carry the Global Reader ask and another account (coreSections.ts UnreadSection.refused).",
+          "refused": "refused to this account",
+          "$commentRefusedThatAccount": "Phase 2 review, round 2: a complete scan restored from the store said its refused sections were \"refused to this account\" whoever was signed in now, so an admin who followed the Global Reader ask and signed in with the new account read that sections were refused to it. A stored scan names this account only when its own /me row is the account signed in now (connectView.ts unreadRow); otherwise the refusal is the scan's.",
+          "refusedThatAccount": "refused to the account that ran this scan",
+          "$commentShortWindow": "Phase 2 review, round 2: a sign-in read that stopped short of its minimum with some hours read (graph/collect/laneBCore.ts, 'insufficient') read \"The plan needs 1 section that could not be read in full\" over \"Sign-in records · partly read\", while the complete state says a section read in part still builds a plan: nothing said why this one did not. {minimum} is graph/collect/constants.ts MIN_COVERAGE_HOURS, the hours of records a plan needs; {hours} is the whole hours in the covered window the read kept (coreSections.ts UnreadSection.coveredHours), written \"{hours} of them\" so one hour reads as one. A fact, and no remedy.",
+          "shortWindow": "A plan needs at least {minimum} hours of sign-in records, and the records IAMAI read cover {hours} of them.",
+          "$commentOthers": "Phase 2 audit (Connect): the gaps lead counted every unread section as one the plan needs, so a scan whose one blocking gap was the sign-in records, and which was also refused MFA registration and Devices, read \"3 sections\" and the section to fix could not be told apart. The lead counts the core gaps (coreSections.ts coreGaps) alone; the other unread sections are listed under this lead instead.",
+          "others": "{n} other sections were not read in full. What is listed here does not stop a plan being built.",
           "ask": "Ask whoever administers the tenant for {role}; it reads every section and writes nothing.",
           "learn": {
             "label": "Microsoft: Global Reader",
@@ -691,13 +713,15 @@
         },
         "role": {
           "state": "not started · this account can't read the tenant",
-          "lead": "{upn} holds none of the roles that read {sections}.",
+          "lead": "{upn} has no active role that reads {sections}.",
+          "$commentNote": "Phase 2 audit (Connect): the role state reads the token's active roles (graph/collect/tokenRoles.ts, the wids claim) and said the account held none of them, so an admin whose Global Reader is eligible in Privileged Identity Management, and not activated, was told to ask for a role they already hold. The lead and this note state what IAMAI read and when an eligible role counts; neither adds an instruction.",
+          "note": "IAMAI reads the roles active in this sign-in. A role eligible in Privileged Identity Management counts once it is activated and the account signs in again.",
           "row": "Everything IAMAI needs, read-only",
           "ask": "ask for {role}"
         },
         "ready": {
           "state": "not started",
-          "note": "About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.",
+          "note": "The scan is processed in this browser; nothing is uploaded to IAMAI.",
           "start": "Scan tenant"
         },
         "scanning": {
@@ -705,7 +729,7 @@
           "stop": "Stop"
         },
         "sample": {
-          "state": "after sign-in · about a minute for a small tenant"
+          "state": "after sign-in"
         }
       },
       "plan": {
@@ -720,6 +744,10 @@
         "last": {
           "state": "last full plan · {date}",
           "open": "Open the last full plan ({date})"
+        },
+        "none": {
+          "$comment": "Phase 2 audit (Connect): a tenant without Entra ID P1 read \"ready · 2 steps\" and Ready to plan here while the Plan page offers it no plan at all. The destination now reads the Plan page's own gate (connectView.ts planInputOf over derive/notLicensed.ts conditionalAccessLicenceLine): this state word, and that page's own sentence as the lead, with no counts and no way on.",
+          "state": "no plan to offer"
         },
         "waiting": {
           "state": "after the scan"
@@ -986,9 +1014,13 @@
       },
       "summaryLabel": "Readiness answer",
       "summary": "{ready} of {cohort} are ready for phishing-resistant sign-in.",
+      "$commentSummaryWithGuests": "People and guests counted together. \"4 of 29 people and 1 guest are ready\" read as if the guest were ready too. The whole count follows \"of\"; the guests stay named beside the people (owner, 2026-09-19).",
+      "summaryWithGuests": "{ready} of {total} are ready for phishing-resistant sign-in: {cohort}.",
       "summaryNone": "No active people to count.",
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
+      "$commentSummaryNotJudged": "Everyone counted is Unknown, though the sign-in proof was read: their method lists were refused, say. \"0 of 30 are ready\" put an unread count in the shape of a measurement. Each row says what was missing.",
+      "summaryNotJudged": "Readiness not measured for {cohort}: this scan couldn’t read what it depends on.",
       "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
       "groupNoP1": {
         "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
@@ -1075,21 +1107,25 @@
         "confirm": {
           "title": "Confirm the method still exists",
           "why": "Registered, but no confirmed sign-in in 30 days",
-          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer was replaced, they remove the old method and register again."
+          "$commentBody": "It said \"they remove the old method and register again\". Registering first means nobody is left without a working method while the old one still works; removing a method on a lost device loses nothing. Registering security info needs MFA, so somebody whose only method was on that device can't register at all. The last sentence states that fact as the Temporary Access Pass check does (checks.tap.failText); it adds no instruction.",
+          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one. Anyone left with no method needs a Temporary Access Pass to register."
         },
         "device": {
-          "title": "Add a passkey to the device they use",
+          "$commentTitle": "It read \"Add a passkey to the device they use\" over rows whose step is to sign in once with the passkey they already hold. The title names the gap; each row names its step.",
+          "title": "Cover the device that signs in without a phishing-resistant method",
           "why": "Confirmed on one device, but another signs in without it",
+          "$commentBody": "A row's step may be a sign-in with a method already held. The option is named only where the step is a setup; \"On a phone that is…\" read as if every step were a passkey.",
           "body": {
-            "windows": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
-            "mac": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator; on a Mac, a synced passkey where passkey settings allow it.",
-            "both": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
-            "none": "Each sets up the option named on their row, on the device that still signs in without it. On a phone that is a passkey in Microsoft Authenticator."
+            "windows": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator; on a joined computer, Windows Hello for Business.",
+            "mac": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator. On a Mac it is a synced passkey, where passkey settings allow it.",
+            "both": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator. On a joined Windows computer it is Windows Hello for Business; on a Mac, a synced passkey where allowed.",
+            "none": "Each takes the step named on their row, on that device. Where the step is a setup, on a phone it is a passkey in Microsoft Authenticator."
           }
         },
         "unknown": {
           "title": "IAMAI couldn’t read these people",
-          "why": "Each row says what was missing. The next scan retries."
+          "$commentWhy": "It ended \"The next scan retries.\", which is false where the tenant refused the read. Each row says what was missing and whether a rescan reads it.",
+          "why": "Each row says what was missing."
         },
         "ready": {
           "title": "Ready",
@@ -1110,6 +1146,8 @@
         "byDepartment": "Department",
         "noDepartment": "No department recorded",
         "noDevices": "No sign-in seen in 30 days",
+        "$commentNoDevicesUnread": "The devices sub-group of people whose sign-ins were not read (derive/mfaReadiness.ts devicesUnread). It was titled noDevices, \"No sign-in seen in 30 days\", over rows whose cells say Not read.",
+        "noDevicesUnread": "Sign-ins not read",
         "showing": "Showing {shown} of {n}.",
         "showMore": "Show the next {n}"
       },
@@ -1189,11 +1227,14 @@
         "none": "Nothing to do",
         "seamless": "Add {option} on {device}",
         "setUp": "Set up {option}",
-        "restore": "Restore {method}",
+        "$commentRestore": "It said \"Restore the passkey\". A removed method can't be restored in Entra, and the row never said one was seen before. It is set up again.",
+        "restore": "Set up {method} again: the one seen {date} is no longer registered",
         "confirm": "Sign in once with {method}",
         "confirmOn": "Sign in once with {method} on {device}",
         "returnConfirm": "Confirm on return",
         "guest": "Set up Microsoft Authenticator; passkeys don’t work for guests yet",
+        "$commentGuestHasAuthenticator": "A guest who already holds Microsoft Authenticator was told to set it up. Nothing on the row can move a guest to Ready while passkeys don't work for guests, so the row states that.",
+        "guestHasAuthenticator": "Uses Microsoft Authenticator; passkeys don’t work for guests yet",
         "addDevice": "Add {option} on {device}",
         "updateOs": "Update {device} to {version}, or use a security key on it",
         "replaceKey": "Replace the key with an approved model",
@@ -1206,7 +1247,9 @@
           "methods": "Nothing to do: the next scan retries the method list",
           "signIns": "Nothing to do: the next scan retries the sign-in records",
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
-          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant"
+          "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
+          "$commentMethodsUnavailable": "Drawn only where no method list was read in this tenant and the registration report that stands in for one was refused (derive/readinessContext.ts methodListsUnread). The row states the fact; the evidence tile says what reads it. Where other lists were read, a missed one keeps \"methods\", because the next scan re-reads it.",
+          "methodsUnavailable": "Not known: IAMAI couldn’t read method lists in this tenant"
         }
       },
       "notes": {
@@ -1264,10 +1307,14 @@
         },
         "retained": "kept from an earlier scan",
         "unlisted": "Unlisted model ({aaguid})",
+        "$commentTwin": "A key with an approved model's name on another AAGUID (other firmware). The panel said \"Not on Step 3’s approved list\" beside a list naming the same model, and never said which AAGUID differs.",
+        "twin": "{model}, {aaguid}; the approved one is {approved}",
         "why": {
           "seamless": "Every device they use signs them in on its own.",
           "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
           "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
+          "$commentConfirmNew": "A method registered last week and not used yet read \"it may no longer exist\", right after a registration campaign. Where every usable method is new, the row says when it was registered.",
+          "confirmNew": "Registered {date} and not used to sign in yet.",
           "onLeave": "They haven’t signed in during the last 30 days. Confirm the method when they return.",
           "device": "Confirmed on one device, but {device} signs in without it.",
           "method": "No phishing-resistant method they can use.",
@@ -1305,13 +1352,18 @@
         "registration": {
           "pass": "People can register from anywhere after MFA",
           "fail": "Registration only works from trusted places",
-          "failText": "A Conditional Access policy limits security-info registration. Issue a Temporary Access Pass to people working remotely, or allow registration after MFA from anywhere.",
+          "$commentFailText": "It offered \"Issue a Temporary Access Pass to people working remotely\". A pass satisfies MFA, but not a block scoped by location or a compliant or joined device grant, which is what this check finds. The people it named stayed blocked. The remaining remedy is the one it already gave.",
+          "failText": "A Conditional Access policy lets people register security info only from a trusted location or a managed device. To unblock people elsewhere, allow registration after MFA from anywhere.",
           "unknown": "Conditional Access policies weren’t read. Scan again."
         },
         "windowsHello": {
           "seen": "Windows Hello for Business is working here: people sign in with it",
           "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
-          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet"
+          "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
+          "$commentUnread": "The device directory wasn't read in full, so an absent joined computer settles nothing. The check was filed as done under noJoined there, over a read that failed.",
+          "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the device directory in full",
+          "$commentSignInsUnread": "The device directory holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
+          "signInsUnread": "Whether Windows Hello for Business works here isn’t known: no sign-in records were read"
         },
         "tap": {
           "pass": "Temporary Access Pass is enabled",
@@ -1333,7 +1385,8 @@
         },
         "attestation": {
           "pass": "Attestation is off: synced and Windows Hello passkeys can register",
-          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so contractors use a phone passkey or a security key."
+          "$commentNote": "It said \"so contractors use a phone passkey\"; nothing on the page defines contractors. The people it means are the ones on computers without Windows Hello for Business.",
+          "note": "Attestation is on. Synced and Windows Hello passkeys can’t register, so people on computers without Windows Hello for Business use a phone passkey or a security key."
         },
         "link": "Open the related step"
       },
@@ -1347,15 +1400,26 @@
         "service": "Service accounts",
         "shared": "Shared devices",
         "disabled": "Sign-in disabled",
+        "$commentOne": "A count of one beside a kind's name read \"1 Shared devices\". The name for exactly one of a kind.",
+        "one": {
+          "emergency": "Emergency access account",
+          "service": "Service account",
+          "shared": "Shared device",
+          "disabled": "Sign-in disabled"
+        },
         "dormantLink": "Confirm or disable in the Plan"
       },
       "evidence": {
         "full": "days of sign-ins, {from} to {to}",
         "partial": "Sign-ins read {from} to {to}: the most recent part of the 30 days.",
         "none": "No sign-in records were read.",
-        "unreadMethods": "method lists couldn’t be read. The next scan retries.",
-        "notCovered": "people’s sign-ins aren’t read yet. The next scan continues.",
-        "individually": "people read individually for the older part of the window"
+        "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
+        "$commentUnreadMethods": "Each person has one method list, so the noun stays singular: \"1 person’s method lists\" read as several lists for one person.",
+        "unreadMethods": "IAMAI couldn’t read the method list of {n} people. The next scan retries.",
+        "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it. The line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
+        "unreadMethodsRefused": "IAMAI couldn’t read the method list of {n} people, nor registration details in this tenant: {reason}. {fix}",
+        "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
+        "individually": "IAMAI read {n} people individually for the older part of the window."
       },
       "guests": {
         "$comment": "Guests (owner decision, 2026-09-19, superseding option B): counted and listed with everyone else, tagged Guest, and in the MFA campaign; this tile adds the tenant-level reading. derive/guestReadiness.ts is the reading.",
@@ -1364,6 +1428,8 @@
         "trustOn": "This tenant trusts MFA from their home organisation.",
         "trustOff": "This tenant doesn’t trust MFA from their home organisation, so guests are asked to register a method here.",
         "trustUnknown": "Cross-tenant access settings weren’t read.",
+        "$commentTrustNotReported": "The settings were read and name no inbound MFA trust. trustUnknown said they weren't read, on the public demo among others.",
+        "trustNotReported": "Cross-tenant access settings were read, but don’t say whether this tenant trusts MFA from their home organisation.",
         "policyInPlace": "Require MFA for Guests is in place.",
         "policyNotInPlace": "Require MFA for Guests isn’t in place yet.",
         "policyLink": "Open the step",
@@ -1379,9 +1445,12 @@
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {cohort} {step} is waiting on.",
+        "$commentCovers": "A step that holds on nobody (Prepare Your Team for MFA) scopes the page to everyone it covers. \"Is waiting on\" said the step waited on all of them while it counted most of them ready.",
+        "covers": "Filtered to the {cohort} {step} covers.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
-        "uncounted": "{n} of them aren’t counted on this page: no sign-in in the last 90 days, or not a person’s account."
+        "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bends no contraction.",
+        "uncounted": "This page doesn’t count {n} of them: no sign-in in the last 90 days, or not a person’s account."
       }
     },
     "export": {
@@ -1458,18 +1527,8 @@
       ]
     },
     "how": {
-      "needsByStep": {
-        "emergency": "the emergency-access step",
-        "exclusions": "the exclusions-group step",
-        "countries": "the countries step",
-        "trusted": "the trusted-network step",
-        "serviceAccounts": "the service-accounts step"
-      },
-      "exclusionsCheckReworded": "The group is excluded from every enabled policy that relies on it.",
-      "groupSearchReworded": "runs only while the operator types in a step's picker",
-      "packageProblem": "{policy}: the export dropped a condition this package cannot carry (for example agent identities), so it is listed and not assessed. Re-export it through Graph REST to assess it.",
       "tip": "Everything IAMAI reads, every check it runs, and how to make a baseline package of your own.",
-      "noAi": "No AI runs in these tools. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
+      "noAi": "No AI runs in IAMAI. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
@@ -1506,9 +1565,9 @@
           "text": "Work through the prerequisites, review the instructions, and test changes before enforcing them."
         }
       ],
-      "baselineLabel": "Default baseline",
+      "baselineLabel": "Baseline",
       "baselineName": "Defense in Depth",
-      "baseline": "The default is Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
+      "baseline": "IAMAI plans against Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
       "baselineGoal": "It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.",
       "baselineNote": "You can inspect the baseline version IAMAI uses. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
       "catchesLabel": "What it catches",
@@ -1540,11 +1599,11 @@
       "trust": [
         {
           "title": "IAMAI does not change your tenant",
-          "body": "You can review the permissions before connecting. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
+          "body": "You can review the permissions before connecting. Approving them adds one enterprise application to the tenant, which you can delete. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
         },
         {
           "title": "Your scan is processed on your device",
-          "body": "Tenant data is read from Microsoft and processed in your browser. IAMAI does not upload your scan to its own server. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information."
+          "body": "Tenant data is read from Microsoft and processed in your browser. IAMAI has no server, so your scan is not uploaded anywhere. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information."
         },
         {
           "title": "You can inspect the code",
@@ -1662,7 +1721,9 @@
           "spActivity": "Service principal activity",
           "authMethods": "Registered methods",
           "appSignInSummary": "App usage",
-          "signInEvidence": "Sign-in records"
+          "signInEvidence": "Sign-in records",
+          "$commentRecoveryAudit": "Phase 2 audit (Connect): the directory audit read (graph/collect/laneB.ts), which every automatic recovery-test check needs, was never on the unread list, so a scan whose audit read failed read complete with nothing listed. coreSections.ts unreadSources now lists it under this label.",
+          "recoveryAudit": "Directory audit log"
         }
       },
       "connect": {
@@ -1839,6 +1900,8 @@
             "label": "Differs From the Baseline",
             "note": "{policy} delivers this goal and differs from the baseline's policy in {dimensions}. That may be deliberate: IAMAI reads the goal as delivered and does not ask you to change it."
           },
+          "$commentFoundEnforcedUnwatched": "Owner decision 3 (2026-09-22; R4-12, Jordan D7): a finished policy this plan owns (its tag on the satisfying policy, enforced) that went live with no report-only period IAMAI watched stays Completed, and its Readiness says so on a warning tile (ui/surfaces/doneWhen.ts enforcedUnwatched: IAMAI watched every policy member go On from not deployed at the scan before, or from Off on the same object after a scan that recorded it not deployed, with no report-only state between, and the scan's sign-in records show no report-only result for it, observation.ts skippedWindow). A record must have seen the step's policy not deployed. Never on a policy a first scan found On or Off, which is also how a policy this plan built and watched through report-only reads from a second browser or after Forget: IAMAI cannot know that one skipped anything. Never on a different object replacing the one recorded, which the record only sighted and the scan before may have seen in report-only. Built straight to On, policies on the pinned baseline filed under Completed with the scan's sentence alone, and the one note saying nobody watched them sat under New evidence. This tile is that fact's one home on the step: the New evidence note that says the same (observations.appearedEnforced) is left out where it draws. It states what IAMAI could watch, never when the policy went on, which IAMAI cannot know. Never on a policy the tenant already had (In place): nothing went live under this plan there. The check after the change stays in the Done-when (shared.policyVerifyAfter), and this sentence does not repeat it.",
+          "foundEnforcedUnwatched": "This policy went live without a report-only period IAMAI could watch, so IAMAI observed nothing of it before it started applying to sign-ins.",
           "followUp": {
             "$comment": "Owner decision 9 (2026-09-22): one person on leave need not hold every policy that waits on Prepare Your Team for MFA. The people a person marks there to turn on without, for now, are named on the campaign and on each policy that reaches them, with what happens at their next sign-in.",
             "label": "Follow-Up List",
@@ -1900,7 +1963,7 @@
           "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and enable it there if it is the one you want, or follow the instructions below and leave it switched off.",
           "foundDiffers": "{policy} is deployed, but not as this step asked: {fields} differ from the target above. Compare them in the Entra admin center, or re-run this step's instructions to write the intended settings.",
           "$commentFoundWatched": "A step IAMAI WATCHED move is not a report of coverage that was already there (stepContract.ts foundOf, observation.ts since === 'observed-change'). Saying \"already delivered ... so there is nothing to create\" on the step somebody has just created, watched for a week and enforced erases their work and describes it as a policy they never needed to build.",
-          "$commentFoundInherited": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own tag, and the step said \"Already delivered by X, so there is nothing to create\" — the wording for coverage somebody else put there. Neither half of the existing pair fits. The first version of this said the policy was written \"before IAMAI's first scan\", which IAMAI cannot know and which its own record disproved: a reader found it on a policy recorded ABSENT on three consecutive scans and watched appearing on the fourth, eight days after the first scan, with `neverObserved` set. What the tag proves is authorship, not a date, so that is all it now says. `neverObserved` cannot rescue the date either: it is set both for a policy the first scan found enforced and for one deployed straight to enforced under the watch. Where a rollout did go unwatched, the observation note (observations.appearedEnforced) says so in its own words beside this line.",
+          "$commentFoundInherited": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own tag, and the step said \"Already delivered by X, so there is nothing to create\" — the wording for coverage somebody else put there. Neither half of the existing pair fits. The first version of this said the policy was written \"before IAMAI's first scan\", which IAMAI cannot know and which its own record disproved: a reader found it on a policy recorded ABSENT on three consecutive scans and watched appearing on the fourth, eight days after the first scan, with `neverObserved` set. What the tag proves is authorship, not a date, so that is all it now says. `neverObserved` cannot rescue the date either: it is set both for a policy the first scan found enforced and for one deployed straight to enforced under the watch. Where IAMAI watched a rollout go On with no report-only period (observation.ts skippedWindow), the Readiness tile (stepContract.foundEnforcedUnwatched) says so in its own words beside this line.",
           "foundInherited": "{policies} carries this step's tag, so it was written from this plan rather than by hand. This scan did not watch it change; it reads it as it stands in {tenant} now.",
           "foundInheritedTogether": "{policies} carry this step's tag, so they were written from this plan rather than by hand, and no one of them covers the whole goal on its own. This scan did not watch them change; it reads them as they stand in {tenant} now.",
           "foundInPlaceWatched": "{policies} is in place. IAMAI watched it get there.",
@@ -2012,6 +2075,8 @@
               "reading": "Readiness",
               "observation": "Observation",
               "observationUntil": "Until {date}",
+              "$commentUnwatched": "The short value of the Observation tile a finished policy this plan owns draws where it went live with no report-only period IAMAI watched (owner decision 3, 2026-09-22; R4-12). Its note is stepContract.foundEnforcedUnwatched.",
+              "unwatched": "No report-only period watched",
               "exclusions": "Exclusions",
               "exclusionsReached": "Reaches emergency access",
               "exclusionsUnproven": "Not proven",
@@ -2934,7 +2999,8 @@
         "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window."
       },
       "readiness": {
-        "lineNoRecordsReason": "no sign-in records ({reason})",
+        "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",
+        "lineNoRecordsReason": "No sign-in records were read: {reason}.",
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
         "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."
@@ -2996,8 +3062,40 @@
         "permissions": "Permissions",
         "reads": "What IAMAI reads",
         "checks": "Every check",
-        "checksIntro": "Every check IAMAI runs, generated from the rules the code runs from.",
+        "$commentChecksIntro": "Phase 2 review, round 2 (How): this said 'Every check IAMAI runs, generated from the rules the code runs from'. The plan runs checks the tables do not list (the passkey-settings step holds 17 steps on mid), and the prerequisite and static rows are written here, not generated. It claims only what the tables hold: the rules' checks and the one prerequisite that is not a rule (src/ui/surfaces/howView.test.ts). The heading 'Every check' is fixed by docs/qa/page-contracts.json.",
+        "checksIntro": "What IAMAI's rules check, and whether the tenant has the authentication strength the baseline's policies require.",
+        "$commentStaticChecks": "Phase 2 audit (How): the checks src/roadmap/staticRules.ts runs on the tenant's own Conditional Access policies, one row per engine.staticRules template (src/ui/surfaces/howView.test.ts holds the two key sets equal). A failure is a line in the Plan's Housekeeping list, never a held step, so the chip says Housekeeping. How listed only the rule registry, which left these out while listing pilot-group and authentication-strength rules no plan evaluates.",
+        "staticChecks": {
+          "caption": "The tenant's own policies",
+          "severity": "Housekeeping",
+          "rows": {
+            "blockDependency": {
+              "what": "A policy that blocks every resource excludes the sign-in dependencies, unless a client-app, authentication-flow, platform, device-filter or location condition already keeps it off registration and enrollment sign-ins.",
+              "why": "Without those exclusions, registration and enrollment break."
+            },
+            "appProtectionManaged": {
+              "what": "A policy that requires an app protection policy targets unmanaged devices only.",
+              "why": "Otherwise the requirement reaches managed devices as well as personal ones."
+            },
+            "autopilot": {
+              "what": "A policy that requires a compliant device over all resources or Office 365, when the sign-in records show technician tools used from devices that are not compliant.",
+              "why": "New-device enrollment stops without the Autopilot carve-out."
+            }
+          }
+        },
+        "$commentPrerequisiteChecks": "Phase 2 review (How): the plan's check that the tenant has the baseline's authentication strength. It is a prerequisite step (src/roadmap/generate.ts, s-prereq-auth-strength), not a registry rule: it reads the scanned authentication strengths, and while none allows exactly the method combinations and restrictions the baseline's policies require, those policies wait on the step. How listed it only through the registry's str.* rows, which no plan evaluates, and dropping them left the check out. src/ui/surfaces/howView.ts draws one row per key under the Authentication strength caption; {step} is the step's title from content.",
+        "prerequisiteChecks": {
+          "severity": "Holds the policies that need it",
+          "rows": {
+            "s-prereq-auth-strength": {
+              "what": "A tenant authentication strength allows exactly the method combinations and restrictions of the strength the baseline's policies require.",
+              "why": "A policy cannot require a strength the tenant does not have. Until one matches, the policies that require it wait on {step}."
+            }
+          }
+        },
         "packages": "Baseline packages",
+        "$commentPackageBody": "Phase 2 audit (How): the Baseline packages section's sentence was written into How.tsx and said the baseline credit a second time in other words. This says what IAMAI does with the package; whose it is, the Credits say once (creditBaseline).",
+        "packageBody": "IAMAI plans against a reviewed version of this package, pinned in the build, and reads it unchanged. Connect shows its source and version.",
         "limits": "Limits",
         "limitsList": [
           "IAMAI cannot reproduce every Microsoft access decision. Review Microsoft's policy results and test the actual workflow, especially registration, recovery and device-dependent access.",
@@ -3017,14 +3115,51 @@
           "endpoint": "Endpoint",
           "api": "API",
           "permissions": "Permissions",
-          "gate": "When it can fail",
+          "gate": "Conditions",
           "why": "Why"
+        },
+        "$commentReads": "Phase 2 audit (How): the reads table printed the collector registry's developer notes (src/graph/collect/registry.ts gate and purpose): 'none' under 'When it can fail' for twelve reads, raw property names, 'the replay engine', 'for later phases'. The registry keeps its notes; How shows these lines instead (src/ui/surfaces/howView.ts howReadTables), one per registry read by its name, and howView.test.ts holds the two sets equal. A cell's licence line comes from the registry's requiredCapability, and a scan section's last sentence from coreSections.ts: a core section refused builds no plan, any other refused section is named on Connect (unreadSources).",
+        "readConditions": {
+          "licence": "Needs {licence}.",
+          "core": "A refused read builds no plan.",
+          "section": "A refused read is named on Connect after the scan."
+        },
+        "readRows": {
+          "Per-user MFA requirements": {"why":"Each account's legacy per-user MFA state, whatever the authentication-methods migration says.","note":"Read for every account as the directory arrives. An account whose read fails stays unknown."},
+          "CA policies": {"why":"The tenant's Conditional Access policies, which the plan compares with the baseline; Microsoft-managed policies are marked."},
+          "Named locations": {"why":"The named locations the trusted-location and country checks read."},
+          "Authentication strengths": {"why":"The strengths policies refer to, custom ones included, and the method combinations each allows."},
+          "Auth methods policy": {"why":"Which sign-in methods are on and for whom, the passkey settings, whether registration is enforced, and whether the tenant has finished moving off the legacy MFA settings (read from beta when v1.0 leaves that out).","note":"Read with Global Reader or Authentication Policy Administrator; a refused read also holds the passkey settings step."},
+          "Security defaults": {"why":"Whether security defaults are on; they cannot be on alongside Conditional Access."},
+          "Device registration policy": {"why":"Whether the tenant-wide device-registration MFA setting is on, which a Conditional Access policy on registering devices needs off.","note":"Read with Global Reader or a device administration role; with another role it reads as unknown, never as off."},
+          "Cross-tenant access": {"why":"How accounts from other tenants are trusted, for the steps about guests and external access."},
+          "Role assignments": {"why":"Who holds an active directory role, for the administrator steps, and the role names shown."},
+          "Role assignment schedules": {"why":"Whether an active emergency administrator role is assigned permanently rather than eligible, activated or time-limited."},
+          "PIM eligibility": {"why":"Roles held as eligible rather than active; an eligible role is outside a role-scoped policy until it is activated."},
+          "Subscribed SKUs": {"why":"The licences the tenant holds and how many are assigned."},
+          "Organization": {"why":"The tenant's name and verified domains, for the plan file's header."},
+          "Signed-in operator": {"why":"Which account in the directory is yours. The emergency-account and passkey checks read it, and so do the steps that mention your own account."},
+          "Operator groups": {"why":"The groups the signed-in account is in. Nothing in the plan uses them yet."},
+          "Registration details": {"why":"Which method types each person has registered, without phone numbers, for MFA readiness."},
+          "Users": {"why":"Every account, with its last sign-in, licences and directory details.","note":"Last sign-in dates need Entra ID P1; without it the accounts are read without them."},
+          "Devices": {"why":"Each device's compliance and join state and its registered owners, for the device steps."},
+          "SP sign-in activity": {"why":"When each application identity last signed in, which shows the applications in use in this tenant."},
+          "Auth methods": {"why":"Each account's registered methods, with the passkey model, type and attestation details; IAMAI keeps the details its checks need and never saves phone numbers.","note":"An account whose methods cannot be read is read again on its own; one still unread stays unknown, and the registration report stands in for it."},
+          "App sign-in summary": {"why":"Sign-in counts per application, for deciding which applications a policy should cover."},
+          "Sign-in logs": {"why":"Interactive sign-ins, for predicting what a policy would do and for showing who has completed MFA."},
+          "Directory audit events": {"why":"Each event's activity, category, result and the objects it changed, to date changes to the emergency accounts, their exclusions group, Conditional Access policies and the passkey policy.","note":"Read with the sign-in records: the last 30 days, every category."},
+          "Passkey configuration": {"why":"The complete passkey (FIDO2) configuration, including the passkey settings assigned to each group.","note":"Read with the authentication methods policy, with Global Reader or Authentication Policy Administrator. A failed read stays a failed read, never settings turned off."},
+          "Group evidence": {"why":"Each named group's type, whether its membership is assigned or dynamic, its licences, its members and, for diagnosis, its owners.","note":"Direct members are read only for the saved exclusions group. The owner list can leave out service principals. A group of more than 20,000 members is counted and sampled."},
+          "Selected account transitive groups": {"why":"Which groups the selected emergency accounts are in, without reading every account.","note":"Runs only for the selected emergency accounts, when a group they may be in was sampled or not read."},
+          "Group search": {"why":"Finds the tenant group a baseline reference maps to.","note":"Runs only while you type in a group picker."},
+          "Name resolution": {"why":"Shows names instead of raw ids.","note":"Runs only for ids that would otherwise be shown raw."}
         },
         "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
         "hosting": "Where it runs",
-        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
+        "$commentHostingBody": "Phase 2 audit (How): Connect asks GitHub whether the baseline's author has published changes since the pinned version (src/ui/baseline.ts checkAuthorHead, then baselineReview when the author's head has moved). This named Cloudflare's beacon and never the one other third party the app contacts. src/ui/surfaces/publicTrust.test.ts holds it to every non-Microsoft host in scripts/csp.ts REQUEST_HOSTS.",
+        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and, when there are changes, reads the changed files; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
         "credits": "Credits",
-        "creditBaseline": "The default baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech. IAMAI pins a reviewed version of it and reads it unchanged.",
+        "creditBaseline": "The baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",
         "creditAnalyzerNote": "A separate open-source project by the same author, credited here alongside the baseline. IAMAI is a different tool and is not affiliated with it.",
         "creditsNote": "Microsoft MVP is an award for community contribution. It is not a Microsoft certification of this baseline, and Microsoft does not endorse or support IAMAI."
@@ -3365,6 +3500,7 @@
           "Add only the accounts chosen in Prepare Emergency Access Accounts: {list:emergencyAccounts}.",
           "Leave it without a licence and not mail-enabled."
         ],
+        "$commentCheckFixes": "xg.notDynamic checks three facts and names the one it found (validation/rules.ts, RuleEval.fix): not-dynamic for a dynamic rule, not-security-group for an object that is not security-enabled, group-licensed for assigned licences. Every failure rendered not-dynamic, so a licensed assigned group was told it was dynamic (Phase 2 audit). The two new lines restate the rule's own findings; not-mail-enabled no longer says 'or licensed', because the licence is xg.notDynamic's fact.",
         "checkFixes": {
           "all-emergency-accounts": "Add {list:missingAccounts} to the group: every policy excludes the group and never an account by name, so an emergency account outside it is covered by every policy the group is excluded from.",
           "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
@@ -3372,8 +3508,10 @@
           "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
           "no-admin-members-unconfirmed": "{name} holds {role} and is in the group without being an emergency account you have chosen. Choose the tenant's emergency accounts on Prepare Emergency Access Accounts first, then remove from the group whoever is left besides them: an excluded administrator that is not the way back in is the most valuable unprotected account in the tenant.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
+          "not-security-group": "The selected object is not a security-enabled group. Choose an assigned security group.",
+          "group-licensed": "The group has assigned licences. Review its licence dependencies before using a different unlicensed assigned security group.",
           "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
-          "not-mail-enabled": "The group is mail-enabled or licensed; recreate it as a plain security group."
+          "not-mail-enabled": "The group is mail-enabled; recreate it as a plain security group."
         }
       },
       "dates": null,
@@ -4485,6 +4623,10 @@
       },
       "who": {
         "lead": "{active} active people · {admins} admins · {guests} guests",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "1": "{n} people have no method and will be stopped until they register one: {list:noMethod}"
+        },
         "evidence": [
           "This policy uses Require multifactor authentication. Stronger method requirements belong to the separate policies that select an authentication strength.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
@@ -4579,6 +4721,11 @@
       },
       "who": {
         "lead": "{admins} people hold an admin role",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "1": "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready: {list:adminsWithout}",
+          "2": "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready."
+        },
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
           "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:adminsWithout}",
@@ -5022,6 +5169,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} accounts signed in by a legacy protocol since {from}; fix each: {list:legacyUsers}"
+        },
         "evidence": [
           "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
           "{existingCoverage}"
@@ -5122,6 +5273,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each."
+        },
         "evidence": [
           "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
           "{existingCoverage}"
@@ -5303,6 +5458,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add: {list:outsideUsers}"
+        },
         "evidence": [
           "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add before {enforce}: {list:outsideUsers}",
           "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: decide how the partner decision and exclusions should treat them.",
@@ -5518,6 +5677,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience once this policy is on: {list:unmanagedUsers}"
+        },
         "evidence": [
           "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience from {enforce}: {list:unmanagedUsers}",
           "{n} people signed in only from managed devices and notice nothing.",
@@ -5615,6 +5778,10 @@
       },
       "who": {
         "lead": "{active} active people · device readiness {readiness}, the plan waits for 80%",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from devices that are neither compliant nor Microsoft Entra hybrid joined; enroll the device or review its access: {list:unmanagedUsers}"
+        },
         "evidence": [
           "{n} people signed in from devices that are neither compliant nor Microsoft Entra hybrid joined; enroll the device or review its access before {enforce}: {list:unmanagedUsers}",
           "{name} signed in from a browser without device claims on a compliant device, so investigate the browser/device claim path and the actual policy result.",
@@ -6041,6 +6208,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; this policy may block them until the device is registered: {list:unboundUsers}"
+        },
         "evidence": [
           "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
           "What this policy does not reach is covered elsewhere or not at all: Block Unsupported Device Platforms turns away the platforms it cannot protect, and Require a Managed Device covers the ones it can.",
@@ -6205,6 +6376,10 @@
       },
       "who": {
         "lead": "{active} active people",
+        "evidenceUndated": {
+          "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
+          "0": "{n} people signed in from browsers on unmanaged devices since {from}; once this policy is on, their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}"
+        },
         "evidence": [
           "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}",
           "This policy is about everyone's browser, and only the browser: it reaches nothing outside it while the Client apps condition names Browser.",

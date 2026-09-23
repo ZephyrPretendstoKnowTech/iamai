@@ -160,7 +160,9 @@ test('the next step a person is offered follows their readiness, the panel agree
         assert.ok(rd.devices.some((d) => d.proof !== null) && rd.devices.some((d) => d.proof === null), `${where}: confirmed on one device and not another`)
       } else if (row.state === 'method') {
         assert.equal(rd.qualifying.length, 0, `${where}: no qualifying method`)
-        assert.match(next, /^(Set up|Restore) /, `${where}: set up, or restore what disappeared`)
+        // A guest already holding Microsoft Authenticator is told what they use, never to set it up again.
+        if (row.guest && (row.methods ?? []).includes('authenticator')) assert.doesNotMatch(next, /^Set up/, `${where}: a guest who holds Authenticator`)
+        else assert.match(next, /^(Set up|Restore) /, `${where}: set up, or restore what disappeared`)
       } else if (row.state === 'blocked') {
         assert.equal(rd.next.kind, 'waitSetup', `${where}: waits on the tenant`)
       } else {

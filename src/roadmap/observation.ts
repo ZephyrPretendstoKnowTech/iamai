@@ -107,7 +107,9 @@ export type StepObservation = {
   evidenceAt: string | null
   /**
    * True where THIS policy object was first seen already enforced, with no
-   * report-only state IAMAI ever recorded for it.
+   * report-only state IAMAI ever recorded for it: the scan's sign-in records
+   * show no report-only result for it either, and a later scan whose records
+   * show the same object in report-only drops it, as it drops `skippedWindow`.
    *
    * It is durable on purpose. The note that says so is written by comparing
    * against the immediately prior sighting, so it appeared on exactly one scan
@@ -117,8 +119,45 @@ export type StepObservation = {
    * thing distinguishing a rollout done in one afternoon from one that was
    * watched. It travels with the artifact and is dropped when the artifact is
    * not provably the same one, exactly as `evidenceAt` is.
+   *
+   * It cannot say the rollout skipped report-only. A first scan sets it on
+   * every policy it finds on, and IAMAI cannot know what that policy did before
+   * it looked: a policy this plan built and watched through report-only, read
+   * from a second browser or after Forget, is first seen On too. That fact is
+   * `skippedWindow`.
    */
   neverObserved?: true
+  /**
+   * True where IAMAI WATCHED this policy object go On with no report-only state
+   * between: the scan before recorded the step's policy not deployed, or Off
+   * on this same object after a recorded absence (`offOnly`), and this scan
+   * found it enforced, and the scan's sign-in records show no report-only
+   * result for it. The one reading that says a rollout skipped its
+   * report-only period (owner decision 3, 2026-09-22; R4-12), because it needs
+   * a record that saw the policy not deployed: a first scan never sets it, nor
+   * does a first sighting Off or a different object.
+   *
+   * The records are the one proof the tenant gives of a report-only period
+   * (tracking.ts evidenceAt reads the same fact), and a period that began and
+   * ended between two scans is exactly what the step asks for: created in
+   * report-only, watched, and turned On, with no IAMAI scan in the middle.
+   *
+   * Durable, and carried with the object exactly as `neverObserved` is: the
+   * scan that saw the arrival compares against the one before it, and the fact
+   * stays true of the object on every scan after - until a scan's records show
+   * the same object in report-only, which disproves it.
+   */
+  skippedWindow?: true
+  /**
+   * True on an Off (disabled) observation of an object this record saw arrive
+   * Off: created Off after a scan recorded the step's policy not deployed, and
+   * edited, if at all, while still Off, and the scan's sign-in records show no
+   * report-only result for it. What lets a later move to On read
+   * `skippedWindow`. Never on a first sighting Off: a policy IAMAI watched in
+   * report-only from another browser, or before Forget, then turned Off, is
+   * first seen Off by this record, and its report-only period was watched.
+   */
+  offOnly?: true
 }
 
 /**
@@ -478,6 +517,8 @@ export type Sighting = {
   intent?: IntentSemantics | null
   /** The dimensions where the deployed policy is not what the plan asked for and the operation does not write (`unwrittenDifferences`); empty where none, or where the plan cannot tell. */
   unwritten?: readonly string[]
+  /** Microsoft's sign-in records show this object evaluated in report-only in the collected window. */
+  reportOnlyRecords?: boolean
 }
 
 const STATE_WORD: Record<ObservedState, string> = {
@@ -502,7 +543,7 @@ const STATE_WORD: Record<ObservedState, string> = {
  * to. The continuity itself is unchanged: unknown either way, and the window
  * starts again either way.
  */
-function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean, priorState: ObservedState | null = null, neverObserved = false): string {
+function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean, priorState: ObservedState | null = null, neverObserved = false, recorded = false): string {
   // A policy the last scan recorded as NOT DEPLOYED is the one history IAMAI can
   // speak to without qualification: it was not there, and it is here now.
   // `continuityUnknown` below would call that "no record", because the prior
@@ -510,8 +551,16 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
   // opposite of what the record says. Where it arrives already enforced, nobody
   // watched it in report-only and the step states that, which is the only place
   // a rollout done in one afternoon is distinguishable from one that was watched.
-  if (priorState === 'absent' && (state === 'enforced' || state === 'report-only')) {
-    return fillText(state === 'enforced' ? OBS.appearedEnforced : OBS.appearedReportOnly, { date })
+  //
+  // Unless this scan's sign-in records show it evaluated in report-only
+  // (Sighting.reportOnlyRecords): the step asks for exactly that period, and it
+  // can begin and end between two scans. Then the note says only the move it
+  // saw, as any other change of state reads.
+  if (priorState === 'absent' && state === 'report-only') return fillText(OBS.appearedReportOnly, { date })
+  // Created switched Off: the move it saw, as any other change of state reads.
+  if (priorState === 'absent' && state === 'disabled') return fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date })
+  if (priorState === 'absent' && state === 'enforced') {
+    return recorded ? fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date }) : fillText(OBS.appearedEnforced, { date })
   }
   // And on every scan after the first. The note above compares against the
   // immediately prior sighting, so it appeared once and was gone by the next
@@ -547,6 +596,16 @@ export function watchedArrive(step: Pick<Step, 'state'>): boolean {
     || step.state.members.some((m) => m.change.prior?.state === 'absent')
 }
 
+/**
+ * Whether this change's note is the one that says the policy arrived On with no
+ * report-only period IAMAI could watch (observations.appearedEnforced), so a
+ * surface that states that fact elsewhere can leave the note out rather than
+ * say it twice. Read from the note this module wrote, never re-derived.
+ */
+export function appearedEnforced(change: ObservationChange): boolean {
+  return change.note === fillText(OBS.appearedEnforced, { date: absoluteDate(change.latest.lastSeenAt) })
+}
+
 /** Microsoft's evidence, where it can still be about the policy that is deployed now. */
 function admit(at: string | null, floor: string, since: StepObservation['since']): string | null {
   if (at === null) return null
@@ -567,6 +626,11 @@ function earliest(a: string | null, b: string | null): string | null {
 export function observe(prior: StepObservation | null, sighting: Sighting): ObservationChange {
   const { state, semantics, at } = sighting
   const artifact = sighting.artifact ?? null
+  // Microsoft's sign-in records show this object evaluated in report-only in
+  // the scan's window: the one proof the tenant gives of a report-only period,
+  // and what disproves every reading below that says it had none
+  // (`neverObserved`, `skippedWindow`, `offOnly`, observations.appearedEnforced).
+  const recorded = sighting.reportOnlyRecords === true
   const evidenceAt = sighting.evidenceAt ?? null
   const intent = sighting.intent ?? null
   const fields = sighting.fields ?? {}
@@ -580,7 +644,11 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   const differs = unwritten.length > 0 ? fillText(OBS.differs, { fields: dimensionWords(unwritten) }) : null
   if (!prior) {
     return {
-      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' ? { neverObserved: true as const } : {}) },
+      // Never `skippedWindow` or `offOnly` here: what a policy found On, or
+      // Off, did before IAMAI first looked is not something this scan watched.
+      // A policy watched through report-only from another browser, or before
+      // Forget, and switched Off after an incident is first seen Off here.
+      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt, ...(state === 'enforced' && !recorded ? { neverObserved: true as const } : {}) },
       prior: null,
       changed: 'first-scan',
       // A first sighting is nothing the plan can claim to have asked for.
@@ -656,6 +724,31 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    * `first-scan` says exactly that.
    */
   const since: StepObservation['since'] = artifactAnswer === 'same' ? (moved ? 'observed-change' : prior.since) : 'first-scan'
+  /**
+   * What this record has seen of the object before On. Only a scan that
+   * recorded the step's policy not deployed proves the next one arrived under
+   * IAMAI's eye. A different object from the one recorded is not that: it is
+   * sighted for the first time by this record, not created now, and the scan
+   * before may have held it in report-only as a second, unclaimed policy
+   * (tracking.ts matchMembers keeps the recorded member while one sits there).
+   *
+   * `skippedWindow` is IAMAI watching it go On from not applying to anybody:
+   * not deployed at the last scan, or Off on the same object that this record
+   * saw arrive Off after a recorded absence (`offOnly`). A first sighting Off,
+   * Off after a report-only period IAMAI watched, a different object, and a
+   * record that cannot say which object it watched all claim nothing.
+   *
+   * Nor does a scan whose sign-in records show this object evaluated in
+   * report-only (`reportOnlyRecords`): the step asks for exactly that period,
+   * and it can begin and end between two scans. Those records disprove a
+   * carried claim as well as a new one.
+   */
+  const sightedNow = prior.state === 'absent'
+  const offOnly = !recorded && state === 'disabled' && (sightedNow || (artifactAnswer === 'same' && prior.state === 'disabled' && prior.offOnly === true))
+  const skippedWindow =
+    !recorded &&
+    ((state === 'enforced' && (prior.state === 'absent' || (prior.state === 'disabled' && artifactAnswer === 'same' && prior.offOnly === true))) ||
+      (artifactAnswer === 'same' && !moved && prior.skippedWindow === true))
   return {
     latest: {
       artifact,
@@ -672,9 +765,15 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       evidenceAt: earliest(moved || artifactAnswer !== 'same' ? null : prior.evidenceAt, admit(evidenceAt, firstSeenAt, since)),
       // Carried with the object, and dropped with it. A policy that arrived
       // already enforced never had a window anybody could have watched, and a
-      // later scan seeing it enforced again does not make that untrue.
-      ...(artifactAnswer === 'same' && !moved && prior.neverObserved ? { neverObserved: true as const } : {}),
-      ...(prior.state === 'absent' && state === 'enforced' ? { neverObserved: true as const } : {}),
+      // later scan seeing it enforced again does not make that untrue. A scan
+      // whose records show the object in report-only does, as it does for
+      // `skippedWindow`.
+      ...(!recorded && artifactAnswer === 'same' && !moved && prior.neverObserved ? { neverObserved: true as const } : {}),
+      ...(!recorded && prior.state === 'absent' && state === 'enforced' ? { neverObserved: true as const } : {}),
+      // Watched go On with no report-only state between (`skippedWindow`), and
+      // carried with the object the same way.
+      ...(skippedWindow ? { skippedWindow: true as const } : {}),
+      ...(offOnly ? { offOnly: true as const } : {}),
     },
     prior,
     changed,
@@ -683,7 +782,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     reviewRequired,
     drifted,
     unwritten,
-    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state, artifactAnswer === 'same' && !moved && prior.neverObserved === true),
+    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null, prior.state, !recorded && artifactAnswer === 'same' && !moved && prior.neverObserved === true, recorded),
   }
 }
 
@@ -725,6 +824,10 @@ function readObservation(raw: unknown): StepObservation | null {
     // is not a claim that the policy WAS observed - it is simply unrecorded, so
     // it stays absent rather than becoming false.
     ...(o.neverObserved === true ? { neverObserved: true as const } : {}),
+    // The same for these two: a record written before they existed claims no
+    // skipped window, and a later move to On from its Off state claims none.
+    ...(o.skippedWindow === true ? { skippedWindow: true as const } : {}),
+    ...(o.offOnly === true ? { offOnly: true as const } : {}),
   }
 }
 

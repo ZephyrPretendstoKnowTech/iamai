@@ -8,6 +8,7 @@ import {
   SLOW_THRESHOLD_MS,
 } from './constants.ts'
 import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
+import { COLLECTOR_REGISTRY } from './registry.ts'
 import { absolute } from '../../copy/dates.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
@@ -42,6 +43,8 @@ export type SignInEvidence = {
   rows: number
   perUser: Record<string, UserEvidence>
   policyResults: PolicyAppliedResult[]
+  /** The policies with any report-only result in the window, `reportOnlyNotApplied` included (`deriveReportOnlyPolicyIds`). */
+  reportOnlyPolicyIds: string[]
   blockedToday: BlockedTodayEntry[]
   usage: import('./types.ts').EvidenceUsage
   aggregates: EvidenceAggregates
@@ -60,10 +63,13 @@ export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: s
  */
 export const RECOVERY_AUDIT_LOOKBACK_DAYS = 30
 
+/** The directory-audit read's path, from the registry row How lists it by. */
+const DIRECTORY_AUDITS = COLLECTOR_REGISTRY.find((s) => s.name === 'Directory audit events')!.endpoint
+
 /** The directory-audit read for recovery change evidence, inside Entra's retention. */
 export function recoveryAuditRequest(base: string, nowMs: number): { since: string; url: string } {
   const since = new Date(nowMs - RECOVERY_AUDIT_LOOKBACK_DAYS * 86_400_000).toISOString()
-  return { since, url: `${base}/auditLogs/directoryAudits?$filter=${encodeURIComponent(`activityDateTime ge ${since}`)}&$select=id,activityDateTime,activityDisplayName,category,result,targetResources&$top=200` }
+  return { since, url: `${base}${DIRECTORY_AUDITS}?$filter=${encodeURIComponent(`activityDateTime ge ${since}`)}&$select=id,activityDateTime,activityDisplayName,category,result,targetResources&$top=200` }
 }
 
 export function mapRecoveryAudit(raw: unknown): RecoveryDirectoryAudit | null {
@@ -398,6 +404,27 @@ const CLASSES: PolicyResultClass[] = [
   'enforcedSuccess',
 ]
 
+/**
+ * The policies Microsoft recorded in report-only in the covered window: any
+ * result beginning `reportOnly`, `reportOnlyNotApplied` included. That result
+ * is what a report-only policy records for every sign-in its conditions do not
+ * match, and a block policy never records `reportOnlySuccess`, so a policy
+ * watched in report-only where nobody met its conditions has only these. It is
+ * no applied result, and `derivePolicyResults` counts none of it and creates no
+ * entry for it: a gate still reads such a policy as having no records. What it
+ * proves is only that the policy was in report-only (tracking.ts
+ * reportOnlyRecords). Sorted, one id each.
+ */
+export function deriveReportOnlyPolicyIds(rows: Iterable<StoredSignIn>): string[] {
+  const ids = new Set<string>()
+  for (const row of rows) {
+    for (const applied of row.appliedConditionalAccessPolicies ?? []) {
+      if (applied.id && applied.result?.startsWith('reportOnly')) ids.add(applied.id)
+    }
+  }
+  return [...ids].sort()
+}
+
 // Per-policy applied results across the covered window.
 export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyAppliedResult[] {
   const all = [...rows]
@@ -577,6 +604,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       rows: contiguous.length,
       perUser: aggregate(contiguous),
       policyResults: derivePolicyResults(contiguous),
+      reportOnlyPolicyIds: deriveReportOnlyPolicyIds(contiguous),
       blockedToday: deriveBlockedToday(contiguous),
       usage: deriveUsageSignals(contiguous),
       aggregates: deriveAggregates(contiguous),

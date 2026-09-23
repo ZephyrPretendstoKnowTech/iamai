@@ -81,6 +81,7 @@ export type NeedKey =
   | 'devices'
   | 'groupMembers'
   | 'answers'
+  | 'recoveryTests'
 
 export type RuleEval = {
   outcome: RuleOutcome
@@ -200,7 +201,7 @@ export function missingNeeds(rule: { needs: NeedKey[] }, ctx: ValidationContext)
       : need === 'authStrengths' ? configOk(ctx, 'authStrengths')
       : need === 'signInEvidence' ? sourceUsable(ctx, 'signInEvidence')
       : need === 'devices' ? sourceUsable(ctx, 'devices')
-      : true // groupMembers and answers: the rule decides for itself
+      : true // groupMembers, answers and recoveryTests: the rule decides for itself
     if (!ok) out.push(NEED_LABEL[need] ?? need)
   }
   return out
@@ -485,10 +486,13 @@ const bgHasMfaMethod: ValidationRule = {
   },
 }
 
+// A warning, not a blocker: the plan's tier decides what holds the rollout
+// (emergencyTiers.ts), and a shared device is hardening that holds nothing. As a
+// blocker How called it Must fix, which says the plan holds on it (Phase 2 audit).
 const bgSeparateDevices: ValidationRule = {
   id: 'bg.separateDevices',
   subject: 'breakGlass',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['authMethods'],
   evaluate: (id, ctx) => {
     const methods = methodsOf(ctx, id)
@@ -510,10 +514,11 @@ const bgSeparateDevices: ValidationRule = {
   },
 }
 
+// A warning for the same reason as bg.separateDevices: hardening, never a minimum.
 const bgNotPersonal: ValidationRule = {
   id: 'bg.notPersonal',
   subject: 'breakGlass',
-  severity: 'blocker',
+  severity: 'warning',
   needs: ['users'],
   evaluate: (id, ctx) => {
     if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, { attribute: 'your own account' })
@@ -616,8 +621,10 @@ const bgPerUserMfaOff: ValidationRule = {
   severity: 'warning',
   needs: ['authMethodsPolicy'],
   evaluate: (_id, ctx) => {
-    // Per-user MFA state is not exposed by Microsoft Graph at all; the closest
-    // readable fact is whether the tenant has finished the methods migration.
+    // The tenant's methods migration, and nothing about any account's own
+    // per-user MFA: the scan reads that per account (beta
+    // /users/{id}/authentication/requirements, snapshot.perUserMfa), and Finish
+    // Moving Off Per-User MFA is where it is judged (roadmap/manualWork.ts).
     // "Could not be read" only when the read actually failed (prompt 46 item
     // 24). A read that succeeded and came back without the field is a
     // different fact, and says so.
@@ -647,7 +654,7 @@ const bgDrilled: ValidationRule = {
   id: 'bg.drilled',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['users'],
+  needs: ['users', 'recoveryTests'],
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
@@ -704,7 +711,7 @@ const bgLastSignIn: ValidationRule = {
   id: 'bg.lastSignIn',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['users'],
+  needs: ['users', 'recoveryTests'],
   // R10: a break-glass account that has never signed in is the expected case,
   // and printing that as a note is bookkeeping. A break-glass account that HAS
   // signed in is worth a line, because somebody used the escape hatch: a sign-in
@@ -838,6 +845,12 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
   },
 }
 
+/**
+ * One check, three facts: an assigned security group with no licence. Each fact
+ * carries its own fix line (checkFixes.ts ALTERNATE_FIXES); every failure used to
+ * render "The group is dynamic; recreate it", so a licensed assigned group was
+ * told it was dynamic (Phase 2 audit).
+ */
 const xgNotDynamic: ValidationRule<GroupTarget> = {
   id: 'xg.notDynamic',
   subject: 'exclusionGroup',
@@ -846,9 +859,9 @@ const xgNotDynamic: ValidationRule<GroupTarget> = {
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
     if (entry.securityEnabled === undefined || entry.securityEnabled === null || !Array.isArray(entry.groupTypes) || !Array.isArray(entry.assignedLicenseSkuIds)) return unknown('The group type, security-enabled state, and license assignments were not fully read.')
-    if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.')
+    if (entry.securityEnabled !== true) return fail('The selected object is not a security-enabled group. Choose an assigned security group.', undefined, 'not-security-group')
     if (entry.membershipRule || entry.groupTypes.some(type => type.toLowerCase() === 'dynamicmembership')) return fail(F.xgDynamic(entry.membershipRule || 'DynamicMembership'))
-    if (entry.assignedLicenseSkuIds.length) return fail(`The exclusions group has ${entry.assignedLicenseSkuIds.length} assigned license${entry.assignedLicenseSkuIds.length === 1 ? '' : 's'}. Review its license dependencies before using a different unlicensed assigned security group.`)
+    if (entry.assignedLicenseSkuIds.length) return fail(`The exclusions group has ${entry.assignedLicenseSkuIds.length} assigned license${entry.assignedLicenseSkuIds.length === 1 ? '' : 's'}. Review its license dependencies before using a different unlicensed assigned security group.`, undefined, 'group-licensed')
     return PASS
   },
 }
