@@ -15,6 +15,7 @@ import { app, directionWords, engine, pages, workflowWords } from '../../content
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { MFA_STATE } from '../../copy/definitions.ts'
 import { fillText } from '../../content/render.ts'
+import { emptyMappingState } from '../../mapping/types.ts'
 
 const column = (t: { header: string[]; rows: (string | number)[][] }, header: string): (string | number)[] => {
   const i = t.header.indexOf(header)
@@ -444,4 +445,26 @@ test('a Detected workloads tooltip says what its word says: what Direction shows
   assert.equal(row(noSkus, 'intune').reason, 'Not read in this scan: Request failed (500).')
   assert.equal(row(demo, 'intune').reason, null, 'the licence word says it all')
   assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /title=\{r\.reason \?\? undefined\}/)
+})
+
+test("Detected workloads shows the answer saved in Direction beside the scan's reading", () => {
+  const demo = fixture('demo').snapshot
+  const mapping = { ...emptyMappingState(demo.tenantId), workflowAnswers: { avd: 'no' as const, sharepoint: 'yes' as const, azureManagement: 'unsure' as const }, facetOverrides: { inforcer: { on: false, reason: 'confirmed not in use' } } }
+  const m = workloadsModel(demo, mapping)
+  const answer = m.columns.find((c) => c.key === 'answer')
+  assert.ok(answer, 'a column for the saved answer')
+  const D = directionWords as unknown as { answeredIn: string; steps: { use: { title: string } }; questions: { serviceOptions: Record<string, string> } }
+  assert.equal(answer.header, fillText(D.answeredIn, { step: D.steps.use.title }))
+  const cell = (facet: string) => answer.cell(m.rows.find((r) => r.facet === facet)!)
+  assert.equal(cell('avd'), D.questions.serviceOptions.no)
+  assert.equal(cell('sharepoint'), D.questions.serviceOptions.yes)
+  assert.equal(cell('inforcer'), D.questions.serviceOptions.no, 'an answer saved before workflowAnswers existed')
+  assert.equal(cell('azureManagement'), '—', 'not sure is no answer')
+  assert.equal(cell('copilot'), '—')
+  // The answers read the Plan's own mapping, the one MFA Readiness reads; while it loads the column says so.
+  const pending = workloadsModel(demo)
+  assert.equal(pending.columns.find((c) => c.key === 'answer')!.cell(pending.rows[0]), '…')
+  const page = readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8')
+  assert.match(page, /useAppliedMapping\(snapshot\)/)
+  assert.match(page, /workloadsModel\(snapshot, mapping\)/)
 })

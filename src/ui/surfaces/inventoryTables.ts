@@ -20,6 +20,8 @@ import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { serviceEvidence, serviceReading } from '../../roadmap/workflows.ts'
+import { savedAnswerOf } from '../../roadmap/directionAnswers.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
@@ -30,7 +32,7 @@ import { ROLE_TEMPLATES, coversAdminSet, heldOnlyByServices, roleLabel, roleName
 import productNames from '../../../data/product-names.json' with { type: 'json' }
 import { INVENTORY as C, combinationName, methodName, protocolName, trustTypeName } from '../../copy/inventory.ts'
 import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
-import { app, pages, workflowWords } from '../../content/content.ts'
+import { app, directionWords, pages, workflowWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../format.ts'
 import { figure } from '../../copy/statements.ts'
@@ -800,8 +802,13 @@ export type WorkloadRow = { facet: string; name: string; word: string; seen: boo
  * or why its sections were not read: the engine's own reasons ("no sign-in
  * activity for …", "no Intune licence") stood beside "not read" over reads
  * that failed.
+ *
+ * Beside the reading, the answer saved in Direction's Confirm What You Use
+ * (directionAnswers.ts savedAnswerOf, the one reader of it) from the Plan's
+ * mapping: Yes or No as Direction words them, "—" where none is saved, and
+ * "…" while the mapping loads (null).
  */
-export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<WorkloadRow> {
+export function workloadsModel(snapshot: TenantSnapshot, mapping: MappingState | null = null): InventoryModel<WorkloadRow> {
   const A = C.apps
   const reading = serviceReading(snapshot, [], [])
   const licencesRead = sectionHasData(snapshot, 'subscribedSkus')
@@ -812,6 +819,11 @@ export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<Workloa
       return notReadLine(snapshot, k) ?? (reason === null ? W.partlyReadNoReason : fillText(W.partlyRead, { reason }))
     }
     return [...new Set(keys.filter((k) => sectionState(snapshot, k)?.status !== 'ok').map(line))].join(' ') || null
+  }
+  const answerOf = (facet: string): string => {
+    if (mapping === null) return '…'
+    const saved = savedAnswerOf(`service:${facet}`, mapping)
+    return saved ? ((directionWords.questions.serviceOptions as Record<string, string>)[saved.value] ?? saved.value) : '—'
   }
   const rows = Object.keys(detectFacets(snapshot)).map((facet): WorkloadRow => {
     // The service as Direction names it (pages.app.plan.workflows.names, the one map): the workload row reads the sync role, and is named for it.
@@ -832,6 +844,7 @@ export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<Workloa
     columns: [
       { key: 'workload', header: A.facetColumns.workload, cell: (r) => r.name },
       { key: 'detected', header: A.facetColumns.detected, cell: (r) => r.word },
+      { key: 'answer', header: fillText(directionWords.answeredIn, { step: directionWords.steps.use.title }), cell: (r) => answerOf(r.facet) },
     ],
   }
 }
