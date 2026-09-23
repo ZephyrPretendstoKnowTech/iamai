@@ -19,7 +19,7 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { allWorkGroups, boardHolds, boardOf, groupKeyOf, groupSummary, rowNumbersOf } from './planBoard.ts'
+import { LANES, allWorkGroups, asideGroupsFor, boardHolds, boardOf, boardOrderOf, groupKeyOf, groupNumberOf, groupSummary, groupsFor, rowNumbersOf, sectionNumbersOf, tileSections } from './planBoard.ts'
 import { DIRECTION_GROUP, STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import { initialPicked, printedDefaultLine } from './pickerRows.ts'
@@ -729,4 +729,30 @@ test('a section finished through a deferral prints as one line, and keeps the li
       assert.deepEqual(under.map((r) => r.id), s.rows.filter((r) => under.includes(r)).map((r) => r.id), `${name}/${s.key}: the kept rows are not in the board's order`)
     }
   }
+})
+
+test('the Plan numbers each section as the print and the exports do, on every view', () => {
+  // The print headed each section with its number and the exports numbered each
+  // step `<section>.<row>`, while the Plan showed no section number at all: the
+  // "3" on paper, and the "3.2" in the calendar, appeared nowhere on the screen
+  // they were taken from. One number per section, over the whole board, read by
+  // all three (planBoard.ts sectionNumbersOf, groupNumberOf).
+  for (const [name, p] of stage5()) {
+    const items = p.board.rows.map((r) => r.item)
+    const numbers = sectionNumbersOf(items)
+    const printed = new Map(printSectionsOf(p.board).map((s) => [s.key, s.number]))
+    const order = boardOrderOf(items)
+    // All work, each lane tab and a tile's list: a section keeps its number wherever it is drawn.
+    for (const g of [...allWorkGroups(items, items), ...LANES.flatMap((t) => groupsFor(t, items)), ...tileSections(items)]) {
+      const n = groupNumberOf(g, numbers)
+      assert.equal(n, printed.get(groupKeyOf(g)) ?? null, `${name}/${g.key}: the screen numbers the section ${n}, the print ${printed.get(groupKeyOf(g))}`)
+      for (const i of g.items) assert.equal(order.numberOf(i.id)?.split('.')[0] ?? null, n === null ? null : String(n), `${name}/${i.id}: the exports number its section otherwise than the screen`)
+    }
+    // A lane tab's Completed and Deferred groups gather many sections' rows: no section number.
+    for (const g of asideGroupsFor(items)) assert.equal(groupNumberOf(g, numbers), null, `${name}/${g.key}: the aside is numbered as a section`)
+  }
+  const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(screen, /const sectionNumbers = sectionNumbersOf\(items\)/, 'the Plan does not number its sections over the whole board')
+  assert.match(screen, /number=\{groupNumberOf\(g, sectionNumbers\)\}/, 'a section heading on the Plan shows no number')
+  assert.match(screen, /<span className="plan-group-number">\{number\}<\/span>/, 'the heading does not draw the number')
 })
