@@ -1060,6 +1060,12 @@ function unsupportedOver(scans: readonly (readonly [number, string])[]): Scan[] 
 
 const unwatchedCtx = (h: Fixture, run: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: h.snapshot, mapping: h.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: h.operatorId, now: h.snapshot.asOf, groups: h.groups })
 const unwatchedWarnings = (step: Step, ctx: StepVarContext) => readinessOf(step, stepContract(step, ctx)).tiles.filter((t) => t.tone === 'warn' && UNWATCHED.test(String(t.note)))
+/** How many times the step's AI Info briefing, as the opened step copies it, says the policy went live unwatched. */
+const briefingTells = (step: Step, ctx: StepVarContext): number => {
+  const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')
+  assert.ok(ai, `${step.id}: the opened step has no AI Info`)
+  return ai.text().split(new RegExp(UNWATCHED.source, 'g')).length - 1
+}
 
 /**
  * What a finished policy this plan watched go On with no report-only period
@@ -1088,6 +1094,10 @@ function assertWentLiveUnwatched(scan: Scan, id: string): void {
   // too.
   const told = [...body.contract.found.map((x) => x.text), ...body.readiness.tiles.map((t) => String(t.note ?? ''))].filter((text) => UNWATCHED.test(text))
   assert.equal(told.length, 1, `${label}: the fact is said ${told.length} times: ${told.join(' | ')}`)
+  // AI Info reads the findings and no tile, so it lost the fact when the
+  // findings stopped carrying it, and told an assistant only "IAMAI watched it
+  // get there". It says it once.
+  assert.equal(briefingTells(step, ctx), 1, `${label}: the AI Info briefing says it went live unwatched ${briefingTells(step, ctx)} times`)
   const done = stepContract(step, ctx).doneWhen
   assert.ok(done.includes(POLICY_VERIFY_AFTER), `${label}: the check after the change is gone: ${done.join(' | ')}`)
   // The tile states the fact; the Done-when keeps the check and does not say it twice.
@@ -1174,6 +1184,7 @@ test('a policy carrying this plan\'s tag, first seen On, is never said to have g
       assert.equal(step.state.members.every((m) => m.change.latest.neverObserved === true), true, `the premise (${label}, ${id}): first seen already On`)
       const ctx = unwatchedCtx(f, run)
       assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}, ${id}: said to have gone live unwatched`)
+      assert.equal(briefingTells(step, ctx), 0, `${label}, ${id}: the AI Info briefing says it went live unwatched`)
       assert.equal(stepContract(step, ctx).doneWhen.includes(POLICY_VERIFY_AFTER), false, `${label}, ${id}: a check after a change nobody saw`)
     }
   }
@@ -1215,6 +1226,7 @@ test("a policy carrying this plan's tag, first seen Off and then switched On, is
     const ctx = unwatchedCtx(h, run)
     assert.equal(readinessOf(step, stepContract(step, ctx)).tiles.some((t) => t.key === 'enforced-unwatched'), false, `${label}: said to have gone live unwatched`)
     assert.deepEqual(unwatchedWarnings(step, ctx), [], label)
+    assert.equal(briefingTells(step, ctx), 0, `${label}: the AI Info briefing says it went live unwatched`)
   }
 })
 
