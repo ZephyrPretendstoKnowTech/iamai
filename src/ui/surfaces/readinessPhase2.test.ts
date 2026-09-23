@@ -223,3 +223,26 @@ test('a Ready person whose only usable key stops working under Step 3 is told to
     assert.equal(whyLine(r), WHY.replaceKey, r.user.id)
   }
 })
+
+test('nobody is told to set up a passkey that the plan’s own Step 3 will refuse', () => {
+  // demo, with the Windows-only people who hold no proof moved to a Mac: Step 3 is not applied yet.
+  const f = fixture('demo')
+  const s = structuredClone(f.snapshot)
+  const evidence = s.signInEvidence as unknown as Record<string, { devices?: { os: string; trust: unknown; deviceIds: unknown; version: unknown }[]; platforms?: { os: string }[]; proofs?: unknown[] }>
+  for (const ev of Object.values(evidence)) {
+    if (!ev?.devices || ev.devices.length !== 1 || ev.devices[0].os !== 'Windows' || (ev.proofs ?? []).length > 0) continue
+    ev.devices = ev.devices.map((d) => ({ ...d, os: 'macOS', trust: null, deviceIds: [], version: '15.1' }))
+    ev.platforms = (ev.platforms ?? []).map((p) => ({ ...p, os: 'macOS' }))
+  }
+  const view = readinessView(s, s.asOf, f.mapping)
+  assert.equal(view.context.step3.applied, false, 'the premise: Step 3 is still to come')
+  const mac = view.rows.filter((r) => r.state === 'method' && (r.readiness?.devices ?? []).length > 0 && r.readiness!.devices.every((d) => d.os === 'macOS'))
+  assert.ok(mac.length > 0, 'the premise: Mac-only people who need a method')
+  const refused = new Set(['syncedPasskey', 'windowsHelloPasskey'])
+  for (const r of view.rows.filter((x) => x.state !== null)) {
+    const n = r.readiness?.next as { option?: string } | undefined
+    const rec = r.readiness?.recommended as { option?: string } | null | undefined
+    assert.ok(!refused.has(n?.option ?? '') && !refused.has(rec?.option ?? ''), `${r.user.id}: ${nextCell(r)}`)
+  }
+  for (const r of mac) assert.doesNotMatch(nextCell(r), /synced passkey/i, r.user.id)
+})
