@@ -1,6 +1,8 @@
 // The signed-in account (the operator): the one the scan read as /me
 // (config.me). It is display only: the steps' "your own account" lines and the
-// validation report name it, and nothing else reads config.me. The population
+// validation report name it, and Connect asks it whether a stored scan's refused
+// sections were refused to the account signed in now; the passkey settings
+// read it for the operator's own passkey (roadmap/passkeySettings.ts). The population
 // never depends on it (derive/sets.ts, scoring/fromSnapshot.ts): the operator
 // is a person like any other, active by the directory's own sign-in, proven
 // by the records alone, so signing in as a different account changes nothing

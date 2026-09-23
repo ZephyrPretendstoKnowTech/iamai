@@ -89,7 +89,8 @@ test('a method inventory nobody could read leaves readiness unknown, never Needs
   assert.equal(v.counts.unknown, v.people, 'every active person is explicitly Unknown')
   for (const r of v.rows) if (r.active) {
     assert.equal(r.readiness?.unknown, 'methods', `${r.user.id}: unknown because the methods were not read`)
-    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, `${r.user.id}: the fix is the next scan, never a finding`)
+    // hostile refused the registration report (403), so a rescan with the same sign-in reads no more: the row says so, never a finding.
+    assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methodsUnavailable' }, `${r.user.id}: the method list is unread, never a finding`)
   }
   // The demo, read: the only Unknown is the one person whose own read failed.
   const read = fixture('demo')
@@ -330,7 +331,9 @@ test('an unknown reach keeps the step it came from, and never becomes a tenant-w
   assert.equal(handoff.match(/href=\{readinessStepHref\(step\.id\)\}/g)?.length, 1, 'and the one it has is the step route')
   // And the page it lands on has the unknown state to render, and the way back.
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /context\.ids === null \? fillText\(T\.planContext\.unknown, \{ step: context\.title \}\)/, 'the step-scoped page says the reach is unknown')
+  assert.match(page, /scopeWords\(context, scopedCohort\)/, 'the step-scoped page says the reach is unknown')
+  const cells = readFileSync('src/ui/surfaces/readinessCells.ts', 'utf8')
+  assert.match(cells, /if \(context\.ids === null\) return fillText\(T\.planContext\.unknown, \{ step: context\.title \}\)/, 'scopeWords says the reach is unknown')
   assert.match(page, /T\.planContext\.back/, 'and offers the way back to the step')
 })
 
@@ -377,9 +380,18 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   assert.match(one, RE.readinessSummary, 'the walk reads the summary at a count of one')
   assert.match(many, RE.readinessSummary, 'the walk reads it above one')
   assert.doesNotMatch(walk, /ready for phishing-resistant sign-in\\\./, 'and holds no copy of the sentence')
-  const lit = (smoke.match(/\/\(\\d\+\) of [^\n]*?ready for phishing-resistant sign-in\\\.\//) ?? [])[0]
+  const lit = (smoke.match(/const SUMMARY_LINE = (\/\(\\d\+\) of [^\n]*?ready for phishing-resistant sign-in[^\n]*\/)\n/) ?? [])[1]
   assert.ok(lit, 'the smoke still checks the summary sentence')
   const re = new RegExp(lit.slice(1, -1))
   assert.match(one, re, 'the smoke reads the summary at a count of one')
   assert.match(many, re, 'the smoke reads it above one')
+  // People and guests together, as the page draws them (summaryLine): the smoke reads the whole count after "of".
+  const W2 = pages.readiness as unknown as { summaryWithGuests: string }
+  for (const ready of [1, 4]) {
+    const line = fillText(W2.summaryWithGuests, { ready, total: 31, cohort: cohortWords(30, 1) })
+    const sm = line.match(re)
+    assert.ok(sm, `the smoke reads "${line}"`)
+    assert.equal(Number(sm[2]) + Number(sm[3] ?? 0), 31, 'and adds up the whole count')
+    assert.match(line, RE.readinessSummary, 'and so does the walk')
+  }
 })

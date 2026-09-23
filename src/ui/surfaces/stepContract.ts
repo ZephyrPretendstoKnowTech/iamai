@@ -25,7 +25,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
-import { dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
+import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
@@ -50,12 +50,12 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
-import { POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
-import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { POLICY_VERIFY_AFTER, doneWhenTemplates, enforcedUnwatched } from './doneWhen.ts'
+import { estimatedDay, scheduleOf, shownDay } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
-import { stepVars, tenantNameOf } from './stepVars.ts'
+import { stepVars, tenantNameOf, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { BlockerKind, Lane, Substatus } from '../../actionability/lanes.ts'
 import { returnToStep } from '../shell/routes.ts'
@@ -84,6 +84,12 @@ export type LaneView = {
    */
   waitingFor: string | null
   tone: StatusTone
+  /**
+   * Read with nothing around it (planBoard.ts laneViewAlone): a stand-in where
+   * a caller hands no board, never the board's reading, so nothing is held on it
+   * (planBoard.ts boardHolds).
+   */
+  alone?: true
 }
 
 /**
@@ -140,6 +146,8 @@ type ContractWords = {
   ownPolicyDiffers: { label: string; note: string }
   /** The plan's policy asking for less than its goal's grant floor (Action.belowGoalFloor). */
   belowGoalFloor: { label: string; value: string; note: string; floors: Record<string, string>; grantMfa: string; grantStrength: string }
+  /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
+  foundEnforcedUnwatched: string
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; pickerHelp: string; save: string; printed: string; printedNone: string }
   /** The threshold where the scan could prove only a floor under the value. */
@@ -510,6 +518,18 @@ export type StepContract = {
   scheduledOn: string | null
   /** The step's one scheduling result on the finished plan (roadmap/stepSchedule.ts); null where no finished plan carries the step. The rail reads it. */
   schedule: StepSchedule | null
+  /**
+   * The board holds the step (planBoard.ts boardHolds): its When reads "After
+   * prerequisites", and nothing here dates it — no milestone day, no Next line,
+   * no phase day, and a rail that says what the When column says (owner
+   * decision 2, 2026-09-22).
+   */
+  undated: boolean
+  /**
+   * The day the plan gives the step is an estimate (roadmap/stepSchedule.ts
+   * estimatedDay): the rail says "Est." before it, as the board's When does.
+   */
+  estimate: boolean
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
@@ -781,10 +801,10 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
     // the two cases either — it is set both for a policy the first scan found
     // enforced and for one deployed straight to enforced under the watch.
     //
-    // So the sentence claims only what the tag actually proves. Where the
-    // rollout itself went unwatched, the observation note says so in its own
-    // words ("it went live without a report-only period IAMAI could watch"),
-    // which is a different fact and renders beside this one.
+    // So the sentence claims only what the tag actually proves. Where IAMAI
+    // watched the rollout itself go On with no report-only period
+    // (observation.ts `skippedWindow`), the Readiness tile says so
+    // (unwatchedTile), which is a different fact and renders beside this one.
     const inherited = !watched && step.tracking?.matchedBy === 'tag'
     const text =
       by === null
@@ -827,7 +847,12 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   // milestone, and the Next line then carries it: saying it twice on one step
   // reads as two findings.
   const obs = step.state.observation
-  if (obs && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
+  // Where the step draws the unwatched tile (unwatchedTile), that tile is the
+  // one home of "it went live without a report-only period IAMAI could watch".
+  // The scan that saw the policy arrive On also wrote it as this note, and the
+  // step said it twice, once under New evidence and once in Readiness.
+  const toldByTile = obs ? enforcedUnwatched(step) && appearedEnforced(obs) : false
+  if (obs && !toldByTile && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
 }
 
@@ -1184,7 +1209,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // The lead for the state the scan read (content/render.ts whatToDoFor).
   const lead = whatToDoFor(cs, ex)?.lead
   if (typeof lead === 'string' && whole(lead, ex)) return { kind: milestone.kind, text: fillText(lead, ex) }
-  return { kind: milestone.kind, text: milestoneSentence(milestone) }
+  return { kind: milestone.kind, text: milestoneSentence(milestone, estimatedDay(step)) }
 }
 
 /**
@@ -1197,9 +1222,9 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  * observations go — What IAMAI found — and the milestone says what the stage
  * asks for, which is the same either way: watch it.
  */
-function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>): string {
+function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
   if (m.kind !== 'observe') return m.label
-  return m.at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(m.at) }) : MILESTONE.observe
+  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
 }
 
 /** The reasons that leave no policy IAMAI can write, so no end state to state. */
@@ -1241,7 +1266,16 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
       // D2). A policy the scan found already in place had no change anybody
       // watched, and says nothing about one (observation.ts watchedArrive, the
       // same reading as "IAMAI watched it get there").
-      const after = step.state.lifecycle === 'enforced' && watchedArrive(step) && own.includes(POLICY_VERIFY_AFTER) ? [POLICY_VERIFY_AFTER] : []
+      //
+      // And it stays on a policy this plan owns that went live with no report-only
+      // period IAMAI watched (owner decision 3, 2026-09-22; R4-12), whatever the
+      // step's own completion was written with: there the check after the change
+      // is the only one anybody makes. It was dropped exactly there. A policy
+      // created On reads watchedArrive only on the scan that saw it arrive, and a
+      // block policy whose own completion never carried the line - Block
+      // Unsupported Platforms, built straight to On - finished on the scan's
+      // sentence alone. The fact itself is the Readiness tile's (unwatchedTile).
+      const after = step.state.lifecycle === 'enforced' && ((watchedArrive(step) && own.includes(POLICY_VERIFY_AFTER)) || enforcedUnwatched(step)) ? [POLICY_VERIFY_AFTER] : []
       return [...(end !== null ? [end] : []), fillText(CONTRACT.doneSatisfied, { tenant }), ...after]
     }
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
@@ -1304,14 +1338,20 @@ export function factOf(step: Pick<Step, 'state'>): string | null {
  * (planBoard.ts prerequisiteLabelFor → chainStartOf); the contract resolves its
  * readiness route against it once (`routeStart`).
  */
-export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf']): StepContract {
-  const ex = vars ?? stepVars(step, ctx)
+export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null, startOf?: PrerequisiteLabel['startOf'], undated = false): StepContract {
+  // `undated`: the board holds the step (planBoard.ts boardHolds, read by the
+  // caller that holds the board). Its words lose the days the plan scheduled for
+  // it, and its milestone its day (owner decision 2, 2026-09-22).
+  const ex = vars ?? (undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx))
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
   // The Plan's one presentation state: the row word, the badge, the bar and the rail read it (planState.ts).
   const held = isHeld(step)
   const word = planStateOf(step, held)
-  const m = nextMilestone(step)
+  // A step the board holds names no day, in its milestone or its sentence
+  // (roadmap/lifecycle.ts nextMilestone `undated`): the board's When already
+  // reads "After prerequisites" for it, and a date beside that is a second answer.
+  const m = nextMilestone(step, { undated })
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
   // A policy waiting on the exclusions group while the scan found one nobody has
@@ -1349,11 +1389,11 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // action are the same thing said twice, and the action is the better of the
   // two: it is either the step's own words for the work or the authority's
   // reason the work is held.
-  const sentence = milestoneSentence(m)
+  const sentence = milestoneSentence(m, estimatedDay(step))
   const carriesDate = m.at !== null && sentence.includes(absoluteDate(m.at))
   const milestone: ContractMilestone = {
     ...bare,
-    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: absoluteDate(m.at) }),
+    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step), 'sentence') }),
   }
   const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
@@ -1406,8 +1446,10 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant, exclusionsUnconfirmed) },
-    scheduledOn: ctx.scheduledOn ?? null,
+    scheduledOn: undated ? null : (ctx.scheduledOn ?? null),
     schedule: step.scheduled ? scheduleOf(step) : null,
+    undated,
+    estimate: estimatedDay(step),
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
@@ -1889,10 +1931,13 @@ function belowGoalFloorOf(step: Step, ctx: StepVarContext): StepContract['belowG
   return grant === null ? null : { text: fillText(W.note, { grant, floor }), floor }
 }
 
+/** The key of that tile: a fact about what the baseline writes, never a task (FINISHED_FINDINGS). */
+export const BELOW_GOAL_FLOOR = 'below-goal-floor'
+
 /** Its tile: a warning that holds nothing, on every stage of the step. */
 function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
   if (c.belowGoalFloor == null) return null
-  return { key: 'below-goal-floor', label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
+  return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
 }
 
 /** Their tile: a warning, never a hold — the person chose to go ahead without them. */
@@ -1900,6 +1945,9 @@ function followUpTile(c: StepContract): ReadinessTile | null {
   if (c.followUp == null) return null
   return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
 }
+
+/** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
+export const OWN_POLICY_DIFFERS = 'own-policy-differs'
 
 /**
  * Where a policy the tenant wrote delivers the goal and differs from the
@@ -1911,7 +1959,7 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   const d = step.action.ownPolicyDiffers
   if (!d || !step.state.satisfied) return null
   const dimensions = dimensionWords(d.dimensions)
-  return { key: 'own-policy-differs', label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
+  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
@@ -1922,6 +1970,43 @@ function enforcedReadingTile(step: Step): ReadinessTile | null {
   const short = shortReadingOf(step)
   if (short === null) return null
   return { key: FINISHED_READING, label: R().tiles.reading, tone: 'warn', value: short.value, note: short.note }
+}
+
+/** The key of the tile a finished policy draws where it went live with no report-only period IAMAI watched: a finding, not a task. */
+export const UNWATCHED_ENFORCEMENT = 'enforced-unwatched'
+
+/**
+ * The findings a finished step states that nothing in Readiness can clear, so
+ * they never make its Implementation box wait on Readiness (stepBody.ts): a
+ * policy that went live with no report-only period IAMAI watched (owner
+ * decision 3), a tenant's own policy that differs from the baseline's, and a
+ * baseline grant weaker than the goal's floor (owner, 2026-09-22: stated, and
+ * never an instruction to change them). The last two drew "Waiting on
+ * Readiness" and "Complete the next task shown for each item." on a Completed
+ * step whose tile says IAMAI does not ask for a change.
+ */
+export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS, BELOW_GOAL_FLOOR])
+
+/**
+ * The findings a finished step can leave behind: facts about the tenant, never
+ * a task anybody can do here (policyTasks.ts policyBarOf reads them so). The
+ * finished reading is one; its Implementation box is left as content review R9
+ * has it (implementationEmptyOf), which this change does not decide.
+ */
+export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING, ...SETTLED_FINDINGS])
+
+/**
+ * A finished policy this plan owns that went live with no report-only period
+ * IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3, 2026-09-22;
+ * R4-12): it stays Completed, and this warning says so. Built straight to On,
+ * policies filed under Completed with nothing in Readiness, and the one note
+ * that said nobody watched them sat under New evidence. The tile states the
+ * fact, and is its one home on the step (foundOf leaves that note out where the
+ * tile draws); the Done-when keeps the check after the change (doneWhenOf).
+ */
+function unwatchedTile(step: Step): ReadinessTile | null {
+  if (!enforcedUnwatched(step)) return null
+  return { key: UNWATCHED_ENFORCEMENT, label: R().tiles.observation, tone: 'warn', value: R().tiles.unwatched, note: CONTRACT.foundEnforcedUnwatched }
 }
 
 /** The key of the tile a step's unreadable reading draws where no threshold or finished reading states it. */
@@ -2069,7 +2154,7 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   // and a tenant where four hundred people had been stopped said the same.
   if (c.milestone.kind === 'observe') {
     const why = c.milestone.at ? notes.observationDateNote : (step.evidence.lines[0] ?? notes.observationNote)
-    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: why }
+    return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: shownDay(c.milestone.at, c.estimate, 'label') }) : s.stage, note: why }
   }
   return null
 }
@@ -2363,7 +2448,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
   const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
-  const facts = [enforcedReadingTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), belowGoalFloorTile(c), followUpTile(c), blindReadingTile(step, c), ...emergencyTiles(step, c), ...configuredTiles, ...(configuration.length && step.id !== 's-prereq-break-glass' ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c), inventory].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   const fixes = fixTiles(c.fix, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')) && !(configuration.length && /passkey.*(?:review|settings)|profile.*review/i.test(`${t.label} ${t.value}`)))
@@ -2579,14 +2664,22 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // A completed step has no next action, even if its package defines a milestone.
   if (l?.lane === 'Completed') return { metric: l.label, sub: '' }
   const sub = actionText ?? ''
+  // A step the board holds reads what its When column reads, never a day the
+  // schedule still carries (owner decision 2): Turn Off Security Defaults read
+  // Aug 31 here under a row that read "After prerequisites" (R4-21).
+  if (c.undated) return { metric: schedulingWords.waiting, sub }
   // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
-  // result the row's When and its phase read.
+  // result the row's When and its phase read. A day that is an estimate says so,
+  // in the When column's own words: the rail read a bare "Aug 31, 2026" under a
+  // row reading "Est. Aug 31, 2026", and a day that moves with the work it waits
+  // on read as a deadline (R4-34).
+  const day = (at: string): string => shownDay(at, c.estimate, 'label')
   const s = c.schedule ?? null
-  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: absoluteDate(s.at), sub }
-  if (m.at !== null) return { metric: absoluteDate(m.at), sub }
+  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: day(s.at), sub }
+  if (m.at !== null) return { metric: day(m.at), sub }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads.
-  if (c.scheduledOn && l?.lane === 'Ready') return { metric: absoluteDate(c.scheduledOn), sub }
+  if (c.scheduledOn && l?.lane === 'Ready') return { metric: day(c.scheduledOn), sub }
   if (l?.lane === 'Ready' && l.substatus === 'Review') return { metric: schedulingWords.reviewNow, sub }
   return { metric: NO_DATE, sub }
 }

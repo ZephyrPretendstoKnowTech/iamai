@@ -63,7 +63,9 @@ test('MFA Readiness does not headline an unmeasured gate as "0 of N are Ready"',
   // gate make (signInProofRead): a scan whose records hold no proof is unmeasured
   // even though its sign-in source read "ok", never "0 of N people are ready".
   assert.match(page, /import \{[^}]*\bsignInProofRead\b[^}]*\} from '\.\.\/\.\.\/scoring\/fromSnapshot\.ts'/, 'the page does not read the one proof-read authority')
-  assert.match(page, /!signInProofRead\(snapshot\) \? fillText\(T\.summaryUnmeasured, \{ cohort \}\)/, 'the headline is not chosen by signInProofRead')
+  assert.match(page, /summaryLine\(counted, \{ needP1: signInsNeedP1\(snapshot\), proofRead: signInProofRead\(snapshot\) \}\)/, 'the headline is not chosen by signInProofRead')
+  const cells = readFileSync('src/ui/surfaces/readinessCells.ts', 'utf8').replace(/\r\n/g, '\n')
+  assert.match(cells, /if \(!reads\.proofRead\) return fillText\(T\.summaryUnmeasured, \{ cohort \}\)/, 'summaryLine does not choose the unmeasured sentence on it')
   assert.doesNotMatch(page, /signInEvidence\.status === 'ok' \|\| snapshot\.sources\.signInEvidence\.status === 'partial'/, 'the page re-derives proof-read from the source status alone')
   const summary = (pages.readiness as unknown as { summaryUnmeasured: string }).summaryUnmeasured
   assert.ok(typeof summary === 'string' && !/\b0\b|0%/.test(summary))

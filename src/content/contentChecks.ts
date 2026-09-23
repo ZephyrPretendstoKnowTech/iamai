@@ -80,10 +80,12 @@ export const RE = {
   /**
    * The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count.
    * The counted are people, guests, or people and guests (derive/whoLine.ts cohortWords): the total is 2 + 3.
+   * People and guests together put the whole count after "of" and name the cohort
+   * after a colon (pages.readiness.summaryWithGuests): there 3 is absent and 2 is the total.
    * Each count carries its thousands separator ("1,234 of 4,169 people"), so a
    * reader strips the commas before it adds them.
    */
-  readinessSummary: /(\d[\d,]*) of (\d[\d,]*) (?:people|person|guests?)(?: and (\d[\d,]*) guests?)? (?:is|are) ready for phishing-resistant sign-in\./,
+  readinessSummary: /(\d[\d,]*) of (\d[\d,]*) (?:(?:people|person|guests?)(?: and (\d[\d,]*) guests?)? )?(?:is|are) ready for phishing-resistant sign-in(?:\.|: \d[\d,]* (?:people|person) and \d[\d,]* guests?\.)/,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
 }
@@ -198,6 +200,14 @@ export function staticFindings(): Finding[] {
   ] as [Record<string, unknown>, string][]) {
     const got = fillText(textAt('pages.readiness.summary'), vals)
     if (!RE.readinessSummary.test(got)) add(`content pages.readiness.summary: with ${label} it reads "${got}", which the readiness check cannot read`)
+  }
+  // People and guests together: the whole count after "of", the cohort after the colon.
+  for (const [vals, label] of [
+    [{ ready: 1, total: 31, cohort: cohortWords(31, 1) }, 'a count of one'],
+    [{ ready: 4, total: 31, cohort: cohortWords(31, 1) }, 'a count above one'],
+  ] as [Record<string, unknown>, string][]) {
+    const got = fillText(textAt('pages.readiness.summaryWithGuests'), vals)
+    if (!RE.readinessSummary.test(got)) add(`content pages.readiness.summaryWithGuests: with ${label} it reads "${got}", which the readiness check cannot read`)
   }
   if (fillText(textAt('pages.readiness.summary'), { ready: 1, cohort: cohortWords(1, 0) }) === fillText(textAt('pages.readiness.summary'), { ready: 2, cohort: cohortWords(3, 0) })) {
     add('content pages.readiness.summary: the sentence does not change with the count; the pluraliser is not bending its verb')

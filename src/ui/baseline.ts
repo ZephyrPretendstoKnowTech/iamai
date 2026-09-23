@@ -50,26 +50,29 @@ export async function loadPinnedBaseline(onProgress?: (done: number, total: numb
   }
 }
 
-export type AuthorHead = { updated: boolean; pinned: string; head: string | null; date: string | null }
+/** `checked` is false when the call could not run or was refused (no network, GitHub's rate limit): that is not "no update", and Connect says so. */
+export type AuthorHead = { updated: boolean; checked: boolean; pinned: string; head: string | null; date: string | null }
 
 /**
  * The one runtime network call (prompt 51 decision 1): the author's current head
- * commit, compared with the pinned one. When it differs, Connect renders
- * pages.connectNoScan.baselineUpdated and taking the update re-derives the plan.
+ * commit, compared with the pinned one. When it differs, Connect renders the
+ * author's changes as a review (pages.connect.baseline.updated); no control takes
+ * an update yet, so IAMAI keeps the pinned version and the review says so.
  * Failures are swallowed to `updated: false` — a check that cannot reach the
- * network never blocks the plan.
+ * network never blocks the plan — and carry `checked: false`, so the page can
+ * say the check could not be made rather than read as nothing to report.
  */
 export async function checkAuthorHead(fetchImpl: typeof fetch = fetch): Promise<AuthorHead> {
   const pinned = PINNED.commit
   try {
     const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/commits?per_page=1`, { headers: { Accept: 'application/vnd.github+json' } })
-    if (!res.ok) return { updated: false, pinned, head: null, date: null }
+    if (!res.ok) return { updated: false, checked: false, pinned, head: null, date: null }
     const body = (await res.json()) as { sha?: string; commit?: { author?: { date?: string } } }[]
     const head = body[0]?.sha ?? null
     const date = body[0]?.commit?.author?.date ?? null
-    return { updated: head !== null && head !== pinned, pinned, head, date }
+    return { updated: head !== null && head !== pinned, checked: head !== null, pinned, head, date }
   } catch {
-    return { updated: false, pinned, head: null, date: null }
+    return { updated: false, checked: false, pinned, head: null, date: null }
   }
 }
 

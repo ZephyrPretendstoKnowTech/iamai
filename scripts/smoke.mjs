@@ -52,8 +52,10 @@ const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_H
 
 // MFA Readiness's answer (pages.readiness.summary), matched in either tense:
 // content/render.ts pluralise may bend the noun and the verb to the count. The
-// counted are people, guests, or people and guests: the total is 2 + 3.
-const SUMMARY_LINE = /(\d+) of (\d+) (?:people|person|guests?)(?: and (\d+) guests?)? (?:is|are) ready for phishing-resistant sign-in\./
+// counted are people, guests, or people and guests: the total is 2 + 3. People and
+// guests together (pages.readiness.summaryWithGuests) put the whole count after "of"
+// and the cohort after a colon: there 3 is absent and 2 is the total.
+const SUMMARY_LINE = /(\d+) of (\d+) (?:(?:people|person|guests?)(?: and (\d+) guests?)? )?(?:is|are) ready for phishing-resistant sign-in(?:\.|: \d+ (?:people|person) and \d+ guests?\.)/
 
 // The states the bar and the groups name, read from the words the page ships
 // rather than copied here (prompt 62).
@@ -368,7 +370,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
+  check('Connect (no scan): Scan tenant and the in-browser line', /Scan tenant/.test(t) && /The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
   check('Connect (no scan): nothing about a plan yet', !/Open the plan/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
   await sleep(1200)
@@ -803,9 +805,12 @@ try {
   check('Unlicensed tenant: no plan is drawn — no step count, no board', !/[0-9]+ steps/.test(t) && !(await evaluate(`document.querySelector('main.page .plan-row') !== null`)), t.replace(/\s+/g, ' ').slice(0, 160))
   check('Unlicensed tenant: no progress tiles around an empty plan', !(await evaluate(`document.querySelector('main.page .plan-progress') !== null`)))
   await send('Page.navigate', { url: `${BASE}&licence=free#/readiness` })
-  await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && /no sign-in records/.test(document.body.innerText)`)
+  // The words are the page's own (app.readiness.lineNoRecordsReason) with the reason
+  // App.tsx sets for licence=free; the smoke holds no copy of the sentence.
+  const noRecordsLine = CONTENT_PAGES.app.readiness.lineNoRecordsReason.replace('{reason}', 'needs Entra ID P1 or P2')
+  await waitFor(`document.querySelector('h1')?.textContent === 'MFA Readiness' && document.body.innerText.includes(${JSON.stringify(noRecordsLine)})`)
   t = await text()
-  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(new RegExp('[^' + String.fromCharCode(10) + ']*sign-in records[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
+  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', t.includes(noRecordsLine),(t.match(new RegExp('[^' + String.fromCharCode(10) + ']*sign-in records[^' + String.fromCharCode(10) + ']*')) ?? [''])[0])
   // Without sign-in records nobody can be confirmed: the legend names no Ready or Seamless people.
   check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
@@ -821,8 +826,14 @@ try {
   await sleep(1500)
   check('Scan with gaps: the tile says so and builds no plan', await waitFor(`/finished with gaps · no plan built/.test(document.body.innerText)`))
   t = await text()
-  check('Scan with gaps: the unread sections are rows marked not read', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*not read/.test(t))
-  check('Scan with gaps: the one ask is Global Reader, read-only', /Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t) && !/Security Reader|Reports Reader/.test(t))
+  check('Scan with gaps: the unread sections are rows marked not read, and the refused one says so', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*refused to this account/.test(t))
+  // The mock signs in as a Global Administrator (ui/App.tsx): Graph refusing such
+  // an account is not for want of a role, so the tile asks for none
+  // (tokenRoles.ts holdsReadEverything), and it names no other role.
+  check('Scan with gaps: a Global Administrator is asked for no role it already holds', await waitFor(`/refused to this account/.test(document.body.innerText) && !/Ask whoever administers the tenant/.test(document.body.innerText)`) && !/Security Reader|Reports Reader/.test(t))
+  // Nor another account: another role reads nothing more for it, so Scan again
+  // leads (connectView.ts scanTile, the gaps state). Tile 1 keeps its own.
+  check('Scan with gaps: a Global Administrator is offered Scan again alone', await evaluate(`(() => { const step = [...document.querySelectorAll('main.page .connect-step')].find((s) => /finished with gaps/.test(s.textContent || '')); const b = step ? [...step.querySelectorAll('.connect-step-actions button')] : []; return b.length === 1 && (b[0].textContent || '').trim() === 'Scan again' && /btn-primary/.test(b[0].className) })()`))
   check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))

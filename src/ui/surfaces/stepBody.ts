@@ -31,13 +31,13 @@ import type { TabItem } from '../components/index.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
 import { ifWrongLineFor, stepExportView } from './stepExport.ts'
-import { stepVars } from './stepVars.ts'
+import { stepVars, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { rescanLinesOf, stepInstructions, wholeLines } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, SETTLED_FINDINGS, eyebrowOf, implementationEmptyOf, implementationIsCurrent, isReadinessWork, proceduresAreReference, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
-import { laneViewAlone } from './planBoard.ts'
+import { boardHolds, laneViewAlone } from './planBoard.ts'
 import { DECISION_HEAD, HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { directionMilestoneAction } from '../../roadmap/directionAnswers.ts'
@@ -174,7 +174,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // for is not a step without a body: the contract still knows where it is, why
   // it matters and what to do next, and this renders that.
   const cs = (contentStepFor(step) ?? {}) as Record<string, any>
-  const ex = stepVars(step, ctx) as Ex
+  // Whether the board holds the step (planBoard.ts boardHolds), on the reading
+  // the board handed down: a held step carries no date anywhere, so its words
+  // lose the days the plan scheduled for it and its contract names none (owner
+  // decision 2, 2026-09-22). A step opened with no board is never held.
+  const undated = boardHolds(step, lane)
+  const ex = (undated ? withoutScheduleDates(stepVars(step, ctx), step, ctx) : stepVars(step, ctx)) as Ex
   // The Step Contract (stepContract.ts): the state, the next milestone, the one
   // action, the blockers and the completion, worked out once from Foundations A,
   // B and C, with the lane engine's reading of the step as its one state (A1b).
@@ -184,7 +189,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // to where a held chain starts goes into the contract, not the card alone, so
   // the Threshold card, its finding and the AI Info briefing agree (R4-33).
   const laneView = lane ?? laneViewAlone(step)
-  const contract = stepContract(step, ctx, ex as Record<string, unknown>, laneView, prerequisiteLabel?.startOf)
+  const contract = stepContract(step, ctx, ex as Record<string, unknown>, laneView, prerequisiteLabel?.startOf, undated)
   // The one title, from the one resolver the row reads (content/stepTitle.ts), so
   // the row and the body it opens can never disagree.
   const title = contentTitle(step)
@@ -513,9 +518,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // a value IAMAI does not hold. None of them is ever offered an artifact.
   const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
-  // The open Readiness work, which a delivered step still waits on: the cards
-  // that are work (stepContract.ts isReadinessWork), never the people card.
-  const openWork = readiness.tiles.filter(isReadinessWork).length
+  // The open Readiness work a delivered step still waits on: the cards that
+  // are work (stepContract.ts isReadinessWork, never the people card), less a
+  // fact the finished step states and nothing in Readiness can clear (a policy
+  // that went live unwatched, a tenant's own policy that differs from the
+  // baseline's, a baseline grant below the goal's floor: SETTLED_FINDINGS).
+  const openWork = readiness.tiles.filter((t) => isReadinessWork(t) && !SETTLED_FINDINGS.has(t.key)).length
   const empty: ImplementationEmpty =
     hold === null
       ? implementationEmptyOf(contract, openWork)

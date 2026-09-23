@@ -27,14 +27,13 @@
 // no two representations to keep in step. Pure, no DOM.
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
-import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
 import { addsExclusionsToEnforced, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
 import { list } from '../copy/statements.ts'
-import { scheduleOf } from './stepSchedule.ts'
+import { estimatedDay, scheduleOf, shownDay } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 import { DIRECTION_BLOCKER, directionBlockerStep } from './directionAnswers.ts'
 
@@ -306,7 +305,26 @@ export function workflowReviewIsCurrent(step: Step): boolean {
   return awaitsWorkflowRecord(step) && !(step.unsavedInputs?.length)
 }
 
-export function nextMilestone(step: Step): Milestone {
+/**
+ * `undated`: the board holds the step (the caller's reading:
+ * ui/surfaces/planBoard.ts boardHolds; owner decision 2, 2026-09-22 - a held
+ * step carries no date anywhere). Each branch that names a day gives its own
+ * undated form, so nothing else about the milestone moves:
+ * - a create the plan schedules while readiness holds its turn-on keeps its
+ *   report-only preparation, its gate and its kind, in the words a held create
+ *   already uses (MILESTONE.prepareHeld; the Step 5 ruling);
+ * - a policy watched in report-only keeps watching, without its review day;
+ * - a policy ready to be turned on, whose turn-on the board holds, says what it
+ *   waits for: the plan's own prerequisites where it records them, or the wait
+ *   itself - never "ready to be turned on" or the day it would be;
+ * - every other milestone keeps its words and loses its day.
+ * A pass over the finished milestone used to take the day out instead, and it
+ * turned every dated sentence that was not an observation into "Finish the
+ * steps this one waits on first." - a held create stopped saying to create the
+ * policy in report-only while the Implementation region still offered it.
+ */
+export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Milestone {
+  const undated = opts.undated === true
   const s = step.state
   if (s.setAside) return { kind: 'none', label: MILESTONE.setAside, at: null, gatedBy: step.skipReason }
   // The same order the word follows, so the state, the word and the next thing
@@ -378,9 +396,11 @@ export function nextMilestone(step: Step): Milestone {
     // Readiness gates enforcement, not creation (owner decision, 2026-09-11): where
     // the plan still schedules the create (roadmap/stepSchedule.ts), that day is
     // the milestone, and turning it on is what waits.
+    // Undated, the create keeps its words for a held create: no day, same gate.
     const scheduled = step.scheduled ? scheduleOf(step) : null
-    if (scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
-      const date = absoluteDate(scheduled.at)
+    if (!undated && scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
+      // A day that is an estimate says so, as the board's row does (stepSchedule.ts shownDay).
+      const date = shownDay(scheduled.at, estimatedDay(step), 'sentence')
       const label = gate ? fillText(MILESTONE.prepareScheduled, { date, measure: gate.measure, threshold: gate.threshold }) : fillText(MILESTONE.prepareScheduledOther, { date })
       return { kind: 'deploy', label, at: scheduled.at, gatedBy: null }
     }
@@ -418,14 +438,17 @@ export function nextMilestone(step: Step): Milestone {
         fillText(waits.length === 1 ? MILESTONE.enforceWaitsOne : MILESTONE.enforceWaitsMany, { items }),
         sd ? fillText(MILESTONE.enforceWaitsSecurityDefaults, { step: sd.title }) : null,
       ].filter((x): x is string => x !== null).join(' ')
-      return { kind: 'resolve', label, at, gatedBy: null }
+      return { kind: 'resolve', label, at: undated ? null : at, gatedBy: null }
     }
+    // Held on the board for anything else: its turn-on waits, so the milestone
+    // is the wait, never "ready to be turned on" or the day it would be.
+    if (undated) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: null }
     const days = step.events?.noticeDays ?? 0
     const label = !later
       ? MILESTONE.enforce
       : days > 0
-        ? fillText(MILESTONE.enforceScheduled, { date: absoluteDate(at), days: String(days) })
-        : fillText(MILESTONE.enforceScheduledOther, { date: absoluteDate(at) })
+        ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step), 'sentence'), days: String(days) })
+        : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step), 'sentence') })
     return { kind: 'enforce', label, at, gatedBy: null }
   }
   if (s.lifecycle === 'report-only') {
@@ -438,9 +461,9 @@ export function nextMilestone(step: Step): Milestone {
     // report-only until Aug 29" on Sep 5 is a milestone in the past. What it is
     // waiting for is the records, and no date says when they complete.
     const closed = readyOn !== null && step.tracking?.noticedAt != null && Date.parse(readyOn) <= Date.parse(step.tracking.noticedAt)
-    const at = closed ? null : readyOn
+    const at = closed || undated ? null : readyOn
     const label =
-      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
+      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: shownDay(at, estimatedDay(step), 'sentence') }) : MILESTONE.observe
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
@@ -451,7 +474,7 @@ export function nextMilestone(step: Step): Milestone {
   // step is waiting on" sat over the correction the step hands over. The next
   // thing is that correction, on the day the plan schedules it.
   if (s.lifecycle === 'enforced' && implementationOffered(step) && addsExclusionsToEnforced(step)) {
-    return { kind: 'deploy', label: MILESTONE.correct, at: step.scheduled ? scheduleOf(step).at : null, gatedBy: step.blockedReason }
+    return { kind: 'deploy', label: MILESTONE.correct, at: step.scheduled && !undated ? scheduleOf(step).at : null, gatedBy: step.blockedReason }
   }
   if (s.condition === 'blocked') return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.observation && historyReset(s.observation)) return { kind: 'observe', label: s.observation.note, at: null, gatedBy: null }
@@ -463,5 +486,5 @@ export function nextMilestone(step: Step): Milestone {
   // in report-only." above the steps that open and correct it was two instructions.
   const ops = operationsOf(step)
   const correcting = ops.length > 0 && ops.every((o) => o.mode === 'update')
-  return { kind: 'deploy', label: correcting ? MILESTONE.correct : MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
+  return { kind: 'deploy', label: correcting ? MILESTONE.correct : MILESTONE.deploy, at: undated ? null : step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }
