@@ -106,11 +106,15 @@ export function stages(done: readonly boolean[]): Stage[] {
  * with the next action and here is that stage's own state line. So the strip
  * cannot disagree with the step it points at, and no readiness is calculated
  * here that is not already calculated by the tiles.
+ *
+ * Nothing left to do is not the same as nothing to say: a complete scan that
+ * did not read every section, or read no sign-in proof, carries that as its
+ * `caveat`, and the strip says it instead of "scan … ready" (Phase 2 audit).
  */
 export type ConnectStatus = { tone: Tone; title: string; text: string }
-export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone }[]): ConnectStatus {
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string }[]): ConnectStatus {
   const current = done.indexOf(false)
-  if (current === -1) return { tone: 'done', title: W.status.ready, text: W.status.readyText }
+  if (current === -1) return { tone: 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
   const s = stagesOf[current]
   return { tone: s?.tone ?? null, title: fillText(W.status.next, { stage: s?.title ?? '' }), text: s?.state ?? '' }
 }
@@ -380,6 +384,8 @@ export type ScanTile = {
   ask?: string
   learn?: { label: string; url: string }
   note?: string
+  /** A complete scan's own shortfall, its unread lead and its degraded note, for the status strip (connectStatus). */
+  caveat?: string
   actions: Action[]
 }
 
@@ -411,15 +417,20 @@ export function scanTile(input: ScanInput): ScanTile {
       // The plan was built, so the tile stays done and says complete. What it
       // was built without is listed under it rather than left unsaid (S4-7, S4-8).
       const unread = input.unread ?? []
+      const lead = unread.length > 0 ? fillText(S.complete.unread, { n: unread.length }) : null
+      const note = input.degraded ? S.complete.degraded : null
+      const caveat = [lead, note].filter((x): x is string => x !== null).join(' ')
       return {
         ...base,
         kind: 'complete',
         state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
         meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
-        ...(unread.length > 0 ? { lead: fillText(S.complete.unread, { n: unread.length }), rows: unread.map(unreadRow) } : {}),
+        ...(lead ? { lead, rows: unread.map(unreadRow) } : {}),
         ...askFor(unread),
-        ...(input.degraded ? { note: S.complete.degraded } : {}),
+        ...(note ? { note } : {}),
+        // The strip's line when every stage is done: the scan's own words, never "ready" over them.
+        ...(caveat ? { caveat } : {}),
         actions: [again],
       }
     }
