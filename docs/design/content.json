@@ -2767,6 +2767,8 @@
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",
+          "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
+          "create": "policies ready to create in report-only",
           "filter": "Showing {view}",
           "finishUnknown": "Depends on open work"
         },
@@ -2786,7 +2788,11 @@
           "$commentGroupAllCompleted": "A finished section collapses in place to one line, its title and this (owner, roadmap flow V2 decision B). Selecting it opens it.",
           "groupAllCompleted": "All {total} completed",
           "$commentGroupFinished": "A section with nothing left to do where some rows were deferred: it collapses like a completed one, and says how much of it was deferred rather than claiming all of it completed.",
-          "groupFinished": "{done} of {total} completed, {deferred} deferred"
+          "groupFinished": "{done} of {total} completed, {deferred} deferred",
+          "$commentCreateNow": "The line above the board (owner, roadmap flow V2 decision H, tried as a visible line): how many policies can be created in report-only today, counted off the board's Ready · Create rows of Conditional Access work, so it never counts a policy the board holds and names none. Drawn only while there are such rows.",
+          "createNow": "{n} policies are ready to create in report-only now.",
+          "$commentCreateNowShow": "The line's control: it shows exactly the policies the line counted (pages.app.plan.summary.create).",
+          "createNowShow": "Show them"
         },
         "groups": {
           "emergencyAccess": {

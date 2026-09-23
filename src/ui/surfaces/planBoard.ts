@@ -56,7 +56,7 @@ export const WHEN = (pages.plan as unknown as { when: { none: string; after: str
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
 const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the All work tab brought with it (pages.app.plan.board): its label, and the line a section drawn whole reads. */
-const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string; groupRemaining: string; groupAllCompleted: string; groupFinished: string } } }).plan.board
+const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string; groupRemaining: string; groupAllCompleted: string; groupFinished: string; createNow: string; createNowShow: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
  *  `Observing` on Ready is the review of what report-only collected; the wait while it collects is On Hold · Observing. */
 export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
@@ -124,6 +124,9 @@ export const BOARD = {
   groupAllCompleted: BOARD_WORDS.groupAllCompleted,
   groupCompleted: BOARD_WORDS.groupCompleted,
   groupFinished: BOARD_WORDS.groupFinished,
+  /** The line above the board, and its control (readyToCreateOf). */
+  createNow: BOARD_WORDS.createNow,
+  createNowShow: BOARD_WORDS.createNowShow,
   search: 'Search steps',
   searchPlaceholder: 'Search steps...',
   showCompleted: 'Show completed',
@@ -388,6 +391,16 @@ export function boardOf(steps: readonly Step[], cleanup: CleanupPhase | null | u
     prerequisiteLabel: prerequisiteLabelFor(readings),
     enforceWaits: cleanupRows.filter((r) => r.row.kind === 'drill' && !r.complete).map((r) => cleanupEntry(r.row.kind)?.title).filter((x): x is string => typeof x === 'string' && x.length > 0),
   }
+}
+
+/**
+ * The policies a person can create in report-only now (owner, roadmap flow V2
+ * decision H): the board's Ready · Create rows of Conditional Access work, by
+ * id, in board order. Counted off the board's own rows and lane views, so it
+ * never counts a row the board holds; the line that reads it names none.
+ */
+export function readyToCreateOf(rows: readonly Pick<BoardRow, 'item' | 'lane'>[]): string[] {
+  return rows.filter((r) => r.lane.lane === 'Ready' && r.lane.substatus === 'Create' && r.item.workType === 'ca').map((r) => r.item.id)
 }
 
 /**

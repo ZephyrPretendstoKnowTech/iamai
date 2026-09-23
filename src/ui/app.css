@@ -1844,6 +1844,14 @@ footer.app a {
 .plan-controls .dot-upnext {
   background: var(--attention);
 }
+/* The line above the board (decision H): how many policies can be created in
+   report-only now, and the control that shows them. */
+.plan-create-now {
+  margin: 12px 0;
+}
+.plan-create-now .btn {
+  margin-left: 4px;
+}
 .plan-board {
   padding-top: 4px;
 }
