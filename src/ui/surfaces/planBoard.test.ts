@@ -718,7 +718,7 @@ test('a Completed or Deferred row is one compact line: number, title, its lane w
   assert.match(row, /\{!compact && <span className="who">/, 'a compact row still says who it touches')
 })
 
-test('the how-to starts at the top of All work, and says every Ready · Create policy can be created in report-only once the first two sections are done', () => {
+test('the how-to starts at the top of All work, says every Ready · Create policy can be created in report-only once the first two sections are done, and turns each on by its own row, not its section', () => {
   // Owner, roadmap flow V2 decision H: the plan already lets every policy that
   // can be written be created in report-only on the same day, and only the
   // turn-on is ordered. A top-to-bottom All work view would make it look
@@ -729,7 +729,11 @@ test('the how-to starts at the top of All work, and says every Ready · Create p
   assert.ok(intro.includes(`${BOARD.lanes.ready} · ${SUBSTATUS_WORD.Create}`), 'the how-to does not name the Ready · Create label a row reads')
   assert.match(intro, /first two sections/)
   assert.match(intro, /in report-only/)
-  assert.match(intro, /turning each one on follows/i)
+  // The turn-on is the row's own reading, never its section's place: section
+  // position gates nothing (roadmap flow V2 research), and a later section's
+  // policy can read Ready · Ready to enforce while an earlier section is on hold.
+  assert.ok(intro.includes(`${BOARD.lanes.ready} · ${SUBSTATUS_WORD['Ready to enforce']}`), 'the how-to does not say a policy is turned on when its own row reads Ready · Ready to enforce')
+  assert.doesNotMatch(intro, /order[^.]*section|section[^.]*order|follows/i, 'the how-to says turning a policy on follows its section, which gates nothing')
   assert.equal(JSON.stringify(howTo).includes('Start with Ready'), false, 'a how-to line still starts with Ready')
   // One copy of the words: the intro and the legend. `items` repeated both.
   assert.equal('items' in howTo, false, 'the how-to keeps a second copy of its words')
