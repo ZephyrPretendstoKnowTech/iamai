@@ -506,6 +506,10 @@ function SignedIn({
     }
   }, [getToken, account.homeAccountId])
   const roleGap = runner.roleGap ?? coreRoleGap(roleIds)
+  // Whether the account's roles read every section, once the token is read: null
+  // until the silent read returns (or when it cannot), so the Global Reader ask is
+  // never drawn for a Global Reader and then withdrawn (connectView.ts askFor).
+  const readsEverything = roleIds === null ? null : holdsReadEverything(roleIds)
   const tenant = tenantName ?? account.username
   const upn = account.username
   // A first scan stays here and offers the plan; Scan again returns to the Plan when it lands (target-state §2).
@@ -522,13 +526,13 @@ function SignedIn({
     : scanning
       ? { kind: 'scanning', lane: laneOf(runner).lane, elapsed: elapsedLabel(runner.startedAt ?? runner.nowTick, runner.nowTick) }
       : runner.gaps.length > 0
-        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan, readsEverything: holdsReadEverything(roleIds) }
+        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan, readsEverything }
         : lastScan
           ? // What the scan it names did not read in full, from that scan's own
             // snapshot, the way `degraded` is: a stored scan restored on the next
             // visit says the same thing it said the day it ran (S4-7, S4-8).
             // A refused section asks for no role the token already holds.
-            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), readsEverything: holdsReadEverything(roleIds) }
+            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), readsEverything }
           : { kind: 'ready' }
   // The plan follows a complete scan (its step counts the way the Plan header
   // counts them, once the plan has computed; read-only, so opening Connect never
