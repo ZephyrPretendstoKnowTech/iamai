@@ -14,6 +14,11 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { implementationOffered } from '../../roadmap/operations.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { policyBarOf, policySubjectsOf } from './policyTasks.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewOf } from './planBoard.ts'
+import type { Step } from '../../roadmap/types.ts'
 
 const TOKEN = 's-goal-token-protection'
 type Row = Record<string, unknown>
@@ -64,4 +69,32 @@ test("a tenant's own policy exactly as the baseline has it draws no tile", () =>
   const { step, tile } = opened(withOwnPolicy(curatedFixture('demo'), () => {}))
   assert.equal(step.state.satisfied, true)
   assert.equal(tile, null)
+})
+
+test("a Completed step's own-policy and weaker-grant findings are stated, and never turn it into Readiness work", () => {
+  // Both tiles say IAMAI asks for no change (owner, 2026-09-22). On a Completed
+  // step, the one below drew them beside "Complete the next task shown for each
+  // item." over the evidence link, and an Implementation box that read "Waiting
+  // on Readiness: Clear what Readiness lists first." - work nothing on the step
+  // offers, over a policy the tile says not to change.
+  const f = withOwnPolicy(curatedFixture('demo'), (row) => {
+    delete (row.conditions as Row).devices
+  })
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === TOKEN)!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  assert.equal(laneViewOf(laneReadings(run.steps).get(TOKEN)!, (x) => x).label, 'Completed', 'the premise: the board files it Completed')
+  const finished = (s: Step, label: string, keys: string[]): void => {
+    const body = stepBodyOf(s, ctx)
+    assert.deepEqual(body.readiness.tiles.map((x) => x.key), keys, `the premise (${label}): the findings are its only open tiles`)
+    assert.equal(body.empty.key, 'inPlace', `${label}: ${body.empty.title}`)
+    assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), 'Every task on this step is complete, and it left something behind.', label)
+  }
+  finished(step, "the tenant's own policy", ['own-policy-differs'])
+  // The weaker-grant tile draws on every stage of a step the plan writes; on a
+  // finished one it is the same kind of finding, alone or beside the other.
+  const floor = { strengthId: null, builtIn: ['mfa'], floor: 'phishingResistant' }
+  const { ownPolicyDiffers: _own, ...rest } = step.action
+  finished({ ...step, action: { ...rest, belowGoalFloor: floor } } as Step, 'a weaker grant', ['below-goal-floor'])
+  finished({ ...step, action: { ...step.action, belowGoalFloor: floor } } as Step, 'both', ['own-policy-differs', 'below-goal-floor'])
 })

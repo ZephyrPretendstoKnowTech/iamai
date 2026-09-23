@@ -1900,10 +1900,13 @@ function belowGoalFloorOf(step: Step, ctx: StepVarContext): StepContract['belowG
   return grant === null ? null : { text: fillText(W.note, { grant, floor }), floor }
 }
 
+/** The key of that tile: a fact about what the baseline writes, never a task (FINISHED_FINDINGS). */
+export const BELOW_GOAL_FLOOR = 'below-goal-floor'
+
 /** Its tile: a warning that holds nothing, on every stage of the step. */
 function belowGoalFloorTile(c: StepContract): ReadinessTile | null {
   if (c.belowGoalFloor == null) return null
-  return { key: 'below-goal-floor', label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
+  return { key: BELOW_GOAL_FLOOR, label: CONTRACT.belowGoalFloor.label, tone: 'warn', value: fillText(CONTRACT.belowGoalFloor.value, { floor: c.belowGoalFloor.floor }), note: c.belowGoalFloor.text }
 }
 
 /** Their tile: a warning, never a hold — the person chose to go ahead without them. */
@@ -1911,6 +1914,9 @@ function followUpTile(c: StepContract): ReadinessTile | null {
   if (c.followUp == null) return null
   return { key: 'follow-up', label: CONTRACT.followUp.label, tone: 'warn', value: `${c.followUp.count} ${plural(c.followUp.count, 'person', 'people')}`, note: c.followUp.text }
 }
+
+/** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
+export const OWN_POLICY_DIFFERS = 'own-policy-differs'
 
 /**
  * Where a policy the tenant wrote delivers the goal and differs from the
@@ -1922,7 +1928,7 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   const d = step.action.ownPolicyDiffers
   if (!d || !step.state.satisfied) return null
   const dimensions = dimensionWords(d.dimensions)
-  return { key: 'own-policy-differs', label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
+  return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'warn', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
 /** The key of that reading's tile: a finding on a finished step, which is not a task anybody can do here. */
@@ -1939,10 +1945,24 @@ function enforcedReadingTile(step: Step): ReadinessTile | null {
 export const UNWATCHED_ENFORCEMENT = 'enforced-unwatched'
 
 /**
- * The findings a finished step can leave behind: facts about the tenant, never
- * a task anybody can do here (policyTasks.ts policyBarOf reads them so).
+ * The findings a finished step states that nothing in Readiness can clear, so
+ * they never make its Implementation box wait on Readiness (stepBody.ts): a
+ * policy that went live with no report-only period IAMAI watched (owner
+ * decision 3), a tenant's own policy that differs from the baseline's, and a
+ * baseline grant weaker than the goal's floor (owner, 2026-09-22: stated, and
+ * never an instruction to change them). The last two drew "Waiting on
+ * Readiness" and "Complete the next task shown for each item." on a Completed
+ * step whose tile says IAMAI does not ask for a change.
  */
-export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING, UNWATCHED_ENFORCEMENT])
+export const SETTLED_FINDINGS: ReadonlySet<string> = new Set([UNWATCHED_ENFORCEMENT, OWN_POLICY_DIFFERS, BELOW_GOAL_FLOOR])
+
+/**
+ * The findings a finished step can leave behind: facts about the tenant, never
+ * a task anybody can do here (policyTasks.ts policyBarOf reads them so). The
+ * finished reading is one; its Implementation box is left as content review R9
+ * has it (implementationEmptyOf), which this change does not decide.
+ */
+export const FINISHED_FINDINGS: ReadonlySet<string> = new Set([FINISHED_READING, ...SETTLED_FINDINGS])
 
 /**
  * A finished policy this plan owns that went live with no report-only period
