@@ -1502,9 +1502,9 @@
           "text": "Work through the prerequisites, review the instructions, and test changes before enforcing them."
         }
       ],
-      "baselineLabel": "Default baseline",
+      "baselineLabel": "Baseline",
       "baselineName": "Defense in Depth",
-      "baseline": "The default is Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
+      "baseline": "IAMAI plans against Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
       "baselineGoal": "It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.",
       "baselineNote": "You can inspect the baseline version IAMAI uses. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
       "catchesLabel": "What it catches",
@@ -1536,11 +1536,11 @@
       "trust": [
         {
           "title": "IAMAI does not change your tenant",
-          "body": "You can review the permissions before connecting. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
+          "body": "You can review the permissions before connecting. Approving them adds one enterprise application to the tenant, which you can delete. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
         },
         {
           "title": "Your scan is processed on your device",
-          "body": "Tenant data is read from Microsoft and processed in your browser. IAMAI does not upload your scan to its own server. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information."
+          "body": "Tenant data is read from Microsoft and processed in your browser. IAMAI has no server, so your scan is not uploaded anywhere. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information."
         },
         {
           "title": "You can inspect the code",
