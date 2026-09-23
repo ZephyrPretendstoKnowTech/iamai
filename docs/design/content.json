@@ -1073,7 +1073,8 @@
         "confirm": {
           "title": "Confirm the method still exists",
           "why": "Registered, but no confirmed sign-in in 30 days",
-          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer was replaced, they remove the old method and register again."
+          "$commentBody": "It said \"they remove the old method and register again\". A person whose only method was on the replaced device, removing it first, has nothing left to register with: registering security info needs MFA. Same two actions, in the safe order.",
+          "body": "Ask each person to sign in once with the method named on their row. If the phone or computer holding it was replaced, they register a new method first, then remove the old one."
         },
         "device": {
           "title": "Add a passkey to the device they use",
