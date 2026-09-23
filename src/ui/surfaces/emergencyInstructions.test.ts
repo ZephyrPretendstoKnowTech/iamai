@@ -11,7 +11,7 @@ import { emergencyTaskSteps } from './emergencyAccountTasks.ts'
 import type { EmergencyAccountTask } from './emergencyAccountTasks.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange, REGISTERED_METHODS_UNREAD } from '../../roadmap/passkeyCompatibility.ts'
 
 const ENTRA = 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **'
 const KEEP = 'Keep your working administrator session open.'
@@ -175,7 +175,14 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')
     if (!step) continue
     const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find(row => row.id === 'prepare-affected-passkeys')!
-    const first = task.steps[0]
+    const projection = affectedPasskeysByProposedChange(value.snapshot, value.mapping, value.groups)
+    // Whatever it names from what was read, it says where that is not everything:
+    // demo withholds the restrictions over one account while another account's
+    // registered methods were not read, and the line said nothing of that.
+    const also = / Some users’ registered authentication methods were not readable\. The planned settings may stop passkeys on those accounts too\.$/
+    const named = task.required || /could not tell whether the planned settings affect/.test(task.steps[0])
+    if (named) assert.equal(also.test(task.steps[0]), projection.coverage.includes(REGISTERED_METHODS_UNREAD), task.steps[0])
+    const first = named ? task.steps[0].replace(also, '') : task.steps[0]
     // Or the accounts the allow list would leave without a passkey it allows,
     // named, with what each keeps — or why the restrictions are withheld
     // (roadmap/passkeyRestrictions.ts; Jordan D13). Either way, by name.
@@ -191,7 +198,7 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     // everything was read: demo-week2 holds an account whose registered methods
     // were not read, and the task said "No existing passkey is affected" there
     // under a tile reading "Could not verify". It says what it did not read.
-    else if (affectedPasskeysByProposedChange(value.snapshot, value.mapping, value.groups).state !== 'known') assert.match(first, /^IAMAI could not tell whether the planned settings stop any existing passkey\. .*(could not be compared exactly|were not readable)\./)
+    else if (projection.state !== 'known') assert.match(first, /^IAMAI could not tell whether the planned settings stop any existing passkey\. .*(could not be compared exactly|were not readable)\./)
     else assert.equal(first, 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.')
   }
 })

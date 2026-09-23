@@ -1,4 +1,4 @@
-import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
+import { affectedPasskeysByProposedChange, REGISTERED_METHODS_UNREAD } from '../../roadmap/passkeyCompatibility.ts'
 import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
@@ -210,6 +210,36 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     ...comparisonFields.filter(field => field !== 'passkeyProfiles').map(field => ({ label: fieldLabel(field), value: `${fieldValue(fieldLabel(field), currentValue(field), modelNames)} → ${fieldValue(fieldLabel(field), targetValue(field), modelNames)}` })),
     ...profileCorrections,
   ] : unresolved.flatMap(finding => finding.items?.filter(item => item.outcome !== 'pass').slice(0, 2).map(item => ({ label: item.factLabel ?? item.label, value: item.value })) ?? [])
+  // Prepare affected passkeys opens on what the scan found in what it read: the
+  // accounts the planned settings would stop or could not judge, the affected
+  // accounts, or how many it could not judge.
+  const namedFromRead = restriction.stranded.length > 0
+    ? strandedSentence(restriction, ctx, protectionFields.length > 0)
+    : affected.users.length
+    ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
+    // Could not judge is not the same as not affected, and saying the
+    // second over the first is an unhedged all-clear before a change that
+    // can cost people their sign-in method. The tile beside this already
+    // reads "Existing passkeys affected · Could not verify"; the task said
+    // the opposite four lines below it.
+    : affected.unassessable.length
+      ? `IAMAI could not tell whether the planned settings affect the passkeys on ${affected.unassessable.length} ${affected.unassessable.length === 1 ? 'account' : 'accounts'}, because it could not read their key model. Check those before applying restrictions, and keep the existing working method available.`
+      : null
+  // What was read is not everything where some account's registered methods were
+  // not: the line said "Each keeps Microsoft Authenticator, so none is locked out"
+  // over a tenant most of whose accounts it had not read, under a tile reading
+  // "Could not verify". Every reading says so, in the tile's own sentence.
+  const unreadAlso = affected.coverage.includes(REGISTERED_METHODS_UNREAD) ? ` ${fillText(PR().unreadAlso, { unread: REGISTERED_METHODS_UNREAD })}` : ''
+  const prepareLead = namedFromRead !== null
+    ? `${namedFromRead}${unreadAlso}`
+    // Nobody found affected in what was read is an all-clear only where
+    // everything was read. It was said on hostile, where no account's
+    // registered methods were read, and wherever the passkey settings
+    // themselves were not read — under a tile reading "Could not verify".
+    // What was not read is the projection's own `coverage`, the tile's words.
+    : affected.state !== 'known'
+    ? fillText(PR().unread, { unread: affected.coverage.join(' ') })
+    : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.'
   const tasks: EmergencyAccountTask[] = [
     {
       id: 'inspect-passkey-settings', accountId: null, title: 'Review passkey settings', subjectLabel: subject, targetUpn: null, required: false,
@@ -228,25 +258,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       id: 'prepare-affected-passkeys', accountId: null, title: 'Prepare affected passkeys', targetUpn: null,
       required: affected.users.length > 0 || restriction.stranded.length > 0, readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
       issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
-      steps: [restriction.stranded.length > 0
-        ? strandedSentence(restriction, ctx, protectionFields.length > 0)
-        : affected.users.length
-        ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
-        // Could not judge is not the same as not affected, and saying the
-        // second over the first is an unhedged all-clear before a change that
-        // can cost people their sign-in method. The tile beside this already
-        // reads "Existing passkeys affected · Could not verify"; the task said
-        // the opposite four lines below it.
-        : affected.unassessable.length
-          ? `IAMAI could not tell whether the planned settings affect the passkeys on ${affected.unassessable.length} ${affected.unassessable.length === 1 ? 'account' : 'accounts'}, because it could not read their key model. Check those before applying restrictions, and keep the existing working method available.`
-          // Nobody found affected in what was read is an all-clear only where
-          // everything was read. It was said on hostile, where no account's
-          // registered methods were read, and wherever the passkey settings
-          // themselves were not read — under a tile reading "Could not verify".
-          // What was not read is the projection's own `coverage`, the tile's words.
-          : affected.state !== 'known'
-          ? fillText(PR().unread, { unread: affected.coverage.join(' ') })
-          : 'No existing passkey is affected by the planned settings. Keep the existing working method available while preparing an account.','**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
+      steps: [prepareLead, '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
       id: 'apply-passkey-settings', accountId: null, title: 'Configure passkey protections', subjectLabel: subject, targetUpn: null,
@@ -263,7 +275,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string; unread: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string; unread: string; unreadAlso: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
