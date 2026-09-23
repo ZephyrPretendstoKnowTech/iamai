@@ -507,7 +507,7 @@ export function groupEntriesOf(groups: GroupMembers): GroupEntry[] {
   return [...groups].map(([groupId, g]) => ({ groupId, displayName: g.displayName ?? null, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule ?? null, read: true }))
 }
 
-export function groupsModel(referenced: Map<string, { include: string[]; exclude: string[] }>, groups: GroupEntry[] | null, names: NameDirectory): InventoryModel<GroupRow> {
+export function groupsModel(referenced: Map<string, { include: string[]; exclude: string[] }>, groups: GroupEntry[] | null, names: NameDirectory, snapshot: TenantSnapshot | null = null): InventoryModel<GroupRow> {
   const G = C.groups
   const group = (id: string): string => names.nameOf(id) ?? (groups === null ? '…' : W.unnamedGroup)
   const rows: GroupRow[] = [...referenced.entries()].map(([id, refs]) => {
@@ -521,7 +521,8 @@ export function groupsModel(referenced: Map<string, { include: string[]; exclude
       policies: [...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
     }
   })
-  return {
+  // The groups are the ones the policies reference: policies not read reference none the scan could see.
+  const model: InventoryModel<GroupRow> = {
     id: 'groups',
     label: C.tabs.groups,
     csvName: 'iamai-groups.csv',
@@ -536,6 +537,7 @@ export function groupsModel(referenced: Map<string, { include: string[]; exclude
       { key: 'policies', header: G.columns.policies, cell: (r) => r.policies },
     ],
   }
+  return snapshot ? readOf(snapshot, 'caPolicies', model) : model
 }
 
 // ---------- Devices ----------
@@ -896,7 +898,7 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
     ...offer(locationsModel(snapshot, facts)),
     ...offer(authMethodsModel(snapshot, names)),
     ...offer(peopleModel(snapshot, names)),
-    ...offer(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names)),
+    ...offer(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names, snapshot)),
     ...offer(devicesModel(snapshot, names)),
     ...offer(rolesModel(snapshot, names)),
     ...offer(appsModel(snapshot, names)),

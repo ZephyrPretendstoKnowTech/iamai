@@ -144,7 +144,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} groupsPending={groups === null} /> },
           { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} readiness={readiness} /> },
-          { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <GroupsTab referenced={referencedGroups} groups={groupEntries} names={names} /> },
+          { id: 'groups', label: C.tabs.groups, badge: badge('caPolicies', referencedGroups.size), render: () => <GroupsTab snapshot={snapshot} referenced={referencedGroups} groups={groupEntries} names={names} /> },
           { id: 'devices', label: C.tabs.devices, badge: badge('devices', snapshot.devices.length), render: () => <DevicesTab snapshot={snapshot} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
@@ -305,13 +305,13 @@ function PeopleTab({ snapshot, names, viability, readiness }: { snapshot: Tenant
 // ---------- Groups ----------
 
 // L3: Groups used to be a sub-tab of People, a tab strip inside a tab strip. It is its own tab.
-function GroupsTab({ referenced, groups, names }: { referenced: Map<string, { include: string[]; exclude: string[] }>; groups: GroupEntry[] | null; names: NameDirectory }) {
+function GroupsTab({ snapshot, referenced, groups, names }: { snapshot: TenantSnapshot; referenced: Map<string, { include: string[]; exclude: string[] }>; groups: GroupEntry[] | null; names: NameDirectory }) {
   const G = C.groups
   return (
     <div>
       <Heading text={C.tabs.groups} source="groups" />
       {groups === null && <p className="reason">{G.loading}</p>}
-      <ModelTable model={groupsModel(referenced, groups, names)} render={{ policies: (r) => <span className="sub">{r.policies}</span> }} />
+      <ModelTable model={groupsModel(referenced, groups, names, snapshot)} render={{ policies: (r) => <span className="sub">{r.policies}</span> }} />
     </div>
   )
 }

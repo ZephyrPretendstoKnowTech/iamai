@@ -363,3 +363,11 @@ test('large tenants: counts carry separators on screen, and a holder cell names 
   assert.match(ga.activeShown, /and \d[\d,]* others$/)
   assert.equal(ga.activeShown.split(', ').length, 3, ga.activeShown)
 })
+
+test('groups referenced by policies the scan did not read are not "no policy references a group"', () => {
+  const s = failed(fixture('demo').snapshot, 'caPolicies', 'disabled', 'access denied (403)')
+  const m = groupsModel(referencedGroupsOf(policyFactsOf(s)), [], buildNameDirectory(s), s)
+  assert.equal(m.notRead, 'Not read in this scan: access denied (403).')
+  assert.ok(!inventoryTables(s).some((t) => t.id === 'groups'), 'no groups file over policies not read')
+  assert.match(readFileSync('src/ui/surfaces/InventoryPage.tsx', 'utf8'), /badge: badge\('caPolicies', referencedGroups\.size\)/)
+})
