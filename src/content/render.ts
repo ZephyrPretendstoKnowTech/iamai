@@ -817,9 +817,12 @@ export function renderPages(): string {
         3,
         cx.scan.title,
         cx.scan.gaps.state,
-        p(cx.scan.gaps.lead, { n: 3 }) +
-          p(cx.scan.gaps.leadFirst, { n: 3 }, 'sub') +
-          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`, `Sign-in records · ${esc(cx.scan.gaps.refused)}`) +
+        p(cx.scan.gaps.lead, { n: 2 }) +
+          p(cx.scan.gaps.leadFirst, { n: 2 }, 'sub') +
+          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Sign-in records · ${esc(cx.scan.gaps.refused)}`) +
+          // The unread sections a plan can be built without, apart from the ones that stopped it.
+          p(cx.scan.gaps.others, { n: 1 }) +
+          li(`Named locations · ${esc(cx.scan.gaps.notRead)}`) +
           sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
           acts(cx.account.signInAnother, cx.scan.complete.again),
       ) +

@@ -61,7 +61,7 @@ type Words = {
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string; degraded: string; unread: string }
-    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; ask: string; learn: { label: string; url: string } }
+    gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; others: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
@@ -353,7 +353,12 @@ export type ScanInput =
    * (no core section was missing), so this is not a failure; it is what the plan was built without.
    */
   | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[] }
-  | { kind: 'gaps'; unread: UnreadSection[]; lastScan: { at: string } | null }
+  /**
+   * `gaps`: the core sections a plan cannot be built without (coreSections.ts
+   * coreGaps), the one reason no plan was built; `unread` is every section the
+   * scan did not read in full, those included.
+   */
+  | { kind: 'gaps'; gaps: readonly { source: string }[]; unread: UnreadSection[]; lastScan: { at: string } | null }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
   | { kind: 'ready' }
@@ -370,6 +375,8 @@ export type ScanTile = {
   meta?: { value: string; label: string }[]
   lead?: string
   rows?: { name: string; value: string }[]
+  /** The gaps state's other unread sections, apart from the ones that stop the plan, under a lead of their own. */
+  more?: { lead: string; rows: { name: string; value: string }[] }
   ask?: string
   learn?: { label: string; url: string }
   note?: string
@@ -418,13 +425,20 @@ export function scanTile(input: ScanInput): ScanTile {
     }
     case 'gaps': {
       const G = S.gaps
+      // The lead counts the sections that stopped the plan (coreGaps) and no
+      // other: a section the plan can be built without is listed apart, so the
+      // one to fix is the one the lead names.
+      const blocks = (u: UnreadSection): boolean => input.gaps.some((g) => g.source === u.source)
+      const blocking = input.unread.filter(blocks)
+      const others = input.unread.filter((u) => !blocks(u))
       return {
         ...base,
         kind: 'gaps',
         state: G.state,
         tone: 'wait',
-        lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: input.unread.length }),
-        rows: input.unread.map(unreadRow),
+        lead: fillText(input.lastScan ? G.lead : G.leadFirst, { n: blocking.length }),
+        rows: blocking.map(unreadRow),
+        ...(others.length > 0 ? { more: { lead: fillText(G.others, { n: others.length }), rows: others.map(unreadRow) } } : {}),
         ...askFor(input.unread),
         // Another account is offered only where one was refused: it reads nothing more otherwise.
         actions: input.unread.some((u) => u.refused) ? [signInAnother, again] : [again],
@@ -570,6 +584,7 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
     out.push(tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
     for (const m of tile.meta ?? []) out.push(m.value, m.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
+    if (tile.more) out.push(tile.more.lead, ...tile.more.rows.flatMap((r) => [r.name, r.value]))
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)
   }
