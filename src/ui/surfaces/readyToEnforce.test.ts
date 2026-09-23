@@ -457,7 +457,9 @@ test('007.11f2 (R4-48): a sign-in read that reached no record says so, and says 
   const refused = run('disabled', 'access denied (403)', null)
   assert.match(refused.row, /could not be read in this tenant \(access denied \(403\)\)/, refused.row)
   assert.doesNotMatch(refused.row, /\d+ of \d+ active people/, 'nobody counted anybody')
-  assert.match(refused.tile, /could not read in this tenant — access denied \(403\)/, refused.tile)
+  // The tile's one sentence (roadmap/evidence.ts unreadLine) says IAMAI does not
+  // hold enough to rely on, with the reason: never "in this tenant" over a fault.
+  assert.match(refused.tile, /does not hold enough of this tenant's sign-in records to rely on — access denied \(403\)/, refused.tile)
 
   // A fault before any record arrived: nothing read, and nothing the tenant refused.
   const failed = run('error', 'Graph 503 after retries', null)
