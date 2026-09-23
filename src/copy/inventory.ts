@@ -159,8 +159,6 @@ export const INVENTORY = {
     columns: { app: 'App', signIns: 'Sign-ins', lastSp: 'Last activity' },
     facets: 'Detected workloads',
     facetColumns: { workload: 'Workload', detected: 'Detected' },
-    on: 'detected',
-    off: 'not detected',
     empty: 'No app sign-in summary is available on this licence.',
   },
   signIns: {

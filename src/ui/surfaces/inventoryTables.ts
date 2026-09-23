@@ -19,6 +19,7 @@ import type { NameDirectory } from '../../names.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
+import { serviceReading } from '../../roadmap/workflows.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -739,19 +740,37 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
   }
 }
 
-export type WorkloadRow = { facet: string; name: string; on: boolean; reason: string }
+export type WorkloadRow = { facet: string; name: string; word: string; seen: boolean; reason: string }
 
+/**
+ * What the scan saw of each service, by the product's one reading of it
+ * (roadmap/workflows.ts serviceReading, the one Direction asks from): seen in
+ * use, not seen, or not read where the sources that would show it were not
+ * read. Intune is a licence, read from the licences. It drew whether the
+ * service's goal applies under the word "detected", seen or not.
+ */
 export function workloadsModel(snapshot: TenantSnapshot): InventoryModel<WorkloadRow> {
   const A = C.apps
+  const reading = serviceReading(snapshot, [], [])
+  const licencesRead = sectionHasData(snapshot, 'subscribedSkus')
+  const rows = Object.entries(detectFacets(snapshot)).map(([facet, f]): WorkloadRow => {
+    const name = W.workloadNames[facet] ?? facet
+    if (facet === 'intune') {
+      const licensed = licencesRead && snapshot.capabilities.intune.enabled
+      return { facet, name, word: !licencesRead ? NOT_READ : licensed ? W.licensed : C.licensing.notLicensed, seen: licensed, reason: f.reason }
+    }
+    const s = reading.signal(facet)
+    return { facet, name, word: s.used ? W.workloadSeen : s.complete ? W.workloadNotSeen : NOT_READ, seen: s.used, reason: f.reason }
+  })
   return {
     id: 'workloads',
     label: A.facets,
     csvName: 'iamai-workloads.csv',
-    rows: Object.entries(detectFacets(snapshot)).map(([facet, f]) => ({ facet, name: app.inventory.workloadNames[facet] ?? facet, on: f.on, reason: f.reason })),
+    rows,
     rowKey: (r) => r.facet,
     columns: [
       { key: 'workload', header: A.facetColumns.workload, cell: (r) => r.name },
-      { key: 'detected', header: A.facetColumns.detected, cell: (r) => (r.on ? A.on : A.off) },
+      { key: 'detected', header: A.facetColumns.detected, cell: (r) => r.word },
     ],
   }
 }
