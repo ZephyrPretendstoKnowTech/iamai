@@ -314,6 +314,31 @@ test('6.3’s countries picker keeps the Direction question’s words: its label
   assert.ok(content.includes('{d.heading ?? d.label}</h5>') && content.includes("typeof d.text === 'string' && <p className=\"reason\"><T s={d.text} ex={ex} /></p>"), 'the picker does not draw its heading and line')
 })
 
+test('nothing 6.3 draws or exports names the retired location step, on every scenario (D3)', async () => {
+  const { withDirectionApproved } = await import('../../roadmap/fixtures/run.ts')
+  const { boardOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf } = await import('./planBoard.ts')
+  const { planDates } = await import('./stepVars.ts')
+  const { exportHoldOf, exportViewsOf } = await import('./stepExport.ts')
+  const scenarios: [string, Fixture][] = [
+    ['getiamai', withDirectionApproved(withFoundationSettled(curatedFixture('getiamai')))],
+    ...(['demo', 'demo-week2', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as FixtureName[]).map((n): [string, Fixture] => [n, fixture(n)]),
+  ]
+  let read = 0
+  for (const [name, f] of scenarios) {
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const geo = r.steps.find((s) => s.id === GEO)
+    if (!geo) continue
+    const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot, exportHoldOf(board))
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: geo.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    const body = stepBodyOf(geo, ctx, { lane: laneViewFor(geo, board), blockers: readinessBlockersOf(board.readings.get(GEO), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+    const drawn = [JSON.stringify(body.contract), JSON.stringify(body.readiness), JSON.stringify(body.emergencyAccountTasks ?? null), ...body.artifacts.map((a) => `${a.id}: ${a.text()}`), JSON.stringify(exportViewsOf(board, () => ctx)(geo))]
+    for (const text of drawn) assert.ok(!text.includes(RETIRED_TITLE), `${name}: ${text.slice(Math.max(0, text.indexOf(RETIRED_TITLE) - 80), text.indexOf(RETIRED_TITLE) + 60)}`)
+    read++
+  }
+  assert.ok(read >= 8, `the premise: 6.3 is read on ${read} scenarios`)
+})
+
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
   const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'
   assert.equal(existsSync('docs/implementation-content/s-prereq-allowed-countries'), false, 'the location still has a package folder of its own')
