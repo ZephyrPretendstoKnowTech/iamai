@@ -601,14 +601,19 @@ function step3Keeps(option: SignInOption, ctx: ReadinessContext): boolean {
   return models.some((a) => listed.has(a))
 }
 
+/** Passkey settings that let a synced passkey register: no attestation and no model restriction. */
+function syncedAllowed(pk: PasskeyPolicy): boolean {
+  return pk.attestation === false && pk.restriction === 'unrestricted'
+}
+
 /**
  * Whether IAMAI offers anybody a synced passkey in this tenant: today's passkey
- * settings let one register (no attestation, no model restriction) and Emergency
- * Access Step 3's settings, once applied, keep it. The words that name a Mac's
- * built-in option read this, so they never name one no row would offer.
+ * settings let one register (syncedAllowed) and Emergency Access Step 3's
+ * settings, once applied, keep it. The words that name a Mac's built-in option
+ * read this, so they never name one no row would offer.
  */
 export function syncedPasskeyOffered(ctx: ReadinessContext): boolean {
-  return ctx.passkey.attestation === false && ctx.passkey.restriction === 'unrestricted' && step3Keeps('syncedPasskey', ctx)
+  return syncedAllowed(ctx.passkey) && step3Keeps('syncedPasskey', ctx)
 }
 
 /** The best way to sign in on one device family, and whether it is possible (the eligibility table in prompt 62). */
@@ -642,7 +647,7 @@ function eligibility(d: DeviceSeen, ctx: ReadinessContext, userId: string | unde
       const allowed = platformCredentialAllowed(pk)
       return { best: 'platformSso', builtIn: true, possible: allowed, whyNot: allowed === 'no' ? 'notAllowed' : null }
     }
-    if (pk.attestation === false && pk.restriction === 'unrestricted' && pk.reach !== 'unknown') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
+    if (syncedAllowed(pk) && pk.reach !== 'unknown') return { best: 'syncedPasskey', builtIn: true, possible: 'yes', whyNot: null }
     return { best: fallback, builtIn: false, possible: 'yes', whyNot: pk.attestation === true ? 'attestation' : null }
   }
   // Linux and ChromeOS: nothing is built in; the best available is a key, and Ready is the top.
