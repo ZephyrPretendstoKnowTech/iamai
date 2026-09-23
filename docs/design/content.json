@@ -979,6 +979,8 @@
         "inPlace": "Already in place ({n})",
         "doesntApply": "Doesn't apply here ({n})",
         "doesntApplyRow": "{stepTitle}: you said: {reason}",
+        "$commentDoesntApplyScanRow": "A Doesn't apply here row the scan decided rather than a person (Step.doesntApplyByScan: Turn Off Security Defaults on a plan that never read them on, Stage 3). The you-said row put the plan's own reading in the person's mouth, and its Put back had no answer to take back.",
+        "doesntApplyScanRow": "{stepTitle}: {reason}",
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
         "notLicensedNote": "Nothing in the plan waits on these.",
@@ -3019,7 +3021,9 @@
         "enforceOutstandingMany": "Stop: these are not finished, and this policy is part of them: {items}. Leave this policy in Report-only until they are.",
         "$commentSecurityDefaultsCoexist": "The plan states its own ordering invariant on this step - \"security defaults must be off before the policies replacing them can take over, and once these policies exist you cannot turn security defaults back on... That is why nothing in this plan enforces before this step.\" A reader enforced eight policies with security defaults still on, swept all thirty-three steps, and found no warning anywhere; the board read Completed and the tile said \"IAMAI watched it get there.\" The step that owns the invariant is the one place that must notice it has been broken.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
-        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window."
+        "securityDefaultsCoexist": "{n} Conditional Access policies are enforced in this tenant while security defaults are still on, which Microsoft does not support. Do not turn security defaults off to settle it: this step does that only once the policies that replace them can go On in the same change window.",
+        "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
+        "securityDefaultsNeverOn": "No scan of this plan has read security defaults on, so there is nothing to turn off."
       },
       "readiness": {
         "$commentLineNoRecordsReason": "It read \"no sign-in records ({reason})\" beside a count of 0, and the reason often said the same thing or carried its own parentheses. One sentence now, and a reason that only restates it is left out.",

@@ -298,6 +298,14 @@ export type RoadmapInput = {
    * every recommendation outstanding now (validation/emergencyTiers.ts).
    */
   hardeningDeferral?: { at: string; basis: string } | null
+  /**
+   * When a scan of this plan first read security defaults on
+   * (PlanDecisions.securityDefaultsSeenOnAt, progress.ts
+   * securityDefaultsSeenOnAtOf); null or absent where no scan has. Turn Off
+   * Security Defaults reads Completed once they are off only where this plan saw
+   * them on, and Doesn't apply where it never did (V1 decision 6).
+   */
+  securityDefaultsSeenOnAt?: string | null
 }
 
 export type RoadmapResult = {
@@ -1345,8 +1353,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess) {
     const s = prereq('s-prereq-security-defaults')
     if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === false) {
-      setState(s, { satisfied: true, inPlace: true })
-      s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
+      // Off, and no scan of this plan ever read them on: there was nothing to
+      // turn off, so the row does not claim the work as Completed (V1 decision
+      // 6); it sits in the footer as every Doesn't apply step does. Nothing is
+      // held behind it: rule 3 below reads the scan, not this step, and the
+      // sd-enabled edges resolve not applicable (graphConditions.ts).
+      if (!input.securityDefaultsSeenOnAt) {
+        s.doesntApply = app.plan.securityDefaultsNeverOn
+        s.doesntApplyByScan = true
+        setState(s, { setAside: true })
+      } else {
+        setState(s, { satisfied: true, inPlace: true })
+        s.deliveredBy = ['Security Defaults is disabled in the scanned tenant configuration.']
+      }
     } else if (snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === true) {
       // The invariant this step owns, checked against what the tenant actually
       // holds. The plan says it in its own voice — "nothing in this plan
@@ -2814,8 +2833,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // 3. Security defaults come off before any Conditional Access policy: with
   // them on, a policy can be created and cannot be turned on.
+  // It reads the scan, never the step: on, or not read, holds; read off holds
+  // nothing, whatever the step's row says — Completed on a plan that saw them
+  // on, Doesn't apply on one that never did (V1 decision 6).
   const secDefaultsStep = steps.find((s) => s.id === 's-prereq-security-defaults')
-  if (secDefaultsStep && !secDefaultsStep.state.satisfied) {
+  const secDefaultsReadOff = snapshot.config.securityDefaults?.status === 'ok' && secDefaults?.isEnabled === false
+  if (secDefaultsStep && !secDefaultsReadOff) {
     for (const s of steps) {
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
       blockLate(s, 'security-defaults-first', null, secDefaultsStep.id)

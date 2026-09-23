@@ -713,6 +713,13 @@ export type Step = {
   /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */
   doesntApply?: string | null
   /**
+   * True where the scan, not a person, says the step does not apply (Turn Off
+   * Security Defaults on a plan that never read them on): the footer states the
+   * reason as the plan's reading instead of "you said", and offers no Put back,
+   * because no answer of anybody's put it there.
+   */
+  doesntApplyByScan?: true
+  /**
    * The gap a partly-in-place or below-baseline goal leaves, as the clause a
    * plan row shows: "sessions expire every 168h, baseline wants 4h". Null when
    * there is no gap to state (prompt 46 item 9).

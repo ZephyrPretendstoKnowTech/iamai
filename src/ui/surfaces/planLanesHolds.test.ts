@@ -348,3 +348,25 @@ test('a report-only policy held on its readiness threshold names the threshold, 
   assert.equal(reading.reason?.id, 'evidence:observation', 'the premise: only the window holds it')
   assert.equal(laneViewOf(reading, () => null).waitingFor, BOARD.blockers.evidence)
 })
+
+// Stage 3 (V1 decision 6). Turn Off Security Defaults read Completed on a tenant
+// where security defaults were already off at the first scan: a row claiming
+// work nobody did. The plan records the day a scan first read them on
+// (PlanDecisions.securityDefaultsSeenOnAt); with that day the step is Completed,
+// without it it does not apply. Either way no policy is held behind it: the
+// engine's hold reads the scan, never the row.
+test('security defaults: seen on then off reads Completed; never seen on reads Doesn\'t apply and holds no policy', () => {
+  const SD = 's-prereq-security-defaults'
+  const never = runFixture(fixture('small'))
+  const off = never.steps.find((s) => s.id === SD)
+  assert.ok(off, 'the premise: small reads security defaults off and carries the step')
+  assert.equal(typeof off.doesntApply, 'string', 'never seen on: Doesn\'t apply')
+  assert.equal(off.doesntApplyByScan, true, 'the scan says so, not a person')
+  assert.deepEqual(never.steps.filter((s) => s.blockers.some((b) => b.label === 'security-defaults-first')).map((s) => s.id), [], 'no policy is held by it')
+  assert.equal(laneReadings(never.steps).has(SD), false, 'it is not a row: the footer draws it')
+  const seen = runFixture(fixture('small'), { securityDefaultsSeenOnAt: '2026-08-20T00:00:00.000Z' })
+  const done = seen.steps.find((s) => s.id === SD)!
+  assert.equal(done.doesntApply ?? null, null, 'seen on by this plan: not Doesn\'t apply')
+  assert.equal(laneReadings(seen.steps).get(SD)?.lane, 'Completed', 'seen on, now off: Completed')
+  assert.deepEqual(seen.steps.filter((s) => s.blockers.some((b) => b.label === 'security-defaults-first')).map((s) => s.id), [], 'and still holds nothing')
+})

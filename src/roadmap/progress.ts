@@ -195,11 +195,25 @@ export function decisionsOf(
     freeze: rec?.freeze ?? null,
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
+    ...(typeof rec?.securityDefaultsSeenOnAt === 'string' ? { securityDefaultsSeenOnAt: rec.securityDefaultsSeenOnAt } : {}),
     stepDecisions,
     ...(Object.keys(confirmations).length > 0 ? { confirmations } : {}),
     observations,
     ...(typeof (rec as { signature?: unknown } | null)?.signature === 'string' ? { signature: (rec as { signature: string }).signature } : {}),
   }
+}
+
+/**
+ * When a scan of this plan first read security defaults on
+ * (PlanDecisions.securityDefaultsSeenOnAt): the date already recorded, else this
+ * scan's own time where it read them on, else null. An off or unread setting
+ * records nothing, and a recorded date is never replaced (V1 decision 6).
+ */
+export function securityDefaultsSeenOnAtOf(recorded: string | null | undefined, snapshot: Pick<TenantSnapshot, 'asOf' | 'config'>): string | null {
+  if (typeof recorded === 'string' && recorded !== '') return recorded
+  const read = snapshot.config.securityDefaults
+  const row = (read?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
+  return read?.status === 'ok' && row?.isEnabled === true ? snapshot.asOf : null
 }
 
 /**
