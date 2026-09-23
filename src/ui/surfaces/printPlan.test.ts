@@ -26,7 +26,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { completedRows, deferredRows, doesntApplyRows, floorRows, openDoneRows, phaseRows, planPhases } from './planRows.ts'
 import { cleanupHeadingOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, holdsOf, laneGroupsOf, noPlanLine, phaseDatesOf, postureOf, verificationNoteOf } from './printPlan.ts'
 import { scheduleOf, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { absolute, absoluteDate, dateRange, setDisplayTimeZone } from '../../copy/dates.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
@@ -249,6 +249,20 @@ test('the cover\'s Doesn\'t apply list is the Plan footer\'s, each step with the
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /const doesntApply = doesntApplyLinesOf\(steps\)/, 'the cover builds Doesn\'t apply from something other than the Plan\'s list')
   assert.equal(print.includes('not-applicable'), false, 'the cover still names coverage verdicts under Doesn\'t apply')
+})
+
+test('a floor step the person set aside prints once, under Doesn\'t apply, never in full under the floor\'s group', () => {
+  // Latent: no fixture offers Doesn't apply on a floor step, but a mapping that
+  // says so printed Protect Sign-in Method Registration in full under
+  // "Microsoft recommended, not in this baseline" and again in the cover's
+  // Doesn't apply list.
+  const ID = 's-goal-register-info-protected'
+  const p = plan('midflight', { stage: 'foundation', over: (f) => ({ ...f, mapping: { ...f.mapping, notApplicable: { ...f.mapping.notApplicable, [ID]: 'Not needed for this tenant' } } }) })
+  const s = byId(p.steps, ID)
+  assert.equal(s.floor, true, 'the premise: a floor step')
+  assert.ok(s.doesntApply, 'the premise: the person said it does not apply')
+  assert.ok(doesntApplyLinesOf(p.steps).some((l) => l.startsWith(contentTitle(s))), 'the premise: the cover lists it under Doesn\'t apply')
+  assert.equal(floorRows(p.steps).some((x) => x.id === ID), false, 'the floor\'s group prints a step the cover lists under Doesn\'t apply')
 })
 
 // ---- Deferred: every deferred step once, in the Deferred list ----
