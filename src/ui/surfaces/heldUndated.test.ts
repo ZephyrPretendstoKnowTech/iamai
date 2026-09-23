@@ -29,7 +29,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { engine, schedulingWords, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars } from '../../content/render.ts'
-import { boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
@@ -474,4 +474,38 @@ test('a device line names no MFA day where Require MFA for Everyone has none, an
   for (const key of ['mfaEnforce', 'mfaEnforceLong', 'enrollBy', 'enrolWindowDays', 'passkeyEnforceLong']) assert.equal(ex[key], undefined, `the held campaign keeps {${key}}: ${ex[key]}`)
   undated(ex.deviceSentence, 'the held campaign\'s device sentence')
   undated(ex.deviceIntro, 'the held campaign\'s device list lead')
+})
+
+// ee78bfeb made every On Hold row read no day, whatever waits the roadmap
+// records on the step itself: the hold rule had asked for `step.blockedBy` to be
+// empty too, so a row the lane engine filed On Hold behind something, with a
+// wait of the roadmap's own and a day that is no turn-on, kept its day on the
+// board, the rail, the Dates line and the calendar. No fixture has such a row
+// (a turn-on day is caught by the Up Next rule too), so it is forged: a create
+// sequenced on Up Next behind two waits, read On Hold, not Observing.
+test('an On Hold row, not Observing, carries no day whatever waits the roadmap records on the step itself', () => {
+  const f = fixture('mid')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const step = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
+  const read = laneViewFor(step, board)
+  const where = `mid/${step.id}`
+  // The premise: a create with a day, sequenced behind waits the roadmap records on it, and not held on the board.
+  assert.ok(step.blockedBy.length > 0, `${where}: the premise, the roadmap records a wait on it`)
+  assert.equal(scheduleOf(step).transition, 'createReportOnly', `${where}: the premise, its day is a create, not a turn-on`)
+  const day = absoluteDate(scheduleOf(step).at!)
+  assert.equal(boardWhenOf(step, waveStartOf(step), read), day, `${where}: the premise, its row reads its day`)
+  // Forged: the lane engine files it On Hold behind the same step, not Observing.
+  const lane = { ...read, lane: 'On Hold' as const, substatus: null }
+  assert.notEqual(lane.tail, BOARD.blockers.evidence, `${where}: the premise, not Observing`)
+  assert.equal(boardWhenOf(step, waveStartOf(step), lane), schedulingWords.waiting, `${where}: the board's When`)
+  assert.equal(boardHolds(step, lane), true, `${where}: the board holds it`)
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+  const body = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
+  assert.equal(body.rail.metric, schedulingWords.waiting, `${where}: rail`)
+  const v = stepExportView(step, ctx, lane)
+  assert.equal(v.dates, null, `${where}: Dates line ${v.dates}`)
+  const ics = buildIcs([step], 'Tenant', 'plan-forged', () => v)
+  assert.equal(ics.includes(`UID:plan-forged-${step.id}@iamai`), false, `${where}: booked in the calendar`)
 })
