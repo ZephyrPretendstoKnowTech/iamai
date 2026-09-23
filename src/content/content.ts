@@ -132,6 +132,11 @@ export type AppWords = {
     unnamedStrength: string
     strengthNotRead: string
     targetsExcept: string
+    guestTypes: Record<string, string>
+    deviceFilterInclude: string
+    deviceFilterExclude: string
+    termsOfUse: string
+    signInEveryTime: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
 }
