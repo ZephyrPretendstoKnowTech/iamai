@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, waveStartOf } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, LANES, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, togglesOf, waveStartOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -445,6 +445,10 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
   counts: ReturnType<typeof focusCounts>
   base: string
 }) {
+  // What the toggles show on this tab: the person's press, else the tab's
+  // default — pressed on All work, where finished work sits in its sections,
+  // and not on a lane tab (planBoard.ts togglesOf).
+  const shows = togglesOf(focus, tab)
   return (
     <section className="plan-controls no-print" aria-label={BOARD.lanesLabel}>
       <div className="view-wrap">
@@ -474,11 +478,11 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
             ))}
           </select>
         </label>
-        <button type="button" className={`focus${focus.showCompleted ? ' active' : ''}`} aria-pressed={focus.showCompleted} onClick={() => onFocus({ ...focus, showCompleted: !focus.showCompleted })}>
+        <button type="button" className={`focus${shows.completed ? ' active' : ''}`} aria-pressed={shows.completed} onClick={() => onFocus({ ...focus, showCompleted: !shows.completed })}>
           {BOARD.showCompleted}
           <span className="count">{counts.complete}</span>
         </button>
-        <button type="button" className={`focus${focus.showDeferred ? ' active' : ''}`} aria-pressed={focus.showDeferred} onClick={() => onFocus({ ...focus, showDeferred: !focus.showDeferred })}>
+        <button type="button" className={`focus${shows.deferred ? ' active' : ''}`} aria-pressed={shows.deferred} onClick={() => onFocus({ ...focus, showDeferred: !shows.deferred })}>
           {BOARD.showDeferred}
           <span className="count">{counts.deferred}</span>
         </button>
@@ -507,7 +511,7 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
 function TabFollowsOpenStep({ open, openTab, tab, onTab, openLane, onFocus }: { open: string | null; openTab: BoardTab | null; tab: BoardTab; onTab: (t: BoardTab) => void; openLane?: string; onFocus: (f: Focus) => void }) {
   useEffect(() => {
     if (open && openTab && openTab !== tab) onTab(openTab)
-    if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed', showDeferred: openLane === 'Deferred' })
+    if (open) onFocus({ ...NO_FOCUS, showCompleted: openLane === 'Completed' ? true : null, showDeferred: openLane === 'Deferred' ? true : null })
     // Only when the opened step changes: choosing another tab afterwards is the person's.
   }, [open, openTab, openLane])
   return null

@@ -787,11 +787,25 @@ export type Focus = {
   search: string
   /** Work type as a filter, never a lane: null shows every kind. */
   workType: WorkType | null
-  showCompleted: boolean
-  showDeferred: boolean
+  /** Show completed as the person pressed it; null until they do, which is the tab's own default (togglesOf). */
+  showCompleted: boolean | null
+  /** Show deferred, the same way. */
+  showDeferred: boolean | null
 }
 
-export const NO_FOCUS: Focus = { search: '', workType: null, showCompleted: false, showDeferred: false }
+export const NO_FOCUS: Focus = { search: '', workType: null, showCompleted: null, showDeferred: null }
+
+/**
+ * Whether the two toggles show their work on a tab: the person's press where
+ * there is one, else the tab's default. All work shows finished work in its
+ * sections, compactly, until a toggle is turned off; a lane tab hides it until
+ * one is pressed, and then draws it after the panel (owner, roadmap flow V2:
+ * the toggles stay, and keep their behaviour on the lane tabs).
+ */
+export function togglesOf(f: Focus, tab: BoardTab): { completed: boolean; deferred: boolean } {
+  const byDefault = tab === ALL_WORK_TAB
+  return { completed: f.showCompleted ?? byDefault, deferred: f.showDeferred ?? byDefault }
+}
 
 /** True when any focus control is on, which is what an empty board has to explain. */
 export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.workType !== null
@@ -801,18 +815,19 @@ export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.wo
  *
  * Order is never touched: this filters and nothing else, so a step's place in
  * its lane is the engine's sequence whatever is typed in the search box.
- * Completed and Deferred work are hidden unless their toggle is on — a
- * visibility control and not a state change; the rows it reveals are the same
- * rows, with the same words, opening the same step.
+ * Completed and Deferred work are shown only while their toggle is on
+ * (togglesOf: on by default on All work, off on a lane tab) — a visibility
+ * control and not a state change; the rows it reveals are the same rows, with
+ * the same words, opening the same step.
  */
 export function applyFocus(items: readonly BoardItem[], tab: BoardTab, f: Focus): BoardItem[] {
   const q = f.search.trim().toLowerCase()
+  const shows = togglesOf(f, tab)
   return items.filter((i) => {
-    // The fourth tab is not a lane, so neither the lane nor the two toggles
-    // filter it: it draws its groups whole and the search and the work type are
-    // the only controls left over it.
-    const own = tab === ALL_WORK_TAB ? tab : TAB_OF[i.lane]
-    if (own === null ? !(i.lane === 'Completed' ? f.showCompleted : f.showDeferred) : own !== tab) return false
+    // All work is not a lane, so no lane filters it: it draws its sections
+    // whole. A lane tab keeps its own lane.
+    const own = TAB_OF[i.lane]
+    if (own === null ? !(i.lane === 'Completed' ? shows.completed : shows.deferred) : tab !== ALL_WORK_TAB && own !== tab) return false
     if (f.workType !== null && i.workType !== f.workType) return false
     if (q !== '' && !i.title.toLowerCase().includes(q)) return false
     return true
