@@ -291,6 +291,29 @@ test('6.3’s Completion Criteria: the location task’s lines, the answer it as
   assert.deepEqual(stepContract(geo, ctx).doneWhen, [CONTRACT.doneSetAside])
 })
 
+test('6.3’s countries picker keeps the Direction question’s words: its label, and the countries the scan saw under it', async () => {
+  const { directionWords } = await import('../../content/content.ts')
+  const Q = directionWords.questions as unknown as Record<string, { label?: string; seen?: string } | undefined>
+  // Restored word for word where Direction asked them (moved, not removed).
+  assert.deepEqual(Q.workCountries, { label: 'Work countries', seen: 'Sign-ins in the last 30 days came from {countries}.' })
+  const { body } = await geoOnBoard()
+  assert.equal(body.taskDecision?.d.label, 'Work Countries', 'the premise: the picker still saves under its own label')
+  assert.equal(body.taskDecision?.d.heading, 'Work countries', 'the picker is not headed by the question')
+  assert.equal(body.taskDecision?.d.text, 'Sign-ins in the last 30 days came from AU.', 'the countries the scan saw are not under the picker')
+  // Where the scan saw no country, no line.
+  const f = withFoundationSettled(curatedFixture('getiamai'))
+  const blind = { ...f, snapshot: { ...f.snapshot, evidenceAggregates: { ...f.snapshot.evidenceAggregates!, byCountry: {} } } }
+  const r = runFixture(blind)
+  const geo = geoOf(r.steps)
+  const ctx: StepVarContext = { snapshot: blind.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+  const unseen = stepBodyOf(geo, ctx).taskDecision?.d
+  assert.equal(unseen?.heading, 'Work countries')
+  assert.equal(unseen?.text, undefined, `a seen line with nothing seen: ${unseen?.text}`)
+  // The one picker draws the heading and the line (ContentStep.tsx Decision).
+  const content = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.ok(content.includes('{d.heading ?? d.label}</h5>') && content.includes("typeof d.text === 'string' && <p className=\"reason\"><T s={d.text} ex={ex} /></p>"), 'the picker does not draw its heading and line')
+})
+
 test('the countries location package is folded into the countries block package, tasks first, and compiles to the same two packages', () => {
   const dir = 'docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction'
   assert.equal(existsSync('docs/implementation-content/s-prereq-allowed-countries'), false, 'the location still has a package folder of its own')
