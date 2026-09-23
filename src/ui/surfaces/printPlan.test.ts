@@ -585,8 +585,7 @@ test('the printed plan prints the board\'s sections, in the board\'s order, unde
     assert.deepEqual(printed.map((s) => s.key), expected, `${name}: the printed sections are not the board's, in its order`)
     assert.deepEqual(printed.map((s) => s.number), expected.map((_, i) => i + 1), `${name}: the sections are not numbered 1 to n in the board's order`)
     // Each under the heading and the line the board's All work draws it with.
-    const { active, completed } = allWorkGroups(items, { completed: true, open: null })
-    for (const g of [...active, ...completed]) {
+    for (const g of allWorkGroups(items, items)) {
       const s = printed.find((x) => x.key === groupKeyOf(g))
       assert.ok(s, `${name}: the board draws ${g.label} and the print does not`)
       assert.equal(s.title, g.label, `${name}: the print titles ${s.key} otherwise than the board`)
@@ -647,8 +646,8 @@ test('a finished section prints as one line: its number, the board\'s finished t
   const direction = printed.find((s) => s.key === DIRECTION_GROUP)
   assert.ok(direction && direction.rows.every((r) => r.lane.lane === 'Completed'), 'the premise: every Direction step is Completed')
   const items = p.board.rows.map((r) => r.item)
-  const g = allWorkGroups(items, { completed: true, open: null }).completed.find((x) => groupKeyOf(x) === DIRECTION_GROUP)
-  assert.ok(g, 'the premise: the board reads the section finished')
+  const g = allWorkGroups(items, items).find((x) => groupKeyOf(x) === DIRECTION_GROUP)
+  assert.ok(g?.closed, 'the premise: the board reads the section finished')
   assert.equal(direction.finished, true, 'the print reads a finished section as open')
   assert.equal(direction.line, `${g.label} · ${groupSummary(g)}`, 'the finished section\'s line is not the board\'s title and summary')
   assert.match(direction.line ?? '', /completed/, `the line says nothing of the section being done: ${direction.line}`)
