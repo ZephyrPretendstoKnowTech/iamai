@@ -355,7 +355,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     // preparationLines).
     //
     // `missing-object` renders the same procedure on twenty-four steps and is
-    // right to where the policy genuinely is not in the tenant yet.
+    // right to where the policy genuinely is not in the tenant yet. Where the
+    // step's policy is there and Off, it rendered the create beside it; it
+    // hands over the Report-only procedure too (operations.ts toReportOnly).
     //
     // What it keeps instead says the one change, the same on every channel: set
     // each policy that is Off to Report-only, never straight to On (owner,

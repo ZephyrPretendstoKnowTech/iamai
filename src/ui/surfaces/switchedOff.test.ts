@@ -297,3 +297,40 @@ test('a pair reverted Off after it was enforced goes back to Report-only', () =>
   assert.deepEqual(offOf(scan.run.steps.find((s) => s.id === GUESTS)!).map((p) => p.id), [PAIR_IDS[0]], 'the premise: one member is Off')
   assertReportOnlyEverywhere(scan, GUESTS, 'reverted pair')
 })
+
+test('a policy found Off on a step waiting on a missing object is set to Report-only, and never built a second time', () => {
+  // messy: the step's policies name an exclusions group the tenant does not
+  // have yet, a reason that holds the step before its policy being Off does.
+  // The create procedure ("Policies → New policy") stood below it on the
+  // screen and in AI Info, beside the policy that is there.
+  const ID = 's-goal-block-legacy-auth'
+  const scan = later(ID, 'disabled', structuredClone(fixture('messy')))
+  assertReportOnlyEverywhere(scan, ID, 'missing object', 'missing-object')
+})
+
+test('no step with a tracked policy Off builds a second one or turns one on, in any channel', () => {
+  // Every tracked policy switched Off at once, on tenants with and without the
+  // foundation settled: whatever reason holds each step, none of its channels
+  // creates the policy that is there or switches it straight on.
+  for (const name of ['messy', 'demo-week2', 'midflight'] as const) {
+    for (const f of [structuredClone(fixture(name)), withFoundationSettled(structuredClone(fixture(name)))]) {
+      const first = runFixture(f)
+      const tracked = new Set(first.steps.flatMap((s) => (s.tracking?.members ?? []).map((m) => m.policyId)))
+      const g = structuredClone(f)
+      for (const r of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (tracked.has(r.id as string)) r.state = 'disabled'
+      g.snapshot.asOf = new Date(Date.parse(g.snapshot.asOf) + 7 * 864e5).toISOString()
+      const scan = { f: g, run: runFixture(g, {}, observationsOf(first.steps, undefined), g.snapshot.asOf) }
+      let seen = 0
+      for (const step of scan.run.steps) {
+        if (step.status === 'done' || offOf(step).length === 0) continue
+        seen++
+        const { body } = drawn(scan, step.id)
+        for (const a of body.artifacts) {
+          assert.doesNotMatch(a.text(), CREATE, `${name} ${step.id} (${unavailableReason(step)}): ${a.id} builds a second policy: ${a.text().match(CREATE)?.[0]}`)
+          assert.doesNotMatch(a.text(), TURN_ON, `${name} ${step.id} (${unavailableReason(step)}): ${a.id} turns the policy on: ${a.text().match(TURN_ON)?.[0]}`)
+        }
+      }
+      assert.ok(seen > 0, `${name}: the premise: a step tracks a policy that is now Off`)
+    }
+  }
+})
