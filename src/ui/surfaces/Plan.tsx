@@ -15,7 +15,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
-import { app, engine, pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
@@ -177,7 +177,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // withdrawn the schedule's own chain no longer measures the estimate the tile
   // shows, so the tip reads the estimate's reason instead.
   const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
-  const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
+  // A held plan with no estimate (roadmap/forecast.ts: the rollout placed none of
+  // the held work) has nothing to explain: no tip, never "Nothing is left to schedule."
+  const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : undefined) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
   // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
   const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
 
