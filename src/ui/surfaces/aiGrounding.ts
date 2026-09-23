@@ -41,7 +41,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { stepExportView } from './stepExport.ts'
 import { CONTRACT } from './stepContract.ts'
 import { enforcedUnwatched } from './doneWhen.ts'
-import type { LaneView, StepContract } from './stepContract.ts'
+import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
 import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { incompleteFieldsOf, plannedOperationsOf, policyBodiesOfChannel } from './stepPackage.ts'
@@ -63,6 +63,8 @@ export type GroundingInput = {
   bindings: Record<string, unknown> | null
   /** The JSON channel the step's package projects (or previews) for its state, or null: the request the briefing describes. */
   json?: (Pick<ChannelArtifact, 'text' | 'requests'> & { preview: boolean }) | null
+  /** Where a readiness route's chain starts on the board (planBoard.ts prerequisiteLabelFor), so What remains states the Threshold card's sentence (R4-33). */
+  startOf?: PrerequisiteLabel['startOf']
 }
 
 type AiFactWords = typeof CONTRACT.implementation.aiFacts & {
@@ -128,7 +130,7 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   }
   const labelled = (label: string, items: readonly string[]): string[] => (items.length === 0 ? [] : items.length === 1 ? [`${label}: ${items[0]}`] : [`${label}:`, ...items.map((x) => `- ${x}`)])
   const c = i.contract
-  const view = stepExportView(i.step, i.ctx, i.lane)
+  const view = stepExportView(i.step, i.ctx, i.lane, i.startOf)
 
   // Intended result, first, so What remains does not repeat the settings it states.
   const selected = i.json ? policyBodiesOfChannel(i.json, i.json.preview) : null

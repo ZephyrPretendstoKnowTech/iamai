@@ -559,7 +559,8 @@ test('the turn-on waits the cards state before the create are in the exports and
     // One list: the cards are the contract's waits, card for card.
     assert.deepEqual(cards.map((t) => t.note), c.enforcementWaits.map((w) => w.text), `${f.name}: the cards and the contract disagree`)
     const view = stepExportView(step, ctx, lane)
-    assert.deepEqual(view.beforeTurnOn, c.enforcementWaits.map((w) => w.text), `${f.name}: the export view drops the turn-on waits`)
+    // Every wait the cards state, and the Threshold card's sentence beside them (Phase 2 export finding 7).
+    for (const w of c.enforcementWaits) assert.ok(view.beforeTurnOn.includes(w.text), `${f.name}: the export view drops the turn-on wait "${w.text}"`)
     assert.equal(view.fix.some((l) => /Temporary Access Pass/.test(l)), false, `${f.name}: the pass is a fix before the create in the export`)
     const lines = stepArtifactLines(view)
     const turnOn = lines.find((l) => l.startsWith(`${T.beforeTurnOn}: `))

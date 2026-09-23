@@ -16,7 +16,8 @@ import { app, pages } from '../../content/content.ts'
 import { planFinish, planLengthSentence } from '../../derive/finish.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { boardReadingsOf, laneViewFor, laneViewOf } from './planBoard.ts'
+import { boardReadingsOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
@@ -26,6 +27,8 @@ import type { StepVarContext } from './stepVars.ts'
 
 /** The Plan rail's words for a scheduled day (pages.app.plan.stepContract.railTransition). */
 const RAIL = (app.plan as unknown as { stepContract: { railTransition: Record<string, string> } }).stepContract.railTransition
+/** The Readiness card's label for what holds only the turn-on (pages.app.plan.stepContract.readiness.tiles.beforeTurnOn). */
+const BEFORE_TURN_ON = (app.plan as unknown as { stepContract: { readiness: { tiles: { beforeTurnOn: string } } } }).stepContract.readiness.tiles.beforeTurnOn
 const RAIL_WORDS = Object.entries(RAIL).filter(([k]) => !k.startsWith('$')).map(([, v]) => v)
 
 /** The Export page's reading of one fixture, built the way Export.tsx builds it. */
@@ -171,4 +174,29 @@ test('an export carries the portal channel the opened step draws: the guest pair
   assert.doesNotMatch(json, /"method": "POST"/, 'the premise: the JSON channel only reads')
   assert.doesNotMatch(ai, /creates two guest MFA policies/, 'AI Info describes the create the step withholds')
   assert.doesNotMatch(ai, /Request: POST/, 'AI Info names a request the JSON channel does not make')
+})
+
+// Finding 7 (severity 3). The opened step's Threshold card says what holds the
+// turn-on ("Enforcement waits for MFA readiness to reach 90%; it is 18% today
+// …"), and no export carried it: the calendar, the pack and the bundle read a
+// clean week of report-only as the finish (26 of 29 gated steps). What holds
+// only the turn-on travels under the Before turn-on label (R4-31), in the card's
+// own words, with the route start the board reads (R4-33).
+test('every export carries the Threshold card that holds a step\'s turn-on, word for word, under Before turn-on', () => {
+  let gated = 0
+  for (const name of ['getiamai', 'hostile', 'demo', 'mid'] as FixtureName[]) {
+    const p = exportPage(fixture(name))
+    const prerequisiteLabel = prerequisiteLabelFor(p.board.readings)
+    for (const step of p.r.steps) {
+      const lane = laneViewFor(step, p.board)
+      const body = stepBodyOf(step, p.ctxOf(step), { lane, blockers: readinessBlockersOf(p.board.readings.get(step.id), p.board.titleOf), prerequisiteLabel })
+      const card = body.readiness.tiles.find((t) => t.key === 'gate')
+      if (!card?.note) continue
+      gated++
+      const v = p.view(step)
+      assert.ok(v.beforeTurnOn.includes(card.note), `${name}/${step.id}: the export leaves out the Threshold card "${card.note}"`)
+      assert.ok(stepArtifactLines(v).some((l) => l.startsWith(`${BEFORE_TURN_ON}:`) && l.includes(card.note!)), `${name}/${step.id}: the artifact lines do not carry it under ${BEFORE_TURN_ON}`)
+    }
+  }
+  assert.ok(gated > 0, 'the premise: a Threshold card')
 })
