@@ -36,3 +36,25 @@ test('a section read in part is decided once: what the unread list marks partial
   const inventory = (await import('node:fs')).readFileSync('src/ui/surfaces/inventoryTables.ts', 'utf8')
   assert.doesNotMatch(inventory, /function stateOf|isLicenceGate\(s\.reason\)/)
 })
+
+test('read in full, and not read for a reason other than a licence, are decided here too', async () => {
+  const core = await import('./coreSections.ts')
+  const s = structuredClone(fixture('mid').snapshot)
+  s.config.pimEligibility = { status: 'error', reason: 'Request failed (500)', rows: [] }
+  s.config.roleAssignments = { ...s.config.roleAssignments, status: 'disabled', reason: 'needs Entra ID P2' }
+  s.config.namedLocations = { ...s.config.namedLocations, status: 'partial', reason: 'Request failed (500) on page 2' }
+  s.sources.users = { ...s.sources.users, status: 'partial', reason: 'needs Entra ID P1 or P2' }
+  s.sources.devices = { ...s.sources.devices, status: 'ok', reason: null }
+  delete (s.config as Record<string, unknown>).authStrengths
+  // Not read, and not for a licence: a failure, a refusal, a section the scan lacks.
+  assert.equal(core.notReadDespiteLicence(s, 'pimEligibility'), true)
+  assert.equal(core.notReadDespiteLicence(s, 'authStrengths'), true)
+  assert.equal(core.notReadDespiteLicence(s, 'roleAssignments'), false, 'a licence gate')
+  assert.equal(core.notReadDespiteLicence(s, 'namedLocations'), false, 'read in part is read')
+  // Read in full: ok, and nothing else.
+  assert.equal(core.readInFull(s, 'devices'), true)
+  for (const key of ['namedLocations', 'users', 'pimEligibility', 'roleAssignments', 'authStrengths'] as const) assert.equal(core.readInFull(s, key), false, key)
+  // The Inventory asks these, and tests no status or licence itself.
+  const inventory = (await import('node:fs')).readFileSync('src/ui/surfaces/inventoryTables.ts', 'utf8')
+  assert.doesNotMatch(inventory, /isLicenceGate\(|status [!=]== 'ok'/)
+})
