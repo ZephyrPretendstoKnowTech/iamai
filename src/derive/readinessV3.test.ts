@@ -149,8 +149,8 @@ test('setup checks read the tenant: phones without the Authenticator models fail
   assert.ok(joined, 'the demo has a joined Windows computer')
   const notSeen = tenantSetupChecks(snap, unseen).find((c) => c.key === 'windowsHello')!
   assert.deepEqual([notSeen.outcome, notSeen.reason, notSeen.affects], ['unknown', 'notSeen', 0])
-  // No joined computer at all: nothing to do.
-  const none = { ...unseen, rows: unseen.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.filter((d) => d.os !== 'Windows') } } : r)) }
+  // No joined computer at all, the device directory's answer read in full: nothing to do.
+  const none = { ...unseen, context: { ...unseen.context, windowsDirectory: 'none' as const }, rows: unseen.rows.map((r) => (r.readiness ? { ...r, readiness: { ...r.readiness, devices: r.readiness.devices.filter((d) => d.os !== 'Windows') } } : r)) }
   assert.equal(tenantSetupChecks(snap, none).find((c) => c.key === 'windowsHello')!.reason, 'noJoined')
 })
 

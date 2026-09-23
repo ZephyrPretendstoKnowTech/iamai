@@ -68,12 +68,17 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   // (owner decision, 2026-09-18: no Intune permission): somebody signing in with it on
   // a Windows computer proves it is switched on here; joined computers where nobody
   // does are a thing to confirm, never a failure; no joined computer, nothing to do.
+  // "No joined computer" is the device directory's answer, read in full: a joined
+  // computer is always in it. A directory not read, or sign-in records not read
+  // where it holds joined ones, leaves the check unknown, never done.
   const devices = rows.filter((r) => r.state !== null).flatMap((r) => r.readiness?.devices ?? [])
   const seen = devices.some((d) => d.os === 'Windows' && d.proof?.cls === 'windowsHello')
-  const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid'))
+  const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid')) || ctx.windowsDirectory === 'joined'
+  const noneJoined = ctx.windowsDirectory === 'none' || ctx.windowsDirectory === 'notJoined'
   if (seen) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'seen' })
-  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'notSeen' })
-  else checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
+  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: ctx.signInsRead ? 'notSeen' : 'unread' })
+  else if (noneJoined) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
+  else checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'unread' })
   // 5. Temporary Access Pass, for somebody with no method at all.
   const tap = methodConfig(snapshot, 'temporaryaccesspass')
   const tapOutcome: SetupOutcome = !tap.read ? 'unknown' : tap.state === 'enabled' ? 'pass' : 'fail'
