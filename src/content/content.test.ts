@@ -292,6 +292,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // workload step, and a step that is planned holds on the unknown identity.
   '.pages.plan.blocked.workloadIdentityUnknown',
   '.pages.plan.blocked.workloadIdentityUnsupported',
+  // A policy held on an authentication context another tenant policy already
+  // targets (roadmap/authContext.ts, R4-18 review): no policy of the example
+  // tenant targets an authentication context.
+  '.pages.plan.blocked.authContextInUse',
   // The line an update draws when it takes a tenant exclusion off the policy (review 3
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',

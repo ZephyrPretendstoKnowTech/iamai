@@ -923,7 +923,9 @@
         "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
         "passkeyPartialRead": "until every passkey setting the change needs can be read",
         "workloadIdentityUnknown": "until the sync identity is confirmed as supported",
-        "workloadIdentityUnsupported": "until a supported identity performs this synchronization"
+        "workloadIdentityUnsupported": "until a supported identity performs this synchronization",
+        "$commentAuthContextInUse": "A policy step whose policy would target an authentication context another of the tenant's policies already targets (roadmap/authContext.ts contextsTakenElsewhere; the blocker auth-context-in-use). It follows \"Blocked · \" on the Plan row and is the note under the Readiness heading blockedSubject.auth-context-in-use. IAMAI reads no authentication contexts and chooses no other context ID, so the step holds while the scan finds the other policy (R4-18 review).",
+        "authContextInUse": "while another policy targets authentication context {context}"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",
@@ -957,6 +959,7 @@
         "unverified-exclusion": "Excluded group",
         "inforcer-application": "Inforcer application",
         "workload-identity-support": "Sync identity",
+        "auth-context-in-use": "Authentication context",
         "baseline-conflict": "Baseline definition"
       }
     },

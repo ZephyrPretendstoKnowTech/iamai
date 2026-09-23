@@ -100,19 +100,36 @@ test('the create names the authentication context the plan targets, the ID its o
 // package's words — create or update it with this name, publish it, point the
 // new policy at it — would put everything that already requests it behind this
 // policy's grant. IAMAI does not pick another ID for the reader either.
-test('a context another of the tenant policies already targets is not bound as this plan’s', () => {
-  const f = pinnedMid((t) => {
+//
+// R4-18 review: that was done by leaving the ID unbound, and the create still
+// read Ready · Create / Ready now, over a procedure whose first instruction was
+// "Create or update … `‹authentication context ID›` … Do not choose a different
+// context ID", with no Readiness tile saying why. The premise of this test
+// changes: the step holds on the tenant fact (roadmap/authContext.ts) and
+// Readiness says which context; the planned work names the context it targets.
+const sharedContext = (): Fixture =>
+  pinnedMid((t) => {
     const rows = t.snapshot.config.caPolicies.rows as Record<string, unknown>[]
-    rows.push({ id: '5d1b7f0e-6c2a-4f7e-9d3b-2a8c4e6f1b90', displayName: 'Sensitive sites need a compliant device', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeAuthenticationContextClassReferences: ['c1'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } })
+    rows.push({ id: '5d1b7f0e-6c2a-4f7e-9d3b-2a8c4e6f1b90', displayName: 'Sensitive sites need a compliant device', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeAuthenticationContextClassReferences: ['C1'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } })
   })
-  const { step, body, ctx } = pimOn(f)
+test('a context another of the tenant’s policies already targets holds the create, and Readiness says why', () => {
+  const { step, body, ctx } = pimOn(sharedContext())
   const sent = (plannedOperationsOf(step)[0]?.body as { conditions?: { applications?: { includeAuthenticationContextClassReferences?: string[] } } } | undefined)?.conditions?.applications?.includeAuthenticationContextClassReferences
   assert.deepEqual(sent, ['c1'], 'the premise: the plan still targets c1, and the other policy is not the step’s own')
   assert.notEqual(step.tracking?.policyId, '5d1b7f0e-6c2a-4f7e-9d3b-2a8c4e6f1b90')
+  // Not a Ready row.
+  assert.equal(body.laneView.lane, 'On Hold', `${body.laneView.lane} · ${body.laneView.substatus}`)
+  assert.notEqual(body.readiness.bar.key, 'create')
+  assert.notEqual(body.readiness.bar.main, 'Ready now')
+  // Readiness says what holds it, and which context.
+  const held = body.allTiles.find((t) => t.value === 'Authentication context')
+  assert.ok(held, body.allTiles.map((t) => `${t.label} · ${t.value}`).join('\n'))
+  assert.equal(held.note, 'while another policy targets authentication context c1')
+  assert.equal(held.tone, 'warn')
+  // The planned work names the context it would use, and no stand-in.
   const bindings = packageBindings(step, ctx, body.contract)
-  assert.equal(bindings['authContext.target.id'], undefined)
-  assert.equal(bindings['authContext.target.displayName'], undefined)
-  assert.doesNotMatch(channelText(body, 'portal'), /`c1`/)
+  assert.equal(bindings['authContext.target.id'], 'c1')
+  for (const id of ['portal', 'ps', 'json']) assert.doesNotMatch(channelText(body, id), /‹[^›]+›/, id)
 })
 
 test('the authentication-context correction is selected only when IAMAI knows the context is unpublished, and never from a fact it does not read', () => {
@@ -295,6 +312,7 @@ test('a tenant’s own activation policy is named by the context ID it targets, 
 test('no PIM state on the pinned baseline draws a ‹…› stand-in into the portal, the script or the request', () => {
   const states: [string, Fixture][] = [
     ['create', pinnedMid()],
+    ['create, on a context another policy targets', sharedContext()],
     ['report-only, the plan’s own', reportOnlyOn('c1', false)],
     ['report-only, the tenant’s own', reportOnlyOn('c7', true)],
     ['enforced, the plan’s own', pimEnforced()],

@@ -719,23 +719,6 @@ export function incompleteFieldsOf(step: Step, op: PolicyOperation | null): Read
 export const touches = (open: ReadonlySet<string>, field: string): boolean => [...open].some((f) => f === field || f.startsWith(`${field}.`) || field.startsWith(`${f}.`))
 
 /**
- * Whether a Conditional Access policy the scan read, other than the ones this
- * step owns or changes, already targets the authentication context: a context
- * the tenant uses for something the plan did not make. IAMAI reads no
- * authentication contexts, so another policy's target is the one evidence it has
- * that the context is taken. Any state counts — a disabled policy still names it.
- */
-function contextUsedElsewhere(step: Step, op: PolicyOperation | null, snapshot: TenantSnapshot | null, contextId: string): boolean {
-  const own = new Set([op?.mode === 'update' ? op.policyId : null, step.tracking?.policyId ?? null, ...(step.tracking?.members ?? []).map((m) => m.policyId)].filter((id): id is string => typeof id === 'string').map((id) => id.toLowerCase()))
-  const want = contextId.toLowerCase()
-  return ((snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).some((row) => {
-    if (typeof row.id === 'string' && own.has(row.id.toLowerCase())) return false
-    const refs = ((row.conditions as { applications?: { includeAuthenticationContextClassReferences?: unknown } } | undefined)?.applications?.includeAuthenticationContextClassReferences)
-    return Array.isArray(refs) && refs.some((r) => String(r).toLowerCase() === want)
-  })
-}
-
-/**
  * Whether the tenant policy a step works on carries this plan's own tag for the
  * step — the policy the plan's create built — read the way the engine reads a tag
  * (roadmap/generate.ts findTaggedPolicies). An update names its plan by the tag
@@ -921,14 +904,16 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // drew the create with the ID glossed as "the ID of that context in
   // Conditional Access → Authentication context" on a Ready · Create row (R4-18).
   // One context, the target's own: the ID the operation sends is the ID every
-  // channel names, and the name is IAMAI's proposal for the context the package
-  // asks the reader to create or update and publish — never a reading of the
-  // tenant, which IAMAI does not read contexts from.
+  // channel names.
   //
-  // Not where another of the tenant's policies already targets that context: the
-  // context is then in use for something this plan did not make, and "create or
-  // update it with this name, and publish it" would repoint whatever already
-  // requests it at this policy's grant. The ID stays unresolved there.
+  // Whether the step may put its policy on that context is not decided here.
+  // Where another of the tenant's policies already targets it, the engine holds
+  // the step on that fact (roadmap/authContext.ts, blocker auth-context-in-use)
+  // and Readiness says so. This used to leave the ID unbound instead, which kept
+  // the create on a Ready · Create / Ready now row and drew its ‹authentication
+  // context ID› stand-in into the procedure: "Create or update … `‹authentication
+  // context ID›` … Do not choose a different context ID" (R4-18 review). The
+  // planned work still names the context it would use, under the hold.
   //
   // An enforced policy awaiting only the person's workflow record carries no
   // operation: the policy IAMAI matched to the step is the delivered target
@@ -951,7 +936,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const tracked = op === null && awaitsWorkflowRecord(step) ? (step.tracking?.policyId?.toLowerCase() ?? null) : null
   const delivered = tracked === null ? undefined : ((ctx.snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((row) => typeof row.id === 'string' && row.id.toLowerCase() === tracked)
   const contexts = ((op !== null ? settled('conditions.applications')?.conditions : delivered?.conditions) as Apps | undefined)?.applications?.includeAuthenticationContextClassReferences
-  if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string' && !contextUsedElsewhere(step, op, ctx.snapshot, contexts[0])) {
+  if (Array.isArray(contexts) && contexts.length === 1 && typeof contexts[0] === 'string') {
     put('authContext.target.id', contexts[0])
     const authority = (declared?.baselineAuthority ?? {}) as { authenticationContextSourceId?: unknown; authenticationContextDisplayName?: unknown }
     const ownContext = typeof authority.authenticationContextSourceId === 'string' && authority.authenticationContextSourceId.toLowerCase() === contexts[0].toLowerCase()

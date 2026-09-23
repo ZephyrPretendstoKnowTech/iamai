@@ -19,6 +19,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, readinessFamilyOf, readinessMeasure } from '../copy/reasons.ts'
+import { AUTH_CONTEXT_IN_USE, contextsTakenElsewhere } from './authContext.ts'
 import { EMERGENCY_ACCOUNT_RULES, emergencyAccountStanding, emergencyAccountStandingForStep, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
@@ -2193,6 +2194,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (opVerdict?.stranded && !state.satisfied) {
       blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
       state = { ...state, condition: conditionFor(blockers) }
+    }
+    // A policy the plan would put on an authentication context another of the
+    // tenant's policies already targets (roadmap/authContext.ts). The PIM create
+    // read Ready · Create / Ready now over a procedure that could not be done:
+    // its context ID was left out, and its first instruction was to create a
+    // context that is already there. It is a tenant fact, and the step holds on
+    // it until the scan no longer finds it (R4-18 review).
+    if (!state.satisfied) {
+      const taken = contextsTakenElsewhere(action.resolution?.policies ?? [], snapshot.config.caPolicies?.rows ?? [], findTaggedPolicies(snapshot, planId, stepId).map((t) => t.policyId))
+      if (taken.length > 0) {
+        blockers.push({ kind: 'evidence', label: AUTH_CONTEXT_IN_USE, binding: BLOCKED_REASON.authContextInUse(taken.join(', ')), unverified: true })
+        state = { ...state, condition: conditionFor(blockers) }
+      }
     }
 
     if (!readyActiveCache.has(whoKey))
