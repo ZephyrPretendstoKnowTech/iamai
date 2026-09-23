@@ -877,6 +877,13 @@ export type ExportStep = {
   dates: string | null
   /** Whether Foundation A hands over an implementation today: the same answer the JSON, the PowerShell and the download read. */
   implementation: boolean
+  /**
+   * The board holds the step (ui/surfaces/planBoard.ts boardHolds): its row
+   * reads "After prerequisites", so no artifact dates it — no Dates line, no
+   * Next line, no calendar entry, no enforcement instant in the bundle (owner
+   * decision 2, 2026-09-22).
+   */
+  undated: boolean
 }
 export type StepView = (step: Step) => ExportStep
 

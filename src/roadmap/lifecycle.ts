@@ -306,6 +306,24 @@ export function workflowReviewIsCurrent(step: Step): boolean {
   return awaitsWorkflowRecord(step) && !(step.unsavedInputs?.length)
 }
 
+/**
+ * A milestone with no day in it, for a step the board holds (the caller's
+ * reading: ui/surfaces/planBoard.ts boardHolds; owner decision 2, 2026-09-22 —
+ * a held step carries no date anywhere). The day goes, and so does a sentence
+ * built around it: a window still being watched keeps its words without the
+ * review day, and any other dated sentence — "Create the policy in report-only
+ * on Sep 1", "The plan turns it on on Sep 21, which leaves the 5 working days
+ * of notice" — is a day and a notice claim on a step whose row reads "After
+ * prerequisites", so what stands is the wait itself. A milestone that names no
+ * day keeps its words.
+ */
+export function undatedMilestone(m: Milestone): Milestone {
+  if (m.at === null) return m
+  if (!m.label.includes(absoluteDate(m.at))) return { ...m, at: null }
+  if (m.kind === 'observe') return { ...m, label: MILESTONE.observe, at: null }
+  return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: m.gatedBy }
+}
+
 export function nextMilestone(step: Step): Milestone {
   const s = step.state
   if (s.setAside) return { kind: 'none', label: MILESTONE.setAside, at: null, gatedBy: step.skipReason }

@@ -567,10 +567,14 @@ test('013.H: an unanswered decision leaves the work it holds in the printed plan
 test('013.H: the document reads the Plan’s row rule and writes none of its own', () => {
   const src = readFileSync(new URL('./PrintPlan.tsx', import.meta.url), 'utf8')
   assert.match(src, /import \{[^}]*\bfloorRows\b[^}]*\} from '\.\/planRows\.ts'/, 'the print derives its own group')
-  assert.match(src, /undatedRows\(steps, phaseList\)/, 'the print does not read the undated group')
+  // The undated group and the phases both read the board's hold (planBoard.ts
+  // boardHolds, owner decision 2): a step the board holds prints undated, never
+  // under a phase's dates, and the print decides no hold of its own.
+  assert.match(src, /undatedRows\(steps, phaseList, boardHeld\)/, 'the print does not read the undated group')
   assert.match(src, /planPhases\(schedule\)/, 'the print does not read the Plan’s phases')
   assert.match(src, /floorRows\(steps\)/, 'the print does not decide alone which rows are the floor')
-  assert.match(src, /phaseRows\(steps, w\)/, 'the print decides a numbered phase’s rows itself')
+  assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the print decides a numbered phase’s rows itself')
+  assert.match(src, /const boardHeld = \(s: Step\): boolean => boardHolds\(s, laneOf\(s\.id\)\)/, 'the print decides for itself which steps are held')
   // All three printed step sections — the phases, the undated group and the
   // floor group (task 025) — use the screen's own step body, which is what
   // withholds the implementation, the dates, the announcement and the rollback.
@@ -681,7 +685,10 @@ test('R4-22: a step the board holds behind the drill exports the board\'s lane, 
   assert.equal(c.lane(step).label, 'On Hold', 'the board holds the step behind the drill')
   // c.view is the Export page's own construction (exportViewsOf).
   assert.equal(c.view(step).state, 'On Hold', 'the export states a lane the board does not')
-  assert.equal(calendarEntry(c.run, c.view, step).includes('Up Next'), false, 'the calendar entry says Up Next where the board says On Hold')
+  // The calendar used to carry it under the board's lane. A step the board
+  // holds reads "After prerequisites" and carries no date anywhere (owner
+  // decision 2, 2026-09-22), so the calendar books nothing for it at all.
+  assert.equal(buildIcs(c.run.steps, 'Tenant', c.run.input.planId, c.view).includes(`-${step.id}@iamai`), false, 'a step the board holds is booked into the calendar')
 })
 
 // The validator's severity-4 case (R4-22 challenge): a policy ready to enforce

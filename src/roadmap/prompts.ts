@@ -241,7 +241,9 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
       // `forecast` is the roadmap's projected path and authorises nothing;
       // `committed` is a milestone Foundation B's evidence supports; `unearned`
       // is a policy in report-only that has no enforcement instant to give.
-      enforcement: statedEnforcement(s),
+      // A step the board holds carries no instant (owner decision 2): the basis
+      // stays, the day does not.
+      enforcement: v.undated ? { ...statedEnforcement(s), at: null } : statedEnforcement(s),
       title: v.title,
       why: v.why,
       // The one state label, the lane label the row and the badge show (A1c),
