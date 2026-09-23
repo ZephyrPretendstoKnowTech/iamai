@@ -848,15 +848,8 @@
       },
       "howTo": {
         "link": "How to use this plan",
-        "items": [
-          "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
-          "Ready: You can take the next action now.",
-          "Up Next: Complete the linked Ready prerequisites first.",
-          "On Hold: Open the step to see the prerequisite, date or missing evidence it is waiting for.",
-          "Completed: The required outcome has been verified or recorded. New configuration changes can reopen it.",
-          "Deferred: You set the work aside. It does not satisfy another step’s prerequisite."
-        ],
-        "intro": "Start with Ready and open a step to see its findings, instructions and next action. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
+        "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Ready to enforce, never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",
+        "intro": "Start at the top of All work and open a step to see its findings, instructions and next action. Once the first two sections are done, every policy marked Ready · Create can be created in report-only straight away. Turn each one on when its own row reads Ready · Ready to enforce. Save your choices, make the changes in Entra or the service named in the instructions, then scan again to check the result. Record any hands-on test the step asks for. Estimated dates adjust as the plan changes.",
         "legend": [
           {
             "label": "Ready",
@@ -2781,6 +2774,8 @@
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",
+          "$commentCreate": "The view the line above the board opens (pages.app.plan.board.createNow): the policies ready to create in report-only now, in section order. Read after \"Showing\".",
+          "create": "policies ready to create in report-only",
           "filter": "Showing {view}",
           "finishUnknown": "Depends on open work"
         },
@@ -2791,9 +2786,20 @@
           "notAssessed": "Baseline policies"
         },
         "board": {
-          "$comment": "The Plan board's fourth tab and the heading line it draws (src/ui/surfaces/planBoard.ts). The three lane tabs and the two toggles say their words in pages.plan.lanes; these two belong to the tab that shows whole groups instead of one lane.",
+          "$comment": "The Plan board's All work tab and the heading line a section draws there (src/ui/surfaces/planBoard.ts groupSummary). The three lane tabs and the two toggles say their words in pages.plan.lanes; these belong to the tab that shows whole sections instead of one lane.",
           "allWork": "All work",
-          "groupCompleted": "{done} of {total} completed"
+          "$commentGroupCompleted": "A finished section of one row, collapsed in place: \"1 of 1 completed\" rather than \"All 1 completed\".",
+          "groupCompleted": "{done} of {total} completed",
+          "$commentGroupRemaining": "An open section's heading line on All work (owner, roadmap flow V2 decision B): what is left to do, because that is what a person acts on. A Completed or Deferred row is not left to do; {total} is every row the section has.",
+          "groupRemaining": "{remaining} of {total} remaining",
+          "$commentGroupAllCompleted": "A finished section collapses in place to one line, its title and this (owner, roadmap flow V2 decision B). Selecting it opens it.",
+          "groupAllCompleted": "All {total} completed",
+          "$commentGroupFinished": "A section with nothing left to do where some rows were deferred: it collapses like a completed one, and says how much of it was deferred rather than claiming all of it completed.",
+          "groupFinished": "{done} of {total} completed, {deferred} deferred",
+          "$commentCreateNow": "The line above the board (owner, roadmap flow V2 decision H, tried as a visible line): how many policies can be created in report-only today, counted off the board's Ready · Create rows of Conditional Access work, so it never counts a policy the board holds and names none. Drawn only while there are such rows.",
+          "createNow": "{n} policies are ready to create in report-only now.",
+          "$commentCreateNowShow": "The line's control: it shows exactly the policies the line counted (pages.app.plan.summary.create).",
+          "createNowShow": "Show them"
         },
         "groups": {
           "emergencyAccess": {

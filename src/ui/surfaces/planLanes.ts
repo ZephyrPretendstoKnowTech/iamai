@@ -169,7 +169,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       // The emergency gate held a policy's enforcement and never its report-only
       // preparation (A3 B3) — except where the wait is the plan's foundation
       // (roadmap/foundations.ts; owner, 2026-09-19), which holds the step's own
-      // next action, so no policy reads Ready while a pinned group is unsettled.
+      // next action, so no policy reads Ready while Emergency Access or Direction is unsettled.
       const on: Action = policy && GATE.has(b.stepId) && b.label !== FOUNDATION_WAIT ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
@@ -383,8 +383,8 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
-    // promoted back into Ready by any of the readings below: the two pinned
-    // groups come first, and that is the whole of the rule.
+    // promoted back into Ready by any of the readings below: Emergency Access
+    // and Direction come first, and that is the whole of the rule.
     const gated = step.blockers.some((b) => b.label === FOUNDATION_WAIT)
     // Reviewing an unread or unsupported configuration is available now; this
     // does not clear the engine's blockers or enable generated write operations.

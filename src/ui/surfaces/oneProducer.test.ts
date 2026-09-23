@@ -15,7 +15,7 @@ import { applySkips } from '../../roadmap/progress.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { app, shared } from '../../content/content.ts'
-import { BOARD, SUBSTATUS_WORD, WHEN, boardHolds, boardReadingsOf, boardReasonOf, boardWhenOf, doesntApplyView, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, WHEN, allWorkGroups, boardHolds, boardReadingsOf, boardReasonOf, boardWhenOf, doesntApplyView, groupSummary, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import type { BoardItem } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
@@ -196,7 +196,7 @@ const notForbidden = (text: string, message: string): void => assert.equal(forbi
 test('no retired word renders on the Plan or on an opened step: Blocked, Held, Needs attention, Skipped, Set aside', () => {
   // The board's own words first: the lanes, the substatus words, the tabs, the
   // toggles, the group headings, the header tiles and the deferral controls.
-  const board: string[] = [...Object.values(BOARD.lanes), ...Object.values(SUBSTATUS_WORD), ...Object.values(BOARD.blockers), BOARD.showCompleted, BOARD.showDeferred, ...Object.values(BOARD.columns), WHEN.none, ...Object.values(CONTRACT.readiness.bar), CONTRACT.rollout.control, CONTRACT.rollout.title, CONTRACT.rollout.body, (shared as { doesntApplyControl: string }).doesntApplyControl, (app.plan as { putBack: string }).putBack, doesntApplyView().label]
+  const board: string[] = [...Object.values(BOARD.lanes), ...Object.values(SUBSTATUS_WORD), ...Object.values(BOARD.blockers), BOARD.showCompleted, BOARD.showDeferred, BOARD.allWorkTab, BOARD.groupRemaining, BOARD.groupAllCompleted, BOARD.groupCompleted, BOARD.groupFinished, BOARD.createNow, BOARD.createNowShow, ...Object.values(BOARD.columns), WHEN.none, ...Object.values(CONTRACT.readiness.bar), CONTRACT.rollout.control, CONTRACT.rollout.title, CONTRACT.rollout.body, (shared as { doesntApplyControl: string }).doesntApplyControl, (app.plan as { putBack: string }).putBack, doesntApplyView().label]
   const progress = (app as unknown as { plan: Record<string, unknown> }).plan
   void progress
   for (const word of board) notForbidden(word, `the board's own vocabulary says "${word}"`)
@@ -211,6 +211,8 @@ test('no retired word renders on the Plan or on an opened step: Blocked, Held, N
     const ctx = ctxOf(run)
     const { readings, views, items, titleOf } = boardOf(run)
     for (const tab of ['ready', 'upNext', 'onHold'] as const) for (const g of groupsFor(tab, items)) notForbidden(g.label, `${run.name}: a group heading reads "${g.label}"`)
+    // All work, the view the Plan opens on: each section's heading and its one line.
+    for (const g of allWorkGroups(items, items)) for (const text of [g.label, groupSummary(g)]) notForbidden(text, `${run.name}: a section on All work reads "${text}"`)
     for (const step of run.steps) {
       const reading = readings.get(step.id)
       if (!reading) continue

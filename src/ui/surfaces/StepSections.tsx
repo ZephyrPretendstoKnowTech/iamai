@@ -42,7 +42,7 @@ import { autoOpenTiles } from './tileExpansion.ts'
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, number = null, stepId, title, waitingFor = null, who, when, open, onToggle }: {
+export function PlanRow({ lane, tone, chip: fact = null, wave = null, number = null, stepId, title, waitingFor: waiting = null, who, when, open, onToggle, compact = false }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
@@ -73,15 +73,24 @@ export function PlanRow({ lane, tone, chip = null, wave = null, number = null, s
    */
   waitingFor?: string | null
   who: string
-  /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
+  /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. On a compact row, the day it was finished, or empty. */
   when: string
   open: boolean
   onToggle: () => void
+  /**
+   * Finished work, drawn as one quiet line (planBoard.ts drawsCompact): the
+   * number, the lane word, the title and the day where one was recorded. Who it
+   * touches, the tenant chip and the waiting line are for work still to do.
+   */
+  compact?: boolean
 }) {
   // A row is a disclosure: it opens the step under it and closes it again. It
   // says both — that it is a control, and whether the step it controls is open
   // — or a screen reader meets a focusable line of text that promises nothing
   // (task 017). The keyboard behaviour it already had is what the role claims.
+  // A compact row is finished work: it names no tenant fact and waits on nothing.
+  const chip = compact ? null : fact
+  const waitingFor = compact ? null : waiting
   return (
     <div
       className="plan-row"
@@ -90,6 +99,7 @@ export function PlanRow({ lane, tone, chip = null, wave = null, number = null, s
       tabIndex={0}
       data-wave={wave ?? undefined}
       data-step={stepId}
+      data-compact={compact || undefined}
       onClick={onToggle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -116,8 +126,8 @@ export function PlanRow({ lane, tone, chip = null, wave = null, number = null, s
         <span className="step-title">{title}</span>
         {waitingFor && <span className="plan-row-reason">{waitingFor}</span>}
       </span>
-      <span className="who">{who}</span>
-      <span className="when">{when}</span>
+      {!compact && <span className="who">{who}</span>}
+      {(!compact || when !== '') && <span className="when">{when}</span>}
     </div>
   )
 }

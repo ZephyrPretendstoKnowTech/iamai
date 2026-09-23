@@ -45,7 +45,7 @@ import { runFixture, withFoundationSettled } from './run.ts'
 
 /**
  * The corpus's base tenant, with the plan's foundation settled
- * (roadmap/foundations.ts): until both pinned groups are, every policy step is
+ * (roadmap/foundations.ts): until Emergency Access and Direction are, every policy step is
  * held and nothing is deployed, so half the transitions the corpus names have no
  * policy to move. The transitions are about what a re-scan does to a policy, not
  * about that gate.

@@ -406,8 +406,8 @@ test('hostile: every step still produced with readiness marked unknown', () => {
 })
 
 test('getiamai: 2 active people (the emergency accounts are not people) and 9 who never signed in plan in four weeks with no registration window on the critical path', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both pinned
-  // groups are, every policy is held and there is no enforcement to schedule at all.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and Direction
+  // are, every policy is held and there is no enforcement to schedule at all.
   const r = runFixture(withFoundationSettled(byName('getiamai')))
   assert.equal(r.schedule.activeUsers, 2)
   assert.equal(r.schedule.band, 'small')
@@ -422,8 +422,8 @@ test('getiamai: 2 active people (the emergency accounts are not people) and 9 wh
 })
 
 test('owner travels with the plan file; a per-step date no longer moves the schedule (target-state §9)', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both pinned
-  // groups are, every policy is held and no step carries a rollout to move.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and Direction
+  // are, every policy is held and no step carries a rollout to move.
   const f = withFoundationSettled(byName('small'))
   const first = runFixture(f)
   const moved = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!

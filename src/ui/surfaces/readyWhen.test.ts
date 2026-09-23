@@ -154,8 +154,8 @@ test('week one: a policy the scan first sees in report-only is watched from the 
 })
 
 test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is In place', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and the plan dates nothing.
   const f = withFoundationSettled(fixture('demo-week2'))
   const run = runFixture(f)
   const token = run.steps.find((s) => s.id === TOKEN)!
@@ -289,8 +289,8 @@ test('the app\'s demo: final emergency verification holds the turn-on everywhere
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
   assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and the plan dates nothing.
   const run = runFixture(withFoundationSettled({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId }))
   const token = run.steps.find((s) => s.id === TOKEN)!
   // The token policy's window has closed on clean records, and the one change

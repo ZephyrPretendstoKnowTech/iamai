@@ -220,17 +220,27 @@ const settle = async () => {
   }
 }
 /**
- * Reveal the board's completed work.
+ * Reveal the board's completed work on the lane tabs.
  *
  * Finished rows were the Plan footer's first `<details>`: closed, but in the
  * DOM, so every check could read them and `inFooter` decided which to open.
  * They are the board's Complete group now and `Show completed` is their one
- * control, and that control FILTERS (ui/surfaces/planBoard.ts `applyFocus`) —
- * an unpressed board has no completed row in the document at all. A check that
- * reads finished work presses this first, and presses it again after every
- * navigation, because the press is page state and a navigation drops it.
+ * control, and that control FILTERS (ui/surfaces/planBoard.ts `applyFocus`).
+ *
+ * The Plan opens on All work (roadmap flow V2), where both toggles read pressed
+ * by default (planBoard.ts `togglesOf`) and finished rows sit compactly in their
+ * own sections. A lane tab starts with neither pressed, so its Completed and
+ * Deferred groups — the aside after the panel, which `readRows` reads — are not
+ * in the document until a toggle is pressed THERE. Pressing on All work would
+ * press nothing, because both already read pressed. So this moves to a lane tab
+ * first when All work is showing, then presses each toggle that is not pressed;
+ * the press is the focus's and holds on every tab after it. A check that reads
+ * finished work calls this, and again after every navigation, because the press
+ * is page state and a navigation drops it.
  */
 const revealCompleted = async () => {
+  const onLane = await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); return !!t && ${JSON.stringify(LANES)}.includes(((t.textContent || '').replace((t.querySelector('.tab-badge') || {}).textContent || '', '').trim())) })()`)
+  if (!onLane) await showLane(LANES[0])
   // One press at a time: each toggle's handler spreads the focus it rendered
   // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
   for (const word of ['Show completed', 'Show deferred']) {
@@ -239,9 +249,10 @@ const revealCompleted = async () => {
   }
 }
 /**
- * The board draws one lane at a time (S3, ui/surfaces/planBoard.ts): Ready, Up
- * Next and On Hold are tabs, and the Completed and Deferred groups the toggles
- * reveal are drawn under whichever tab is showing. A check that reads every row
+ * The lane tabs draw one lane at a time (S3, ui/surfaces/planBoard.ts): Ready,
+ * Up Next and On Hold are tabs after All work, and the Completed and Deferred
+ * groups the toggles reveal are drawn after whichever lane tab is showing
+ * (revealCompleted presses them there). A check that reads every row
  * reads the three tabs in turn (`readRows`), keeps each row's tab and its index
  * inside that tab, and shows the row's tab again before it opens it.
  */
