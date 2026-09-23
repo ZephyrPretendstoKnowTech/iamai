@@ -70,10 +70,10 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
     consentReads: "People, groups, devices, licences, the tenant's name",
   },
   'AuditLog.Read.All': {
-    reads: 'Interactive sign-in records for the last 30 days, and the report of which sign-in methods each person has registered.',
+    reads: 'Interactive sign-in records and the directory audit log for the last 30 days, and the report of which sign-in methods each person has registered.',
     without: 'No predicted impact and no verification. Steps could still be listed, and none of them could be backed by evidence.',
     consentName: 'Read audit log data',
-    consentReads: 'Sign-in records for the last 30 days',
+    consentReads: 'Sign-in records and the directory audit log for the last 30 days',
   },
   'RoleManagement.Read.Directory': {
     reads: 'Which accounts hold which directory roles, and which roles are assigned through Privileged Identity Management rather than permanently.',

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { GRAPH_SCOPES } from '../graph/scopes.ts'
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import { SCOPE_COPY, SIGN_IN_SCOPES } from '../copy/permissions.ts'
+import { RECOVERY_AUDIT_LOOKBACK_DAYS, recoveryAuditRequest } from '../graph/collect/laneBCore.ts'
 
 test('every scope the app requests is explained in the disclosure', () => {
   const missing = GRAPH_SCOPES.filter((s) => SCOPE_COPY[s] === undefined)
@@ -76,4 +77,24 @@ test('the requested scope set includes the dedicated read-only method-policy per
     'profile',
     'offline_access',
   ])
+})
+
+// Phase 2 audit (F8): AuditLog.Read.All pays for two reads, the sign-in records
+// and 30 days of the directory audit log (graph/collect/laneB.ts, for the
+// automatic recovery checks), and the disclosure named the sign-in records
+// alone: on Connect's consent rows, in How's table and in the collector
+// registry the "Used for" line and How's reads are generated from.
+test('what AuditLog.Read.All reads names the directory audit log beside the sign-in records, for the window the scan reads', () => {
+  const { url } = recoveryAuditRequest('https://graph.microsoft.com/beta', Date.parse('2026-09-23T00:00:00Z'))
+  assert.match(url, /\/auditLogs\/directoryAudits\?/, 'the premise: the scan reads the directory audit log')
+  const copy = SCOPE_COPY['AuditLog.Read.All']
+  for (const said of [copy.reads, copy.consentReads ?? '']) {
+    assert.match(said, /sign-in records/i, said)
+    assert.match(said, /directory audit log/i, `${said} — the directory audit read goes unsaid`)
+    assert.match(said, new RegExp(`last ${RECOVERY_AUDIT_LOOKBACK_DAYS} days`), said)
+  }
+  const audit = COLLECTOR_REGISTRY.find((s) => s.endpoint === '/auditLogs/directoryAudits')
+  assert.ok(audit, 'the registry How and the "Used for" line are generated from lists the directory audit read')
+  assert.deepEqual(audit.scopes, ['AuditLog.Read.All'])
+  assert.equal(audit.lane, 'B', 'it runs with the sign-in records')
 })
