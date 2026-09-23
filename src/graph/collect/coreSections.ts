@@ -107,6 +107,12 @@ export type UnreadSection = {
    * is. A section the scan lacks altogether has no reason, and is not a refusal.
    */
   refused: boolean
+  /**
+   * A read stopped short of its minimum with some hours covered (the sign-in
+   * records, 'insufficient' or an error: readInPart): how many whole hours its
+   * covered window holds. Absent for every other section and state.
+   */
+  coveredHours?: number
 }
 
 /**
@@ -123,11 +129,14 @@ export function readInPart(s: { status: string; coveredWindow?: unknown }): bool
 }
 
 /** One unread section, classified once from the state the scan recorded for it. */
-const unreadOf = (source: string, s: { status: string; reason: string | null; coveredWindow?: unknown }): UnreadSection => ({
-  source,
-  partial: readInPart(s),
-  refused: isPrivilegeDenial(s.reason),
-})
+const unreadOf = (source: string, s: { status: string; reason: string | null; coveredWindow?: { from: string; to: string } | null }): UnreadSection => {
+  const out: UnreadSection = { source, partial: readInPart(s), refused: isPrivilegeDenial(s.reason) }
+  // Stopped short of the minimum with a window: the hours it holds, which the
+  // collector's own stop rule measured the same way (laneBCore.ts: now back to
+  // the oldest record read).
+  if (out.partial && s.status !== 'partial' && s.coveredWindow) out.coveredHours = Math.floor((Date.parse(s.coveredWindow.to) - Date.parse(s.coveredWindow.from)) / 3_600_000)
+  return out
+}
 
 /**
  * Every section the scan did not read in full (a refusal, an error, or a read

@@ -823,6 +823,8 @@ export function renderPages(): string {
         p(cx.scan.gaps.lead, { n: 2 }) +
           p(cx.scan.gaps.leadFirst, { n: 2 }, 'sub') +
           li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Sign-in records · ${esc(cx.scan.gaps.refused)}`) +
+          // Where the sign-in read stopped short of its minimum with some hours read (connectView.ts, the gaps state).
+          p(cx.scan.gaps.shortWindow, { minimum: 24, hours: 9 }, 'sub') +
           // The unread sections a plan can be built without, apart from the ones that stopped it.
           p(cx.scan.gaps.others, { n: 1 }) +
           li(`Named locations · ${esc(cx.scan.gaps.notRead)}`) +

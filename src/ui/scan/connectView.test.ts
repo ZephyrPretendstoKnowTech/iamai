@@ -321,6 +321,15 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.equal(stopped.ask, undefined)
   assert.equal(stopped.learn, undefined)
   assert.deepEqual(stopped.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }], 'another account reads nothing more')
+  // Phase 2 review, round 2: the complete state says a section read in part
+  // still builds a plan, and nothing said why this one did not: the plan needs
+  // 24 hours of sign-in records (constants.ts MIN_COVERAGE_HOURS). The tile
+  // states the hours read against that minimum, a fact and no remedy.
+  assert.equal(stopped.note, 'A plan needs at least 24 hours of sign-in records, and the records IAMAI read cover 9 of them.')
+  assert.ok(tileStrings(stopped).includes(stopped.note ?? ''), 'the tile draws it')
+  const hour = structuredClone(ceiling)
+  hour.sources.signInEvidence = { ...hour.sources.signInEvidence, coveredWindow: { from: '2026-09-07T23:00:00Z', to: '2026-09-08T00:00:00Z' } }
+  assert.equal(scanTile({ kind: 'gaps', gaps: coreGaps(hour), unread: unreadSources(hour), lastScan: null }).note, 'A plan needs at least 24 hours of sign-in records, and the records IAMAI read cover 1 of them.', 'one hour reads as one')
   // Microsoft throttled the read and the retries ran out.
   const throttled = structuredClone(small)
   throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
@@ -328,6 +337,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.deepEqual(busy.rows, [{ name: 'Sign-in records', value: 'not read' }])
   assert.doesNotMatch(said(busy), /this account|Global Reader/)
   assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'primary', does: 'scanAgain' }])
+  assert.equal(busy.note, undefined, 'no hours were read, so none are stated')
   // A refusal is the account's: that row says so, and the ask and the other account stay.
   const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null, readsEverything: false })
   assert.deepEqual(refused.rows, [
