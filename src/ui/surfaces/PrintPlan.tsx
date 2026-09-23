@@ -61,7 +61,7 @@ export function PrintPlan({
   goalMap,
   stepCtx,
   answers = null,
-  tenant = null,
+  tenant,
   decisions = null,
 }: {
   tenantName: string
@@ -90,10 +90,12 @@ export function PrintPlan({
   answers?: { signInMonitoring: boolean | null } | null
   /**
    * The scan's licences, so a tenant IAMAI gives no plan (no Entra ID P1) prints
-   * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine). The
-   * caller passes the scanned snapshot; absent, the document cannot know.
+   * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine): the
+   * scanned snapshot. Required: while it was optional the Export page mounted
+   * the document without it, and micro printed a dated plan with Cleanup
+   * instructions.
    */
-  tenant?: Pick<TenantSnapshot, 'capabilities'> | null
+  tenant: Pick<TenantSnapshot, 'capabilities'>
   /**
    * The plan record's saved step decisions, by step id, as the Plan hands each
    * opened step its own (Plan.tsx `data.stepDecisions`). Absent, a printed

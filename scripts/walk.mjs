@@ -1139,12 +1139,15 @@ async function walkFixture(fx) {
         if (!cover) add('P0', `${label}: Print or save as PDF renders no cover`)
         else {
           const statement = await evaluate(`[...document.querySelectorAll('.print-plan .print-statement')].map((e) => e.textContent).join(' ')`)
+          // Without Entra ID P1 the document is the Plan's one licence sentence and
+          // no plan (printPlan.ts noPlanLine): no count and no Cleanup to check.
+          const licenceOnly = /^Conditional Access needs Entra ID P1/.test(statement.trim())
           const m = statement.match(/(\d+) steps · (\d+) (?:in place|done)/)
-          if (!m) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
-          else if (planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
+          if (!m && !licenceOnly) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
+          else if (m && planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
           // The print document is hidden on screen (print media shows it), so its innerText is empty: read textContent.
           const printText = await evaluate(`[...document.querySelectorAll('.print-plan h1, .print-plan h2, .print-plan h3, .print-plan p, .print-plan li, .print-plan td, .print-plan dd')].map((e) => e.textContent).join('\\n')`)
-          if (!/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
+          if (!licenceOnly && !/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
           checkText(`${label} (print)`, printText, { emails: true })
         }
         await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
