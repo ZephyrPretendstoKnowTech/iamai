@@ -521,3 +521,23 @@ test('an On Hold row, not Observing, carries no day whatever waits the roadmap r
   const ics = buildIcs([step], 'Tenant', 'plan-forged', () => v)
   assert.equal(ics.includes(`UID:plan-forged-${step.id}@iamai`), false, `${where}: booked in the calendar`)
 })
+
+// A who-line's undated form is drawn where the step carries no turn-on day: held
+// on the board, held by the roadmap, not yet on. Two of them spoke of the policy
+// as on today: "they see the limited experience under this policy", "under this
+// policy their browser sessions stop persisting". They say what happens once it is.
+test('an undated who-line says what happens once the policy is on, never what its people see under it today', () => {
+  const formOf = (id: string): string => ((stepById[id] as unknown as { who: { evidenceUndated: Record<string, string> } }).who.evidenceUndated['0'])!
+  for (const [id, raw] of Object.entries(stepById)) {
+    const who = (raw as { who?: Record<string, unknown> }).who ?? {}
+    for (const [key, forms] of Object.entries(who)) {
+      if (!key.endsWith('Undated') || typeof forms !== 'object' || forms === null) continue
+      for (const [i, form] of Object.entries(forms as Record<string, unknown>)) {
+        if (i.startsWith('$comment') || typeof form !== 'string') continue
+        assert.doesNotMatch(form, /\bunder this policy\b/, `${id} who.${key}.${i} speaks of the policy as on: ${form}`)
+      }
+    }
+  }
+  assert.match(formOf('unmanaged-browser'), /they will see the limited experience once this policy is on/)
+  assert.match(formOf('session-lifetime'), /once this policy is on, their browser sessions stop persisting/)
+})
