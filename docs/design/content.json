@@ -5507,7 +5507,7 @@
         "lead": "{active} active people",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{n} people signed in from a device Entra does not manage since {from}; they see the limited experience under this policy: {list:unmanagedUsers}"
+          "0": "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience once this policy is on: {list:unmanagedUsers}"
         },
         "evidence": [
           "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience from {enforce}: {list:unmanagedUsers}",
@@ -6206,7 +6206,7 @@
         "lead": "{active} active people",
         "evidenceUndated": {
           "$comment": "The evidence lines that name the turn-on day ({enforce}), without it, keyed by the dated line's place in evidence: for a step that carries no such day - held on the board (owner decision 2, 2026-09-22), held by the roadmap, or finished - whose people the scan still read. Each keeps the rest of its dated line and says no more than it did (stepExport.ts whoEvidenceLines).",
-          "0": "{n} people signed in from browsers on unmanaged devices since {from}; under this policy their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}"
+          "0": "{n} people signed in from browsers on unmanaged devices since {from}; once this policy is on, their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}"
         },
         "evidence": [
           "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every {wanted}: {list:browserUsers}",
