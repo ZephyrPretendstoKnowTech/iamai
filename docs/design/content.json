@@ -1781,7 +1781,7 @@
           "Set Enable policy to Report-only and select Save. Not On: a policy that was switched off goes back through Report-only, and this step says when it can be turned on.",
           "Scan {tenant} again: the next scan finds it in Report-only and watches it there."
         ],
-        "$commentSwitchedOffTask": "The Implementation Task's title on a switched-off policy (ui/surfaces/policyTasks.ts taskTitle). The operation the engine still resolves for the step is a create, so the task was titled \"Create the policy in Report-only\" over a procedure that opens the policy that is there.",
+        "$commentSwitchedOffTask": "The Implementation Task's title on a switched-off policy (ui/surfaces/policyTasks.ts taskTitle), and the value of its Implementation readiness tile (stepContract.ts implementationTile). The operation the engine still resolves for the step is a create, so the task was titled \"Create the policy in Report-only\" over a procedure that opens the policy that is there, and the tile read \"Unavailable\" over the procedure the step hands over.",
         "switchedOffTask": "Set the policy to Report-only",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",

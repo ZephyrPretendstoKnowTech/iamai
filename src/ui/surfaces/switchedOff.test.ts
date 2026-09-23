@@ -87,6 +87,10 @@ function assertReportOnlyEverywhere(scan: Scan, id: string, label: string): void
   assert.doesNotMatch(body.contract.whatToDo.text, TURN_ON, `${label}: What to do turns it on`)
   assert.ok(body.contract.whatToDo.text.includes(off.name), `${label}: What to do does not name the policy`)
   const artifact = (x: string) => body.artifacts.find((a) => a.id === x)
+  // The Readiness tile that carries the action names it, rather than calling the
+  // implementation unavailable over a procedure the step hands over.
+  const tile = body.readiness.tiles.find((t) => t.key === 'implementation')
+  if (tile) assert.match(String(tile.value), /Report-only/, `${label}: the implementation tile reads "${tile.value}"`)
   // The portal lines.
   const portal = artifact('portal')
   assert.ok(portal, `${label}: no portal channel`)
