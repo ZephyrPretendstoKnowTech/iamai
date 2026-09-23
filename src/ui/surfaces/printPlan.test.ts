@@ -116,7 +116,22 @@ test('a tenant without Entra ID P1 prints the Plan\'s one licence sentence and n
   const body = print.slice(gate, print.indexOf('document.body', gate))
   for (const drawn of ['headerLine', 'schedule.cleanup', 'C.timeline', 'C.posture']) assert.equal(body.includes(drawn), false, `the no-plan document still draws ${drawn}`)
   assert.ok(body.includes('{licenceLine}'), 'the no-plan document does not state the sentence')
+  // The gate reads the scan the Export page hands it. Unwired, noPlanLine(null)
+  // is null and micro printed a dated plan with Cleanup instructions: the prop
+  // is required, so the page cannot mount the document without the scan, and
+  // the page passes the scanned snapshot.
+  assert.ok(/\n\s+tenant: Pick<TenantSnapshot, 'capabilities'>\n/.test(print), 'the document can be mounted without the scan its licence gate reads')
+  assert.equal(mountOf('tenant'), 'tenant={snapshot}', 'the Export page does not hand the printed plan the scan')
 })
+
+/** One prop of the `<PrintPlan …/>` element the Export page mounts, as written there. */
+function mountOf(prop: string): string {
+  const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
+  const at = page.indexOf('<PrintPlan')
+  assert.ok(at > 0, 'the premise: the Export page mounts the printed plan')
+  const mount = page.slice(at, page.indexOf('/>', at))
+  return mount.split('\n').map((l) => l.trim()).find((l) => l.startsWith(`${prop}=`)) ?? ''
+}
 
 // ---- The at-pace finish ----
 
