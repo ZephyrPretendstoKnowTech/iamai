@@ -681,6 +681,8 @@
           "partlyRead": "partly read",
           "$commentRefused": "Phase 2 audit (Connect): the leads said every unread section was unread \"with this account\", and the tile asked for Global Reader whatever the reason, so a read Microsoft throttled, or one stopped at the memory ceiling, was blamed on an account that already held Global Reader. Only a section Graph refused the account (roles.ts isPrivilegeDenial) is the account's doing: its row says so, and only then does the tile carry the Global Reader ask and another account (coreSections.ts UnreadSection.refused).",
           "refused": "refused to this account",
+          "$commentOthers": "Phase 2 audit (Connect): the gaps lead counted every unread section as one the plan needs, so a scan whose one blocking gap was the sign-in records, and which was also refused MFA registration and Devices, read \"3 sections\" and the section to fix could not be told apart. The lead counts the core gaps (coreSections.ts coreGaps) alone; the other unread sections are listed under this lead instead.",
+          "others": "{n} other sections were not read in full. What is listed here does not stop a plan being built.",
           "ask": "Ask whoever administers the tenant for {role}; it reads every section and writes nothing.",
           "learn": {
             "label": "Microsoft: Global Reader",

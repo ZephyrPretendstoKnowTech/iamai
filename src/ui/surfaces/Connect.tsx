@@ -277,6 +277,18 @@ function ScanTileView({ tile, upn, bar, actions, note, stage }: { tile: ScanTile
           ))}
         </ul>
       )}
+      {tile.more && (
+        <>
+          <p>{tile.more.lead}</p>
+          <ul className="tile-rows">
+            {tile.more.rows.map((r) => (
+              <li key={r.name}>
+                <span>{r.name}</span> <span>{r.value}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {tile.ask && (
         <p className="quiet">
           {roleSpan(tile.ask)}{' '}
@@ -506,7 +518,7 @@ function SignedIn({
     : scanning
       ? { kind: 'scanning', lane: laneOf(runner).lane, elapsed: elapsedLabel(runner.startedAt ?? runner.nowTick, runner.nowTick) }
       : runner.gaps.length > 0
-        ? { kind: 'gaps', unread: runner.unread, lastScan }
+        ? { kind: 'gaps', gaps: runner.gaps, unread: runner.unread, lastScan }
         : lastScan
           ? // What the scan it names did not read in full, from that scan's own
             // snapshot, the way `degraded` is: a stored scan restored on the next

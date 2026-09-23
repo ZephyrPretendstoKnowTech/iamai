@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
 import { gapsSnapshot, noRolesToken } from '../../testing/gapsFixture.ts'
 import { coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
-import { CONFIG_KEYS, SOURCE_KEYS, unreadSources } from '../../graph/collect/coreSections.ts'
+import { CONFIG_KEYS, SOURCE_KEYS, coreGaps, unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, connectStatus, planInputOf, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
@@ -261,7 +261,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { source: 'config:caPolicies', partial: false, refused: false },
     { source: 'signInEvidence', partial: false, refused: true },
   ])
-  const t = scanTile({ kind: 'gaps', unread, lastScan: last })
+  const t = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: last })
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')
   assert.equal(t.tone, 'wait')
@@ -277,7 +277,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { label: 'Sign in with another account', weight: 'primary' },
     { label: 'Scan again', weight: 'secondary' },
   ])
-  const first = scanTile({ kind: 'gaps', unread, lastScan: null })
+  const first = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread, lastScan: null })
   assert.equal(first.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
   assert.deepEqual(first.actions, t.actions, 'the last full plan is the Plan tile\'s, not this one\'s')
   scanOnlyItsOwn(t)
@@ -295,7 +295,7 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   // The sign-in read stopped at the memory ceiling with 9 hours of records (laneBCore.ts 'insufficient').
   const ceiling = structuredClone(small)
   ceiling.sources.signInEvidence = { status: 'insufficient', reason: 'stopped at memory ceiling with only 9 h covered (minimum 24 h)', coveredWindow: { from: '2026-09-07T15:00:00Z', to: '2026-09-08T00:00:00Z' }, asOf: ceiling.asOf }
-  const stopped = scanTile({ kind: 'gaps', unread: unreadSources(ceiling), lastScan: null })
+  const stopped = scanTile({ kind: 'gaps', gaps: coreGaps(ceiling), unread: unreadSources(ceiling), lastScan: null })
   assert.deepEqual(stopped.rows, [{ name: 'Sign-in records', value: 'partly read' }], 'nine hours of records is a read in part, not nothing')
   assert.doesNotMatch(said(stopped), /this account|Global Reader/, 'a read stopped short is not blamed on the account')
   assert.equal(stopped.ask, undefined)
@@ -304,12 +304,12 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   // Microsoft throttled the read and the retries ran out.
   const throttled = structuredClone(small)
   throttled.sources.signInEvidence = { status: 'error', reason: 'HTTP 429 TooManyRequests', coveredWindow: null, asOf: throttled.asOf }
-  const busy = scanTile({ kind: 'gaps', unread: unreadSources(throttled), lastScan: null })
+  const busy = scanTile({ kind: 'gaps', gaps: coreGaps(throttled), unread: unreadSources(throttled), lastScan: null })
   assert.deepEqual(busy.rows, [{ name: 'Sign-in records', value: 'not read' }])
   assert.doesNotMatch(said(busy), /this account|Global Reader/)
   assert.deepEqual(busy.actions, [{ label: 'Scan again', weight: 'secondary' }])
   // A refusal is the account's: that row says so, and the ask and the other account stay.
-  const refused = scanTile({ kind: 'gaps', unread: unreadSources(gapsSnapshot()), lastScan: null })
+  const refused = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
   assert.deepEqual(refused.rows, [
     { name: 'Conditional Access policies', value: 'not read' },
     { name: 'Sign-in records', value: 'refused to this account' },
@@ -345,11 +345,12 @@ test('a section Microsoft did not return in full is not blamed on the account; o
 // the lead names its count without a pronoun.
 test('a gaps scan with one section reads as one: no "be reads", no "them"', () => {
   const one = [{ source: 'signInEvidence', partial: false, refused: false }]
-  const first = scanTile({ kind: 'gaps', unread: one, lastScan: null })
+  const first = scanTile({ kind: 'gaps', gaps: one, unread: one, lastScan: null })
   assert.equal(first.lead, 'The plan needs 1 section that could not be read in full, so IAMAI built nothing from this scan.')
-  const kept = scanTile({ kind: 'gaps', unread: one, lastScan: last })
+  const kept = scanTile({ kind: 'gaps', gaps: one, unread: one, lastScan: last })
   assert.equal(kept.lead, 'The plan needs 1 section that could not be read in full, so IAMAI kept your last full plan and built nothing from this scan.')
-  const two = scanTile({ kind: 'gaps', unread: [...one, { source: 'config:caPolicies', partial: false, refused: false }], lastScan: null })
+  const both = [...one, { source: 'config:caPolicies', partial: false, refused: false }]
+  const two = scanTile({ kind: 'gaps', gaps: both, unread: both, lastScan: null })
   assert.equal(two.lead, 'The plan needs 2 sections that could not be read in full, so IAMAI built nothing from this scan.')
   // The pluraliser, on every surface: a count of one conjugates its own verb, never one a modal, an auxiliary or "to" governs.
   assert.equal(fillText('{n} sections could not be read', { n: 1 }), '1 section could not be read')
@@ -530,4 +531,36 @@ test('the Plan destination is ready only when the Plan page draws a plan: no pla
   assert.match(CONNECT, /const noPlan = lastScan \? conditionalAccessLicenceLine\(lastScan\.snapshot\) : null/)
   assert.match(CONNECT, /const planInput: PlanInput = planInputOf\(/)
   assert.match(CONNECT, /counts: planInput\.kind === 'ready' \? scanCounts : null/)
+})
+
+// Phase 2 audit (Connect): the gaps tile was handed every unread section and
+// said the plan needed all of them. On a scan whose one blocking gap was the
+// sign-in records and which was also refused MFA registration and Devices, it
+// read "3 sections could not be read ... The plan needs them": two of the three
+// do not stop a plan being built (the same refusals under readable sign-ins
+// build one), and the one to fix could not be told apart. The lead now counts
+// the core gaps (coreSections.ts coreGaps) and the rest are listed apart.
+test('the gaps lead counts only the sections a plan cannot be built without, and lists the others apart', () => {
+  const s = structuredClone(fixture('small').snapshot)
+  s.sources.signInEvidence = { status: 'insufficient', reason: 'no sign-in records could be read', coveredWindow: null, asOf: s.asOf }
+  s.sources.registrationDetails = { ...s.sources.registrationDetails, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  s.sources.devices = { ...s.sources.devices, status: 'disabled', reason: 'access denied (403)', coveredWindow: null }
+  const t = scanTile({ kind: 'gaps', gaps: coreGaps(s), unread: unreadSources(s), lastScan: null })
+  assert.equal(t.lead, 'The plan needs 1 section that could not be read in full, so IAMAI built nothing from this scan.')
+  assert.deepEqual(t.rows, [{ name: 'Sign-in records', value: 'not read' }], 'the section that stops the plan, alone')
+  assert.equal(t.more?.lead, '2 other sections were not read in full. What is listed here does not stop a plan being built.')
+  assert.deepEqual(t.more?.rows, [
+    { name: 'MFA registration', value: 'refused to this account' },
+    { name: 'Devices', value: 'refused to this account' },
+  ])
+  const said = tileStrings(t)
+  assert.ok(said.includes(t.more.lead) && said.includes('Devices'), 'the view model lists the other sections')
+  // A scan whose every unread section stops the plan lists no second group.
+  const only = scanTile({ kind: 'gaps', gaps: coreGaps(gapsSnapshot()), unread: unreadSources(gapsSnapshot()), lastScan: null })
+  assert.equal(only.more, undefined)
+  assert.match(only.lead ?? '', /^The plan needs 2 sections /)
+  // Connect hands the tile the runner's core gaps beside the unread list, and draws the second group.
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.match(CONNECT, /kind: 'gaps', gaps: runner\.gaps, unread: runner\.unread/)
+  assert.match(CONNECT, /tile\.more\.rows\.map/)
 })
