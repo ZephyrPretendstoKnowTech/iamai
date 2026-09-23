@@ -376,8 +376,10 @@ export function panelDevices(r: ReadinessRow): PanelItem[] {
   return (r.readiness?.devices ?? []).map((d) => {
     const trust = d.trust ?? 'unknown'
     const sub = `${d.type === 'computer' ? P.trust[trust] + ' ' : ''}${fillText(P.lastSeen, { date: monthDay(d.lastSeen) })}`
-    // What is left to set up here is the offer, the option Step 3 keeps; a device already Seamless names what it signs in with.
-    const option = d.seamless ? d.best : d.offer
+    // What is left to set up here is the offer, the option Step 3 keeps; a device already Seamless names what it signs in with:
+    // Windows Hello, or a Mac's Platform SSO, is built into the device it signed in on whatever its join state (seamlessProof).
+    const builtInProof: SignInOption | null = !d.seamless ? null : d.proof?.cls === 'windowsHello' ? 'windowsHello' : d.proof?.cls === 'platformCredential' ? 'platformSso' : null
+    const option = builtInProof ?? (d.seamless ? d.best : d.offer)
     const best = `${T.options[option].replace(/^a /, '')}${d.whyNot && option === d.best ? '. ' + P.whyNot[d.whyNot] : ''}`
     const now = d.seamless && d.proof ? fillText(P.proofNow.seamless, { date: monthDay(d.proof.at) }) : d.proof ? fillText(P.proofNow.confirmed, { date: monthDay(d.proof.at), method: classWord(d.proof.cls) }) : d.covered ? fillText(P.proofNow.covered, { type: d.type }) : P.proofNow.none
     return { icon: d.type, name: versionWord(d.os, d.version), sub, facts: [[P.best, capital(best)], [P.now, now]] }
