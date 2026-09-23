@@ -197,13 +197,17 @@ test('the Windows Hello check is not filed as done where the computers were neve
   const m = check(micro.snapshot, micro.mapping)
   assert.equal(m.view.context.windowsDirectory, 'joined', 'the premise')
   assert.notEqual(m.c.outcome, 'pass')
-  assert.equal(m.words, H.unread)
+  // The directory was read there; only the sign-in records were not.
+  assert.equal(m.words, H.signInsUnread)
+  assert.match(m.words, /no sign-in records were read/, m.words)
+  assert.doesNotMatch(m.words, /couldn’t read the (computers|device directory)/, m.words)
   // hostile: neither the devices (403) nor the sign-in records were read.
   const hostile = fixture('hostile')
   const h = check(hostile.snapshot, hostile.mapping)
   assert.equal(h.view.context.windowsDirectory, 'unknown', 'the premise')
   assert.notEqual(h.c.outcome, 'pass')
   assert.equal(h.words, H.unread)
+  assert.match(h.words, /couldn’t read the device directory/, h.words)
   assert.ok(remainingChecks([h.c]).length === 1, 'it is listed as remaining, not under Completed')
   // A directory read in full with no joined Windows computer still settles it.
   const s = structuredClone(fixture('small').snapshot)

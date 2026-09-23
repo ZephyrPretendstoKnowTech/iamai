@@ -76,7 +76,7 @@ export function tenantSetupChecks(snapshot: TenantSnapshot, view: ReadinessView)
   const joined = devices.some((d) => d.os === 'Windows' && (d.trust === 'joined' || d.trust === 'hybrid')) || ctx.windowsDirectory === 'joined'
   const noneJoined = ctx.windowsDirectory === 'none' || ctx.windowsDirectory === 'notJoined'
   if (seen) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'seen' })
-  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: ctx.signInsRead ? 'notSeen' : 'unread' })
+  else if (joined) checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: ctx.signInsRead ? 'notSeen' : 'signInsUnread' })
   else if (noneJoined) checks.push({ key: 'windowsHello', outcome: 'pass', affects: 0, reason: 'noJoined' })
   else checks.push({ key: 'windowsHello', outcome: 'unknown', affects: 0, reason: 'unread' })
   // 5. Temporary Access Pass, for somebody with no method at all.
