@@ -118,8 +118,9 @@ const unreadOf = (source: string, s: { status: string; reason: string | null; co
 /**
  * Every section the scan did not read in full (a refusal, an error, or a read
  * that returned only part of the section — never a licence gate), in scan
- * order: the configuration sections, then the sources. A core section the scan
- * lacks altogether counts; any other missing key does not.
+ * order: the configuration sections, then the sources, then the directory
+ * audit read. A core section the scan lacks altogether counts; any other
+ * missing key does not.
  *
  * `ok` is the only status that means read. `partial` is reported here for both
  * the configuration sections and the sources, marked as such, because a section
@@ -149,5 +150,11 @@ export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
     if (readAsFarAsLicensed(s)) continue
     out.push(unreadOf(key, s))
   }
+  // The directory audit read beside the sign-in records (laneB.ts), stored apart
+  // from them: every automatic recovery-test check needs it, so a scan that
+  // tried it and failed says so like any other section. A snapshot from before
+  // the read existed recorded no state for it, and is not said to have failed.
+  const audit = snapshot.recoveryAuditSource
+  if (audit && audit.status !== 'ok' && !readAsFarAsLicensed(audit)) out.push(unreadOf('recoveryAudit', audit))
   return out
 }
