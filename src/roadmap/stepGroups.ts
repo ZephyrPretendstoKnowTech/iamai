@@ -121,7 +121,8 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   // The four policies that replace security defaults, then the switch itself:
   // with security defaults on, every other policy's turn-on waits on it, so
   // these come first. Finish Moving Off Per-User MFA starts once MFA for
-  // everyone is on, and sits straight under it.
+  // everyone is on, and sits at the end of the section, under the
+  // security-defaults switch.
   {
     key: 'core',
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
