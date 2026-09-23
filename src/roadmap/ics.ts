@@ -74,10 +74,15 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push(stamp())
     lines.push(`DTSTART;VALUE=DATE:${icsDate(event.start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
-    // What the day is for, as the Plan rail says it: its transition's words, or
-    // the step's lane label where the rail has none (A1c): the same state the
-    // row and the badge show, never a sentence of the artifact's own.
-    const action = TRANSITION[event.transition] ?? v.state
+    // What the day is for, as the Plan rail says it: its transition's words where
+    // the board's row hands that operation over today (the export view's
+    // `operation`, read off the board), or the step's lane label otherwise (A1c):
+    // the same state the row and the badge show, never a sentence of the
+    // artifact's own. The schedule alone knows nothing of the board's
+    // prerequisites, so a create the board held Up Next was booked "Create in
+    // report-only" beside an entry whose What to do said to finish the steps it
+    // waits on first (Phase 2 export finding 0).
+    const action = v.operation === event.transition ? TRANSITION[event.transition] ?? v.state : v.state
     // A day that is an estimate is booked as one, in the words the board's row
     // reads it in (stepSchedule.ts shownDay): the calendar booked Protect Sign-in
     // Method Registration's report-only create on Aug 31 as a fixed day under a
