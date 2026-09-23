@@ -43,7 +43,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FOUNDATION_WAIT, isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
-import { submitsEnforcementOnly, switchedOffPolicy, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, switchedOffPolicies, unavailableReason, implementationOffered, operationsOf, enforcesOnRun, createWaitsOnReadiness } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
@@ -130,9 +130,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // A policy this plan tagged that the tenant switched off exists: its lifecycle
   // reads not-deployed because a disabled policy enforces nothing, and the board
   // read "Ready · Create" over a step whose own words said the policy is already
-  // there and turning it back on is the change, not a new policy (Jordan D6). The
+  // there and setting it to Report-only is the change, not a new policy (Jordan D6). The
   // next action corrects it.
-  const switchedOff = policy && !done && switchedOffPolicy(step) !== null
+  const switchedOff = policy && !done && switchedOffPolicies(step).length > 0
   const exists = policy ? (lifecycle !== null && lifecycle !== 'not-deployed') || switchedOff : emergency ? emergency.accounts.length > 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
@@ -171,7 +171,7 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       // The emergency gate held a policy's enforcement and never its report-only
       // preparation (A3 B3) — except where the wait is the plan's foundation
       // (roadmap/foundations.ts; owner, 2026-09-19), which holds the step's own
-      // next action, so no policy reads Ready while a pinned group is unsettled.
+      // next action, so no policy reads Ready while Emergency Access or Direction is unsettled.
       const on: Action = policy && GATE.has(b.stepId) && b.label !== FOUNDATION_WAIT ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
@@ -387,8 +387,8 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   for (const step of steps) {
     const reading = out.get(step.id)
     // A policy waiting on the plan's foundation (roadmap/foundations.ts) is not
-    // promoted back into Ready by any of the readings below: the two pinned
-    // groups come first, and that is the whole of the rule.
+    // promoted back into Ready by any of the readings below: Emergency Access
+    // and Direction come first, and that is the whole of the rule.
     const gated = step.blockers.some((b) => b.label === FOUNDATION_WAIT)
     // Reviewing an unread or unsupported configuration is available now; this
     // does not clear the engine's blockers or enable generated write operations.

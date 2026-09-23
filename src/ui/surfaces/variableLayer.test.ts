@@ -111,8 +111,8 @@ test('the short and long date forms name the same day, one short format everywhe
   // A policy the plan can write: one it cannot has no enforcement date at all —
   // and on the pinned baseline nothing holds week two's policies less than that,
   // so this reads the curated one (roadmap/holds.ts).
-  // And with the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and carries no enforcement date.
+  // And with the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
+  // and Direction are, every policy step is held and carries no enforcement date.
   const f = withFoundationSettled(allCuratedFixtures().find((x) => x.name === 'demo-week2')!)
   const run = runFixture(f)
   const policy = run.steps.find((s) => s.events?.enforce && run.schedule.reportOnlyAt[s.id])!

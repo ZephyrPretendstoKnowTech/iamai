@@ -23,7 +23,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { awaitsWorkflowRecord, createWaitsOnReadiness, operationsOf, policyHold, policyResult, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsWorkflowRecord, createWaitsOnReadiness, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -421,7 +421,7 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // previewed it — "IAMAI did not find Block Device Code Sign-in… The next action
   // is to create it in Report-only" — beside a step saying it is there, switched
   // off (Jordan D6). Following it makes a second policy.
-  if (unavailableReason(step) === 'switched-off') return null
+  if (toReportOnly(step).length > 0) return null
   // A create the readiness threshold holds with its turn-on is not planned work
   // to preview: in report-only a policy that requires a compliant device can
   // prompt for a certificate, so the create is itself what is withheld

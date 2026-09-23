@@ -291,8 +291,8 @@ function sweep(): Variant[] {
     out.push(...planOf(`${f.name}+curated`, f))
     out.push(...planOf(`${f.name}+curated+unanswered`, noExclusionsAnswer(f)))
   }
-  // The plan's foundation settled (roadmap/foundations.ts): until both pinned
-  // groups are, every policy is held, so the stages a released policy reaches —
+  // The plan's foundation settled (roadmap/foundations.ts): until Emergency Access and Direction
+  // are, every policy is held, so the stages a released policy reaches —
   // Ready to enforce above all — are reachable nowhere else.
   out.push(...planOf('demo-week2+settled', withDirectionApproved(fixture('demo-week2'))))
   out.push(...owesCorrection(fixture('large')))

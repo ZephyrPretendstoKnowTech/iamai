@@ -85,8 +85,8 @@ test('a first plan starts today, and its first deployment is the next eligible w
 })
 
 test('moving the first deployment or the start moves report-only creation, the phases and every date downstream', () => {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing.
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing.
   const f = withFoundationSettled(fixture('small'))
   const base = runFixture(f)
   const later = runFixture(f, { firstDeployment: '2026-09-15T12:00:00.000Z' })

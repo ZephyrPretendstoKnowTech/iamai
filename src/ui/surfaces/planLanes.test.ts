@@ -11,7 +11,7 @@ import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts
 import { LANE_ORDER, laneReadings, observe, tenantStateOf } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { unavailableReason, switchedOffPolicy } from '../../roadmap/operations.ts'
+import { unavailableReason, switchedOffPolicies } from '../../roadmap/operations.ts'
 import { planStateOf } from './planState.ts'
 
 const RUNS: (() => Fixture)[] = [() => fixture('demo'), () => fixture('demo-week2'), () => fixture('small'), () => fixture('mid'), () => fixture('messy'), () => fixture('midflight'), () => curatedFixture('getiamai'), ...allCuratedFixtures().map((f) => () => f)]
@@ -110,11 +110,11 @@ test('the observation reads the step’s own facts: existence, drift, evidence, 
       const o = observe(s, byId)
       const policy = s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce'
       // Or switched off: a policy this plan tagged that the tenant turned off exists,
-      // and turning it back on corrects it — the board read "Ready · Create" over it
+      // and setting it to Report-only corrects it — the board read "Ready · Create" over it
       // (Jordan D6).
-      const switchedOff = policy && s.status !== 'done' && switchedOffPolicy(s) !== null
+      const switchedOff = policy && s.status !== 'done' && switchedOffPolicies(s).length > 0
       if (policy) assert.equal(o.exists, (s.state.lifecycle !== null && s.state.lifecycle !== 'not-deployed') || switchedOff, `${f.name}/${s.id}: a policy exists exactly in a deployed stage, or switched off`)
-      if (switchedOff) assert.equal(o.drift, true, `${f.name}/${s.id}: turning a switched-off policy back on is a correction`)
+      if (switchedOff) assert.equal(o.drift, true, `${f.name}/${s.id}: setting a switched-off policy to Report-only is a correction`)
       assert.equal(o.enforced, s.state.lifecycle === 'enforced')
       assert.equal(o.complete, s.status === 'done' || s.doesntApply != null)
       if (s.state.condition === 'review-required' && s.status !== 'done') assert.equal(o.drift, true, `${f.name}/${s.id}: a review is a drift`)

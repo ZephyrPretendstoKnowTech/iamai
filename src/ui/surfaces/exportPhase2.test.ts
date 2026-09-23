@@ -175,10 +175,21 @@ test('the Export page builds its Cleanup views off the board', () => {
 // repeated the same mapping, the drift finding 3 was about.
 test('the Plan\'s Cleanup row and the exports read a Cleanup row\'s When from one helper', () => {
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '')
-  assert.match(plan, /when=\{cleanupWhenOf\(row, undated, lane\)\}/, 'the Plan\'s Cleanup row does not read the one When helper')
+  // A finished row's compact line (planBoard.ts drawsCompact) reads the same helper, so its day has one source too.
+  assert.match(plan, /when=\{cleanupWhenOf\(row, undated, lane, drawsCompact\(lane\.lane\)\)\}/, 'the Plan\'s Cleanup row does not read the one When helper')
   assert.doesNotMatch(plan, /cleanupWhen\(row, undated/, 'the Plan maps the lane to the When flags itself')
+  assert.doesNotMatch(plan, /absoluteDate\(row\.done/, 'the Plan works out a Cleanup row\'s done day itself')
   const exports = readFileSync(new URL('./cleanupExport.ts', import.meta.url), 'utf8')
   assert.equal(exports.split("lane === 'Completed'").length - 1, 1, 'the lane-to-When mapping is written more than once')
+  // The compact line shows the day the full row reads as "done <date>", and
+  // nothing where none was recorded or the row is not Completed.
+  const row = { ...runFixture(fixture('small')).schedule.cleanup!.rows[0], done: '2026-09-18T09:30:00.000Z' }
+  const lane = (l: 'Completed' | 'Deferred') => ({ lane: l }) as Parameters<typeof cleanupWhenOf>[2]
+  const day = absoluteDate('2026-09-18')
+  assert.equal(cleanupWhenOf(row, false, lane('Completed')), `done ${day}`)
+  assert.equal(cleanupWhenOf(row, false, lane('Completed'), true), day, 'a finished Cleanup row\'s compact line does not show the day it was marked done')
+  assert.equal(cleanupWhenOf({ ...row, done: null }, false, lane('Completed'), true), '', 'a compact line with no recorded day says a word in a date\'s place')
+  assert.equal(cleanupWhenOf(row, false, lane('Deferred'), true), '')
 })
 
 // The calendar books a Cleanup row from the view the Export page built (its

@@ -23,8 +23,8 @@ const dayOf = (iso: string): string => iso.slice(0, 10)
 
 /** The fixture read in UTC, so "today" is the same calendar day on every machine. */
 function inUtc(name: FixtureName): Fixture {
-  // With the plan's foundation settled (roadmap/foundations.ts): until both
-  // pinned groups are, every policy step is held and the plan dates nothing,
+  // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
+  // Direction are, every policy step is held and the plan dates nothing,
   // and these cases are about the days a dated plan reads.
   const f = withFoundationSettled(fixture(name))
   return { ...f, mapping: { ...f.mapping, displayTimeZone: 'UTC' } }

@@ -562,9 +562,9 @@ try {
   // with the row's own lane tone (src/ui/surfaces/StepSections.tsx PlanRow).
   const numbered = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].map((r) => { const n = r.querySelector('.plan-row-number'); return n ? \`\${(n.textContent || '').trim()}:\${[...n.classList].find((c) => c.startsWith('number-')) || ''}\` : 'missing' })`)
   check('Plan: every row in a group list is numbered, in its lane tone', Array.isArray(numbered) && numbered.length >= 3 && numbered.every((t) => /^\d+:number-(ok|wait|stop|idle)$/.test(t)), JSON.stringify(numbered.slice(0, 6)))
-  // The board draws one lane at a time (S3, src/ui/surfaces/planBoard.ts): Ready is
-  // the default tab, and the three are one tab set. A check that reads every row
-  // reads the three tabs in turn.
+  // The lane tabs draw one lane at a time (S3, src/ui/surfaces/planBoard.ts);
+  // All work is the default tab and the three lanes filter it. A check that
+  // reads every row by lane reads the three lane tabs in turn.
   const LANES = ['Ready', 'Up Next', 'On Hold']
   const tabText = `(t) => ((t.textContent || '').replace((t.querySelector('.tab-badge') || {}).textContent || '', '').trim())`
   const showLane = async (name) => {
@@ -580,16 +580,104 @@ try {
     await showLane(LANES[0])
     return out
   }
-  // The three lanes, then All work: the fourth tab is not a lane (owner,
-  // 2026-09-20) and shows every group that is not finished, whole.
-  check('Plan: the three lanes and All work are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false All work:false')
-  // All work reads how much of each group is done, and a group there is whole:
-  // it holds rows of more than one lane, which no lane tab can.
+  // All work, then the three lanes: the tab that is not a lane (owner,
+  // 2026-09-20) is the default view, so it sits leftmost and the Plan opens on
+  // it (owner, 2026-09-23).
+  check('Plan: All work is the first tab and selected, then the three lanes', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'All work:true Ready:false Up Next:false On Hold:false')
+  // All work: an open section says what is left of it, a finished one is one
+  // collapsed line in its own place (owner, roadmap flow V2 decision B), and a
+  // section there is whole: it holds rows of more than one lane, which no lane
+  // tab can. This tenant has no finished section, so the collapsed line is
+  // checked on the demo's Follow-up scan, at both widths (below).
   await showLane('All work')
-  const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-group-meta')].map((e) => (e.textContent || '').trim())`)
-  check('Plan: every group on All work reads how much of it is completed', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((t) => /^\d+ of \d+ completed$/.test(t)), JSON.stringify(allWorkMeta.slice(0, 4)))
+  const allWorkMeta = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => ({ meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), closed: g.classList.contains('closed'), hidden: !!(g.querySelector('.plan-group-rows') || {}).hidden }))`)
+  const FINISHED_RE = /^(All \d+ completed|1 of 1 completed|\d+ of \d+ completed, \d+ deferred)$/
+  check('Plan: every section on All work says what is left of it, or collapses to what became of it', Array.isArray(allWorkMeta) && allWorkMeta.length >= 3 && allWorkMeta.every((g) => (g.closed ? FINISHED_RE.test(g.meta) && g.hidden : /^\d+ of \d+ remaining$/.test(g.meta) || FINISHED_RE.test(g.meta))), JSON.stringify(allWorkMeta.slice(0, 4)))
+  check('Plan: nothing is drawn above the tabs or below the board as a section of its own', (await evaluate(`document.querySelectorAll('main.page .plan-board-foundation').length`)) === 0)
+  // The two toggles stay (owner, roadmap flow V2) and start pressed on All work,
+  // where finished work sits compactly in its own section; a lane tab keeps them
+  // unpressed until a person presses one (checked on Ready below).
+  check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
+  // Finished work shrinks in place (owner, roadmap flow V2): a Completed or
+  // Deferred row is one compact line — number, lane word, title, and the day it
+  // was finished where one was recorded — with no Impact, chip or waiting line.
+  const finishedRows = await evaluate(`[...document.querySelectorAll('main.page .plan-group .plan-row')].filter((r) => /^(Completed|Deferred)$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).map((r) => ({ compact: r.hasAttribute('data-compact'), who: !!r.querySelector('.who'), chip: !!r.querySelector('.status'), reason: !!r.querySelector('.plan-row-reason'), number: ((r.querySelector('.plan-row-number') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+  const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+  check('Plan: a finished row on All work is one compact line with its number and, where recorded, its day', Array.isArray(finishedRows) && finishedRows.every((r) => r.compact && !r.who && !r.chip && !r.reason && /^\d+$/.test(r.number) && (r.when === '' || DAY_ONLY.test(r.when))), JSON.stringify((finishedRows || []).filter((r) => !(r.compact && !r.who && !r.chip && !r.reason)).slice(0, 3)))
+  // A header tile filters the one list in section order, so each section
+  // heading is drawn once (the tiles used to draw the list lane by lane, one
+  // heading per lane a section had rows in).
+  const tileHeads = []
+  for (const tile of ['Needs your input', 'Observing', 'Completed']) {
+    const pressed = await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-tile-control')].find((x) => (x.getAttribute('aria-label') || '').startsWith(${JSON.stringify(tile + ':')})); if (b) b.click(); return !!b })()`)
+    await sleep(200)
+    const heads = pressed ? await evaluate(`[...document.querySelectorAll('main.page .plan-group h2')].map((h) => (h.textContent || '').trim())`) : []
+    tileHeads.push({ tile, pressed, heads })
+    await clickText('/^Show the full plan$/')
+    await sleep(200)
+  }
+  check('Plan: a header tile draws each section heading once', tileHeads.every((t) => t.pressed && t.heads.length === new Set(t.heads).size), JSON.stringify(tileHeads.filter((t) => !t.pressed || t.heads.length !== new Set(t.heads).size).slice(0, 2)))
   const allWorkLanes = await evaluate(`[...document.querySelectorAll('main.page .plan-group')].map((g) => new Set([...g.querySelectorAll('.plan-row .lane')].map((e) => (e.textContent || '').trim().split(' · ')[0])).size)`)
   check('Plan: a group on All work is the whole group, not one lane of it', Array.isArray(allWorkLanes) && allWorkLanes.some((n) => n > 1), JSON.stringify(allWorkLanes))
+  // At phone width (390px) All work's section lines and compact rows stay on
+  // the page, and the board widens nothing (owner, roadmap flow V2: check the
+  // view at desktop and mobile width). A collapsed section at this width is
+  // checked on the demo's Follow-up scan, which has one.
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await sleep(400)
+  const phone = await evaluate(`(() => { const fits = (e) => { const b = e.getBoundingClientRect(); return b.left >= -1 && b.right <= innerWidth + 1 }; const heads = [...document.querySelectorAll('main.page .plan-group-head')]; const rows = [...document.querySelectorAll('main.page .plan-row[data-compact]')].filter((r) => r.offsetParent !== null); const board = document.querySelector('main.page .plan-board'); return { heads: heads.length, headsFit: heads.every(fits), rows: rows.length, rowsFit: rows.every(fits), board: board ? board.scrollWidth <= board.clientWidth + 1 : false } })()`)
+  await send('Emulation.clearDeviceMetricsOverride')
+  await sleep(400)
+  check('Plan: at phone width, All work’s sections and finished rows fit the page', !!phone && phone.heads >= 1 && phone.headsFit && phone.rowsFit && phone.board, JSON.stringify(phone))
+  // Decision H, tried as a visible line: while the board has policies at
+  // Ready · Create, one line above the board counts them (a count, never a
+  // name) and its control shows exactly those rows. This tenant may draw no
+  // line; the demo's Follow-up scan with Direction approved always does, and
+  // is where the line is checked for certain (below).
+  const createLine = await evaluate(`((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`)
+  if (createLine) {
+    const n = Number((/^(\d+) polic/.exec(createLine) || [])[1])
+    await clickText('/^Show them$/', 'main.page .plan-create-now')
+    await sleep(200)
+    const createRows = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
+    check('Plan: the line above the board counts the policies ready to create in report-only, and shows exactly them', /^\d+ polic(y is|ies are) ready to create in report-only now\. Show them$/.test(createLine) && createRows.length === n && createRows.every((l) => l === 'Ready · Create'), `${createLine} | ${JSON.stringify(createRows.slice(0, 4))}`)
+    await clickText('/^Show the full plan$/')
+    await sleep(200)
+  }
+  // A step opened from a link keeps the tab where the tab shows it, and
+  // otherwise opens on All work in its own section, with the page moved to it
+  // (owner, roadmap flow V2; planBoard.ts followOpenStep).
+  let waitingId = null
+  for (const lane of ['On Hold', 'Up Next']) {
+    await showLane(lane)
+    waitingId = await evaluate(`((document.querySelector('main.page .plan-board .plan-row[data-step]') || { dataset: {} }).dataset.step) || null`)
+    if (waitingId) break
+  }
+  await showLane('Ready')
+  if (waitingId) {
+    await evaluate(`location.hash = ${JSON.stringify(`#/plan/${waitingId}`)}`)
+    const followed = await waitFor(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); const r = document.querySelector('main.page .plan-row[data-step=${JSON.stringify(waitingId)}]'); if (!t || !r) return false; const box = r.getBoundingClientRect(); return (${tabText})(t) === 'All work' && r.getAttribute('aria-expanded') === 'true' && !r.closest('.plan-group-rows[hidden]') && box.top >= 0 && box.top < innerHeight })()`, 5000)
+    check('Plan: a link to a step the Ready tab does not show opens it on All work, in its section, on screen', followed, String(waitingId))
+    await evaluate(`location.hash = '#/plan'`)
+    await sleep(200)
+  }
+  // A link into a section the person folded lets go of the fold
+  // (planBoard.ts releaseFor): the tab stays, the section opens and the page
+  // moves to the step. The step used to open inside the hidden block, out of
+  // sight, with its row reading expanded.
+  await showLane('All work')
+  const foldedId = await evaluate(`(() => { const g = [...document.querySelectorAll('main.page .plan-board .plan-group')].find((x) => !x.classList.contains('closed') && x.querySelector('.plan-row[data-step^="s-"]')); if (!g) return null; const r = [...g.querySelectorAll('.plan-row[data-step^="s-"]')].at(-1); g.querySelector('.plan-group-toggle').click(); return r.dataset.step })()`)
+  const foldedRow = `document.querySelector('main.page .plan-row[data-step=${JSON.stringify(foldedId)}]')`
+  const folded = foldedId !== null && (await waitFor(`!!(${foldedRow} || { closest: () => null }).closest('.plan-group-rows[hidden]')`, 3000))
+  if (folded) {
+    await evaluate(`location.hash = ${JSON.stringify(`#/plan/${foldedId}`)}`)
+    const unfolded = await waitFor(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); const r = ${foldedRow}; if (!t || !r) return false; const box = r.getBoundingClientRect(); return (${tabText})(t) === 'All work' && r.getAttribute('aria-expanded') === 'true' && !r.closest('.plan-group-rows[hidden]') && box.top >= 0 && box.top < innerHeight })()`, 5000)
+    check('Plan: a link into a section the person folded opens the section, with the step on screen', unfolded, String(foldedId))
+    await evaluate(`location.hash = '#/plan'`)
+    await sleep(200)
+  } else {
+    check('Plan: a link into a section the person folded opens the section, with the step on screen', false, `no open section on All work to fold (${foldedId})`)
+  }
   await showLane('Ready')
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
@@ -613,11 +701,12 @@ try {
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
-  const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
+  // A compact (finished) row has no Impact cell by design, and is checked above.
+  const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row:not([data-compact])')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
   // The first row whose step draws the task anatomy (About this Step, Tasks
-  // Remaining, Implementation Tasks, Completion Criteria) outside the two pinned
-  // groups: every step that carries work draws it now (owner, 2026-09-19), and the
+  // Remaining, Implementation Tasks, Completion Criteria) outside Emergency Access and
+  // Direction: every step that carries work draws it now (owner, 2026-09-19), and the
   // Direction decision steps draw their own (About this Step, Questions, Completion
   // Criteria), so those members are the ones skipped.
   const ownAnatomy = STEP_GROUPS.filter((g) => g.anatomy === 'decision' || g.key === 'emergency-access').flatMap((g) => g.members)
@@ -662,7 +751,7 @@ try {
     check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
   }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
-  check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
+  check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|In the baseline, not in this plan|Housekeeping/g) || []).length >= 1)
   // Every row's state is its lane label (A1c); the chip beside it is a fact or absent.
   check('Plan: one lane label per row', await evaluate(`(() => { const rows = [...document.querySelectorAll('main.page .plan-row')]; return rows.length >= 3 && rows.every((r) => /^(Ready|Up Next|On Hold|Completed|Deferred)( · \\S.*)?$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())) })()`))
   // The Plan → MFA Readiness handoff (task 012): a step whose own enforcement
@@ -815,10 +904,14 @@ try {
   check('Unlicensed tenant: nobody is Ready without records', !(await evaluate(`[...document.querySelectorAll('main.page .readiness-legend li')].some((e) => /^(Ready|Seamless)/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
+  // The plan's rows under their sections, each section line saying what is left
+  // of it or what became of it (All work, the default view).
+  check('Zero policies: the plan renders', await waitFor(`document.querySelector('main.page .plan-row') !== null && [...document.querySelectorAll('main.page .plan-group-meta')].some((m) => /^([0-9]+ of [0-9]+ remaining|All [0-9]+ completed)$/.test((m.textContent || '').trim()))`))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
+  // The plan's rows under their sections, each section line saying what is left
+  // of it or what became of it (All work, the default view).
+  check('Zero policies: the plan renders', await waitFor(`document.querySelector('main.page .plan-row') !== null && [...document.querySelectorAll('main.page .plan-group-meta')].some((m) => /^([0-9]+ of [0-9]+ remaining|All [0-9]+ completed)$/.test((m.textContent || '').trim()))`))
   t = await text()
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
   // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
@@ -990,6 +1083,9 @@ try {
   const reasonLines = (await acrossLanes(`[document.querySelectorAll('main.page .plan-row .plan-row-reason').length]`)).reduce((n, x) => n + Number(x), 0)
   const doubled = (await acrossLanes(`[[...document.querySelectorAll('main.page .plan-row')].filter((r) => r.querySelectorAll('.plan-row-reason').length > 1).length]`)).reduce((n, x) => n + Number(x), 0)
   check('Demo: a waiting row names what it waits for, once', reasonLines > 0 && doubled === 0, `reason lines=${reasonLines}, rows with more than one=${doubled}`)
+  // The pinned baseline's policies nothing else on the Plan names are listed in the
+  // footer, and the heading counts its rows (derive/notInPlan.ts).
+  check('Demo: In the baseline, not in this plan counts its rows', await evaluate(`(() => { const head = 'In the baseline, not in this plan ('; const d = [...document.querySelectorAll('main.page .plan-footer details')].find((x) => ((x.querySelector('summary') || {}).textContent || '').trim().startsWith(head)); if (!d) return false; const n = Number(d.querySelector('summary').textContent.trim().slice(head.length, -1)); return Number.isInteger(n) && n > 0 && d.querySelectorAll('li').length === n })()`))
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
@@ -1092,8 +1188,9 @@ try {
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   // The board draws one lane at a time and keeps the lane the last opened step
   // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
-  // Both toggles pressed for both readings: the skip above pressed Show
-  // deferred, and a loaded plan starts with neither pressed.
+  // Both toggles pressed for both readings, on the Ready tab: the skip above
+  // pressed Show deferred, and a lane tab starts with neither pressed (All
+  // work, where a loaded plan opens, starts with both; planBoard.ts togglesOf).
   // One press at a time: each toggle's handler spreads the focus it rendered
   // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
   const revealAll = async () => {
@@ -1257,6 +1354,74 @@ try {
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
+  // A finished section, drawn (roadmap flow V2 decision B): the Follow-up scan
+  // has Emergency Access finished, so All work's first section is one collapsed
+  // line in its own place — its title and "All 4 completed" — with its rows
+  // hidden. None of the Plan section's tenants has a finished section, so this
+  // is where the collapsed line is checked on screen, at 1440px and at 390px.
+  // The whole heading line is the fold's hit area: a real press on the title's
+  // words, away from the button's own box, opens it and a second folds it.
+  await showLane('All work')
+  const sectionOne = `(() => { const g = document.querySelector('main.page .plan-board .plan-group'); if (!g) return null; const lead = g.querySelector('.plan-group-lead'); const head = g.querySelector('.plan-group-head'); const rows = g.querySelector('.plan-group-rows'); const b = head ? head.getBoundingClientRect() : null; return { width: innerWidth, closed: g.classList.contains('closed'), title: ((g.querySelector('h2') || {}).textContent || '').trim(), meta: ((g.querySelector('.plan-group-meta') || {}).textContent || '').trim(), hidden: !!(rows && rows.hidden), lead: lead ? Math.round(lead.getBoundingClientRect().height) : -1, fits: !!b && b.left >= -1 && b.right <= innerWidth + 1, expanded: (g.querySelector('.plan-group-toggle') || { getAttribute: () => null }).getAttribute('aria-expanded') } })()`
+  const pressSectionOneTitle = async () => {
+    const at = await evaluate(`(() => { const g = document.querySelector('main.page .plan-board .plan-group'); const h = g && g.querySelector('h2'); const btn = g && g.querySelector('.plan-group-toggle'); if (!h || !btn) return null; h.scrollIntoView({ block: 'center' }); const range = document.createRange(); range.selectNodeContents(h); const line = range.getClientRects()[0]; if (!line) return null; const x = line.left + Math.min(line.width / 2, 60); const y = line.top + line.height / 2; const bb = btn.getBoundingClientRect(); return { x, y, offButton: x < bb.left || x > bb.right || y < bb.top || y > bb.bottom } })()`)
+    if (!at) return null
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: at.x, y: at.y, button: 'left', clickCount: 1 })
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at.x, y: at.y, button: 'left', clickCount: 1 })
+    await sleep(250)
+    return { offButton: at.offButton, ...(await evaluate(sectionOne)) }
+  }
+  const EA_TITLE = CONTENT_PAGES.app.plan.groups.emergencyAccess.completedTitle
+  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '4')
+  const collapsedLine = (s) => !!s && s.closed && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
+  const openedByTitle = (s) => !!s && s.offButton && !s.closed && !s.hidden && s.expanded === 'true'
+  const foldedByTitle = (s) => !!s && s.offButton && s.closed && s.hidden
+  const deskSection = await evaluate(sectionOne)
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await sleep(400)
+  const phoneSection = await evaluate(sectionOne)
+  const phoneOpened = await pressSectionOneTitle()
+  const phoneFolded = await pressSectionOneTitle()
+  await send('Emulation.clearDeviceMetricsOverride')
+  await sleep(400)
+  const deskOpened = await pressSectionOneTitle()
+  const deskFolded = await pressSectionOneTitle()
+  check(
+    'Demo: with Emergency Access finished, All work’s first section is one collapsed line, "All 4 completed", at 1440px and 390px',
+    collapsedLine(deskSection) && deskSection.width >= 1200 && collapsedLine(phoneSection) && phoneSection.width === 390,
+    JSON.stringify({ deskSection, phoneSection }),
+  )
+  check(
+    'Demo: a press on the collapsed section’s title, not its button, opens it and a second folds it, at 390px and 1440px',
+    openedByTitle(phoneOpened) && foldedByTitle(phoneFolded) && openedByTitle(deskOpened) && foldedByTitle(deskFolded),
+    JSON.stringify({ phoneOpened, phoneFolded, deskOpened, deskFolded }),
+  )
+  // Decision H's line where the board draws it (roadmap flow V2): the Follow-up
+  // scan with its last Direction step approved has policies at Ready · Create.
+  // The line above the board counts them — a count, never a name — and Show
+  // them lists exactly those rows. The Plan section's tenants draw no line, so
+  // this is the check that exercises it.
+  await evaluate(`location.hash = '#/plan/s-direction-devices'`)
+  const devicesOpen = await waitFor(`!!document.querySelector('main.page .plan-row[data-step="s-direction-devices"][aria-expanded="true"]') && !!document.querySelector('main.page .step-body .direction-section')`, 6000)
+  const devicesApproved = devicesOpen && (await clickText(`/^${CONTENT_PAGES.app.plan.direction.approve}$/`, 'main.page .step-body .direction-section'))
+  const createLineOf = `((document.querySelector('main.page .plan-create-now') || {}).textContent || '').trim()`
+  const createDrawn = devicesApproved && (await waitFor(`/^[0-9]+ polic(y is|ies are) ready to create in report-only now[.] Show them$/.test(${createLineOf})`, 8000))
+  const createText = await evaluate(createLineOf)
+  const createCount = Number((/^(\d+) polic/.exec(createText) || [])[1])
+  let createShown = []
+  if (createDrawn) {
+    await clickText('/^Show them$/', 'main.page .plan-create-now')
+    await waitFor(`/^Showing policies ready to create in report-only/.test(((document.querySelector('main.page p.actions strong') || {}).textContent || '').trim())`, 4000)
+    createShown = await evaluate(`[...document.querySelectorAll('main.page .plan-board .plan-row')].map((r) => ({ lane: ((r.querySelector('.lane') || {}).textContent || '').trim(), step: r.dataset.step || '' }))`)
+  }
+  check(
+    'Demo: with Direction approved, the line above the board counts the policies ready to create in report-only, and Show them lists exactly them',
+    createDrawn && createCount > 0 && createShown.length === createCount && createShown.every((r) => r.lane === 'Ready · Create') && (await evaluate(createLineOf)) === '',
+    `open ${devicesOpen}, approved ${devicesApproved}, line "${createText}", shown ${JSON.stringify(createShown.slice(0, 6))}`,
+  )
+  if (createDrawn) await clickText('/^Show the full plan$/')
+  await sleep(200)
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
