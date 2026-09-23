@@ -169,7 +169,8 @@ export const INVENTORY = {
     distinctUsers: (n: number) => `${count(n, 'distinct user')}`,
     distinctUsersTip: {
       title: 'Distinct users',
-      text: 'Users with at least one record inside the collected window (the last 30 days). Readiness counts activity over 90 days, so Active users can be higher than this number.',
+      // The window is the one the line beside it dates: a read can stop short of the 30 days it asks for.
+      text: 'Users with at least one record inside the collected window. Readiness counts activity over 90 days, so Active users can be higher than this number.',
     },
     byClientApp: 'By client app',
     byProtocol: 'By protocol',

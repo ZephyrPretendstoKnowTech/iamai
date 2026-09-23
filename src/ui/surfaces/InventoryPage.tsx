@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { sectionHasData } from '../../graph/collect/coreSections.ts'
 import { getGroupMembers, resolveObjects } from '../../graph/collect/onDemand.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
 import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
@@ -34,6 +35,7 @@ import {
   policyFactsOf,
   referencedGroupsOf,
   registrationModel,
+  securityDefaultsOf,
   roleHoldersOf,
   rolesModel,
   signInModels,
@@ -78,7 +80,12 @@ function ModelTable<R>({
   initialSort?: { key: string; dir: 1 | -1 }
 }) {
   const columns: Column<R>[] = model.columns.map((c) => ({ key: c.key, header: c.header, csv: c.cell, sortValue: c.sort, hidden: c.hidden, minWidth: c.minWidth, render: render[c.key] ?? c.cell }))
-  return <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} />
+  return (
+    <>
+      {model.note && <p className="reason">{model.note}</p>}
+      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} />
+    </>
+  )
 }
 
 /** A model's cell words for one column. */
@@ -111,6 +118,8 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
 
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
   const viability = useMemo(() => viabilityOf(snapshot), [snapshot])
+  // A tab counts only a section the scan got data out of: an unread one is no count, never 0.
+  const badge = (key: 'caPolicies' | 'users' | 'devices', n: number): number | undefined => (sectionHasData(snapshot, key) ? n : undefined)
   // A read that did not come back carries no date (the catch above).
   const groupEntries = useMemo<GroupEntry[] | null>(
     () => groups?.map((g) => ({ groupId: g.groupId, displayName: g.displayName, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule, read: g.asOf !== '' })) ?? null,
@@ -121,12 +130,12 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
     <div>
       <Tabs
         tabs={[
-          { id: 'policies', label: C.tabs.policies, badge: policies.length, render: () => <PoliciesTab facts={facts} names={names} /> },
+          { id: 'policies', label: C.tabs.policies, badge: badge('caPolicies', policies.length), render: () => <PoliciesTab snapshot={snapshot} facts={facts} names={names} /> },
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} /> },
-          { id: 'people', label: C.tabs.people, badge: snapshot.users.length, render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} /> },
+          { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} /> },
           { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <GroupsTab referenced={referencedGroups} groups={groupEntries} names={names} /> },
-          { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} names={names} /> },
+          { id: 'devices', label: C.tabs.devices, badge: badge('devices', snapshot.devices.length), render: () => <DevicesTab snapshot={snapshot} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
           { id: 'licensing', label: C.tabs.licensing, render: () => <LicensingTab snapshot={snapshot} /> },
@@ -146,9 +155,9 @@ const STATE_CHIP: Record<PolicyFacts['state'], ChipStatus> = {
   unknown: 'warning',
 }
 
-function PoliciesTab({ facts, names }: { facts: PolicyFacts[]; names: NameDirectory }) {
+function PoliciesTab({ snapshot, facts, names }: { snapshot: TenantSnapshot; facts: PolicyFacts[]; names: NameDirectory }) {
   const P = C.policies
-  const model = policiesModel(facts, names)
+  const model = policiesModel(snapshot, facts, names)
   const users = cellOf(model, 'users')
   const list = (ids: Iterable<string>) => [...ids].map(names.label).join(', ')
   const roleList = (ids: Set<string>) => (coversAdminSet(ids) ? P.allAdminRoles(ids.size) : [...ids].map(roleLabel).join(', '))
@@ -207,21 +216,22 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
   const policy = authMethodsPolicyOf(snapshot)
   const campaign = ((policy?.registrationEnforcement as Raw | undefined)?.authenticationMethodsRegistrationCampaign ?? null) as Raw | null
   const migration = typeof policy?.policyMigrationState === 'string' ? policy.policyMigrationState : null
-  const secDefaults = ((snapshot.config.securityDefaults?.rows ?? [])[0] ?? null) as Raw | null
+  const methods = authMethodsModel(snapshot, names)
+  const secDefaults = securityDefaultsOf(snapshot)
 
   return (
     <div>
       <Heading text={C.tabs.authentication} source="authentication" />
-      {policy ? (
+      {policy && !methods.notRead ? (
         <>
-          <ModelTable model={authMethodsModel(snapshot, names)} caption={A.methods} render={{ state: (r) => <Chip status={r.enabled ? 'done' : 'neutral'}>{r.enabled ? A.enabled : A.disabled}</Chip> }} />
+          <ModelTable model={methods} caption={A.methods} render={{ state: (r) => <Chip status={r.enabled ? 'done' : 'neutral'}>{r.enabled ? A.enabled : A.disabled}</Chip> }} />
           <p className="reason">
             {campaign && A.campaignState(String(campaign.state ?? 'unknown'))}
             {migration && ` · ${A.migration(migrationName(migration))}`}
           </p>
         </>
       ) : (
-        <p className="reason">{A.empty}</p>
+        <p className="reason">{methods.notRead ?? A.empty}</p>
       )}
 
       <ModelTable
@@ -244,7 +254,8 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
       />
 
       <p className="reason">
-        {A.securityDefaults}: <Chip status={secDefaults?.isEnabled === true ? 'warning' : 'done'}>{secDefaults?.isEnabled === true ? A.on : A.off}</Chip>
+        {A.securityDefaults}: <Chip status={secDefaults.state === true ? 'warning' : secDefaults.state === false ? 'done' : 'neutral'}>{secDefaults.word}</Chip>
+        {secDefaults.reason && ` · ${secDefaults.reason}`}
       </p>
     </div>
   )
@@ -352,7 +363,7 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: NameDi
       <Heading text={C.tabs.roles} source="roles" />
       <p className="reason">
         {resolved === null && `${R.resolving} `}
-        {!showAll && model.hidden > 0 && `${R.hiddenNote(model.hidden)} `}
+        {model.hiddenNote && `${model.hiddenNote} `}
         <Button size="sm" variant="tertiary" onClick={() => setShowAll((v) => !v)}>
           {showAll ? R.showHeld : R.showAll}
         </Button>
@@ -436,14 +447,16 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Name
   const src = snapshot.sources.signInEvidence
   const agg = snapshot.evidenceAggregates ?? null
   const m = signInModels(snapshot, names)
-  // Three names at most per row: a long list is a count with the first three (row budget).
-  const people = (ids: string[]) => (ids.length === 0 ? S.nobody : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3))
+  const people = m.people
   const count = { initialSort: { key: 'count', dir: -1 as const } }
   return (
     <div>
       <Heading text={C.tabs.signIns} source="signIns" />
-      {src?.coveredWindow && agg ? (
+      {m.notRead ? (
+        <EmptyState icon="chart" text={m.notRead} />
+      ) : src?.coveredWindow && agg ? (
         <>
+          {m.note && <p className="reason">{m.note}</p>}
           <p>
             {S.window(absoluteDate(src.coveredWindow.from), absoluteDate(src.coveredWindow.to), agg.total)} · {S.distinctUsers(agg.distinctUsers)}
             <InfoTip title={S.distinctUsersTip.title} text={S.distinctUsersTip.text} />
