@@ -692,3 +692,22 @@ test('a directory audit read that failed is listed with the sections the scan di
   delete s.recoveryAuditSource
   assert.deepEqual(unreadSources(s), [])
 })
+
+// Phase 2 audit (Connect): while the default baseline loaded, the step read
+// "Baseline loading Defense in Depth…" and the strip "Next: Baseline none
+// loaded": the strip re-derived the tile with no load in flight, because the
+// load's state lived inside the tile's component. Both now read one
+// baselineTile() over the same load state.
+test('the strip and the baseline step read the same load in flight', () => {
+  const loading = baselineTile({ name: null, policyCount: 0, loading: 'Defense in Depth — Maintained by Jon Hope', update: null, stepsFor })
+  const strip = connectStatus([true, false, false, false], [accountTile({ tenant, upn, role: 'Global Reader' }), loading, scanTile({ kind: 'ready' }), planTile({ kind: 'waiting' })])
+  assert.equal(strip.text, loading.state)
+  assert.match(strip.text, /^loading Defense in Depth/)
+  const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  // The load's state is the page's, handed to the tile and read by the strip.
+  assert.equal((CONNECT.match(/baselineStrings\(baseline, baselineBusy\)/g) ?? []).length, 2, 'both states read the strip from the load in flight')
+  assert.match(CONNECT, /function baselineStrings\(baseline: BaselineResult \| null, loading: string \| null\)/)
+  const tile = CONNECT.slice(CONNECT.indexOf('function BaselineTile('))
+  assert.doesNotMatch(tile, /useState<string \| null>\(null\)\s*\n\s*const \[error/, 'the tile keeps no load state of its own')
+  assert.match(tile, /busy, setBusy/)
+})

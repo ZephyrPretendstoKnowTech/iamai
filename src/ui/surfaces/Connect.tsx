@@ -359,6 +359,8 @@ function Destination({ tile, actions }: { tile: PlanTile; actions: ReactNode }) 
 function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: BaselineProps & { error: SignInError | null }) {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
+  // The baseline load in flight: the page's, so the strip and the step read one state.
+  const [baselineBusy, setBaselineBusy] = useState<string | null>(null)
   // MSAL is warming: until it is ready the button carries a spinner but stays
   // clickable; a click made now is queued and fires the moment it is ready, so
   // the first click always lands (prompt 50.1 item 7).
@@ -398,7 +400,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
   // stage anyone has finished until a tenant is behind it.
   const done = [false, false, false, false]
   const [s1, s2, s3] = stages(done)
-  const t2 = baselineStrings(baseline)
+  const t2 = baselineStrings(baseline, baselineBusy)
   return (
     <>
       <StatusStrip status={connectStatus(done, [t1, t2, t3, t4])} />
@@ -433,7 +435,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
             <p className="quiet">{t1.permissions.removal}</p>
           </details>
         </Step>
-        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} />
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} busy={baselineBusy} setBusy={setBaselineBusy} />
         <ScanTileView tile={t3} upn={null} actions={null} stage={s3} />
       </Flow>
       <Destination tile={t4} actions={<Act action={t4.actions[0]} href={demoUrl()} />} />
@@ -461,8 +463,8 @@ function baselinePin(baseline: BaselineResult | null): BaselinePin | null {
   return { repo: `${owner}/${repo}`, url: `https://github.com/${owner}/${repo}`, commit, readAt: PINNED_BASELINE.generatedAt }
 }
 
-function baselineStrings(baseline: BaselineResult | null): { title: string; state: string; tone: Tone } {
-  const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: null, update: null, stepsFor: () => [] })
+function baselineStrings(baseline: BaselineResult | null, loading: string | null): { title: string; state: string; tone: Tone } {
+  const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading, update: null, stepsFor: () => [] })
   return { title: t.title, state: t.state, tone: t.tone }
 }
 
@@ -480,6 +482,8 @@ function SignedIn({
 }) {
   // The scan in flight, wherever it was started (ui/session.ts): tile 3 shows it.
   const { scan: runner, getToken } = useSession()
+  // The baseline load in flight: the page's, so the strip and the step read one state.
+  const [baselineBusy, setBaselineBusy] = useState<string | null>(null)
   const scanning = runner.state === 'running' || runner.state === 'paused'
   // What an action reported, rendered in the tile that pressed it (ui/useAction.ts).
   const tile1 = useAction()
@@ -590,7 +594,7 @@ function SignedIn({
   }
   return (
     <>
-      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline), t3, t4])} />
+      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline, baselineBusy), t3, t4])} />
       <Flow>
         <Step
           n={1}
@@ -614,7 +618,7 @@ function SignedIn({
           <p className="quiet">{t1.note}</p>
           {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
         </Step>
-        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} busy={baselineBusy} setBusy={setBaselineBusy} />
         <ScanTileView
           tile={t3}
           upn={upn}
@@ -679,9 +683,11 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: Bas
 // records a pick (ui/actions.ts). Reading it there and not here is what lets
 // Sign out and Forget this tenant take an unfinished read with them: a package
 // that arrives after either action is applied to nothing and stored nowhere.
-function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null; stage: Stage }) {
+// The load in flight (`busy`) is the page's, not the tile's: the status strip
+// reads the same baselineTile() state the step draws (Phase 2 audit: the step
+// said "loading" while the strip said "none loaded").
+function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage, busy, setBusy }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null; stage: Stage; busy: string | null; setBusy: (busy: string | null) => void }) {
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
   const author = useAuthorUpdate(authorUpdate)
