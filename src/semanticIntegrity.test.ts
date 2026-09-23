@@ -589,8 +589,10 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   // the completion itself is where that starts.
   const board = read('src/ui/surfaces/planBoard.ts')
   assert.ok(board.includes('cleanupComplete('), 'the board construction does not read the one Cleanup completion')
-  // The Plan's Cleanup rows carry the lane view boardOf built (planBoard.ts).
-  for (const [name, src, word] of [['Plan', plan, 'board.rows'], ['PrintPlan', print, 'laneViewOf(']] as const) {
+  // The Plan's Cleanup rows carry the lane view boardOf built (planBoard.ts),
+  // and so do the printed plan's, which are the board's rows in its sections
+  // (printPlan.ts printSectionsOf).
+  for (const [name, src, word] of [['Plan', plan, 'board.rows'], ['PrintPlan', print, 'printSectionsOf(board)']] as const) {
     // The Plan reads it through boardOf, which is built on it (planBoard.ts).
     assert.ok(src.includes('boardReadingsOf(') || src.includes('boardOf('), `${name} does not read the one board construction`)
     assert.equal(src.includes('cleanupComplete('), false, `${name} decides a Cleanup row's completion itself`)

@@ -14,7 +14,8 @@ import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { pages, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
-import { groupsFor } from '../ui/surfaces/planBoard.ts'
+import { boardOf, groupsFor } from '../ui/surfaces/planBoard.ts'
+import { printSectionsOf } from '../ui/surfaces/printPlan.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
@@ -212,9 +213,9 @@ test('a baseline holding both recommendations leaves no floor group to draw', ()
   const held: GoalMap = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'], 'block-legacy-auth': ['(a baseline that holds it)'] }
   const r = runFixture(fixture('demo-week2'), { goalMap: held })
   assert.deepEqual(floorRows(r.steps), [], 'no row belongs to the floor')
-  // The printed document still guards the heading explicitly.
+  // The printed document says a row is the floor's only on a floor step.
   const print = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
-  assert.ok(print.includes('{floor.length > 0 && ('), 'PrintPlan.tsx draws the group unguarded')
+  assert.ok(print.includes('{s.floor === true && <> · {phases.recommended}</>}'), 'PrintPlan.tsx labels a row as the floor\'s unguarded')
   // The Plan does not need a guard any more, and this is the stronger fact: the
   // board builds a group only where a row lands in it (planBoard.ts `groupsFor`
   // drops empty groups outright), so an empty floor cannot produce a heading.
@@ -251,21 +252,28 @@ test('the Plan draws a floor step as a row of its lane, never dressed as a numbe
   for (const s of floor) assert.ok(readings.has(s.id), `${s.id}: a floor step has no lane`)
 })
 
-test('the printed document carries the floor as the same named group, never under a numbered phase', () => {
+test('the printed document prints a floor step in its board section, in the Plan\'s own words for what it is, never under a numbered phase', () => {
   const src = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
-  assert.match(src, /<h2>\{phases\.recommended\}<\/h2>/, 'the document names the group with the Plan\'s own words')
-  // A floor step can sit in a wave's stepIds; the phase sections and the timeline
-  // read the Plan's own row rule, so the document never attributes it to the
-  // author. That rule (ui/surfaces/planRows.ts phaseRows) drops the floor's ids
-  // and the footer's alike, which is one authority rather than a filter the
-  // document keeps for itself (task 027). It reads the board's hold beside it
-  // (owner decision 2): a step the board holds prints undated.
+  // The document prints the board's sections (roadmap flow V1 decision 8), so a
+  // floor step prints where the board draws it, and says beside its number that
+  // it is Microsoft's recommendation and not this baseline's.
+  assert.match(src, /\{s\.floor === true && <> · \{phases\.recommended\}<\/>\}/, 'the document prints a floor step without the Plan\'s own words for what it is')
+  const f = fixture('demo-week2')
+  const r = runFixture(f)
+  const rows = printSectionsOf(boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)).flatMap((sec) => sec.rows)
+  const floor = floorRows(r.steps)
+  assert.ok(floor.length > 0, 'the premise: the demo carries a floor step')
+  for (const step of floor) assert.equal(rows.filter((row) => row.id === step.id && row.step?.floor === true).length, 1, `${step.id}: the floor step does not print once, as the floor's`)
+  // A floor step can sit in a wave's stepIds; the timeline reads the Plan's own
+  // row rule, so the document never dates it as the author's phase work. That
+  // rule (ui/surfaces/planRows.ts phaseRows) drops the floor's ids and the
+  // footer's alike, which is one authority rather than a filter the document
+  // keeps for itself (task 027). It reads the board's hold beside it (owner
+  // decision 2): a step the board holds is dated under no phase.
   assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the phases drop the floor\'s ids')
   assert.equal(src.includes('floorGroupIds'), false, 'the document decides for itself which ids a phase may draw')
   assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
   assert.equal(src.includes('w.stepIds.filter('), false, 'no printed section filters a wave\'s raw step ids itself')
-  const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
-  assert.ok(at('{floor.length > 0 && (') < at('{schedule.cleanup && ('), 'the floor group precedes Cleanup')
 })
 
 test('the Plan page contract accepts the two named groups exactly, and nothing broader', () => {
@@ -279,8 +287,8 @@ test('the Plan page contract accepts the two named groups exactly, and nothing b
     // rows are grouped by (planBoard.ts BOARD.blockers). Every entry is an exact
     // string: the guard this test is here for is a broad new PATTERN in the
     // Plan's closed heading list, not a group the Plan stopped drawing
-    // anonymously. The floor is a row of its lane on screen; the printed
-    // document alone keeps it as the named group (phases.recommended).
+    // anonymously. The floor is a row of its section on screen; the printed
+    // document says what it is beside its number (phases.recommended).
     lanes.ready,
     lanes.upNext,
     lanes.onHold,
